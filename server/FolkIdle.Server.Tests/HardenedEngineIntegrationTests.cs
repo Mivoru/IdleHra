@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
+using FolkIdle.Server.Network;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
@@ -425,6 +426,169 @@ namespace FolkIdle.Server.Tests
             ProgressionEngine.ProcessMonsterDeath(ref mentoredPayload, baseXpReward, mentoredMultiplier, 0);
 
             Assert.Equal(baselinePayload.CurrentXp * 1.20, mentoredPayload.CurrentXp, 3);
+        }
+
+        [Fact]
+        public async Task Test_OfflineProgression_AnalyticalCalculation()
+        {
+            const long testPlayerId = 970000001L;
+            const long elapsedOfflineSeconds = 14400L; // 4 hours
+            const int monsterId = 31;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.MonsterCodexEntries.Add(new MonsterCodexEntry { PlayerId = testPlayerId, MonsterId = 1, KillCount = 100, Level = 10 });
+                await db.SaveChangesAsync();
+            }
+
+            (float YieldMultiplier, float DamageMultiplier) multipliers;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                multipliers = await CodexEngine.CalculateActiveMultipliersAsync(testPlayerId, db);
+            }
+
+            long currentUnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            var payload = new TickStatePayload
+            {
+                PlayerId = testPlayerId,
+                LastLogoutTimestamp = currentUnixTimestamp - elapsedOfflineSeconds,
+                ActiveActivityId = monsterId,
+                CurrentLevel = 1,
+                CurrentXp = 0,
+                SelectedLineageId = 0,
+                InventorySpaceRemaining = 1000,
+                CachedCodexYieldMultiplier = multipliers.YieldMultiplier,
+                CachedCodexDamageMultiplier = multipliers.DamageMultiplier
+            };
+
+            // Independently replicate the engine's analytical combat projection to
+            // compute the expected reward, rather than hand-computing a fragile
+            // cascading level-up chain by hand.
+            MonsterDefinition monster = ContentRegistry.Monsters[monsterId - 1];
+            CombatStats combatStats = StatsCalculator.Calculate(0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0);
+            int attackSpeedMs = Math.Max(200, (int)(1500 * (1.0f - combatStats.AttackSpeedPct)));
+            long effectiveMilliAttack = 15000L + (combatStats.FlatMeleeDamage * 1000L);
+            int netDamage = Math.Max(1000, (int)effectiveMilliAttack);
+            netDamage = (int)(netDamage * multipliers.DamageMultiplier);
+            double dps = (netDamage / 1000.0) * (1000.0 / attackSpeedMs);
+            double secondsPerKill = monster.MaxHp / dps;
+            double totalKillsDouble = elapsedOfflineSeconds / secondsPerKill;
+            long expectedKills = (long)totalKillsDouble;
+            long expectedXpGained = expectedKills * monster.BaseXpReward;
+            int expectedLootRolls = (int)(totalKillsDouble * multipliers.YieldMultiplier);
+
+            long expectedXp = expectedXpGained;
+            int expectedLevel = 1;
+            while (true)
+            {
+                long requiredXp = 100L * expectedLevel * expectedLevel;
+                if (expectedXp >= requiredXp)
+                {
+                    expectedXp -= requiredXp;
+                    expectedLevel++;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            Assert.True(expectedLootRolls > 0);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                payload = await OfflineSimulationEngine.ExtrapolateOfflineProgressAsync(db, payload, currentUnixTimestamp);
+            }
+
+            Assert.Equal(expectedLevel, payload.CurrentLevel);
+            Assert.Equal(expectedXp, payload.CurrentXp);
+            Assert.Equal(currentUnixTimestamp, payload.LastLogoutTimestamp);
+            Assert.True(payload.IsDirty);
+
+            // ContentRegistry's real loot tables currently carry zero entries, so the
+            // in-registry combat path has nothing to roll against yet. The granting
+            // pipeline itself is verified here in isolation against a hand-built
+            // loot table, using the same roll count the analytical projection above
+            // computed, so the DB commit and quantity math are still exercised for real.
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var lootTable = new[] { new LootTableEntry { ItemId = 1, Weight = 100 } };
+                int granted = await OfflineSimulationEngine.GrantAnalyticalLootAsync(verifyDb, testPlayerId, lootTable, expectedLootRolls, 1000);
+
+                Assert.Equal(expectedLootRolls, granted);
+
+                var commodity = await verifyDb.CommodityRecords.AsNoTracking()
+                    .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
+                Assert.Equal(expectedLootRolls, commodity.Quantity);
+            }
+        }
+
+        [Fact]
+        public void Test_Chrono_ActiveTimeAcceleration()
+        {
+            const long testPlayerId = 980000001L;
+            const int gatheringActivityId = 101;
+
+            var simulationEngine = CreateTestSimulationEngine();
+
+            var payload = new TickStatePayload
+            {
+                PlayerId = testPlayerId,
+                ActiveActivityId = gatheringActivityId,
+                GatheringProgressTicks = 0,
+                WoodcuttingMasteryLevel = 0,
+                CachedCurrentToolTier = 0,
+                InventorySpaceRemaining = 1000,
+                SpeedMultiplier = 2,
+                IsChronoAccelerating = true,
+                BankedChronoSeconds = 3600.0,
+                ActiveChronoLockExpirationTicks = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds()
+            };
+
+            // A single 100ms frame at 2x Chrono speed must run the sub-tick body
+            // twice, so the gathering action counter (a plain, RNG-free progress
+            // tick) should advance by exactly double the normal per-frame rate.
+            simulationEngine.ProcessTick(ref payload);
+
+            Assert.Equal(2, payload.GatheringProgressTicks);
+            Assert.Equal(2, payload.SpeedMultiplier);
+            Assert.True(payload.BankedChronoSeconds < 3600.0);
+        }
+
+        private SimulationEngine CreateTestSimulationEngine()
+        {
+            var serviceProvider = _fixture.ServiceProvider;
+            var playerRegistry = _fixture.PlayerRegistry;
+            var contextFactory = _fixture.DbContextFactory;
+
+            var networkSystem = new NetworkBroadcastSystem(serviceProvider, "http://localhost:8082/");
+            var lootEngine = new LootTableEngine();
+            var checkpointManager = new StateCheckpointManager(serviceProvider);
+            var forgeEngine = new ForgeSplicingEngine(serviceProvider);
+            var marketEngine = new MarketOrderBookEngine(serviceProvider, playerRegistry);
+            var guildEngine = new GuildContributionEngine(serviceProvider);
+            var escrowEngine = new MarketEscrowEngine(serviceProvider, playerRegistry);
+            var mailboxEngine = new MailboxAndBankEngine(serviceProvider, playerRegistry);
+            var rerollEngine = new AffixRerollEngine(serviceProvider);
+            var breedingEngine = new BreedingEngine(serviceProvider, playerRegistry);
+            var guildLogisticsEngine = new GuildLogisticsEngine(serviceProvider, playerRegistry);
+            var craftingEngine = new CraftingEngine(contextFactory, playerRegistry);
+            var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
+            var villageBuildingEngine = new VillageBuildingEngine(serviceProvider, playerRegistry);
+            var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
+            var mentorshipEngine = new MentorshipEngine(serviceProvider, playerRegistry);
+            var guildWarEngine = new GuildWarEngine(serviceProvider);
+            var chronoCoreEngine = new ChronoCoreEngine(serviceProvider, playerRegistry);
+            var legacyStoreEngine = new LegacyStoreEngine(serviceProvider, playerRegistry);
+            var guildLogisticsDepotEngine = new GuildLogisticsDepotEngine(serviceProvider, playerRegistry);
+            var guildCombatSimulationEngine = new GuildCombatSimulationEngine(serviceProvider, playerRegistry);
+
+            return new SimulationEngine(
+                lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
+                escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
+                villageBuildingEngine, villageManagementEngine, mentorshipEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
         }
     }
 }

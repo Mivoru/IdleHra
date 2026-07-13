@@ -730,7 +730,10 @@ namespace FolkIdle.Server.Engine
                                 return;
                             }
 
-                            OfflineSimulationEngine.ExtrapolateOfflineProgress(ref payload, currentUnixTimestamp);
+                            await using (var offlineDb = await _contextFactory.CreateDbContextAsync())
+                            {
+                                payload = await OfflineSimulationEngine.ExtrapolateOfflineProgressAsync(offlineDb, payload, currentUnixTimestamp);
+                            }
                             _readyLogins.Enqueue(payload);
                         });
                         continue;
