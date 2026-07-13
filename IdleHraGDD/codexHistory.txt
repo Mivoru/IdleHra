@@ -1,0 +1,1638 @@
+Zavedení explicitní rezervace (padding) do binárního kontraktu pro stabilizaci …
+
+
+
+
+Jdu přečíst nové zadání z přílohy a navážu na hotový Sprint 52, hlavně na packet layout a novou village vrstvu, protože tam se teď pravděpodobně bude pokračovat.
+
+
+
+
+Zadání je Sprint 53: Redis cache, write-behind a distributed session lock bez změny packetů. Nejdřív čtu síťovou a checkpoint vrstvu, protože tam musíme přidat Redis bez rozhození loginu, layout guardu a shutdown flushů.
+
+
+
+
+Sprint 53 je infrastruktura, ale budu ji držet prakticky: přidám Redis multiplexer jako singleton, cache helper pro player:{id}:session_state a player:{id}:gold_buffer, write-behind worker a serverový WebSocket lock. Packet definice nechám beze změny na 416/114.
+
+
+
+
+Ještě bokem napravím i riziko ze Sprintu 52: upgrade budovy bude dělat upsert řádku a až potom pod stejnou transakcí držet zámek měny i infrastruktury před výpočtem ceny. To je malý zásah, ale přesně uzavírá popsaný race vector.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Přidávám teď tři malé infrastrukturní třídy: Redis session cache pro hot-path HSET/HINCRBY, write-behind worker pro 5min sync do Postgresu a Redis lock pro jeden aktivní WebSocket na hráče.
+
+
+
+
+Vytvořeny 3 soubory•  řádků
+
+
+
+Redis helpery jsou v repu. Teď je registruju v bootstrapu a telemetry streamer dostane Redis side-channel, aby se event countery necpaly jen do lokálního souboru.
+
+
+
+
+Upraveny 2 soubory•  řádků
+
+
+
+Další je hot-path přepojení: payload dostane interní dirty flag a zlatý delta buffer, checkpoint manager bude v běžném ticku zapisovat Redis hash/set místo PostgreSQL flushu.
+
+
+
+
+Upraveny 3 soubory•  řádků
+
+
+
+Přepisuju upgrade transakci podle kritiky: nejdřív se garantuje existence řádku infrastruktury, potom se pod stejnou transakcí uzamkne gold a konkrétní budova, a cena se počítá až z uzamčené úrovně.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Drobná pojistka: i po upsertu nechávám explicitní null guard, aby build s nullable kontextem nehlásil varování a runtime nikdy nepočítal cenu z prázdné budovy.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Teď přidávám Redis SET NX PX lock do serverového WebSocket handshake. Když už je lock:player:{id} držený, nový stream se zavře ještě před login commandem.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Přidávám ještě lokální pojistku kolem TryAdd, aby i na stejném uzlu nevznikly dvě session, kdyby Redis lease mezitím vypršel.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+U Redis lock release přepínám na jednoduchý Lua string s porovnáním tokenu, ať se vyhneme API variantám kolem prepared scriptů.
+
+
+
+
+Upraveny 2 soubory•  řádků
+
+
+
+Write-behind gold buffer nesmí odečíst Redis delta dřív, než Postgres transakce opravdu commitne. Posouvám tedy čištění dirty setu a odečtení gold delta až za úspěšný commit.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+
+
+
+Mám zapojené Redis helpery i hot-path dirty write. Teď dělám rychlý statický scan před buildem: hlavně packet velikosti, staré layout hodnoty a Redis API místa, kde C# obvykle nachytá overloady.
+
+středa 23:45
+
+
+
+
+
+
+please continue,Přerušení exekuce kvůli limitům platformy znamená, že kód Sprintu 53 je sice strukturálně rozpracován, ale postrádá finální verifikaci pomocí kompilace a layout guardu.Kritické zhodnocení rozpracovaného stavu Sprintu 53Korekce zamykání (Sprint 52): Sekvence (garance existence řádku $\rightarrow$ spojený FOR UPDATE lock na měnu i budovu $\rightarrow$ výpočet ceny) je navržena správně. Uzavírá Upgrade Cost Race Vector.Write-Behind Konzistence: Přesun čištění dirty setu a odebírání delty až za úspěšný commit Postgres transakce je správný. Zabraňuje desynchronizaci a ztrátě dat při rollbacku DB.Atomický Lock Release: Použití Lua skriptu pro porovnání tokenu před smazáním klíče brání stavu, kdy by API uzel omylem smazal zámek patřící novější relaci hráče.Latentní rizika k prověření (Architektonický dluh)Absence Lock Renewal (Lease Expiry): Distribuovaný zámek na 30 sekund přes SET NX PX je bezpečný pouze tehdy, pokud server implementuje asynchronní heartbeat (lock renewal). Pokud se Write-Behind flush nebo databázový checkpoint zdrží (např. pod zátěží I/O), zámek po 30 sekundách vyprší, což umožní jinému bezstavovému Podu inicializovat duplicitní relaci téhož hráče (Split-Brain exploit).Alokační profil StackExchange.Redis: Knihovna interně generuje managed objekty a tasky. Je kritické ověřit, že horká linka 10 Hz simulace pouze zapisuje do lokálního unmanaged dirty-flag bufferu a fyzické odesílání HSET / HINCRBY příkazů do Redis pipeline probíhá plně asynchronně mimo simulační vlákno.Kroky po obnovení limitůSpustit explicitní kompilaci: dotnet build .\server\FolkIdle.Server\FolkIdle.Server.csprojSpustit ověření binárního zarovnání: dotnet run --project .\server\FolkIdle.Server\FolkIdle.Server.csproj -- --layout-check (Cíl: StateUpdatePacket = 416, ClientCommandPacket = 114).Po potvrzení integrity přejít na Sprint 54: Pokročilý Anti-Cheat, Bitwise XOR Obfuscation a Shadow Banning (Modul 49 GDD).
+
+
+Zobrazit více
+
+10:38
+
+
+
+
+
+
+Pracoval 4m 34s
+
+
+Navazuju přesně tam, kde jsme skončili: Sprint 53 má kód zapojený, teď ověřím kompilaci a layout guard. Pokud build odhalí Redis API nebo restore problém, opravím to a zopakuju ověření.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Build doběhl až k jedné konkrétní chybě: RedisValue má nejednoznačný implicitní převod z byte u telemetry event_type. Opravím to explicitním castem na int, žádná architektonická změna.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Oprava je malá a bezpečná. Pouštím build znovu, pak hned layout-check.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Build je čistý: 0 warningů, 0 chyb. Teď ověřuji, že jsme omylem nepohnuli packet layoutem 416/114.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Ověření je hotové a packet guard zůstal pevně na 416/114. Udělám ještě krátký závěrečný scan po starých layout hodnotách a Redis místech, aby bylo jasné, že změny nezasáhly klientský packet kontrakt.
+
+
+
+
+Spuštěny 3 příkazy
+
+
+
+Dva scany timeoutly, nejspíš protože build přidal obj/bin výstupy a rg lezl i tam. Zopakuju je už jen přes zdrojové soubory mimo bin/obj.
+
+
+
+
+Spuštěny 2 příkazy
+
+
+
+Závěrečný scan je čistý: ve zdrojácích jsou už jen layout guardy 416/114 a Redis namespace je zavedený na očekávaných místech.
+
+
+
+
+Ještě vezmu ten zmíněný latentní dluh okolo 30s lease: doplním Redis lock renewal heartbeat, aby dlouhá relace po 30 sekundách sama neotevřela split-brain okno. Potom znovu pustím build i layout-check.
+
+
+
+
+Upraveny 2 soubory•  řádků
+
+
+
+Heartbeat je doplněný: každých 10 sekund obnovuje 30s lease a při selhání socket zavře. Teď znovu kompilace, ať nepropašujeme API chybu.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Build je znovu čistý. Poslední krok je layout guard, protože jsme slíbili, že Sprint 53 nesmí hnout binárním kontraktem.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Layout-check prošel. Udělám už jen poslední úzký scan mimo bin/obj, abych potvrdil hodnoty 416/114 a Redis heartbeat/namespace v kódu.
+
+
+
+
+Spuštěny 3 příkazy
+
+
+
+
+
+
+Sprint 53 je dotažený a ověřený.
+Doplnil jsem:
+StackExchange.Redis integraci v [FolkIdle.Server.csproj](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/FolkIdle.Server.csproj) a [Program.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Program.cs)
+Redis session cache s keys player:{id}:session_state a player:{id}:gold_buffer v [RedisSessionCache.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Engine/RedisSessionCache.cs)
+5min write-behind worker v [RedisWriteBehindEngine.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Engine/RedisWriteBehindEngine.cs)
+Redis WebSocket session lock lock:player:{id} s atomic Lua release a nově i 10s renewal heartbeat v [RedisPlayerSessionLock.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Engine/RedisPlayerSessionLock.cs) a [NetworkBroadcastSystem.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Network/NetworkBroadcastSystem.cs)
+hot-path gold delta buffering přes RedisPendingGoldDelta / RequiresRedisFlush
+Sprint 52 race fix v VillageManagementEngine: existence row -> lock gold + building -> až pak výpočet ceny
+Ověření:
+dotnet build .\server\FolkIdle.Server\FolkIdle.Server.csproj prošel: 0 warning, 0 error
+dotnet run --project .\server\FolkIdle.Server\FolkIdle.Server.csproj -- --layout-check prošel: Network packet layout guard passed
+Packet kontrakt zůstal pevně StateUpdatePacket = 416, ClientCommandPacket = 114
+Jedna kompilací nalezená věc byla opravena: RedisValue měl nejednoznačný převod z byte v telemetry zápisu, vyřešeno explicitním castem na int. Sprint 53 je připravený na navazující Sprint 54.
+
+10:43
+
+
+
+
+
+
+Doplnění 10s renewal heartbeat pro distribuovaný Redis lock odstraňuje hlavní s…
+
+
+
+
+Pracoval 15m 2s
+
+
+Jdu přečíst nové zadání z přílohy a navážu na Sprint 53. Očekávám anti-cheat/packet vrstvu, takže nejdřív zkontroluju přesné požadavky a pak sáhnu do validatoru, síťového parsování a klientského mirroru jen tam, kde to bude nutné.
+
+
+
+
+Spuštěny 3 příkazy
+
+
+
+Sprint 54 je větší zásah: obfuskované hodnoty, shadow quarantine, command 31 challenge a variance profiler. Nejdřív si přečtu konkrétní místa, kde se dnes řeší player profil, market listing, command parsing a UI state, aby se změna držela co nejblíž existujícímu toku.
+
+
+
+
+Spuštěny 4 příkazy
+
+
+
+Mám přesné Sprint 54 zadání. Udělám to v několika úzkých vrstvách: nejdřív packet layout a obfuskované value typy, potom challenge/variance server logika, pak shadow quarantine v DB/marketu a nakonec klientský challenge response.
+
+
+
+
+V repu není samostatná PlayerProfiles tabulka, takže použiju existující PlayerRecords jako aktuální profil hráče a přidám tam IsQuarantined. Marketplace izolaci napojím přes MarketEquipmentInstance/MarketOrderRecord, protože ty už drží ownership a listing tok.
+
+
+
+
+Spuštěny 4 příkazy
+
+
+
+Začínám packet a value-typ vrstvu. Přidám ObfuscatedInt64/ObfuscatedInt32 na server i klienta, rozšířím command/state pakety přesně o 8 bajtů a posunu layout guardy na 122/424.
+
+
+
+
+Vytvořeny 2 soubory a upraveno 6 souborů•  řádků
+
+
+
+Packet mirror je rozšířený. Teď balím aktivní session hodnoty do obfuskovaných buněk a napojím je na existující gold/shard/premium hodnoty tak, aby starý výpočetní kód zůstal čitelný a nové buňky se držely synchronně.
+
+
+
+
+Vytvořen jeden soubor a upraveny 3 soubory•  řádků
+
+
+
+Přidávám shadow-ban sloupce a inicializaci obfuskovaných buněk při loadu session. Nové hodnoty jsou interní pro session, packet se rozšíří jen o challenge/quarantine stav podle zadání.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Teď měním hot-path zápisy zlata/shardů na helpery AddGold / SetLegacyShards, aby se plain session hodnota a obfuskovaná buňka nehýbaly každá jiným směrem.
+
+
+
+
+Upraveny 2 soubory•  řádků
+
+
+
+Přidávám samostatný AntiCheatTelemetryEngine: drží rolling timestamp ring po hráči, počítá variance intervalů, umí tiše nastavit shadow quarantine v DB i Redis cache a obsahuje společnou challenge hash matematiku pro server.
+
+
+
+
+Vytvořen jeden soubor•  řádků
+
+
+
+Teď napojuji variance profiler na příchozí command stream v NetworkBroadcastSystem, aby se timestampy zapisovaly při přijetí packetu, ale command 31 samotný se do variance nepočítal.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Doplňuji bootstrap: anti-cheat engine vznikne vedle ostatních enginů, síťová vrstva ho dostane pro profiling a simulační smyčka pro challenge response / silent quarantine.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Teď přidám command 31 do simulační smyčky a challenge seed do broadcastu. Odpověď se nebude chovat jako běžný gameplay command, takže žádný disconnect, jen tichá karanténa při špatném hashi nebo timeoutu.
+
+
+
+
+Upraven jeden soubor, upravování jednoho souboru a spuštěny 3 příkazy•  řádků
+
+
+
+Tichá karanténa se teď propsuje i do live session bitu IsQuarantined. Pokračuju commandem 31 a challenge timeoutem v 10Hz smyčce.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Challenge seed se vydává při broadcastu a timeout se hlídá v 10Hz smyčce. Teď doplním, aby tick counter opravdu rostl, protože seed používá počet tiků jako součást xorshift vstupu.
+
+
+
+
+Upraven jeden soubor a spuštěny 2 příkazy•  řádky
+
+
+
+Dál doplňuji shadow-ban izolaci marketplace: quarantined listingy a nákupy budou sdílet jen izolovaný ekosystém, normální hráči neuvidí ani nekoupí bot listingy a naopak.
+
+
+
+
+Upraveny 2 soubory•  řádků
+
+
+
+Leaderboard endpoint v projektu zatím nebyl, takže přidám malý izolovaný /api/v1/leaderboard/global: čistým hráčům vrací pouze nekaranténní top, karanténním deterministic spoofed matrix.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Ještě propisuji IsQuarantined do checkpoint/write-behind, aby silent quarantine přežila flush a Redis synchronizaci.
+
+
+
+
+Upraveny 3 soubory•  řádků
+
+
+
+Klient teď dostane automatickou odpověď na challenge seed hned po parse packetu, bez UI kliknutí a přes stejný Unsafe.WriteUnaligned outbound buffer. UI zároveň začne číst legacy shards z obfuskované klientské buňky.
+
+
+
+
+Upraveny 3 soubory•  řádků
+
+
+
+Server i klient jsou teď mirrorované pro command 31. Udělám statický scan po konstruktoru SimulationEngine, nových packet velikostech a typických místech, kde změna signatury bývá zapomenutá.
+
+
+
+
+Spuštěny 3 příkazy
+
+
+
+
+Kontext byl automaticky zhuštěn
+
+
+
+Navážu přesně v místě, kde se to přerušilo: nejdřív zkontroluju kompilaci a layout guard Sprintu 54, pak opravím případné chyby, aby ses neopíral o rozpracovaný stav.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Server teď prošel čistě: žádné chyby ani warningy. Pokračuju layout guardem, protože právě tam se u těchto sprintů nejčastěji ukáže tichý posun binárního kontraktu.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Layout guard prošel taky, takže cílové velikosti paketů jsou v běžícím serveru konzistentní. Ještě udělám rychlý průřez repem na staré velikosti a nové anti-cheat položky, abychom nechytli jen “šťastnou” kompilaci.
+
+
+
+
+Spuštěny 3 příkazy
+
+
+
+Výsledky jsou zatím zdravé: staré velikosti 416/114 se v packet guardech neobjevily, nové challenge pole jsou na serveru i klientovi. Jeden široký scan doběhl do limitu kvůli velikosti klientského stromu, takže ho zpřesním jen na zdrojové složky a zároveň zkontroluju, jestli zlato/shardy někde neobcházejí obfuskační helpery.
+
+
+
+
+Spuštěny 3 příkazy
+
+
+
+Zdrojový scan potvrzuje, že packet guardy na serveru i klientovi drží 424/122; výskyty 416/114 jsou jen běžná herní data v content registru, ne starý layout. Teď mrknu ještě na samotný anti-cheat engine a místa napojení, ať finální zpráva není jen “build prošel”.
+
+
+
+
+Spuštěny 3 příkazy
+
+
+
+Challenge pipeline je napojená na klienta i server: klient seed hned zahashuje a posílá typ 31, server validuje čistotu paketu, seed, hash i 500ms okno. Ještě ověřím registraci engine v bootstrappingu a pár linek v simulační smyčce, pak to uzavřu.
+
+
+
+
+Spuštěny 3 příkazy
+
+
+
+Bootstrapping i izolace marketu/leaderboardu sedí: anti-cheat engine se vytváří při startu, síťová vrstva ho krmí příchozími příkazy a karanténní hráči jsou odděleni od běžného leaderboardu i marketu. Nevidím potřebu dalších zásahů před uzavřením Sprintu 54.
+
+
+
+
+
+
+
+Sprint 54 je teď ověřený.
+Server build prošel čistě:
+0 warnings
+0 errors
+Layout guard taky prošel:
+Network packet layout guard passed.
+Potvrzené cílové velikosti:
+StateUpdatePacket = 424
+ClientCommandPacket = 122
+Zkontroloval jsem i zdrojáky kolem Sprintu 54: anti-cheat challenge typ 31, ActiveChallengeSeed, IsQuarantineActive, shadow ban napojení, Redis/DB quarantine update, izolovaný leaderboard i market scope jsou zapojené. Staré layout konstanty 416/114 už nejsou v packet guardech serveru ani klienta.
+Klíčové soubory:
+[AntiCheatTelemetryEngine.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Engine/AntiCheatTelemetryEngine.cs)
+[ClientCommandValidator.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Engine/ClientCommandValidator.cs)
+[SimulationEngine.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Engine/SimulationEngine.cs)
+[WebSocketClient.cs](C:/Users/promi/skola2025/IdleHra/client/Assets/Scripts/Network/WebSocketClient.cs)
+[NetworkPacketLayoutGuard.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Network/NetworkPacketLayoutGuard.cs)
+Jediné zbytkové riziko, které bych si poznamenal pro další sprint: 500ms challenge okno je hodně přísné pro horší síťové podmínky, takže je anti-cheatově tvrdé, ale může být citlivé na reálnou latenci.
+
+11:00
+
+
+
+
+
+
+Úspěšné spuštění serveru bez varování a zachování binární integrity kontraktu p…
+
+
+
+
+Pracoval 11m 29s
+
+
+Přečtu nejnovější zadání z přílohy a podle něj navážu. Po Sprintu 54 už máme čistý build, takže teď budu hledat hlavně nové požadavky a případné změny, které se mají rovnou provést.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Zadání je Sprint 55: LiveOps ticker, dynamický World Boss, Command 32 a rozšíření packetů na 432/130. Nejprve si načtu aktuální World Boss/packet/UI části, protože tady bude důležité navázat na existující engine místo přidání paralelního systému vedle něj.
+
+
+
+
+Spuštěny 3 příkazy
+
+
+
+Repo už má starší WorldBossEngine a v paketu dokonce existují dlouhé hodnoty boss HP. Sprint 55 po nich chce nové snapshot tabulky, nový příkaz 32 a menší uint telemetry pole, takže budu upravovat stávající tok místo přidávání duplicitní logiky vedle něj.
+
+
+
+
+Spuštěny 4 příkazy
+
+
+
+Stávající WorldBossEngine je zatím čistě paměťový a škáluje každých 5 minut; Sprint 55 chce autoritativní DB snapshot, 1min škálování a async mail distribuci. Teď dohledám simulační smyčku a klientská UI místa, kde se nový příkaz a nové hodnoty musí napojit.
+
+
+
+
+Spuštěny 4 příkazy
+
+
+
+Simulační smyčka je velká a výpis byl zkrácený, takže si ji teď vezmu po cílených úsecích: validace příkazů, zpracování CommandType 19 a sestavení StateUpdatePacket. Tam půjdou změny nejčistěji.
+
+
+
+
+Spuštěny 4 příkazy
+
+
+
+Klient už má World Boss UI i LiveOps text, jen je napojený na starý long/int layout. Budu ho aktualizovat na nové uint/byte pole a Command 32, zatímco serveru přidám DB snapshot a LiveOpsTickEngine.
+
+
+
+
+Spuštěny 4 příkazy
+
+
+
+Databáze se v tomto projektu pro testy rebuildí přes EnsureCreated, takže modely a DbSet jsou zásadní; migraci přidám taky, aby schéma nebylo jen runtime vedlejší efekt. Teď udělám úpravy souborů.
+
+
+
+
+Spuštěny 2 příkazy
+
+
+
+Provedu packet změnu tak, aby se jména nových polí držela zadání: ClientCommandPacket dostane TargetedBossId a ClientPredictedDamage; StateUpdatePacket dostane uint WorldBossCurrentHp a byte ActiveEventType, s explicitní rezervou pro přesných 432 bajtů.
+
+
+
+
+Spuštěny 4 příkazy
+
+
+
+Teď přidám nové modely a přepíšu WorldBossEngine na autoritativní snapshot model. Tím se starý paměťový damage zápis posune do background transakce s FOR UPDATE, zatímco UI broadcast bude pořád číst jen atomické lokální hodnoty.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Začínám úpravami schématu: dvě nové tabulky pro boss snapshot a LiveOps rotace plus registrace v DbContextu.
+
+
+
+
+Vytvořen jeden soubor•  řádků
+
+
+
+Model boss snapshotu je na místě; přidám ještě rotace LiveOps.
+
+
+
+
+Vytvořen jeden soubor•  řádků
+
+
+
+Teď zapojím tabulky do EF kontextu a doplním migraci pro prostředí, které nepoužije čisté EnsureCreated.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+DbContext už o nových tabulkách ví; přidávám ruční migraci ve stylu zbytku repozitáře.
+
+
+
+
+Vytvořen jeden soubor•  řádků
+
+
+
+Schéma je hotové. Další krok je největší zásah: WorldBossEngine dostane autoritativní DB row, damage přes background transakci a bezpečný reward dispatch po smrti bosse.
+
+
+
+
+Upravím starý WorldBossEngine tak, aby starý Command 19 zůstal zpětně funkční, ale nový Command 32 šel přes autoritativní snapshot a background DB lock.
+
+
+
+
+Odstraněn jeden soubor•  řádků
+
+
+
+Starý paměťový cron jsem odstranil; teď vkládám novou verzi s DB snapshotem, transakčním útokem a reward dispatch rutinnou.
+
+
+
+
+Vytvořen jeden soubor•  řádků
+
+
+
+Jednu technickou drobnost rovnou vyhlazuju: stackové výpočty damage musí být v ne-async metodě, aby C# neblokoval Span<T> v async state machine.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+World boss část je připravená; teď přidám LiveOps ticker, který bude držet čtyřfázovou týdenní rotaci, 1min škálování podle CCU a reward dispatch po smrti bosse.
+
+
+
+
+Upraven jeden soubor•  řádek
+
+
+
+Globální stav má teď jednoduchý aktivní event byte/int registr; simulační smyčka z něj bude jen číst.
+
+
+
+
+Vytvořen jeden soubor•  řádků
+
+
+
+LiveOps ticker je přidaný. Teď ho zapojím do startu serveru místo starého worldBossEngine.StartCron() a nechám simulační smyčku číst event typ z autoritativního LiveOps registru.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Server boot teď inicializuje autoritativní boss snapshot a startuje LiveOps ticker. Upravuju simulační broadcast a event multipliery na nový event typ.
+
+
+
+
+Nejdřív přepnu tick event výpočet z lokálního kalendáře na LiveOps registry, potom přidám Command 32 branch.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Přidávám bezpečnostní ukončení session, které kromě socketu vyhodí hráče i z aktivní simulační mapy, online registru a token cache. Použiju ho pro novou tvrdou validaci World Boss útoku.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Teď vkládám Command 32 vedle starého Command 19: starý damage endpoint nechám kompatibilní, nový půjde přes cílený boss id a predikovaný damage.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Command 32 je ve smyčce. Teď upravím broadcast na nový LiveOps packet layout.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Broadcast používá nový uint current HP, takže přidávám malý clamp helper pro bezpečné oříznutí na hranici packetu.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Následuje binární kontrakt: nejdřív serverové a klientské command/state struktury, potom guardy.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Server command packet je rozšířený na dvě nová uint pole. Zrcadlím to na klientovi.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Teď upravím state packet: WorldBossCurrentHp bude uint, ActiveEventType bude byte, a přidám explicitní LiveOps rezervu pro přesných 432 bajtů.
+
+
+
+
+Nechávám WorldBossMaxHp jako long kvůli progress baru a škálování nad 32bit hranici; aktuální HP jde do uint telemetry pole podle zadání.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Server state packet je posunutý, zrcadlím stejný layout na Unity klienta.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Teď měním layout guardy na cílové hodnoty Sprintu 55.
+
+
+
+
+Upraveny 2 soubory•  řádků
+
+
+
+Packet kontrakty jsou změněné. Teď doplním validator pro Command 32 a přidám ho do rate-limit brány.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Serverová validace je hotová. Přepínám klientské parsování z ActiveGlobalEventId na nový ActiveEventType a ponechávám interpolaci boss HP beze změny v chování.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Ještě dohledám staré názvy polí v klientu/serveru, ať po přejmenování nezůstane tichý odkaz.
+
+
+
+
+Spuštěny 2 příkazy
+
+
+
+Staré ActiveGlobalEventId zůstává jen jako serverový helper a v payloadu, ne jako packet field. Teď přidám klientské odesílání Command 32 a upravím UI buffer dle zadání.
+
+
+
+
+Klientská síťová vrstva dostane nový zero-allocation sender s Unsafe.WriteUnaligned sdílenou cestou.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Teď UI dispatcher dostane inspector endpoint pro boss útok s cíleným boss id a predikovaným damage.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Dolaďuju UI: LiveOps buffer přesně podle zadání na 64 znaků a boss HP render přes WriteLongToBuffer, aby škálovaný boss nepřetekl přes int.
+
+
+
+
+Upraven jeden soubor a spuštěn jeden příkaz•  řádků
+
+
+
+V modelech už existuje uint bitmask vzor u GuildWar, takže ModifierBitmask držím stejně. Teď udělám rychlý zdrojový scan na staré layout hodnoty a pak spustím build/layout.
+
+
+
+
+Ještě sjednotím uint mapování s guild-war bitmaskou: EF ho uloží přes bigint, aby PostgreSQL neměl problém se signovaným integerem.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+DbContext má konverzi; upravuju tomu i ruční migraci.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Teď už jdu do ověřovacích kroků: nejdřív cílený scan nových/starých konstant a názvů, potom kompilace.
+
+
+
+
+Spuštěny 3 příkazy
+
+
+
+Scan vypadá dobře: packet guardy mají 432/130, staré 424/122 zůstaly jen jako běžná čísla v content datech, ne v kontraktu. Spouštím build.
+
+
+
+
+Použiju stejnou ověřovací dvojici jako minule: server build a potom layout guard.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Build prošel čistě bez warningů. Teď spouštím layout check, aby potvrdil reálné velikosti 432/130 po kompilaci.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Layout guard prošel. Ještě udělám finální scan na staré packet konstanty a Command 32 integraci, pak to uzavřu s přehledem změn a ověřením.
+
+
+
+
+Spuštěny 3 příkazy
+
+
+
+Finální scan sedí: žádné staré packet guard konstanty, Command 32 je na serveru i klientovi a nové tabulky jsou zaregistrované. Sprint 55 je po build/layout stránce uzavřený.
+
+
+
+
+
+
+
+Hotovo, Sprint 55 je implementovaný a ověřený.
+Přidal jsem autoritativní LiveOps/World Boss vrstvu: nové DB modely WorldBossSnapshots a LiveOpsEventRotations, nový LiveOpsTickEngine, transakční Command 32 AttackWorldBoss, validaci spoofingu, async boss damage přes FOR UPDATE, dynamické HP škálování podle CCU a reward dispatch do mailboxů.
+Packet kontrakt je posunutý a ověřený:
+StateUpdatePacket = 432
+ClientCommandPacket = 130
+server i Unity mirror mají stejné fieldy
+Ověření prošlo čistě:
+dotnet build: 0 warnings, 0 errors
+layout-check: Network packet layout guard passed
+Hlavní změněné soubory:
+[WorldBossEngine.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Engine/WorldBossEngine.cs)
+[LiveOpsTickEngine.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Engine/LiveOpsTickEngine.cs)
+[ClientCommandValidator.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Engine/ClientCommandValidator.cs)
+[SimulationEngine.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Engine/SimulationEngine.cs)
+[StateUpdatePacket.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Network/StateUpdatePacket.cs)
+[ClientCommandPacket.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Network/ClientCommandPacket.cs)
+[UiDataBinder.cs](C:/Users/promi/skola2025/IdleHra/client/Assets/Scripts/UI/UiDataBinder.cs)
+[WebSocketClient.cs](C:/Users/promi/skola2025/IdleHra/client/Assets/Scripts/Network/WebSocketClient.cs)
+Jedno architektonické riziko k poznámce: per-player World Boss contribution score je teď runtime mapa v enginu, zatímco DB snapshot drží globální total damage. Funguje pro běžný kill/reward cyklus, ale při restartu podu během rozpracovaného bosse by se detailní procenta pro rewardy ztratila.
+
+11:36
+
+
+
+
+
+
+Úspěšný průchod nízkoúrovňovým layout-checkem potvrzuje, že binární kontrakt dr…
+
+
+
+
+Pracoval 11m 2s
+
+
+Přečtu nejnovější přílohu a navážu na stav po Sprintu 55. Podle názvu to vypadá jako další sprint po layout-checku, takže budu rovnou hledat konkrétní zadání a implementační body.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Zadání je Sprint 56: push notifikace, registrace zařízení přes Command 33, Redis ZSET časová fronta a rozšíření packetů na 440/198. Vezmu k tomu i dvě drobné opravy rizik ze Sprintu 55: kontribuce bosse přes Redis hash a škálování HP přes čistou kapacitní deltu.
+
+
+
+
+Nejdřív si načtu aktuální síťový packet, UI dispatcher/binder a existující Redis/Program wiring, abych nové notifikace připojil do stejných vzorců jako write-behind a LiveOps.
+
+
+
+
+Spuštěny 4 příkazy
+
+
+
+Packet pro 64b token blok udělám jako pevný fixed byte[64], takže klient i server budou mít skutečně surový blok bez managed pole v paketu. Než ho vložím, ověřím nastavení projektu pro unsafe bloky.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Projekt zatím neměl explicitní unsafe přepínač, ale pro skutečný pevný 64b blok je to správná cesta. Přidám ho do server csproj; Unity klient už unsafe parser používá, takže zrcadlo packetu může držet stejný layout.
+
+
+
+
+Spuštěny 4 příkazy
+
+
+
+Začnu binárním kontraktem a modelem registrací, protože na tom pak stojí serverová validace i klientský sender.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Server teď povoluje fixed buffer v paketu. Rozšiřuju command packet na pevný 64b device token blok, platform byte a explicitní rezervu na 198 bajtů.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Teď stejné rozšíření zrcadlím do Unity packetu.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+State packet dostane stav fronty a padding na 440 bajtů.
+
+
+
+
+Upraveny 2 soubory•  řádků
+
+
+
+Upravuju layout guardy na nové cílové velikosti 440/198.
+
+
+
+
+Upraveny 2 soubory•  řádků
+
+
+
+Packet kontrakt je posunutý. Teď mapuju DB tabulku pro device registrace s kompozitním klíčem PlayerId + DeviceTokenRaw.
+
+
+
+
+Vytvořen jeden soubor•  řádků
+
+
+
+Registrace model je přidaný; zapojuju DbSet, klíč a index do DbContextu.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Přidávám ruční migraci pro tabulku registrací zařízení.
+
+
+
+
+Vytvořen jeden soubor•  řádků
+
+
+
+Přidávám globální metrikový registr pro délku push fronty, který pak půjde do StateUpdatePacketu.
+
+
+
+
+Upraven jeden soubor•  řádek
+
+
+
+Teď přidám samotný push engine: Redis ZSET polling, atomický pop expired triggerů, registrace tokenů do DB/Redis cache a FCM v1 sender s lokálním OAuth JWT helperem.
+
+
+
+
+Vytvořen jeden soubor•  řádků
+
+
+
+Push engine je přidaný. Teď napojím Command 33 do validační vrstvy a simulační smyčky tak, aby registrace šla hned mimo 10Hz hot path do background workeru.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Validace pro Command 33 je na místě: kontroluje platformu, prázdný token, netisknutelné znaky i injektovaná cizí pole. Teď ji zapojím do engine.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Přidám helper na kopii fixního token bloku do background workeru.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Teď vkládám Command 33 branch do příkazové smyčky: validace v ticku, samotný DB upsert mimo tick přes push engine.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Přidávám délku notifikační fronty do odchozího StateUpdatePacketu.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Teď zapojím push engine do startu serveru a konstruktoru SimulationEngine.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Udělám rychlý scan na další konstrukce SimulationEngine, aby nový parametr nerozbil benchmark/test cesty.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Než půjdu na klienta, opravím dvě rizika ze Sprintu 55: boss contribution půjde do Redis hash a škálování už nebude přepisovat aktuální HP poměrem, ale jen přidá/ubere kapacitní deltu.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Dolaďuju drobnou typovou věc u Redis hash fieldů, aby to bylo při kompilaci bez nejasných konverzí.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Ještě zabráním dvojímu započtení kontribucí: pokud Redis hash existuje, bude autoritativní; in-memory mapa zůstane jen fallback při výpadku Redisu.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Na klientovi přidám zero-allocation sender pro token, malý provider pro OS token wrapper a UI ukazatel délky notifikační fronty.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Přidávám klientský provider komponent, který drží token v pevné 64b pracovní buňce a umí ho kopírovat bez alokace při odeslání.
+
+
+
+
+Vytvořen jeden soubor•  řádků
+
+
+
+Zapojuji provider do UI dispatcheru přes metodu pro registraci push tokenu.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Teď přenesu notifikační stav z packetu do vizuální proxy.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Přidávám UI text pro délku push fronty přes předalokovaný _notificationBuffer.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Dolaďuju Redis token cache čtení na explicitní string/byte převody, aby se build neopřel o implicitní konverze knihovny.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Ještě najdu nejvhodnější existující offline trigger místo “smelting” placeholderu. Pokud už je v projektu crafting dokončení s cílovým timestampem, připojím tam scheduling do Redis ZSETu; jinak ponechám engine API připravené pro další sprint.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Implementace je propojená; teď spustím build. Pokud compiler najde typové hrany kolem fixed bufferů nebo Redis konverzí, opravím je hned.
+
+
+
+
+Použiju build a potom layout guard jako u předchozích sprintů.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Build chytil přesně Redis konverze byte -> RedisValue a dva nullable warningy. Opravím explicitní casty a bezpečný převod výsledku Lua skriptu, aby zůstalo 0 warnings.
+
+
+
+
+Oprava je malá: Redis dostane platformu jako int, Lua výsledek ošetřím přes nullable cast.
+
+
+
+
+Upraven jeden soubor a spuštěn jeden příkaz•  řádků
+
+
+
+Redis konverze jsou explicitní. Spouštím build znovu.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Build je čistý: 0 warnings, 0 errors. Teď ověřím layout guard, jestli fixed buffer drží přesně 198 bajtů a state 440.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Layout guard prošel. Udělám ještě finální scan na staré packet guard konstanty, Command 33 a push schema/body integraci.
+
+
+
+
+Spuštěny 3 příkazy
+
+
+
+Finální scan je čistý: guardy jsou jen 440/198, Command 33 je na serveru i klientovi, nové schéma existuje a boss contribution/HP delta opravy jsou v engine. Uzavírám.
+
+
+
+
+
+
+
+Sprint 56 je hotový a ověřený.
+Implementoval jsem push notification pipeline: registraci zařízení přes Command 33, fixed 64b token blok v packetu, DB tabulku PlayerDeviceRegistrations, Redis ZSET global:delayed_push_triggers, background PushNotificationTriggerEngine, FCM v1 sender s OAuth JWT RS256 helperem a klientské zero-allocation odeslání tokenu.
+Zároveň jsem opravil dvě rizika ze Sprintu 55:
+World Boss contribution se ukládá do Redis hash boss:{id}:contributions.
+CCU škálování HP už nemutuje current HP poměrovým přepisem, ale aplikuje čistou kapacitní deltu.
+Ověření prošlo:
+dotnet build: 0 warnings, 0 errors
+layout-check: Network packet layout guard passed
+Nový packet kontrakt:
+StateUpdatePacket = 440
+ClientCommandPacket = 198
+Hlavní soubory:
+[PushNotificationTriggerEngine.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Engine/PushNotificationTriggerEngine.cs)
+[PlayerDeviceRegistration.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Models/PlayerDeviceRegistration.cs)
+[ClientCommandValidator.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Engine/ClientCommandValidator.cs)
+[SimulationEngine.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Engine/SimulationEngine.cs)
+[WorldBossEngine.cs](C:/Users/promi/skola2025/IdleHra/server/FolkIdle.Server/Engine/WorldBossEngine.cs)
+[WebSocketClient.cs](C:/Users/promi/skola2025/IdleHra/client/Assets/Scripts/Network/WebSocketClient.cs)
+[PushDeviceTokenProvider.cs](C:/Users/promi/skola2025/IdleHra/client/Assets/Scripts/Network/PushDeviceTokenProvider.cs)
+Poznámka: FCM sender se aktivuje až po dodání env hodnot FCM_PROJECT_ID, FCM_CLIENT_EMAIL a FCM_PRIVATE_KEY; bez nich pipeline bezpečně frontu zpracuje bez síťového odesílání.
+
+11:57
+
+
+
+
+
+
+Úspěšný průchod nízkoúrovňovým layout-checkem potvrzuje, že integrace pevných u…
+
+
+
+
+Přečtu nové zadání z přílohy a navážu na ověřený Sprint 56. Podle názvu to bude další sada změn po fixed buffer integraci, takže nejdřív vytáhnu konkrétní úkoly.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Sprint 57 je jasný: GDPR purge, Command 34/35, layout 448/206, klientská unmanaged lokalizace a flight recorder. Nejdřív si načtu relevantní serverové modely/engine části a klientskou síť/UI, ať změny sedí do existujícího proudu.
+
+
+
+
+Zaměřím se na místa, která Sprint 57 přímo dotýká: SimulationEngine, validator, packet struktury, VillageManagementEngine/modely a Unity websocket/UI.
+
+
+
+
+Spuštěny 4 příkazy
+
+
+
+Teď udělám packet layout Sprintu 57 na serveru i klientovi: Command 34/35, ConfirmationHash, TargetLanguageId, jazykový stav v broadcastu a nové guard velikosti.
+
+
+
+
+Upraveny 2 soubory•  řádků
+
+
+
+Přidávám jazykový stav do StateUpdatePacketu a padding na 448 bajtů.
+
+
+
+
+Upraveny 2 soubory•  řádků
+
+
+
+Aktualizuju layout guardy na 448/206.
+
+
+
+
+Upraveny 2 soubory•  řádků
+
+
+
+Serverový runtime payload dostane jazykový registr; default bude EN, Command 35 ho bude měnit bez DB zásahu.
+
+
+
+
+Upraven jeden soubor•  řádek
+
+
+
+Doplním default jazyk při načítání hráče, aby packet vždy nesl platný stav i před prvním SwitchLanguage.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Načítání hráče nastavím na jazyk 1, protože jazyk držíme jako session stav a nepotřebujeme novou DB kolonku.
+
+
+
+
+Upravování jednoho souboru•  řádků
+
+
+
+Kontext v souboru je trochu jiný, vezmu přesné okolí a aplikuju menší patch.
+
+
+
+
+Upraven jeden soubor a spuštěny 2 příkazy•  řádků
+
+
+
+Teď vytvořím compliance purge engine s transakčním FOR UPDATE lockem a 60s timeoutem.
+
+
+
+
+Vytvořen jeden soubor•  řádků
+
+
+
+Upravím volání SQL delete na explicitní EF overload s cancellation tokenem, ať 60s limit opravdu řídí DB operace.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Teď přidám GDPR a jazykové validační brány do ClientCommandValidator.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Našel jsem důležitý detail: MarketOrderRecords používá SellerId, ne PlayerId. Opravím purge SQL, aby runtime nenarazil na neexistující sloupec.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Ještě rychle ověřím názvy sloupců u mentorship kontraktů před navázáním validace.
+
+
+
+
+Spuštěn jeden příkaz
+
+
+
+Přidávám hash výpočet pro GDPR potvrzení a separátní validaci Command 35, aby se jazyk nedal posílat s přibalenými cizími poli.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Command 33 validace musí po rozšíření packetu odmítnout i nová compliance pole; doplním to hned, aby token registrace nemohla nést GDPR nebo language payload.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Přidám ještě obecnou “no compliance/push payload” síťku pro starší příkazy, aby nová pole nešlo schovat do existujících commandů.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Teď zapojím compliance engine a Command 34/35 přímo do simulační smyčky.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Vložím obecnou compliance payload kontrolu hned za anti-cheat payload kontrolu, před vlastními command branchi.
+
+
+
+
+Upraven jeden soubor a spuštěn jeden příkaz•  řádků
+
+
+
+Přidám Command 34 purge a Command 35 language switch branch vedle Command 33.
+
+
+
+
+Upraven jeden soubor a spuštěn jeden příkaz•  řádků
+
+
+
+Připojuju jazykový stav do odchozího broadcast packetu.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Zapojím compliance engine do server startu a konstruktoru simulation enginu.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+Teď přidávám Unity Flight Recorder: 64KB unmanaged ring buffer přes Marshal.AllocHGlobal, bez kolekcí a bez stringů při zápisu.
+
+
+
+
+Vytvořen jeden soubor•  řádků
+
+
+
+Pro jistotu upravím zápis záznamu po bajtech, aby ring buffer nebyl závislý na zarovnání pointeru na konkrétní platformě.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Přidávám klientskou localization matrix: raw UTF-8 bloky v unmanaged paměti a lookup přes byte pointery do předaného char bufferu.
+
+
+
+
+Vytvořen jeden soubor•  řádků
+
+
+
+Teď napojím Flight Recorder do Unity WebSocket klienta a doplním odesílání Command 34/35.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+UI dispatcher dostane metody pro GDPR purge a language switch.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Přenesu ActiveLanguageState z packetu do vizuální proxy pro UI lokalizaci.
+
+
+
+
+Upraven jeden soubor•  řádky
+
+
+
+UI binder začne používat LocalizationMatrix pro LiveOps/Boss/Push texty; numerické části zůstanou v předalokovaných bufferech.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+Pracoval 9m 5s
+
+
+
+
+Doplním malý resolver klíče eventu bez string lookupu.
+
+
+
+
+Upraven jeden soubor•  řádků
+
+
+
+
+
+
+
+Byl dosažen limit využití. Pokud chceš pokračovat, přejdie na vyšší tarif nebo přidej kredity, případně to zkus znovu 15:38.

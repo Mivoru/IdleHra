@@ -1,0 +1,13 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace FolkIdle.Server.Models
+{
+    public class PlayerSegmentationProfile
+    {
+        [Key]
+        public long PlayerId { get; set; }
+        public int CohortTag { get; set; }
+        public int LifetimeValueCents { get; set; }
+        public double ChurnRiskScore { get; set; }
+    }
+}

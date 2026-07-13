@@ -1,0 +1,24 @@
+# Target: .NET Server Artifacts
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+**/*.suo
+**/*.usersecrets
+**/build_err.txt
+
+# Target: Unity Client Artifacts
+**/Library/
+**/Temp/
+**/Logs/
+**/UserSettings/
+**/MemoryCaptures/
+**/Builds/
+**/Build/
+**/.AssetsBin/
+
+# Target: OS & IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

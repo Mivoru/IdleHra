@@ -1,0 +1,34 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace FolkIdle.Server.Models
+{
+    public class MarketOrderRecord
+    {
+        [Key]
+        public long Id { get; set; }
+        
+        public long SellerId { get; set; }
+        
+        public long? CommodityId { get; set; }
+        public CommodityRecord? Commodity { get; set; }
+        
+        public long? EquipmentInstanceId { get; set; }
+        public MarketEquipmentInstance? EquipmentInstance { get; set; }
+        
+        public long Price { get; set; }
+        
+        public int Status { get; set; }
+
+        [Required]
+        [MaxLength(10)]
+        public string OrderType { get; set; } = "SELL";
+
+        [Required]
+        [MaxLength(100)]
+        public string BaseItemId { get; set; } = string.Empty;
+
+        public int QualityTier { get; set; }
+        
+        public bool IsQuarantined { get; set; }
+    }
+}
