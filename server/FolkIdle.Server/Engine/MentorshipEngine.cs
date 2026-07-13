@@ -16,7 +16,8 @@ namespace FolkIdle.Server.Engine
     public class MentorshipEngine
     {
         private const int MentorMinimumLevel = 10;
-        private const double ContractExpBonusMultiplier = 1.15;
+        private const double MaxExpBonusMultiplier = 1.50;
+        private const double ExpBonusMultiplierPerLevel = 0.005;
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry _playerRegistry;
 
@@ -49,7 +50,7 @@ namespace FolkIdle.Server.Engine
 
                 // Explicit FOR UPDATE lock on the target character to verify it belongs to the player
                 var character = await dbContext.CharacterRecords
-                    .FromSqlRaw("SELECT * FROM characters WHERE Id = {0} AND PlayerId = {1} FOR UPDATE", characterId, playerId)
+                    .FromSqlRaw("SELECT * FROM characters WHERE \"Id\" = {0} AND \"PlayerId\" = {1} FOR UPDATE", characterId, playerId)
                     .SingleOrDefaultAsync();
 
                 if (character == null)
@@ -165,11 +166,13 @@ namespace FolkIdle.Server.Engine
                     return MentorshipContractResult.InvalidRequest;
                 }
 
+                double expBonusMultiplier = Math.Min(MaxExpBonusMultiplier, 1.0 + (mentor.CurrentLevel * ExpBonusMultiplierPerLevel));
+
                 dbContext.MentorshipContracts.Add(new MentorshipContract
                 {
                     MentorPlayerId = mentorPlayerId,
                     MenteePlayerId = menteePlayerId,
-                    ExpBonusMultiplier = ContractExpBonusMultiplier,
+                    ExpBonusMultiplier = expBonusMultiplier,
                     TimestampEstablished = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                 });
 
@@ -180,7 +183,7 @@ namespace FolkIdle.Server.Engine
                 {
                     PlayerId = menteePlayerId,
                     MentorPlayerId = mentorPlayerId,
-                    ExpBonusMultiplier = ContractExpBonusMultiplier,
+                    ExpBonusMultiplier = expBonusMultiplier,
                     ActiveContractCount = ClampByte(activeMenteeContractCount + 1)
                 });
 

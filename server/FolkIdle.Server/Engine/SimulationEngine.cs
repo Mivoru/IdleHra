@@ -1654,7 +1654,11 @@ namespace FolkIdle.Server.Engine
                                 Gold = currentPayload.CurrentGold,
                                 WorldBossAttemptCount = currentPayload.WorldBossAttemptCount,
                                 WorldBossEventState = _worldBossEngine.EventState,
-                                WorldBossEventEndEpoch = _worldBossEngine.EventEndEpoch
+                                WorldBossEventEndEpoch = _worldBossEngine.EventEndEpoch,
+                                GuildLogisticsLevel = currentPayload.CachedGuildLogisticsLevel,
+                                GuildRaidTier = currentPayload.CachedGuildRaidTier,
+                                GuildRaidBossCurrentHp = currentPayload.CachedGuildRaidBossCurrentHp,
+                                GuildRaidBossMaxHp = currentPayload.CachedGuildRaidBossMaxHp
                             };
                             _networkSystem.Broadcast(ref packet);
                             currentPayload.NetworkDiagnosticsToken = 0; // Clear it so it only echoes once

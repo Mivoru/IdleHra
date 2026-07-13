@@ -310,5 +310,121 @@ namespace FolkIdle.Server.Tests
 
             Assert.Equal(initialBossHp - 2500L, updatedRaid.RaidBossCurrentHp);
         }
+
+        [Fact]
+        public async Task Test_Character_GeneticBreeding()
+        {
+            const long testPlayerId = 950000001L;
+            Guid parentAId = Guid.NewGuid();
+            Guid parentBId = Guid.NewGuid();
+
+            var sharedGenome = new GeneticVector(0);
+            sharedGenome.LocusRace = new Locus { Dominant = 1, Recessive = 1 };
+            sharedGenome.LocusSpeed = new Locus { Dominant = 2, Recessive = 2 };
+            sharedGenome.LocusCrit = new Locus { Dominant = 3, Recessive = 3 };
+            sharedGenome.LocusYield = new Locus { Dominant = 4, Recessive = 4 };
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.BreedingGroundsBuildingId,
+                    CurrentLevel = 1
+                });
+                db.CharacterRecords.AddRange(
+                    new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
+                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false });
+                db.CharacterLineages.AddRange(
+                    new CharacterLineageRegistry { CharacterId = parentAId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
+                    new CharacterLineageRegistry { CharacterId = parentBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue });
+                await db.SaveChangesAsync();
+            }
+
+            var breedingEngine = new BreedingEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await breedingEngine.ExecuteBreedingAsync(testPlayerId, parentAId, parentBId);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            var childLineage = await verifyDb.CharacterLineages.AsNoTracking()
+                .SingleAsync(l => l.ParentPaternalId == parentAId && l.ParentMaternalId == parentBId);
+
+            var childCharacter = await verifyDb.CharacterRecords.AsNoTracking()
+                .SingleAsync(c => c.Id == childLineage.CharacterId);
+
+            Assert.Equal(testPlayerId, childCharacter.PlayerId);
+            Assert.Equal(1, childCharacter.Level);
+            Assert.Equal(0, childCharacter.AgePhase);
+            Assert.Equal(1, childLineage.GenerationIndex);
+        }
+
+        [Fact]
+        public async Task Test_Mentorship_XpBoostAndTickApplication()
+        {
+            const long mentorPlayerId = 960000001L;
+            const long menteePlayerId = 960000002L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = mentorPlayerId,
+                    CurrentLevel = 40,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = menteePlayerId,
+                    CurrentLevel = 10,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = menteePlayerId,
+                    BuildingId = VillageManagementEngine.MentorshipAcademyBuildingId,
+                    CurrentLevel = 1
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var mentorshipEngine = new MentorshipEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            var result = await mentorshipEngine.EstablishMentorshipContractAsync(menteePlayerId, mentorPlayerId);
+
+            Assert.Equal(MentorshipContractResult.Established, result);
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var contract = await verifyDb.MentorshipContracts.AsNoTracking()
+                    .SingleAsync(c => c.MenteePlayerId == menteePlayerId);
+                Assert.Equal(1.20, contract.ExpBonusMultiplier);
+            }
+
+            var checkpointManager = new StateCheckpointManager(_fixture.ServiceProvider);
+            TickStatePayload menteePayload = await checkpointManager.LoadPlayerState(menteePlayerId);
+            Assert.Equal(1.20, menteePayload.MentorshipExpBonusMultiplier);
+
+            // Replicate the exact SimulationEngine combat-kill XP calculation path.
+            // Kept below the level-1 XP requirement (100) so neither run triggers a
+            // level-up, which would make the final CurrentXp non-linear.
+            const int baseXpReward = 50;
+            int baselineMultiplier = GlobalEngineState.GlobalXpMultiplier;
+            int mentoredMultiplier = (int)(baselineMultiplier * menteePayload.MentorshipExpBonusMultiplier);
+
+            var baselinePayload = new TickStatePayload { PlayerId = menteePlayerId, CurrentLevel = 1 };
+            ProgressionEngine.ProcessMonsterDeath(ref baselinePayload, baseXpReward, baselineMultiplier, 0);
+
+            var mentoredPayload = new TickStatePayload { PlayerId = menteePlayerId, CurrentLevel = 1 };
+            ProgressionEngine.ProcessMonsterDeath(ref mentoredPayload, baseXpReward, mentoredMultiplier, 0);
+
+            Assert.Equal(baselinePayload.CurrentXp * 1.20, mentoredPayload.CurrentXp, 3);
+        }
     }
 }

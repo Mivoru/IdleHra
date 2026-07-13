@@ -70,9 +70,13 @@ namespace FolkIdle.Client.Engine
         public int VisualCitizenMultiSlotsUnlocked;
         public long VisualGuildLogisticsCurrentStock;
         public long VisualGuildLogisticsTargetRequirement;
+        public int VisualGuildLogisticsLevel;
         public long VisualCombatSimulationMatchId;
         public int VisualCombatSimulationTurnCounter;
         public int VisualCombatSimulationDamageDelta;
+        public int VisualGuildRaidTier;
+        public long VisualGuildRaidBossCurrentHp;
+        public long VisualGuildRaidBossMaxHp;
         public long VisualActiveMentorPlayerId;
         public double VisualMentorshipExpBonusMultiplier = 1.0;
         public uint VisualPremiumCurrencyBalance { get; private set; }
@@ -170,9 +174,13 @@ namespace FolkIdle.Client.Engine
                     VisualCitizenMultiSlotsUnlocked = packet.CitizenMultiSlotsUnlocked;
                     VisualGuildLogisticsCurrentStock = packet.GuildLogisticsCurrentStock;
                     VisualGuildLogisticsTargetRequirement = packet.GuildLogisticsTargetRequirement;
+                    VisualGuildLogisticsLevel = packet.GuildLogisticsLevel;
                     VisualCombatSimulationMatchId = packet.CombatSimulationMatchId;
                     VisualCombatSimulationTurnCounter = packet.CombatSimulationTurnCounter;
                     VisualCombatSimulationDamageDelta = packet.CombatSimulationDamageDelta;
+                    VisualGuildRaidTier = packet.GuildRaidTier;
+                    VisualGuildRaidBossCurrentHp = packet.GuildRaidBossCurrentHp;
+                    VisualGuildRaidBossMaxHp = packet.GuildRaidBossMaxHp;
                     VisualActiveMentorPlayerId = packet.ActiveMentorPlayerId;
                     VisualPremiumCurrencyBalance = packet.PremiumCurrencyBalance;
                     VisualEventHorizonTransactionCount = packet.EventHorizonTransactionCount;
@@ -272,9 +280,13 @@ namespace FolkIdle.Client.Engine
             VisualCitizenMultiSlotsUnlocked = _snapshotB.Packet.CitizenMultiSlotsUnlocked;
             VisualGuildLogisticsCurrentStock = _snapshotB.Packet.GuildLogisticsCurrentStock;
             VisualGuildLogisticsTargetRequirement = _snapshotB.Packet.GuildLogisticsTargetRequirement;
+            VisualGuildLogisticsLevel = _snapshotB.Packet.GuildLogisticsLevel;
             VisualCombatSimulationMatchId = _snapshotB.Packet.CombatSimulationMatchId;
             VisualCombatSimulationTurnCounter = _snapshotB.Packet.CombatSimulationTurnCounter;
             VisualCombatSimulationDamageDelta = _snapshotB.Packet.CombatSimulationDamageDelta;
+            VisualGuildRaidTier = _snapshotB.Packet.GuildRaidTier;
+            VisualGuildRaidBossCurrentHp = _snapshotB.Packet.GuildRaidBossCurrentHp;
+            VisualGuildRaidBossMaxHp = _snapshotB.Packet.GuildRaidBossMaxHp;
             VisualMentorshipExpBonusMultiplier = _snapshotB.Packet.MentorshipExpBonusMultiplier;
             VisualPremiumCurrencyBalance = _snapshotB.Packet.PremiumCurrencyBalance;
             VisualEventHorizonTransactionCount = _snapshotB.Packet.EventHorizonTransactionCount;

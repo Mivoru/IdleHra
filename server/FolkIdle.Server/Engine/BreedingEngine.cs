@@ -40,19 +40,19 @@ namespace FolkIdle.Server.Engine
 
                 // Lock parent rows across BOTH characters and character_lineage_registry
                 var pChar = await dbContext.CharacterRecords
-                    .FromSqlRaw("SELECT * FROM characters WHERE Id = {0} FOR UPDATE", paternalId)
+                    .FromSqlRaw("SELECT * FROM characters WHERE \"Id\" = {0} FOR UPDATE", paternalId)
                     .FirstOrDefaultAsync();
-                
+
                 var mChar = await dbContext.CharacterRecords
-                    .FromSqlRaw("SELECT * FROM characters WHERE Id = {0} FOR UPDATE", maternalId)
+                    .FromSqlRaw("SELECT * FROM characters WHERE \"Id\" = {0} FOR UPDATE", maternalId)
                     .FirstOrDefaultAsync();
 
                 var pLineage = await dbContext.CharacterLineages
-                    .FromSqlRaw("SELECT * FROM character_lineage_registry WHERE CharacterId = {0} FOR UPDATE", paternalId)
+                    .FromSqlRaw("SELECT * FROM character_lineage_registry WHERE \"CharacterId\" = {0} FOR UPDATE", paternalId)
                     .FirstOrDefaultAsync();
 
                 var mLineage = await dbContext.CharacterLineages
-                    .FromSqlRaw("SELECT * FROM character_lineage_registry WHERE CharacterId = {0} FOR UPDATE", maternalId)
+                    .FromSqlRaw("SELECT * FROM character_lineage_registry WHERE \"CharacterId\" = {0} FOR UPDATE", maternalId)
                     .FirstOrDefaultAsync();
 
                 if (pChar == null || mChar == null || pLineage == null || mLineage == null)
@@ -122,9 +122,10 @@ namespace FolkIdle.Server.Engine
                     GeneticVector = childGenome
                 });
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                Console.WriteLine($"Breeding failed: {ex.Message}");
             }
         }
     }

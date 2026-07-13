@@ -186,5 +186,9 @@ namespace FolkIdle.Server.Network
         public byte WorldBossAttemptCount;
         public byte WorldBossEventState;
         public long WorldBossEventEndEpoch;
+        public int GuildLogisticsLevel;
+        public int GuildRaidTier;
+        public long GuildRaidBossCurrentHp;
+        public long GuildRaidBossMaxHp;
     }
 }
