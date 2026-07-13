@@ -152,6 +152,7 @@ namespace FolkIdle.Server.Engine
         public byte ActiveChallengeAnswered;
         public bool IsQuarantined;
         public byte ActiveLanguageState;
+        public byte WorldBossAttemptCount;
         public uint ActiveUiContextBitmask;
         public uint ActiveChroniclePassLevel;
         public uint AccumulatedSeasonalXp;

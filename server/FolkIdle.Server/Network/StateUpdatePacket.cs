@@ -182,5 +182,9 @@ namespace FolkIdle.Server.Network
         public ulong TotalAnalyticsEventsLoggedCount;
         public uint VisualActiveConnectionThroughput;
         public uint CurrentNodeMemoryLoadMetrics;
+        public long Gold;
+        public byte WorldBossAttemptCount;
+        public byte WorldBossEventState;
+        public long WorldBossEventEndEpoch;
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Data;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FolkIdle.Server.Models;
@@ -21,23 +22,31 @@ namespace FolkIdle.Server.Engine
         public const uint ActiveBossInstanceId = 1;
         public const uint MaxClientPredictedDamage = 100000000;
         private const long BaseHp = 50000000L;
+        private const int MaxAttemptsPerEncounter = 3;
 
         private readonly IServiceProvider _serviceProvider;
+        private readonly PlayerSessionRegistry _playerRegistry;
         private readonly IConnectionMultiplexer? _redis;
         private long _bossMaxHp = BaseHp;
         private long _bossCurrentHp = BaseHp;
         private int _bossIsAlive = 1;
         private int _rewardDispatchActive;
+        private int _eventState;
+        private long _eventEndEpoch;
 
         private readonly ConcurrentDictionary<long, long> _playerDamageMap = new();
 
         public long BossMaxHp => Interlocked.Read(ref _bossMaxHp);
         public long BossCurrentHp => Interlocked.Read(ref _bossCurrentHp);
         public bool IsAlive => Volatile.Read(ref _bossIsAlive) == 1 && BossCurrentHp > 0;
+        public bool IsEventActive => Volatile.Read(ref _eventState) == 1;
+        public byte EventState => (byte)Volatile.Read(ref _eventState);
+        public long EventEndEpoch => Interlocked.Read(ref _eventEndEpoch);
 
         public WorldBossEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry)
         {
             _serviceProvider = serviceProvider;
+            _playerRegistry = playerRegistry;
             _redis = serviceProvider.GetService<IConnectionMultiplexer>();
         }
 
@@ -93,18 +102,28 @@ namespace FolkIdle.Server.Engine
             _ = Task.Run(async () => await ExecuteAttackAsync(playerId, bossId, clientPredictedDamage));
         }
 
-        public async Task ScaleActiveBossAsync(int activeCcu)
+        public async Task ScaleActiveBossAsync(long[] onlinePlayerIds)
         {
             await EnsureSnapshotAsync();
 
-            long newMaxHp = (long)Math.Floor(BaseHp * Math.Max(1.0, activeCcu * 0.75));
+            int activeAccounts = onlinePlayerIds.Length;
+
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+            long totalMasterySum = activeAccounts > 0
+                ? await db.PlayerRaceMasteries
+                    .Where(m => onlinePlayerIds.Contains(m.PlayerId))
+                    .SumAsync(m => (long)m.MasteryLevel)
+                : 0L;
+
+            // GlobalMaxHp = BaseHp * (ActiveAccountsCount * 1.50) + (AccountMasteryScoresSum * 250.0)
+            long newMaxHp = (long)(BaseHp * (activeAccounts * 1.50) + (totalMasterySum * 250.0));
             if (newMaxHp < BaseHp)
             {
                 newMaxHp = BaseHp;
             }
 
-            using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
 
             try
@@ -181,30 +200,27 @@ namespace FolkIdle.Server.Engine
                 }
 
                 var contributions = await LoadDistributedContributionsAsync();
-                long totalDamage = snapshot.TotalDamageContributed;
-                if (totalDamage <= 0)
+
+                var rankedParticipants = new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<long, long>>();
+                foreach (var entry in contributions)
                 {
-                    foreach (var entry in contributions)
+                    if (entry.Key > 0 && entry.Value > 0)
                     {
-                        if (entry.Value > 0)
-                        {
-                            totalDamage += entry.Value;
-                        }
+                        rankedParticipants.Add(entry);
                     }
                 }
+                rankedParticipants.Sort((a, b) => b.Value.CompareTo(a.Value));
 
                 long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                if (totalDamage > 0)
+                int participantCount = rankedParticipants.Count;
+                if (participantCount > 0)
                 {
-                    foreach (var participant in contributions)
+                    for (int i = 0; i < participantCount; i++)
                     {
-                        if (participant.Key <= 0 || participant.Value <= 0)
-                        {
-                            continue;
-                        }
+                        long participantId = rankedParticipants[i].Key;
 
                         var existingMail = await db.MailboxInstances
-                            .FromSqlRaw("SELECT * FROM \"MailboxInstances\" WHERE \"PlayerId\" = {0} FOR UPDATE", participant.Key)
+                            .FromSqlRaw("SELECT * FROM \"MailboxInstances\" WHERE \"PlayerId\" = {0} FOR UPDATE", participantId)
                             .ToListAsync();
 
                         if (existingMail.Count >= 50)
@@ -212,13 +228,34 @@ namespace FolkIdle.Server.Engine
                             continue;
                         }
 
-                        double contributionRatio = Math.Clamp((double)participant.Value / totalDamage, 0.0, 1.0);
-                        int tokenQuantity = Math.Max(1, (int)Math.Ceiling(contributionRatio * 10.0));
-                        long goldAttachment = Math.Max(10000L, (long)(250000L * contributionRatio));
+                        // Percentile bracket by rank among damage-dealing participants: Top 1% / Top 10% / Top 50% / Participation.
+                        double percentileRank = (double)(i + 1) / participantCount;
+                        int tokenQuantity;
+                        long goldAttachment;
+                        if (percentileRank <= 0.01)
+                        {
+                            tokenQuantity = 10;
+                            goldAttachment = 250000L;
+                        }
+                        else if (percentileRank <= 0.10)
+                        {
+                            tokenQuantity = 6;
+                            goldAttachment = 100000L;
+                        }
+                        else if (percentileRank <= 0.50)
+                        {
+                            tokenQuantity = 3;
+                            goldAttachment = 50000L;
+                        }
+                        else
+                        {
+                            tokenQuantity = 1;
+                            goldAttachment = 10000L;
+                        }
 
                         db.MailboxInstances.Add(new MailboxInstance
                         {
-                            PlayerId = participant.Key,
+                            PlayerId = participantId,
                             BaseItemId = "perun_avatar_reward_token",
                             QualityTier = 5,
                             Quantity = tokenQuantity,
@@ -234,8 +271,11 @@ namespace FolkIdle.Server.Engine
                 snapshot.CurrentHp = BaseHp;
                 snapshot.TotalDamageContributed = 0;
                 snapshot.LastActiveTimestamp = now;
+                snapshot.EventState = 2; // Concluded: defeated. Dormant until the next scheduled window.
 
                 await db.SaveChangesAsync();
+                await db.Database.ExecuteSqlRawAsync(
+                    "DELETE FROM \"player_world_boss_attempts\" WHERE \"BossInstanceId\" = {0}", (long)ActiveBossInstanceId);
                 await transaction.CommitAsync();
 
                 _playerDamageMap.Clear();
@@ -243,6 +283,17 @@ namespace FolkIdle.Server.Engine
                 {
                     await _redis.GetDatabase().KeyDeleteAsync(ContributionKey(ActiveBossInstanceId));
                 }
+
+                long[] onlinePlayerIds = _playerRegistry.GetOnlinePlayerIds();
+                for (int i = 0; i < onlinePlayerIds.Length; i++)
+                {
+                    _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
+                    {
+                        PlayerId = onlinePlayerIds[i],
+                        AttemptCount = 0
+                    });
+                }
+
                 RefreshLocalSnapshot(snapshot);
             }
             catch (Exception ex)
@@ -255,7 +306,97 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        private async Task ExecuteAttackAsync(long playerId, uint bossId, uint clientPredictedDamage)
+        public async Task ActivateEventWindowAsync(long eventEndEpoch)
+        {
+            await EnsureSnapshotAsync();
+
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+            try
+            {
+                var snapshot = await db.WorldBossSnapshots
+                    .FromSqlRaw("SELECT * FROM \"WorldBossSnapshots\" WHERE \"BossInstanceId\" = {0} FOR UPDATE", (long)ActiveBossInstanceId)
+                    .SingleOrDefaultAsync();
+
+                if (snapshot == null)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                snapshot.MaxHp = BaseHp;
+                snapshot.CurrentHp = BaseHp;
+                snapshot.TotalDamageContributed = 0;
+                snapshot.EventState = 1; // Active
+                snapshot.EventEndEpoch = eventEndEpoch;
+                snapshot.LastActiveTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+                await db.SaveChangesAsync();
+                await db.Database.ExecuteSqlRawAsync(
+                    "DELETE FROM \"player_world_boss_attempts\" WHERE \"BossInstanceId\" = {0}", (long)ActiveBossInstanceId);
+                await transaction.CommitAsync();
+
+                _playerDamageMap.Clear();
+                if (_redis?.IsConnected == true)
+                {
+                    await _redis.GetDatabase().KeyDeleteAsync(ContributionKey(ActiveBossInstanceId));
+                }
+
+                long[] onlinePlayerIds = _playerRegistry.GetOnlinePlayerIds();
+                for (int i = 0; i < onlinePlayerIds.Length; i++)
+                {
+                    _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
+                    {
+                        PlayerId = onlinePlayerIds[i],
+                        AttemptCount = 0
+                    });
+                }
+
+                RefreshLocalSnapshot(snapshot);
+                Console.WriteLine($"World boss event window activated. Ends at epoch {eventEndEpoch}.");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                Console.WriteLine($"World boss event activation failed: {ex.Message}");
+            }
+        }
+
+        public async Task FinalizeEventAsFailedAsync()
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+            try
+            {
+                var snapshot = await db.WorldBossSnapshots
+                    .FromSqlRaw("SELECT * FROM \"WorldBossSnapshots\" WHERE \"BossInstanceId\" = {0} FOR UPDATE", (long)ActiveBossInstanceId)
+                    .SingleOrDefaultAsync();
+
+                if (snapshot == null || snapshot.EventState != 1)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                snapshot.EventState = 2; // Concluded: failed, window expired without defeat.
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                RefreshLocalSnapshot(snapshot);
+                Console.WriteLine($"World boss event window closed without defeat. TotalDamageContributed={snapshot.TotalDamageContributed}, RemainingHp={snapshot.CurrentHp}.");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                Console.WriteLine($"World boss event finalization failed: {ex.Message}");
+            }
+        }
+
+        internal async Task ExecuteAttackAsync(long playerId, uint bossId, uint clientPredictedDamage)
         {
             if (playerId <= 0 || bossId != ActiveBossInstanceId || clientPredictedDamage == 0)
             {
@@ -272,7 +413,29 @@ namespace FolkIdle.Server.Engine
                     .FromSqlRaw("SELECT * FROM \"WorldBossSnapshots\" WHERE \"BossInstanceId\" = {0} FOR UPDATE", (long)bossId)
                     .SingleOrDefaultAsync();
 
-                if (snapshot == null || snapshot.CurrentHp <= 0)
+                if (snapshot == null || snapshot.CurrentHp <= 0 || snapshot.EventState != 1)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                var attempt = await db.PlayerWorldBossAttempts
+                    .FromSqlRaw("SELECT * FROM \"player_world_boss_attempts\" WHERE \"PlayerId\" = {0} AND \"BossInstanceId\" = {1} FOR UPDATE", playerId, (long)bossId)
+                    .SingleOrDefaultAsync();
+
+                if (attempt == null)
+                {
+                    attempt = new PlayerWorldBossAttempt
+                    {
+                        PlayerId = playerId,
+                        BossInstanceId = bossId,
+                        AttemptCount = 0,
+                        TotalInflictedDamage = 0
+                    };
+                    db.PlayerWorldBossAttempts.Add(attempt);
+                }
+
+                if (attempt.AttemptCount >= MaxAttemptsPerEncounter)
                 {
                     await transaction.RollbackAsync();
                     return;
@@ -287,6 +450,11 @@ namespace FolkIdle.Server.Engine
                 snapshot.TotalDamageContributed += appliedDamage;
                 snapshot.LastActiveTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
+                attempt.AttemptCount++;
+                attempt.TotalInflictedDamage += appliedDamage;
+
+                byte updatedAttemptCount = (byte)attempt.AttemptCount;
+
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
@@ -295,6 +463,11 @@ namespace FolkIdle.Server.Engine
                 {
                     await _redis.GetDatabase().HashIncrementAsync(ContributionKey(bossId), playerId, appliedDamage);
                 }
+                _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
+                {
+                    PlayerId = playerId,
+                    AttemptCount = updatedAttemptCount
+                });
                 RefreshLocalSnapshot(snapshot);
             }
             catch (Exception ex)
@@ -309,6 +482,8 @@ namespace FolkIdle.Server.Engine
             Interlocked.Exchange(ref _bossMaxHp, snapshot.MaxHp);
             Interlocked.Exchange(ref _bossCurrentHp, snapshot.CurrentHp);
             Volatile.Write(ref _bossIsAlive, snapshot.CurrentHp > 0 ? 1 : 0);
+            Volatile.Write(ref _eventState, snapshot.EventState);
+            Interlocked.Exchange(ref _eventEndEpoch, snapshot.EventEndEpoch);
         }
 
         private async Task<System.Collections.Generic.Dictionary<long, long>> LoadDistributedContributionsAsync()

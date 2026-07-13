@@ -1,3 +1,4 @@
+using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -7,8 +8,11 @@ namespace FolkIdle.Server.Models
     {
         public FolkIdleDbContext CreateDbContext(string[] args)
         {
+            string connectionString = Environment.GetEnvironmentVariable("FOLKIDLE_DB_CONN")
+                ?? ConnectionStringDefaults.LocalDevelopmentFallback;
+
             var optionsBuilder = new DbContextOptionsBuilder<FolkIdleDbContext>();
-            optionsBuilder.UseNpgsql("Host=localhost;Database=folkidle_dev;Username=postgres;Password=postgres");
+            optionsBuilder.UseNpgsql(connectionString);
 
             return new FolkIdleDbContext(optionsBuilder.Options);
         }

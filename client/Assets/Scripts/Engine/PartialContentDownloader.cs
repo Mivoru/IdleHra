@@ -43,11 +43,15 @@ namespace FolkIdle.Client.Engine
                 using FileStream fs = new FileStream(destinationPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None, 4096, useAsync: true);
                 fs.Seek(startByte, SeekOrigin.Begin);
 
-                // In .NET Standard 2.1 / Unity, we can write Memory/ReadOnlyMemory directly, 
+                // In .NET Standard 2.1 / Unity, we can write Memory/ReadOnlyMemory directly,
                 // but since NativeArray is unmanaged, we can use an unmanaged memory stream or pointer
+                UnmanagedMemoryStream unmanagedStream;
                 unsafe
                 {
-                    using var unmanagedStream = new UnmanagedMemoryStream((byte*)nativeBuffer.GetUnsafeReadOnlyPtr(), nativeBuffer.Length);
+                    unmanagedStream = new UnmanagedMemoryStream((byte*)nativeBuffer.GetUnsafeReadOnlyPtr(), nativeBuffer.Length);
+                }
+                using (unmanagedStream)
+                {
                     await unmanagedStream.CopyToAsync(fs);
                 }
             }

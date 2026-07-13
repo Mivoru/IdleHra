@@ -50,15 +50,7 @@ namespace FolkIdle.Server.Engine
                     {
                         tickCounter = 0;
                         await UpdateActiveEventRotationAsync();
-                        await _worldBossEngine.EnsureSnapshotAsync();
-
-                        int ccu = _playerRegistry.GetOnlinePlayerCount();
-                        await _worldBossEngine.ScaleActiveBossAsync(ccu);
-
-                        if (_worldBossEngine.IsBossDead())
-                        {
-                            await _worldBossEngine.ProcessDefeatedBossAsync();
-                        }
+                        await EvaluateWorldBossEventWindowAsync();
                     }
                 }
                 catch (Exception ex)
@@ -68,6 +60,42 @@ namespace FolkIdle.Server.Engine
 
                 tickCounter++;
                 await Task.Delay(TickIntervalMs);
+            }
+        }
+
+        // World boss event windows run from the 1st-7th and the 15th-22nd of each month (UTC).
+        // Outside those windows the boss is dormant; if not defeated by the window's last day
+        // at 23:59:59 UTC, the encounter is finalized as failed.
+        private async Task EvaluateWorldBossEventWindowAsync()
+        {
+            await _worldBossEngine.EnsureSnapshotAsync();
+
+            DateTimeOffset now = DateTimeOffset.UtcNow;
+            int day = now.Day;
+            bool inWindowA = day >= 1 && day <= 7;
+            bool inWindowB = day >= 15 && day <= 22;
+            bool shouldBeActive = inWindowA || inWindowB;
+
+            if (shouldBeActive && !_worldBossEngine.IsEventActive)
+            {
+                int windowEndDay = inWindowA ? 7 : 22;
+                var windowEnd = new DateTimeOffset(now.Year, now.Month, windowEndDay, 23, 59, 59, TimeSpan.Zero);
+                await _worldBossEngine.ActivateEventWindowAsync(windowEnd.ToUnixTimeSeconds());
+            }
+            else if (!shouldBeActive && _worldBossEngine.IsEventActive)
+            {
+                await _worldBossEngine.FinalizeEventAsFailedAsync();
+            }
+
+            if (_worldBossEngine.IsEventActive)
+            {
+                long[] onlinePlayerIds = _playerRegistry.GetOnlinePlayerIds();
+                await _worldBossEngine.ScaleActiveBossAsync(onlinePlayerIds);
+
+                if (_worldBossEngine.IsBossDead())
+                {
+                    await _worldBossEngine.ProcessDefeatedBossAsync();
+                }
             }
         }
 

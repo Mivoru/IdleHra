@@ -340,6 +340,28 @@ namespace FolkIdle.Server.Engine
                     }
                 }
 
+                while (_playerRegistry.WorldBossAttemptUpdateQueue.TryDequeue(out var worldBossAttemptUpdate))
+                {
+                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, worldBossAttemptUpdate.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                    {
+                        currentPayload.WorldBossAttemptCount = worldBossAttemptUpdate.AttemptCount;
+                        currentPayload.IsDirty = true;
+                    }
+                }
+
+                while (_playerRegistry.MasteryUpdateQueue.TryDequeue(out var masteryUpdate))
+                {
+                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, masteryUpdate.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                    {
+                        if (masteryUpdate.RaceId == 1) currentPayload.HumanMasteryLevel = masteryUpdate.MasteryLevel;
+                        else if (masteryUpdate.RaceId == 3) currentPayload.VilaMasteryLevel = masteryUpdate.MasteryLevel;
+                        else if (masteryUpdate.RaceId == 4) currentPayload.DraugrMasteryLevel = masteryUpdate.MasteryLevel;
+                        currentPayload.IsDirty = true;
+                    }
+                }
+
                 while (_playerRegistry.CraftingCompletionQueue.TryDequeue(out var craftCompletion))
                 {
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, craftCompletion.PlayerId);
@@ -1324,7 +1346,8 @@ namespace FolkIdle.Server.Engine
                             ref currentPayload,
                             ref cmd,
                             WorldBossEngine.ActiveBossInstanceId,
-                            _worldBossEngine.IsBossDead()))
+                            _worldBossEngine.IsBossDead(),
+                            _worldBossEngine.IsEventActive))
                         {
                             TerminateSessionForSecurity(routingPlayerId);
                             continue;
@@ -1602,7 +1625,11 @@ namespace FolkIdle.Server.Engine
                                 ActiveMasteryBitmask = _liveSessionContexts.TryGetValue(currentPayload.PlayerId, out var mCtx) ? mCtx.ActiveMasteryBitmask : 0,
                                 NetworkDiagnosticsToken = currentPayload.NetworkDiagnosticsToken,
                                 VisualActiveConnectionThroughput = (uint)GlobalEngineState.ActiveConnectionThroughput,
-                                CurrentNodeMemoryLoadMetrics = (uint)(GC.GetTotalMemory(false) / 1024)
+                                CurrentNodeMemoryLoadMetrics = (uint)(GC.GetTotalMemory(false) / 1024),
+                                Gold = currentPayload.CurrentGold,
+                                WorldBossAttemptCount = currentPayload.WorldBossAttemptCount,
+                                WorldBossEventState = _worldBossEngine.EventState,
+                                WorldBossEventEndEpoch = _worldBossEngine.EventEndEpoch
                             };
                             _networkSystem.Broadcast(ref packet);
                             currentPayload.NetworkDiagnosticsToken = 0; // Clear it so it only echoes once

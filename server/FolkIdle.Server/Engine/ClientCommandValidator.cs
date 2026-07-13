@@ -641,11 +641,17 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
-        public static bool ValidateWorldBossAttackRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet, uint activeBossId, bool bossIsDead)
+        public static bool ValidateWorldBossAttackRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet, uint activeBossId, bool bossIsDead, bool eventActive)
         {
             if (packet.Command != FolkIdle.Server.Network.CommandType.AttackWorldBoss)
             {
                 return true;
+            }
+
+            if (!eventActive)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 32, Value2 = 4, Timestamp = Environment.TickCount64 });
+                return false;
             }
 
             if (packet.ClientPredictedDamage == 0 ||

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Linq;
 
 namespace FolkIdle.Server.Engine
 {
@@ -36,6 +37,19 @@ namespace FolkIdle.Server.Engine
         public long PlayerId;
         public System.Guid ChildCharacterId;
         public long GeneticVector;
+    }
+
+    public struct WorldBossAttemptUpdateNotification
+    {
+        public long PlayerId;
+        public byte AttemptCount;
+    }
+
+    public struct MasteryUpdateNotification
+    {
+        public long PlayerId;
+        public int RaceId;
+        public int MasteryLevel;
     }
 
     public struct GuildUpdateNotification
@@ -123,6 +137,8 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<MailClaimRequest> MailClaimRequestQueue { get; } = new();
         public ConcurrentQueue<BankWithdrawRequest> BankWithdrawRequestQueue { get; } = new();
         public ConcurrentQueue<BirthNotification> BirthNotificationQueue { get; } = new();
+        public ConcurrentQueue<WorldBossAttemptUpdateNotification> WorldBossAttemptUpdateQueue { get; } = new();
+        public ConcurrentQueue<MasteryUpdateNotification> MasteryUpdateQueue { get; } = new();
         public ConcurrentQueue<long> LoginQueue { get; } = new();
         public ConcurrentQueue<GuildUpdateNotification> GuildUpdateQueue { get; } = new();
         public ConcurrentQueue<CraftingCompletionNotification> CraftingCompletionQueue { get; } = new();
@@ -153,6 +169,11 @@ namespace FolkIdle.Server.Engine
         public int GetOnlinePlayerCount()
         {
             return _onlinePlayers.Count;
+        }
+
+        public long[] GetOnlinePlayerIds()
+        {
+            return _onlinePlayers.Keys.ToArray();
         }
 
         public void EnqueueGuildUpdate(GuildUpdateNotification notification)

@@ -63,6 +63,10 @@ namespace FolkIdle.Client.Engine
         public int VisualEnemySupplyPoints;
         public int VisualLegacyShardBalance;
         public ObfuscatedInt32 VisualLegacyShardCell;
+        public ObfuscatedInt64 VisualGoldCell;
+        public byte VisualWorldBossAttemptCount;
+        public byte VisualWorldBossEventState;
+        public long VisualWorldBossEventEndEpoch;
         public int VisualCitizenMultiSlotsUnlocked;
         public long VisualGuildLogisticsCurrentStock;
         public long VisualGuildLogisticsTargetRequirement;
@@ -159,6 +163,10 @@ namespace FolkIdle.Client.Engine
                     VisualDraugrMasteryLevel = packet.DraugrMasteryLevel;
                     VisualLegacyShardBalance = packet.LegacyShardBalance;
                     VisualLegacyShardCell = new ObfuscatedInt32(packet.LegacyShardBalance, ResolveClientXorKey(packet.PlayerId, packet.LogicEpochCounter));
+                    VisualGoldCell = new ObfuscatedInt64(packet.Gold, ResolveClientXorKey64(packet.PlayerId, packet.LogicEpochCounter));
+                    VisualWorldBossAttemptCount = packet.WorldBossAttemptCount;
+                    VisualWorldBossEventState = packet.WorldBossEventState;
+                    VisualWorldBossEventEndEpoch = packet.WorldBossEventEndEpoch;
                     VisualCitizenMultiSlotsUnlocked = packet.CitizenMultiSlotsUnlocked;
                     VisualGuildLogisticsCurrentStock = packet.GuildLogisticsCurrentStock;
                     VisualGuildLogisticsTargetRequirement = packet.GuildLogisticsTargetRequirement;
@@ -176,7 +184,7 @@ namespace FolkIdle.Client.Engine
                     VisualRemainingBuffDurationTicks = packet.RemainingBuffDurationTicks;
                     VisualActiveChroniclePassLevel = packet.ActiveChroniclePassLevel;
                     VisualAccumulatedSeasonalXp = packet.AccumulatedSeasonalXp;
-                    VisualActiveMatchMmr = packet.ActiveMatchMmr;
+                    VisualActiveMatchMmr = packet.VisualActiveMatchMmr;
                     VisualGlobalNodeRemainingHp = packet.GlobalNodeRemainingHp;
                     VisualActiveMatchId = packet.ActiveMatchId;
                     VisualTotalAnalyticsEventsLoggedCount = packet.TotalAnalyticsEventsLoggedCount;
@@ -257,6 +265,10 @@ namespace FolkIdle.Client.Engine
             VisualDraugrMasteryLevel = _snapshotB.Packet.DraugrMasteryLevel;
             VisualLegacyShardBalance = _snapshotB.Packet.LegacyShardBalance;
             VisualLegacyShardCell = new ObfuscatedInt32(_snapshotB.Packet.LegacyShardBalance, ResolveClientXorKey(_snapshotB.Packet.PlayerId, _snapshotB.Packet.LogicEpochCounter));
+            VisualGoldCell = new ObfuscatedInt64(_snapshotB.Packet.Gold, ResolveClientXorKey64(_snapshotB.Packet.PlayerId, _snapshotB.Packet.LogicEpochCounter));
+            VisualWorldBossAttemptCount = _snapshotB.Packet.WorldBossAttemptCount;
+            VisualWorldBossEventState = _snapshotB.Packet.WorldBossEventState;
+            VisualWorldBossEventEndEpoch = _snapshotB.Packet.WorldBossEventEndEpoch;
             VisualCitizenMultiSlotsUnlocked = _snapshotB.Packet.CitizenMultiSlotsUnlocked;
             VisualGuildLogisticsCurrentStock = _snapshotB.Packet.GuildLogisticsCurrentStock;
             VisualGuildLogisticsTargetRequirement = _snapshotB.Packet.GuildLogisticsTargetRequirement;
@@ -270,7 +282,7 @@ namespace FolkIdle.Client.Engine
             VisualCraftingEngineStatus = _snapshotB.Packet.CraftingEngineStatus;
             VisualActiveChroniclePassLevel = _snapshotB.Packet.ActiveChroniclePassLevel;
             VisualAccumulatedSeasonalXp = _snapshotB.Packet.AccumulatedSeasonalXp;
-            VisualActiveMatchMmr = _snapshotB.Packet.ActiveMatchMmr;
+            VisualActiveMatchMmr = _snapshotB.Packet.VisualActiveMatchMmr;
             VisualGlobalNodeRemainingHp = _snapshotB.Packet.GlobalNodeRemainingHp;
             VisualActiveMatchId = _snapshotB.Packet.ActiveMatchId;
             VisualTotalAnalyticsEventsLoggedCount = _snapshotB.Packet.TotalAnalyticsEventsLoggedCount;
@@ -290,11 +302,23 @@ namespace FolkIdle.Client.Engine
             return VisualLegacyShardCell.Value;
         }
 
+        public long GetGoldBalance()
+        {
+            return VisualGoldCell.Value;
+        }
+
         private static int ResolveClientXorKey(long playerId, long epoch)
         {
             long key = playerId ^ (epoch << 17) ^ 0x5F3759DF;
             if (key == 0L) key = 0x5F3759DF;
             return (int)(key & 0x7FFFFFFF);
+        }
+
+        private static long ResolveClientXorKey64(long playerId, long epoch)
+        {
+            long key = playerId ^ (epoch << 23) ^ 0x2545F4914F6CDD1DL;
+            if (key == 0L) key = 0x2545F4914F6CDD1DL;
+            return key;
         }
     }
 }

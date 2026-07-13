@@ -112,7 +112,7 @@ namespace FolkIdle.Client.Engine
 
         private void DisableVolatiles()
         {
-            var emitters = FindObjectsOfType<ParticleSystem>();
+            var emitters = FindObjectsByType<ParticleSystem>(FindObjectsInactive.Exclude);
             foreach (var emitter in emitters)
             {
                 if (emitter.isPlaying) emitter.Stop();

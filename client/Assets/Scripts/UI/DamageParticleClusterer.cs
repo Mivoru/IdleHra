@@ -41,7 +41,7 @@ namespace FolkIdle.Client.UI
 
         private void Update()
         {
-            long currentMs = Environment.TickCount64;
+            long currentMs = Environment.TickCount;
 
             if (currentMs >= _windowEndMs)
             {

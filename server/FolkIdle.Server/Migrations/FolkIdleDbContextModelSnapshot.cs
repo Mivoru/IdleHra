@@ -649,6 +649,59 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("GuildWarMatches");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.HistoricalMarketArchive", b =>
+                {
+                    b.Property<long>("ArchiveId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("ArchiveId"));
+
+                    b.Property<string>("BaseItemId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<long>("BuyerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("CommodityId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long?>("EquipmentInstanceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("ExecutionPrice")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("ExecutionTimestampEpoch")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("FeeBurned")
+                        .HasColumnType("bigint");
+
+                    b.Property<bool>("IsQuarantined")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("OrderType")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<long>("OriginalOrderId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("QualityTier")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("SellerId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("ArchiveId");
+
+                    b.ToTable("historical_market_archives");
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.LiveOpsEventRotation", b =>
                 {
                     b.Property<int>("EventId")
@@ -1007,25 +1060,6 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("player_lifetime_achievements");
                 });
 
-            modelBuilder.Entity("FolkIdle.Server.Models.PlayerMonsterCodex", b =>
-                {
-                    b.Property<long>("PlayerId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("MonsterId")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("KillCount")
-                        .HasColumnType("bigint");
-
-                    b.Property<byte>("MaxRarityFound")
-                        .HasColumnType("smallint");
-
-                    b.HasKey("PlayerId", "MonsterId");
-
-                    b.ToTable("player_monster_codex");
-                });
-
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerProductionRegistry", b =>
                 {
                     b.Property<long>("PlayerId")
@@ -1159,6 +1193,25 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("PlayerSegmentationProfiles");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.PlayerWorldBossAttempt", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("BossInstanceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("TotalInflictedDamage")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("PlayerId", "BossInstanceId");
+
+                    b.ToTable("player_world_boss_attempts");
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.PrimaryPurchaseLedger", b =>
                 {
                     b.Property<string>("TransactionId")
@@ -1282,6 +1335,12 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<long>("CurrentHp")
                         .HasColumnType("bigint");
+
+                    b.Property<long>("EventEndEpoch")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte>("EventState")
+                        .HasColumnType("smallint");
 
                     b.Property<long>("LastActiveTimestamp")
                         .HasColumnType("bigint");

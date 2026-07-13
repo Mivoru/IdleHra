@@ -39,13 +39,13 @@ namespace FolkIdle.Server.Models
         public DbSet<PlayerSegmentationProfile> PlayerSegmentationProfiles { get; set; }
         public DbSet<SegmentedStorefrontListing> SegmentedStorefrontListings { get; set; }
         public DbSet<WorldBossSnapshot> WorldBossSnapshots { get; set; }
+        public DbSet<PlayerWorldBossAttempt> PlayerWorldBossAttempts { get; set; }
         public DbSet<LiveOpsEventRotation> LiveOpsEventRotations { get; set; }
         public DbSet<PlayerDeviceRegistration> PlayerDeviceRegistrations { get; set; }
         public DbSet<PlayerChronoRegistry> PlayerChronoRegistries { get; set; }
         public DbSet<EquipmentAffixMatrix> EquipmentAffixMatrices { get; set; }
         public DbSet<PlayerCraftingSlot> PlayerCraftingSlots { get; set; }
         public DbSet<PlayerLifetimeAchievement> PlayerLifetimeAchievements { get; set; }
-        public DbSet<PlayerMonsterCodex> PlayerMonsterCodexes { get; set; }
         public DbSet<PlayerProductionRegistry> PlayerProductionRegistries { get; set; }
         public DbSet<PlayerChroniclePass> PlayerChroniclePasses { get; set; }
         public DbSet<AccountChronoRegistry> AccountChronoRegistries { get; set; }
@@ -207,6 +207,9 @@ namespace FolkIdle.Server.Models
             modelBuilder.Entity<WorldBossSnapshot>()
                 .HasKey(w => w.BossInstanceId);
 
+            modelBuilder.Entity<PlayerWorldBossAttempt>()
+                .HasKey(a => new { a.PlayerId, a.BossInstanceId });
+
             modelBuilder.Entity<LiveOpsEventRotation>()
                 .HasKey(l => l.EventId);
             modelBuilder.Entity<LiveOpsEventRotation>()
@@ -231,8 +234,6 @@ namespace FolkIdle.Server.Models
             modelBuilder.Entity<PlayerLifetimeAchievement>()
                 .HasKey(p => new { p.PlayerId, p.AchievementId });
 
-            modelBuilder.Entity<PlayerMonsterCodex>()
-                .HasKey(p => new { p.PlayerId, p.MonsterId });
         }
     }
 }

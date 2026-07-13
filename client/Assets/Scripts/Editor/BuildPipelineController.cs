@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
+using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 
 namespace FolkIdle.Client.Editor
@@ -30,7 +31,7 @@ namespace FolkIdle.Client.Editor
 
                 // Hard-locked constraints
                 EditorUserBuildSettings.androidBuildSubtarget = MobileTextureSubtarget.ASTC;
-                PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
+                PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
                 PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
 
                 string[] scenes = EditorBuildSettings.scenes

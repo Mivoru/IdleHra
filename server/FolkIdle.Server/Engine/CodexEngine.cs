@@ -23,11 +23,13 @@ namespace FolkIdle.Server.Engine
         public static readonly ConcurrentQueue<KillEvent> KillEventQueue = new();
         
         private readonly IServiceProvider _serviceProvider;
+        private readonly PlayerSessionRegistry _playerRegistry;
         private CancellationTokenSource _cts = new();
 
-        public CodexEngine(IServiceProvider serviceProvider)
+        public CodexEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry)
         {
             _serviceProvider = serviceProvider;
+            _playerRegistry = playerRegistry;
         }
 
         public void StartCron()
@@ -114,11 +116,23 @@ namespace FolkIdle.Server.Engine
                         }
 
                         long requiredXp = (long)(500 * mastery.MasteryLevel * Math.Pow(1.32, mastery.MasteryLevel));
+                        bool leveledUp = false;
                         while (mastery.CumulativeXp >= requiredXp)
                         {
                             mastery.CumulativeXp -= requiredXp;
                             mastery.MasteryLevel++;
+                            leveledUp = true;
                             requiredXp = (long)(500 * mastery.MasteryLevel * Math.Pow(1.32, mastery.MasteryLevel));
+                        }
+
+                        if (leveledUp)
+                        {
+                            _playerRegistry.MasteryUpdateQueue.Enqueue(new MasteryUpdateNotification
+                            {
+                                PlayerId = group.Key.PlayerId,
+                                RaceId = group.Key.RaceId,
+                                MasteryLevel = mastery.MasteryLevel
+                            });
                         }
                     }
 

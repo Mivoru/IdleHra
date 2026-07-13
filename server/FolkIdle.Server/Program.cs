@@ -18,8 +18,16 @@ if (args.Length > 0 && args[0] == "--layout-check")
 }
 
 var serviceCollection = new ServiceCollection();
-var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-    ?? "Host=localhost;Database=FolkIdle;Username=postgres;Password=password";
+var connectionString = Environment.GetEnvironmentVariable("FOLKIDLE_DB_CONN");
+if (connectionString == null)
+{
+    bool isProduction = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") == "Production";
+    if (isProduction)
+    {
+        throw new InvalidOperationException("FOLKIDLE_DB_CONN must be set when DOTNET_ENVIRONMENT is Production.");
+    }
+    connectionString = ConnectionStringDefaults.LocalDevelopmentFallback;
+}
 serviceCollection.AddDbContextFactory<FolkIdleDbContext>(options =>
     options.UseNpgsql(connectionString));
 serviceCollection.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
@@ -35,16 +43,16 @@ serviceCollection.AddSingleton<RedisPlayerSessionLock>();
 // Hosted Services removed
 
 var serviceProvider = serviceCollection.BuildServiceProvider();
+
+if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") != "Production")
+{
+    using var seedScope = serviceProvider.CreateScope();
+    using var seedDb = seedScope.ServiceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext();
+    await DbSeeder.SeedAllAsync(seedDb);
+}
+
 var redisMultiplexer = serviceProvider.GetRequiredService<IConnectionMultiplexer>();
 TelemetryStreamer.ConfigureRedis(redisMultiplexer);
-
-// Rebuild database schema so added PlayerId columns exist safely for tests.
-using (var scope = serviceProvider.CreateScope())
-{
-    using var db = scope.ServiceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext();
-    db.Database.EnsureDeleted();
-    db.Database.EnsureCreated();
-}
 
 var networkSystem = new NetworkBroadcastSystem(serviceProvider, "http://localhost:8080/");
 var lootEngine = new LootTableEngine();
@@ -89,7 +97,7 @@ pushNotificationTriggerEngine.StartCron();
 guildWarEngine.StartCron();
 guildMatchmakingEngine.StartCron();
 
-var codexSvc = new CodexEngine(serviceProvider);
+var codexSvc = new CodexEngine(serviceProvider, playerRegistry);
 var achSvc = new AchievementEngine(serviceProvider, playerRegistry);
 var ecoTelemetrySvc = new EcoTelemetryEngine(serviceProvider);
 var seasonEraSvc = new SeasonalRotationEngine(serviceProvider);

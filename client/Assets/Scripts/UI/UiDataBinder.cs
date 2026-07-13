@@ -1011,7 +1011,7 @@ namespace FolkIdle.Client.UI
             _networkUiBuffer[offset++] = 'O';
             _networkUiBuffer[offset++] = ':';
             _networkUiBuffer[offset++] = ' ';
-            offset = WriteLongToBuffer(_networkUiBuffer, offset, VisualProxy.VisualActiveConnectionThroughput);
+            offset = WriteLongToBuffer(_networkUiBuffer, offset, SyncProxy.VisualActiveConnectionThroughput);
             _networkUiBuffer[offset++] = 'B';
             _networkUiBuffer[offset++] = '/';
             _networkUiBuffer[offset++] = 's';
@@ -1023,7 +1023,7 @@ namespace FolkIdle.Client.UI
             _networkUiBuffer[offset++] = 'm';
             _networkUiBuffer[offset++] = ':';
             _networkUiBuffer[offset++] = ' ';
-            offset = WriteLongToBuffer(_networkUiBuffer, offset, VisualProxy.VisualCurrentNodeMemoryLoadMetrics);
+            offset = WriteLongToBuffer(_networkUiBuffer, offset, SyncProxy.VisualCurrentNodeMemoryLoadMetrics);
             _networkUiBuffer[offset++] = 'M';
             _networkUiBuffer[offset++] = 'B';
             

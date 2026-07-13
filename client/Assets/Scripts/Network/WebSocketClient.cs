@@ -164,8 +164,7 @@ namespace FolkIdle.Client.Network
                 ClientCommandPacket packet = new ClientCommandPacket
                 {
                     Command = CommandType.ClaimBattlePassReward,
-                    TargetMilestoneIndex = milestoneIndex,
-                    BattlePassPadding = 0
+                    TargetMilestoneIndex = milestoneIndex
                 };
 
                 SendPacket(ref packet);
@@ -382,12 +381,10 @@ namespace FolkIdle.Client.Network
                     TargetPlatformFamily = platformFamily
                 };
 
-                fixed (byte* target = packet.DeviceTokenBytes)
+                byte* target = packet.DeviceTokenBytes;
+                for (int i = 0; i < 64; i++)
                 {
-                    for (int i = 0; i < 64; i++)
-                    {
-                        target[i] = i < deviceTokenBytes.Length ? deviceTokenBytes[i] : (byte)0;
-                    }
+                    target[i] = i < deviceTokenBytes.Length ? deviceTokenBytes[i] : (byte)0;
                 }
 
                 SendPacket(ref packet);
@@ -731,10 +728,8 @@ namespace FolkIdle.Client.Network
                 };
 
                 long packedMetric = ((long)eventTypeHash << 32) | (payloadMetric & 0xFFFFFFFFL);
-                fixed (byte* target = packet.RawTransactionReceipt)
-                {
-                    System.Runtime.CompilerServices.Unsafe.WriteUnaligned(target, packedMetric);
-                }
+                byte* target = packet.RawTransactionReceipt;
+                System.Runtime.CompilerServices.Unsafe.WriteUnaligned(target, packedMetric);
 
                 SendPacket(ref packet);
             }
@@ -849,7 +844,7 @@ namespace FolkIdle.Client.Network
                     TargetProductIdHash = productIdHash
                 };
 
-                fixed (byte* target = packet.RawTransactionReceipt)
+                byte* target = packet.RawTransactionReceipt;
                 fixed (byte* source = receiptBytes)
                 {
                     // Blueprint specifies using Unsafe for copying
