@@ -62,8 +62,8 @@ namespace FolkIdle.Client.Engine
         public int VisualEnemyLogisticsPoints;
         public int VisualEnemySupplyPoints;
         public int VisualLegacyShardBalance;
-        public ObfuscatedInt32 VisualLegacyShardCell;
-        public ObfuscatedInt64 VisualGoldCell;
+        [System.NonSerialized] public ObfuscatedInt32 VisualLegacyShardCell;
+        [System.NonSerialized] public ObfuscatedInt64 VisualGoldCell;
         public byte VisualWorldBossAttemptCount;
         public byte VisualWorldBossEventState;
         public long VisualWorldBossEventEndEpoch;

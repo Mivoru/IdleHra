@@ -12,6 +12,12 @@ namespace FolkIdle.Client.UI
     {
         private const int MaxAttempts = FastStringCache.WorldBossMaxAttempts;
 
+        private const byte EventStateActive = 1;
+
+        // No event-state value has been observed yet: forces a state-change detection
+        // pass on the first Update instead of comparing against a real state.
+        private const byte EventStateUnknown = byte.MaxValue;
+
         public VisualSyncProxy SyncProxy;
 
         [Header("World Boss HUD - Canvas Isolation")]
@@ -24,7 +30,13 @@ namespace FolkIdle.Client.UI
         public TMP_Text WorldBossRunsText;
         public Button WorldBossAttackButton;
 
+        [Header("World Boss Audio")]
+        public SfxPoolEngine SoundEngine;
+        public AudioClip CombatTrackClip;
+        public float CombatTrackVolume = 1.0f;
+
         private readonly char[] _worldBossUiBuffer = new char[128];
+        private byte _lastEventState = EventStateUnknown;
 
         private void Awake()
         {
@@ -48,6 +60,13 @@ namespace FolkIdle.Client.UI
         private void Update()
         {
             if (SyncProxy == null) return;
+
+            byte eventState = SyncProxy.VisualWorldBossEventState;
+            if (eventState != _lastEventState)
+            {
+                HandleEventStateChanged(_lastEventState, eventState);
+                _lastEventState = eventState;
+            }
 
             float currentHp = SyncProxy.VisualWorldBossHp;
             float maxHp = SyncProxy.VisualWorldBossMaxHp;
@@ -86,6 +105,25 @@ namespace FolkIdle.Client.UI
             {
                 // Core Input Safety: block outbound attack requests once attempts are exhausted.
                 WorldBossAttackButton.interactable = attemptCount < MaxAttempts;
+            }
+        }
+
+        private void HandleEventStateChanged(byte previousState, byte newState)
+        {
+            if (SoundEngine == null || CombatTrackClip == null)
+            {
+                return;
+            }
+
+            if (newState == EventStateActive && previousState != EventStateActive)
+            {
+                SoundEngine.PlayWorldBossCombatTrack(CombatTrackClip, CombatTrackVolume);
+            }
+            else if (previousState == EventStateActive && newState != EventStateActive)
+            {
+                // Covers both conclusion outcomes carried by EventState == 2 (defeated or
+                // window-expired failure): either way the combat track fades out cleanly.
+                SoundEngine.StopWorldBossCombatTrack();
             }
         }
 

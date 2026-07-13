@@ -3,6 +3,7 @@ using System;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FolkIdle.Server.Migrations
 {
     [DbContext(typeof(FolkIdleDbContext))]
-    partial class FolkIdleDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260713204831_AddMonsterCodexLevel")]
+    partial class AddMonsterCodexLevel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -396,9 +399,6 @@ namespace FolkIdle.Server.Migrations
                     b.Property<long>("CurrentStock")
                         .HasColumnType("bigint");
 
-                    b.Property<int>("Level")
-                        .HasColumnType("integer");
-
                     b.Property<long>("TargetRequirement")
                         .HasColumnType("bigint");
 
@@ -472,49 +472,6 @@ namespace FolkIdle.Server.Migrations
                     b.HasIndex("GuildId");
 
                     b.ToTable("GuildMaterialSinkLedgers");
-                });
-
-            modelBuilder.Entity("FolkIdle.Server.Models.GuildMember", b =>
-                {
-                    b.Property<long>("PlayerId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("PlayerId"));
-
-                    b.Property<long>("ContributionPoints")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("GuildId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("PlayerId");
-
-                    b.HasIndex("GuildId");
-
-                    b.ToTable("GuildMembers");
-                });
-
-            modelBuilder.Entity("FolkIdle.Server.Models.GuildRaidState", b =>
-                {
-                    b.Property<long>("GuildId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("GuildId"));
-
-                    b.Property<long>("RaidBossCurrentHp")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("RaidBossMaxHp")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("RaidTier")
-                        .HasColumnType("integer");
-
-                    b.HasKey("GuildId");
-
-                    b.ToTable("GuildRaidStates");
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildRecord", b =>

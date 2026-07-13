@@ -14,5 +14,9 @@ namespace FolkIdle.Server.Models
 
         public int KillCount { get; set; }
         public int FirstDrawnRarity { get; set; }
+
+        // Passive codex mastery level for this monster, derived from KillCount
+        // (Level = KillCount / 10). Feeds the Codex yield/damage multiplier sums.
+        public int Level { get; set; }
     }
 }

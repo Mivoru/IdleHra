@@ -2,6 +2,10 @@ namespace FolkIdle.Server.Engine
 {
     public struct TickStatePayload
     {
+        public TickStatePayload()
+        {
+        }
+
         public long PlayerId;
         public System.Guid AccountId;
         public long ActiveActivityId;
@@ -118,6 +122,12 @@ namespace FolkIdle.Server.Engine
         public int ClaimedAchievementFlags;
         public uint TotalAchievementsClaimedCount;
 
+        // Cached passive Codex multipliers. Recomputed only on login or Codex
+        // level-up (see CodexEngine.RecalculateAndSyncMultipliersAsync); read as
+        // plain O(1) field access from the 10 Hz tick, never recalculated there.
+        public float CachedCodexYieldMultiplier = 1.0f;
+        public float CachedCodexDamageMultiplier = 1.0f;
+
         // Race Masteries
         public int HumanMasteryLevel;
         public int VilaMasteryLevel;
@@ -132,9 +142,15 @@ namespace FolkIdle.Server.Engine
         public int CitizenMultiSlotsUnlocked;
         public long GuildLogisticsCurrentStock;
         public long GuildLogisticsTargetRequirement;
+        public int CachedGuildLogisticsLevel;
         public long CombatSimulationMatchId;
         public int CombatSimulationTurnCounter;
         public int CombatSimulationDamageDelta;
+
+        // Co-op PvE guild raid boss cache (distinct from the PvP CombatSimulation* fields above).
+        public int CachedGuildRaidTier;
+        public long CachedGuildRaidBossCurrentHp;
+        public long CachedGuildRaidBossMaxHp;
         public long ActiveMentorPlayerId;
         public double MentorshipExpBonusMultiplier;
         

@@ -372,8 +372,12 @@ namespace FolkIdle.Server.Engine
                 accountChrono.ActiveSpeedMultiplier > 1.0 &&
                 accountChrono.AccelerationTerminationEpoch > currentUnixTs;
 
+            (float codexYieldMultiplier, float codexDamageMultiplier) = await CodexEngine.CalculateActiveMultipliersAsync(playerId, dbContext);
+
             var payload = new TickStatePayload
             {
+                CachedCodexYieldMultiplier = codexYieldMultiplier,
+                CachedCodexDamageMultiplier = codexDamageMultiplier,
                 PlayerId = player.Id,
                 AccountId = accountChrono.AccountId,
                 CurrentLevel = player.CurrentLevel,

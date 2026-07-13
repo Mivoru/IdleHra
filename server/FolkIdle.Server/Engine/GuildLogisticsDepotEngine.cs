@@ -107,6 +107,13 @@ namespace FolkIdle.Server.Engine
                 depot.CurrentStock += quantity;
                 ledger.LifetimeContributed += quantity;
 
+                if (depot.CurrentStock >= depot.TargetRequirement)
+                {
+                    depot.Level++;
+                    depot.CurrentStock = 0;
+                    depot.TargetRequirement = (long)(depot.TargetRequirement * 1.25);
+                }
+
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
@@ -115,7 +122,8 @@ namespace FolkIdle.Server.Engine
                     GuildId = guildId,
                     MaterialId = materialKey,
                     CurrentStock = depot.CurrentStock,
-                    TargetRequirement = depot.TargetRequirement
+                    TargetRequirement = depot.TargetRequirement,
+                    Level = depot.Level
                 });
             }
             catch (Exception ex)

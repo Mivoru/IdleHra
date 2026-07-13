@@ -16,6 +16,8 @@ namespace FolkIdle.Server.Models
         public DbSet<GuildMaterialSinkLedger> GuildMaterialSinkLedgers { get; set; }
         public DbSet<GuildLogisticsDepot> GuildLogisticsDepots { get; set; }
         public DbSet<GuildContributionLedger> GuildContributionLedgers { get; set; }
+        public DbSet<GuildRaidState> GuildRaidStates { get; set; }
+        public DbSet<GuildMember> GuildMembers { get; set; }
         public DbSet<PlayerRecord> PlayerRecords { get; set; }
         public DbSet<CharacterRecord> CharacterRecords { get; set; }
         public DbSet<CharacterLineageRegistry> CharacterLineages { get; set; }
@@ -166,7 +168,10 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<GuildContributionLedger>()
                 .HasKey(g => new { g.PlayerId, g.GuildId, g.MaterialId });
-            
+
+            modelBuilder.Entity<GuildMember>()
+                .HasIndex(m => m.GuildId);
+
             modelBuilder.Entity<MarketEquipmentInstance>()
                 .Property(e => e.AffixPayload)
                 .HasColumnType("jsonb");

@@ -38,6 +38,35 @@ namespace FolkIdle.Server.Engine
             Task.Run(() => ExecuteAsync(_cts.Token));
         }
 
+        // Level = KillCount / 10: linear per-monster codex mastery curve, uncapped.
+        private static int CalculateLevelFromKillCount(int killCount)
+        {
+            return killCount / 10;
+        }
+
+        internal static async Task<(float YieldMultiplier, float DamageMultiplier)> CalculateActiveMultipliersAsync(long playerId, FolkIdleDbContext db)
+        {
+            int levelSum = await db.MonsterCodexEntries
+                .Where(c => c.PlayerId == playerId)
+                .SumAsync(c => c.Level);
+
+            float yieldMultiplier = 1.0f + (levelSum * 0.005f);
+            float damageMultiplier = 1.0f + (levelSum * 0.010f);
+            return (yieldMultiplier, damageMultiplier);
+        }
+
+        public static async Task RecalculateAndSyncMultipliersAsync(long playerId, FolkIdleDbContext db, PlayerSessionRegistry registry)
+        {
+            (float yieldMultiplier, float damageMultiplier) = await CalculateActiveMultipliersAsync(playerId, db);
+
+            registry.CodexMultiplierUpdateQueue.Enqueue(new CodexMultiplierUpdateNotification
+            {
+                PlayerId = playerId,
+                YieldMultiplier = yieldMultiplier,
+                DamageMultiplier = damageMultiplier
+            });
+        }
+
         private async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
@@ -68,11 +97,13 @@ namespace FolkIdle.Server.Engine
                         .Where(m => playerIds.Contains(m.PlayerId))
                         .ToDictionaryAsync(m => new { m.PlayerId, m.RaceId }, stoppingToken);
 
+                    var codexLeveledUpPlayerIds = new System.Collections.Generic.HashSet<long>();
+
                     foreach (var group in killsToProcess.GroupBy(k => new { k.PlayerId, k.MonsterId }))
                     {
                         var key = new { group.Key.PlayerId, group.Key.MonsterId };
                         int kills = group.Count();
-                        
+
                         if (codexEntries.TryGetValue(key, out var entry))
                         {
                             entry.KillCount += kills;
@@ -88,6 +119,13 @@ namespace FolkIdle.Server.Engine
                             };
                             dbContext.MonsterCodexEntries.Add(entry);
                             codexEntries[key] = entry;
+                        }
+
+                        int newLevel = CalculateLevelFromKillCount(entry.KillCount);
+                        if (newLevel > entry.Level)
+                        {
+                            entry.Level = newLevel;
+                            codexLeveledUpPlayerIds.Add(key.PlayerId);
                         }
                     }
 
@@ -138,6 +176,11 @@ namespace FolkIdle.Server.Engine
 
                     await dbContext.SaveChangesAsync(stoppingToken);
                     await transaction.CommitAsync(stoppingToken);
+
+                    foreach (long leveledUpPlayerId in codexLeveledUpPlayerIds)
+                    {
+                        await RecalculateAndSyncMultipliersAsync(leveledUpPlayerId, dbContext, _playerRegistry);
+                    }
                 }
                 catch (Exception ex)
                 {

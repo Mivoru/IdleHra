@@ -110,6 +110,17 @@ namespace FolkIdle.Server.Engine
         public int MaterialId;
         public long CurrentStock;
         public long TargetRequirement;
+        public int Level;
+    }
+
+    // Co-op PvE guild raid boss update. Distinct from GuildCombatSimulationUpdateNotification,
+    // which is the unrelated PvP guild-vs-guild war turn engine.
+    public struct GuildRaidBossUpdateNotification
+    {
+        public long GuildId;
+        public int RaidTier;
+        public long RaidBossCurrentHp;
+        public long RaidBossMaxHp;
     }
 
     public struct GuildCombatSimulationUpdateNotification
@@ -127,6 +138,13 @@ namespace FolkIdle.Server.Engine
         public long MentorPlayerId;
         public double ExpBonusMultiplier;
         public byte ActiveContractCount;
+    }
+
+    public struct CodexMultiplierUpdateNotification
+    {
+        public long PlayerId;
+        public float YieldMultiplier;
+        public float DamageMultiplier;
     }
 
     public class PlayerSessionRegistry
@@ -149,7 +167,9 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<LegacyStoreUpdateNotification> LegacyStoreUpdateQueue { get; } = new();
         public ConcurrentQueue<GuildLogisticsDepotUpdateNotification> GuildLogisticsDepotUpdateQueue { get; } = new();
         public ConcurrentQueue<GuildCombatSimulationUpdateNotification> GuildCombatSimulationUpdateQueue { get; } = new();
+        public ConcurrentQueue<GuildRaidBossUpdateNotification> GuildRaidBossUpdateQueue { get; } = new();
         public ConcurrentQueue<MentorshipContractUpdateNotification> MentorshipContractUpdateQueue { get; } = new();
+        public ConcurrentQueue<CodexMultiplierUpdateNotification> CodexMultiplierUpdateQueue { get; } = new();
 
         public void RegisterPlayer(long playerId)
         {

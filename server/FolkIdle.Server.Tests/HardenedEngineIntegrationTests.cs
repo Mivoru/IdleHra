@@ -205,5 +205,110 @@ namespace FolkIdle.Server.Tests
                 .SingleAsync(a => a.PlayerId == DbSeeder.PlayerLowId && a.BossInstanceId == WorldBossEngine.ActiveBossInstanceId);
             Assert.Equal(3, attempt.AttemptCount);
         }
+
+        [Fact]
+        public async Task Test_CodexPassiveStats_Scaling()
+        {
+            const long testPlayerId = 750000001L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.MonsterCodexEntries.AddRange(
+                    new MonsterCodexEntry { PlayerId = testPlayerId, MonsterId = 1, KillCount = 100, Level = 10, FirstDrawnRarity = 1 },
+                    new MonsterCodexEntry { PlayerId = testPlayerId, MonsterId = 2, KillCount = 50, Level = 5, FirstDrawnRarity = 1 },
+                    new MonsterCodexEntry { PlayerId = testPlayerId, MonsterId = 3, KillCount = 0, Level = 0, FirstDrawnRarity = 1 });
+                await db.SaveChangesAsync();
+            }
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            (float yieldMultiplier, float damageMultiplier) = await CodexEngine.CalculateActiveMultipliersAsync(testPlayerId, verifyDb);
+
+            Assert.Equal(1.075f, yieldMultiplier);
+            Assert.Equal(1.15f, damageMultiplier);
+        }
+
+        [Fact]
+        public async Task Test_GuildLogistics_ContributionAndLevelUp()
+        {
+            const long testGuildId = 850000001L;
+            const long testPlayerId = 850000002L;
+            const int materialId = 1;
+            const long initialTargetRequirement = 1000L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.GuildRecords.Add(new GuildRecord { Id = testGuildId, Name = "IntegrationTestGuild" });
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    GuildId = testGuildId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = materialId.ToString(), Quantity = initialTargetRequirement });
+                db.GuildLogisticsDepots.Add(new GuildLogisticsDepot
+                {
+                    GuildId = testGuildId,
+                    MaterialId = materialId,
+                    CurrentStock = 0L,
+                    TargetRequirement = initialTargetRequirement,
+                    Level = 0
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var depotEngine = new GuildLogisticsDepotEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await depotEngine.DepositMaterialAsync(testPlayerId, testGuildId, materialId, (uint)initialTargetRequirement);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var depot = await verifyDb.GuildLogisticsDepots.AsNoTracking()
+                .SingleAsync(d => d.GuildId == testGuildId && d.MaterialId == materialId);
+
+            Assert.Equal(1, depot.Level);
+            Assert.Equal(0L, depot.CurrentStock);
+            Assert.Equal((long)(initialTargetRequirement * 1.25), depot.TargetRequirement);
+        }
+
+        [Fact]
+        public async Task Test_GuildCombat_SimulationTick()
+        {
+            const long testGuildId = 860000001L;
+            const long testPlayerId = 860000002L;
+            const long initialBossHp = 100000L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.GuildRecords.Add(new GuildRecord { Id = testGuildId, Name = "IntegrationTestRaidGuild" });
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    GuildId = testGuildId,
+                    CurrentLevel = 50,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.GuildRaidStates.Add(new GuildRaidState
+                {
+                    GuildId = testGuildId,
+                    RaidTier = 1,
+                    RaidBossCurrentHp = initialBossHp,
+                    RaidBossMaxHp = initialBossHp
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var raidEngine = new GuildRaidEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var raid = await db.GuildRaidStates.AsNoTracking().SingleAsync(r => r.GuildId == testGuildId);
+                await raidEngine.ProcessGuildRaidTickAsync(db, raid, new[] { testPlayerId });
+            }
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var updatedRaid = await verifyDb.GuildRaidStates.AsNoTracking().SingleAsync(r => r.GuildId == testGuildId);
+
+            Assert.Equal(initialBossHp - 2500L, updatedRaid.RaidBossCurrentHp);
+        }
     }
 }

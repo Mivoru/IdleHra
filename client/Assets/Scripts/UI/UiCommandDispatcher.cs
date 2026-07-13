@@ -55,8 +55,8 @@ namespace FolkIdle.Client.UI
         }
 
         [Header("Breeding Context")]
-        public System.Guid BreedingPaternalId;
-        public System.Guid BreedingMaternalId;
+        [System.NonSerialized] public System.Guid BreedingPaternalId;
+        [System.NonSerialized] public System.Guid BreedingMaternalId;
 
         public void DispatchExecuteBreeding()
         {
@@ -293,7 +293,7 @@ namespace FolkIdle.Client.UI
         }
 
         [Header("Mentorship Context")]
-        public System.Guid AssignMentorCharacterId;
+        [System.NonSerialized] public System.Guid AssignMentorCharacterId;
         public int AssignMentorSlotIndex;
 
         public void DispatchAssignMentor()

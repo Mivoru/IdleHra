@@ -79,6 +79,7 @@ var chronoCoreEngine = new ChronoCoreEngine(serviceProvider, playerRegistry);
 var legacyStoreEngine = new LegacyStoreEngine(serviceProvider, playerRegistry);
 var guildLogisticsDepotEngine = new GuildLogisticsDepotEngine(serviceProvider, playerRegistry);
 var guildCombatSimulationEngine = new GuildCombatSimulationEngine(serviceProvider, playerRegistry);
+var guildRaidEngine = new GuildRaidEngine(serviceProvider, playerRegistry);
 var redisWriteBehindEngine = new RedisWriteBehindEngine(serviceProvider, redisMultiplexer);
 var liveOpsTickEngine = new LiveOpsTickEngine(serviceProvider, playerRegistry, worldBossEngine);
 var pushNotificationTriggerEngine = new PushNotificationTriggerEngine(serviceProvider, redisMultiplexer);
@@ -96,6 +97,7 @@ liveOpsTickEngine.StartCron();
 pushNotificationTriggerEngine.StartCron();
 guildWarEngine.StartCron();
 guildMatchmakingEngine.StartCron();
+guildRaidEngine.StartCron();
 
 var codexSvc = new CodexEngine(serviceProvider, playerRegistry);
 var achSvc = new AchievementEngine(serviceProvider, playerRegistry);

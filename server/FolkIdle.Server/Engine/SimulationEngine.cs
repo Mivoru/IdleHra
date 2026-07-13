@@ -362,6 +362,16 @@ namespace FolkIdle.Server.Engine
                     }
                 }
 
+                while (_playerRegistry.CodexMultiplierUpdateQueue.TryDequeue(out var codexMultiplierUpdate))
+                {
+                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, codexMultiplierUpdate.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                    {
+                        currentPayload.CachedCodexYieldMultiplier = codexMultiplierUpdate.YieldMultiplier;
+                        currentPayload.CachedCodexDamageMultiplier = codexMultiplierUpdate.DamageMultiplier;
+                    }
+                }
+
                 while (_playerRegistry.CraftingCompletionQueue.TryDequeue(out var craftCompletion))
                 {
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, craftCompletion.PlayerId);
@@ -475,6 +485,7 @@ namespace FolkIdle.Server.Engine
                         {
                             currentPayload.GuildLogisticsCurrentStock = depotNotif.CurrentStock;
                             currentPayload.GuildLogisticsTargetRequirement = depotNotif.TargetRequirement;
+                            currentPayload.CachedGuildLogisticsLevel = depotNotif.Level;
                         }
                     }
                 }
@@ -490,6 +501,20 @@ namespace FolkIdle.Server.Engine
                             currentPayload.CombatSimulationMatchId = combatNotif.MatchId;
                             currentPayload.CombatSimulationTurnCounter = combatNotif.TurnCounter;
                             currentPayload.CombatSimulationDamageDelta = combatNotif.DamageDelta;
+                        }
+                    }
+                }
+
+                while (_playerRegistry.GuildRaidBossUpdateQueue.TryDequeue(out var raidNotif))
+                {
+                    foreach (var kvp in _activePlayers)
+                    {
+                        ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, kvp.Key);
+                        if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload) && currentPayload.GuildId == raidNotif.GuildId)
+                        {
+                            currentPayload.CachedGuildRaidTier = raidNotif.RaidTier;
+                            currentPayload.CachedGuildRaidBossCurrentHp = raidNotif.RaidBossCurrentHp;
+                            currentPayload.CachedGuildRaidBossMaxHp = raidNotif.RaidBossMaxHp;
                         }
                     }
                 }
@@ -2352,7 +2377,7 @@ namespace FolkIdle.Server.Engine
                         for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight;
                         if (totalWeight > 0)
                         {
-                            int multiplier = localDropMultiplier + additionalYieldBonus;
+                            int multiplier = (int)((localDropMultiplier + additionalYieldBonus) * payload.CachedCodexYieldMultiplier);
                             int guaranteedRolls = multiplier / 100;
                             int fractionalBonus = multiplier % 100;
                             int rollsToExecute = guaranteedRolls;
@@ -2442,9 +2467,10 @@ namespace FolkIdle.Server.Engine
                     int rawDamage = (int)(effectiveMilliAttack * critMult);
 
                     // Step 3 (Mitigation)
-                    int defenderArmor = 0; 
+                    int defenderArmor = 0;
                     int netDamage = Math.Max(1000, rawDamage - (defenderArmor * 1000));
-                    
+                    netDamage = (int)(netDamage * payload.CachedCodexDamageMultiplier);
+
                     payload.CurrentMonsterHp -= netDamage;
 
                     // Sprint 38: Lifesteal
@@ -2595,7 +2621,7 @@ namespace FolkIdle.Server.Engine
                     
                     if (totalWeight > 0)
                     {
-                        int multiplier = localDropMultiplier;
+                        int multiplier = (int)(localDropMultiplier * payload.CachedCodexYieldMultiplier);
                         int guaranteedRolls = multiplier / 100;
                         int fractionalBonus = multiplier % 100;
 
