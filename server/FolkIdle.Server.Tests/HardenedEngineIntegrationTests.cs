@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
@@ -589,6 +590,89 @@ namespace FolkIdle.Server.Tests
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
                 villageBuildingEngine, villageManagementEngine, mentorshipEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
+        }
+
+        [Fact]
+        public async Task Test_Forge_TransactionAndResourceDeduction()
+        {
+            const long testPlayerId = 990000001L;
+            const int recipeId = 1;
+            const long initialMaterialQuantity = 50L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "1", Quantity = initialMaterialQuantity });
+                await db.SaveChangesAsync();
+            }
+
+            var craftingEngine = new CraftingEngine(_fixture.DbContextFactory, _fixture.PlayerRegistry);
+            await craftingEngine.ExecuteEquipmentCraftingAsync(testPlayerId, recipeId, slotIndex: 0, tickToken: 12345);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            var commodity = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "1");
+            Assert.Equal(initialMaterialQuantity - 10, commodity.Quantity);
+
+            var equipment = await verifyDb.EquipmentInstances.AsNoTracking()
+                .SingleAsync(e => e.PlayerId == testPlayerId);
+            Assert.Equal("copper_greatsword_melee_weapon_slot_base", equipment.BaseItemId);
+            Assert.Equal(1, equipment.QualityTier);
+            Assert.False(equipment.IsAffixLocked);
+        }
+
+        [Fact]
+        public async Task Test_AffixReroll_WeightedDistribution()
+        {
+            const long testPlayerId = 990000002L;
+            const long initialPremiumCurrency = 100L;
+            long equipmentId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "premium_diamond", Quantity = initialPremiumCurrency });
+
+                var equipment = new EquipmentInstance
+                {
+                    BaseItemId = "1",
+                    PlayerId = testPlayerId,
+                    QualityTier = 1,
+                    AffixPayload = "{\"flat_hp_aaaa\":50}",
+                    IsAffixLocked = false
+                };
+                db.EquipmentInstances.Add(equipment);
+                await db.SaveChangesAsync();
+                equipmentId = equipment.Id;
+            }
+
+            var rerollEngine = new AffixRerollEngine(_fixture.ServiceProvider);
+            await rerollEngine.ExecuteRerollAsync(testPlayerId, equipmentId, affixIndex: 0);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            var commodity = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "premium_diamond");
+            Assert.Equal(initialPremiumCurrency - 5, commodity.Quantity);
+
+            var updatedEquipment = await verifyDb.EquipmentInstances.AsNoTracking()
+                .SingleAsync(e => e.Id == equipmentId);
+
+            var affixPayload = JsonNode.Parse(updatedEquipment.AffixPayload) as JsonObject;
+            Assert.NotNull(affixPayload);
+            Assert.False(affixPayload!.ContainsKey("flat_hp_aaaa"));
+            Assert.Single(affixPayload);
         }
     }
 }

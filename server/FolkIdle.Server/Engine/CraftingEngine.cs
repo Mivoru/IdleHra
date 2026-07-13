@@ -63,7 +63,8 @@ namespace FolkIdle.Server.Engine
                 if (recipe.Mat1Id > 0 && recipe.Mat1Count > 0)
                 {
                     // Use FOR UPDATE for row-level locking
-                    var mat1Rows = await context.CommodityRecords.FromSqlInterpolated($"SELECT * FROM commodity_records WHERE PlayerId = {playerId} AND ItemDefinitionId = {recipe.Mat1Id} FOR UPDATE").ToListAsync();
+                    string mat1ItemId = recipe.Mat1Id.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    var mat1Rows = await context.CommodityRecords.FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {mat1ItemId} FOR UPDATE").ToListAsync();
                     var mat1 = mat1Rows.Count > 0 ? mat1Rows[0] : null;
 
                     if (mat1 == null || mat1.Quantity < recipe.Mat1Count)
@@ -78,7 +79,8 @@ namespace FolkIdle.Server.Engine
 
                 if (recipe.Mat2Id > 0 && recipe.Mat2Count > 0)
                 {
-                    var mat2Rows = await context.CommodityRecords.FromSqlInterpolated($"SELECT * FROM commodity_records WHERE PlayerId = {playerId} AND ItemDefinitionId = {recipe.Mat2Id} FOR UPDATE").ToListAsync();
+                    string mat2ItemId = recipe.Mat2Id.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    var mat2Rows = await context.CommodityRecords.FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {mat2ItemId} FOR UPDATE").ToListAsync();
                     var mat2 = mat2Rows.Count > 0 ? mat2Rows[0] : null;
 
                     if (mat2 == null || mat2.Quantity < recipe.Mat2Count)
@@ -121,7 +123,8 @@ namespace FolkIdle.Server.Engine
             try
             {
                 // Lock commodity
-                var commodityRows = await context.CommodityRecords.FromSqlInterpolated($"SELECT * FROM commodity_records WHERE PlayerId = {playerId} AND ItemDefinitionId = {recipe.MaterialId} FOR UPDATE").ToListAsync();
+                string materialItemId = recipe.MaterialId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                var commodityRows = await context.CommodityRecords.FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {materialItemId} FOR UPDATE").ToListAsync();
                 var mat = commodityRows.Count > 0 ? commodityRows[0] : null;
 
                 if (mat == null || mat.Quantity < recipe.MaterialCost)
@@ -131,7 +134,7 @@ namespace FolkIdle.Server.Engine
                 }
 
                 // Lock crafting slot
-                var slotRows = await context.PlayerCraftingSlots.FromSqlInterpolated($"SELECT * FROM player_crafting_slots WHERE PlayerId = {playerId} AND SlotIndex = {slotIndex} FOR UPDATE").ToListAsync();
+                var slotRows = await context.PlayerCraftingSlots.FromSqlInterpolated($"SELECT * FROM \"PlayerCraftingSlots\" WHERE \"PlayerId\" = {playerId} AND \"SlotIndex\" = {(int)slotIndex} FOR UPDATE").ToListAsync();
                 
                 // Deduct materials
                 mat.Quantity -= recipe.MaterialCost;

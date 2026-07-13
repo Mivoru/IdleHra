@@ -17,6 +17,8 @@ namespace FolkIdle.Client.UI
         private static readonly Vector3 ModelLocalPosition = Vector3.zero;
         private static readonly Vector3 ModelLocalScale = Vector3.one;
 
+        public static UiCodex3DViewer Instance { get; private set; }
+
         public AssetLifecycleCoordinator AssetCoordinator;
 
         [Header("Codex 3D Viewer - Canvas Isolation")]
@@ -35,6 +37,8 @@ namespace FolkIdle.Client.UI
 
         private void Awake()
         {
+            Instance = this;
+
             if (ViewerPanelRect != null)
             {
                 LayoutGroup layoutGroup = ViewerPanelRect.GetComponent<LayoutGroup>();
@@ -81,6 +85,11 @@ namespace FolkIdle.Client.UI
 
         private void OnDestroy()
         {
+            if (Instance == this)
+            {
+                Instance = null;
+            }
+
             ClearActiveInstance();
 
             if (_previewRenderTexture != null)
