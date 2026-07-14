@@ -190,5 +190,14 @@ namespace FolkIdle.Client.Network
         public int GuildRaidTier;
         public long GuildRaidBossCurrentHp;
         public long GuildRaidBossMaxHp;
+
+        // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
+        public byte LumberjackLevel;
+        public byte QuarryLevel;
+        public byte MineLevel;
+        public byte WarehouseLevel;
+        public long CachedWoodStock;
+        public long CachedStoneStock;
+        public long CachedIronOreStock;
     }
 }

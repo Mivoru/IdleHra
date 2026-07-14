@@ -96,6 +96,17 @@ namespace FolkIdle.Client.Engine
         public uint VisualActiveConnectionThroughput { get; private set; }
         public uint VisualCurrentNodeMemoryLoadMetrics { get; private set; }
 
+        // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
+        public int LumberjackLevel { get; private set; }
+        public int QuarryLevel { get; private set; }
+        public int MineLevel { get; private set; }
+        public int WarehouseLevel { get; private set; }
+        public long WoodStock { get; private set; }
+        public long StoneStock { get; private set; }
+        public long IronOreStock { get; private set; }
+
+        public event System.Action OnVillageStateUpdated;
+
         private struct ServerSnapshot
         {
             public StateUpdatePacket Packet;
@@ -196,6 +207,8 @@ namespace FolkIdle.Client.Engine
                     VisualGlobalNodeRemainingHp = packet.GlobalNodeRemainingHp;
                     VisualActiveMatchId = packet.ActiveMatchId;
                     VisualTotalAnalyticsEventsLoggedCount = packet.TotalAnalyticsEventsLoggedCount;
+
+                    ApplyVillagePacketState(in packet);
 
                     _hasReceivedState = true;
                 }
@@ -307,6 +320,45 @@ namespace FolkIdle.Client.Engine
             VisualEnemyCombatPoints = _snapshotB.Packet.EnemyCombatVanguardPoints;
             VisualEnemyLogisticsPoints = _snapshotB.Packet.EnemyProductionLogisticsPoints;
             VisualEnemySupplyPoints = _snapshotB.Packet.EnemyGatheringSupplyChainPoints;
+
+            ApplyVillagePacketState(in _snapshotB.Packet);
+        }
+
+        // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
+        // Discrete level/stock values only ever come from the latest packet (no
+        // interpolation needed), so this is shared by both the first-packet path
+        // and the steady-state interpolation path above. Fires OnVillageStateUpdated
+        // only when a value actually changed, so subscribed UI never redraws on
+        // unrelated packet fields ticking every 10 Hz frame.
+        private void ApplyVillagePacketState(in StateUpdatePacket packet)
+        {
+            int lumberjackLevel = packet.LumberjackLevel;
+            int quarryLevel = packet.QuarryLevel;
+            int mineLevel = packet.MineLevel;
+            int warehouseLevel = packet.WarehouseLevel;
+            long woodStock = packet.CachedWoodStock;
+            long stoneStock = packet.CachedStoneStock;
+            long ironOreStock = packet.CachedIronOreStock;
+
+            bool changed = lumberjackLevel != LumberjackLevel
+                || quarryLevel != QuarryLevel
+                || mineLevel != MineLevel
+                || warehouseLevel != WarehouseLevel
+                || woodStock != WoodStock
+                || stoneStock != StoneStock
+                || ironOreStock != IronOreStock;
+
+            if (!changed) return;
+
+            LumberjackLevel = lumberjackLevel;
+            QuarryLevel = quarryLevel;
+            MineLevel = mineLevel;
+            WarehouseLevel = warehouseLevel;
+            WoodStock = woodStock;
+            StoneStock = stoneStock;
+            IronOreStock = ironOreStock;
+
+            OnVillageStateUpdated?.Invoke();
         }
 
         public int GetLegacyShardBalance()

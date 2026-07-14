@@ -1661,7 +1661,14 @@ namespace FolkIdle.Server.Engine
                                 GuildLogisticsLevel = currentPayload.CachedGuildLogisticsLevel,
                                 GuildRaidTier = currentPayload.CachedGuildRaidTier,
                                 GuildRaidBossCurrentHp = currentPayload.CachedGuildRaidBossCurrentHp,
-                                GuildRaidBossMaxHp = currentPayload.CachedGuildRaidBossMaxHp
+                                GuildRaidBossMaxHp = currentPayload.CachedGuildRaidBossMaxHp,
+                                LumberjackLevel = currentPayload.LumberjackLevel,
+                                QuarryLevel = currentPayload.QuarryLevel,
+                                MineLevel = currentPayload.MineLevel,
+                                WarehouseLevel = currentPayload.WarehouseLevel,
+                                CachedWoodStock = currentPayload.CachedWoodStock,
+                                CachedStoneStock = currentPayload.CachedStoneStock,
+                                CachedIronOreStock = currentPayload.CachedIronOreStock
                             };
                             _networkSystem.Broadcast(ref packet);
                             currentPayload.NetworkDiagnosticsToken = 0; // Clear it so it only echoes once
