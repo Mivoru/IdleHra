@@ -129,10 +129,19 @@ namespace FolkIdle.Client.UI
             for (int i = 0; i < owned.Count; i++)
             {
                 ForgeEquipmentInstanceData item = owned[i];
+                bool isEquipped = SyncProxy != null && (item.Id == SyncProxy.VisualEquippedWeaponId || item.Id == SyncProxy.VisualEquippedArmorId);
                 UiForgeEquipmentRow row = _rowPool.Spawn();
-                row.Bind(item.Id, item.BaseItemId, item.QualityTier, item.IsAffixLocked, item.Id == _selectedItemId, HandleItemSelected);
+                row.Bind(item.Id, item.BaseItemId, item.QualityTier, item.IsAffixLocked, item.Id == _selectedItemId, HandleItemSelected, isEquipped, HandleItemEquipClicked);
                 _activeRows.Add(row);
             }
+        }
+
+        private void HandleItemEquipClicked(long itemId)
+        {
+            if (NetworkClient == null) return;
+
+            NetworkClient.SendEquipItemCommandZeroAlloc(itemId);
+            Invoke(nameof(RefreshAfterDispatch), 0.5f);
         }
 
         private void HandleItemSelected(long itemId)
@@ -314,10 +323,10 @@ namespace FolkIdle.Client.UI
             if (NetworkClient == null || _selectedItemId < 0 || _selectedAffixIndex < 0) return;
 
             NetworkClient.SendRerollCommandZeroAlloc(_selectedItemId, _selectedAffixIndex);
-            Invoke(nameof(RefreshAfterReroll), 0.5f);
+            Invoke(nameof(RefreshAfterDispatch), 0.5f);
         }
 
-        private void RefreshAfterReroll()
+        private void RefreshAfterDispatch()
         {
             if (InventoryCache != null) InventoryCache.RequestSnapshot();
         }

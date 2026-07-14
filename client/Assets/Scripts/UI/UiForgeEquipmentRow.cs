@@ -15,9 +15,15 @@ namespace FolkIdle.Client.UI
         public GameObject SelectedHighlight;
         public GameObject LockedIcon;
 
+        // Modul 16/21: Equip dispatch. EquippedIcon shows instead of EquipButton
+        // when this row's item is already in the active weapon/armor slot.
+        public Button EquipButton;
+        public GameObject EquippedIcon;
+
         private readonly char[] _rowUiBuffer = new char[160];
         private long _itemId;
         private Action<long> _onSelected;
+        private Action<long> _onEquip;
 
         private void Awake()
         {
@@ -25,12 +31,18 @@ namespace FolkIdle.Client.UI
             {
                 RowButton.onClick.AddListener(HandleClicked);
             }
+
+            if (EquipButton != null)
+            {
+                EquipButton.onClick.AddListener(HandleEquipClicked);
+            }
         }
 
-        public void Bind(long itemId, string baseItemId, int qualityTier, bool isAffixLocked, bool isSelected, Action<long> onSelected)
+        public void Bind(long itemId, string baseItemId, int qualityTier, bool isAffixLocked, bool isSelected, Action<long> onSelected, bool isEquipped = false, Action<long> onEquip = null)
         {
             _itemId = itemId;
             _onSelected = onSelected;
+            _onEquip = onEquip;
 
             if (RowLabelText != null)
             {
@@ -50,11 +62,35 @@ namespace FolkIdle.Client.UI
             {
                 LockedIcon.SetActive(isAffixLocked);
             }
+
+            if (EquipButton != null)
+            {
+                EquipButton.gameObject.SetActive(!isEquipped);
+                EquipButton.interactable = !isEquipped;
+            }
+
+            if (EquippedIcon != null)
+            {
+                EquippedIcon.SetActive(isEquipped);
+            }
         }
 
         private void HandleClicked()
         {
             _onSelected?.Invoke(_itemId);
+        }
+
+        // Disables the button immediately so a double-click cannot dispatch the
+        // equip command twice before the next snapshot refresh calls Bind()
+        // again (which restores interactable once the server state settles).
+        private void HandleEquipClicked()
+        {
+            if (EquipButton != null)
+            {
+                EquipButton.interactable = false;
+            }
+
+            _onEquip?.Invoke(_itemId);
         }
 
         private static int WriteTextToBuffer(char[] buffer, int offset, string text)

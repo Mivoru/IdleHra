@@ -8,6 +8,14 @@ namespace FolkIdle.Server.Engine
 {
     public class BreedingEngine
     {
+        // Modul 13.4.3: Breeding Grounds gold tax, cooldown, and mutation tuning.
+        // Cost scales linearly with generation (matches the existing
+        // VillageManagementEngine.CalculateUpgradeCost style - a simple,
+        // easily-tunable formula rather than an unbounded exponential).
+        private const long BaseBreedingCostGold = 500L;
+        private const long BreedingCooldownSeconds = 3600L;
+        private const double EpicMutationChance = 0.05;
+
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry _playerRegistry;
 
@@ -79,6 +87,19 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
+                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+                // Lazily clear a parent's IsBreedingActive flag once its cooldown
+                // has actually elapsed, rather than requiring a separate sweep.
+                if (pChar.IsBreedingActive && pChar.BreedingCooldownEndEpoch <= nowEpoch) pChar.IsBreedingActive = false;
+                if (mChar.IsBreedingActive && mChar.BreedingCooldownEndEpoch <= nowEpoch) mChar.IsBreedingActive = false;
+
+                if (pChar.IsBreedingActive || mChar.IsBreedingActive)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
                 var pVec = new GeneticVector(pLineage.GeneticVector);
                 var mVec = new GeneticVector(mLineage.GeneticVector);
 
@@ -89,7 +110,28 @@ namespace FolkIdle.Server.Engine
                 }
 
                 int maxGen = Math.Max(pLineage.GenerationIndex, mLineage.GenerationIndex);
+
+                long breedingCost = BaseBreedingCostGold * (maxGen + 1);
+                var goldRecord = await dbContext.CommodityRecords
+                    .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
+                    .SingleOrDefaultAsync();
+
+                if (goldRecord == null || goldRecord.Quantity < breedingCost)
+                {
+                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 15, Value2 = 5, Timestamp = Environment.TickCount64 });
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                goldRecord.Quantity -= breedingCost;
+
                 long childGenome = GeneticSplicingEngine.Breed(pLineage.GeneticVector, mLineage.GeneticVector, maxGen);
+                bool isEpicMutation = Random.Shared.NextDouble() < EpicMutationChance;
+
+                pChar.IsBreedingActive = true;
+                pChar.BreedingCooldownEndEpoch = nowEpoch + BreedingCooldownSeconds;
+                mChar.IsBreedingActive = true;
+                mChar.BreedingCooldownEndEpoch = nowEpoch + BreedingCooldownSeconds;
 
                 var childId = Guid.NewGuid();
                 var newChar = new CharacterRecord
@@ -107,7 +149,8 @@ namespace FolkIdle.Server.Engine
                     ParentPaternalId = paternalId,
                     ParentMaternalId = maternalId,
                     GenerationIndex = maxGen + 1,
-                    GeneticVector = childGenome
+                    GeneticVector = childGenome,
+                    IsEpicMutation = isEpicMutation
                 };
 
                 dbContext.CharacterRecords.Add(newChar);

@@ -105,8 +105,17 @@ namespace FolkIdle.Client.Engine
         public long StoneStock { get; private set; }
         public long IronOreStock { get; private set; }
 
+        // Modul 16/21: character attributes and equipped gear references.
+        public int VisualSTR { get; private set; }
+        public int VisualDEX { get; private set; }
+        public int VisualCON { get; private set; }
+        public int VisualLCK { get; private set; }
+        public long VisualEquippedWeaponId { get; private set; }
+        public long VisualEquippedArmorId { get; private set; }
+
         public event System.Action OnVillageStateUpdated;
         public event System.Action OnGuildStateUpdated;
+        public static event System.Action OnCharacterStateUpdated;
 
         private struct ServerSnapshot
         {
@@ -205,6 +214,7 @@ namespace FolkIdle.Client.Engine
 
                     ApplyVillagePacketState(in packet);
                     ApplyGuildPacketState(in packet);
+                    ApplyCharacterPacketState(in packet);
 
                     _hasReceivedState = true;
                 }
@@ -313,6 +323,7 @@ namespace FolkIdle.Client.Engine
 
             ApplyVillagePacketState(in _snapshotB.Packet);
             ApplyGuildPacketState(in _snapshotB.Packet);
+            ApplyCharacterPacketState(in _snapshotB.Packet);
         }
 
         // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
@@ -386,6 +397,39 @@ namespace FolkIdle.Client.Engine
             VisualGuildRaidBossMaxHp = raidBossMaxHp;
 
             OnGuildStateUpdated?.Invoke();
+        }
+
+        // Modul 16/21: character attribute/equip change detection. Same pattern
+        // as ApplyVillagePacketState/ApplyGuildPacketState - discrete values only
+        // ever come from the latest packet, shared by both the first-packet and
+        // steady-state interpolation paths above, fires OnCharacterStateUpdated
+        // only when a stat or equip slot actually changed.
+        private void ApplyCharacterPacketState(in StateUpdatePacket packet)
+        {
+            int str = packet.STR;
+            int dex = packet.DEX;
+            int con = packet.CON;
+            int lck = packet.LCK;
+            long equippedWeaponId = packet.EquippedWeaponId;
+            long equippedArmorId = packet.EquippedArmorId;
+
+            bool changed = str != VisualSTR
+                || dex != VisualDEX
+                || con != VisualCON
+                || lck != VisualLCK
+                || equippedWeaponId != VisualEquippedWeaponId
+                || equippedArmorId != VisualEquippedArmorId;
+
+            if (!changed) return;
+
+            VisualSTR = str;
+            VisualDEX = dex;
+            VisualCON = con;
+            VisualLCK = lck;
+            VisualEquippedWeaponId = equippedWeaponId;
+            VisualEquippedArmorId = equippedArmorId;
+
+            OnCharacterStateUpdated?.Invoke();
         }
 
         public int GetLegacyShardBalance()

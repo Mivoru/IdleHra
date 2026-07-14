@@ -340,6 +340,7 @@ namespace FolkIdle.Server.Tests
                     BuildingId = VillageManagementEngine.BreedingGroundsBuildingId,
                     CurrentLevel = 1
                 });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10000L });
                 db.CharacterRecords.AddRange(
                     new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
                     new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false });
@@ -364,6 +365,161 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(1, childCharacter.Level);
             Assert.Equal(0, childCharacter.AgePhase);
             Assert.Equal(1, childLineage.GenerationIndex);
+
+            var updatedParentA = await verifyDb.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == parentAId);
+            var updatedGoldRecord = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "gold");
+
+            Assert.True(updatedParentA.IsBreedingActive);
+            Assert.True(updatedParentA.BreedingCooldownEndEpoch > 0L);
+            Assert.Equal(10000L - 500L, updatedGoldRecord.Quantity);
+        }
+
+        [Fact]
+        public async Task Test_Breeding_RollbackOnInsufficientGold()
+        {
+            const long testPlayerId = 950000002L;
+            Guid parentAId = Guid.NewGuid();
+            Guid parentBId = Guid.NewGuid();
+
+            var sharedGenome = new GeneticVector(0);
+            sharedGenome.LocusRace = new Locus { Dominant = 1, Recessive = 1 };
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.BreedingGroundsBuildingId,
+                    CurrentLevel = 1
+                });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 1L });
+                db.CharacterRecords.AddRange(
+                    new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
+                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false });
+                db.CharacterLineages.AddRange(
+                    new CharacterLineageRegistry { CharacterId = parentAId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
+                    new CharacterLineageRegistry { CharacterId = parentBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue });
+                await db.SaveChangesAsync();
+            }
+
+            var breedingEngine = new BreedingEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await breedingEngine.ExecuteBreedingAsync(testPlayerId, parentAId, parentBId);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            bool childExists = await verifyDb.CharacterLineages.AsNoTracking()
+                .AnyAsync(l => l.ParentPaternalId == parentAId && l.ParentMaternalId == parentBId);
+            var unchangedGoldRecord = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "gold");
+            var unchangedParentA = await verifyDb.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == parentAId);
+
+            Assert.False(childExists);
+            Assert.Equal(1L, unchangedGoldRecord.Quantity);
+            Assert.False(unchangedParentA.IsBreedingActive);
+        }
+
+        [Fact]
+        public async Task Test_Breeding_RollbackWhenParentNotOwnedByPlayer()
+        {
+            const long testPlayerId = 950000003L;
+            const long attackerPlayerId = 950000004L;
+            Guid parentAId = Guid.NewGuid();
+            Guid parentBId = Guid.NewGuid();
+
+            var sharedGenome = new GeneticVector(0);
+            sharedGenome.LocusRace = new Locus { Dominant = 1, Recessive = 1 };
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.AddRange(
+                    new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() },
+                    new PlayerRecord { Id = attackerPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = attackerPlayerId,
+                    BuildingId = VillageManagementEngine.BreedingGroundsBuildingId,
+                    CurrentLevel = 1
+                });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = attackerPlayerId, ItemId = "gold", Quantity = 10000L });
+                // Both parents belong to testPlayerId, not the attacker attempting to breed them.
+                db.CharacterRecords.AddRange(
+                    new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
+                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false });
+                db.CharacterLineages.AddRange(
+                    new CharacterLineageRegistry { CharacterId = parentAId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
+                    new CharacterLineageRegistry { CharacterId = parentBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue });
+                await db.SaveChangesAsync();
+            }
+
+            var breedingEngine = new BreedingEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await breedingEngine.ExecuteBreedingAsync(attackerPlayerId, parentAId, parentBId);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            bool childExists = await verifyDb.CharacterLineages.AsNoTracking()
+                .AnyAsync(l => l.ParentPaternalId == parentAId && l.ParentMaternalId == parentBId);
+            var unchangedGoldRecord = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == attackerPlayerId && c.ItemId == "gold");
+
+            Assert.False(childExists);
+            Assert.Equal(10000L, unchangedGoldRecord.Quantity);
+        }
+
+        [Fact]
+        public async Task Test_Breeding_RollbackWhileParentOnCooldown()
+        {
+            const long testPlayerId = 950000005L;
+            Guid parentAId = Guid.NewGuid();
+            Guid parentBId = Guid.NewGuid();
+
+            var sharedGenome = new GeneticVector(0);
+            sharedGenome.LocusRace = new Locus { Dominant = 1, Recessive = 1 };
+
+            long futureCooldownEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 3600L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.BreedingGroundsBuildingId,
+                    CurrentLevel = 1
+                });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10000L });
+                db.CharacterRecords.AddRange(
+                    new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsBreedingActive = true, BreedingCooldownEndEpoch = futureCooldownEpoch },
+                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false });
+                db.CharacterLineages.AddRange(
+                    new CharacterLineageRegistry { CharacterId = parentAId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
+                    new CharacterLineageRegistry { CharacterId = parentBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue });
+                await db.SaveChangesAsync();
+            }
+
+            var breedingEngine = new BreedingEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await breedingEngine.ExecuteBreedingAsync(testPlayerId, parentAId, parentBId);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            bool childExists = await verifyDb.CharacterLineages.AsNoTracking()
+                .AnyAsync(l => l.ParentPaternalId == parentAId && l.ParentMaternalId == parentBId);
+            var unchangedGoldRecord = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "gold");
+
+            Assert.False(childExists);
+            Assert.Equal(10000L, unchangedGoldRecord.Quantity);
         }
 
         [Fact]

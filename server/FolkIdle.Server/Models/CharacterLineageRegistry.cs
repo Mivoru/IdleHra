@@ -17,6 +17,14 @@ namespace FolkIdle.Server.Models
         public int GenerationIndex { get; set; }
         public long GeneticVector { get; set; }
 
+        // Modul 13.4.3: set when BreedingEngine's grand-mutation roll (separate
+        // from GeneticSplicingEngine's per-locus allele noise) triggers on this
+        // child's birth. Persisted as a marker only for now - not yet consumed
+        // by RaceAttributeGrowth/StatsCalculator, matching the existing
+        // LocusSpeed/LocusCrit/LocusYield loci which are also bred but not yet
+        // read anywhere downstream.
+        public bool IsEpicMutation { get; set; }
+
         public CharacterRecord? Character { get; set; }
     }
 }
