@@ -19,10 +19,14 @@ namespace FolkIdle.Client.Network
 
         private ClientWebSocket _webSocket;
         private CancellationTokenSource _cts;
-        
+
         // Single reusable buffer to prevent GC allocations in unity Update
-        private byte[] _receiveBuffer = new byte[1024]; 
-        
+        private byte[] _receiveBuffer = new byte[1024];
+
+        // Reused across connection attempts/retries so the handshake send never
+        // allocates on the hot path.
+        private readonly byte[] _authBuffer = new byte[Marshal.SizeOf<ClientAuthPacket>()];
+
         // Thread-safe queue for main-thread consumption
         public ConcurrentQueue<StateUpdatePacket> PacketQueue { get; } = new ConcurrentQueue<StateUpdatePacket>();
         private long _lastPlayerId;
@@ -31,6 +35,7 @@ namespace FolkIdle.Client.Network
 
         public void Start()
         {
+            AuthTokenBootstrap.Initialize();
             NetworkPacketLayoutGuard.Validate();
             FlightRecorder.Initialize();
             _webSocket = new ClientWebSocket();
@@ -45,6 +50,15 @@ namespace FolkIdle.Client.Network
                 await _webSocket.ConnectAsync(new Uri("ws://localhost:8080/"), _cts.Token);
                 FlightRecorder.RecordNetworkState(1);
                 Debug.Log("WebSocket Connected.");
+
+                if (!Guid.TryParse(AuthenticatorToken, out Guid authenticatorTokenGuid))
+                {
+                    Debug.LogError("WebSocketClient: AuthenticatorToken is empty or invalid; aborting before handshake.");
+                    await _webSocket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Missing authenticator token", CancellationToken.None);
+                    return;
+                }
+
+                await SendAuthHandshakeAsync(authenticatorTokenGuid);
 
                 var segment = new ArraySegment<byte>(_receiveBuffer);
 
@@ -70,6 +84,28 @@ namespace FolkIdle.Client.Network
                 FlightRecorder.RecordNetworkState(3);
                 Debug.LogError($"WebSocket Error: {ex.Message}");
             }
+        }
+
+        // Must be the very first message on the socket - NetworkBroadcastSystem
+        // gives the connection 5 seconds to send a binary ClientAuthPacket before
+        // dropping it. AssetHash/PlatformSignature are sent as 0 (the server only
+        // enforces them when ExpectedCatalogHashLong/ExpectedPlatformSignatureLong
+        // are configured); PlayerGuid is sent as Guid.Empty since the server never
+        // reads it back off the auth packet and the client has no PlayerGuid of
+        // its own to report yet.
+        private async Task SendAuthHandshakeAsync(Guid authenticatorTokenGuid)
+        {
+            ClientAuthPacket authPacket = new ClientAuthPacket
+            {
+                PlayerGuid = Guid.Empty,
+                AuthenticatorToken = authenticatorTokenGuid,
+                AssetHash = 0,
+                PlatformSignature = 0
+            };
+
+            System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref _authBuffer[0], authPacket);
+            var segment = new ArraySegment<byte>(_authBuffer);
+            await _webSocket.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
         }
 
         private void ParseAndEnqueuePacket(int length)

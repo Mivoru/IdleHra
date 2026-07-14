@@ -7,6 +7,7 @@ namespace FolkIdle.Client.Network
     {
         public const int ExpectedClientCommandSize = 384;
         public const int ExpectedStateUpdateSize = 654;
+        public const int ExpectedClientAuthSize = 48;
 
         public static void Validate()
         {
@@ -20,6 +21,12 @@ namespace FolkIdle.Client.Network
             if (commandSize != ExpectedClientCommandSize)
             {
                 throw new InvalidOperationException($"ClientCommandPacket byte layout mismatch. Expected {ExpectedClientCommandSize}, got {commandSize}.");
+            }
+
+            int authSize = Unsafe.SizeOf<ClientAuthPacket>();
+            if (authSize != ExpectedClientAuthSize)
+            {
+                throw new InvalidOperationException($"ClientAuthPacket byte layout mismatch. Expected {ExpectedClientAuthSize}, got {authSize}.");
             }
         }
     }
