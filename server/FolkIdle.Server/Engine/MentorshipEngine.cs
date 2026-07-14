@@ -18,6 +18,16 @@ namespace FolkIdle.Server.Engine
         private const int MentorMinimumLevel = 10;
         private const double MaxExpBonusMultiplier = 1.50;
         private const double ExpBonusMultiplierPerLevel = 0.005;
+
+        // Modul 13.4.3: a contract must live at least this long before it is
+        // considered "matured" - terminating earlier than this triggers the
+        // mentee's XP penalty below. Not specified numerically anywhere in the
+        // GDD; 7 days chosen to match the weekly cadence already established
+        // elsewhere in this codebase (GuildWarEngine's matchmaking loop).
+        private const long MentorshipMaturationThresholdSeconds = 604800L;
+        private const long EarlyTerminationXpPenaltySeconds = 86400L;
+        private const float EarlyTerminationXpPenaltyMultiplier = 0.8f;
+
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry _playerRegistry;
 
@@ -194,6 +204,78 @@ namespace FolkIdle.Server.Engine
                 await transaction.RollbackAsync();
                 Console.WriteLine($"Mentorship contract failed: {ex.Message}");
                 return MentorshipContractResult.InvalidRequest;
+            }
+        }
+
+        // Modul 13.4.3: either party (mentor or mentee) may terminate; the
+        // penalty always lands on the mentee (the student) regardless of who
+        // initiated it, matching the brief's "enforce a penalty on the
+        // student" wording.
+        public async Task ExecuteTerminateMentorshipAsync(long requestingPlayerId, long counterpartyPlayerId)
+        {
+            if (requestingPlayerId <= 0 || counterpartyPlayerId <= 0 || requestingPlayerId == counterpartyPlayerId)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = requestingPlayerId, EventType = 3, Value1 = 56, Value2 = 1, Timestamp = Environment.TickCount64 });
+                return;
+            }
+
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            try
+            {
+                var contract = await dbContext.MentorshipContracts
+                    .FromSqlRaw("SELECT * FROM \"MentorshipContracts\" WHERE (\"MenteePlayerId\" = {0} AND \"MentorPlayerId\" = {1}) OR (\"MentorPlayerId\" = {0} AND \"MenteePlayerId\" = {1}) FOR UPDATE", requestingPlayerId, counterpartyPlayerId)
+                    .SingleOrDefaultAsync();
+
+                if (contract == null)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                bool maturedEarly = nowEpoch - contract.TimestampEstablished < MentorshipMaturationThresholdSeconds;
+                long menteePlayerId = contract.MenteePlayerId;
+                long penaltyExpiresEpoch = 0L;
+
+                if (maturedEarly)
+                {
+                    var menteePlayer = await dbContext.PlayerRecords
+                        .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", menteePlayerId)
+                        .SingleOrDefaultAsync();
+
+                    if (menteePlayer != null)
+                    {
+                        penaltyExpiresEpoch = nowEpoch + EarlyTerminationXpPenaltySeconds;
+                        menteePlayer.XpPenaltyExpiresEpoch = penaltyExpiresEpoch;
+                    }
+                }
+
+                dbContext.MentorshipContracts.Remove(contract);
+
+                await dbContext.SaveChangesAsync();
+
+                int remainingMenteeContractCount = await dbContext.MentorshipContracts
+                    .AsNoTracking()
+                    .CountAsync(m => m.MenteePlayerId == menteePlayerId || m.MentorPlayerId == menteePlayerId);
+
+                await transaction.CommitAsync();
+
+                _playerRegistry.MentorshipContractUpdateQueue.Enqueue(new MentorshipContractUpdateNotification
+                {
+                    PlayerId = menteePlayerId,
+                    MentorPlayerId = 0,
+                    ExpBonusMultiplier = 1.0,
+                    ActiveContractCount = ClampByte(remainingMenteeContractCount),
+                    XpPenaltyExpiresEpoch = penaltyExpiresEpoch
+                });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                Console.WriteLine($"Mentorship termination failed: {ex.Message}");
             }
         }
 

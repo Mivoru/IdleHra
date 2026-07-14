@@ -439,7 +439,7 @@ namespace FolkIdle.Server.Engine
 
         public static bool ValidateMentorshipRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
         {
-            if (packet.Command != FolkIdle.Server.Network.CommandType.EstablishMentorship)
+            if (packet.Command != FolkIdle.Server.Network.CommandType.EstablishMentorship && packet.Command != FolkIdle.Server.Network.CommandType.TerminateMentorship)
             {
                 return true;
             }

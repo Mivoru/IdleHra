@@ -68,15 +68,22 @@ namespace FolkIdle.Server.Engine
         // Modul 13.4.3: cached inherited genetic loci, hydrated at login from
         // the active character's CharacterLineages row (see
         // StateCheckpointManager.LoadPlayerState). Read as plain O(1) field
-        // access from StatsCalculator every tick - never re-derived from
-        // GeneticVector on the hot path. LocusYield is cached for a future
-        // gathering-yield bonus system but not yet consumed anywhere, matching
-        // the existing LocusSpeed/LocusCrit precedent before this task wired
-        // them into StatsCalculator.
+        // access from StatsCalculator/gathering every tick - never re-derived
+        // from GeneticVector on the hot path.
         public bool IsEpicMutation;
         public int LocusSpeed;
         public int LocusCrit;
         public int LocusYield;
+
+        // Modul 13.4.3: set when the active character's lineage was flagged
+        // IsInbred at breeding time (see BreedingEngine). Consumed by
+        // RaceAttributeGrowth to apply a -25% level-up growth penalty.
+        public bool IsInbred;
+
+        // Modul 13.4.3: unix-epoch-seconds until which character XP generation
+        // is reduced by 20 percent (see MentorshipEngine.ExecuteTerminateMentorshipAsync).
+        // 0 means no active penalty.
+        public long XpPenaltyExpiresEpoch;
 
         public int AutoEatThreshold;
         public int Food1_ItemId;

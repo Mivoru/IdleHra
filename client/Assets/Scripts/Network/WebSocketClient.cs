@@ -729,6 +729,27 @@ namespace FolkIdle.Client.Network
             }
         }
 
+        public void SendTerminateMentorshipCommandZeroAlloc(uint counterpartyPlayerId)
+        {
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                ClientCommandPacket packet = new ClientCommandPacket
+                {
+                    Command = CommandType.TerminateMentorship,
+                    TargetId = 0,
+                    SecondaryId = 0,
+                    TertiaryId = 0,
+                    LimitPrice = 0,
+                    IsBuy = 0,
+                    QualityTier = 0,
+                    TargetPlayerId = counterpartyPlayerId,
+                    MentorshipRole = 0
+                };
+
+                SendPacket(ref packet);
+            }
+        }
+
         public void SendVillageUpgradeCommandZeroAlloc(uint targetBuildingId)
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)

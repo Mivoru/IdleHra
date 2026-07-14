@@ -25,6 +25,12 @@ namespace FolkIdle.Server.Models
         // read anywhere downstream.
         public bool IsEpicMutation { get; set; }
 
+        // Modul 13.4.3: set by BreedingEngine when both candidate parents share
+        // a common ancestor within 2 generations (parent-child pairing, or full/
+        // half siblings sharing a parent). Consumed by RaceAttributeGrowth to
+        // apply a -25% level-up growth penalty for this character's lifetime.
+        public bool IsInbred { get; set; }
+
         public CharacterRecord? Character { get; set; }
     }
 }

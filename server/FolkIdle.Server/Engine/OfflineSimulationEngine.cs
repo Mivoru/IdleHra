@@ -176,7 +176,23 @@ namespace FolkIdle.Server.Engine
             long masteryXpGained = allowedActions * node.BaseMasteryXpReward;
             ApplyGatheringMasteryXp(ref payload, node.ProfessionType, masteryXpGained);
 
-            int lootRolls = (int)(allowedActions * payload.CachedCodexYieldMultiplier);
+            // Modul 13.4.3: LocusYield (+4% harvest rolls per point) and
+            // CombatStats.LootLuckPct (multiplicative, matching FinalChance =
+            // BaseChance * (1 + LootLuckPct / 100.0)) mirror the same bonuses
+            // applied in SimulationEngine's live-tick and instant-warp gathering
+            // paths, so offline-login catch-up yields consistently too.
+            int gatherProjectionAgePhase = 1;
+            int gatherProjectionRaceId = 0;
+            if (payload.Slot1_CharacterId != Guid.Empty)
+            {
+                gatherProjectionAgePhase = payload.Slot1_AgePhase;
+                gatherProjectionRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
+            }
+            CombatStats gatherProjectionStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherProjectionAgePhase, payload.CompletedAreaFlags, gatherProjectionRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit);
+            double lootLuckFactor = 1.0 + (gatherProjectionStats.LootLuckPct / 100.0);
+            double locusYieldFactor = 1.0 + (payload.LocusYield * 0.04);
+
+            int lootRolls = (int)(allowedActions * payload.CachedCodexYieldMultiplier * locusYieldFactor * lootLuckFactor);
             return new LootProjection(true, node.ActivityId, lootRolls);
         }
 
@@ -237,6 +253,13 @@ namespace FolkIdle.Server.Engine
         private static void ApplyCombatXp(ref TickStatePayload payload, long xpGained)
         {
             if (xpGained <= 0) return;
+
+            // Modul 13.4.3: -20% character XP generation while an early
+            // mentorship termination penalty is active (see MentorshipEngine).
+            if (payload.XpPenaltyExpiresEpoch > DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            {
+                xpGained = (long)(xpGained * 0.8);
+            }
 
             payload.CurrentXp += xpGained;
             while (true)

@@ -37,5 +37,12 @@ namespace FolkIdle.Server.Models
         // actually a long).
         public long? EquippedWeaponId { get; set; }
         public long? EquippedArmorId { get; set; }
+
+        // Modul 13.4.3: set by MentorshipEngine when a mentee's contract is
+        // terminated before its maturation threshold - while this is in the
+        // future, character XP generation is reduced (see StatsCalculator
+        // consumers of TickStatePayload.XpPenaltyExpiresEpoch). 0 means no
+        // active penalty.
+        public long XpPenaltyExpiresEpoch { get; set; }
     }
 }

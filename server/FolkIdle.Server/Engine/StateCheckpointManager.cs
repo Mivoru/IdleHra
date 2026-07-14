@@ -160,6 +160,7 @@ namespace FolkIdle.Server.Engine
                     player.BaseLuck = state.LCK;
                     player.EquippedWeaponId = state.EquippedWeaponId == 0L ? null : state.EquippedWeaponId;
                     player.EquippedArmorId = state.EquippedArmorId == 0L ? null : state.EquippedArmorId;
+                    player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
                     await UpsertAccountChronoRegistryAsync(dbContext, state);
                     await UpsertChroniclePassAsync(dbContext, state);
                     await UpsertLifetimeAchievementsAsync(dbContext, player, state);
@@ -458,6 +459,7 @@ namespace FolkIdle.Server.Engine
                 LCK = player.BaseLuck,
                 EquippedWeaponId = player.EquippedWeaponId ?? 0L,
                 EquippedArmorId = player.EquippedArmorId ?? 0L,
+                XpPenaltyExpiresEpoch = player.XpPenaltyExpiresEpoch,
                 CachedEquippedFlatAttack = equippedAttack,
                 CachedEquippedFlatDefense = equippedDefense,
                 CachedEquippedCritBonus = equippedCrit,
@@ -520,6 +522,7 @@ namespace FolkIdle.Server.Engine
                     payload.LocusCrit = slot1GeneVec.LocusCrit.Dominant;
                     payload.LocusYield = slot1GeneVec.LocusYield.Dominant;
                     payload.IsEpicMutation = slot1Lineage.IsEpicMutation;
+                    payload.IsInbred = slot1Lineage.IsInbred;
                 }
             }
             if (characters.Count > 1)

@@ -28,6 +28,14 @@ namespace FolkIdle.Server.Engine
                 xpMultiplier += 15;
             }
             int effectiveXp = (baseExpReward * xpMultiplier) / 100;
+
+            // Modul 13.4.3: -20% character XP generation while an early
+            // mentorship termination penalty is active (see MentorshipEngine).
+            if (payload.XpPenaltyExpiresEpoch > DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            {
+                effectiveXp = (int)(effectiveXp * 0.8f);
+            }
+
             payload.CurrentXp += effectiveXp;
             
             // Validate lineage bounds

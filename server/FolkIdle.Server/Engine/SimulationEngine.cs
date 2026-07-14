@@ -581,6 +581,11 @@ namespace FolkIdle.Server.Engine
                         currentPayload.ActiveMentorPlayerId = mentorshipNotif.MentorPlayerId;
                         currentPayload.MentorshipExpBonusMultiplier = mentorshipNotif.ExpBonusMultiplier;
                         currentPayload.ActiveMentorshipContractCount = mentorshipNotif.ActiveContractCount;
+                        if (mentorshipNotif.XpPenaltyExpiresEpoch > 0)
+                        {
+                            currentPayload.XpPenaltyExpiresEpoch = mentorshipNotif.XpPenaltyExpiresEpoch;
+                        }
+                        currentPayload.IsDirty = true;
                     }
                 }
 
@@ -1086,6 +1091,23 @@ namespace FolkIdle.Server.Engine
                                 _networkSystem.PurgeTokensForPlayer(menteePlayerId);
                                 _networkSystem.ForceDisconnect(menteePlayerId);
                             }
+                        });
+                    }
+                    else if (cmd.Command == CommandType.TerminateMentorship)
+                    {
+                        if (!ClientCommandValidator.ValidateMentorshipRequest(ref currentPayload, ref cmd))
+                        {
+                            _activePlayers.Remove(routingPlayerId);
+                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
+                            _networkSystem.ForceDisconnect(routingPlayerId);
+                            continue;
+                        }
+
+                        long requestingPlayerId = currentPayload.PlayerId;
+                        long counterpartyPlayerId = cmd.TargetPlayerId;
+
+                        Task.Run(async () => {
+                            await _mentorshipEngine.ExecuteTerminateMentorshipAsync(requestingPlayerId, counterpartyPlayerId);
                         });
                     }
                     else if (cmd.Command == CommandType.ContributeToWarSupply)
@@ -1928,6 +1950,13 @@ namespace FolkIdle.Server.Engine
             AddSeasonalXp(ref payload, ClampLongToInt(xpGain));
 
             long goldReward = completedKills * monster.BaseGoldReward * GlobalEngineState.GlobalGoldDropMultiplier / 100L;
+
+            // Modul 13.4.3: Human's innate +5% Gold acquisition passive, mirrored
+            // for the offline warp path.
+            int warpGoldActiveAgePhase = payload.Slot1_CharacterId != System.Guid.Empty ? payload.Slot1_AgePhase : 1;
+            var warpGoldCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, warpGoldActiveAgePhase, payload.CompletedAreaFlags, warpActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit);
+            goldReward = (long)(goldReward * (1.0f + warpGoldCombatStats.GoldAcquisitionMultiplierPct / 100f));
+
             if (goldReward > 0)
             {
                 payload.AddGold(goldReward);
@@ -1968,19 +1997,45 @@ namespace FolkIdle.Server.Engine
 
         private static long CalculateExpectedWarpDrops(ref TickStatePayload payload, long completedCycles, int professionType, double integratedBuffMultiplier)
         {
+            int warpGatherActiveAgePhase = 1;
+            int warpGatherActiveRaceId = 0;
+            if (payload.Slot1_CharacterId != System.Guid.Empty)
+            {
+                warpGatherActiveAgePhase = payload.Slot1_AgePhase;
+                warpGatherActiveRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
+            }
+            var warpGatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, warpGatherActiveAgePhase, payload.CompletedAreaFlags, warpGatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit);
+
             int monolithLevel = professionType == 0 ? payload.CachedWoodcuttingMonolithLevel : payload.CachedMiningMonolithLevel;
             double yieldBonusPct = System.Math.Min(monolithLevel, 50);
             double decayedLuckPct = payload.LCK <= 0 ? 0.0 : System.Math.Log(payload.LCK + 1.0) * 2.5;
-            double raceMasteryYieldBonusPct = professionType == 1
-                ? RaceMasteryResolver.GetKoboldOreDuplicationBonusPct(payload.KoboldMasteryLevel)
-                : RaceMasteryResolver.GetMoosleuteDoubleHarvestBonusPct(payload.MoosleuteMasteryLevel);
+            double raceMasteryYieldBonusPct;
+            if (professionType == 1)
+            {
+                // Modul 13.4.3: Kobold's innate baseline (not mastery-scaled) added
+                // alongside the mastery-scaled bonus.
+                raceMasteryYieldBonusPct = RaceMasteryResolver.GetKoboldOreDuplicationBonusPct(payload.KoboldMasteryLevel) + warpGatherCombatStats.MiningOreDuplicationBonusPct;
+            }
+            else
+            {
+                raceMasteryYieldBonusPct = RaceMasteryResolver.GetMoosleuteDoubleHarvestBonusPct(payload.MoosleuteMasteryLevel) + warpGatherCombatStats.WoodcuttingYieldBonusPct;
+            }
             double multiplier = GlobalEngineState.GlobalDropMultiplier + yieldBonusPct + decayedLuckPct + raceMasteryYieldBonusPct;
             if (ActiveGlobalEventId == 1)
             {
                 multiplier += 20.0;
             }
 
-            return (long)System.Math.Floor(completedCycles * System.Math.Max(0.0, multiplier) * integratedBuffMultiplier / 100.0);
+            // Modul 13.4.3: LocusYield mirrors the live-tick gathering block's
+            // +4 percentage points per point bonus for the offline warp path.
+            multiplier += payload.LocusYield * 4.0;
+
+            // Modul 13.4.3: CombatStats.LootLuckPct multiplicatively scales the
+            // whole warp yield multiplier, matching the live-tick gathering
+            // block and FinalChance = BaseChance * (1 + LootLuckPct / 100.0).
+            double warpLootLuckFactor = 1.0 + (warpGatherCombatStats.LootLuckPct / 100.0);
+
+            return (long)System.Math.Floor(completedCycles * System.Math.Max(0.0, multiplier) * integratedBuffMultiplier * warpLootLuckFactor / 100.0);
         }
 
         private static long CalculateExpectedCombatWarpDrops(ref TickStatePayload payload, long completedKills, double integratedBuffMultiplier)
@@ -2036,6 +2091,13 @@ namespace FolkIdle.Server.Engine
             if (xpGain <= 0)
             {
                 return;
+            }
+
+            // Modul 13.4.3: -20% character XP generation while an early
+            // mentorship termination penalty is active (see MentorshipEngine).
+            if (payload.XpPenaltyExpiresEpoch > System.DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            {
+                xpGain = (long)(xpGain * 0.8);
             }
 
             payload.CurrentXp = System.Math.Max(0L, payload.CurrentXp + xpGain);
@@ -2537,6 +2599,15 @@ namespace FolkIdle.Server.Engine
                     var lootTable = ContentRegistry.GetLootTable(gatheringNode.ActivityId);
                     if (lootTable.Length > 0 && payload.InventorySpaceRemaining > 0)
                     {
+                        int gatherActiveAgePhase = 1;
+                        int gatherActiveRaceId = 0;
+                        if (payload.Slot1_CharacterId != System.Guid.Empty)
+                        {
+                            gatherActiveAgePhase = payload.Slot1_AgePhase;
+                            gatherActiveRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
+                        }
+                        var gatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherActiveAgePhase, payload.CompletedAreaFlags, gatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit);
+
                         int monolithLevel = gatheringNode.ProfessionType == 0 ? payload.CachedWoodcuttingMonolithLevel : payload.CachedMiningMonolithLevel;
                         float yieldBonusPct = Math.Min(monolithLevel * 1.0f, 50.0f);
                         int additionalYieldBonus = (int)(100f * (yieldBonusPct / 100f)); // Add to multiplier
@@ -2549,10 +2620,14 @@ namespace FolkIdle.Server.Engine
                         if (gatheringNode.ProfessionType == 1)
                         {
                             additionalYieldBonus += (int)RaceMasteryResolver.GetKoboldOreDuplicationBonusPct(payload.KoboldMasteryLevel);
+                            // Modul 13.4.3: Kobold's innate baseline (not mastery-scaled).
+                            additionalYieldBonus += (int)gatherCombatStats.MiningOreDuplicationBonusPct;
                         }
                         else
                         {
                             additionalYieldBonus += (int)RaceMasteryResolver.GetMoosleuteDoubleHarvestBonusPct(payload.MoosleuteMasteryLevel);
+                            // Modul 13.4.3: Moosleute's innate baseline (not mastery-scaled).
+                            additionalYieldBonus += (int)gatherCombatStats.WoodcuttingYieldBonusPct;
                         }
 
                         if (ActiveGlobalEventId == 1) // GoldenHarvest
@@ -2560,11 +2635,23 @@ namespace FolkIdle.Server.Engine
                             additionalYieldBonus += 20;
                         }
 
+                        // Modul 13.4.3: LocusYield (bred genetic trait, see
+                        // GeneticSplicingEngine/BreedingEngine) adds +4 percentage
+                        // points of extra harvest roll count per point, same units
+                        // as the race-mastery bonuses above.
+                        additionalYieldBonus += payload.LocusYield * 4;
+
                         int totalWeight = 0;
                         for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight;
                         if (totalWeight > 0)
                         {
-                            int multiplier = (int)((localDropMultiplier + additionalYieldBonus) * payload.CachedCodexYieldMultiplier);
+                            // Modul 13.4.3: CombatStats.LootLuckPct (LCK + equipped
+                            // gear + completed-region bonuses) multiplicatively scales
+                            // the whole roll-count multiplier, matching FinalChance =
+                            // BaseChance * (1 + LootLuckPct / 100.0) from the GDD.
+                            float lootLuckFactor = 1.0f + (gatherCombatStats.LootLuckPct / 100.0f);
+
+                            int multiplier = (int)((localDropMultiplier + additionalYieldBonus) * payload.CachedCodexYieldMultiplier * lootLuckFactor);
                             int guaranteedRolls = multiplier / 100;
                             int fractionalBonus = multiplier % 100;
                             int rollsToExecute = guaranteedRolls;
@@ -2675,8 +2762,13 @@ namespace FolkIdle.Server.Engine
             if (payload.CurrentMonsterHp > 0 && (payload.CombatTargetTickAccumulator * 100) % activeMonster.AttackIntervalMs == 0)
             {
                 // Step 1 (Hit Determination)
-                float attackerAccuracy = 100f; 
-                float defenderDodge = 100f; 
+                float attackerAccuracy = 100f;
+                // Modul 13.4.3: combatStats.DodgeChancePct (defensive potions,
+                // Vila's innate racial passive) was previously computed but never
+                // read here - defenderDodge was hardcoded to the same constant as
+                // attackerAccuracy, silently nullifying the stat. Now a higher
+                // dodge stat genuinely lowers hit chance.
+                float defenderDodge = 100f + combatStats.DodgeChancePct;
                 float hitChance = Math.Clamp(attackerAccuracy / defenderDodge, 0.05f, 0.95f);
 
                 if (Random.Shared.NextDouble() <= hitChance)
@@ -2767,6 +2859,8 @@ namespace FolkIdle.Server.Engine
                 }
 
                 long goldReward = (activeMonster.BaseGoldReward * (long)GlobalEngineState.GlobalGoldDropMultiplier) / 100L;
+                // Modul 13.4.3: Human's innate +5% Gold acquisition passive.
+                goldReward = (long)(goldReward * (1.0f + combatStats.GoldAcquisitionMultiplierPct / 100f));
                 if (goldReward > 0)
                 {
                     payload.AddGold(goldReward);

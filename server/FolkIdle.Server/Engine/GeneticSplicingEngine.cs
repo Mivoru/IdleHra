@@ -18,6 +18,28 @@ namespace FolkIdle.Server.Engine
             return cVec.RawValue;
         }
 
+        // Modul 13.4.3: applied by BreedingEngine when the two candidate parents
+        // share an ancestor within 2 generations. Degrades only the "quality"
+        // loci (Speed/Crit/Yield), never LocusRace - a genetic defect changes
+        // the child's potential, not its species.
+        public static long ApplyInbreedingDegradation(long genome)
+        {
+            var vec = new GeneticVector(genome);
+            vec.LocusSpeed = DegradeLocus(vec.LocusSpeed);
+            vec.LocusCrit = DegradeLocus(vec.LocusCrit);
+            vec.LocusYield = DegradeLocus(vec.LocusYield);
+            return vec.RawValue;
+        }
+
+        private static Locus DegradeLocus(Locus locus)
+        {
+            return new Locus
+            {
+                Dominant = (byte)(locus.Dominant - (locus.Dominant / 4)),
+                Recessive = (byte)(locus.Recessive - (locus.Recessive / 4))
+            };
+        }
+
         private static Locus SpliceLocus(Locus pLocus, Locus mLocus, int maxGeneration)
         {
             byte pAllele = Random.Shared.NextDouble() > 0.5 ? pLocus.Dominant : pLocus.Recessive;

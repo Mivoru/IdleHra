@@ -56,7 +56,8 @@ namespace FolkIdle.Server.Network
         PingNetworkDiagnostics = 52,
         LaunchGuildRaid = 53,
         EquipItem = 54,
-        UnequipItem = 55
+        UnequipItem = 55,
+        TerminateMentorship = 56
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

@@ -630,6 +630,96 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public void Test_StatsCalculator_HighLootLuckIncreasesDropWeight()
+        {
+            CombatStats lowLuck = StatsCalculator.Calculate(str: 10, dex: 10, con: 10, lck: 1);
+            CombatStats highLuck = StatsCalculator.Calculate(str: 10, dex: 10, con: 10, lck: 500, completedAreaFlags: unchecked((int)0xFFFFFFFF));
+
+            float lowLuckFactor = 1.0f + (lowLuck.LootLuckPct / 100.0f);
+            float highLuckFactor = 1.0f + (highLuck.LootLuckPct / 100.0f);
+
+            // Mirrors SimulationEngine's gathering roll formula: FinalChance =
+            // BaseChance * (1 + LootLuckPct / 100.0). A high-luck character must
+            // produce a strictly larger multiplier, shifting drop weight upward.
+            Assert.True(highLuckFactor > lowLuckFactor);
+            Assert.True(highLuck.LootLuckPct > lowLuck.LootLuckPct);
+        }
+
+        [Fact]
+        public void Test_GeneticSplicingEngine_InbreedingDegradationNeverIncreasesLoci()
+        {
+            var original = new GeneticVector(0);
+            original.LocusRace = new Locus { Dominant = RaceIds.Human, Recessive = RaceIds.Human };
+            original.LocusSpeed = new Locus { Dominant = 20, Recessive = 16 };
+            original.LocusCrit = new Locus { Dominant = 24, Recessive = 12 };
+            original.LocusYield = new Locus { Dominant = 28, Recessive = 8 };
+
+            long degradedGenome = GeneticSplicingEngine.ApplyInbreedingDegradation(original.RawValue);
+            var degraded = new GeneticVector(degradedGenome);
+
+            Assert.True(degraded.LocusSpeed.Dominant <= original.LocusSpeed.Dominant);
+            Assert.True(degraded.LocusSpeed.Recessive <= original.LocusSpeed.Recessive);
+            Assert.True(degraded.LocusCrit.Dominant <= original.LocusCrit.Dominant);
+            Assert.True(degraded.LocusCrit.Recessive <= original.LocusCrit.Recessive);
+            Assert.True(degraded.LocusYield.Dominant <= original.LocusYield.Dominant);
+            Assert.True(degraded.LocusYield.Recessive <= original.LocusYield.Recessive);
+
+            // LocusRace must never be degraded - a genetic defect changes
+            // potential, not species.
+            Assert.Equal(original.LocusRace.Dominant, degraded.LocusRace.Dominant);
+            Assert.Equal(original.LocusRace.Recessive, degraded.LocusRace.Recessive);
+        }
+
+        [Fact]
+        public async Task Test_Breeding_SiblingPairingSetsInbredFlag()
+        {
+            const long testPlayerId = 950000008L;
+            Guid grandparentId = Guid.NewGuid();
+            Guid siblingAId = Guid.NewGuid();
+            Guid siblingBId = Guid.NewGuid();
+
+            var sharedGenome = new GeneticVector(0);
+            sharedGenome.LocusRace = new Locus { Dominant = RaceIds.Human, Recessive = RaceIds.Human };
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.BreedingGroundsBuildingId,
+                    CurrentLevel = 1
+                });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10000L });
+                // Both siblings share the same paternal ancestor (the "grandparent"
+                // relative to the prospective grandchild), the classic inbreeding
+                // case within 2 generations.
+                db.CharacterRecords.AddRange(
+                    new CharacterRecord { Id = siblingAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
+                    new CharacterRecord { Id = siblingBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false });
+                db.CharacterLineages.AddRange(
+                    new CharacterLineageRegistry { CharacterId = siblingAId, ParentPaternalId = grandparentId, GenerationIndex = 1, GeneticVector = sharedGenome.RawValue },
+                    new CharacterLineageRegistry { CharacterId = siblingBId, ParentPaternalId = grandparentId, GenerationIndex = 1, GeneticVector = sharedGenome.RawValue });
+                await db.SaveChangesAsync();
+            }
+
+            var breedingEngine = new BreedingEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await breedingEngine.ExecuteBreedingAsync(testPlayerId, siblingAId, siblingBId);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            var childLineage = await verifyDb.CharacterLineages.AsNoTracking()
+                .SingleAsync(l => l.ParentPaternalId == siblingAId && l.ParentMaternalId == siblingBId);
+
+            Assert.True(childLineage.IsInbred);
+        }
+
+        [Fact]
         public async Task Test_Mentorship_XpBoostAndTickApplication()
         {
             const long mentorPlayerId = 960000001L;

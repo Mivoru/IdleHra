@@ -125,7 +125,22 @@ namespace FolkIdle.Server.Engine
 
                 goldRecord.Quantity -= breedingCost;
 
+                // Modul 13.4.3: inbreeding check within 2 generations of the
+                // prospective child, using data already loaded above (no extra
+                // query needed) - a direct parent-child pairing (one candidate
+                // parent is literally the other's own parent), or full/half
+                // siblings sharing a common parent of their own.
+                bool isInbred = paternalId == mLineage.ParentPaternalId || paternalId == mLineage.ParentMaternalId
+                    || maternalId == pLineage.ParentPaternalId || maternalId == pLineage.ParentMaternalId
+                    || (pLineage.ParentPaternalId.HasValue && (pLineage.ParentPaternalId == mLineage.ParentPaternalId || pLineage.ParentPaternalId == mLineage.ParentMaternalId))
+                    || (pLineage.ParentMaternalId.HasValue && (pLineage.ParentMaternalId == mLineage.ParentPaternalId || pLineage.ParentMaternalId == mLineage.ParentMaternalId));
+
                 long childGenome = GeneticSplicingEngine.Breed(pLineage.GeneticVector, mLineage.GeneticVector, maxGen);
+                if (isInbred)
+                {
+                    childGenome = GeneticSplicingEngine.ApplyInbreedingDegradation(childGenome);
+                }
+
                 bool isEpicMutation = Random.Shared.NextDouble() < EpicMutationChance;
 
                 pChar.IsBreedingActive = true;
@@ -150,7 +165,8 @@ namespace FolkIdle.Server.Engine
                     ParentMaternalId = maternalId,
                     GenerationIndex = maxGen + 1,
                     GeneticVector = childGenome,
-                    IsEpicMutation = isEpicMutation
+                    IsEpicMutation = isEpicMutation,
+                    IsInbred = isInbred
                 };
 
                 dbContext.CharacterRecords.Add(newChar);

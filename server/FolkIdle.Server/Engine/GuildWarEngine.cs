@@ -30,6 +30,13 @@ namespace FolkIdle.Server.Engine
 
     public class GuildWarEngine
     {
+        // Modul 13.4.3: not tied to ContentRegistry.ItemDefinitions - guild war
+        // victory tokens are a war-specific reward type, stored the same way
+        // GuildLogisticsEngine already stores deposited materials
+        // (GuildDepotBalances keyed by GuildId + ItemDefinitionId).
+        private const int GuildWarVictoryTokenItemId = 9001;
+        private const int VictoryTokenReward = 50;
+
         private readonly IServiceProvider _serviceProvider;
         public readonly ConcurrentQueue<GuildWarPointEvent> GuildWarPointQueue = new();
         public readonly ConcurrentQueue<GuildWarSupplyContribution> SupplyChainQueue = new();
@@ -215,6 +222,11 @@ namespace FolkIdle.Server.Engine
 
                         await dbContext.SaveChangesAsync(stoppingToken);
 
+                        foreach (var match in activeMatches)
+                        {
+                            await DistributeVictoryTokensAsync(dbContext, match, stoppingToken);
+                        }
+
                         var guilds = await dbContext.GuildRecords
                             .FromSqlRaw("SELECT * FROM \"GuildRecords\" FOR UPDATE")
                             .ToListAsync(stoppingToken);
@@ -324,6 +336,30 @@ namespace FolkIdle.Server.Engine
             catch (Exception)
             {
             }
+        }
+
+        // Modul 13.4.3: declares the overall match winner by summing all three
+        // war fronts (Combat/Logistics/Supply Chain) and credits a flat
+        // victory-token reward to the winning guild's GuildDepotBalances -
+        // matching GuildLogisticsEngine's existing upsert-on-conflict pattern
+        // for depositing materials into that same table. A tie awards nothing.
+        private async Task DistributeVictoryTokensAsync(FolkIdleDbContext dbContext, GuildWarMatch match, CancellationToken stoppingToken)
+        {
+            int totalWpA = match.CombatVanguardWP_A + match.ProductionLogisticsWP_A + match.GatheringSupplyChainWP_A;
+            int totalWpB = match.CombatVanguardWP_B + match.ProductionLogisticsWP_B + match.GatheringSupplyChainWP_B;
+
+            long winningGuildId;
+            if (totalWpA > totalWpB) winningGuildId = match.GuildA_Id;
+            else if (totalWpB > totalWpA) winningGuildId = match.GuildB_Id;
+            else return;
+
+            var upsertDepotQuery = @"
+                INSERT INTO ""GuildDepotBalances"" (""GuildId"", ""ItemDefinitionId"", ""Quantity"")
+                VALUES ({0}, {1}, {2})
+                ON CONFLICT (""GuildId"", ""ItemDefinitionId"")
+                DO UPDATE SET ""Quantity"" = ""GuildDepotBalances"".""Quantity"" + {2};
+            ";
+            await dbContext.Database.ExecuteSqlRawAsync(upsertDepotQuery, winningGuildId, GuildWarVictoryTokenItemId, VictoryTokenReward);
         }
     }
 }

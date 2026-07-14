@@ -17,6 +17,12 @@ namespace FolkIdle.Server.Engine
         public float LootLuckPct;
         public float DodgeChancePct;
         public float LifestealPct;
+
+        // Modul 13.4.3: innate racial baseline passives.
+        public float GoldAcquisitionMultiplierPct;
+        public float MiningOreDuplicationBonusPct;
+        public float WoodcuttingYieldBonusPct;
+        public float CritMitigationPct;
     }
 
     public static class StatsCalculator
@@ -103,6 +109,63 @@ namespace FolkIdle.Server.Engine
                 stats.MaxHp += tier * 100;
                 stats.FlatPhysicalArmor += tier * 5;
                 stats.DodgeChancePct += tier * 0.01f;
+            }
+
+            // Modul 13.4.3: innate, always-on racial baseline passives - distinct
+            // from the mastery-level-scaled RaceMasteryResolver bonuses above,
+            // which only unlock/scale as a player kills that race's monsters.
+            // These apply unconditionally to every character of that race
+            // regardless of mastery progress. Placed before equipped gear/age
+            // falloff below, so only the base+potion stats are scaled - gear and
+            // age apply on top afterward, not multiplied again by race.
+            switch (activeRaceId)
+            {
+                case RaceIds.Human:
+                    // Jack-of-all-trades: no combat penalty, +5% Gold acquisition.
+                    stats.GoldAcquisitionMultiplierPct += 5f;
+                    break;
+                case RaceIds.Vila:
+                    // Agility master: +20% Flat Ranged Damage, +10% Dodge Chance
+                    // (absolute), -30% Base Armor (multiplicative).
+                    stats.FlatRangedDamage = (int)(stats.FlatRangedDamage * 1.2f);
+                    stats.DodgeChancePct += 10f;
+                    stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * 0.7f);
+                    break;
+                case RaceIds.Draugr:
+                    // Undead juggernaut: +25% Max HP, +15% Base Armor, -15%
+                    // Attack Speed (absolute).
+                    stats.MaxHp = (int)(stats.MaxHp * 1.25f);
+                    stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * 1.15f);
+                    stats.AttackSpeedPct -= 0.15f;
+                    break;
+                case RaceIds.Kobold:
+                    // Subterranean miner: +30% Mining Ore duplication chance.
+                    // The GDD's paired -20% non-ore inventory cap penalty is not
+                    // applied here - there is no per-item-category inventory
+                    // tracking anywhere in this codebase; InventorySpaceRemaining
+                    // is a single flat counter with no ore/non-ore distinction to
+                    // lock down, and building one is out of scope for this pass.
+                    stats.MiningOreDuplicationBonusPct += 30f;
+                    break;
+                case RaceIds.Moosleute:
+                    // Nature warden: +20% Woodcutting harvest yield. No dedicated
+                    // Herbalism profession exists in this codebase - see the
+                    // existing Moosleute-double-harvest-mastery-bonus precedent in
+                    // SimulationEngine's gathering block, which applies to
+                    // Woodcutting for the same reason.
+                    stats.WoodcuttingYieldBonusPct += 20f;
+                    break;
+                case RaceIds.Vodnik:
+                    // River guardian: +15% Health Regen efficiency, +10%
+                    // Critical Strike mitigation (absolute). CritMitigationPct is
+                    // computed here but not yet consumed anywhere - monsters
+                    // currently deal fixed, non-crit damage (no incoming-crit
+                    // roll exists in the combat tick to mitigate against),
+                    // matching the existing "cached but not yet consumed"
+                    // precedent (e.g. LocusYield before this task).
+                    stats.OutOfCombatHpRegen *= 1.15f;
+                    stats.CritMitigationPct += 10f;
+                    break;
             }
 
             // Modul 16/21: equipped gear (weapon + armor combined, pre-summed by

@@ -52,6 +52,12 @@ namespace FolkIdle.Server.Engine
             int lociSum = payload.LocusSpeed + payload.LocusCrit + payload.LocusYield;
             if (lociSum > 0) geneticMultiplier += lociSum * 0.001f;
 
+            // Modul 13.4.3: an inbred lineage (see BreedingEngine's ancestor
+            // check) locks growth down by a heavy -25%, composed multiplicatively
+            // with the epic/loci bonus above so a character can never fully
+            // offset the defect through good breeding luck alone.
+            if (payload.IsInbred) geneticMultiplier *= 0.75f;
+
             payload.STR += (int)(str * levelsGained * geneticMultiplier);
             payload.DEX += (int)(dex * levelsGained * geneticMultiplier);
             payload.CON += (int)(con * levelsGained * geneticMultiplier);

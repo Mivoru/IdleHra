@@ -181,6 +181,12 @@ namespace FolkIdle.Server.Engine
         public long MentorPlayerId;
         public double ExpBonusMultiplier;
         public byte ActiveContractCount;
+
+        // Modul 13.4.3: unix-epoch-seconds until which this player's character
+        // XP generation is reduced by 20 percent, set on early contract
+        // termination (see MentorshipEngine.ExecuteTerminateMentorshipAsync). 0
+        // on the "contract established" path (no penalty).
+        public long XpPenaltyExpiresEpoch;
     }
 
     public struct CodexMultiplierUpdateNotification
