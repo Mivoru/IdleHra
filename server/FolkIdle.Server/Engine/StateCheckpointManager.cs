@@ -308,10 +308,16 @@ namespace FolkIdle.Server.Engine
                 }
             }
 
+            // Modul 13 fix: RaceId filters here previously used raw literals (1, 3, 4)
+            // that predate RaceIds and never matched it - see the same fix in
+            // SimulationEngine's MasteryUpdateQueue dispatcher for details.
             var masteries = await dbContext.PlayerRaceMasteries.Where(m => m.PlayerId == playerId).ToListAsync();
-            int humanMastery = masteries.FirstOrDefault(m => m.RaceId == 1)?.MasteryLevel ?? 0;
-            int vilaMastery = masteries.FirstOrDefault(m => m.RaceId == 3)?.MasteryLevel ?? 0;
-            int draugrMastery = masteries.FirstOrDefault(m => m.RaceId == 4)?.MasteryLevel ?? 0;
+            int humanMastery = masteries.FirstOrDefault(m => m.RaceId == RaceIds.Human)?.MasteryLevel ?? 0;
+            int vilaMastery = masteries.FirstOrDefault(m => m.RaceId == RaceIds.Vila)?.MasteryLevel ?? 0;
+            int draugrMastery = masteries.FirstOrDefault(m => m.RaceId == RaceIds.Draugr)?.MasteryLevel ?? 0;
+            int koboldMastery = masteries.FirstOrDefault(m => m.RaceId == RaceIds.Kobold)?.MasteryLevel ?? 0;
+            int vodnikMastery = masteries.FirstOrDefault(m => m.RaceId == RaceIds.Vodnik)?.MasteryLevel ?? 0;
+            int moosleuteMastery = masteries.FirstOrDefault(m => m.RaceId == RaceIds.Moosleute)?.MasteryLevel ?? 0;
 
             var mentorCount = await dbContext.MentorshipAcademyAssignments
                 .CountAsync(m => m.PlayerId == playerId);
@@ -407,7 +413,7 @@ namespace FolkIdle.Server.Engine
                 ActiveActivityId = 1,
                 CurrentProgressTicks = 0,
                 RequiredProgressTicks = 50,
-                InventorySpaceRemaining = 20,
+                InventorySpaceRemaining = 20 + RaceMasteryResolver.GetHumanVaultBonusSlots(humanMastery),
                 PlayerHp = 100000,
                 CurrentGold = 10000,
                 PremiumCurrency = player.PremiumDiamonds,
@@ -429,6 +435,9 @@ namespace FolkIdle.Server.Engine
                 HumanMasteryLevel = humanMastery,
                 VilaMasteryLevel = vilaMastery,
                 DraugrMasteryLevel = draugrMastery,
+                KoboldMasteryLevel = koboldMastery,
+                VodnikMasteryLevel = vodnikMastery,
+                MoosleuteMasteryLevel = moosleuteMastery,
                 LogicEpochCounter = player.LogicEpochCounter,
                 BankedChronoSeconds = accountChrono.BankedChronoSeconds,
                 IsChronoAccelerating = chronoAccelerationActive,

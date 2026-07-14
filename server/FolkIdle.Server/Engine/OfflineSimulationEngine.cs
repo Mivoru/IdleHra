@@ -41,7 +41,9 @@ namespace FolkIdle.Server.Engine
                 return payload;
             }
 
-            long elapsedSeconds = Math.Min(MaxOfflineSeconds, rawDeltaSeconds);
+            // Modul 13: Vodnik Mastery extends the universal offline cap.
+            long effectiveMaxOfflineSeconds = RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(payload.VodnikMasteryLevel, MaxOfflineSeconds);
+            long elapsedSeconds = Math.Min(effectiveMaxOfflineSeconds, rawDeltaSeconds);
 
             await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.QuarryLevel, payload.MineLevel, payload.WarehouseLevel, elapsedSeconds);
 

@@ -44,6 +44,14 @@ namespace FolkIdle.Server.Engine
             return killCount / 10;
         }
 
+        // Modul 13: XP required for a Race Mastery record currently at
+        // 'currentLevel' to reach currentLevel+1. Single source of truth shared
+        // by the level-up loop below and the /api/v1/mastery/snapshot endpoint.
+        public static long GetRaceMasteryRequiredXp(int currentLevel)
+        {
+            return (long)(500 * currentLevel * System.Math.Pow(1.32, currentLevel));
+        }
+
         internal static async Task<(float YieldMultiplier, float DamageMultiplier)> CalculateActiveMultipliersAsync(long playerId, FolkIdleDbContext db)
         {
             int levelSum = await db.MonsterCodexEntries
@@ -153,14 +161,14 @@ namespace FolkIdle.Server.Engine
                             masteries[key] = mastery;
                         }
 
-                        long requiredXp = (long)(500 * mastery.MasteryLevel * Math.Pow(1.32, mastery.MasteryLevel));
+                        long requiredXp = GetRaceMasteryRequiredXp(mastery.MasteryLevel);
                         bool leveledUp = false;
                         while (mastery.CumulativeXp >= requiredXp)
                         {
                             mastery.CumulativeXp -= requiredXp;
                             mastery.MasteryLevel++;
                             leveledUp = true;
-                            requiredXp = (long)(500 * mastery.MasteryLevel * Math.Pow(1.32, mastery.MasteryLevel));
+                            requiredXp = GetRaceMasteryRequiredXp(mastery.MasteryLevel);
                         }
 
                         if (leveledUp)

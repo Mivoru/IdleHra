@@ -357,9 +357,16 @@ namespace FolkIdle.Server.Engine
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, masteryUpdate.PlayerId);
                     if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
                     {
-                        if (masteryUpdate.RaceId == 1) currentPayload.HumanMasteryLevel = masteryUpdate.MasteryLevel;
-                        else if (masteryUpdate.RaceId == 3) currentPayload.VilaMasteryLevel = masteryUpdate.MasteryLevel;
-                        else if (masteryUpdate.RaceId == 4) currentPayload.DraugrMasteryLevel = masteryUpdate.MasteryLevel;
+                        // Modul 13 fix: was gated on raw literals (1, 3, 4) that predate
+                        // RaceIds and never matched it - Vila updates (RaceId=2) were
+                        // silently dropped entirely, and RaceId 3/4 mislabeled Draugr's
+                        // and Kobold's levels as Vila's/Draugr's respectively.
+                        if (masteryUpdate.RaceId == RaceIds.Human) currentPayload.HumanMasteryLevel = masteryUpdate.MasteryLevel;
+                        else if (masteryUpdate.RaceId == RaceIds.Vila) currentPayload.VilaMasteryLevel = masteryUpdate.MasteryLevel;
+                        else if (masteryUpdate.RaceId == RaceIds.Draugr) currentPayload.DraugrMasteryLevel = masteryUpdate.MasteryLevel;
+                        else if (masteryUpdate.RaceId == RaceIds.Kobold) currentPayload.KoboldMasteryLevel = masteryUpdate.MasteryLevel;
+                        else if (masteryUpdate.RaceId == RaceIds.Vodnik) currentPayload.VodnikMasteryLevel = masteryUpdate.MasteryLevel;
+                        else if (masteryUpdate.RaceId == RaceIds.Moosleute) currentPayload.MoosleuteMasteryLevel = masteryUpdate.MasteryLevel;
                         currentPayload.IsDirty = true;
                     }
                 }
@@ -1837,6 +1844,8 @@ namespace FolkIdle.Server.Engine
                 finalXpMultiplier += payload.CachedMentorCount * 5;
             }
 
+            finalXpMultiplier += RaceMasteryResolver.GetHumanXpBonusPct(payload.HumanMasteryLevel);
+
             if (payload.ActiveMentorPlayerId > 0 && payload.MentorshipExpBonusMultiplier > 1.0)
             {
                 finalXpMultiplier = (int)(finalXpMultiplier * payload.MentorshipExpBonusMultiplier);
@@ -1891,7 +1900,10 @@ namespace FolkIdle.Server.Engine
             int monolithLevel = professionType == 0 ? payload.CachedWoodcuttingMonolithLevel : payload.CachedMiningMonolithLevel;
             double yieldBonusPct = System.Math.Min(monolithLevel, 50);
             double decayedLuckPct = payload.LCK <= 0 ? 0.0 : System.Math.Log(payload.LCK + 1.0) * 2.5;
-            double multiplier = GlobalEngineState.GlobalDropMultiplier + yieldBonusPct + decayedLuckPct;
+            double raceMasteryYieldBonusPct = professionType == 1
+                ? RaceMasteryResolver.GetKoboldOreDuplicationBonusPct(payload.KoboldMasteryLevel)
+                : RaceMasteryResolver.GetMoosleuteDoubleHarvestBonusPct(payload.MoosleuteMasteryLevel);
+            double multiplier = GlobalEngineState.GlobalDropMultiplier + yieldBonusPct + decayedLuckPct + raceMasteryYieldBonusPct;
             if (ActiveGlobalEventId == 1)
             {
                 multiplier += 20.0;
@@ -2452,7 +2464,21 @@ namespace FolkIdle.Server.Engine
                         int monolithLevel = gatheringNode.ProfessionType == 0 ? payload.CachedWoodcuttingMonolithLevel : payload.CachedMiningMonolithLevel;
                         float yieldBonusPct = Math.Min(monolithLevel * 1.0f, 50.0f);
                         int additionalYieldBonus = (int)(100f * (yieldBonusPct / 100f)); // Add to multiplier
-                        
+
+                        // Modul 13: Kobold ore duplication (Mining) / Moosleute yield
+                        // bonus. No dedicated Herbalism profession exists in this
+                        // codebase (only Woodcutting=0 and Mining=1), so Moosleute's
+                        // "double harvest" is applied to Woodcutting as the closest
+                        // available gathering profession.
+                        if (gatheringNode.ProfessionType == 1)
+                        {
+                            additionalYieldBonus += (int)RaceMasteryResolver.GetKoboldOreDuplicationBonusPct(payload.KoboldMasteryLevel);
+                        }
+                        else
+                        {
+                            additionalYieldBonus += (int)RaceMasteryResolver.GetMoosleuteDoubleHarvestBonusPct(payload.MoosleuteMasteryLevel);
+                        }
+
                         if (ActiveGlobalEventId == 1) // GoldenHarvest
                         {
                             additionalYieldBonus += 20;
@@ -2647,6 +2673,8 @@ namespace FolkIdle.Server.Engine
                 {
                     finalXpMultiplier += payload.CachedMentorCount * 5;
                 }
+
+                finalXpMultiplier += RaceMasteryResolver.GetHumanXpBonusPct(payload.HumanMasteryLevel);
 
                 if (payload.ActiveMentorPlayerId > 0 && payload.MentorshipExpBonusMultiplier > 1.0)
                 {

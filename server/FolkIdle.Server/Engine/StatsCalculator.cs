@@ -57,14 +57,22 @@ namespace FolkIdle.Server.Engine
             stats.LootLuckPct += areaLuckBonus;
 
             // Sprint 38: Race Mastery Milestones
-            if (activeRaceId == 3 && vilaMastery >= 10)
+            // Modul 13 fix: these previously checked raw literals (3, 4) that predate
+            // RaceIds and never matched it (RaceIds.Vila=2, RaceIds.Draugr=3), so the
+            // "Vila" bonus below fired for Draugr's active race and the "Draugr" bonus
+            // fired for Kobold's - see RaceMasteryResolver for the milestone table.
+            if (activeRaceId == RaceIds.Vila)
             {
-                stats.AttackSpeedPct += 0.15f; // Nullify armor agility penalty
+                if (vilaMastery >= 10)
+                {
+                    stats.AttackSpeedPct += 0.15f; // Nullify armor agility penalty
+                }
+                stats.CritChancePct += RaceMasteryResolver.GetVilaCritBonusPct(vilaMastery);
             }
-            
-            if (activeRaceId == 4 && draugrMastery >= 10)
+
+            if (activeRaceId == RaceIds.Draugr)
             {
-                stats.LifestealPct += 0.02f; // +2.0% Lifesteal
+                stats.LifestealPct += RaceMasteryResolver.GetDraugrLifestealBonusPct(draugrMastery) / 100f;
             }
 
             if (activeOffensivePotionId > 0 && activeOffensivePotionId <= ContentRegistry.ItemDefinitions.Length)

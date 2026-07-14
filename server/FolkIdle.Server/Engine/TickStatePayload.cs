@@ -158,6 +158,12 @@ namespace FolkIdle.Server.Engine
         public int HumanMasteryLevel;
         public int VilaMasteryLevel;
         public int DraugrMasteryLevel;
+        // Modul 13: session-cached mastery levels for the remaining three races.
+        // Server-internal only (used to gate passive bonuses live) - not mirrored
+        // into StateUpdatePacket since /api/v1/mastery/snapshot serves the client.
+        public int KoboldMasteryLevel;
+        public int VodnikMasteryLevel;
+        public int MoosleuteMasteryLevel;
         public long LogicEpochCounter;
         // Chrono-buffer: unmanaged registers — operated on 100% allocation-free on hot-path.
         public double BankedChronoSeconds;

@@ -217,6 +217,12 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/mastery/snapshot" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleMasterySnapshot(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/leaderboard/global" && context.Request.HttpMethod == "GET")
                     {
                         await HandleGlobalLeaderboard(context);
@@ -304,6 +310,14 @@ namespace FolkIdle.Server.Network
             public int Level { get; set; }
             public long Kills { get; set; }
             public long NextLevelKills { get; set; }
+        }
+
+        private sealed class RaceMasterySnapshotEntryResponse
+        {
+            public int RaceId { get; set; }
+            public int Level { get; set; }
+            public long Experience { get; set; }
+            public long NextLevelExperience { get; set; }
         }
 
         private sealed class LeaderboardEntryResponse
@@ -629,6 +643,57 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Codex snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul 13: authorized snapshot of the player's real Race Mastery
+        // progress. PlayerRaceMasteries is already populated by CodexEngine's
+        // kill-event cron. Uses plain LINQ rather than raw SQL - the table is
+        // mapped via [Table("player_race_masteries")] (lowercase, unlike every
+        // other table in this codebase), and EF Core resolves that mapping
+        // correctly on its own, sidestepping manual identifier quoting entirely.
+        private async Task HandleMasterySnapshot(HttpListenerContext context)
+        {
+            try
+            {
+                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var entries = await db.PlayerRaceMasteries
+                    .AsNoTracking()
+                    .Where(m => m.PlayerId == playerId)
+                    .ToListAsync();
+
+                var response = new System.Collections.Generic.List<RaceMasterySnapshotEntryResponse>(entries.Count);
+
+                foreach (var entry in entries)
+                {
+                    response.Add(new RaceMasterySnapshotEntryResponse
+                    {
+                        RaceId = entry.RaceId,
+                        Level = entry.MasteryLevel,
+                        Experience = entry.CumulativeXp,
+                        NextLevelExperience = CodexEngine.GetRaceMasteryRequiredXp(entry.MasteryLevel)
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Race mastery snapshot error: {ex}");
                 context.Response.StatusCode = 500;
             }
 
