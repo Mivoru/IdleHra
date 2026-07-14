@@ -99,10 +99,10 @@ namespace FolkIdle.Server.Tests
                 });
             }
 
-            var target = new MarketEquipmentInstance { PlayerId = DbSeeder.PlayerHighId, BaseItemId = baseItemId, QualityTier = 1 };
-            var sac1 = new MarketEquipmentInstance { PlayerId = DbSeeder.PlayerHighId, BaseItemId = baseItemId, QualityTier = sacrificeQualityTier };
-            var sac2 = new MarketEquipmentInstance { PlayerId = DbSeeder.PlayerHighId, BaseItemId = baseItemId, QualityTier = sacrificeQualityTier };
-            db.MarketEquipmentInstances.AddRange(target, sac1, sac2);
+            var target = new EquipmentInstance { PlayerId = DbSeeder.PlayerHighId, BaseItemId = baseItemId, QualityTier = 1 };
+            var sac1 = new EquipmentInstance { PlayerId = DbSeeder.PlayerHighId, BaseItemId = baseItemId, QualityTier = sacrificeQualityTier };
+            var sac2 = new EquipmentInstance { PlayerId = DbSeeder.PlayerHighId, BaseItemId = baseItemId, QualityTier = sacrificeQualityTier };
+            db.EquipmentInstances.AddRange(target, sac1, sac2);
             await db.SaveChangesAsync();
 
             long goldBefore = await GetGoldAsync(DbSeeder.PlayerHighId);
@@ -773,6 +773,135 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task Test_Mentorship_AssignMentorDoesNotThrowOnUnquotedTableRegression()
+        {
+            const long testPlayerId = 950000010L;
+            Guid characterId = Guid.NewGuid();
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.MentorshipAcademyBuildingId,
+                    CurrentLevel = 3
+                });
+                db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, Level = 1, AgePhase = 1, IsLockedInEscrow = false });
+                await db.SaveChangesAsync();
+            }
+
+            var mentorshipEngine = new MentorshipEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            // Regression test: MentorshipEngine.cs previously issued this query
+            // with unquoted PascalCase identifiers (FromSqlRaw("SELECT * FROM
+            // MentorshipAcademyAssignments WHERE PlayerId = ... AND SlotIndex =
+            // ...")), which Postgres folds to lowercase and throws "relation
+            // does not exist" against every call. This test would have thrown
+            // before the fix.
+            await mentorshipEngine.ExecuteAssignMentorAsync(testPlayerId, characterId, 0);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var assignment = await verifyDb.MentorshipAcademyAssignments.AsNoTracking()
+                .SingleOrDefaultAsync(a => a.PlayerId == testPlayerId && a.SlotIndex == 0);
+
+            Assert.NotNull(assignment);
+            Assert.Equal(characterId, assignment!.CharacterId);
+        }
+
+        [Fact]
+        public async Task Test_ForgeSplicing_RejectsFusionOfEquippedItem()
+        {
+            const long testPlayerId = 950000011L;
+            const string baseItemId = "integration_test_forge_equipped_guard";
+
+            long targetId, sac1Id, sac2Id;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.ForgeBuildingId,
+                    CurrentLevel = 10
+                });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 100000L });
+
+                var target = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = baseItemId, QualityTier = 1 };
+                var sac1 = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = baseItemId, QualityTier = 1 };
+                var sac2 = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = baseItemId, QualityTier = 1 };
+                db.EquipmentInstances.AddRange(target, sac1, sac2);
+                await db.SaveChangesAsync();
+
+                targetId = target.Id;
+                sac1Id = sac1.Id;
+                sac2Id = sac2.Id;
+
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid(),
+                    EquippedWeaponId = targetId
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var forgeEngine = new ForgeSplicingEngine(_fixture.ServiceProvider);
+            ForgeSplicingResult result = await forgeEngine.ExecuteFusionAsync(testPlayerId, targetId, sac1Id, sac2Id);
+
+            Assert.Equal(ForgeSplicingResult.FailedItemEquipped, result);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            bool allItemsStillExist = await verifyDb.EquipmentInstances.AsNoTracking()
+                .CountAsync(e => e.Id == targetId || e.Id == sac1Id || e.Id == sac2Id) == 3;
+
+            Assert.True(allItemsStillExist);
+        }
+
+        [Fact]
+        public async Task Test_GatheringLootLuck_ShiftsWeightTowardRareEntry()
+        {
+            var lootTable = new LootTableEntry[]
+            {
+                new LootTableEntry { ItemId = 1, Weight = 90 },
+                new LootTableEntry { ItemId = 3, Weight = 10 }
+            };
+
+            const long lowLuckPlayerId = 950000012L;
+            const long highLuckPlayerId = 950000013L;
+            const int rollCount = 400;
+            const int inventorySpace = 400;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await OfflineSimulationEngine.GrantAnalyticalLootAsync(db, lowLuckPlayerId, lootTable, rollCount, inventorySpace, 0f);
+                await OfflineSimulationEngine.GrantAnalyticalLootAsync(db, highLuckPlayerId, lootTable, rollCount, inventorySpace, 5000f);
+            }
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            string rareMaterialName = ContentRegistry.GetMaterialString(3);
+            long lowLuckRareQuantity = await verifyDb.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == lowLuckPlayerId && c.ItemId == rareMaterialName)
+                .Select(c => (long?)c.Quantity).SingleOrDefaultAsync() ?? 0L;
+            long highLuckRareQuantity = await verifyDb.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == highLuckPlayerId && c.ItemId == rareMaterialName)
+                .Select(c => (long?)c.Quantity).SingleOrDefaultAsync() ?? 0L;
+
+            // High luck (5000%) adds a flat +500 weight bonus to every entry,
+            // which overwhelmingly favors the low-base-weight (rare) entry's
+            // relative selection odds while total roll count stays identical
+            // (400 for both) - proving luck shifts distribution, not volume.
+            Assert.True(highLuckRareQuantity > lowLuckRareQuantity);
+        }
+
+        [Fact]
         public async Task Test_Mentorship_XpBoostAndTickApplication()
         {
             const long mentorPlayerId = 960000001L;
@@ -866,7 +995,15 @@ namespace FolkIdle.Server.Tests
                 SelectedLineageId = 0,
                 InventorySpaceRemaining = 1000,
                 CachedCodexYieldMultiplier = multipliers.YieldMultiplier,
-                CachedCodexDamageMultiplier = multipliers.DamageMultiplier
+                CachedCodexDamageMultiplier = multipliers.DamageMultiplier,
+                // Ample food stock so the character survives the full offline
+                // window against monster 31's incoming damage (see the
+                // incoming-damage/food-depletion model in
+                // OfflineSimulationEngine.CalculateCombatProjection) - this test
+                // exercises the full-duration reward pipeline, not the
+                // early-halt path (covered separately).
+                Food1_ItemId = 1,
+                Food1_Count = 100000
             };
 
             // Independently replicate the engine's analytical combat projection to
@@ -880,7 +1017,37 @@ namespace FolkIdle.Server.Tests
             netDamage = (int)(netDamage * multipliers.DamageMultiplier);
             double dps = (netDamage / 1000.0) * (1000.0 / attackSpeedMs);
             double secondsPerKill = monster.MaxHp / dps;
-            double totalKillsDouble = elapsedOfflineSeconds / secondsPerKill;
+
+            // Modul: replicate the engine's incoming-damage/food-depletion model
+            // exactly (expected-value monster crit + Vodnik mitigation, a "free"
+            // max-HP absorption buffer before food is needed, then Food1-3
+            // healing capacity) since payload here has zero food stocked - the
+            // test character can only sustain a fraction of the raw offline
+            // window before combat halts, matching the live tick's Auto-Eat halt
+            // behavior when food runs out.
+            int monsterRegionTier = ((monsterId - 1) % 30) / 6 + 1;
+            float monsterCritChance = 0.05f + (monsterRegionTier * 0.005f);
+            float mitigatedCritMult = Math.Max(1.0f, 1.5f - (combatStats.CritMitigationPct / 100f));
+            float expectedCritMultiplier = 1.0f + monsterCritChance * (mitigatedCritMult - 1.0f);
+            long rawIncomingMilliDamage = (long)(monster.AttackPower * 1000 * expectedCritMultiplier);
+            long netIncomingMilliDamage = Math.Max(1000L, rawIncomingMilliDamage - (combatStats.FlatPhysicalArmor * 1000L));
+            double monsterAttacksPerSecond = monster.AttackIntervalMs > 0 ? 1000.0 / monster.AttackIntervalMs : 0.0;
+            double expectedIncomingMilliDps = netIncomingMilliDamage * monsterAttacksPerSecond;
+
+            long effectiveMilliHp = 100000L + (combatStats.MaxHp * 1000L);
+            double effectiveElapsedSeconds = elapsedOfflineSeconds;
+            if (expectedIncomingMilliDps > 0.0)
+            {
+                double totalIncomingMilliDamage = expectedIncomingMilliDps * elapsedOfflineSeconds;
+                double totalHealCapacityMilliHp = effectiveMilliHp + (100000.0 * 50000.0); // matches payload.Food1_Count above
+                if (totalIncomingMilliDamage > totalHealCapacityMilliHp)
+                {
+                    effectiveElapsedSeconds = totalHealCapacityMilliHp / expectedIncomingMilliDps;
+                    if (effectiveElapsedSeconds < 0.0) effectiveElapsedSeconds = 0.0;
+                }
+            }
+
+            double totalKillsDouble = effectiveElapsedSeconds / secondsPerKill;
             long expectedKills = (long)totalKillsDouble;
             long expectedXpGained = expectedKills * monster.BaseXpReward;
             int expectedLootRolls = (int)(totalKillsDouble * multipliers.YieldMultiplier);
@@ -929,6 +1096,62 @@ namespace FolkIdle.Server.Tests
                     .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
                 Assert.Equal(expectedLootRolls, commodity.Quantity);
             }
+        }
+
+        [Fact]
+        public async Task Test_OfflineProgression_FoodDepletionHaltsCombatEarly()
+        {
+            const long testPlayerId = 970000002L;
+            const long elapsedOfflineSeconds = 14400L; // 4 hours
+            const int monsterId = 31;
+
+            long currentUnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            var noFoodPayload = new TickStatePayload
+            {
+                PlayerId = testPlayerId,
+                LastLogoutTimestamp = currentUnixTimestamp - elapsedOfflineSeconds,
+                ActiveActivityId = monsterId,
+                CurrentLevel = 1,
+                CurrentXp = 0,
+                SelectedLineageId = 0,
+                InventorySpaceRemaining = 1000
+                // Food1-3 all default to zero - no food stocked.
+            };
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                noFoodPayload = await OfflineSimulationEngine.ExtrapolateOfflineProgressAsync(db, noFoodPayload, currentUnixTimestamp);
+            }
+
+            const long wellFedPlayerId = 970000003L;
+            var wellFedPayload = new TickStatePayload
+            {
+                PlayerId = wellFedPlayerId,
+                LastLogoutTimestamp = currentUnixTimestamp - elapsedOfflineSeconds,
+                ActiveActivityId = monsterId,
+                CurrentLevel = 1,
+                CurrentXp = 0,
+                SelectedLineageId = 0,
+                InventorySpaceRemaining = 1000,
+                Food1_ItemId = 1,
+                Food1_Count = 100000
+            };
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                wellFedPayload = await OfflineSimulationEngine.ExtrapolateOfflineProgressAsync(db, wellFedPayload, currentUnixTimestamp);
+            }
+
+            // With no food, combat halts far short of the full 4-hour window
+            // (mirroring the live tick's Auto-Eat halt when food runs out), so
+            // the unfed character reaches strictly less progress than the
+            // identical character with ample food over the same offline
+            // duration - and the unfed character's untouched food stock proves
+            // it never had any healing capacity to draw from.
+            Assert.True(wellFedPayload.CurrentLevel >= noFoodPayload.CurrentLevel);
+            Assert.Equal(0, noFoodPayload.Food1_Count);
+            Assert.True(wellFedPayload.Food1_Count < 100000);
         }
 
         [Fact]

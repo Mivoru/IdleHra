@@ -18,14 +18,23 @@ namespace FolkIdle.Server.Engine
             public readonly bool IsValid;
             public readonly int LootTableId;
             public readonly int LootRolls;
+            public readonly int EquipmentDropsGranted;
+            public readonly float LootLuckPct;
 
-            public LootProjection(bool isValid, int lootTableId, int lootRolls)
+            public LootProjection(bool isValid, int lootTableId, int lootRolls, int equipmentDropsGranted = 0, float lootLuckPct = 0f)
             {
                 IsValid = isValid;
                 LootTableId = lootTableId;
                 LootRolls = lootRolls;
+                EquipmentDropsGranted = equipmentDropsGranted;
+                LootLuckPct = lootLuckPct;
             }
         }
+
+        // Modul: fixed heal-per-food-unit amount, matching the live tick's
+        // Auto-Eat block in SimulationEngine.cs (heal1/heal2/heal3 = 50000
+        // milli-HP regardless of which food slot is consumed).
+        private const int AutoEatHealPerFoodUnitMilliHp = 50000;
 
         public static async Task<TickStatePayload> ExtrapolateOfflineProgressAsync(FolkIdleDbContext db, TickStatePayload payload, long currentUnixTimestamp)
         {
@@ -45,6 +54,23 @@ namespace FolkIdle.Server.Engine
             long effectiveMaxOfflineSeconds = RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(payload.VodnikMasteryLevel, MaxOfflineSeconds);
             long elapsedSeconds = Math.Min(effectiveMaxOfflineSeconds, rawDeltaSeconds);
 
+            // Modul: active (Slot1) character aging for the offline period,
+            // mirroring SimulationEngine.ProcessAgeSlot's exact thresholds
+            // (36000/72000/108000 AgeTicks) and its 10-AgeTicks-per-real-second
+            // rate (the live tick increments AgeTicks by 1 on every 10 Hz tick).
+            // Gated on ActiveActivityId > 0, matching ProcessSubTick's own
+            // early-return when no activity was active. Computed as O(1) math
+            // rather than a per-tick loop since aging is a pure threshold check
+            // on accumulated ticks.
+            if (payload.ActiveActivityId > 0 && payload.Slot1_CharacterId != Guid.Empty)
+            {
+                payload.Slot1_AgeTicks += elapsedSeconds * 10L;
+                if (payload.Slot1_AgeTicks >= 108000L) payload.Slot1_AgePhase = 3;
+                else if (payload.Slot1_AgeTicks >= 72000L) payload.Slot1_AgePhase = 2;
+                else if (payload.Slot1_AgeTicks >= 36000L) payload.Slot1_AgePhase = 1;
+                else payload.Slot1_AgePhase = 0;
+            }
+
             await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.QuarryLevel, payload.MineLevel, payload.WarehouseLevel, elapsedSeconds);
 
             if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out GatheringNodeDefinition gatheringNode))
@@ -58,6 +84,14 @@ namespace FolkIdle.Server.Engine
                 LootProjection projection = CalculateCombatProjection(ref payload, elapsedSeconds);
                 if (projection.IsValid)
                 {
+                    // Modul: equipment drop requests are reserved against
+                    // inventory space first (bounded by kill count and
+                    // available slots inside CalculateCombatProjection) so the
+                    // commodity roll below only competes for whatever space
+                    // remains, and a long-offline player never enqueues more
+                    // CombatLootEngine requests than they have room to receive.
+                    payload.InventorySpaceRemaining -= projection.EquipmentDropsGranted;
+
                     int granted = await GrantProjectedLootAsync(db, payload.PlayerId, projection, payload.InventorySpaceRemaining);
                     payload.InventorySpaceRemaining -= granted;
                 }
@@ -81,7 +115,7 @@ namespace FolkIdle.Server.Engine
             // ReadOnlySpan<T> cannot be a parameter of an async method, so the span is
             // materialized into a plain array before the first await.
             LootTableEntry[] lootTable = ContentRegistry.GetLootTable(projection.LootTableId).ToArray();
-            return await GrantAnalyticalLootAsync(db, playerId, lootTable, projection.LootRolls, availableInventorySpace);
+            return await GrantAnalyticalLootAsync(db, playerId, lootTable, projection.LootRolls, availableInventorySpace, projection.LootLuckPct);
         }
 
         // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
@@ -176,11 +210,11 @@ namespace FolkIdle.Server.Engine
             long masteryXpGained = allowedActions * node.BaseMasteryXpReward;
             ApplyGatheringMasteryXp(ref payload, node.ProfessionType, masteryXpGained);
 
-            // Modul 13.4.3: LocusYield (+4% harvest rolls per point) and
-            // CombatStats.LootLuckPct (multiplicative, matching FinalChance =
-            // BaseChance * (1 + LootLuckPct / 100.0)) mirror the same bonuses
-            // applied in SimulationEngine's live-tick and instant-warp gathering
-            // paths, so offline-login catch-up yields consistently too.
+            // Modul: LocusYield (+4% harvest rolls per point) still scales roll
+            // COUNT. LootLuckPct no longer does - it now shifts per-item weight
+            // distribution toward rare entries inside GrantAnalyticalLootAsync,
+            // instead of inflating the absolute volume of every entry
+            // (including common trash) in fixed proportion.
             int gatherProjectionAgePhase = 1;
             int gatherProjectionRaceId = 0;
             if (payload.Slot1_CharacterId != Guid.Empty)
@@ -189,11 +223,10 @@ namespace FolkIdle.Server.Engine
                 gatherProjectionRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
             }
             CombatStats gatherProjectionStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherProjectionAgePhase, payload.CompletedAreaFlags, gatherProjectionRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit);
-            double lootLuckFactor = 1.0 + (gatherProjectionStats.LootLuckPct / 100.0);
             double locusYieldFactor = 1.0 + (payload.LocusYield * 0.04);
 
-            int lootRolls = (int)(allowedActions * payload.CachedCodexYieldMultiplier * locusYieldFactor * lootLuckFactor);
-            return new LootProjection(true, node.ActivityId, lootRolls);
+            int lootRolls = (int)(allowedActions * payload.CachedCodexYieldMultiplier * locusYieldFactor);
+            return new LootProjection(true, node.ActivityId, lootRolls, 0, gatherProjectionStats.LootLuckPct);
         }
 
         private static LootProjection CalculateCombatProjection(ref TickStatePayload payload, long elapsedSeconds)
@@ -239,15 +272,122 @@ namespace FolkIdle.Server.Engine
                 return new LootProjection(false, 0, 0);
             }
 
+            // Modul: expected incoming damage, mirroring the live tick's
+            // "Monster attacks player" block and monster crit formula (5% base
+            // + 0.5% per region tier, 1.5x crit multiplier, Vodnik's
+            // CritMitigationPct subtracted from that multiplier). Uses an
+            // expected-value blend of crit/non-crit hits rather than replaying
+            // per-swing RNG, consistent with the rest of this analytical path.
+            int monsterRegionTier = ((fallbackId - 1) % 30) / 6 + 1;
+            float monsterCritChance = 0.05f + (monsterRegionTier * 0.005f);
+            float mitigatedCritMult = Math.Max(1.0f, 1.5f - (combatStats.CritMitigationPct / 100f));
+            float expectedCritMultiplier = 1.0f + monsterCritChance * (mitigatedCritMult - 1.0f);
+
+            long rawIncomingMilliDamage = (long)(activeMonster.AttackPower * 1000 * expectedCritMultiplier);
+            long netIncomingMilliDamage = Math.Max(1000L, rawIncomingMilliDamage - (combatStats.FlatPhysicalArmor * 1000L));
+
+            double monsterAttacksPerSecond = activeMonster.AttackIntervalMs > 0 ? 1000.0 / activeMonster.AttackIntervalMs : 0.0;
+            double expectedIncomingMilliDps = (netIncomingMilliDamage) * monsterAttacksPerSecond;
+
+            // Modul: the player's own max-HP pool is a "free" absorption buffer
+            // before any food is ever needed (mirrors the live tick, where
+            // Auto-Eat only triggers once HP drops below AutoEatThreshold, not
+            // at the very first point of damage) - without this, a character
+            // with simply no food stocked (Food1-3 all zero, the common case
+            // for most players) would be treated as unable to survive any
+            // combat time at all, which is wrong.
+            long baseMilliHp = 100000L;
+            long effectiveMilliHp = baseMilliHp + (baseMilliHp * lineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.MaxHp * 1000L);
+
+            double effectiveElapsedSeconds = elapsedSeconds;
+            if (expectedIncomingMilliDps > 0.0)
+            {
+                double totalIncomingMilliDamage = expectedIncomingMilliDps * elapsedSeconds;
+                long totalFoodUnits = payload.Food1_Count + payload.Food2_Count + payload.Food3_Count;
+                double totalHealCapacityMilliHp = effectiveMilliHp + ((double)totalFoodUnits * AutoEatHealPerFoodUnitMilliHp);
+
+                if (totalIncomingMilliDamage > totalHealCapacityMilliHp)
+                {
+                    // Modul: food stock depletes before the full offline
+                    // window is survived - sustain only as much combat time as
+                    // available food allows, bank the remainder as overflow
+                    // seconds (same mechanic already used when inventory space
+                    // caps gathering actions), and consume all available food.
+                    effectiveElapsedSeconds = totalHealCapacityMilliHp / expectedIncomingMilliDps;
+                    if (effectiveElapsedSeconds < 0.0) effectiveElapsedSeconds = 0.0;
+
+                    double overflowSeconds = elapsedSeconds - effectiveElapsedSeconds;
+                    BankOverflowSeconds(ref payload, (long)overflowSeconds);
+
+                    ConsumeFoodStock(ref payload, totalFoodUnits);
+                }
+                else
+                {
+                    long foodUnitsConsumed = (long)Math.Ceiling(totalIncomingMilliDamage / AutoEatHealPerFoodUnitMilliHp);
+                    ConsumeFoodStock(ref payload, foodUnitsConsumed);
+                }
+            }
+
             double secondsPerKill = activeMonster.MaxHp / dps;
-            double totalKillsDouble = elapsedSeconds / secondsPerKill;
+            double totalKillsDouble = effectiveElapsedSeconds / secondsPerKill;
             long totalKills = (long)totalKillsDouble;
 
             long xpGained = totalKills * activeMonster.BaseXpReward;
             ApplyCombatXp(ref payload, xpGained);
 
+            // Modul 13.4.3: Gold reward, matching the live tick's exact
+            // formula (GlobalEngineState.GlobalGoldDropMultiplier scaling plus
+            // Human's innate +5% Gold acquisition passive) so offline combat
+            // grants the same gold value per kill as live/warp combat.
+            long goldPerKill = (activeMonster.BaseGoldReward * (long)GlobalEngineState.GlobalGoldDropMultiplier) / 100L;
+            goldPerKill = (long)(goldPerKill * (1.0f + combatStats.GoldAcquisitionMultiplierPct / 100f));
+            long totalGoldGained = totalKills * goldPerKill;
+            if (totalGoldGained > 0)
+            {
+                payload.AddGold(totalGoldGained);
+                payload.RedisPendingGoldDelta += totalGoldGained;
+                payload.RequiresRedisFlush = true;
+            }
+
+            // Modul: equipment drop requests, safely bounded by kill count and
+            // available inventory space (reserved by the caller in
+            // ExtrapolateOfflineProgressAsync) so a long-offline player cannot
+            // flood CombatLootEngine's queue/transactions in a single login.
+            int equipmentDropsToGrant = (int)Math.Min(totalKills, Math.Max(0, payload.InventorySpaceRemaining));
+            for (int i = 0; i < equipmentDropsToGrant; i++)
+            {
+                CombatLootEngine.DropRequestQueue.Enqueue(new CombatLootDropRequest
+                {
+                    PlayerId = payload.PlayerId,
+                    MonsterId = fallbackId,
+                    LootLuckPct = combatStats.LootLuckPct
+                });
+            }
+
             int lootRolls = (int)(totalKillsDouble * payload.CachedCodexYieldMultiplier);
-            return new LootProjection(true, activeMonster.LootTableId, lootRolls);
+            return new LootProjection(true, activeMonster.LootTableId, lootRolls, equipmentDropsToGrant, combatStats.LootLuckPct);
+        }
+
+        // Modul: drains Food1-3 in a fixed order (mirrors the live tick's
+        // Auto-Eat consumption, which always prefers the first populated
+        // slot). Used to simulate offline food consumption without per-swing
+        // RNG or per-heal-event iteration.
+        private static void ConsumeFoodStock(ref TickStatePayload payload, long unitsToConsume)
+        {
+            if (unitsToConsume <= 0) return;
+
+            long fromSlot1 = Math.Min(unitsToConsume, payload.Food1_Count);
+            payload.Food1_Count -= (int)fromSlot1;
+            unitsToConsume -= fromSlot1;
+            if (unitsToConsume <= 0) return;
+
+            long fromSlot2 = Math.Min(unitsToConsume, payload.Food2_Count);
+            payload.Food2_Count -= (int)fromSlot2;
+            unitsToConsume -= fromSlot2;
+            if (unitsToConsume <= 0) return;
+
+            long fromSlot3 = Math.Min(unitsToConsume, payload.Food3_Count);
+            payload.Food3_Count -= (int)fromSlot3;
         }
 
         private static void ApplyCombatXp(ref TickStatePayload payload, long xpGained)
@@ -332,17 +472,29 @@ namespace FolkIdle.Server.Engine
 
         // Isolated so it can be tested directly against a hand-built loot table,
         // since ContentRegistry's real loot tables currently carry no entries.
-        internal static async Task<int> GrantAnalyticalLootAsync(FolkIdleDbContext db, long playerId, LootTableEntry[] lootTable, int rollCount, int availableInventorySpace)
+        //
+        // Modul: LootLuckPct no longer scales rollCount (that inflated the
+        // absolute volume of every entry, common trash and rare drops alike,
+        // in fixed proportion). It now adds a flat weight bonus to every
+        // entry's selection weight, mirroring the live-tick gathering roll's
+        // identical fix - a fixed addition is a far larger relative increase
+        // for a low-weight (rare) entry than a high-weight (common) one, so
+        // higher luck shifts the selection distribution toward rare drops
+        // without changing the total number of rolls.
+        internal static async Task<int> GrantAnalyticalLootAsync(FolkIdleDbContext db, long playerId, LootTableEntry[] lootTable, int rollCount, int availableInventorySpace, float lootLuckPct = 0f)
         {
             if (lootTable.Length == 0 || rollCount <= 0 || availableInventorySpace <= 0)
             {
                 return 0;
             }
 
+            int luckWeightBonus = (int)(lootLuckPct * 0.1f);
+            if (luckWeightBonus < 0) luckWeightBonus = 0;
+
             int totalWeight = 0;
             for (int i = 0; i < lootTable.Length; i++)
             {
-                totalWeight += lootTable[i].Weight;
+                totalWeight += lootTable[i].Weight + luckWeightBonus;
             }
 
             if (totalWeight <= 0)
@@ -359,7 +511,7 @@ namespace FolkIdle.Server.Engine
                 int currentWeight = 0;
                 for (int i = 0; i < lootTable.Length; i++)
                 {
-                    currentWeight += lootTable[i].Weight;
+                    currentWeight += lootTable[i].Weight + luckWeightBonus;
                     if (roll < currentWeight)
                     {
                         grantedQuantities.TryGetValue(lootTable[i].ItemId, out long existing);

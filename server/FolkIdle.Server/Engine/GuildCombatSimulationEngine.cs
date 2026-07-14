@@ -76,8 +76,31 @@ namespace FolkIdle.Server.Engine
                     return GuildCombatTurnResult.InvalidRequest;
                 }
 
+                // Modul: defending guild's Vodnik CritMitigationPct, read from
+                // the same GuildWarDefensiveSnapshots table GuildWarEngine's
+                // weekly matchmaking combat phase already uses (a generic,
+                // GuildId-keyed snapshot, not specific to either guild-combat
+                // system). Malformed/missing snapshot data defaults to no
+                // mitigation rather than failing the turn.
+                float defenderCritMitigationPct = 0f;
+                var defenderSnapshot = await db.GuildWarDefensiveSnapshots
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(s => s.GuildId == match.DefendingGuildId);
+                if (defenderSnapshot != null && !string.IsNullOrWhiteSpace(defenderSnapshot.RosterPayloadJson))
+                {
+                    try
+                    {
+                        CombatStats defenderStats = System.Text.Json.JsonSerializer.Deserialize<CombatStats>(defenderSnapshot.RosterPayloadJson);
+                        defenderCritMitigationPct = defenderStats.CritMitigationPct;
+                    }
+                    catch (Exception jsonEx)
+                    {
+                        Console.WriteLine($"Guild combat turn: failed to parse defensive snapshot for guild {match.DefendingGuildId}: {jsonEx.Message}");
+                    }
+                }
+
                 uint serverTurn = ExtractTurnCounter(match.CurrentStateBitmask);
-                int delta = CalculateDamageDelta(in match, serverTurn);
+                int delta = CalculateDamageDelta(in match, serverTurn, defenderCritMitigationPct);
                 uint nextTurn = (serverTurn + 1U) & TurnCounterMask;
                 uint momentum = delta >= 0 ? AttackerMomentumMask : 0U;
                 match.CurrentStateBitmask = momentum | nextTurn;
@@ -116,7 +139,7 @@ namespace FolkIdle.Server.Engine
             return stateBitmask & TurnCounterMask;
         }
 
-        private static int CalculateDamageDelta(in GuildWarActiveMatch match, uint serverTurn)
+        private static int CalculateDamageDelta(in GuildWarActiveMatch match, uint serverTurn, float defenderCritMitigationPct)
         {
             Span<GuildCombatRoundRegisters> registers = stackalloc GuildCombatRoundRegisters[1];
             registers[0] = new GuildCombatRoundRegisters
@@ -129,11 +152,17 @@ namespace FolkIdle.Server.Engine
             uint randomState = unchecked((uint)match.InitialSeed);
             if (randomState == 0U) randomState = 0x6D2B79F5U;
             AdvanceSeed(ref randomState, serverTurn);
-            ExecuteDeterministicRound(ref registers[0], ref randomState);
+            ExecuteDeterministicRound(ref registers[0], ref randomState, defenderCritMitigationPct);
             return registers[0].DamageDelta;
         }
 
-        private static void ExecuteDeterministicRound(ref GuildCombatRoundRegisters registers, ref uint randomState)
+        // Modul: offensive crit roll unchanged (deterministic seeded XORshift,
+        // not Random.Shared, so both parties can reproduce/verify the turn
+        // outcome). The flat 2x crit multiplier is now reduced by the
+        // defending guild's Vodnik CritMitigationPct, floored at 1.0 so
+        // mitigation can never make a crit deal less than a normal hit -
+        // matching the same mitigation formula used against monster crits.
+        private static void ExecuteDeterministicRound(ref GuildCombatRoundRegisters registers, ref uint randomState, float defenderCritMitigationPct)
         {
             uint attackRoll = NextXorshift32(ref randomState);
             uint defenseRoll = NextXorshift32(ref randomState);
@@ -146,7 +175,8 @@ namespace FolkIdle.Server.Engine
 
             if ((criticalRoll % 100U) < registers.Attacker.CriticalThreshold)
             {
-                damage *= 2;
+                float mitigatedCritMult = Math.Max(1.0f, 2.0f - (defenderCritMitigationPct / 100f));
+                damage = (int)(damage * mitigatedCritMult);
             }
 
             registers.DamageDelta = damage;

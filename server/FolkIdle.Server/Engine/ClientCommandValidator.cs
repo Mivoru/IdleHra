@@ -99,7 +99,7 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
-        public static bool ValidateForgeSplicingRequest(ref TickStatePayload payload, long targetId, long sacId1, long sacId2, IReadOnlyList<MarketEquipmentInstance> lockedItems)
+        public static bool ValidateForgeSplicingRequest(ref TickStatePayload payload, long targetId, long sacId1, long sacId2, IReadOnlyList<EquipmentInstance> lockedItems)
         {
             if (targetId <= 0 || sacId1 <= 0 || sacId2 <= 0)
             {

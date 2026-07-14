@@ -15,7 +15,8 @@ namespace FolkIdle.Server.Engine
         FailedAffixLocked = 2,
         CriticalFailure = 3,
         InvalidRequest = 4,
-        InsufficientGold = 5
+        InsufficientGold = 5,
+        FailedItemEquipped = 6
     }
 
     public class ForgeSplicingEngine
@@ -50,11 +51,35 @@ namespace FolkIdle.Server.Engine
             using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
+                // Modul: Forge fusion operates on EquipmentInstances (a
+                // player's real owned gear, matching EquipmentSlotEngine) -
+                // previously operated on MarketEquipmentInstances, a
+                // fragmented, non-interoperating pool that a player's actual
+                // inventory never populated.
                 // Explicit FOR UPDATE row-level pessimistic lock
-                var query = $"SELECT * FROM \"MarketEquipmentInstances\" WHERE \"Id\" IN ({id0}, {id1}, {id2}) FOR UPDATE";
-                var lockedItems = await db.MarketEquipmentInstances
+                var query = $"SELECT * FROM \"EquipmentInstances\" WHERE \"Id\" IN ({id0}, {id1}, {id2}) FOR UPDATE";
+                var lockedItems = await db.EquipmentInstances
                     .FromSqlRaw(query)
                     .ToListAsync();
+
+                // Modul: equipped-item guard. PlayerRecord.EquippedWeaponId/
+                // EquippedArmorId only ever reference EquipmentInstances.Id
+                // (see EquipmentSlotEngine) - reject the fusion outright if any
+                // of the three locked rows is currently equipped, preventing a
+                // dangling equip pointer or phantom duplication if the row is
+                // later deleted/vaporized below.
+                var player = await db.PlayerRecords
+                    .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
+                    .SingleOrDefaultAsync();
+
+                if (player != null && (
+                    (player.EquippedWeaponId.HasValue && (player.EquippedWeaponId == targetItemGuid || player.EquippedWeaponId == sacrificialItem1Guid || player.EquippedWeaponId == sacrificialItem2Guid)) ||
+                    (player.EquippedArmorId.HasValue && (player.EquippedArmorId == targetItemGuid || player.EquippedArmorId == sacrificialItem1Guid || player.EquippedArmorId == sacrificialItem2Guid))))
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine("Fusion failed: target or sacrifice item is currently equipped.");
+                    return ForgeSplicingResult.FailedItemEquipped;
+                }
 
                 int forgeLevel = await db.VillageInfrastructures
                     .AsNoTracking()
@@ -74,9 +99,9 @@ namespace FolkIdle.Server.Engine
                     return ForgeSplicingResult.InvalidRequest;
                 }
 
-                MarketEquipmentInstance? targetItem = null;
-                MarketEquipmentInstance? sac1 = null;
-                MarketEquipmentInstance? sac2 = null;
+                EquipmentInstance? targetItem = null;
+                EquipmentInstance? sac1 = null;
+                EquipmentInstance? sac2 = null;
                 for (int i = 0; i < lockedItems.Count; i++)
                 {
                     if (lockedItems[i].Id == targetItemGuid) targetItem = lockedItems[i];
@@ -127,8 +152,8 @@ namespace FolkIdle.Server.Engine
                 if (roll <= baseProbability)
                 {
                     // SUCCESS
-                    db.MarketEquipmentInstances.Remove(sac1);
-                    db.MarketEquipmentInstances.Remove(sac2);
+                    db.EquipmentInstances.Remove(sac1);
+                    db.EquipmentInstances.Remove(sac2);
 
                     targetItem.QualityTier = currentTier + 1;
 
@@ -172,8 +197,8 @@ namespace FolkIdle.Server.Engine
                     if (currentTier == 2)
                     {
                         // Tier 2: Lock random affix slot
-                        db.MarketEquipmentInstances.Remove(sac1);
-                        db.MarketEquipmentInstances.Remove(sac2);
+                        db.EquipmentInstances.Remove(sac1);
+                        db.EquipmentInstances.Remove(sac2);
 
                         JsonObject affixPayload = ParseAffixPayload(targetItem.AffixPayload);
                         affixPayload["is_affix_locked"] = true;
@@ -188,9 +213,9 @@ namespace FolkIdle.Server.Engine
                     else if (currentTier >= 3)
                     {
                         // Tier 3+: Full vaporization
-                        db.MarketEquipmentInstances.Remove(targetItem);
-                        db.MarketEquipmentInstances.Remove(sac1);
-                        db.MarketEquipmentInstances.Remove(sac2);
+                        db.EquipmentInstances.Remove(targetItem);
+                        db.EquipmentInstances.Remove(sac1);
+                        db.EquipmentInstances.Remove(sac2);
                         Console.WriteLine($"Fusion Critical Failure! All items destroyed.");
                         await db.SaveChangesAsync();
                         await transaction.CommitAsync();
@@ -199,8 +224,8 @@ namespace FolkIdle.Server.Engine
                     else
                     {
                         // Tier 1 failure: just lose sacrifices
-                        db.MarketEquipmentInstances.Remove(sac1);
-                        db.MarketEquipmentInstances.Remove(sac2);
+                        db.EquipmentInstances.Remove(sac1);
+                        db.EquipmentInstances.Remove(sac2);
                         Console.WriteLine($"Fusion Failed! Sacrifices lost.");
                         await db.SaveChangesAsync();
                         await transaction.CommitAsync();

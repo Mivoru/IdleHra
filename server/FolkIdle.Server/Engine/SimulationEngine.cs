@@ -1947,6 +1947,71 @@ namespace FolkIdle.Server.Engine
                 return;
             }
 
+            int warpActiveRaceId = payload.Slot1_CharacterId != System.Guid.Empty ? (int)(payload.Slot1_GeneticVector & 0xFF) : 0;
+            int warpActiveAgePhase = payload.Slot1_CharacterId != System.Guid.Empty ? payload.Slot1_AgePhase : 1;
+            var warpCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, warpActiveAgePhase, payload.CompletedAreaFlags, warpActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit);
+
+            // Modul: expected incoming damage over this warp period, mirroring
+            // the live tick's monster crit formula (5% base + 0.5% per region
+            // tier, 1.5x crit multiplier reduced by Vodnik's CritMitigationPct)
+            // and the offline-projection's food-depletion model. If available
+            // Food1-3 stock cannot sustain the full warp period, completedKills
+            // is scaled down to whatever was actually survivable.
+            if (warpSeconds > 0)
+            {
+                int warpMonsterRegionTier = ((monsterId - 1) % 30) / 6 + 1;
+                float warpMonsterCritChance = 0.05f + (warpMonsterRegionTier * 0.005f);
+                float warpMitigatedCritMult = Math.Max(1.0f, 1.5f - (warpCombatStats.CritMitigationPct / 100f));
+                float warpExpectedCritMultiplier = 1.0f + warpMonsterCritChance * (warpMitigatedCritMult - 1.0f);
+
+                long warpRawIncomingMilliDamage = (long)(monster.AttackPower * 1000 * warpExpectedCritMultiplier);
+                long warpNetIncomingMilliDamage = Math.Max(1000L, warpRawIncomingMilliDamage - (warpCombatStats.FlatPhysicalArmor * 1000L));
+
+                double warpMonsterAttacksPerSecond = monster.AttackIntervalMs > 0 ? 1000.0 / monster.AttackIntervalMs : 0.0;
+                double warpExpectedIncomingMilliDps = warpNetIncomingMilliDamage * warpMonsterAttacksPerSecond;
+
+                if (warpExpectedIncomingMilliDps > 0.0)
+                {
+                    // Modul: the player's own max-HP pool is a "free" absorption
+                    // buffer before any food is ever needed, mirroring the live
+                    // tick's Auto-Eat threshold trigger - without this, a
+                    // character with no food stocked would be treated as unable
+                    // to survive any combat time at all.
+                    int warpLineageId = payload.SelectedLineageId;
+                    if (warpLineageId < 0 || warpLineageId >= ProgressionEngine.Lineages.Length) warpLineageId = 0;
+                    var warpLineage = ProgressionEngine.Lineages[warpLineageId];
+                    long warpBaseMilliHp = 100000L;
+                    long warpEffectiveMilliHp = warpBaseMilliHp + (warpBaseMilliHp * warpLineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (warpCombatStats.MaxHp * 1000L);
+
+                    double warpTotalIncomingMilliDamage = warpExpectedIncomingMilliDps * warpSeconds;
+                    long warpTotalFoodUnits = payload.Food1_Count + payload.Food2_Count + payload.Food3_Count;
+                    double warpTotalHealCapacityMilliHp = warpEffectiveMilliHp + ((double)warpTotalFoodUnits * 50000);
+
+                    if (warpTotalIncomingMilliDamage > warpTotalHealCapacityMilliHp)
+                    {
+                        double survivableSeconds = warpTotalHealCapacityMilliHp / warpExpectedIncomingMilliDps;
+                        if (survivableSeconds < 0.0) survivableSeconds = 0.0;
+
+                        double survivableFraction = survivableSeconds / warpSeconds;
+                        completedKills = (long)(completedKills * survivableFraction);
+
+                        ConsumeFoodStock(ref payload, warpTotalFoodUnits);
+                    }
+                    else
+                    {
+                        long warpFoodUnitsConsumed = (long)Math.Ceiling(warpTotalIncomingMilliDamage / 50000.0);
+                        ConsumeFoodStock(ref payload, warpFoodUnitsConsumed);
+                    }
+                }
+            }
+
+            if (completedKills <= 0)
+            {
+                payload.CurrentMonsterId = monsterId;
+                payload.CurrentMonsterHp = monster.MaxHp * 1000;
+                return;
+            }
+
             int finalXpMultiplier = GlobalEngineState.GlobalXpMultiplier;
             if (payload.CurrentLevel < 50 && payload.CachedMentorCount > 0)
             {
@@ -1963,7 +2028,6 @@ namespace FolkIdle.Server.Engine
             double integratedBuffMultiplier = CalculateIntegratedBuffMultiplier(warpSeconds, remainingBuffTicks, potencyModifierPct);
             long xpGain = (long)Math.Floor(completedKills * monster.BaseXpReward * finalXpMultiplier * integratedBuffMultiplier / 100.0);
 
-            int warpActiveRaceId = payload.Slot1_CharacterId != System.Guid.Empty ? (int)(payload.Slot1_GeneticVector & 0xFF) : 0;
             ApplyBulkExperience(ref payload, xpGain, warpActiveRaceId);
             AddSeasonalXp(ref payload, ClampLongToInt(xpGain));
 
@@ -1971,9 +2035,7 @@ namespace FolkIdle.Server.Engine
 
             // Modul 13.4.3: Human's innate +5% Gold acquisition passive, mirrored
             // for the offline warp path.
-            int warpGoldActiveAgePhase = payload.Slot1_CharacterId != System.Guid.Empty ? payload.Slot1_AgePhase : 1;
-            var warpGoldCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, warpGoldActiveAgePhase, payload.CompletedAreaFlags, warpActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit);
-            goldReward = (long)(goldReward * (1.0f + warpGoldCombatStats.GoldAcquisitionMultiplierPct / 100f));
+            goldReward = (long)(goldReward * (1.0f + warpCombatStats.GoldAcquisitionMultiplierPct / 100f));
 
             if (goldReward > 0)
             {
@@ -1984,8 +2046,45 @@ namespace FolkIdle.Server.Engine
 
             long expectedDrops = CalculateExpectedCombatWarpDrops(ref payload, completedKills, integratedBuffMultiplier);
             ConsumeInventorySlots(ref payload, expectedDrops);
+
+            // Modul: equipment drop requests, safely bounded by kill count and
+            // available inventory space, mirroring OfflineSimulationEngine's
+            // identical safeguard against flooding CombatLootEngine's queue.
+            int warpEquipmentDropsToGrant = (int)Math.Min(completedKills, Math.Max(0, payload.InventorySpaceRemaining));
+            for (int i = 0; i < warpEquipmentDropsToGrant; i++)
+            {
+                CombatLootEngine.DropRequestQueue.Enqueue(new CombatLootDropRequest
+                {
+                    PlayerId = payload.PlayerId,
+                    MonsterId = monsterId,
+                    LootLuckPct = warpCombatStats.LootLuckPct
+                });
+            }
+            payload.InventorySpaceRemaining -= warpEquipmentDropsToGrant;
+
             payload.CurrentMonsterId = monsterId;
             payload.CurrentMonsterHp = monster.MaxHp * 1000;
+        }
+
+        // Modul: drains Food1-3 in a fixed order, mirroring
+        // OfflineSimulationEngine.ConsumeFoodStock's identical logic for the
+        // instant-warp path.
+        private static void ConsumeFoodStock(ref TickStatePayload payload, long unitsToConsume)
+        {
+            if (unitsToConsume <= 0) return;
+
+            long fromSlot1 = Math.Min(unitsToConsume, payload.Food1_Count);
+            payload.Food1_Count -= (int)fromSlot1;
+            unitsToConsume -= fromSlot1;
+            if (unitsToConsume <= 0) return;
+
+            long fromSlot2 = Math.Min(unitsToConsume, payload.Food2_Count);
+            payload.Food2_Count -= (int)fromSlot2;
+            unitsToConsume -= fromSlot2;
+            if (unitsToConsume <= 0) return;
+
+            long fromSlot3 = Math.Min(unitsToConsume, payload.Food3_Count);
+            payload.Food3_Count -= (int)fromSlot3;
         }
 
         private static double CalculateIntegratedBuffMultiplier(int warpSeconds, uint remainingBuffTicks, int potencyModifierPct)
@@ -2659,17 +2758,25 @@ namespace FolkIdle.Server.Engine
                         // as the race-mastery bonuses above.
                         additionalYieldBonus += payload.LocusYield * 4;
 
+                        // Modul: LootLuckPct no longer multiplies the roll COUNT
+                        // (which previously inflated absolute yield of every
+                        // table entry, common trash and rare drops alike, in
+                        // fixed proportion - a placebo that never actually
+                        // shifted rarity odds). Roll count now stays driven only
+                        // by monolith/race/event/LocusYield bonuses; luck
+                        // instead adds a flat weight bonus to every entry below,
+                        // which mathematically favors low-weight (rare) entries
+                        // far more than high-weight (common/trash) ones, since a
+                        // fixed addition is a much larger relative increase for
+                        // a small base weight than a large one.
+                        int luckWeightBonus = (int)(gatherCombatStats.LootLuckPct * 0.1f);
+                        if (luckWeightBonus < 0) luckWeightBonus = 0;
+
                         int totalWeight = 0;
-                        for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight;
+                        for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight + luckWeightBonus;
                         if (totalWeight > 0)
                         {
-                            // Modul 13.4.3: CombatStats.LootLuckPct (LCK + equipped
-                            // gear + completed-region bonuses) multiplicatively scales
-                            // the whole roll-count multiplier, matching FinalChance =
-                            // BaseChance * (1 + LootLuckPct / 100.0) from the GDD.
-                            float lootLuckFactor = 1.0f + (gatherCombatStats.LootLuckPct / 100.0f);
-
-                            int multiplier = (int)((localDropMultiplier + additionalYieldBonus) * payload.CachedCodexYieldMultiplier * lootLuckFactor);
+                            int multiplier = (int)((localDropMultiplier + additionalYieldBonus) * payload.CachedCodexYieldMultiplier);
                             int guaranteedRolls = multiplier / 100;
                             int fractionalBonus = multiplier % 100;
                             int rollsToExecute = guaranteedRolls;
@@ -2684,7 +2791,7 @@ namespace FolkIdle.Server.Engine
                                 int currentWeight = 0;
                                 for (int i = 0; i < lootTable.Length; i++)
                                 {
-                                    currentWeight += lootTable[i].Weight;
+                                    currentWeight += lootTable[i].Weight + luckWeightBonus;
                                     if (roll < currentWeight)
                                     {
                                         // Modul 04: Kobold's packed-weight penalty -

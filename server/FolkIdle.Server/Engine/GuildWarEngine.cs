@@ -303,11 +303,14 @@ namespace FolkIdle.Server.Engine
                 {
                     if (hpA <= 0 || hpB <= 0) break;
 
-                    // A attacks B
+                    // A attacks B - Vodnik's CritMitigationPct on the defending
+                    // side (B) reduces the crit multiplier, matching the same
+                    // mitigation formula used against monster crits and in
+                    // GuildCombatSimulationEngine.
                     float hitChanceA = Math.Clamp(100f / 100f, 0.05f, 0.95f); // Simplified attackerAccuracy / defenderDodge for aggregate
                     if (Random.Shared.NextDouble() <= hitChanceA)
                     {
-                        float critMult = Random.Shared.NextDouble() <= (statsA.CritChancePct / 100.0f) ? 1.5f : 1.0f;
+                        float critMult = Random.Shared.NextDouble() <= (statsA.CritChancePct / 100.0f) ? Math.Max(1.0f, 1.5f - (statsB.CritMitigationPct / 100f)) : 1.0f;
                         long baseMilliAttack = 15000L;
                         long effectiveMilliAttack = baseMilliAttack + (statsA.FlatMeleeDamage * 1000L);
                         int rawDamage = (int)(effectiveMilliAttack * critMult);
@@ -317,11 +320,11 @@ namespace FolkIdle.Server.Engine
 
                     if (hpB <= 0) break;
 
-                    // B attacks A
+                    // B attacks A - mitigated by A's CritMitigationPct.
                     float hitChanceB = Math.Clamp(100f / 100f, 0.05f, 0.95f);
                     if (Random.Shared.NextDouble() <= hitChanceB)
                     {
-                        float critMult = Random.Shared.NextDouble() <= (statsB.CritChancePct / 100.0f) ? 1.5f : 1.0f;
+                        float critMult = Random.Shared.NextDouble() <= (statsB.CritChancePct / 100.0f) ? Math.Max(1.0f, 1.5f - (statsA.CritMitigationPct / 100f)) : 1.0f;
                         long baseMilliAttack = 15000L;
                         long effectiveMilliAttack = baseMilliAttack + (statsB.FlatMeleeDamage * 1000L);
                         int rawDamage = (int)(effectiveMilliAttack * critMult);
@@ -333,8 +336,18 @@ namespace FolkIdle.Server.Engine
                 if (hpA > hpB) match.CombatVanguardWP_A += 1000;
                 else if (hpB > hpA) match.CombatVanguardWP_B += 1000;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                // Modul: previously a silent catch (Exception) { } that
+                // swallowed malformed RosterPayloadJson or any mid-simulation
+                // fault with zero trace - a guild war match could resolve with
+                // neither guild's Combat Vanguard WP incremented and no way to
+                // diagnose why. Now logs a distinct diagnostic alert with the
+                // full exception detail; the match's WP award for this phase is
+                // still safely skipped (transaction-level rollback/commit is
+                // handled by the caller, RunMatchmakingLoopAsync, which already
+                // wraps this call in its own transaction).
+                Console.WriteLine($"GUILD WAR COMBAT RESOLUTION FAILURE - MatchId {match.MatchId}, GuildA {match.GuildA_Id}, GuildB {match.GuildB_Id}: {ex}");
             }
         }
 

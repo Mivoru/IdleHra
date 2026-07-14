@@ -71,7 +71,7 @@ namespace FolkIdle.Server.Engine
 
                 // Explicit FOR UPDATE lock on assignments
                 var existingAssignment = await dbContext.MentorshipAcademyAssignments
-                    .FromSqlRaw("SELECT * FROM MentorshipAcademyAssignments WHERE PlayerId = {0} AND SlotIndex = {1} FOR UPDATE", playerId, slotIndex)
+                    .FromSqlRaw("SELECT * FROM \"MentorshipAcademyAssignments\" WHERE \"PlayerId\" = {0} AND \"SlotIndex\" = {1} FOR UPDATE", playerId, slotIndex)
                     .SingleOrDefaultAsync();
 
                 var currentCount = await dbContext.MentorshipAcademyAssignments
@@ -103,9 +103,15 @@ namespace FolkIdle.Server.Engine
 
                 _playerRegistry.MentorshipUpdateQueue.Enqueue(new MentorshipUpdateNotification { PlayerId = playerId });
             }
-            catch (Exception)
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException dbEx)
             {
                 await transaction.RollbackAsync();
+                Console.WriteLine($"Mentor assignment failed - database update anomaly for player {playerId}: {dbEx.Message}");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                Console.WriteLine($"Mentor assignment failed for player {playerId}: {ex.Message}");
             }
         }
 
