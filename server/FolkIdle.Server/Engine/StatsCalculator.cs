@@ -21,7 +21,7 @@ namespace FolkIdle.Server.Engine
 
     public static class StatsCalculator
     {
-        public static CombatStats Calculate(int str, int dex, int con, int lck, int activeOffensivePotionId = 0, int activeDefensivePotionId = 0, int activeAgePhase = 1, int completedAreaFlags = 0, int activeRaceId = 0, int humanMastery = 0, int vilaMastery = 0, int draugrMastery = 0)
+        public static CombatStats Calculate(int str, int dex, int con, int lck, int activeOffensivePotionId = 0, int activeDefensivePotionId = 0, int activeAgePhase = 1, int completedAreaFlags = 0, int activeRaceId = 0, int humanMastery = 0, int vilaMastery = 0, int draugrMastery = 0, int equippedFlatAttack = 0, int equippedFlatDefense = 0, int equippedCritBonus = 0, int equippedLuckBonus = 0)
         {
             var stats = new CombatStats();
             
@@ -92,6 +92,17 @@ namespace FolkIdle.Server.Engine
                 stats.FlatPhysicalArmor += tier * 5;
                 stats.DodgeChancePct += tier * 0.01f;
             }
+
+            // Modul 16/21: equipped gear (weapon + armor combined, pre-summed by
+            // EquipmentSlotEngine and cached in TickStatePayload - no JSON/DB
+            // access here). Applied additively alongside potions, before the age
+            // penalty scaling below, so equipped bonuses are subject to the same
+            // age-phase falloff as every other external stat source.
+            stats.FlatMeleeDamage += equippedFlatAttack;
+            stats.FlatRangedDamage += equippedFlatAttack;
+            stats.FlatPhysicalArmor += equippedFlatDefense;
+            stats.CritChancePct += equippedCritBonus;
+            stats.LootLuckPct += equippedLuckBonus;
 
             // Age penalties: 0=Child, 1=Adult, 2=Senior, 3=Old
             if (activeAgePhase == 2)

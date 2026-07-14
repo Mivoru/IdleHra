@@ -21,7 +21,7 @@ namespace FolkIdle.Server.Engine
             new LineageDefinition { Id = 2, DamageScalePerLevelPct = 0, HpScalePerLevelPct = 8 }, // Tank
         };
 
-        public static void ProcessMonsterDeath(ref TickStatePayload payload, int baseExpReward, int xpMultiplier, int activeGlobalEventId)
+        public static void ProcessMonsterDeath(ref TickStatePayload payload, int baseExpReward, int xpMultiplier, int activeGlobalEventId, int activeRaceId = 0)
         {
             if (activeGlobalEventId == 2) // BloodMoonVanguard
             {
@@ -37,6 +37,7 @@ namespace FolkIdle.Server.Engine
             }
 
             bool leveledUp = false;
+            int levelsGained = 0;
 
             while (true)
             {
@@ -48,6 +49,7 @@ namespace FolkIdle.Server.Engine
                     payload.CurrentXp -= requiredXp;
                     payload.CurrentLevel++;
                     leveledUp = true;
+                    levelsGained++;
                 }
                 else
                 {
@@ -57,6 +59,7 @@ namespace FolkIdle.Server.Engine
 
             if (leveledUp)
             {
+                RaceAttributeGrowth.ApplyLevelUpGrowth(ref payload, activeRaceId, levelsGained);
                 payload.IsDirty = true;
             }
         }

@@ -647,6 +647,45 @@ namespace FolkIdle.Client.Network
             }
         }
 
+        public void SendEquipItemCommandZeroAlloc(long itemInstanceId)
+        {
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                ClientCommandPacket packet = new ClientCommandPacket
+                {
+                    Command = CommandType.EquipItem,
+                    TargetId = itemInstanceId,
+                    SecondaryId = 0,
+                    TertiaryId = 0,
+                    LimitPrice = 0,
+                    IsBuy = 0,
+                    QualityTier = 0
+                };
+
+                SendPacket(ref packet);
+            }
+        }
+
+        // isArmorSlot: false clears the weapon slot, true clears the armor slot.
+        public void SendUnequipItemCommandZeroAlloc(bool isArmorSlot)
+        {
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                ClientCommandPacket packet = new ClientCommandPacket
+                {
+                    Command = CommandType.UnequipItem,
+                    TargetId = 0,
+                    SecondaryId = 0,
+                    TertiaryId = 0,
+                    LimitPrice = 0,
+                    IsBuy = isArmorSlot ? (byte)1 : (byte)0,
+                    QualityTier = 0
+                };
+
+                SendPacket(ref packet);
+            }
+        }
+
         public void SendCombatTurnCommandZeroAlloc(uint matchId, uint predictedTurnCounter)
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)

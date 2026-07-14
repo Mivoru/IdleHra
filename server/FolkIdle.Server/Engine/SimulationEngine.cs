@@ -42,6 +42,7 @@ namespace FolkIdle.Server.Engine
         private readonly GuildLogisticsDepotEngine _guildLogisticsDepotEngine;
         private readonly GuildCombatSimulationEngine _guildCombatSimulationEngine;
         private readonly GuildRaidEngine? _guildRaidEngine;
+        private readonly EquipmentSlotEngine? _equipmentSlotEngine;
         private readonly AntiCheatTelemetryEngine _antiCheatTelemetryEngine;
         private readonly PushNotificationTriggerEngine _pushNotificationTriggerEngine;
         private readonly CompliancePurgeEngine _compliancePurgeEngine;
@@ -63,7 +64,7 @@ namespace FolkIdle.Server.Engine
 
         public static int ActiveGlobalEventId { get; private set; }
 
-        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, MentorshipEngine mentorshipEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null)
+        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, MentorshipEngine mentorshipEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null)
         {
             _lootEngine = lootEngine;
             _checkpointManager = checkpointManager;
@@ -87,6 +88,7 @@ namespace FolkIdle.Server.Engine
             _guildLogisticsDepotEngine = guildLogisticsDepotEngine;
             _guildCombatSimulationEngine = guildCombatSimulationEngine;
             _guildRaidEngine = guildRaidEngine;
+            _equipmentSlotEngine = equipmentSlotEngine;
             _villageManagementEngine = villageManagementEngine;
             _antiCheatTelemetryEngine = antiCheatTelemetryEngine;
             _pushNotificationTriggerEngine = pushNotificationTriggerEngine;
@@ -381,6 +383,21 @@ namespace FolkIdle.Server.Engine
                         {
                             currentPayload.HighestForgeSynthesisTier = forgeUpgrade.ResultingQualityTier;
                         }
+                        currentPayload.IsDirty = true;
+                    }
+                }
+
+                while (_playerRegistry.EquipmentSlotUpdateQueue.TryDequeue(out var equipUpdate))
+                {
+                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, equipUpdate.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                    {
+                        currentPayload.EquippedWeaponId = equipUpdate.EquippedWeaponId;
+                        currentPayload.EquippedArmorId = equipUpdate.EquippedArmorId;
+                        currentPayload.CachedEquippedFlatAttack = equipUpdate.EquippedFlatAttack;
+                        currentPayload.CachedEquippedFlatDefense = equipUpdate.EquippedFlatDefense;
+                        currentPayload.CachedEquippedCritBonus = equipUpdate.EquippedCritBonus;
+                        currentPayload.CachedEquippedLuckBonus = equipUpdate.EquippedLuckBonus;
                         currentPayload.IsDirty = true;
                     }
                 }
@@ -1349,6 +1366,28 @@ namespace FolkIdle.Server.Engine
                             });
                         }
                     }
+                    else if (cmd.Command == CommandType.EquipItem)
+                    {
+                        long equipPlayerId = currentPayload.PlayerId;
+                        long equipItemId = cmd.TargetId;
+                        if (equipItemId > 0 && _equipmentSlotEngine != null)
+                        {
+                            Task.Run(async () => {
+                                await _equipmentSlotEngine.EquipItemAsync(equipPlayerId, equipItemId);
+                            });
+                        }
+                    }
+                    else if (cmd.Command == CommandType.UnequipItem)
+                    {
+                        long unequipPlayerId = currentPayload.PlayerId;
+                        bool isArmorSlot = cmd.IsBuy != 0;
+                        if (_equipmentSlotEngine != null)
+                        {
+                            Task.Run(async () => {
+                                await _equipmentSlotEngine.UnequipItemAsync(unequipPlayerId, isArmorSlot);
+                            });
+                        }
+                    }
                     else if (cmd.Command == CommandType.ExecuteCombatTurn)
                     {
                         if (!ClientCommandValidator.ValidateCombatTurnRequest(ref currentPayload, ref cmd))
@@ -1869,7 +1908,9 @@ namespace FolkIdle.Server.Engine
 
             double integratedBuffMultiplier = CalculateIntegratedBuffMultiplier(warpSeconds, remainingBuffTicks, potencyModifierPct);
             long xpGain = (long)Math.Floor(completedKills * monster.BaseXpReward * finalXpMultiplier * integratedBuffMultiplier / 100.0);
-            ApplyBulkExperience(ref payload, xpGain);
+
+            int warpActiveRaceId = payload.Slot1_CharacterId != System.Guid.Empty ? (int)(payload.Slot1_GeneticVector & 0xFF) : 0;
+            ApplyBulkExperience(ref payload, xpGain, warpActiveRaceId);
             AddSeasonalXp(ref payload, ClampLongToInt(xpGain));
 
             long goldReward = completedKills * monster.BaseGoldReward * GlobalEngineState.GlobalGoldDropMultiplier / 100L;
@@ -1976,7 +2017,7 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        private static void ApplyBulkExperience(ref TickStatePayload payload, long xpGain)
+        private static void ApplyBulkExperience(ref TickStatePayload payload, long xpGain, int activeRaceId = 0)
         {
             if (xpGain <= 0)
             {
@@ -1984,6 +2025,7 @@ namespace FolkIdle.Server.Engine
             }
 
             payload.CurrentXp = System.Math.Max(0L, payload.CurrentXp + xpGain);
+            int levelsGained = 0;
             while (payload.CurrentLevel > 0)
             {
                 long requiredXp = 100L * payload.CurrentLevel * payload.CurrentLevel;
@@ -1994,7 +2036,10 @@ namespace FolkIdle.Server.Engine
 
                 payload.CurrentXp -= requiredXp;
                 payload.CurrentLevel++;
+                levelsGained++;
             }
+
+            RaceAttributeGrowth.ApplyLevelUpGrowth(ref payload, activeRaceId, levelsGained);
         }
 
         private static int ClampLongToInt(long value)
@@ -2548,7 +2593,7 @@ namespace FolkIdle.Server.Engine
                 activeRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
             }
 
-            var combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel);
+            var combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus);
             
             long baseMilliHp = 100000L;
             long effectiveMilliHp = baseMilliHp + (baseMilliHp * lineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.MaxHp * 1000L);
@@ -2699,7 +2744,7 @@ namespace FolkIdle.Server.Engine
                 }
 
                 int seasonalCombatXp = activeMonster.BaseXpReward * finalXpMultiplier / 100;
-                ProgressionEngine.ProcessMonsterDeath(ref payload, activeMonster.BaseXpReward, finalXpMultiplier, ActiveGlobalEventId);
+                ProgressionEngine.ProcessMonsterDeath(ref payload, activeMonster.BaseXpReward, finalXpMultiplier, ActiveGlobalEventId, activeRaceId);
                 AddSeasonalXp(ref payload, seasonalCombatXp);
                 
                 if (liveSessionContexts.TryGetValue(payload.PlayerId, out var sessionCtx))

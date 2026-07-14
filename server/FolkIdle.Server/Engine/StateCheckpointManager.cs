@@ -154,6 +154,12 @@ namespace FolkIdle.Server.Engine
                     player.IsChronoAccelerating = state.IsChronoAccelerating;
                     player.Quarantine_Active = state.Quarantine_Active;
                     player.IsQuarantined = state.IsQuarantined;
+                    player.BaseStrength = state.STR;
+                    player.BaseDexterity = state.DEX;
+                    player.BaseConstitution = state.CON;
+                    player.BaseLuck = state.LCK;
+                    player.EquippedWeaponId = state.EquippedWeaponId == 0L ? null : state.EquippedWeaponId;
+                    player.EquippedArmorId = state.EquippedArmorId == 0L ? null : state.EquippedArmorId;
                     await UpsertAccountChronoRegistryAsync(dbContext, state);
                     await UpsertChroniclePassAsync(dbContext, state);
                     await UpsertLifetimeAchievementsAsync(dbContext, player, state);
@@ -320,6 +326,13 @@ namespace FolkIdle.Server.Engine
             int vodnikMastery = masteries.FirstOrDefault(m => m.RaceId == RaceIds.Vodnik)?.MasteryLevel ?? 0;
             int moosleuteMastery = masteries.FirstOrDefault(m => m.RaceId == RaceIds.Moosleute)?.MasteryLevel ?? 0;
 
+            // Modul 16/21: EquippedWeaponId/ArmorId are persisted, but the
+            // derived stat totals StatsCalculator reads every tick are not - they
+            // must be recomputed once at login rather than starting zeroed until
+            // the player's next equip action.
+            (int equippedAttack, int equippedDefense, int equippedCrit, int equippedLuck) =
+                await EquipmentSlotEngine.ComputeEquippedTotalsAsync(dbContext, player.EquippedWeaponId, player.EquippedArmorId);
+
             var mentorCount = await dbContext.MentorshipAcademyAssignments
                 .CountAsync(m => m.PlayerId == playerId);
 
@@ -439,6 +452,16 @@ namespace FolkIdle.Server.Engine
                 KoboldMasteryLevel = koboldMastery,
                 VodnikMasteryLevel = vodnikMastery,
                 MoosleuteMasteryLevel = moosleuteMastery,
+                STR = player.BaseStrength,
+                DEX = player.BaseDexterity,
+                CON = player.BaseConstitution,
+                LCK = player.BaseLuck,
+                EquippedWeaponId = player.EquippedWeaponId ?? 0L,
+                EquippedArmorId = player.EquippedArmorId ?? 0L,
+                CachedEquippedFlatAttack = equippedAttack,
+                CachedEquippedFlatDefense = equippedDefense,
+                CachedEquippedCritBonus = equippedCrit,
+                CachedEquippedLuckBonus = equippedLuck,
                 LogicEpochCounter = player.LogicEpochCounter,
                 BankedChronoSeconds = accountChrono.BankedChronoSeconds,
                 IsChronoAccelerating = chronoAccelerationActive,
@@ -729,6 +752,12 @@ namespace FolkIdle.Server.Engine
                         player.IsChronoAccelerating = state.IsChronoAccelerating;
                         player.Quarantine_Active = state.Quarantine_Active;
                         player.IsQuarantined = state.IsQuarantined;
+                        player.BaseStrength = state.STR;
+                        player.BaseDexterity = state.DEX;
+                        player.BaseConstitution = state.CON;
+                        player.BaseLuck = state.LCK;
+                        player.EquippedWeaponId = state.EquippedWeaponId == 0L ? null : state.EquippedWeaponId;
+                        player.EquippedArmorId = state.EquippedArmorId == 0L ? null : state.EquippedArmorId;
                         await UpsertAccountChronoRegistryAsync(dbContext, state);
                         await UpsertChroniclePassAsync(dbContext, state);
 

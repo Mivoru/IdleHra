@@ -28,6 +28,21 @@ namespace FolkIdle.Server.Engine
         public int ResultingQualityTier;
     }
 
+    // Modul 16/21: EquipmentSlotEngine's equip/unequip handlers run on a
+    // background Task.Run thread with no ref access to the live TickStatePayload,
+    // so the resulting slot state (plus pre-computed, allocation-free-to-read
+    // affix totals for StatsCalculator) is reported back through this queue.
+    public struct EquipmentSlotUpdateNotification
+    {
+        public long PlayerId;
+        public long EquippedWeaponId;
+        public long EquippedArmorId;
+        public int EquippedFlatAttack;
+        public int EquippedFlatDefense;
+        public int EquippedCritBonus;
+        public int EquippedLuckBonus;
+    }
+
     public struct MailClaimRequest
     {
         public long PlayerId;
@@ -163,6 +178,7 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<MarketMatchNotification> MarketMatchQueue { get; } = new();
         public ConcurrentQueue<AchievementClaimRequest> AchievementClaimQueue { get; } = new();
         public ConcurrentQueue<ForgeUpgradeNotification> ForgeUpgradeQueue { get; } = new();
+        public ConcurrentQueue<EquipmentSlotUpdateNotification> EquipmentSlotUpdateQueue { get; } = new();
         public ConcurrentQueue<MailClaimRequest> MailClaimRequestQueue { get; } = new();
         public ConcurrentQueue<BankWithdrawRequest> BankWithdrawRequestQueue { get; } = new();
         public ConcurrentQueue<BirthNotification> BirthNotificationQueue { get; } = new();

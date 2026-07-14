@@ -156,6 +156,16 @@ namespace FolkIdle.Server.Engine
         public int HighestForgeSynthesisTier;
         public long HarvestLoopCount;
 
+        // Modul 16/21: cached, pre-summed equipped-gear stat bonuses (weapon +
+        // armor combined). Recomputed only by EquipmentSlotEngine on equip/
+        // unequip (see EquipmentSlotUpdateQueue), read as plain O(1) field
+        // access from StatsCalculator every tick - never re-parsed from JSON or
+        // re-queried from the DB on the hot path.
+        public int CachedEquippedFlatAttack;
+        public int CachedEquippedFlatDefense;
+        public int CachedEquippedCritBonus;
+        public int CachedEquippedLuckBonus;
+
         // Cached passive Codex multipliers. Recomputed only on login or Codex
         // level-up (see CodexEngine.RecalculateAndSyncMultipliersAsync); read as
         // plain O(1) field access from the 10 Hz tick, never recalculated there.

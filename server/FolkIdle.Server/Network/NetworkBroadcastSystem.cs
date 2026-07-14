@@ -1038,6 +1038,70 @@ namespace FolkIdle.Server.Network
             Interlocked.Increment(ref _acceptedPacketsWindow);
         }
 
+        // Modul 16/21: creates a brand new PlayerRecord + its default active
+        // Character/lineage row + starting resources for a client whose token
+        // was never registered. This is the only production path that ever
+        // creates a PlayerRecord from a live client connection - everything
+        // else (DbSeeder, tests) is offline seeding. The new character becomes
+        // Slot1 automatically on next login: StateCheckpointManager.LoadPlayerState
+        // hydrates Slot1 from simply "the player's first CharacterRecord", with
+        // no separate roster-assignment table to populate.
+        private async Task<long> AutoProvisionPlayerAsync(Guid authenticatorToken)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            try
+            {
+                Guid characterId = Guid.NewGuid();
+
+                var player = new PlayerRecord
+                {
+                    CurrentLevel = 1,
+                    CurrentXp = 0L,
+                    SelectedLineageId = 1,
+                    PlayerGuid = characterId,
+                    AuthenticatorToken = authenticatorToken,
+                    LastLogoutTimestamp = 0L,
+                    PremiumDiamonds = 0
+                };
+                db.PlayerRecords.Add(player);
+                await db.SaveChangesAsync();
+
+                db.CharacterRecords.Add(new CharacterRecord
+                {
+                    Id = characterId,
+                    PlayerId = player.Id,
+                    Level = 1,
+                    AgePhase = 1,
+                    AgeTicks = 0L
+                });
+
+                db.CharacterLineages.Add(new CharacterLineageRegistry
+                {
+                    CharacterId = characterId,
+                    GenerationIndex = 0,
+                    GeneticVector = RaceIds.Human
+                });
+
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = "gold", Quantity = 1000L });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = ContentRegistry.GetMaterialString(1), Quantity = 25L });
+
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                Console.WriteLine($"Auto-provisioned new player {player.Id} for a previously unregistered token.");
+                return player.Id;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                Console.WriteLine($"Auto-provisioning failed: {ex.Message}");
+                return 0L;
+            }
+        }
+
         private async Task<bool> IsPlayerBlacklistedAsync(long playerId)
         {
             Guid accountId = await ResolveAccountIdAsync(playerId);
@@ -1094,8 +1158,26 @@ namespace FolkIdle.Server.Network
                 if (result.MessageType == WebSocketMessageType.Binary && result.Count >= Marshal.SizeOf<ClientAuthPacket>())
                 {
                     var authPacket = ParseAuthPacket(buffer, result.Count);
-                    
-                    if (ActiveTokenCache.TryGetValue(authPacket.AuthenticatorToken, out long mappedId))
+
+                    bool tokenResolved = ActiveTokenCache.TryGetValue(authPacket.AuthenticatorToken, out long mappedId);
+
+                    // Modul 16/21: there is no OAuth/guest-issuance flow anywhere in this
+                    // codebase - DbSeeder and test fixtures are the only other writers of
+                    // PlayerRecords, and neither runs against a live client connection. A
+                    // syntactically valid (non-empty) token the server has never seen
+                    // before auto-provisions a brand new account instead of being rejected,
+                    // so a fresh client can actually enter the game.
+                    if (!tokenResolved && authPacket.AuthenticatorToken != Guid.Empty)
+                    {
+                        mappedId = await AutoProvisionPlayerAsync(authPacket.AuthenticatorToken);
+                        tokenResolved = mappedId > 0;
+                        if (tokenResolved)
+                        {
+                            ActiveTokenCache[authPacket.AuthenticatorToken] = mappedId;
+                        }
+                    }
+
+                    if (tokenResolved)
                     {
                         playerId = mappedId;
                         if (await IsPlayerBlacklistedAsync(playerId))
