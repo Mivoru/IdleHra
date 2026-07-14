@@ -100,7 +100,8 @@ namespace FolkIdle.Client.Network
                 PlayerGuid = Guid.Empty,
                 AuthenticatorToken = authenticatorTokenGuid,
                 AssetHash = 0,
-                PlatformSignature = 0
+                PlatformSignature = 0,
+                EpochExpirationTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
             };
 
             System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref _authBuffer[0], authPacket);

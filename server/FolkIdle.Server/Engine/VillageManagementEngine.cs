@@ -67,10 +67,6 @@ namespace FolkIdle.Server.Engine
                     playerId,
                     (int)targetBuildingId);
 
-                var goldRecord = await db.CommodityRecords
-                    .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
-                    .SingleOrDefaultAsync();
-
                 var infrastructure = await db.VillageInfrastructures
                     .FromSqlRaw("SELECT * FROM \"VillageInfrastructures\" WHERE \"PlayerId\" = {0} AND \"BuildingId\" = {1} FOR UPDATE", playerId, (int)targetBuildingId)
                     .SingleOrDefaultAsync();
@@ -81,15 +77,50 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
-                long cost = CalculateUpgradeCost(infrastructure.CurrentLevel);
+                // Modul 16: the four passive-production buildings (Lumberjack/
+                // Quarry/Mine/Warehouse) are raw-material sinks - upgrading them
+                // costs Wood and Stone rather than the Gold the original four
+                // service buildings (Forge/Inn/Breeding/Academy) use.
+                bool isProductionBuilding = targetBuildingId >= LumberjackBuildingId && targetBuildingId <= WarehouseBuildingId;
 
-                if (goldRecord == null || goldRecord.Quantity < cost)
+                if (isProductionBuilding)
                 {
-                    await transaction.RollbackAsync();
-                    return;
+                    long productionCost = CalculateProductionUpgradeCost(infrastructure.CurrentLevel);
+
+                    var woodRecord = await db.CommodityRecords
+                        .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, WoodCommodityId)
+                        .SingleOrDefaultAsync();
+
+                    var stoneRecord = await db.CommodityRecords
+                        .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, StoneCommodityId)
+                        .SingleOrDefaultAsync();
+
+                    if (woodRecord == null || stoneRecord == null || woodRecord.Quantity < productionCost || stoneRecord.Quantity < productionCost)
+                    {
+                        await transaction.RollbackAsync();
+                        return;
+                    }
+
+                    woodRecord.Quantity -= productionCost;
+                    stoneRecord.Quantity -= productionCost;
+                }
+                else
+                {
+                    var goldRecord = await db.CommodityRecords
+                        .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
+                        .SingleOrDefaultAsync();
+
+                    long cost = CalculateUpgradeCost(infrastructure.CurrentLevel);
+
+                    if (goldRecord == null || goldRecord.Quantity < cost)
+                    {
+                        await transaction.RollbackAsync();
+                        return;
+                    }
+
+                    goldRecord.Quantity -= cost;
                 }
 
-                goldRecord.Quantity -= cost;
                 infrastructure.CurrentLevel++;
 
                 await db.SaveChangesAsync();
@@ -148,13 +179,27 @@ namespace FolkIdle.Server.Engine
 
         public static bool IsValidBuildingId(uint buildingId)
         {
-            return buildingId >= ForgeBuildingId && buildingId <= MentorshipAcademyBuildingId;
+            return (buildingId >= ForgeBuildingId && buildingId <= MentorshipAcademyBuildingId)
+                || (buildingId >= LumberjackBuildingId && buildingId <= WarehouseBuildingId);
         }
 
         public static long CalculateUpgradeCost(int currentLevel)
         {
             if (currentLevel < 0) currentLevel = 0;
             double scaled = BaseUpgradeCost * Math.Pow(1.5, currentLevel);
+            if (scaled > long.MaxValue) return long.MaxValue;
+            return (long)Math.Ceiling(scaled);
+        }
+
+        private const long BaseProductionUpgradeCost = 100L;
+
+        // Modul 16: Wood/Stone cost for Lumberjack/Quarry/Mine/Warehouse upgrades.
+        // Uses (currentLevel + 1) rather than currentLevel as the exponent base so
+        // the very first upgrade (level 0 -> 1) is not free.
+        public static long CalculateProductionUpgradeCost(int currentLevel)
+        {
+            if (currentLevel < 0) currentLevel = 0;
+            double scaled = BaseProductionUpgradeCost * Math.Pow(currentLevel + 1, 1.8);
             if (scaled > long.MaxValue) return long.MaxValue;
             return (long)Math.Ceiling(scaled);
         }
@@ -170,6 +215,10 @@ namespace FolkIdle.Server.Engine
             int innLevel = 0;
             int breedingLevel = 0;
             int academyLevel = 0;
+            int lumberjackLevel = 0;
+            int quarryLevel = 0;
+            int mineLevel = 0;
+            int warehouseLevel = 0;
 
             for (int i = 0; i < levels.Count; i++)
             {
@@ -177,6 +226,10 @@ namespace FolkIdle.Server.Engine
                 else if (levels[i].BuildingId == InnBuildingId) innLevel = levels[i].CurrentLevel;
                 else if (levels[i].BuildingId == BreedingGroundsBuildingId) breedingLevel = levels[i].CurrentLevel;
                 else if (levels[i].BuildingId == MentorshipAcademyBuildingId) academyLevel = levels[i].CurrentLevel;
+                else if (levels[i].BuildingId == LumberjackBuildingId) lumberjackLevel = levels[i].CurrentLevel;
+                else if (levels[i].BuildingId == QuarryBuildingId) quarryLevel = levels[i].CurrentLevel;
+                else if (levels[i].BuildingId == MineBuildingId) mineLevel = levels[i].CurrentLevel;
+                else if (levels[i].BuildingId == WarehouseBuildingId) warehouseLevel = levels[i].CurrentLevel;
             }
 
             int population = await db.VillageResidents
@@ -193,7 +246,11 @@ namespace FolkIdle.Server.Engine
                 CurrentPopulationCount = ClampByte(population),
                 CurrentToolTier = forgeLevel,
                 MaxPopulationCapacity = CalculatePopulationCapacity(innLevel),
-                InnMaturationBonus = innLevel
+                InnMaturationBonus = innLevel,
+                LumberjackLevel = ClampByte(lumberjackLevel),
+                QuarryLevel = ClampByte(quarryLevel),
+                MineLevel = ClampByte(mineLevel),
+                WarehouseLevel = ClampByte(warehouseLevel)
             };
         }
 

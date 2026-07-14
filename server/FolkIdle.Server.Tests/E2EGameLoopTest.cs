@@ -105,14 +105,14 @@ namespace FolkIdle.Server.Tests
 
             // Seed Token Cache
             var token = Guid.NewGuid();
-            networkSystem.ActiveTokenCache.TryAdd(token, 1L);
+            networkSystem.ActiveTokenCache.TryAdd(token, new CachedTokenEntry { PlayerId = 1L, ExpirationEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 3600L });
 
             // 2. Mock a Client Connection
             using var clientSocket = new ClientWebSocket();
             await clientSocket.ConnectAsync(new Uri("ws://localhost:8081/"), CancellationToken.None);
 
             // Send Handshake Auth Packet
-            var authPacket = new ClientAuthPacket { PlayerGuid = Guid.NewGuid(), AuthenticatorToken = token };
+            var authPacket = new ClientAuthPacket { PlayerGuid = Guid.NewGuid(), AuthenticatorToken = token, EpochExpirationTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds() };
             byte[] authBuffer = new byte[Marshal.SizeOf<ClientAuthPacket>()];
             MemoryMarshal.Write(new Span<byte>(authBuffer), authPacket);
             await clientSocket.SendAsync(new ArraySegment<byte>(authBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
@@ -272,7 +272,7 @@ namespace FolkIdle.Server.Tests
                         var uri = new Uri($"ws://localhost:8082/?token={Guid.NewGuid()}");
                         
                         // Fake token for test
-                        networkSystem.ActiveTokenCache.TryAdd(Guid.Parse(uri.Query.Split('=')[1]), playerId);
+                        networkSystem.ActiveTokenCache.TryAdd(Guid.Parse(uri.Query.Split('=')[1]), new CachedTokenEntry { PlayerId = playerId, ExpirationEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 3600L });
 
                         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                         await ws.ConnectAsync(uri, cts.Token);

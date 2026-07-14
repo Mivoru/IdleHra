@@ -21,10 +21,22 @@ namespace FolkIdle.Server.Engine
 
     public static class StatsCalculator
     {
-        public static CombatStats Calculate(int str, int dex, int con, int lck, int activeOffensivePotionId = 0, int activeDefensivePotionId = 0, int activeAgePhase = 1, int completedAreaFlags = 0, int activeRaceId = 0, int humanMastery = 0, int vilaMastery = 0, int draugrMastery = 0, int equippedFlatAttack = 0, int equippedFlatDefense = 0, int equippedCritBonus = 0, int equippedLuckBonus = 0)
+        public static CombatStats Calculate(int str, int dex, int con, int lck, int activeOffensivePotionId = 0, int activeDefensivePotionId = 0, int activeAgePhase = 1, int completedAreaFlags = 0, int activeRaceId = 0, int humanMastery = 0, int vilaMastery = 0, int draugrMastery = 0, int equippedFlatAttack = 0, int equippedFlatDefense = 0, int equippedCritBonus = 0, int equippedLuckBonus = 0, bool isEpicMutation = false, int locusSpeed = 0, int locusCrit = 0)
         {
             var stats = new CombatStats();
-            
+
+            // Modul 13.4.3: an Epic-mutated lineage (see BreedingEngine's grand
+            // mutation roll) grants a flat +5% to all base attributes, applied to
+            // the raw inputs before any derived stat below is computed so every
+            // downstream formula benefits proportionally.
+            if (isEpicMutation)
+            {
+                str = (int)(str * 1.05f);
+                dex = (int)(dex * 1.05f);
+                con = (int)(con * 1.05f);
+                lck = (int)(lck * 1.05f);
+            }
+
             // Strength (STR): +2 Melee Damage, +1 Armor Penetration.
             stats.FlatMeleeDamage = str * 2;
             stats.FlatArmorPenetration = str * 1;
@@ -103,6 +115,15 @@ namespace FolkIdle.Server.Engine
             stats.FlatPhysicalArmor += equippedFlatDefense;
             stats.CritChancePct += equippedCritBonus;
             stats.LootLuckPct += equippedLuckBonus;
+
+            // Modul 13.4.3: inherited genetic loci (see GeneticSplicingEngine/
+            // BreedingEngine). LocusCrit scales Crit Chance directly; LocusSpeed
+            // reduces the effective attack interval by adding to AttackSpeedPct
+            // (a higher AttackSpeedPct shortens the interval between attacks in
+            // the combat tick loop). Same additive block as equipped gear, before
+            // the age-phase falloff below.
+            stats.CritChancePct += locusCrit * 0.05f;
+            stats.AttackSpeedPct += locusSpeed * 0.05f;
 
             // Age penalties: 0=Child, 1=Adult, 2=Senior, 3=Old
             if (activeAgePhase == 2)

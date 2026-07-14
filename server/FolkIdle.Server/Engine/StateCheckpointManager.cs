@@ -507,6 +507,20 @@ namespace FolkIdle.Server.Engine
                 payload.Slot1_AgeTicks = characters[0].AgeTicks;
                 payload.Slot1_AgePhase = characters[0].AgePhase;
                 payload.Slot1_GeneticVector = characters[0].Lineage?.GeneticVector ?? 0;
+
+                // Modul 13.4.3: inherited genetic loci for the active (Slot1)
+                // character only - combat/growth are always evaluated against
+                // whichever character occupies Slot1, matching activeRaceId's
+                // existing derivation.
+                var slot1Lineage = characters[0].Lineage;
+                if (slot1Lineage != null)
+                {
+                    var slot1GeneVec = new GeneticVector(slot1Lineage.GeneticVector);
+                    payload.LocusSpeed = slot1GeneVec.LocusSpeed.Dominant;
+                    payload.LocusCrit = slot1GeneVec.LocusCrit.Dominant;
+                    payload.LocusYield = slot1GeneVec.LocusYield.Dominant;
+                    payload.IsEpicMutation = slot1Lineage.IsEpicMutation;
+                }
             }
             if (characters.Count > 1)
             {

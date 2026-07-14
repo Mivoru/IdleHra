@@ -26,6 +26,7 @@ namespace FolkIdle.Server.Models
         public DbSet<MentorshipAcademyAssignment> MentorshipAcademyAssignments { get; set; }
         public DbSet<MentorshipContract> MentorshipContracts { get; set; }
         public DbSet<MonsterCodexEntry> MonsterCodexEntries { get; set; }
+        public DbSet<PlayerRegionCompletion> PlayerRegionCompletions { get; set; }
         public DbSet<PlayerRaceMastery> PlayerRaceMasteries { get; set; }
         public DbSet<PlayerAchievement> PlayerAchievements { get; set; }
         public DbSet<GuildWarMatch> GuildWarMatches { get; set; }
@@ -193,6 +194,11 @@ namespace FolkIdle.Server.Models
                 .HasKey(m => new { m.PlayerId, m.RaceId });
             modelBuilder.Entity<PlayerRaceMastery>()
                 .HasIndex(m => m.PlayerId);
+
+            modelBuilder.Entity<PlayerRegionCompletion>()
+                .HasKey(r => new { r.PlayerId, r.RegionId });
+            modelBuilder.Entity<PlayerRegionCompletion>()
+                .HasIndex(r => r.PlayerId);
 
             modelBuilder.Entity<PlayerLegacyLedger>()
                 .HasKey(l => new { l.PlayerId, l.EraId });

@@ -104,11 +104,29 @@ namespace FolkIdle.Server.Engine
         public int MaxPopulationCapacity;
         public int InnMaturationBonus;
         public int CurrentToolTier;
+
+        // Modul 16: passive-production buildings, extended in this pass so an
+        // UpgradeBuilding command against Lumberjack/Quarry/Mine/Warehouse
+        // replicates immediately instead of only refreshing at next login.
+        public byte LumberjackLevel;
+        public byte QuarryLevel;
+        public byte MineLevel;
+        public byte WarehouseLevel;
     }
 
     public struct MentorshipUpdateNotification
     {
         public long PlayerId;
+    }
+
+    // Modul 13.4.3: newly-completed regions from this Codex processing batch
+    // only (see CodexEngine.ExecuteAsync) - CompletedRegionFlags is OR'd into
+    // TickStatePayload.CompletedAreaFlags on drain, never assigned outright, so
+    // regions completed earlier this session are preserved.
+    public struct RegionCompletionNotification
+    {
+        public long PlayerId;
+        public int CompletedRegionFlags;
     }
 
     public struct QuarantineNotification
@@ -197,6 +215,7 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<GuildRaidBossUpdateNotification> GuildRaidBossUpdateQueue { get; } = new();
         public ConcurrentQueue<MentorshipContractUpdateNotification> MentorshipContractUpdateQueue { get; } = new();
         public ConcurrentQueue<CodexMultiplierUpdateNotification> CodexMultiplierUpdateQueue { get; } = new();
+        public ConcurrentQueue<RegionCompletionNotification> RegionCompletionUpdateQueue { get; } = new();
 
         public void RegisterPlayer(long playerId)
         {

@@ -412,6 +412,16 @@ namespace FolkIdle.Server.Engine
                     }
                 }
 
+                while (_playerRegistry.RegionCompletionUpdateQueue.TryDequeue(out var regionCompletionUpdate))
+                {
+                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, regionCompletionUpdate.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                    {
+                        currentPayload.CompletedAreaFlags |= regionCompletionUpdate.CompletedRegionFlags;
+                        currentPayload.IsDirty = true;
+                    }
+                }
+
                 while (_playerRegistry.CraftingCompletionQueue.TryDequeue(out var craftCompletion))
                 {
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, craftCompletion.PlayerId);
@@ -471,6 +481,10 @@ namespace FolkIdle.Server.Engine
                         currentPayload.CachedCurrentToolTier = updateNotif.CurrentToolTier;
                         currentPayload.CachedInnMaturationBonus = updateNotif.InnMaturationBonus;
                         currentPayload.CachedMaxPopulationCapacity = updateNotif.MaxPopulationCapacity;
+                        currentPayload.LumberjackLevel = updateNotif.LumberjackLevel;
+                        currentPayload.QuarryLevel = updateNotif.QuarryLevel;
+                        currentPayload.MineLevel = updateNotif.MineLevel;
+                        currentPayload.WarehouseLevel = updateNotif.WarehouseLevel;
                         currentPayload.IsDirty = true;
                     }
                 }
@@ -2593,7 +2607,7 @@ namespace FolkIdle.Server.Engine
                 activeRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
             }
 
-            var combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus);
+            var combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit);
             
             long baseMilliHp = 100000L;
             long effectiveMilliHp = baseMilliHp + (baseMilliHp * lineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.MaxHp * 1000L);

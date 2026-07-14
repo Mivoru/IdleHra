@@ -65,6 +65,19 @@ namespace FolkIdle.Server.Engine
         public int CON;
         public int LCK;
 
+        // Modul 13.4.3: cached inherited genetic loci, hydrated at login from
+        // the active character's CharacterLineages row (see
+        // StateCheckpointManager.LoadPlayerState). Read as plain O(1) field
+        // access from StatsCalculator every tick - never re-derived from
+        // GeneticVector on the hot path. LocusYield is cached for a future
+        // gathering-yield bonus system but not yet consumed anywhere, matching
+        // the existing LocusSpeed/LocusCrit precedent before this task wired
+        // them into StatsCalculator.
+        public bool IsEpicMutation;
+        public int LocusSpeed;
+        public int LocusCrit;
+        public int LocusYield;
+
         public int AutoEatThreshold;
         public int Food1_ItemId;
         public int Food1_Count;

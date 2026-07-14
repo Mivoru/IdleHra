@@ -523,6 +523,113 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task Test_VillageUpgrade_RollbackOnInsufficientWoodAndStone()
+        {
+            const long testPlayerId = 950000006L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.LumberjackBuildingId,
+                    CurrentLevel = 0
+                });
+                db.CommodityRecords.AddRange(
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "wood", Quantity = 1L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "stone", Quantity = 1L });
+                await db.SaveChangesAsync();
+            }
+
+            var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await villageManagementEngine.ExecuteUpgradeBuildingAsync(testPlayerId, VillageManagementEngine.LumberjackBuildingId);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            var infrastructure = await verifyDb.VillageInfrastructures.AsNoTracking()
+                .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.LumberjackBuildingId);
+            var unchangedWood = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "wood");
+            var unchangedStone = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "stone");
+
+            Assert.Equal(0, infrastructure.CurrentLevel);
+            Assert.Equal(1L, unchangedWood.Quantity);
+            Assert.Equal(1L, unchangedStone.Quantity);
+        }
+
+        [Fact]
+        public async Task Test_VillageUpgrade_SucceedsAndDeductsWoodAndStone()
+        {
+            const long testPlayerId = 950000007L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.LumberjackBuildingId,
+                    CurrentLevel = 0
+                });
+                db.CommodityRecords.AddRange(
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "wood", Quantity = 10000L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "stone", Quantity = 10000L });
+                await db.SaveChangesAsync();
+            }
+
+            var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await villageManagementEngine.ExecuteUpgradeBuildingAsync(testPlayerId, VillageManagementEngine.LumberjackBuildingId);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            var infrastructure = await verifyDb.VillageInfrastructures.AsNoTracking()
+                .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.LumberjackBuildingId);
+            var updatedWood = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "wood");
+            var updatedStone = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "stone");
+
+            long expectedCost = VillageManagementEngine.CalculateProductionUpgradeCost(0);
+
+            Assert.Equal(1, infrastructure.CurrentLevel);
+            Assert.Equal(10000L - expectedCost, updatedWood.Quantity);
+            Assert.Equal(10000L - expectedCost, updatedStone.Quantity);
+        }
+
+        [Fact]
+        public void Test_StatsCalculator_EpicMutationScalesBaseAttributes()
+        {
+            CombatStats baseline = StatsCalculator.Calculate(str: 100, dex: 100, con: 100, lck: 100);
+            CombatStats mutated = StatsCalculator.Calculate(str: 100, dex: 100, con: 100, lck: 100, isEpicMutation: true);
+
+            Assert.True(mutated.FlatMeleeDamage > baseline.FlatMeleeDamage);
+            Assert.True(mutated.MaxHp > baseline.MaxHp);
+            Assert.True(mutated.FlatRangedDamage > baseline.FlatRangedDamage);
+        }
+
+        [Fact]
+        public void Test_StatsCalculator_GeneticLociScaleCritAndAttackSpeed()
+        {
+            CombatStats baseline = StatsCalculator.Calculate(str: 50, dex: 50, con: 50, lck: 50);
+            CombatStats withLoci = StatsCalculator.Calculate(str: 50, dex: 50, con: 50, lck: 50, locusSpeed: 10, locusCrit: 10);
+
+            Assert.True(withLoci.CritChancePct > baseline.CritChancePct);
+            Assert.True(withLoci.AttackSpeedPct > baseline.AttackSpeedPct);
+        }
+
+        [Fact]
         public async Task Test_Mentorship_XpBoostAndTickApplication()
         {
             const long mentorPlayerId = 960000001L;

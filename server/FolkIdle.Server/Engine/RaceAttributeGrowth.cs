@@ -41,10 +41,21 @@ namespace FolkIdle.Server.Engine
 
             GetGrowthPerLevel(activeRaceId, out int str, out int dex, out int con, out int lck);
 
-            payload.STR += str * levelsGained;
-            payload.DEX += dex * levelsGained;
-            payload.CON += con * levelsGained;
-            payload.LCK += lck * levelsGained;
+            // Modul 13.4.3: an Epic-mutated lineage grants +5% growth per level,
+            // matching StatsCalculator's flat attribute bonus. Positive genetic
+            // loci (bred via GeneticSplicingEngine) add a small further bonus
+            // scaled by their combined magnitude, so a well-bred lineage grows
+            // faster in addition to starting with a higher base line.
+            float geneticMultiplier = 1.0f;
+            if (payload.IsEpicMutation) geneticMultiplier += 0.05f;
+
+            int lociSum = payload.LocusSpeed + payload.LocusCrit + payload.LocusYield;
+            if (lociSum > 0) geneticMultiplier += lociSum * 0.001f;
+
+            payload.STR += (int)(str * levelsGained * geneticMultiplier);
+            payload.DEX += (int)(dex * levelsGained * geneticMultiplier);
+            payload.CON += (int)(con * levelsGained * geneticMultiplier);
+            payload.LCK += (int)(lck * levelsGained * geneticMultiplier);
         }
     }
 }

@@ -39,12 +39,29 @@ namespace FolkIdle.Server.Network
         public int MultiplierValue;
     }
 
+    // Modul 29/45: ActiveTokenCache entry. ExpirationEpoch is always
+    // server-computed (nowEpoch + TokenFreshnessWindowSeconds) at the time the
+    // token was resolved - never taken directly from the client-supplied
+    // ClientAuthPacket.EpochExpirationTime, so a client cannot extend its own
+    // cache lifetime by claiming a far-future timestamp. That client-supplied
+    // timestamp is only used for the one-time handshake freshness check.
+    public struct CachedTokenEntry
+    {
+        public long PlayerId;
+        public long ExpirationEpoch;
+    }
+
     public class NetworkBroadcastSystem
     {
         private readonly HttpListener _httpListener;
         private readonly ConcurrentDictionary<long, WebSocketSession> _connectedClients = new();
-        public ConcurrentDictionary<Guid, long> ActiveTokenCache { get; } = new();
-        
+        public ConcurrentDictionary<Guid, CachedTokenEntry> ActiveTokenCache { get; } = new();
+
+        // Modul 29/45: 24-hour freshness window, applied both to the initial
+        // handshake check against the client-supplied EpochExpirationTime and
+        // to the server's own ActiveTokenCache entry lifetime.
+        private const long TokenFreshnessWindowSeconds = 86400L;
+
         private bool _isRunning;
         private readonly byte[] _broadcastBuffer = new byte[Marshal.SizeOf<StateUpdatePacket>()];
 
@@ -849,7 +866,13 @@ namespace FolkIdle.Server.Network
                 }
             }
 
-            return ActiveTokenCache.TryGetValue(token, out playerId);
+            if (ActiveTokenCache.TryGetValue(token, out CachedTokenEntry entry) && entry.ExpirationEpoch > DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            {
+                playerId = entry.PlayerId;
+                return true;
+            }
+
+            return false;
         }
 
         private async Task HandleVerifyReceipt(HttpListenerContext context)
@@ -1159,7 +1182,25 @@ namespace FolkIdle.Server.Network
                 {
                     var authPacket = ParseAuthPacket(buffer, result.Count);
 
-                    bool tokenResolved = ActiveTokenCache.TryGetValue(authPacket.AuthenticatorToken, out long mappedId);
+                    long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+                    // Modul 29/45: structured handshake freshness check. This is
+                    // a replay-window check against the client-supplied payload
+                    // timestamp (reject if older than 24 hours), not full JWT
+                    // signature verification - there is no shared-secret signing
+                    // scheme elsewhere in this codebase to verify a signature
+                    // against, so a genuine JWT would need its own dedicated
+                    // key-distribution design rather than being bolted on here.
+                    if (authPacket.EpochExpirationTime <= 0 || nowEpoch - authPacket.EpochExpirationTime > TokenFreshnessWindowSeconds)
+                    {
+                        await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Token expired", CancellationToken.None);
+                        return;
+                    }
+
+                    EvictExpiredTokens(nowEpoch);
+
+                    bool tokenResolved = ActiveTokenCache.TryGetValue(authPacket.AuthenticatorToken, out CachedTokenEntry cachedEntry) && cachedEntry.ExpirationEpoch > nowEpoch;
+                    long mappedId = tokenResolved ? cachedEntry.PlayerId : 0L;
 
                     // Modul 16/21: there is no OAuth/guest-issuance flow anywhere in this
                     // codebase - DbSeeder and test fixtures are the only other writers of
@@ -1171,10 +1212,11 @@ namespace FolkIdle.Server.Network
                     {
                         mappedId = await AutoProvisionPlayerAsync(authPacket.AuthenticatorToken);
                         tokenResolved = mappedId > 0;
-                        if (tokenResolved)
-                        {
-                            ActiveTokenCache[authPacket.AuthenticatorToken] = mappedId;
-                        }
+                    }
+
+                    if (tokenResolved)
+                    {
+                        ActiveTokenCache[authPacket.AuthenticatorToken] = new CachedTokenEntry { PlayerId = mappedId, ExpirationEpoch = nowEpoch + TokenFreshnessWindowSeconds };
                     }
 
                     if (tokenResolved)
@@ -1366,7 +1408,24 @@ namespace FolkIdle.Server.Network
         {
             foreach (var kvp in ActiveTokenCache)
             {
-                if (kvp.Value == playerId)
+                if (kvp.Value.PlayerId == playerId)
+                {
+                    ActiveTokenCache.TryRemove(kvp.Key, out _);
+                }
+            }
+        }
+
+        // Modul 29/45: thread-safe eviction of stale ActiveTokenCache entries.
+        // ConcurrentDictionary's TryRemove is safe to call concurrently with
+        // readers/writers on other keys, mirroring PurgeTokensForPlayer's
+        // existing iterate-and-remove pattern. Invoked inline on every new
+        // handshake rather than from a separate background timer, since
+        // connection attempts already provide a natural, frequent trigger.
+        private void EvictExpiredTokens(long nowEpoch)
+        {
+            foreach (var kvp in ActiveTokenCache)
+            {
+                if (kvp.Value.ExpirationEpoch <= nowEpoch)
                 {
                     ActiveTokenCache.TryRemove(kvp.Key, out _);
                 }

@@ -137,6 +137,57 @@ namespace FolkIdle.Server.Engine
                         }
                     }
 
+                    // Modul 13.4.3: region completion check. A region is 6
+                    // distinct monster ids (5 standard/elite + 1 regional boss -
+                    // same grouping formula StateCheckpointManager.LoadPlayerState
+                    // uses for the login-time CompletedAreaFlags recompute) with
+                    // every monster's KillCount >= 1000. Only newly-completed
+                    // regions (not already in PlayerRegionCompletions) grant the
+                    // permanent +1% Luck via CompletedAreaFlags; already-completed
+                    // regions are skipped so the bonus is never re-granted.
+                    var existingCompletions = await dbContext.PlayerRegionCompletions
+                        .Where(r => playerIds.Contains(r.PlayerId))
+                        .Select(r => new { r.PlayerId, r.RegionId })
+                        .ToListAsync(stoppingToken);
+                    var existingCompletionSet = new System.Collections.Generic.HashSet<(long PlayerId, int RegionId)>(
+                        existingCompletions.Select(e => (e.PlayerId, e.RegionId)));
+
+                    var newRegionFlagsByPlayer = new System.Collections.Generic.Dictionary<long, int>();
+
+                    foreach (long touchedPlayerId in playerIds)
+                    {
+                        for (int region = 1; region <= 10; region++)
+                        {
+                            if (existingCompletionSet.Contains((touchedPlayerId, region))) continue;
+
+                            var monstersInRegion = ContentRegistry.Monsters.ToArray().Where(m => ((m.Id - 1) % 30) / 6 + 1 == region).ToList();
+                            if (monstersInRegion.Count == 0) continue;
+
+                            bool allKilled = true;
+                            for (int i = 0; i < monstersInRegion.Count; i++)
+                            {
+                                var lookupKey = new { PlayerId = touchedPlayerId, MonsterId = monstersInRegion[i].Id };
+                                if (!codexEntries.TryGetValue(lookupKey, out var regionEntry) || regionEntry.KillCount < 1000)
+                                {
+                                    allKilled = false;
+                                    break;
+                                }
+                            }
+
+                            if (!allKilled) continue;
+
+                            dbContext.PlayerRegionCompletions.Add(new PlayerRegionCompletion
+                            {
+                                PlayerId = touchedPlayerId,
+                                RegionId = region,
+                                CompletedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                            });
+
+                            newRegionFlagsByPlayer.TryGetValue(touchedPlayerId, out int existingFlags);
+                            newRegionFlagsByPlayer[touchedPlayerId] = existingFlags | (1 << region);
+                        }
+                    }
+
                     foreach (var group in killsToProcess.GroupBy(k => new { k.PlayerId, k.RaceId }))
                     {
                         if (group.Key.RaceId <= 0) continue;
@@ -188,6 +239,15 @@ namespace FolkIdle.Server.Engine
                     foreach (long leveledUpPlayerId in codexLeveledUpPlayerIds)
                     {
                         await RecalculateAndSyncMultipliersAsync(leveledUpPlayerId, dbContext, _playerRegistry);
+                    }
+
+                    foreach (var regionCompletionKvp in newRegionFlagsByPlayer)
+                    {
+                        _playerRegistry.RegionCompletionUpdateQueue.Enqueue(new RegionCompletionNotification
+                        {
+                            PlayerId = regionCompletionKvp.Key,
+                            CompletedRegionFlags = regionCompletionKvp.Value
+                        });
                     }
                 }
                 catch (Exception ex)
