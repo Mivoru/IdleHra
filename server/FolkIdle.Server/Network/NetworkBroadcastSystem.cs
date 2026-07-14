@@ -599,10 +599,15 @@ namespace FolkIdle.Server.Network
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
                 var entries = await db.MonsterCodexEntries
                     .FromSqlInterpolated($"SELECT * FROM \"MonsterCodexEntries\" WHERE \"PlayerId\" = {playerId}")
                     .AsNoTracking()
                     .ToListAsync();
+
+                await transaction.CommitAsync();
 
                 var response = new System.Collections.Generic.List<CodexSnapshotEntryResponse>(entries.Count);
 
