@@ -2,19 +2,30 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.AddressableAssets;
 using FolkIdle.Client.Engine;
 using FolkIdle.Client.Network;
 
 namespace FolkIdle.Client.UI
 {
-    // Modul 21: Forge crafting panel. Event-driven only - the recipe list and
+    // Modul 21/24: Forge crafting panel. Event-driven only - the recipe list and
     // selected-recipe detail are rebuilt from EquipmentInventoryCache.OnSnapshotUpdated
     // or a row click, never from an Update() loop.
+    //
+    // AssetRegistry note: there is no 3D preview viewport for Forge items yet (unlike
+    // UiCodex3DViewer for monsters - no render-texture viewport or icon slot exists on
+    // UiForgeRecipeRow/this panel). SelectedRecipeAssetReference below resolves and
+    // exposes the AssetReference for whichever future viewer consumes it; it is
+    // deliberately not used for rendering here since building that viewport was not
+    // part of this task.
     public class UiForgeCraftingPanel : MonoBehaviour
     {
         public EquipmentInventoryCache InventoryCache;
         public WebSocketClient NetworkClient;
         public uint CraftingSlotIndex = 0;
+        [SerializeField] private AssetRegistry assetRegistry;
+
+        public AssetReference SelectedRecipeAssetReference { get; private set; }
 
         [Header("Recipe List - Pooled")]
         public Transform RowContainer;
@@ -116,6 +127,7 @@ namespace FolkIdle.Client.UI
                 if (SelectedRecipeNameText != null) SelectedRecipeNameText.SetCharArray(System.Array.Empty<char>(), 0, 0);
                 if (RequiredMaterialText != null) RequiredMaterialText.SetCharArray(System.Array.Empty<char>(), 0, 0);
                 if (CraftButton != null) CraftButton.interactable = false;
+                SelectedRecipeAssetReference = null;
                 return;
             }
 
@@ -124,6 +136,10 @@ namespace FolkIdle.Client.UI
                 int offset = WriteTextToBuffer(_nameBuffer, 0, selected.ResultBaseItemId);
                 SelectedRecipeNameText.SetCharArray(_nameBuffer, 0, offset);
             }
+
+            SelectedRecipeAssetReference = (assetRegistry != null && assetRegistry.TryGetItemAsset(selected.ResultBaseItemId, out AssetReference recipeAssetRef))
+                ? recipeAssetRef
+                : null;
 
             bool hasEnoughMaterial = selected.CurrentMaterialStock >= selected.MaterialCost;
 

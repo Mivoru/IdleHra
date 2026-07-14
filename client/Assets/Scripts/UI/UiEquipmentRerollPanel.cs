@@ -3,20 +3,29 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.AddressableAssets;
 using FolkIdle.Client.Engine;
 using FolkIdle.Client.Network;
 
 namespace FolkIdle.Client.UI
 {
-    // Modul 21: Equipment affix reroll panel. Event-driven only - the owned-item
+    // Modul 21/24: Equipment affix reroll panel. Event-driven only - the owned-item
     // list, affix slots, and cost text are rebuilt from
     // EquipmentInventoryCache.OnSnapshotUpdated or a selection click, never from
     // an Update() loop.
+    //
+    // AssetRegistry note: there is no 3D preview viewport for equipment yet (no
+    // render-texture viewport or icon slot exists on UiForgeEquipmentRow/this
+    // panel, mirroring the same gap in UiForgeCraftingPanel). SelectedItemAssetReference
+    // resolves and exposes the AssetReference for whichever future viewer consumes it.
     public class UiEquipmentRerollPanel : MonoBehaviour
     {
         public EquipmentInventoryCache InventoryCache;
         public WebSocketClient NetworkClient;
         public VisualSyncProxy SyncProxy;
+        [SerializeField] private AssetRegistry assetRegistry;
+
+        public AssetReference SelectedItemAssetReference { get; private set; }
 
         [Header("Owned Equipment List - Pooled")]
         public Transform RowContainer;
@@ -157,6 +166,7 @@ namespace FolkIdle.Client.UI
                 ClearAffixSlots();
                 if (RerollCostText != null) RerollCostText.SetCharArray(Array.Empty<char>(), 0, 0);
                 if (RerollButton != null) RerollButton.interactable = false;
+                SelectedItemAssetReference = null;
                 return;
             }
 
@@ -168,6 +178,10 @@ namespace FolkIdle.Client.UI
                 offset = WriteTextToBuffer(_nameBuffer, offset, selected.BaseItemId);
                 SelectedItemNameText.SetCharArray(_nameBuffer, 0, offset);
             }
+
+            SelectedItemAssetReference = (assetRegistry != null && assetRegistry.TryGetItemAsset(selected.BaseItemId, out AssetReference itemAssetRef))
+                ? itemAssetRef
+                : null;
 
             BindAffixSlots(selected);
 

@@ -1,11 +1,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.AddressableAssets;
 using FolkIdle.Client.Engine;
 
 namespace FolkIdle.Client.UI
 {
-    // Modul 15/23: list-of-monsters HUD that drives UiCodex3DViewer.Instance.ShowMonster.
+    // Modul 15/23/24: list-of-monsters HUD that drives UiCodex3DViewer.Instance.ShowMonster.
     // Rows are pooled via UIComponentPool<UiCodexListRow> and only rebuilt when the
     // underlying Codex data actually changes (dirty-flag pattern) - Update() never
     // recreates rows or touches layout on its own, it only checks a bool set from
@@ -13,10 +14,11 @@ namespace FolkIdle.Client.UI
     //
     // AssetKey resolution note: CodexInventoryCache's HTTP snapshot carries MonsterId/
     // Level/Kills only (no AssetKey - see NetworkBroadcastSystem.HandleCodexSnapshot).
-    // No MonsterId-to-Addressable-key naming convention exists anywhere else in this
-    // client yet, so ResolveAssetKey below is a placeholder ("Monster_{id}") until a
-    // real one is established; a lookup miss just means UiCodex3DViewer.ShowMonster
-    // silently fails to load a preview, same as any other missing Addressable today.
+    // ResolveAssetKey now looks the MonsterId up in the designer-authored AssetRegistry
+    // (AssetGUID from the mapped AssetReference - the real Addressables 2.9.1 key
+    // property; there is no RuntimeKeyInfo). If the registry is unassigned or has no
+    // mapping for this monster it falls back to the previous "Monster_{id}" convention
+    // string so existing behavior is preserved rather than silently breaking.
     public class UiCodexListBinder : MonoBehaviour
     {
         [Header("Codex List HUD - Canvas Isolation")]
@@ -28,6 +30,8 @@ namespace FolkIdle.Client.UI
         public Transform RowContainer;
         public UiCodexListRow RowPrefab;
         public int InitialRowPoolCapacity = 16;
+
+        [SerializeField] private AssetRegistry assetRegistry;
 
         private UIComponentPool<UiCodexListRow> _rowPool;
         private readonly List<UiCodexListRow> _activeRows = new List<UiCodexListRow>();
@@ -90,8 +94,13 @@ namespace FolkIdle.Client.UI
             SetCodexEntries(_convertedEntries);
         }
 
-        private static string ResolveAssetKey(int monsterId)
+        private string ResolveAssetKey(int monsterId)
         {
+            if (assetRegistry != null && assetRegistry.TryGetMonsterAsset(monsterId, out AssetReference assetRef))
+            {
+                return assetRef.AssetGUID;
+            }
+
             return "Monster_" + monsterId.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 
