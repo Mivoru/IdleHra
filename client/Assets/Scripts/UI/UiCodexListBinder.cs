@@ -1,19 +1,22 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using FolkIdle.Client.Engine;
 
 namespace FolkIdle.Client.UI
 {
-    // Modul 15: list-of-monsters HUD that drives UiCodex3DViewer.Instance.ShowMonster.
+    // Modul 15/23: list-of-monsters HUD that drives UiCodex3DViewer.Instance.ShowMonster.
     // Rows are pooled via UIComponentPool<UiCodexListRow> and only rebuilt when the
     // underlying Codex data actually changes (dirty-flag pattern) - Update() never
-    // recreates rows or touches layout on its own.
+    // recreates rows or touches layout on its own, it only checks a bool set from
+    // CodexInventoryCache.OnCodexCacheUpdated.
     //
-    // Integration note: there is currently no server->client channel that streams a
-    // variable-length list of unlocked Codex entries (StateUpdatePacket is a fixed-size
-    // struct and carries scalars only, and no other list-sync mechanism exists anywhere
-    // in this client yet). SetCodexEntries is the intended ingestion point for whichever
-    // future mechanism supplies that data; it is not wired to VisualSyncProxy here.
+    // AssetKey resolution note: CodexInventoryCache's HTTP snapshot carries MonsterId/
+    // Level/Kills only (no AssetKey - see NetworkBroadcastSystem.HandleCodexSnapshot).
+    // No MonsterId-to-Addressable-key naming convention exists anywhere else in this
+    // client yet, so ResolveAssetKey below is a placeholder ("Monster_{id}") until a
+    // real one is established; a lookup miss just means UiCodex3DViewer.ShowMonster
+    // silently fails to load a preview, same as any other missing Addressable today.
     public class UiCodexListBinder : MonoBehaviour
     {
         [Header("Codex List HUD - Canvas Isolation")]
@@ -29,6 +32,7 @@ namespace FolkIdle.Client.UI
         private UIComponentPool<UiCodexListRow> _rowPool;
         private readonly List<UiCodexListRow> _activeRows = new List<UiCodexListRow>();
         private readonly List<MonsterCodexEntryView> _currentEntries = new List<MonsterCodexEntryView>();
+        private readonly List<MonsterCodexEntryView> _convertedEntries = new List<MonsterCodexEntryView>();
         private bool _isDirty;
 
         private void Awake()
@@ -50,6 +54,17 @@ namespace FolkIdle.Client.UI
             }
         }
 
+        private void OnEnable()
+        {
+            CodexInventoryCache.OnCodexCacheUpdated += HandleCodexCacheUpdated;
+            CodexInventoryCache.RequestSnapshot();
+        }
+
+        private void OnDisable()
+        {
+            CodexInventoryCache.OnCodexCacheUpdated -= HandleCodexCacheUpdated;
+        }
+
         private void Update()
         {
             if (!_isDirty)
@@ -59,6 +74,25 @@ namespace FolkIdle.Client.UI
 
             RefreshRows();
             _isDirty = false;
+        }
+
+        private void HandleCodexCacheUpdated()
+        {
+            IReadOnlyList<CodexSnapshotEntryData> snapshot = CodexInventoryCache.Entries;
+
+            _convertedEntries.Clear();
+            for (int i = 0; i < snapshot.Count; i++)
+            {
+                CodexSnapshotEntryData entry = snapshot[i];
+                _convertedEntries.Add(new MonsterCodexEntryView(entry.MonsterId, ResolveAssetKey(entry.MonsterId), entry.Level));
+            }
+
+            SetCodexEntries(_convertedEntries);
+        }
+
+        private static string ResolveAssetKey(int monsterId)
+        {
+            return "Monster_" + monsterId.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 
         public void SetCodexEntries(IReadOnlyList<MonsterCodexEntryView> entries)

@@ -211,6 +211,12 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/codex/snapshot" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleCodexSnapshot(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/leaderboard/global" && context.Request.HttpMethod == "GET")
                     {
                         await HandleGlobalLeaderboard(context);
@@ -290,6 +296,14 @@ namespace FolkIdle.Server.Network
         {
             public System.Collections.Generic.List<ForgeEquipmentInstanceResponse> OwnedEquipment { get; set; } = new();
             public System.Collections.Generic.List<ForgeRecipeResponse> Recipes { get; set; } = new();
+        }
+
+        private sealed class CodexSnapshotEntryResponse
+        {
+            public int MonsterId { get; set; }
+            public int Level { get; set; }
+            public long Kills { get; set; }
+            public long NextLevelKills { get; set; }
         }
 
         private sealed class LeaderboardEntryResponse
@@ -558,6 +572,58 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Forge inventory snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul 23: authorized snapshot of the player's real Monster Codex
+        // progress. MonsterCodexEntries is already populated by CodexEngine's
+        // kill-event cron (SimulationEngine enqueues a KillEvent on every monster
+        // death; CodexEngine batches and upserts it off the 10 Hz hot path). Level
+        // is read directly off the persisted column rather than recomputed here,
+        // so this endpoint can never drift from CodexEngine.CalculateLevelFromKillCount
+        // (Level = KillCount / 10, uncapped) if that formula ever changes.
+        private async Task HandleCodexSnapshot(HttpListenerContext context)
+        {
+            try
+            {
+                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var entries = await db.MonsterCodexEntries
+                    .FromSqlInterpolated($"SELECT * FROM \"MonsterCodexEntries\" WHERE \"PlayerId\" = {playerId}")
+                    .AsNoTracking()
+                    .ToListAsync();
+
+                var response = new System.Collections.Generic.List<CodexSnapshotEntryResponse>(entries.Count);
+
+                foreach (var entry in entries)
+                {
+                    response.Add(new CodexSnapshotEntryResponse
+                    {
+                        MonsterId = entry.MonsterId,
+                        Level = entry.Level,
+                        Kills = entry.KillCount,
+                        NextLevelKills = (entry.Level + 1) * 10L
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Codex snapshot error: {ex}");
                 context.Response.StatusCode = 500;
             }
 
