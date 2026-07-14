@@ -53,7 +53,8 @@ namespace FolkIdle.Server.Network
         RegisterGuildDefense = 49,
         SubmitShardAttack = 50,
         ReportTelemetryBurst = 51,
-        PingNetworkDiagnostics = 52
+        PingNetworkDiagnostics = 52,
+        LaunchGuildRaid = 53
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

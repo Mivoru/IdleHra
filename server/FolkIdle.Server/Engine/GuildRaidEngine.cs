@@ -76,6 +76,61 @@ namespace FolkIdle.Server.Engine
             }
         }
 
+        // Modul 18: bootstraps a guild's first GuildRaidState row so the passive
+        // DPS cron in ExecuteRaidTickAsync has something to process. Once created,
+        // that cron auto-advances every subsequent tier forever on its own (kill
+        // the boss -> tier++, full HP, keep going) - there is no repeatable
+        // "start next raid" action, so this is a no-op once a row already exists.
+        public async Task TryStartRaidAsync(long guildId)
+        {
+            if (guildId <= 0) return;
+
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+            try
+            {
+                var existing = await db.GuildRaidStates
+                    .FromSqlRaw("SELECT * FROM \"GuildRaidStates\" WHERE \"GuildId\" = {0} FOR UPDATE", guildId)
+                    .SingleOrDefaultAsync();
+
+                if (existing != null)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                const int initialTier = 1;
+                long initialMaxHp = (long)(RaidBossBaseHp * Math.Pow(1.5, initialTier));
+
+                var raid = new GuildRaidState
+                {
+                    GuildId = guildId,
+                    RaidTier = initialTier,
+                    RaidBossCurrentHp = initialMaxHp,
+                    RaidBossMaxHp = initialMaxHp
+                };
+                db.GuildRaidStates.Add(raid);
+
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                _playerRegistry.GuildRaidBossUpdateQueue.Enqueue(new GuildRaidBossUpdateNotification
+                {
+                    GuildId = guildId,
+                    RaidTier = raid.RaidTier,
+                    RaidBossCurrentHp = raid.RaidBossCurrentHp,
+                    RaidBossMaxHp = raid.RaidBossMaxHp
+                });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                Console.WriteLine($"Guild raid launch failed for guild {guildId}: {ex.Message}");
+            }
+        }
+
         public async Task ProcessGuildRaidTickAsync(FolkIdleDbContext db, GuildRaidState raid, long[] onlinePlayerIds)
         {
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);

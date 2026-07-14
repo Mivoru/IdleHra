@@ -41,6 +41,7 @@ namespace FolkIdle.Server.Engine
         private readonly LegacyStoreEngine _legacyStoreEngine;
         private readonly GuildLogisticsDepotEngine _guildLogisticsDepotEngine;
         private readonly GuildCombatSimulationEngine _guildCombatSimulationEngine;
+        private readonly GuildRaidEngine? _guildRaidEngine;
         private readonly AntiCheatTelemetryEngine _antiCheatTelemetryEngine;
         private readonly PushNotificationTriggerEngine _pushNotificationTriggerEngine;
         private readonly CompliancePurgeEngine _compliancePurgeEngine;
@@ -62,7 +63,7 @@ namespace FolkIdle.Server.Engine
 
         public static int ActiveGlobalEventId { get; private set; }
 
-        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, MentorshipEngine mentorshipEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory)
+        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, MentorshipEngine mentorshipEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null)
         {
             _lootEngine = lootEngine;
             _checkpointManager = checkpointManager;
@@ -85,6 +86,7 @@ namespace FolkIdle.Server.Engine
             _legacyStoreEngine = legacyStoreEngine;
             _guildLogisticsDepotEngine = guildLogisticsDepotEngine;
             _guildCombatSimulationEngine = guildCombatSimulationEngine;
+            _guildRaidEngine = guildRaidEngine;
             _villageManagementEngine = villageManagementEngine;
             _antiCheatTelemetryEngine = antiCheatTelemetryEngine;
             _pushNotificationTriggerEngine = pushNotificationTriggerEngine;
@@ -1315,6 +1317,16 @@ namespace FolkIdle.Server.Engine
                         Task.Run(async () => {
                             await _guildLogisticsDepotEngine.DepositMaterialAsync(pId, guildId, materialId, quantity);
                         });
+                    }
+                    else if (cmd.Command == CommandType.LaunchGuildRaid)
+                    {
+                        long raidGuildId = currentPayload.GuildId;
+                        if (raidGuildId > 0 && _guildRaidEngine != null)
+                        {
+                            Task.Run(async () => {
+                                await _guildRaidEngine.TryStartRaidAsync(raidGuildId);
+                            });
+                        }
                     }
                     else if (cmd.Command == CommandType.ExecuteCombatTurn)
                     {

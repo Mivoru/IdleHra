@@ -1,6 +1,5 @@
 using System;
 using System.Data;
-using System.Globalization;
 using System.Threading.Tasks;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
@@ -58,7 +57,7 @@ namespace FolkIdle.Server.Engine
 
                 int materialKey = (int)materialId;
                 long quantity = depositQuantity;
-                string itemId = materialKey.ToString(CultureInfo.InvariantCulture);
+                string itemId = ContentRegistry.GetMaterialString(materialKey);
 
                 var commodity = await db.CommodityRecords
                     .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, itemId)

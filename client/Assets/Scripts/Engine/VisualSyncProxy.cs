@@ -106,6 +106,7 @@ namespace FolkIdle.Client.Engine
         public long IronOreStock { get; private set; }
 
         public event System.Action OnVillageStateUpdated;
+        public event System.Action OnGuildStateUpdated;
 
         private struct ServerSnapshot
         {
@@ -183,15 +184,9 @@ namespace FolkIdle.Client.Engine
                     VisualWorldBossEventState = packet.WorldBossEventState;
                     VisualWorldBossEventEndEpoch = packet.WorldBossEventEndEpoch;
                     VisualCitizenMultiSlotsUnlocked = packet.CitizenMultiSlotsUnlocked;
-                    VisualGuildLogisticsCurrentStock = packet.GuildLogisticsCurrentStock;
-                    VisualGuildLogisticsTargetRequirement = packet.GuildLogisticsTargetRequirement;
-                    VisualGuildLogisticsLevel = packet.GuildLogisticsLevel;
                     VisualCombatSimulationMatchId = packet.CombatSimulationMatchId;
                     VisualCombatSimulationTurnCounter = packet.CombatSimulationTurnCounter;
                     VisualCombatSimulationDamageDelta = packet.CombatSimulationDamageDelta;
-                    VisualGuildRaidTier = packet.GuildRaidTier;
-                    VisualGuildRaidBossCurrentHp = packet.GuildRaidBossCurrentHp;
-                    VisualGuildRaidBossMaxHp = packet.GuildRaidBossMaxHp;
                     VisualActiveMentorPlayerId = packet.ActiveMentorPlayerId;
                     VisualPremiumCurrencyBalance = packet.PremiumCurrencyBalance;
                     VisualEventHorizonTransactionCount = packet.EventHorizonTransactionCount;
@@ -209,6 +204,7 @@ namespace FolkIdle.Client.Engine
                     VisualTotalAnalyticsEventsLoggedCount = packet.TotalAnalyticsEventsLoggedCount;
 
                     ApplyVillagePacketState(in packet);
+                    ApplyGuildPacketState(in packet);
 
                     _hasReceivedState = true;
                 }
@@ -291,15 +287,9 @@ namespace FolkIdle.Client.Engine
             VisualWorldBossEventState = _snapshotB.Packet.WorldBossEventState;
             VisualWorldBossEventEndEpoch = _snapshotB.Packet.WorldBossEventEndEpoch;
             VisualCitizenMultiSlotsUnlocked = _snapshotB.Packet.CitizenMultiSlotsUnlocked;
-            VisualGuildLogisticsCurrentStock = _snapshotB.Packet.GuildLogisticsCurrentStock;
-            VisualGuildLogisticsTargetRequirement = _snapshotB.Packet.GuildLogisticsTargetRequirement;
-            VisualGuildLogisticsLevel = _snapshotB.Packet.GuildLogisticsLevel;
             VisualCombatSimulationMatchId = _snapshotB.Packet.CombatSimulationMatchId;
             VisualCombatSimulationTurnCounter = _snapshotB.Packet.CombatSimulationTurnCounter;
             VisualCombatSimulationDamageDelta = _snapshotB.Packet.CombatSimulationDamageDelta;
-            VisualGuildRaidTier = _snapshotB.Packet.GuildRaidTier;
-            VisualGuildRaidBossCurrentHp = _snapshotB.Packet.GuildRaidBossCurrentHp;
-            VisualGuildRaidBossMaxHp = _snapshotB.Packet.GuildRaidBossMaxHp;
             VisualMentorshipExpBonusMultiplier = _snapshotB.Packet.MentorshipExpBonusMultiplier;
             VisualPremiumCurrencyBalance = _snapshotB.Packet.PremiumCurrencyBalance;
             VisualEventHorizonTransactionCount = _snapshotB.Packet.EventHorizonTransactionCount;
@@ -322,6 +312,7 @@ namespace FolkIdle.Client.Engine
             VisualEnemySupplyPoints = _snapshotB.Packet.EnemyGatheringSupplyChainPoints;
 
             ApplyVillagePacketState(in _snapshotB.Packet);
+            ApplyGuildPacketState(in _snapshotB.Packet);
         }
 
         // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
@@ -359,6 +350,42 @@ namespace FolkIdle.Client.Engine
             IronOreStock = ironOreStock;
 
             OnVillageStateUpdated?.Invoke();
+        }
+
+        // Modul 18: Guild Logistics Depot contribution progress and co-op Guild
+        // Raid boss state. Same pattern as ApplyVillagePacketState - discrete
+        // values only ever come from the latest packet (no interpolation needed),
+        // shared by both the first-packet and steady-state interpolation paths
+        // above, fires OnGuildStateUpdated only on an actual change. Deliberately
+        // scoped to the Logistics Depot + Raid boss fields only; the PvP guild war
+        // front-point fields (VisualGuildCombatPoints etc.) are a separate system
+        // and unrelated to this event.
+        private void ApplyGuildPacketState(in StateUpdatePacket packet)
+        {
+            int logisticsLevel = packet.GuildLogisticsLevel;
+            long logisticsCurrentStock = packet.GuildLogisticsCurrentStock;
+            long logisticsTargetRequirement = packet.GuildLogisticsTargetRequirement;
+            int raidTier = packet.GuildRaidTier;
+            long raidBossCurrentHp = packet.GuildRaidBossCurrentHp;
+            long raidBossMaxHp = packet.GuildRaidBossMaxHp;
+
+            bool changed = logisticsLevel != VisualGuildLogisticsLevel
+                || logisticsCurrentStock != VisualGuildLogisticsCurrentStock
+                || logisticsTargetRequirement != VisualGuildLogisticsTargetRequirement
+                || raidTier != VisualGuildRaidTier
+                || raidBossCurrentHp != VisualGuildRaidBossCurrentHp
+                || raidBossMaxHp != VisualGuildRaidBossMaxHp;
+
+            if (!changed) return;
+
+            VisualGuildLogisticsLevel = logisticsLevel;
+            VisualGuildLogisticsCurrentStock = logisticsCurrentStock;
+            VisualGuildLogisticsTargetRequirement = logisticsTargetRequirement;
+            VisualGuildRaidTier = raidTier;
+            VisualGuildRaidBossCurrentHp = raidBossCurrentHp;
+            VisualGuildRaidBossMaxHp = raidBossMaxHp;
+
+            OnGuildStateUpdated?.Invoke();
         }
 
         public int GetLegacyShardBalance()

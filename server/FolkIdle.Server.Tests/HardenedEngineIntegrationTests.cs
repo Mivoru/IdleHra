@@ -247,7 +247,7 @@ namespace FolkIdle.Server.Tests
                     PlayerGuid = Guid.NewGuid(),
                     AuthenticatorToken = Guid.NewGuid()
                 });
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = materialId.ToString(), Quantity = initialTargetRequirement });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = ContentRegistry.GetMaterialString(materialId), Quantity = initialTargetRequirement });
                 db.GuildLogisticsDepots.Add(new GuildLogisticsDepot
                 {
                     GuildId = testGuildId,
