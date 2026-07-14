@@ -123,7 +123,7 @@ namespace FolkIdle.Server.Engine
             try
             {
                 // Lock commodity
-                string materialItemId = recipe.MaterialId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                string materialItemId = ContentRegistry.GetMaterialString(recipe.MaterialId);
                 var commodityRows = await context.CommodityRecords.FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {materialItemId} FOR UPDATE").ToListAsync();
                 var mat = commodityRows.Count > 0 ? commodityRows[0] : null;
 

@@ -10,6 +10,13 @@ namespace FolkIdle.Client.Network
 {
     public class WebSocketClient : MonoBehaviour
     {
+        // Session token expected by NetworkBroadcastSystem's authenticated HTTP
+        // endpoints (X-Authenticator-Token header) and by the WS ClientAuthPacket
+        // handshake. Neither the WS auth handshake nor a login flow are implemented
+        // on the client yet, so this stays empty until that module exists; callers
+        // that send it today (e.g. EquipmentInventoryCache) will simply get 401s.
+        public static string AuthenticatorToken = string.Empty;
+
         private ClientWebSocket _webSocket;
         private CancellationTokenSource _cts;
         

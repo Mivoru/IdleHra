@@ -25,5 +25,7 @@ namespace FolkIdle.Server.Engine
         {
             return _recipes.TryGetValue(recipeId, out recipe);
         }
+
+        public static IEnumerable<CraftingRecipe> AllRecipes => _recipes.Values;
     }
 }

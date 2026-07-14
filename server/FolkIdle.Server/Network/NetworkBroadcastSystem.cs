@@ -205,6 +205,12 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/forge/inventory" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleForgeInventorySnapshot(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/leaderboard/global" && context.Request.HttpMethod == "GET")
                     {
                         await HandleGlobalLeaderboard(context);
@@ -259,6 +265,31 @@ namespace FolkIdle.Server.Network
             public int MaterialId { get; set; }
             public long CurrentStock { get; set; }
             public long TargetRequirement { get; set; }
+        }
+
+        private sealed class ForgeEquipmentInstanceResponse
+        {
+            public long Id { get; set; }
+            public string BaseItemId { get; set; } = string.Empty;
+            public int QualityTier { get; set; }
+            public bool IsAffixLocked { get; set; }
+            public System.Collections.Generic.Dictionary<string, int> Affixes { get; set; } = new();
+        }
+
+        private sealed class ForgeRecipeResponse
+        {
+            public int RecipeId { get; set; }
+            public string ResultBaseItemId { get; set; } = string.Empty;
+            public int TierIndex { get; set; }
+            public string MaterialName { get; set; } = string.Empty;
+            public int MaterialCost { get; set; }
+            public long CurrentMaterialStock { get; set; }
+        }
+
+        private sealed class ForgeInventorySnapshotResponse
+        {
+            public System.Collections.Generic.List<ForgeEquipmentInstanceResponse> OwnedEquipment { get; set; } = new();
+            public System.Collections.Generic.List<ForgeRecipeResponse> Recipes { get; set; } = new();
         }
 
         private sealed class LeaderboardEntryResponse
@@ -424,6 +455,109 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Guild logistics snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul 21: on-demand snapshot for the client Forge crafting/reroll panels.
+        // StateUpdatePacket is fixed-size and carries scalars only, so the player's
+        // full owned-equipment list and per-recipe material stock (both variable
+        // length) are served here instead, following the same authenticated
+        // read-only HTTP pattern as HandleGuildLogisticsSnapshot/HandleGlobalLeaderboard.
+        private async Task HandleForgeInventorySnapshot(HttpListenerContext context)
+        {
+            try
+            {
+                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                var ownedEquipment = await db.EquipmentInstances
+                    .AsNoTracking()
+                    .Where(e => e.PlayerId == playerId)
+                    .ToListAsync();
+
+                var materialQuantities = await db.CommodityRecords
+                    .AsNoTracking()
+                    .Where(c => c.PlayerId == playerId)
+                    .ToDictionaryAsync(c => c.ItemId, c => c.Quantity);
+
+                await transaction.CommitAsync();
+
+                var response = new ForgeInventorySnapshotResponse();
+
+                foreach (var item in ownedEquipment)
+                {
+                    var affixes = new System.Collections.Generic.Dictionary<string, int>();
+                    bool jsonLockFlag = false;
+
+                    if (!string.IsNullOrWhiteSpace(item.AffixPayload) &&
+                        System.Text.Json.Nodes.JsonNode.Parse(item.AffixPayload) is System.Text.Json.Nodes.JsonObject affixObject)
+                    {
+                        foreach (var kvp in affixObject)
+                        {
+                            if (kvp.Value is not System.Text.Json.Nodes.JsonValue affixValue)
+                            {
+                                continue;
+                            }
+
+                            if (kvp.Key == "is_affix_locked")
+                            {
+                                jsonLockFlag = affixValue.TryGetValue(out bool lockedFlag) && lockedFlag;
+                                continue;
+                            }
+
+                            if (affixValue.TryGetValue(out int magnitude))
+                            {
+                                affixes[kvp.Key] = magnitude;
+                            }
+                        }
+                    }
+
+                    response.OwnedEquipment.Add(new ForgeEquipmentInstanceResponse
+                    {
+                        Id = item.Id,
+                        BaseItemId = item.BaseItemId,
+                        QualityTier = item.QualityTier,
+                        IsAffixLocked = item.IsAffixLocked || jsonLockFlag,
+                        Affixes = affixes
+                    });
+                }
+
+                foreach (var recipe in CraftingReceptuary.AllRecipes)
+                {
+                    string materialName = ContentRegistry.GetMaterialString(recipe.MaterialId);
+                    materialQuantities.TryGetValue(materialName, out long currentStock);
+
+                    response.Recipes.Add(new ForgeRecipeResponse
+                    {
+                        RecipeId = recipe.RecipeId,
+                        ResultBaseItemId = recipe.ResultBaseItemId,
+                        TierIndex = recipe.TierIndex,
+                        MaterialName = materialName,
+                        MaterialCost = recipe.MaterialCost,
+                        CurrentMaterialStock = currentStock
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Forge inventory snapshot error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

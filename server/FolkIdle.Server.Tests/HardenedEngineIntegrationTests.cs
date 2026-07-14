@@ -607,7 +607,7 @@ namespace FolkIdle.Server.Tests
                     PlayerGuid = Guid.NewGuid(),
                     AuthenticatorToken = Guid.NewGuid()
                 });
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "1", Quantity = initialMaterialQuantity });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = initialMaterialQuantity });
                 await db.SaveChangesAsync();
             }
 
@@ -617,7 +617,7 @@ namespace FolkIdle.Server.Tests
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
 
             var commodity = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "1");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
             Assert.Equal(initialMaterialQuantity - 10, commodity.Quantity);
 
             var equipment = await verifyDb.EquipmentInstances.AsNoTracking()
