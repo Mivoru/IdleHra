@@ -216,11 +216,25 @@ namespace FolkIdle.Server.Engine
                 await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"CurrentLevel\" = 1, \"CurrentXp\" = 0, \"AccumulatedTimeBankSeconds\" = 0, \"ActiveOffensivePotionId\" = 0, \"OffensivePotionDurationMs\" = 0, \"ActiveDefensivePotionId\" = 0, \"DefensivePotionDurationMs\" = 0, \"BankedChronoSeconds\" = 0, \"IsChronoAccelerating\" = FALSE", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("UPDATE \"CommodityRecords\" SET \"Quantity\" = 0 WHERE \"ItemId\" = 'gold'", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"CommodityRecords\" WHERE \"ItemId\" <> 'gold'", stoppingToken);
-                await db.Database.ExecuteSqlRawAsync("DELETE FROM \"EquipmentInstances\"", stoppingToken);
-                await db.Database.ExecuteSqlRawAsync("DELETE FROM \"BankEquipmentInstances\"", stoppingToken);
+
+                // Modul 41: unconditional full-table wipes use TRUNCATE ...
+                // RESTART IDENTITY CASCADE rather than DELETE FROM. Unlike
+                // DELETE, TRUNCATE deallocates pages directly and produces a
+                // small, fixed WAL footprint regardless of row count, avoiding
+                // WAL bloat and the long-held-lock/gateway-timeout risk of
+                // per-row tombstones on large tables at season-reset scale.
+                // CASCADE is a no-op safety net here (this schema does not
+                // enforce real FK constraints on these tables) but protects
+                // against a future FK addition silently breaking this reset.
+                await db.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"EquipmentInstances\", \"BankEquipmentInstances\" RESTART IDENTITY CASCADE", stoppingToken);
+
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"MarketOrderRecords\" o USING \"MarketEquipmentInstances\" e WHERE o.\"EquipmentInstanceId\" = e.\"Id\" AND e.\"IsLockedInEscrow\" = FALSE AND o.\"Status\" = 0 AND o.\"OrderType\" = 'SELL'", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("UPDATE \"MarketOrderRecords\" o SET \"EquipmentInstanceId\" = NULL FROM \"MarketEquipmentInstances\" e WHERE o.\"EquipmentInstanceId\" = e.\"Id\" AND e.\"IsLockedInEscrow\" = FALSE", stoppingToken);
-                await db.Database.ExecuteSqlRawAsync("DELETE FROM \"MarketEquipmentInstances\"", stoppingToken);
+                // Modul 41: this TRUNCATE must run after the two statements
+                // above, which still need to query MarketEquipmentInstances -
+                // truncating it earlier would leave those queries with nothing
+                // to match against.
+                await db.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"MarketEquipmentInstances\" RESTART IDENTITY CASCADE", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("UPDATE characters SET \"Level\" = 1, \"AgeTicks\" = 0, \"AgePhase\" = 1", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("UPDATE player_race_masteries SET \"MasteryLevel\" = 1, \"CumulativeXp\" = 0", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("UPDATE \"VillageInfrastructures\" SET \"CurrentLevel\" = 1", stoppingToken);
@@ -228,9 +242,10 @@ namespace FolkIdle.Server.Engine
 
                 await transaction.CommitAsync(stoppingToken);
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync(stoppingToken);
+                Console.WriteLine($"SEASONAL RESET FAILURE - EraId {closedEraId}: {ex}");
                 throw;
             }
         }

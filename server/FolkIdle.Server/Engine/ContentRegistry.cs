@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace FolkIdle.Server.Engine
@@ -999,6 +1000,32 @@ namespace FolkIdle.Server.Engine
         public static string GetMonsterName(int id) => _monsterNames[id - 1];
         public static string GetMonsterEnemyId(int id) => _monsterEnemyIds[id - 1];
         public static string GetItemBaseId(int itemId) => _itemBaseIds[itemId - 1];
+
+        private static readonly Dictionary<string, int> _baseIdToItemDefinitionIndex = BuildBaseIdIndex();
+
+        private static Dictionary<string, int> BuildBaseIdIndex()
+        {
+            var map = new Dictionary<string, int>(_itemBaseIds.Length);
+            for (int i = 0; i < _itemBaseIds.Length; i++)
+            {
+                map[_itemBaseIds[i]] = i;
+            }
+            return map;
+        }
+
+        // Modul 40/51: reverse lookup from the persisted BaseItemId slug back
+        // to its ItemDefinition, used to derive a deterministic fallback
+        // market price for items with no completed-trade history yet.
+        public static bool TryGetItemDefinitionByBaseId(string baseItemId, out ItemDefinition definition)
+        {
+            if (_baseIdToItemDefinitionIndex.TryGetValue(baseItemId, out int index))
+            {
+                definition = _itemDefinitions[index];
+                return true;
+            }
+            definition = default;
+            return false;
+        }
 
         private static readonly GatheringNodeDefinition[] _gatheringNodes = new GatheringNodeDefinition[]
         {

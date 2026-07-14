@@ -19,7 +19,7 @@ namespace FolkIdle.Server.Engine
             _playerRegistry = playerRegistry;
         }
 
-        public async Task ListItemAsync(long playerId, long instanceId, long limitPrice)
+        public async Task<bool> ListItemAsync(long playerId, long instanceId, long limitPrice)
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -27,19 +27,56 @@ namespace FolkIdle.Server.Engine
             using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
+                var player = await db.PlayerRecords
+                    .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
+                    .SingleOrDefaultAsync();
+
+                if (player == null)
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine("MarketListItem failed: Player not found.");
+                    return false;
+                }
+
                 var equipQuery = "SELECT * FROM \"EquipmentInstances\" WHERE \"Id\" = {0} FOR UPDATE";
                 var equip = await db.EquipmentInstances.FromSqlRaw(equipQuery, instanceId).SingleOrDefaultAsync();
 
                 if (equip == null || equip.PlayerId != playerId)
                 {
+                    await transaction.RollbackAsync();
                     Console.WriteLine("MarketListItem failed: Item unavailable.");
-                    return;
+                    return false;
                 }
 
-                var player = await db.PlayerRecords
-                    .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
-                    .SingleOrDefaultAsync();
-                bool isQuarantined = (player?.Quarantine_Active ?? false) || (player?.IsQuarantined ?? false);
+                // Modul 04/40: an item currently equipped on the character
+                // cannot be migrated into escrow out from under it - abort
+                // before any row mutation happens.
+                if (player.EquippedWeaponId == equip.Id || player.EquippedArmorId == equip.Id)
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine("MarketListItem failed: Item is currently equipped.");
+                    return false;
+                }
+
+                // Modul 40/51: strict 20%-to-300% volatility corridor against
+                // the 7-day rolling average, falling back to a deterministic
+                // ContentRegistry baseline for untraded items so this direct
+                // listing path cannot be used to launder gold via an
+                // arbitrarily priced never-before-traded item.
+                double? rollingAveragePrice = await MarketOrderBookEngine.CalculateRollingAveragePriceAsync(db, equip.BaseItemId, equip.QualityTier);
+                if (rollingAveragePrice.HasValue)
+                {
+                    double minPrice = rollingAveragePrice.Value * 0.80;
+                    double maxPrice = rollingAveragePrice.Value * 3.00;
+                    if (limitPrice < minPrice || limitPrice > maxPrice)
+                    {
+                        await transaction.RollbackAsync();
+                        Console.WriteLine($"MarketListItem rejected: price {limitPrice} outside volatility corridor [{minPrice}, {maxPrice}] for {equip.BaseItemId} T{equip.QualityTier}.");
+                        return false;
+                    }
+                }
+
+                bool isQuarantined = player.Quarantine_Active || player.IsQuarantined;
 
                 db.EquipmentInstances.Remove(equip);
                 var marketEquip = new MarketEquipmentInstance
@@ -72,11 +109,13 @@ namespace FolkIdle.Server.Engine
                 await transaction.CommitAsync();
 
                 Console.WriteLine($"Direct Listing: Item {instanceId} listed by Player {playerId} for {limitPrice}g.");
+                return true;
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
                 Console.WriteLine($"MarketListItem failed: {ex.Message}");
+                return false;
             }
         }
 
@@ -201,9 +240,11 @@ namespace FolkIdle.Server.Engine
                 var sellerGold = await db.CommodityRecords.FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", order.SellerId).SingleOrDefaultAsync();
                 long sellerWealth = sellerGold?.Quantity ?? 0;
                 
-                double totalFeeRate = 0.06;
-                if (sellerWealth > 5000000) totalFeeRate = 0.18;
-                else if (sellerWealth >= 500000) totalFeeRate = 0.10;
+                // Modul 40/51: wealth-scaled silver-sink tax burn, matching
+                // MarketOrderBookEngine.MatchOrdersAsync's brackets.
+                double totalFeeRate = 0.05;
+                if (sellerWealth > 5000000) totalFeeRate = 0.15;
+                else if (sellerWealth >= 500000) totalFeeRate = 0.08;
                 
                 long fee = (long)(executionPrice * totalFeeRate);
                 long sellerProceeds = executionPrice - fee;

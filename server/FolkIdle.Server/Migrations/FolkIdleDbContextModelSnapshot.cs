@@ -49,7 +49,7 @@ namespace FolkIdle.Server.Migrations
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("AccountId", "TimestampEpoch"), "btree");
 
-                    b.ToTable("AccountAnalyticsLogs");
+                    b.ToTable("AccountAnalyticsLogs", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.AccountChronoRegistry", b =>
@@ -137,7 +137,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("BankEquipmentInstances");
+                    b.ToTable("BankEquipmentInstances", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.CharacterLineageRegistry", b =>
@@ -165,7 +165,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("CharacterId");
 
-                    b.ToTable("character_lineage_registry");
+                    b.ToTable("character_lineage_registry", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.CharacterRecord", b =>
@@ -197,7 +197,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("characters");
+                    b.ToTable("characters", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.CommodityRecord", b =>
@@ -221,7 +221,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CommodityRecords");
+                    b.ToTable("CommodityRecords", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.EcoTelemetryLedger", b =>
@@ -252,7 +252,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("LogId");
 
-                    b.ToTable("EcoTelemetryLedgers");
+                    b.ToTable("EcoTelemetryLedgers", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.EquipmentAffixMatrix", b =>
@@ -274,7 +274,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("AffixId");
 
-                    b.ToTable("EquipmentAffixMatrices");
+                    b.ToTable("EquipmentAffixMatrices", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.EquipmentInstance", b =>
@@ -305,7 +305,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("EquipmentInstances");
+                    b.ToTable("EquipmentInstances", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.EventHorizonPremiumLedger", b =>
@@ -337,7 +337,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("EventHorizonPremiumLedgers");
+                    b.ToTable("EventHorizonPremiumLedgers", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildContributionLedger", b =>
@@ -356,7 +356,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("PlayerId", "GuildId", "MaterialId");
 
-                    b.ToTable("GuildContributionLedgers");
+                    b.ToTable("GuildContributionLedgers", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildDefenseRoster", b =>
@@ -378,7 +378,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("RegionShardId", "GuildId");
 
-                    b.ToTable("GuildDefenseRosters");
+                    b.ToTable("GuildDefenseRosters", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildDepotBalance", b =>
@@ -394,7 +394,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("GuildId", "ItemDefinitionId");
 
-                    b.ToTable("GuildDepotBalances");
+                    b.ToTable("GuildDepotBalances", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildLogisticsDepot", b =>
@@ -416,7 +416,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("GuildId", "MaterialId");
 
-                    b.ToTable("GuildLogisticsDepots");
+                    b.ToTable("GuildLogisticsDepots", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildMatchmakingSnapshot", b =>
@@ -457,7 +457,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("TournamentGroupIndex", "ActiveMatchMmr");
 
-                    b.ToTable("GuildMatchmakingSnapshots");
+                    b.ToTable("GuildMatchmakingSnapshots", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildMaterialSinkLedger", b =>
@@ -483,7 +483,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("GuildId");
 
-                    b.ToTable("GuildMaterialSinkLedgers");
+                    b.ToTable("GuildMaterialSinkLedgers", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildMember", b =>
@@ -504,7 +504,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("GuildId");
 
-                    b.ToTable("GuildMembers");
+                    b.ToTable("GuildMembers", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildRaidState", b =>
@@ -526,7 +526,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("GuildId");
 
-                    b.ToTable("GuildRaidStates");
+                    b.ToTable("GuildRaidStates", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildRecord", b =>
@@ -571,7 +571,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("GuildRecords");
+                    b.ToTable("GuildRecords", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildTradeListing", b =>
@@ -597,7 +597,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("MarketOrderRecordId");
 
-                    b.ToTable("GuildTradeListings");
+                    b.ToTable("GuildTradeListings", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildWarActiveMatch", b =>
@@ -622,7 +622,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("MatchId");
 
-                    b.ToTable("GuildWarActiveMatches");
+                    b.ToTable("GuildWarActiveMatches", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildWarCombatHistory", b =>
@@ -644,7 +644,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("LogId");
 
-                    b.ToTable("GuildWarCombatHistory");
+                    b.ToTable("GuildWarCombatHistory", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildWarDefensiveSnapshot", b =>
@@ -661,7 +661,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("GuildId");
 
-                    b.ToTable("GuildWarDefensiveSnapshots");
+                    b.ToTable("GuildWarDefensiveSnapshots", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildWarMatch", b =>
@@ -704,7 +704,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("MatchId");
 
-                    b.ToTable("GuildWarMatches");
+                    b.ToTable("GuildWarMatches", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.HistoricalMarketArchive", b =>
@@ -757,7 +757,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("ArchiveId");
 
-                    b.ToTable("historical_market_archives");
+                    b.ToTable("historical_market_archives", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.LiveOpsEventRotation", b =>
@@ -779,7 +779,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("EventId");
 
-                    b.ToTable("LiveOpsEventRotations");
+                    b.ToTable("LiveOpsEventRotations", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.MailboxInstance", b =>
@@ -820,7 +820,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("MailboxInstances");
+                    b.ToTable("MailboxInstances", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.MarketEquipmentInstance", b =>
@@ -857,7 +857,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("MarketEquipmentInstances");
+                    b.ToTable("MarketEquipmentInstances", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.MarketOrderRecord", b =>
@@ -905,7 +905,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("EquipmentInstanceId");
 
-                    b.ToTable("MarketOrderRecords");
+                    b.ToTable("MarketOrderRecords", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.MentorshipAcademyAssignment", b =>
@@ -921,7 +921,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("PlayerId", "CharacterId");
 
-                    b.ToTable("MentorshipAcademyAssignments");
+                    b.ToTable("MentorshipAcademyAssignments", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.MentorshipContract", b =>
@@ -949,7 +949,7 @@ namespace FolkIdle.Server.Migrations
                     b.HasIndex("MenteePlayerId")
                         .IsUnique();
 
-                    b.ToTable("MentorshipContracts");
+                    b.ToTable("MentorshipContracts", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.MonsterCodexEntry", b =>
@@ -975,7 +975,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("monster_codex_entries");
+                    b.ToTable("monster_codex_entries", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerAchievement", b =>
@@ -991,7 +991,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("PlayerId");
 
-                    b.ToTable("player_achievements");
+                    b.ToTable("player_achievements", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerChroniclePass", b =>
@@ -1015,7 +1015,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("PassLevel");
 
-                    b.ToTable("PlayerChroniclePasses");
+                    b.ToTable("PlayerChroniclePasses", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerChronoRegistry", b =>
@@ -1034,7 +1034,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("PlayerId");
 
-                    b.ToTable("PlayerChronoRegistries");
+                    b.ToTable("PlayerChronoRegistries", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerCraftingSlot", b =>
@@ -1056,7 +1056,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("PlayerId", "SlotIndex");
 
-                    b.ToTable("PlayerCraftingSlots");
+                    b.ToTable("PlayerCraftingSlots", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerDeviceRegistration", b =>
@@ -1078,7 +1078,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("PlayerDeviceRegistrations");
+                    b.ToTable("PlayerDeviceRegistrations", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerLegacyLedger", b =>
@@ -1099,7 +1099,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("EraId");
 
-                    b.ToTable("PlayerLegacyLedgers");
+                    b.ToTable("PlayerLegacyLedgers", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerLifetimeAchievement", b =>
@@ -1121,7 +1121,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("PlayerId", "AchievementId");
 
-                    b.ToTable("player_lifetime_achievements");
+                    b.ToTable("player_lifetime_achievements", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerProductionRegistry", b =>
@@ -1142,7 +1142,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("PlayerId", "CookingMasteryLevel", "AlchemyMasteryLevel");
 
-                    b.ToTable("PlayerProductionRegistries");
+                    b.ToTable("PlayerProductionRegistries", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerRaceMastery", b =>
@@ -1165,7 +1165,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("player_race_masteries");
+                    b.ToTable("player_race_masteries", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerRecord", b =>
@@ -1253,7 +1253,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("PlayerRecords");
+                    b.ToTable("PlayerRecords", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerRegionCompletion", b =>
@@ -1271,7 +1271,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("PlayerRegionCompletions");
+                    b.ToTable("PlayerRegionCompletions", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerSegmentationProfile", b =>
@@ -1293,7 +1293,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("PlayerId");
 
-                    b.ToTable("PlayerSegmentationProfiles");
+                    b.ToTable("PlayerSegmentationProfiles", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerWorldBossAttempt", b =>
@@ -1315,7 +1315,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("PlayerId", "BossInstanceId");
 
-                    b.ToTable("player_world_boss_attempts");
+                    b.ToTable("player_world_boss_attempts", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PrimaryPurchaseLedger", b =>
@@ -1342,7 +1342,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("PlayerId");
 
-                    b.ToTable("PrimaryPurchaseLedgers");
+                    b.ToTable("PrimaryPurchaseLedgers", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.SeasonalEraRecord", b =>
@@ -1361,7 +1361,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("EraId");
 
-                    b.ToTable("SeasonalEraRecords");
+                    b.ToTable("SeasonalEraRecords", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.SegmentedStorefrontListing", b =>
@@ -1393,7 +1393,7 @@ namespace FolkIdle.Server.Migrations
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("TargetCohort"), "btree");
 
-                    b.ToTable("SegmentedStorefrontListings");
+                    b.ToTable("SegmentedStorefrontListings", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.VillageInfrastructure", b =>
@@ -1409,7 +1409,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("PlayerId", "BuildingId");
 
-                    b.ToTable("VillageInfrastructures");
+                    b.ToTable("VillageInfrastructures", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.VillageResident", b =>
@@ -1428,7 +1428,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("PlayerId", "SlotIndex");
 
-                    b.ToTable("VillageResidents");
+                    b.ToTable("VillageResidents", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.WorldBossSnapshot", b =>
@@ -1459,7 +1459,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("BossInstanceId");
 
-                    b.ToTable("WorldBossSnapshots");
+                    b.ToTable("WorldBossSnapshots", (string)null);
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.CharacterLineageRegistry", b =>

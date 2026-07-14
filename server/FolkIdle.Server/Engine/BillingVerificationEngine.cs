@@ -9,13 +9,15 @@ namespace FolkIdle.Server.Engine
     {
         private readonly IDbContextFactory<FolkIdleDbContext> _contextFactory;
         private readonly RedisSessionCache _redisCache;
-        private readonly PlayerSessionRegistry _playerRegistry; 
+        private readonly PlayerSessionRegistry _playerRegistry;
+        private readonly FolkIdle.Server.Network.NetworkBroadcastSystem? _networkSystem;
 
-        public BillingVerificationEngine(IDbContextFactory<FolkIdleDbContext> contextFactory, RedisSessionCache redisCache, PlayerSessionRegistry playerRegistry)
+        public BillingVerificationEngine(IDbContextFactory<FolkIdleDbContext> contextFactory, RedisSessionCache redisCache, PlayerSessionRegistry playerRegistry, FolkIdle.Server.Network.NetworkBroadcastSystem? networkSystem = null)
         {
             _contextFactory = contextFactory;
             _redisCache = redisCache;
             _playerRegistry = playerRegistry;
+            _networkSystem = networkSystem;
         }
 
         public async Task<bool> VerifyPurchaseAsync(long playerId, string transactionId, string productId, int premiumAmount)
@@ -64,9 +66,10 @@ namespace FolkIdle.Server.Engine
 
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                Console.WriteLine($"Purchase verification failed - PlayerId {playerId}, TransactionId {transactionId}: {ex}");
                 throw;
             }
         }
@@ -108,22 +111,31 @@ namespace FolkIdle.Server.Engine
                     {
                         profile.IsQuarantined = true;
                         await _redisCache.SetQuarantineFlagAsync(purchase.PlayerId, true);
-                        
+
                         await context.Database.ExecuteSqlRawAsync(
-                            "UPDATE \"MarketOrderRecords\" SET \"IsQuarantined\" = TRUE WHERE \"PlayerId\" = {0} AND \"IsActive\" = TRUE", 
+                            "UPDATE \"MarketOrderRecords\" SET \"IsQuarantined\" = TRUE WHERE \"SellerId\" = {0} AND \"Status\" = 0",
                             purchase.PlayerId);
 
                         // Issue hot-swap signal via existing QuarantineNotificationQueue
                         _playerRegistry.QuarantineNotificationQueue.Enqueue(new QuarantineNotification { PlayerId = purchase.PlayerId });
+
+                        // Modul 32/39: force-terminate the active WebSocket
+                        // session immediately on refund-triggered quarantine,
+                        // rather than only freezing tick processing on the
+                        // next live update - the account should not remain
+                        // connected once its premium balance has gone
+                        // negative from a platform refund.
+                        _networkSystem?.ForceDisconnect(purchase.PlayerId);
                     }
                 }
 
                 await context.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                Console.WriteLine($"Refund alert handling failed - TransactionId {transactionId}: {ex}");
                 throw;
             }
         }

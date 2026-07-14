@@ -19,6 +19,45 @@ namespace FolkIdle.Server.Engine
             _playerRegistry = playerRegistry;
         }
 
+        // Modul 40/51: 7-day rolling average execution price for this base
+        // item + quality tier, computed from real completed-order history
+        // (HistoricalMarketArchives). When no recent completed trades exist
+        // (a brand-new or rarely-traded listing), falls back to a
+        // deterministic baseline (BaseValueGold * QualityTierMultiplier)
+        // pulled from ContentRegistry, rather than disabling the corridor -
+        // an untraded item must not be listable at an arbitrary price. Only
+        // returns null if the item is not a recognized ContentRegistry entry
+        // at all, in which case there is genuinely nothing to validate against.
+        internal static async Task<double?> CalculateRollingAveragePriceAsync(FolkIdleDbContext db, string baseItemId, int qualityTier)
+        {
+            long windowStartEpoch = DateTimeOffset.UtcNow.AddDays(-7).ToUnixTimeMilliseconds();
+
+            var recentPrices = await db.HistoricalMarketArchives
+                .AsNoTracking()
+                .Where(a => a.BaseItemId == baseItemId && a.QualityTier == qualityTier && a.ExecutionTimestampEpoch >= windowStartEpoch)
+                .Select(a => (double)a.ExecutionPrice)
+                .ToListAsync();
+
+            if (recentPrices.Count > 0)
+            {
+                double sum = 0.0;
+                for (int i = 0; i < recentPrices.Count; i++)
+                {
+                    sum += recentPrices[i];
+                }
+
+                return sum / recentPrices.Count;
+            }
+
+            if (ContentRegistry.TryGetItemDefinitionByBaseId(baseItemId, out ItemDefinition definition))
+            {
+                double qualityTierMultiplier = 1.0 + (qualityTier * 0.5);
+                return definition.BaseValueGold * qualityTierMultiplier;
+            }
+
+            return null;
+        }
+
         public async Task PlaceLimitOrderAsync(long playerId, bool isBuy, long instanceId, long price, string baseItemId, int qualityTier)
         {
             using var scope = _serviceProvider.CreateScope();
@@ -29,6 +68,25 @@ namespace FolkIdle.Server.Engine
             {
                 if (isBuy)
                 {
+                    // Modul 40/51: strict 20%-to-300% volatility corridor
+                    // (P_min = P_avg * 0.80, P_max = P_avg * 3.00), computed
+                    // from real completed-order history. baseItemId is already
+                    // the real item identity for a BUY order at this point.
+                    // Skipped when no recent completed-order history exists yet
+                    // for this item (nothing to compute an average against).
+                    double? buyRollingAveragePrice = await CalculateRollingAveragePriceAsync(db, baseItemId, qualityTier);
+                    if (buyRollingAveragePrice.HasValue)
+                    {
+                        double buyMinPrice = buyRollingAveragePrice.Value * 0.80;
+                        double buyMaxPrice = buyRollingAveragePrice.Value * 3.00;
+                        if (price < buyMinPrice || price > buyMaxPrice)
+                        {
+                            await transaction.RollbackAsync();
+                            Console.WriteLine($"BUY Order rejected: price {price} outside volatility corridor [{buyMinPrice}, {buyMaxPrice}] for {baseItemId} T{qualityTier}.");
+                            return;
+                        }
+                    }
+
                     var goldQuery = "SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE";
                     var goldRecord = await db.CommodityRecords.FromSqlRaw(goldQuery, playerId).SingleOrDefaultAsync();
 
@@ -71,10 +129,28 @@ namespace FolkIdle.Server.Engine
                     var player = await db.PlayerRecords.FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId).SingleOrDefaultAsync();
                     bool isQuarantined = (player?.Quarantine_Active ?? false) || (player?.IsQuarantined ?? false);
 
-                    equip.IsLockedInEscrow = true;
-                    equip.IsQuarantined = isQuarantined;
                     baseItemId = equip.BaseItemId;
                     qualityTier = equip.QualityTier;
+
+                    // Modul 40/51: strict 20%-to-300% volatility corridor,
+                    // checked here (not before the transaction) since the
+                    // caller does not know the real item identity for a SELL
+                    // order until the equipment row above is resolved.
+                    double? sellRollingAveragePrice = await CalculateRollingAveragePriceAsync(db, baseItemId, qualityTier);
+                    if (sellRollingAveragePrice.HasValue)
+                    {
+                        double sellMinPrice = sellRollingAveragePrice.Value * 0.80;
+                        double sellMaxPrice = sellRollingAveragePrice.Value * 3.00;
+                        if (price < sellMinPrice || price > sellMaxPrice)
+                        {
+                            await transaction.RollbackAsync();
+                            Console.WriteLine($"SELL Order rejected: price {price} outside volatility corridor [{sellMinPrice}, {sellMaxPrice}] for {baseItemId} T{qualityTier}.");
+                            return;
+                        }
+                    }
+
+                    equip.IsLockedInEscrow = true;
+                    equip.IsQuarantined = isQuarantined;
 
                     var order = new MarketOrderRecord
                     {
@@ -128,9 +204,10 @@ namespace FolkIdle.Server.Engine
                         var sellerGold = await db.CommodityRecords.FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", sell.SellerId).SingleOrDefaultAsync();
                         long sellerWealth = sellerGold?.Quantity ?? 0;
                         
-                        double totalFeeRate = 0.06;
-                        if (sellerWealth > 5000000) totalFeeRate = 0.18;
-                        else if (sellerWealth >= 500000) totalFeeRate = 0.10;
+                        // Modul 40/51: wealth-scaled silver-sink tax burn.
+                        double totalFeeRate = 0.05;
+                        if (sellerWealth > 5000000) totalFeeRate = 0.15;
+                        else if (sellerWealth >= 500000) totalFeeRate = 0.08;
                         
                         long fee = (long)(executionPrice * totalFeeRate);
                         long sellerProceeds = executionPrice - fee;

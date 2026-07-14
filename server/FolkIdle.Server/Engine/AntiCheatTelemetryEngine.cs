@@ -18,14 +18,16 @@ namespace FolkIdle.Server.Engine
         private readonly IServiceProvider _serviceProvider;
         private readonly IConnectionMultiplexer _redis;
         private readonly PlayerSessionRegistry _playerRegistry;
+        private readonly FolkIdle.Server.Network.NetworkBroadcastSystem? _networkSystem;
         private readonly ConcurrentDictionary<long, CommandTimingProfile> _profiles = new();
         private readonly ConcurrentDictionary<long, byte> _shadowBanRequests = new();
 
-        public AntiCheatTelemetryEngine(IServiceProvider serviceProvider, IConnectionMultiplexer redis, PlayerSessionRegistry playerRegistry)
+        public AntiCheatTelemetryEngine(IServiceProvider serviceProvider, IConnectionMultiplexer redis, PlayerSessionRegistry playerRegistry, FolkIdle.Server.Network.NetworkBroadcastSystem? networkSystem = null)
         {
             _serviceProvider = serviceProvider;
             _redis = redis;
             _playerRegistry = playerRegistry;
+            _networkSystem = networkSystem;
         }
 
         public void RecordCommand(long playerId, byte commandType)
@@ -80,6 +82,10 @@ namespace FolkIdle.Server.Engine
                         await db.SaveChangesAsync();
                     }
 
+                    await db.Database.ExecuteSqlRawAsync(
+                        "UPDATE \"MarketOrderRecords\" SET \"IsQuarantined\" = TRUE WHERE \"SellerId\" = {0} AND \"Status\" = 0",
+                        playerId);
+
                     await transaction.CommitAsync();
 
                     if (_redis.IsConnected)
@@ -93,6 +99,11 @@ namespace FolkIdle.Server.Engine
                         });
                         await redisDb.SetAddAsync(RedisSessionCache.DirtyPlayersSetKey, playerId);
                     }
+
+                    // Modul 25: sever the bot's active socket immediately on
+                    // confirmed automation, rather than leaving it connected
+                    // until the next gated command freezes it.
+                    _networkSystem?.ForceDisconnect(playerId);
                 }
                 catch (Exception ex)
                 {

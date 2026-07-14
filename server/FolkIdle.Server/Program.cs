@@ -59,7 +59,7 @@ var lootEngine = new LootTableEngine();
 var checkpointManager = new StateCheckpointManager(serviceProvider);
 var playerRegistry = new PlayerSessionRegistry();
 var forgeEngine = new ForgeSplicingEngine(serviceProvider, playerRegistry);
-var antiCheatTelemetryEngine = new AntiCheatTelemetryEngine(serviceProvider, redisMultiplexer, playerRegistry);
+var antiCheatTelemetryEngine = new AntiCheatTelemetryEngine(serviceProvider, redisMultiplexer, playerRegistry, networkSystem);
 var marketEngine = new MarketOrderBookEngine(serviceProvider, playerRegistry);
 var guildEngine = new GuildContributionEngine(serviceProvider);
 var escrowEngine = new MarketEscrowEngine(serviceProvider, playerRegistry);
@@ -87,7 +87,7 @@ var liveOpsTickEngine = new LiveOpsTickEngine(serviceProvider, playerRegistry, w
 var pushNotificationTriggerEngine = new PushNotificationTriggerEngine(serviceProvider, redisMultiplexer);
 var compliancePurgeEngine = new CompliancePurgeEngine(serviceProvider, redisMultiplexer);
 var leaderboardCronEngine = new LeaderboardCronEngine(serviceProvider, redisMultiplexer);
-var billingVerificationEngine = new BillingVerificationEngine(serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), serviceProvider.GetRequiredService<RedisSessionCache>(), playerRegistry);
+var billingVerificationEngine = new BillingVerificationEngine(serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), serviceProvider.GetRequiredService<RedisSessionCache>(), playerRegistry, networkSystem);
 
 networkSystem.RegisterAntiCheatTelemetryEngine(antiCheatTelemetryEngine);
 
