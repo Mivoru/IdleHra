@@ -148,6 +148,14 @@ namespace FolkIdle.Server.Engine
         public int ClaimedAchievementFlags;
         public uint TotalAchievementsClaimedCount;
 
+        // Modul 13: live counters for the auto-awarded tiered achievements
+        // (Treasury reuses CurrentGold directly, no separate counter needed).
+        // Evaluated against AchievementMilestones during StateCheckpointManager
+        // flushes; never queried or allocated on the hot path.
+        public int ForgeUpgradeCount;
+        public int HighestForgeSynthesisTier;
+        public long HarvestLoopCount;
+
         // Cached passive Codex multipliers. Recomputed only on login or Codex
         // level-up (see CodexEngine.RecalculateAndSyncMultipliersAsync); read as
         // plain O(1) field access from the 10 Hz tick, never recalculated there.

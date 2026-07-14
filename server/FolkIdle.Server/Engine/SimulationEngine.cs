@@ -371,6 +371,20 @@ namespace FolkIdle.Server.Engine
                     }
                 }
 
+                while (_playerRegistry.ForgeUpgradeQueue.TryDequeue(out var forgeUpgrade))
+                {
+                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, forgeUpgrade.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                    {
+                        currentPayload.ForgeUpgradeCount++;
+                        if (forgeUpgrade.ResultingQualityTier > currentPayload.HighestForgeSynthesisTier)
+                        {
+                            currentPayload.HighestForgeSynthesisTier = forgeUpgrade.ResultingQualityTier;
+                        }
+                        currentPayload.IsDirty = true;
+                    }
+                }
+
                 while (_playerRegistry.CodexMultiplierUpdateQueue.TryDequeue(out var codexMultiplierUpdate))
                 {
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, codexMultiplierUpdate.PlayerId);
@@ -1804,6 +1818,8 @@ namespace FolkIdle.Server.Engine
                 return;
             }
 
+            payload.HarvestLoopCount += completedCycles;
+
             double integratedBuffMultiplier = CalculateIntegratedBuffMultiplier(warpSeconds, remainingBuffTicks, potencyModifierPct);
             long masteryXp = (long)Math.Floor(completedCycles * gatheringNode.BaseMasteryXpReward * integratedBuffMultiplier);
             ApplyBulkMasteryXp(ref payload, gatheringNode.ProfessionType, masteryXp);
@@ -2430,6 +2446,7 @@ namespace FolkIdle.Server.Engine
                 if (payload.GatheringProgressTicks >= requiredTicks)
                 {
                     payload.GatheringProgressTicks = 0;
+                    payload.HarvestLoopCount++;
 
                     int masteryXpGain = gatheringNode.BaseMasteryXpReward;
                     if (gatheringNode.ProfessionType == 0)

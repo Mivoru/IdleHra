@@ -156,6 +156,7 @@ namespace FolkIdle.Server.Engine
                     player.IsQuarantined = state.IsQuarantined;
                     await UpsertAccountChronoRegistryAsync(dbContext, state);
                     await UpsertChroniclePassAsync(dbContext, state);
+                    await UpsertLifetimeAchievementsAsync(dbContext, player, state);
                 }
                 else
                 {
@@ -635,6 +636,53 @@ namespace FolkIdle.Server.Engine
             {
                 pass.AccumulatedXp = seasonalXp;
             }
+        }
+
+        // Modul 13: auto-awarded tiered (I-IV) achievements, evaluated against
+        // the live counters accumulated in TickStatePayload since the last
+        // checkpoint. Distinct from the pre-existing player-claimed "kill 10000
+        // monsters" achievement (AchievementId 1, handled by
+        // AchievementEngine.ProcessClaimsQueueAsync) - these auto-award, no
+        // client claim action required.
+        private static async Task UpsertLifetimeAchievementsAsync(FolkIdleDbContext dbContext, PlayerRecord player, TickStatePayload state)
+        {
+            await EvaluateAndAwardTierAsync(dbContext, player, state.PlayerId, AchievementMilestones.TreasuryAchievementId,
+                AchievementMilestones.EvaluateTreasuryTier(state.CurrentGold), state.CurrentGold);
+
+            await EvaluateAndAwardTierAsync(dbContext, player, state.PlayerId, AchievementMilestones.ForgingAchievementId,
+                AchievementMilestones.EvaluateForgingTier(state.ForgeUpgradeCount, state.HighestForgeSynthesisTier), state.ForgeUpgradeCount);
+
+            await EvaluateAndAwardTierAsync(dbContext, player, state.PlayerId, AchievementMilestones.LogisticsAchievementId,
+                AchievementMilestones.EvaluateLogisticsTier(state.HarvestLoopCount), state.HarvestLoopCount);
+        }
+
+        private static async Task EvaluateAndAwardTierAsync(FolkIdleDbContext dbContext, PlayerRecord player, long playerId, int achievementId, int newTier, long currentProgress)
+        {
+            var record = await dbContext.PlayerLifetimeAchievements
+                .FromSqlInterpolated($"SELECT * FROM \"player_lifetime_achievements\" WHERE \"PlayerId\" = {playerId} AND \"AchievementId\" = {achievementId} FOR UPDATE")
+                .FirstOrDefaultAsync();
+
+            if (record == null)
+            {
+                record = new PlayerLifetimeAchievement
+                {
+                    PlayerId = playerId,
+                    AchievementId = achievementId,
+                    CurrentProgress = 0,
+                    CompletedTier = 0,
+                    IsClaimed = false
+                };
+                dbContext.PlayerLifetimeAchievements.Add(record);
+            }
+
+            if (newTier > record.CompletedTier)
+            {
+                int diamondsAwarded = AchievementMilestones.GetDiamondsForTiersCrossed(achievementId, record.CompletedTier, newTier);
+                record.CompletedTier = newTier;
+                player.PremiumDiamonds += diamondsAwarded;
+            }
+
+            record.CurrentProgress = currentProgress;
         }
 
         public void FlushAllGracefully()

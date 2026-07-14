@@ -18,6 +18,16 @@ namespace FolkIdle.Server.Engine
         public LiveSessionContext LiveSession;
     }
 
+    // Modul 13: ForgeSplicingEngine.ExecuteFusionAsync runs on a background
+    // Task.Run thread with only value-type copies (no ref access to the live
+    // TickStatePayload), so a successful upgrade is reported back to the tick
+    // thread through this queue rather than mutated directly.
+    public struct ForgeUpgradeNotification
+    {
+        public long PlayerId;
+        public int ResultingQualityTier;
+    }
+
     public struct MailClaimRequest
     {
         public long PlayerId;
@@ -152,6 +162,7 @@ namespace FolkIdle.Server.Engine
         private readonly ConcurrentDictionary<long, bool> _onlinePlayers = new();
         public ConcurrentQueue<MarketMatchNotification> MarketMatchQueue { get; } = new();
         public ConcurrentQueue<AchievementClaimRequest> AchievementClaimQueue { get; } = new();
+        public ConcurrentQueue<ForgeUpgradeNotification> ForgeUpgradeQueue { get; } = new();
         public ConcurrentQueue<MailClaimRequest> MailClaimRequestQueue { get; } = new();
         public ConcurrentQueue<BankWithdrawRequest> BankWithdrawRequestQueue { get; } = new();
         public ConcurrentQueue<BirthNotification> BirthNotificationQueue { get; } = new();

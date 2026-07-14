@@ -21,11 +21,13 @@ namespace FolkIdle.Server.Engine
     public class ForgeSplicingEngine
     {
         private readonly IServiceProvider _serviceProvider;
+        private readonly PlayerSessionRegistry? _playerRegistry;
         private const long BaseGoldCost = 1000;
 
-        public ForgeSplicingEngine(IServiceProvider serviceProvider)
+        public ForgeSplicingEngine(IServiceProvider serviceProvider, PlayerSessionRegistry? playerRegistry = null)
         {
             _serviceProvider = serviceProvider;
+            _playerRegistry = playerRegistry;
         }
 
         public async Task<ForgeSplicingResult> ExecuteFusionAsync(long playerId, long targetItemGuid, long sacrificialItem1Guid, long sacrificialItem2Guid)
@@ -155,6 +157,13 @@ namespace FolkIdle.Server.Engine
                     Console.WriteLine($"Fusion Success! Target item {targetItem.Id} upgraded to Tier {targetItem.QualityTier}.");
                     await db.SaveChangesAsync();
                     await transaction.CommitAsync();
+
+                    _playerRegistry?.ForgeUpgradeQueue.Enqueue(new ForgeUpgradeNotification
+                    {
+                        PlayerId = playerId,
+                        ResultingQualityTier = targetItem.QualityTier
+                    });
+
                     return ForgeSplicingResult.Success;
                 }
                 else

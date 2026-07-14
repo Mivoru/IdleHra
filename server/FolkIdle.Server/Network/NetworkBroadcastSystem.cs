@@ -223,6 +223,12 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/achievements/snapshot" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleAchievementsSnapshot(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/leaderboard/global" && context.Request.HttpMethod == "GET")
                     {
                         await HandleGlobalLeaderboard(context);
@@ -310,6 +316,15 @@ namespace FolkIdle.Server.Network
             public int Level { get; set; }
             public long Kills { get; set; }
             public long NextLevelKills { get; set; }
+        }
+
+        private sealed class AchievementSnapshotEntryResponse
+        {
+            public int AchievementId { get; set; }
+            public long CurrentProgress { get; set; }
+            public int CompletedTier { get; set; }
+            public long NextTierTarget { get; set; }
+            public int NextTierReward { get; set; }
         }
 
         private sealed class RaceMasterySnapshotEntryResponse
@@ -694,6 +709,60 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Race mastery snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul 13: authorized snapshot of the player's real lifetime achievement
+        // progress (PlayerLifetimeAchievements, including but not limited to the
+        // three auto-awarded tiered achievements from AchievementMilestones).
+        private async Task HandleAchievementsSnapshot(HttpListenerContext context)
+        {
+            try
+            {
+                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                var entries = await db.PlayerLifetimeAchievements
+                    .AsNoTracking()
+                    .Where(a => a.PlayerId == playerId)
+                    .ToListAsync();
+
+                await transaction.CommitAsync();
+
+                var response = new System.Collections.Generic.List<AchievementSnapshotEntryResponse>(entries.Count);
+
+                foreach (var entry in entries)
+                {
+                    response.Add(new AchievementSnapshotEntryResponse
+                    {
+                        AchievementId = entry.AchievementId,
+                        CurrentProgress = entry.CurrentProgress,
+                        CompletedTier = entry.CompletedTier,
+                        NextTierTarget = AchievementMilestones.GetNextTierTarget(entry.AchievementId, entry.CompletedTier),
+                        NextTierReward = AchievementMilestones.GetNextTierReward(entry.AchievementId, entry.CompletedTier)
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Achievements snapshot error: {ex}");
                 context.Response.StatusCode = 500;
             }
 
