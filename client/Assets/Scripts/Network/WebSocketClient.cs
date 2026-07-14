@@ -73,10 +73,7 @@ namespace FolkIdle.Client.Network
                         break;
                     }
 
-                    if (result.Count >= Marshal.SizeOf<StateUpdatePacket>())
-                    {
-                        ParseAndEnqueuePacket(result.Count);
-                    }
+                    ParseAndEnqueuePacket(result.Count);
                 }
             }
             catch (Exception ex)
@@ -111,7 +108,12 @@ namespace FolkIdle.Client.Network
 
         private void ParseAndEnqueuePacket(int length)
         {
-            StateUpdatePacket packet = UnsafePacketParser.ParseState(_receiveBuffer);
+            if (!UnsafePacketParser.TryParseState(_receiveBuffer, length, out StateUpdatePacket packet))
+            {
+                Debug.LogWarning($"WebSocketClient: rejected malformed inbound packet (length {length}).");
+                return;
+            }
+
             _lastPlayerId = packet.PlayerId;
             _lastLogicEpochCounter = packet.LogicEpochCounter;
             FlightRecorder.RecordInbound(0, length, packet.LogicEpochCounter);

@@ -85,9 +85,9 @@ namespace FolkIdle.Client.UI
 
         private static long ComputeNetPayout(long listingPrice, int tierIndex)
         {
-            double taxRate = tierIndex == FastStringCache.TaxBracketHigh ? 0.18
-                : tierIndex == FastStringCache.TaxBracketMid ? 0.10
-                : 0.06;
+            double taxRate = tierIndex == FastStringCache.TaxBracketHigh ? 0.15
+                : tierIndex == FastStringCache.TaxBracketMid ? 0.08
+                : 0.05;
             return (long)(listingPrice * (1.0 - taxRate));
         }
 

@@ -1,17 +1,29 @@
-using System;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace FolkIdle.Client.Network
 {
     public static class UnsafePacketParser
     {
-        public static unsafe StateUpdatePacket ParseState(byte[] buffer)
+        // Guards against truncated or corrupt inbound buffers before any raw
+        // pointer read - a WebSocket delivery that ends short (a torn frame,
+        // a stalled or malicious relay) must never be walked into
+        // ReadUnaligned<StateUpdatePacket>, which reads a fixed-size span
+        // starting at offset 0 regardless of how many bytes were actually
+        // received into the buffer.
+        public static unsafe bool TryParseState(byte[] buffer, int receivedCount, out StateUpdatePacket packet)
         {
+            int requiredSize = Unsafe.SizeOf<StateUpdatePacket>();
+            if (buffer == null || receivedCount < requiredSize || buffer.Length < requiredSize)
+            {
+                packet = default;
+                return false;
+            }
+
             fixed (byte* ptr = buffer)
             {
-                return Unsafe.ReadUnaligned<StateUpdatePacket>(ptr);
+                packet = Unsafe.ReadUnaligned<StateUpdatePacket>(ptr);
             }
+            return true;
         }
     }
 }
