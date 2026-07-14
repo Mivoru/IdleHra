@@ -18,6 +18,11 @@ namespace FolkIdle.Server.Engine
 
         public static RedisKey GoldBufferKey(long playerId) => $"player:{playerId}:gold_buffer";
 
+        // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
+        public static RedisKey WoodBufferKey(long playerId) => $"player:{playerId}:wood_buffer";
+        public static RedisKey StoneBufferKey(long playerId) => $"player:{playerId}:stone_buffer";
+        public static RedisKey IronOreBufferKey(long playerId) => $"player:{playerId}:iron_ore_buffer";
+
         public async System.Threading.Tasks.Task SetQuarantineFlagAsync(long playerId, bool isQuarantined)
         {
             if (_redis.IsConnected)
@@ -65,6 +70,27 @@ namespace FolkIdle.Server.Engine
                     _ = batch.HashIncrementAsync(GoldBufferKey(state.PlayerId), "delta", state.RedisPendingGoldDelta, CommandFlags.FireAndForget);
                     _ = batch.HashSetAsync(GoldBufferKey(state.PlayerId), "updated_at", DateTimeOffset.UtcNow.ToUnixTimeSeconds(), When.Always, CommandFlags.FireAndForget);
                     state.RedisPendingGoldDelta = 0L;
+                }
+
+                if (state.PendingWoodDelta != 0L)
+                {
+                    _ = batch.HashIncrementAsync(WoodBufferKey(state.PlayerId), "delta", state.PendingWoodDelta, CommandFlags.FireAndForget);
+                    _ = batch.HashSetAsync(WoodBufferKey(state.PlayerId), "updated_at", DateTimeOffset.UtcNow.ToUnixTimeSeconds(), When.Always, CommandFlags.FireAndForget);
+                    state.PendingWoodDelta = 0L;
+                }
+
+                if (state.PendingStoneDelta != 0L)
+                {
+                    _ = batch.HashIncrementAsync(StoneBufferKey(state.PlayerId), "delta", state.PendingStoneDelta, CommandFlags.FireAndForget);
+                    _ = batch.HashSetAsync(StoneBufferKey(state.PlayerId), "updated_at", DateTimeOffset.UtcNow.ToUnixTimeSeconds(), When.Always, CommandFlags.FireAndForget);
+                    state.PendingStoneDelta = 0L;
+                }
+
+                if (state.PendingIronDelta != 0L)
+                {
+                    _ = batch.HashIncrementAsync(IronOreBufferKey(state.PlayerId), "delta", state.PendingIronDelta, CommandFlags.FireAndForget);
+                    _ = batch.HashSetAsync(IronOreBufferKey(state.PlayerId), "updated_at", DateTimeOffset.UtcNow.ToUnixTimeSeconds(), When.Always, CommandFlags.FireAndForget);
+                    state.PendingIronDelta = 0L;
                 }
 
                 _ = batch.SetAddAsync(DirtyPlayersSetKey, state.PlayerId, CommandFlags.FireAndForget);

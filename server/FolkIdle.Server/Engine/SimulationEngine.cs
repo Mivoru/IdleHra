@@ -2208,6 +2208,7 @@ namespace FolkIdle.Server.Engine
 
             if (payload.Quarantine_Active) return;
 
+            ProcessPassiveVillageTick(ref payload, TickIntervalSeconds);
             ProcessSubTick(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
 
             if (chronoAccelerating)
@@ -2220,6 +2221,7 @@ namespace FolkIdle.Server.Engine
                         break;
                     }
 
+                    ProcessPassiveVillageTick(ref payload, TickIntervalSeconds);
                     ProcessSubTick(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
                 }
 
@@ -2249,6 +2251,7 @@ namespace FolkIdle.Server.Engine
                 if (payload.AccumulatedTimeBankMs >= 100)
                 {
                     payload.AccumulatedTimeBankMs -= 100;
+                    ProcessPassiveVillageTick(ref payload, TickIntervalSeconds);
                     ProcessSubTick(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
                 }
                 else
@@ -2256,6 +2259,62 @@ namespace FolkIdle.Server.Engine
                     payload.SpeedMultiplier = 1;
                     break;
                 }
+            }
+        }
+
+        // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
+        // Zero-allocation: pure struct field arithmetic, no LINQ, no DB access.
+        // Independent of ActiveActivityId - runs every call regardless of what
+        // the player is currently doing, unlike ProcessSubTick.
+        // Tolerance absorbing float32 summation drift (e.g. repeatedly adding
+        // 0.01f can land just under a whole-unit threshold after thousands of
+        // ticks) without being large enough to trigger a spurious extra unit.
+        private const float ProductionAccumulatorEpsilon = 1e-4f;
+
+        internal static void ProcessPassiveVillageTick(ref TickStatePayload payload, double deltaTimeSeconds)
+        {
+            long maxStorage = VillageManagementEngine.CalculateWarehouseMaxStorage(payload.WarehouseLevel);
+
+            float woodRate = payload.LumberjackLevel * VillageManagementEngine.LumberjackWoodRatePerLevel;
+            if (woodRate > 0f && payload.CachedWoodStock < maxStorage)
+            {
+                payload.AccumulatedWood += (float)(woodRate * deltaTimeSeconds);
+            }
+
+            float stoneRate = payload.QuarryLevel * VillageManagementEngine.QuarryStoneRatePerLevel;
+            if (stoneRate > 0f && payload.CachedStoneStock < maxStorage)
+            {
+                payload.AccumulatedStone += (float)(stoneRate * deltaTimeSeconds);
+            }
+
+            float ironRate = payload.MineLevel * VillageManagementEngine.MineIronRatePerLevel;
+            if (ironRate > 0f && payload.CachedIronOreStock < maxStorage)
+            {
+                payload.AccumulatedIron += (float)(ironRate * deltaTimeSeconds);
+            }
+
+            while (payload.AccumulatedWood >= 1.0f - ProductionAccumulatorEpsilon)
+            {
+                payload.AccumulatedWood -= 1.0f;
+                payload.CachedWoodStock++;
+                payload.PendingWoodDelta++;
+                payload.IsDirty = true;
+            }
+
+            while (payload.AccumulatedStone >= 1.0f - ProductionAccumulatorEpsilon)
+            {
+                payload.AccumulatedStone -= 1.0f;
+                payload.CachedStoneStock++;
+                payload.PendingStoneDelta++;
+                payload.IsDirty = true;
+            }
+
+            while (payload.AccumulatedIron >= 1.0f - ProductionAccumulatorEpsilon)
+            {
+                payload.AccumulatedIron -= 1.0f;
+                payload.CachedIronOreStock++;
+                payload.PendingIronDelta++;
+                payload.IsDirty = true;
             }
         }
 

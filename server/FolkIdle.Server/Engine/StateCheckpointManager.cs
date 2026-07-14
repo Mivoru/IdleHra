@@ -329,13 +329,32 @@ namespace FolkIdle.Server.Engine
             int innLevel = 0;
             int breedingLevel = 0;
             int academyLevel = 0;
+            int lumberjackLevel = 0;
+            int quarryLevel = 0;
+            int mineLevel = 0;
+            int warehouseLevel = 0;
             for (int i = 0; i < villageRows.Count; i++)
             {
                 if (villageRows[i].BuildingId == VillageManagementEngine.ForgeBuildingId) forgeLevel = villageRows[i].CurrentLevel;
                 else if (villageRows[i].BuildingId == VillageManagementEngine.InnBuildingId) innLevel = villageRows[i].CurrentLevel;
                 else if (villageRows[i].BuildingId == VillageManagementEngine.BreedingGroundsBuildingId) breedingLevel = villageRows[i].CurrentLevel;
                 else if (villageRows[i].BuildingId == VillageManagementEngine.MentorshipAcademyBuildingId) academyLevel = villageRows[i].CurrentLevel;
+                else if (villageRows[i].BuildingId == VillageManagementEngine.LumberjackBuildingId) lumberjackLevel = villageRows[i].CurrentLevel;
+                else if (villageRows[i].BuildingId == VillageManagementEngine.QuarryBuildingId) quarryLevel = villageRows[i].CurrentLevel;
+                else if (villageRows[i].BuildingId == VillageManagementEngine.MineBuildingId) mineLevel = villageRows[i].CurrentLevel;
+                else if (villageRows[i].BuildingId == VillageManagementEngine.WarehouseBuildingId) warehouseLevel = villageRows[i].CurrentLevel;
             }
+
+            var villageCommodityRows = await dbContext.CommodityRecords
+                .AsNoTracking()
+                .Where(c => c.PlayerId == playerId && (
+                    c.ItemId == VillageManagementEngine.WoodCommodityId ||
+                    c.ItemId == VillageManagementEngine.StoneCommodityId ||
+                    c.ItemId == VillageManagementEngine.IronOreCommodityId))
+                .ToListAsync();
+            long woodStock = villageCommodityRows.FirstOrDefault(c => c.ItemId == VillageManagementEngine.WoodCommodityId)?.Quantity ?? 0L;
+            long stoneStock = villageCommodityRows.FirstOrDefault(c => c.ItemId == VillageManagementEngine.StoneCommodityId)?.Quantity ?? 0L;
+            long ironOreStock = villageCommodityRows.FirstOrDefault(c => c.ItemId == VillageManagementEngine.IronOreCommodityId)?.Quantity ?? 0L;
 
             int activeResidentCount = await dbContext.VillageResidents
                 .AsNoTracking()
@@ -430,6 +449,13 @@ namespace FolkIdle.Server.Engine
                 AcademyLevel = ClampByte(academyLevel),
                 CurrentPopulationCount = ClampByte(activeResidentCount),
                 ActiveMentorshipContractCount = ClampByte(activeMentorshipContracts),
+                LumberjackLevel = ClampByte(lumberjackLevel),
+                QuarryLevel = ClampByte(quarryLevel),
+                MineLevel = ClampByte(mineLevel),
+                WarehouseLevel = ClampByte(warehouseLevel),
+                CachedWoodStock = woodStock,
+                CachedStoneStock = stoneStock,
+                CachedIronOreStock = ironOreStock,
                 CachedCurrentToolTier = forgeLevel,
                 CachedMaxPopulationCapacity = VillageManagementEngine.CalculatePopulationCapacity(innLevel),
                 CachedInnMaturationBonus = innLevel,

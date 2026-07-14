@@ -115,6 +115,32 @@ namespace FolkIdle.Server.Engine
         public byte CurrentPopulationCount;
         public byte ActiveMentorshipContractCount;
 
+        // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
+        public byte LumberjackLevel;
+        public byte QuarryLevel;
+        public byte MineLevel;
+        public byte WarehouseLevel;
+
+        // In-memory mirror of the player's wood/stone/iron_ore CommodityRecords,
+        // refreshed at login. Used by the 10 Hz tick to check the warehouse cap
+        // without a DB read on the hot path.
+        public long CachedWoodStock;
+        public long CachedStoneStock;
+        public long CachedIronOreStock;
+
+        // Deltas awaiting write-behind flush into CommodityRecords (see
+        // RedisSessionCache.TryStoreFrame / RedisWriteBehindEngine), mirroring
+        // the existing RedisPendingGoldDelta pattern below.
+        public long PendingWoodDelta;
+        public long PendingStoneDelta;
+        public long PendingIronDelta;
+
+        // Fractional-tick production accumulators. Internal bookkeeping only,
+        // never read by StateUpdatePacket.
+        public float AccumulatedWood;
+        public float AccumulatedStone;
+        public float AccumulatedIron;
+
         public int ActiveChildMaturationMs;
 
         // Codex and Achievements

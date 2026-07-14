@@ -78,6 +78,7 @@ namespace FolkIdle.Server.Engine
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
             var syncedPlayers = new List<long>(dirtyPlayers.Length);
             var appliedGoldDeltas = new List<(long PlayerId, long Delta)>(dirtyPlayers.Length);
+            var appliedCommodityDeltas = new List<(RedisKey BufferKey, long Delta)>(dirtyPlayers.Length * 3);
 
             try
             {
@@ -101,6 +102,11 @@ namespace FolkIdle.Server.Engine
                     {
                         appliedGoldDeltas.Add((playerId, appliedDelta));
                     }
+
+                    await ApplyCommodityDeltaAsync(db, redisDb, playerId, RedisSessionCache.WoodBufferKey(playerId), VillageManagementEngine.WoodCommodityId, appliedCommodityDeltas, cancellationToken);
+                    await ApplyCommodityDeltaAsync(db, redisDb, playerId, RedisSessionCache.StoneBufferKey(playerId), VillageManagementEngine.StoneCommodityId, appliedCommodityDeltas, cancellationToken);
+                    await ApplyCommodityDeltaAsync(db, redisDb, playerId, RedisSessionCache.IronOreBufferKey(playerId), VillageManagementEngine.IronOreCommodityId, appliedCommodityDeltas, cancellationToken);
+
                     syncedPlayers.Add(playerId);
                 }
 
@@ -110,6 +116,11 @@ namespace FolkIdle.Server.Engine
                 for (int i = 0; i < appliedGoldDeltas.Count; i++)
                 {
                     await redisDb.HashIncrementAsync(RedisSessionCache.GoldBufferKey(appliedGoldDeltas[i].PlayerId), "delta", -appliedGoldDeltas[i].Delta);
+                }
+
+                for (int i = 0; i < appliedCommodityDeltas.Count; i++)
+                {
+                    await redisDb.HashIncrementAsync(appliedCommodityDeltas[i].BufferKey, "delta", -appliedCommodityDeltas[i].Delta);
                 }
 
                 for (int i = 0; i < syncedPlayers.Count; i++)
@@ -197,6 +208,31 @@ namespace FolkIdle.Server.Engine
 
             gold.Quantity += delta;
             return delta;
+        }
+
+        // Modul 16: applies a buffered wood/stone/iron_ore delta to CommodityRecords,
+        // mirroring ApplyGoldDeltaAsync. Records the applied amount so the caller can
+        // reverse it out of the Redis buffer once the surrounding transaction commits.
+        private static async Task ApplyCommodityDeltaAsync(FolkIdleDbContext db, IDatabase redisDb, long playerId, RedisKey bufferKey, string itemId, List<(RedisKey BufferKey, long Delta)> appliedDeltas, CancellationToken cancellationToken)
+        {
+            RedisValue deltaValue = await redisDb.HashGetAsync(bufferKey, "delta");
+            if (!TryReadLong(deltaValue, out long delta) || delta == 0L)
+            {
+                return;
+            }
+
+            var commodity = await db.CommodityRecords
+                .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, itemId)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (commodity == null)
+            {
+                commodity = new CommodityRecord { PlayerId = playerId, ItemId = itemId, Quantity = 0L };
+                db.CommodityRecords.Add(commodity);
+            }
+
+            commodity.Quantity += delta;
+            appliedDeltas.Add((bufferKey, delta));
         }
 
         private static int ReadInt(HashEntry[] entries, string field, int fallback)

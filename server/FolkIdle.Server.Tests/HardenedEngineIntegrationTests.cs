@@ -674,5 +674,79 @@ namespace FolkIdle.Server.Tests
             Assert.False(affixPayload!.ContainsKey("flat_hp_aaaa"));
             Assert.Single(affixPayload);
         }
+
+        [Fact]
+        public void Test_Village_PassiveProductionAndWarehouseCap()
+        {
+            const long testPlayerId = 995000001L;
+
+            var payload = new TickStatePayload
+            {
+                PlayerId = testPlayerId,
+                LumberjackLevel = 5,
+                MineLevel = 2,
+                WarehouseLevel = 1,
+                CachedWoodStock = 995L,
+                CachedIronOreStock = 100L
+            };
+
+            // 1000 physical 10 Hz ticks (0.1s each) simulate 100 seconds of active play.
+            for (int i = 0; i < 1000; i++)
+            {
+                SimulationEngine.ProcessPassiveVillageTick(ref payload, 0.1);
+            }
+
+            // Wood_Rate = 5 * 0.1 = 0.5/sec. The warehouse cap (Level 1 = 1000) chokes
+            // production after exactly 5 more wood (995 -> 1000), well before the
+            // 100 second window ends, so no more accumulates past the cap.
+            Assert.Equal(1000L, payload.CachedWoodStock);
+            Assert.Equal(5L, payload.PendingWoodDelta);
+
+            // Iron_Rate = 2 * 0.05 = 0.1/sec * 100s = 10 iron; nowhere near the cap.
+            Assert.Equal(110L, payload.CachedIronOreStock);
+            Assert.Equal(10L, payload.PendingIronDelta);
+
+            Assert.True(payload.IsDirty);
+        }
+
+        [Fact]
+        public async Task Test_Village_OfflinePassiveIncome_Integration()
+        {
+            const long testPlayerId = 995000002L;
+            const long elapsedOfflineSeconds = 3600L; // 1 hour
+
+            long currentUnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            var payload = new TickStatePayload
+            {
+                PlayerId = testPlayerId,
+                LastLogoutTimestamp = currentUnixTimestamp - elapsedOfflineSeconds,
+                ActiveActivityId = 0,
+                QuarryLevel = 10,
+                WarehouseLevel = 2,
+                InventorySpaceRemaining = 1000
+            };
+
+            // Stone_Rate = 10 * 0.08 = 0.8/sec. Potential production over 1 hour
+            // (2880) exceeds the Warehouse cap (Level 2 = 2000), so this also
+            // exercises the cap-enforcement branch on the offline catch-up path.
+            const long maxStorage = 2000L;
+            const float stoneRatePerSecond = 10 * 0.08f;
+            long expectedStoneGain = Math.Min((long)(elapsedOfflineSeconds * stoneRatePerSecond), maxStorage);
+            Assert.Equal(2000L, expectedStoneGain);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                payload = await OfflineSimulationEngine.ExtrapolateOfflineProgressAsync(db, payload, currentUnixTimestamp);
+            }
+
+            Assert.Equal(currentUnixTimestamp, payload.LastLogoutTimestamp);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var stone = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "stone");
+
+            Assert.Equal(expectedStoneGain, stone.Quantity);
+        }
     }
 }

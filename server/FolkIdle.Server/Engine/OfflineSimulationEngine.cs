@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Threading.Tasks;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
@@ -42,6 +43,8 @@ namespace FolkIdle.Server.Engine
 
             long elapsedSeconds = Math.Min(MaxOfflineSeconds, rawDeltaSeconds);
 
+            await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.QuarryLevel, payload.MineLevel, payload.WarehouseLevel, elapsedSeconds);
+
             if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out GatheringNodeDefinition gatheringNode))
             {
                 LootProjection projection = CalculateGatheringProjection(ref payload, gatheringNode, elapsedSeconds);
@@ -77,6 +80,81 @@ namespace FolkIdle.Server.Engine
             // materialized into a plain array before the first await.
             LootTableEntry[] lootTable = ContentRegistry.GetLootTable(projection.LootTableId).ToArray();
             return await GrantAnalyticalLootAsync(db, playerId, lootTable, projection.LootRolls, availableInventorySpace);
+        }
+
+        // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
+        // Grants offline wood/stone/iron_ore analytically, independent of
+        // whatever gathering/combat activity was active while offline.
+        private static async Task GrantVillagePassiveProductionAsync(FolkIdleDbContext db, long playerId, int lumberjackLevel, int quarryLevel, int mineLevel, int warehouseLevel, long elapsedSeconds)
+        {
+            if (elapsedSeconds <= 0)
+            {
+                return;
+            }
+
+            long maxStorage = VillageManagementEngine.CalculateWarehouseMaxStorage(warehouseLevel);
+            if (maxStorage <= 0)
+            {
+                return;
+            }
+
+            float woodRate = lumberjackLevel * VillageManagementEngine.LumberjackWoodRatePerLevel;
+            float stoneRate = quarryLevel * VillageManagementEngine.QuarryStoneRatePerLevel;
+            float ironRate = mineLevel * VillageManagementEngine.MineIronRatePerLevel;
+
+            if (woodRate <= 0f && stoneRate <= 0f && ironRate <= 0f)
+            {
+                return;
+            }
+
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                await GrantSingleCommodityProductionAsync(db, playerId, VillageManagementEngine.WoodCommodityId, woodRate, elapsedSeconds, maxStorage);
+                await GrantSingleCommodityProductionAsync(db, playerId, VillageManagementEngine.StoneCommodityId, stoneRate, elapsedSeconds, maxStorage);
+                await GrantSingleCommodityProductionAsync(db, playerId, VillageManagementEngine.IronOreCommodityId, ironRate, elapsedSeconds, maxStorage);
+
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+            }
+        }
+
+        private static async Task GrantSingleCommodityProductionAsync(FolkIdleDbContext db, long playerId, string itemId, float productionRatePerSecond, long elapsedSeconds, long maxStorage)
+        {
+            if (productionRatePerSecond <= 0f)
+            {
+                return;
+            }
+
+            long potential = (long)(elapsedSeconds * productionRatePerSecond);
+            if (potential <= 0)
+            {
+                return;
+            }
+
+            var commodity = await db.CommodityRecords
+                .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, itemId)
+                .SingleOrDefaultAsync();
+
+            long currentStorage = commodity?.Quantity ?? 0L;
+            long grantedAmount = Math.Min(potential, Math.Max(0L, maxStorage - currentStorage));
+            if (grantedAmount <= 0)
+            {
+                return;
+            }
+
+            if (commodity == null)
+            {
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = itemId, Quantity = grantedAmount });
+            }
+            else
+            {
+                commodity.Quantity += grantedAmount;
+            }
         }
 
         private static LootProjection CalculateGatheringProjection(ref TickStatePayload payload, GatheringNodeDefinition node, long elapsedSeconds)

@@ -14,6 +14,29 @@ namespace FolkIdle.Server.Engine
         public const int BreedingGroundsBuildingId = 3;
         public const int MentorshipAcademyBuildingId = 4;
 
+        // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
+        // Distinct from the 1-4 range above (Forge/Inn/Breeding/Academy) since
+        // VillageInfrastructures is keyed on (PlayerId, BuildingId) - reusing 1-4
+        // here would silently collide with those existing building rows.
+        public const int LumberjackBuildingId = 5;
+        public const int QuarryBuildingId = 6;
+        public const int MineBuildingId = 7;
+        public const int WarehouseBuildingId = 8;
+
+        public const string WoodCommodityId = "wood";
+        public const string StoneCommodityId = "stone";
+        public const string IronOreCommodityId = "iron_ore";
+
+        public const float LumberjackWoodRatePerLevel = 0.1f;
+        public const float QuarryStoneRatePerLevel = 0.08f;
+        public const float MineIronRatePerLevel = 0.05f;
+        public const long WarehouseCapacityPerLevel = 1000L;
+
+        public static long CalculateWarehouseMaxStorage(int warehouseLevel)
+        {
+            return warehouseLevel <= 0 ? 0L : (long)warehouseLevel * WarehouseCapacityPerLevel;
+        }
+
         private const long BaseUpgradeCost = 1000L;
 
         private readonly IServiceProvider _serviceProvider;
