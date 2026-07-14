@@ -86,7 +86,7 @@ namespace FolkIdle.Server.Engine
             return Volatile.Read(ref _bossIsAlive) == 0 || BossCurrentHp <= 0;
         }
 
-        public void RegisterDamage(long playerId, long damage)
+        public void RegisterDamage(long playerId, long damage, bool autoEatFoodDepleted = false)
         {
             if (damage <= 0)
             {
@@ -94,12 +94,12 @@ namespace FolkIdle.Server.Engine
             }
 
             uint predictedDamage = damage > MaxClientPredictedDamage ? MaxClientPredictedDamage : (uint)damage;
-            QueueAttack(playerId, ActiveBossInstanceId, predictedDamage);
+            QueueAttack(playerId, ActiveBossInstanceId, predictedDamage, autoEatFoodDepleted);
         }
 
-        public void QueueAttack(long playerId, uint bossId, uint clientPredictedDamage)
+        public void QueueAttack(long playerId, uint bossId, uint clientPredictedDamage, bool autoEatFoodDepleted = false)
         {
-            _ = Task.Run(async () => await ExecuteAttackAsync(playerId, bossId, clientPredictedDamage));
+            _ = Task.Run(async () => await ExecuteAttackAsync(playerId, bossId, clientPredictedDamage, autoEatFoodDepleted));
         }
 
         public async Task ScaleActiveBossAsync(long[] onlinePlayerIds)
@@ -396,7 +396,11 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        internal async Task ExecuteAttackAsync(long playerId, uint bossId, uint clientPredictedDamage)
+        // Modul 06/15: session cutoff duration, matching the brief's absolute
+        // 300-second per-player battle entry cap.
+        private const long BattleSessionCapSeconds = 300L;
+
+        internal async Task ExecuteAttackAsync(long playerId, uint bossId, uint clientPredictedDamage, bool autoEatFoodDepleted = false)
         {
             if (playerId <= 0 || bossId != ActiveBossInstanceId || clientPredictedDamage == 0)
             {
@@ -423,6 +427,8 @@ namespace FolkIdle.Server.Engine
                     .FromSqlRaw("SELECT * FROM \"player_world_boss_attempts\" WHERE \"PlayerId\" = {0} AND \"BossInstanceId\" = {1} FOR UPDATE", playerId, (long)bossId)
                     .SingleOrDefaultAsync();
 
+                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
                 if (attempt == null)
                 {
                     attempt = new PlayerWorldBossAttempt
@@ -430,12 +436,29 @@ namespace FolkIdle.Server.Engine
                         PlayerId = playerId,
                         BossInstanceId = bossId,
                         AttemptCount = 0,
-                        TotalInflictedDamage = 0
+                        TotalInflictedDamage = 0,
+                        SessionStartEpoch = nowEpoch
                     };
                     db.PlayerWorldBossAttempts.Add(attempt);
                 }
 
                 if (attempt.AttemptCount >= MaxAttemptsPerEncounter)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                // Modul 06/15: close this player's battle session instantly -
+                // no new damage is applied, but the damage delta already
+                // registered (attempt.TotalInflictedDamage / snapshot.CurrentHp)
+                // stands untouched.
+                if (attempt.SessionStartEpoch > 0 && nowEpoch - attempt.SessionStartEpoch >= BattleSessionCapSeconds)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                if (autoEatFoodDepleted)
                 {
                     await transaction.RollbackAsync();
                     return;

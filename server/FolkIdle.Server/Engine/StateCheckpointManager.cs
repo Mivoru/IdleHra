@@ -161,6 +161,7 @@ namespace FolkIdle.Server.Engine
                     player.EquippedWeaponId = state.EquippedWeaponId == 0L ? null : state.EquippedWeaponId;
                     player.EquippedArmorId = state.EquippedArmorId == 0L ? null : state.EquippedArmorId;
                     player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
+                    player.PremiumDiamonds = state.PremiumCurrency;
                     await UpsertAccountChronoRegistryAsync(dbContext, state);
                     await UpsertChroniclePassAsync(dbContext, state);
                     await UpsertLifetimeAchievementsAsync(dbContext, player, state);
@@ -775,6 +776,8 @@ namespace FolkIdle.Server.Engine
                         player.BaseLuck = state.LCK;
                         player.EquippedWeaponId = state.EquippedWeaponId == 0L ? null : state.EquippedWeaponId;
                         player.EquippedArmorId = state.EquippedArmorId == 0L ? null : state.EquippedArmorId;
+                        player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
+                        player.PremiumDiamonds = state.PremiumCurrency;
                         await UpsertAccountChronoRegistryAsync(dbContext, state);
                         await UpsertChroniclePassAsync(dbContext, state);
 

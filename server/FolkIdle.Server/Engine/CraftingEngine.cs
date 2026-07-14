@@ -10,11 +10,13 @@ namespace FolkIdle.Server.Engine
     {
         private readonly IDbContextFactory<FolkIdleDbContext> _contextFactory;
         private readonly PlayerSessionRegistry _playerRegistry;
+        private readonly GuildWarEngine? _guildWarEngine;
 
-        public CraftingEngine(IDbContextFactory<FolkIdleDbContext> contextFactory, PlayerSessionRegistry playerRegistry)
+        public CraftingEngine(IDbContextFactory<FolkIdleDbContext> contextFactory, PlayerSessionRegistry playerRegistry, GuildWarEngine? guildWarEngine = null)
         {
             _contextFactory = contextFactory;
             _playerRegistry = playerRegistry;
+            _guildWarEngine = guildWarEngine;
         }
 
         public async Task ExecuteCraftingAsync(long playerId, int recipeResultItemId)
@@ -178,8 +180,30 @@ namespace FolkIdle.Server.Engine
                 
                 context.EquipmentInstances.Add(item);
 
+                // Modul 06/26: Guild War Production Logistics front (WP = 50 *
+                // ItemRarityTier) for items scaling above Tier 5 (Epic), crafted
+                // by a member of a guild currently in an active war match.
+                GuildWarMatch? activeGuildWarMatch = null;
+                if (recipe.TierIndex > 5 && player != null && player.GuildId > 0 && _guildWarEngine != null)
+                {
+                    activeGuildWarMatch = await context.GuildWarMatches
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(m => m.IsActive && (m.GuildA_Id == player.GuildId || m.GuildB_Id == player.GuildId));
+                }
+
                 await context.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                if (activeGuildWarMatch != null && _guildWarEngine != null && player != null)
+                {
+                    _guildWarEngine.GuildWarPointQueue.Enqueue(new GuildWarPointEvent
+                    {
+                        MatchId = activeGuildWarMatch.MatchId,
+                        GuildId = player.GuildId,
+                        Front = 1,
+                        Points = 50 * recipe.TierIndex
+                    });
+                }
 
                 // Notification queue pattern to avoid state mutation race
                 _playerRegistry.CraftingCompletionQueue.Enqueue(new CraftingCompletionNotification

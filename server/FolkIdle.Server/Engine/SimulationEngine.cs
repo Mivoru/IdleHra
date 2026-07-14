@@ -422,6 +422,19 @@ namespace FolkIdle.Server.Engine
                     }
                 }
 
+                while (_playerRegistry.CombatLootDropQueue.TryDequeue(out var combatLootDrop))
+                {
+                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, combatLootDrop.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                    {
+                        if (combatLootDrop.ConsumedInventorySlot && currentPayload.InventorySpaceRemaining > 0)
+                        {
+                            currentPayload.InventorySpaceRemaining--;
+                        }
+                        currentPayload.IsDirty = true;
+                    }
+                }
+
                 while (_playerRegistry.CraftingCompletionQueue.TryDequeue(out var craftCompletion))
                 {
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, craftCompletion.PlayerId);
@@ -1489,7 +1502,11 @@ namespace FolkIdle.Server.Engine
                             continue;
                         }
 
-                        _worldBossEngine.QueueAttack(currentPayload.PlayerId, cmd.TargetedBossId, cmd.ClientPredictedDamage);
+                        // Modul 06/15: Auto-Eat food depletion also closes a
+                        // player's World Boss battle session, alongside the
+                        // 300-second cap enforced inside WorldBossEngine itself.
+                        bool attackAutoEatDepleted = currentPayload.Food1_Count <= 0 && currentPayload.Food2_Count <= 0 && currentPayload.Food3_Count <= 0;
+                        _worldBossEngine.QueueAttack(currentPayload.PlayerId, cmd.TargetedBossId, cmd.ClientPredictedDamage, attackAutoEatDepleted);
                     }
                     else if (cmd.Command == CommandType.RegisterPushToken)
                     {
@@ -1533,7 +1550,8 @@ namespace FolkIdle.Server.Engine
                             continue;
                         }
 
-                        _worldBossEngine.RegisterDamage(currentPayload.PlayerId, cmd.TargetId);
+                        bool registerAutoEatDepleted = currentPayload.Food1_Count <= 0 && currentPayload.Food2_Count <= 0 && currentPayload.Food3_Count <= 0;
+                        _worldBossEngine.RegisterDamage(currentPayload.PlayerId, cmd.TargetId, registerAutoEatDepleted);
                     }
                     else if (cmd.Command == CommandType.Logout)
                     {
@@ -2669,7 +2687,29 @@ namespace FolkIdle.Server.Engine
                                     currentWeight += lootTable[i].Weight;
                                     if (roll < currentWeight)
                                     {
-                                        payload.InventorySpaceRemaining--;
+                                        // Modul 04: Kobold's packed-weight penalty -
+                                        // anything other than raw ores/refined bars
+                                        // consumes 2 virtual capacity slots instead
+                                        // of 1. Breaching the cap drops this item
+                                        // (and stops this cycle's remaining rolls
+                                        // entirely, matching "0% efficiency" on
+                                        // overflow) while gold/XP already granted
+                                        // above are preserved.
+                                        int itemWeight = 1;
+                                        if (gatherActiveRaceId == RaceIds.Kobold)
+                                        {
+                                            string droppedBaseId = ContentRegistry.GetMaterialString(lootTable[i].ItemId);
+                                            bool isOreOrBar = droppedBaseId.Contains("_ore_") || droppedBaseId.Contains("_bar_");
+                                            if (!isOreOrBar) itemWeight = 2;
+                                        }
+
+                                        if (itemWeight > payload.InventorySpaceRemaining)
+                                        {
+                                            r = rollsToExecute;
+                                            break;
+                                        }
+
+                                        payload.InventorySpaceRemaining -= itemWeight;
                                         break;
                                     }
                                 }
@@ -2773,11 +2813,25 @@ namespace FolkIdle.Server.Engine
 
                 if (Random.Shared.NextDouble() <= hitChance)
                 {
-                    int rawDamage = activeMonster.AttackPower * 1000;
-                    
+                    // Step 2 (Monster Crit Check): 5% base + 0.5% per region
+                    // tier (region derived from monster id via the established
+                    // ((Id - 1) % 30) / 6 + 1 convention). Vodnik's innate
+                    // CritMitigationPct subtracts directly from the crit
+                    // damage multiplier, floored at 1.0 so mitigation can never
+                    // make a crit deal less than a normal hit.
+                    int monsterRegionTier = ((payload.CurrentMonsterId - 1) % 30) / 6 + 1;
+                    float monsterCritChance = 0.05f + (monsterRegionTier * 0.005f);
+                    float monsterCritMult = 1.0f;
+                    if (Random.Shared.NextDouble() <= monsterCritChance)
+                    {
+                        monsterCritMult = Math.Max(1.0f, 1.5f - (combatStats.CritMitigationPct / 100f));
+                    }
+
+                    int rawDamage = (int)(activeMonster.AttackPower * 1000 * monsterCritMult);
+
                     // Step 3 (Mitigation)
                     int netDamage = Math.Max(1000, rawDamage - (combatStats.FlatPhysicalArmor * 1000));
-                    
+
                     // Step 4 (Shield Check)
                     int blockStrength = 0;
                     int finalDamage = Math.Max(0, netDamage - (blockStrength * 1000));
@@ -2884,9 +2938,11 @@ namespace FolkIdle.Server.Engine
                     GainedXp = seasonalCombatXp
                 });
 
+                bool isRegionalBoss = activeMonster.Id % 6 == 0;
+
                 if (payload.ActiveGuildWarId > 0)
                 {
-                    int wp = (activeMonster.Id % 6 == 0) ? 500 : 10;
+                    int wp = isRegionalBoss ? 500 : 10;
                     guildWarPointQueue.Enqueue(new GuildWarPointEvent
                     {
                         MatchId = payload.ActiveGuildWarId,
@@ -2895,6 +2951,35 @@ namespace FolkIdle.Server.Engine
                         Points = wp
                     });
                 }
+
+                // Modul 03: 0.05% flat Premium Diamond drop from standard/elite
+                // monsters, guaranteed 10-diamond cluster from Regional Bosses
+                // (same activeMonster.Id % 6 == 0 heuristic used for Guild War
+                // Combat Vanguard WP above). PremiumCurrency is updated directly
+                // in-memory here (no DB access needed on the hot path) and
+                // persisted on the next checkpoint flush like gold.
+                if (isRegionalBoss)
+                {
+                    payload.SetPremiumCurrency(payload.PremiumCurrency + 10);
+                    payload.IsDirty = true;
+                }
+                else if (Random.Shared.NextDouble() < 0.0005)
+                {
+                    payload.SetPremiumCurrency(payload.PremiumCurrency + 1);
+                    payload.IsDirty = true;
+                }
+
+                // Modul 03/10/11/12: equipment drop roll request. ProcessSubTick
+                // is static, so this enqueues onto CombatLootEngine's static
+                // queue (mirroring CodexEngine.KillEventQueue) rather than
+                // calling an instance method directly - CombatLootEngine's own
+                // background poll loop performs the actual DB insert.
+                CombatLootEngine.DropRequestQueue.Enqueue(new CombatLootDropRequest
+                {
+                    PlayerId = payload.PlayerId,
+                    MonsterId = payload.CurrentMonsterId,
+                    LootLuckPct = combatStats.LootLuckPct
+                });
 
                 var lootTable = ContentRegistry.GetLootTable(activeMonster.LootTableId);
                 if (lootTable.Length > 0 && payload.InventorySpaceRemaining > 0)
@@ -2925,7 +3010,23 @@ namespace FolkIdle.Server.Engine
                                 currentWeight += lootTable[i].Weight;
                                 if (roll < currentWeight)
                                 {
-                                    payload.InventorySpaceRemaining--;
+                                    // Modul 04: Kobold's packed-weight penalty,
+                                    // mirroring the gathering loot roll above.
+                                    int itemWeight = 1;
+                                    if (activeRaceId == RaceIds.Kobold)
+                                    {
+                                        string droppedBaseId = ContentRegistry.GetMaterialString(lootTable[i].ItemId);
+                                        bool isOreOrBar = droppedBaseId.Contains("_ore_") || droppedBaseId.Contains("_bar_");
+                                        if (!isOreOrBar) itemWeight = 2;
+                                    }
+
+                                    if (itemWeight > payload.InventorySpaceRemaining)
+                                    {
+                                        r = rollsToExecute;
+                                        break;
+                                    }
+
+                                    payload.InventorySpaceRemaining -= itemWeight;
                                     break;
                                 }
                             }

@@ -209,6 +209,59 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task Test_WorldBoss_RejectsAttackAfterSessionCap()
+        {
+            const long testPlayerId = 950000009L;
+
+            var worldBossEngine = new WorldBossEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await worldBossEngine.ActivateEventWindowAsync(DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds());
+            await worldBossEngine.ScaleActiveBossAsync(new[] { DbSeeder.PlayerLowId });
+
+            long expiredSessionStart = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 3600L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerWorldBossAttempts.Add(new PlayerWorldBossAttempt
+                {
+                    PlayerId = testPlayerId,
+                    BossInstanceId = WorldBossEngine.ActiveBossInstanceId,
+                    AttemptCount = 1,
+                    TotalInflictedDamage = 1000,
+                    SessionStartEpoch = expiredSessionStart
+                });
+                await db.SaveChangesAsync();
+            }
+
+            long bossHpBeforeExpiredAttack = worldBossEngine.BossCurrentHp;
+            await worldBossEngine.ExecuteAttackAsync(testPlayerId, WorldBossEngine.ActiveBossInstanceId, 5000);
+
+            Assert.Equal(bossHpBeforeExpiredAttack, worldBossEngine.BossCurrentHp);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var attempt = await verifyDb.PlayerWorldBossAttempts.AsNoTracking()
+                .SingleAsync(a => a.PlayerId == testPlayerId && a.BossInstanceId == WorldBossEngine.ActiveBossInstanceId);
+
+            Assert.Equal(1, attempt.AttemptCount);
+            Assert.Equal(1000L, attempt.TotalInflictedDamage);
+        }
+
+        [Fact]
+        public void Test_RarityTier_HighLuckIncreasesRareRollProbability()
+        {
+            const int sampleSize = 5000;
+            int lowLuckRareOrBetterCount = 0;
+            int highLuckRareOrBetterCount = 0;
+
+            for (int i = 0; i < sampleSize; i++)
+            {
+                if (RarityTier.RollTier(0f) >= RarityTier.Rare) lowLuckRareOrBetterCount++;
+                if (RarityTier.RollTier(500f) >= RarityTier.Rare) highLuckRareOrBetterCount++;
+            }
+
+            Assert.True(highLuckRareOrBetterCount > lowLuckRareOrBetterCount);
+        }
+
+        [Fact]
         public async Task Test_CodexPassiveStats_Scaling()
         {
             const long testPlayerId = 750000001L;

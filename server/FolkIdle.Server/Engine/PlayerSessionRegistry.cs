@@ -222,6 +222,7 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<MentorshipContractUpdateNotification> MentorshipContractUpdateQueue { get; } = new();
         public ConcurrentQueue<CodexMultiplierUpdateNotification> CodexMultiplierUpdateQueue { get; } = new();
         public ConcurrentQueue<RegionCompletionNotification> RegionCompletionUpdateQueue { get; } = new();
+        public ConcurrentQueue<CombatLootDropNotification> CombatLootDropQueue { get; } = new();
 
         public void RegisterPlayer(long playerId)
         {
