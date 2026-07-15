@@ -116,13 +116,27 @@ namespace FolkIdle.Server.Network
                     var context = await _httpListener.GetContextAsync();
                     string requestPath = context.Request.Url?.AbsolutePath ?? "/";
 
-                    if (requestPath == "/health/liveness" || requestPath == "/health/readiness")
+                    // Modul: previously both paths unconditionally returned 200
+                    // regardless of real engine state - InfrastructureHealthMonitor
+                    // (IsLive/IsReady/WritePlainHealth) already existed with the
+                    // correct distinct semantics but was never actually called
+                    // from here, so Kubernetes could never detect a pod still
+                    // mid cold-boot-recovery or under heap pressure and would
+                    // route live traffic to it regardless. Liveness only checks
+                    // GlobalEngineState.IsShuttingDown (restart-worthy failure);
+                    // readiness additionally requires cold-boot recovery to have
+                    // completed and heap usage under the readiness limit
+                    // (service-endpoint-worthy, not restart-worthy - see
+                    // InfrastructureHealthMonitor.IsReady).
+                    if (requestPath == "/health/liveness")
                     {
-                        context.Response.ContentType = "text/plain";
-                        context.Response.StatusCode = 200;
-                        byte[] responseBytes = new byte[] { 0x4F, 0x4B }; // "OK"
-                        await context.Response.OutputStream.WriteAsync(responseBytes, 0, responseBytes.Length);
-                        context.Response.Close();
+                        InfrastructureHealthMonitor.WritePlainHealth(context.Response, InfrastructureHealthMonitor.IsLive());
+                        continue;
+                    }
+
+                    if (requestPath == "/health/readiness")
+                    {
+                        InfrastructureHealthMonitor.WritePlainHealth(context.Response, InfrastructureHealthMonitor.IsReady());
                         continue;
                     }
 

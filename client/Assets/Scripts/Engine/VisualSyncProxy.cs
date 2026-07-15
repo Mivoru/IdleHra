@@ -10,6 +10,34 @@ namespace FolkIdle.Client.Engine
         public float VisualProgressTicks;
         public float VisualPlayerHp;
         public float VisualMonsterHp;
+
+        // Modul: Combat Arena signals. VisualCurrentMonsterId/
+        // VisualActiveAudioTrackId are discrete (no interpolation, matching
+        // ApplyVillagePacketState's convention) - ActiveAudioTrackId already
+        // encodes activity classification server-side (SimulationEngine sets
+        // 1=idle, 2=gathering, 3=combat, 4=world boss via the same
+        // TryGetGatheringNode check used everywhere else), so the client
+        // does not need its own ContentRegistry copy to know "am I fighting
+        // a monster right now." OnMonsterHit/OnPlayerHit fire once per real
+        // server tick where the raw (non-interpolated) HP actually dropped
+        // for the SAME monster/player instance - computed at packet-arrival
+        // time in Update's dequeue loop, not by diffing the smoothed
+        // per-frame Lerp output, which would spread one real hit across many
+        // frames and fire repeatedly instead of once.
+        public int VisualCurrentMonsterId { get; private set; }
+        public byte VisualActiveAudioTrackId { get; private set; } = 1;
+        public event System.Action OnCombatInstanceChanged;
+        public event System.Action<int, bool> OnMonsterHit;
+        public event System.Action<int, bool> OnPlayerHit;
+
+        // Client-side visual heuristic only - the real crit roll happens
+        // server-side and is not transmitted per-hit, only the resulting HP
+        // delta. A hit removing at least this fraction of the target's
+        // pre-hit HP in one tick is treated as visually "critical" so the
+        // threshold scales naturally across monster tiers instead of using
+        // a fixed absolute damage number that would be meaningless from
+        // early 69 HP monsters up to endgame millions.
+        private const float CriticalHitFraction = 0.20f;
         public float VisualWoodcuttingXp;
         public float VisualMiningXp;
         public float VisualGatheringProgress;
@@ -236,6 +264,7 @@ namespace FolkIdle.Client.Engine
                     ApplyVillagePacketState(in packet);
                     ApplyGuildPacketState(in packet);
                     ApplyCharacterPacketState(in packet);
+                    ApplyCombatPacketState(in packet);
 
                     _hasReceivedState = true;
                 }
@@ -247,6 +276,9 @@ namespace FolkIdle.Client.Engine
                     {
                         _emaPacketIntervalSeconds = Mathf.Lerp(_emaPacketIntervalSeconds, observedInterval, IntervalSmoothingFactor);
                     }
+
+                    StateUpdatePacket previousPacket = _snapshotB.Packet;
+                    DetectCombatHits(in previousPacket, in packet);
 
                     _snapshotA = _snapshotB;
                     _snapshotB = new ServerSnapshot { Packet = packet, ReceivedTime = now };
@@ -358,6 +390,53 @@ namespace FolkIdle.Client.Engine
             ApplyVillagePacketState(in _snapshotB.Packet);
             ApplyGuildPacketState(in _snapshotB.Packet);
             ApplyCharacterPacketState(in _snapshotB.Packet);
+            ApplyCombatPacketState(in _snapshotB.Packet);
+        }
+
+        // Modul: discrete combat-instance identity (which monster, which
+        // activity classification) - matches ApplyVillagePacketState's
+        // pattern exactly: only fires OnCombatInstanceChanged when the
+        // monster id or activity classification actually changed, so
+        // UiCombatArena can tell "a new fight/target started" apart from
+        // "the same fight is still going" without re-deriving that itself
+        // every frame.
+        private void ApplyCombatPacketState(in StateUpdatePacket packet)
+        {
+            int monsterId = packet.CurrentMonsterId;
+            byte audioTrackId = packet.ActiveAudioTrackId == 0 ? (byte)1 : packet.ActiveAudioTrackId;
+
+            bool changed = monsterId != VisualCurrentMonsterId || audioTrackId != VisualActiveAudioTrackId;
+            if (!changed) return;
+
+            VisualCurrentMonsterId = monsterId;
+            VisualActiveAudioTrackId = audioTrackId;
+
+            OnCombatInstanceChanged?.Invoke();
+        }
+
+        // Modul: fires OnMonsterHit/OnPlayerHit exactly once per real server
+        // tick where the raw HP for the SAME monster/player instance
+        // actually dropped between two consecutive packets - called at
+        // packet-arrival time (see the dequeue loop above), never from a
+        // per-frame comparison against the smoothed Lerp output, which would
+        // spread a single real hit across many frames instead of firing once.
+        // Guards on CurrentMonsterId matching so a monster respawning after
+        // a kill (a fresh HP baseline, not a hit) is never misread as damage.
+        private void DetectCombatHits(in StateUpdatePacket previousPacket, in StateUpdatePacket newPacket)
+        {
+            if (newPacket.CurrentMonsterId == previousPacket.CurrentMonsterId && newPacket.CurrentMonsterHp < previousPacket.CurrentMonsterHp)
+            {
+                int damage = previousPacket.CurrentMonsterHp - newPacket.CurrentMonsterHp;
+                bool isCritical = previousPacket.CurrentMonsterHp > 0 && damage >= previousPacket.CurrentMonsterHp * CriticalHitFraction;
+                OnMonsterHit?.Invoke(damage, isCritical);
+            }
+
+            if (newPacket.PlayerHp < previousPacket.PlayerHp)
+            {
+                int damage = previousPacket.PlayerHp - newPacket.PlayerHp;
+                bool isCritical = previousPacket.PlayerHp > 0 && damage >= previousPacket.PlayerHp * CriticalHitFraction;
+                OnPlayerHit?.Invoke(damage, isCritical);
+            }
         }
 
         // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.

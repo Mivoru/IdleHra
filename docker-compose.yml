@@ -24,7 +24,22 @@ services:
       dockerfile: Dockerfile
     container_name: folk-idle-server
     environment:
-      - ConnectionStrings__DefaultConnection=Host=folk-idle-db;Database=folkidle_prod;Username=postgres;Password=postgres
+      # Program.cs reads FOLKIDLE_DB_CONN via Environment.GetEnvironmentVariable
+      # directly - ConnectionStrings__DefaultConnection (the ASP.NET
+      # configuration-binding convention) is never read anywhere in this
+      # codebase, so setting that name here silently connected to nothing:
+      # DOTNET_ENVIRONMENT was also unset, so Program.cs's isProduction guard
+      # never fired and it fell back to Host=localhost, which inside this
+      # container has no Postgres listening at all (only the separate
+      # folk-idle-db service does). DOTNET_ENVIRONMENT=Production is set here
+      # so any future regression of this kind fails loudly at startup instead
+      # of silently connecting to the wrong host.
+      - DOTNET_ENVIRONMENT=Production
+      - FOLKIDLE_DB_CONN=Host=folk-idle-db;Database=folkidle_prod;Username=postgres;Password=postgres
+      # REDIS_CONNECTION is intentionally not set here - no Redis service is
+      # defined in this compose file, and Program.cs already degrades
+      # gracefully without one (AbortOnConnectFail=false; session locking,
+      # write-behind, and telemetry streaming simply no-op).
     ports:
       - "8080:8080"
     depends_on:

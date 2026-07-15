@@ -21,6 +21,31 @@ spec:
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
+        # Required for the stateless architecture: FOLKIDLE_DB_CONN and
+        # REDIS_CONNECTION are the exact names Program.cs reads via
+        # Environment.GetEnvironmentVariable. DOTNET_ENVIRONMENT=Production
+        # makes a missing FOLKIDLE_DB_CONN a hard startup failure instead of
+        # silently falling back to the local-development connection string
+        # (see Program.cs's isProduction guard).
+        #
+        # The referenced Secret is provisioned out of band, never committed
+        # to this repository. Example:
+        #   kubectl create secret generic folkidle-server-secrets \
+        #     --from-literal=postgres-connection-string="Host=...;Database=...;Username=...;Password=..." \
+        #     --from-literal=redis-connection-string="redis-host:6379"
+        env:
+        - name: DOTNET_ENVIRONMENT
+          value: "Production"
+        - name: FOLKIDLE_DB_CONN
+          valueFrom:
+            secretKeyRef:
+              name: folkidle-server-secrets
+              key: postgres-connection-string
+        - name: REDIS_CONNECTION
+          valueFrom:
+            secretKeyRef:
+              name: folkidle-server-secrets
+              key: redis-connection-string
         resources:
           requests:
             cpu: "500m"
@@ -28,15 +53,23 @@ spec:
           limits:
             cpu: "2000m"
             memory: "2Gi"
+        # Distinct paths matching InfrastructureHealthMonitor's distinct
+        # semantics - liveness (IsLive) only checks whether the process is
+        # mid-shutdown and should be restarted if it fails; readiness
+        # (IsReady) additionally requires cold-boot session recovery to have
+        # completed and heap usage under the readiness limit, so a pod still
+        # reconstructing sessions never receives live traffic. Both
+        # previously pointed at the same always-200 /healthz stub, which
+        # made this distinction meaningless.
         livenessProbe:
           httpGet:
-            path: /healthz
+            path: /health/liveness
             port: 8080
           initialDelaySeconds: 15
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /healthz
+            path: /health/readiness
             port: 8080
-          initialDelaySeconds: 5
+          initialDelaySeconds: 10
           periodSeconds: 10
