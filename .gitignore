@@ -25,3 +25,7 @@
 Thumbs.db
 .idea/
 .vscode/
+
+# Target: Local session artifacts
+chatHistory*.txt
+telemetry.bin

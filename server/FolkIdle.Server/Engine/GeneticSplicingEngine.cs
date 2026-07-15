@@ -31,6 +31,32 @@ namespace FolkIdle.Server.Engine
             return vec.RawValue;
         }
 
+        // Modul: read-only preview of Breed()'s possible outcomes for a
+        // single locus, used by the Breeding Lab preview endpoint. Enumerates
+        // all 4 non-mutated (pAllele, mAllele) combinations - each parent
+        // independently contributes either its Dominant or Recessive allele
+        // with equal probability, exactly mirroring SpliceLocus's own
+        // "childLocus.Dominant = max(pAllele, mAllele)" rule - rather than
+        // sampling, so this is the exact achievable range absent a mutation
+        // roll, not a statistical approximation. MutationChancePct uses the
+        // identical formula SpliceLocus itself rolls against.
+        public static void PreviewLocus(Locus pLocus, Locus mLocus, int maxGeneration, out byte minDominant, out byte maxDominant, out double mutationChancePct)
+        {
+            byte c1 = MaxByte(pLocus.Dominant, mLocus.Dominant);
+            byte c2 = MaxByte(pLocus.Dominant, mLocus.Recessive);
+            byte c3 = MaxByte(pLocus.Recessive, mLocus.Dominant);
+            byte c4 = MaxByte(pLocus.Recessive, mLocus.Recessive);
+
+            minDominant = MinByte(MinByte(c1, c2), MinByte(c3, c4));
+            maxDominant = MaxByte(MaxByte(c1, c2), MaxByte(c3, c4));
+
+            double pMut = Math.Max(0.001, 0.015 * Math.Pow(1.12, -maxGeneration));
+            mutationChancePct = pMut * 100.0;
+        }
+
+        private static byte MaxByte(byte a, byte b) => a >= b ? a : b;
+        private static byte MinByte(byte a, byte b) => a <= b ? a : b;
+
         private static Locus DegradeLocus(Locus locus)
         {
             return new Locus

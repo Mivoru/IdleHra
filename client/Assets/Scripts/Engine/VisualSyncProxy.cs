@@ -132,6 +132,22 @@ namespace FolkIdle.Client.Engine
         private ServerSnapshot _snapshotB;
         private bool _hasReceivedState = false;
 
+        // Modul: adaptive playback delay. TargetTickIntervalSeconds (100ms)
+        // is the floor - the server's own tick rate - but a fixed 100ms
+        // buffer only tolerates one-off jitter, not a sustained latency
+        // increase: if packets keep arriving every ~300ms, a render cursor
+        // pinned 100ms behind "now" constantly overtakes the last real
+        // snapshot and clamps at t=1 (frozen) for most of each interval,
+        // then jumps - exactly the stutter this proxy exists to avoid. Instead
+        // the delay tracks an exponential moving average of the actual
+        // inter-packet interval, so it grows to stay safely behind the
+        // network's real cadence and shrinks back toward the 100ms floor
+        // once the network recovers. Pure float arithmetic - zero allocations.
+        private const float TargetTickIntervalSeconds = 0.100f;
+        private const float MaxPlaybackDelaySeconds = 0.500f;
+        private const float IntervalSmoothingFactor = 0.2f;
+        private float _emaPacketIntervalSeconds = TargetTickIntervalSeconds;
+
         public void Update()
         {
             if (NetworkClient == null) return;
@@ -225,14 +241,27 @@ namespace FolkIdle.Client.Engine
                 }
                 else
                 {
+                    float now = Time.time;
+                    float observedInterval = now - _snapshotB.ReceivedTime;
+                    if (observedInterval > 0f)
+                    {
+                        _emaPacketIntervalSeconds = Mathf.Lerp(_emaPacketIntervalSeconds, observedInterval, IntervalSmoothingFactor);
+                    }
+
                     _snapshotA = _snapshotB;
-                    _snapshotB = new ServerSnapshot { Packet = packet, ReceivedTime = Time.time };
+                    _snapshotB = new ServerSnapshot { Packet = packet, ReceivedTime = now };
                 }
             }
 
             if (!_hasReceivedState) return;
 
-            float renderTime = Time.time - 0.100f; // 100ms playback delay window
+            // Adaptive playback delay: at least the server's own tick rate,
+            // scaled up toward the observed inter-packet interval (with
+            // margin) when the network is running slower than that, capped
+            // so a bad connection cannot push visuals arbitrarily far behind
+            // real time.
+            float playbackDelay = Mathf.Clamp(_emaPacketIntervalSeconds * 1.5f, TargetTickIntervalSeconds, MaxPlaybackDelaySeconds);
+            float renderTime = Time.time - playbackDelay;
 
             if (_snapshotA.ReceivedTime == _snapshotB.ReceivedTime)
             {

@@ -998,6 +998,22 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
+        // Modul: gateway-level bounds check for the Breeding Lab preview
+        // endpoint, mirroring ValidateBreedingRequest's own non-empty/
+        // distinct parent GUID check - ownership of both parents is still
+        // verified against the DB inside HandleBreedingPreview itself, this
+        // only rejects the obviously-malformed shapes before any query runs.
+        public static bool ValidateBreedingPreviewQuery(long playerId, Guid paternalId, Guid maternalId)
+        {
+            if (paternalId == Guid.Empty || maternalId == Guid.Empty || paternalId == maternalId)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 40, Value2 = 1, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            return true;
+        }
+
         public static bool ValidateAchievementClaimRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
         {
             if (payload.IsQuarantined || payload.Quarantine_Active) return false;

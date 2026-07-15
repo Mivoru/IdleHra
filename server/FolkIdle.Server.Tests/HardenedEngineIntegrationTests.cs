@@ -1001,6 +1001,74 @@ namespace FolkIdle.Server.Tests
             Assert.True(childLineage.IsInbred);
         }
 
+        // Modul 13.4.3: proves the FOR UPDATE row locks on the shared parent
+        // (sharedParentId) inside ExecuteBreedingAsync's Serializable
+        // transaction actually serialize two concurrent breeding attempts,
+        // not just reject a second SEQUENTIAL attempt against an already-
+        // Active parent (see Test_Breeding_RollbackWhileParentOnCooldown for
+        // that simpler case). Both attempts race for real via Task.WhenAll;
+        // whichever transaction locks sharedParentId's rows first commits
+        // and sets IsBreedingActive=true, and the other - blocked on the
+        // same row lock until the first either commits or rolls back - must
+        // then observe that flag and roll itself back, producing exactly one
+        // child and deducting exactly one breeding cost, never two.
+        [Fact]
+        public async Task Test_Breeding_ConcurrentAttemptsSharingParent_OnlyOneSucceeds()
+        {
+            const long testPlayerId = 950000009L;
+            Guid sharedParentId = Guid.NewGuid();
+            Guid candidateBId = Guid.NewGuid();
+            Guid candidateCId = Guid.NewGuid();
+
+            var sharedGenome = new GeneticVector(0);
+            sharedGenome.LocusRace = new Locus { Dominant = RaceIds.Human, Recessive = RaceIds.Human };
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.BreedingGroundsBuildingId,
+                    CurrentLevel = 1
+                });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10000L });
+                db.CharacterRecords.AddRange(
+                    new CharacterRecord { Id = sharedParentId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
+                    new CharacterRecord { Id = candidateBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
+                    new CharacterRecord { Id = candidateCId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false });
+                db.CharacterLineages.AddRange(
+                    new CharacterLineageRegistry { CharacterId = sharedParentId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
+                    new CharacterLineageRegistry { CharacterId = candidateBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
+                    new CharacterLineageRegistry { CharacterId = candidateCId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue });
+                await db.SaveChangesAsync();
+            }
+
+            var breedingEngine = new BreedingEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            var attempt1 = breedingEngine.ExecuteBreedingAsync(testPlayerId, sharedParentId, candidateBId);
+            var attempt2 = breedingEngine.ExecuteBreedingAsync(testPlayerId, sharedParentId, candidateCId);
+            await Task.WhenAll(attempt1, attempt2);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            int childCount = await verifyDb.CharacterLineages.AsNoTracking()
+                .CountAsync(l => l.ParentPaternalId == sharedParentId);
+            Assert.Equal(1, childCount);
+
+            var updatedParent = await verifyDb.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == sharedParentId);
+            Assert.True(updatedParent.IsBreedingActive);
+
+            var updatedGoldRecord = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "gold");
+            Assert.Equal(10000L - 500L, updatedGoldRecord.Quantity);
+        }
+
         [Fact]
         public async Task Test_Mentorship_AssignMentorDoesNotThrowOnUnquotedTableRegression()
         {

@@ -240,6 +240,18 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/breeding/roster" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleBreedingRosterSnapshot(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/breeding/preview" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleBreedingPreview(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/mastery/snapshot" && context.Request.HttpMethod == "GET")
                     {
                         await HandleMasterySnapshot(context);
@@ -881,6 +893,261 @@ namespace FolkIdle.Server.Network
             }
 
             context.Response.Close();
+        }
+
+        private sealed class BreedingRosterEntryResponse
+        {
+            public string CharacterId { get; set; } = string.Empty;
+            public int Level { get; set; }
+            public int AgePhase { get; set; }
+            public int GenerationIndex { get; set; }
+            public bool IsBreedingActive { get; set; }
+            public long BreedingCooldownEndEpoch { get; set; }
+            public bool IsEpicMutation { get; set; }
+            public bool IsInbred { get; set; }
+            public int LocusRaceDominant { get; set; }
+            public int LocusRaceRecessive { get; set; }
+            public int LocusSpeedDominant { get; set; }
+            public int LocusSpeedRecessive { get; set; }
+            public int LocusCritDominant { get; set; }
+            public int LocusCritRecessive { get; set; }
+            public int LocusYieldDominant { get; set; }
+            public int LocusYieldRecessive { get; set; }
+        }
+
+        // Modul 13.4.3: the player's own bred/breedable character roster, for
+        // the Breeding Lab's parent-selection slots. BreedingEngine.
+        // ExecuteBreedingAsync's own eligibility rules (AgePhase >= 1,
+        // Level >= 50, not already IsBreedingActive, not IsLockedInEscrow) are
+        // intentionally NOT filtered out here - the client shows every owned
+        // character and lets the preview/execute round trip surface exactly
+        // why an ineligible pairing was rejected, rather than this endpoint
+        // silently hiding characters and leaving a player unable to tell an
+        // "under cooldown" character apart from one that was never bred.
+        private async Task HandleBreedingRosterSnapshot(HttpListenerContext context)
+        {
+            try
+            {
+                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var characters = await db.CharacterRecords
+                    .AsNoTracking()
+                    .Where(c => c.PlayerId == playerId)
+                    .ToListAsync();
+
+                var characterIds = new System.Collections.Generic.List<Guid>(characters.Count);
+                for (int i = 0; i < characters.Count; i++)
+                {
+                    characterIds.Add(characters[i].Id);
+                }
+
+                var lineages = await db.CharacterLineages
+                    .AsNoTracking()
+                    .Where(l => characterIds.Contains(l.CharacterId))
+                    .ToListAsync();
+
+                var lineageByCharacterId = new System.Collections.Generic.Dictionary<Guid, CharacterLineageRegistry>(lineages.Count);
+                for (int i = 0; i < lineages.Count; i++)
+                {
+                    lineageByCharacterId[lineages[i].CharacterId] = lineages[i];
+                }
+
+                var response = new System.Collections.Generic.List<BreedingRosterEntryResponse>(characters.Count);
+                for (int i = 0; i < characters.Count; i++)
+                {
+                    var character = characters[i];
+                    if (!lineageByCharacterId.TryGetValue(character.Id, out var lineage))
+                    {
+                        continue;
+                    }
+
+                    var geneVec = new GeneticVector(lineage.GeneticVector);
+
+                    response.Add(new BreedingRosterEntryResponse
+                    {
+                        CharacterId = character.Id.ToString(),
+                        Level = character.Level,
+                        AgePhase = character.AgePhase,
+                        GenerationIndex = lineage.GenerationIndex,
+                        IsBreedingActive = character.IsBreedingActive,
+                        BreedingCooldownEndEpoch = character.BreedingCooldownEndEpoch,
+                        IsEpicMutation = lineage.IsEpicMutation,
+                        IsInbred = lineage.IsInbred,
+                        LocusRaceDominant = geneVec.LocusRace.Dominant,
+                        LocusRaceRecessive = geneVec.LocusRace.Recessive,
+                        LocusSpeedDominant = geneVec.LocusSpeed.Dominant,
+                        LocusSpeedRecessive = geneVec.LocusSpeed.Recessive,
+                        LocusCritDominant = geneVec.LocusCrit.Dominant,
+                        LocusCritRecessive = geneVec.LocusCrit.Recessive,
+                        LocusYieldDominant = geneVec.LocusYield.Dominant,
+                        LocusYieldRecessive = geneVec.LocusYield.Recessive
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Breeding roster snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class GenePreviewLocusResponse
+        {
+            public string LocusName { get; set; } = string.Empty;
+            public int ParentPaternalDominant { get; set; }
+            public int ParentMaternalDominant { get; set; }
+            public int PredictedMinDominant { get; set; }
+            public int PredictedMaxDominant { get; set; }
+            public double MutationChancePct { get; set; }
+        }
+
+        private sealed class BreedingPreviewResponse
+        {
+            public bool IsEligible { get; set; }
+            public string IneligibleReason { get; set; } = string.Empty;
+            public bool IsInbredRisk { get; set; }
+            public long BreedingCostGold { get; set; }
+            public bool HasSufficientGold { get; set; }
+            public System.Collections.Generic.List<GenePreviewLocusResponse> Loci { get; set; } = new();
+        }
+
+        // Modul 13.4.3: read-only preview of ExecuteBreedingAsync's outcome -
+        // never writes to the DB. Mirrors that engine's own ownership,
+        // eligibility, and inbreeding checks exactly (see BreedingEngine.
+        // ExecuteBreedingAsync) so a preview can never promise a pairing the
+        // real execute call would actually reject, but computes the gene
+        // spectrum via GeneticSplicingEngine.PreviewLocus (an exact
+        // enumeration of Breed()'s possible non-mutated outcomes) instead of
+        // performing the real, single-sample random splice.
+        private async Task HandleBreedingPreview(HttpListenerContext context)
+        {
+            try
+            {
+                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                if (!Guid.TryParse(query["paternalId"], out Guid paternalId) || !Guid.TryParse(query["maternalId"], out Guid maternalId))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (!ClientCommandValidator.ValidateBreedingPreviewQuery(playerId, paternalId, maternalId))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var pChar = await db.CharacterRecords.AsNoTracking().FirstOrDefaultAsync(c => c.Id == paternalId);
+                var mChar = await db.CharacterRecords.AsNoTracking().FirstOrDefaultAsync(c => c.Id == maternalId);
+                var pLineage = await db.CharacterLineages.AsNoTracking().FirstOrDefaultAsync(l => l.CharacterId == paternalId);
+                var mLineage = await db.CharacterLineages.AsNoTracking().FirstOrDefaultAsync(l => l.CharacterId == maternalId);
+
+                if (pChar == null || mChar == null || pLineage == null || mLineage == null || pChar.PlayerId != playerId || mChar.PlayerId != playerId)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                var response = new BreedingPreviewResponse();
+
+                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                bool pOnCooldown = pChar.IsBreedingActive && pChar.BreedingCooldownEndEpoch > nowEpoch;
+                bool mOnCooldown = mChar.IsBreedingActive && mChar.BreedingCooldownEndEpoch > nowEpoch;
+
+                var pVec = new GeneticVector(pLineage.GeneticVector);
+                var mVec = new GeneticVector(mLineage.GeneticVector);
+
+                if (pChar.AgePhase < 1 || mChar.AgePhase < 1 || pChar.Level < 50 || mChar.Level < 50)
+                {
+                    response.IneligibleReason = "parent_not_mature";
+                }
+                else if (pChar.IsLockedInEscrow || mChar.IsLockedInEscrow)
+                {
+                    response.IneligibleReason = "parent_locked_in_escrow";
+                }
+                else if (pOnCooldown || mOnCooldown)
+                {
+                    response.IneligibleReason = "parent_on_cooldown";
+                }
+                else if (pVec.LocusRace.Dominant != mVec.LocusRace.Dominant)
+                {
+                    response.IneligibleReason = "race_mismatch";
+                }
+                else
+                {
+                    response.IsEligible = true;
+                }
+
+                response.IsInbredRisk = paternalId == mLineage.ParentPaternalId || paternalId == mLineage.ParentMaternalId
+                    || maternalId == pLineage.ParentPaternalId || maternalId == pLineage.ParentMaternalId
+                    || (pLineage.ParentPaternalId.HasValue && (pLineage.ParentPaternalId == mLineage.ParentPaternalId || pLineage.ParentPaternalId == mLineage.ParentMaternalId))
+                    || (pLineage.ParentMaternalId.HasValue && (pLineage.ParentMaternalId == mLineage.ParentPaternalId || pLineage.ParentMaternalId == mLineage.ParentMaternalId));
+
+                int maxGen = Math.Max(pLineage.GenerationIndex, mLineage.GenerationIndex);
+                response.BreedingCostGold = 500L * (maxGen + 1);
+
+                var goldRecord = await db.CommodityRecords
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(c => c.PlayerId == playerId && c.ItemId == "gold");
+                response.HasSufficientGold = goldRecord != null && goldRecord.Quantity >= response.BreedingCostGold;
+
+                AddLocusPreview(response.Loci, "Race", pVec.LocusRace, mVec.LocusRace, maxGen);
+                AddLocusPreview(response.Loci, "Speed", pVec.LocusSpeed, mVec.LocusSpeed, maxGen);
+                AddLocusPreview(response.Loci, "Crit", pVec.LocusCrit, mVec.LocusCrit, maxGen);
+                AddLocusPreview(response.Loci, "Yield", pVec.LocusYield, mVec.LocusYield, maxGen);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Breeding preview error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private static void AddLocusPreview(System.Collections.Generic.List<GenePreviewLocusResponse> loci, string name, Locus pLocus, Locus mLocus, int maxGeneration)
+        {
+            GeneticSplicingEngine.PreviewLocus(pLocus, mLocus, maxGeneration, out byte minDominant, out byte maxDominant, out double mutationChancePct);
+
+            loci.Add(new GenePreviewLocusResponse
+            {
+                LocusName = name,
+                ParentPaternalDominant = pLocus.Dominant,
+                ParentMaternalDominant = mLocus.Dominant,
+                PredictedMinDominant = minDominant,
+                PredictedMaxDominant = maxDominant,
+                MutationChancePct = mutationChancePct
+            });
         }
 
         // Modul 13: authorized snapshot of the player's real Race Mastery
