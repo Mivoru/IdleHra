@@ -21,7 +21,11 @@ set -euo pipefail
 
 NAMESPACE="folkidle-local"
 IMAGE_TAG="folkidle-server:latest"
-SERVER_BUILD_CONTEXT="server/FolkIdle.Server"
+# Context is server/ (not server/FolkIdle.Server/) so the build can see the
+# sibling GameData/ directory - the Content Pipeline's JSON data lives there
+# and Docker COPY cannot reach outside its build context. See
+# FolkIdle.Server/Dockerfile's matching path layout.
+SERVER_BUILD_CONTEXT="server"
 SERVER_DOCKERFILE="server/FolkIdle.Server/Dockerfile"
 DEPLOYMENT_MANIFEST="server/deployment.yaml"
 HPA_MANIFEST="server/hpa.yaml"

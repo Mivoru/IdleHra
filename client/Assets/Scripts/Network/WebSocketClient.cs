@@ -45,6 +45,7 @@ namespace FolkIdle.Client.Network
         {
             NetworkPacketLayoutGuard.Validate();
             FlightRecorder.Initialize();
+            ClientContentRegistry.Initialize();
         }
 
         // Called by UiLoginWindow only after a successful /api/v1/auth/login

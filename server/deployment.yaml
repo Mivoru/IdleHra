@@ -13,6 +13,14 @@ spec:
     metadata:
       labels:
         app: folkidle-server
+      annotations:
+        # Standard Prometheus annotation-based scrape discovery. The
+        # /metrics endpoint is served on the same port as the game gateway
+        # (see NetworkBroadcastSystem.HandleMetrics) - there is no separate
+        # metrics port to expose.
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
     spec:
       terminationGracePeriodSeconds: 90
       containers:

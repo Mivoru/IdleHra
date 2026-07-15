@@ -20,8 +20,12 @@ services:
 
   folk-idle-server:
     build:
-      context: ./server/FolkIdle.Server
-      dockerfile: Dockerfile
+      # Context is server/ (not server/FolkIdle.Server/) so the build can see
+      # server/GameData/ - the Content Pipeline's JSON data lives there,
+      # sibling to FolkIdle.Server/, and Docker COPY cannot reach outside its
+      # build context. See FolkIdle.Server/Dockerfile's matching path changes.
+      context: ./server
+      dockerfile: FolkIdle.Server/Dockerfile
     container_name: folk-idle-server
     environment:
       # Program.cs reads FOLKIDLE_DB_CONN via Environment.GetEnvironmentVariable

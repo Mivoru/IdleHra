@@ -31,6 +31,12 @@ namespace FolkIdle.Server.Tests
 
         public async Task InitializeAsync()
         {
+            // Content Pipeline: see HardenedEngineIntegrationTests.
+            // PostgresTestFixture.InitializeAsync for why this must run
+            // before any SimulationEngine-dependent test.
+            ContentRegistry.Initialize();
+            ActiveSkillEngine.Initialize();
+
             try
             {
                 _dbContainer = new PostgreSqlBuilder("postgres:16-alpine")

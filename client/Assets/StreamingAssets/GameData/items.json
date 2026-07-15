@@ -1,0 +1,1786 @@
+[
+  {
+    "Id": 1,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "gold_ore_crafting_material"
+  },
+  {
+    "Id": 2,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "highland_wool_crafting_material"
+  },
+  {
+    "Id": 3,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 68,
+    "BaseId": "gilded_sabatons_boots_armor_slot_base"
+  },
+  {
+    "Id": 4,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "premium_diamond"
+  },
+  {
+    "Id": 5,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "salt_lotus_herbalism_material"
+  },
+  {
+    "Id": 6,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "ominous_feather_crafting_material"
+  },
+  {
+    "Id": 7,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "gilded_band_ring_1/2_slot_base"
+  },
+  {
+    "Id": 8,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "maple_trees_woodcutting_material"
+  },
+  {
+    "Id": 9,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "condensation_essence_alchemy_material"
+  },
+  {
+    "Id": 10,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 68,
+    "BaseId": "gilded_hauberk_chest_armor_slot_base"
+  },
+  {
+    "Id": 11,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "coastline_cod_raw_fishing_material"
+  },
+  {
+    "Id": 12,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "selkie_skin_fragment_crafting_material"
+  },
+  {
+    "Id": 13,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 68,
+    "BaseId": "gilded_chausses_leggings_armor_slot_base"
+  },
+  {
+    "Id": 14,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "peat_clump_rare_alchemy_ingredient"
+  },
+  {
+    "Id": 15,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 68,
+    "BaseId": "gilded_sallet_helmet_armor_slot_base"
+  },
+  {
+    "Id": 16,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 68,
+    "BaseId": "gilded_round_shield_shield_slot_base"
+  },
+  {
+    "Id": 17,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "kelpie_mane_unique_regional_boss_material"
+  },
+  {
+    "Id": 18,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "premium_diamond_cluster"
+  },
+  {
+    "Id": 19,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 137,
+    "FlatDefenseRating": 0,
+    "BaseId": "loch_crossbow_range_weapon_slot_base"
+  },
+  {
+    "Id": 20,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "abyssal_pearl_amulet_slot_base"
+  },
+  {
+    "Id": 21,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "mithril_ore_crafting_material"
+  },
+  {
+    "Id": 22,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "shadow_feather_crafting_material"
+  },
+  {
+    "Id": 23,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 94,
+    "BaseId": "mithril_greaves_boots_armor_slot_base"
+  },
+  {
+    "Id": 24,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "screaming_mandrake_herbalism_material"
+  },
+  {
+    "Id": 25,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "tainted_tusk_crafting_material"
+  },
+  {
+    "Id": 26,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "mithril_signet_ring_1/2_slot_base"
+  },
+  {
+    "Id": 27,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "yew_trees_woodcutting_material"
+  },
+  {
+    "Id": 28,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "spore_pod_alchemy_material"
+  },
+  {
+    "Id": 29,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 94,
+    "BaseId": "mithril_cuirass_chest_armor_slot_base"
+  },
+  {
+    "Id": 30,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "deep_mire_eel_raw_fishing_material"
+  },
+  {
+    "Id": 31,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "heartwood_core_alchemy_material"
+  },
+  {
+    "Id": 32,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 94,
+    "BaseId": "mithril_platelegs_leggings_armor_slot_base"
+  },
+  {
+    "Id": 33,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "schrat_horn_rare_alchemy_ingredient"
+  },
+  {
+    "Id": 34,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 94,
+    "BaseId": "mithril_armet_helmet_armor_slot_base"
+  },
+  {
+    "Id": 35,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 94,
+    "BaseId": "mithril_scutum_shield_slot_base"
+  },
+  {
+    "Id": 36,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "spine_whip_link_unique_regional_boss_material"
+  },
+  {
+    "Id": 37,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 188,
+    "FlatDefenseRating": 0,
+    "BaseId": "dullahan_greatsword_melee_weapon_slot_base"
+  },
+  {
+    "Id": 38,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "spinal_collar_amulet_slot_base"
+  },
+  {
+    "Id": 39,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "adamantite_ore_crafting_material"
+  },
+  {
+    "Id": 40,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "scorpion_stinger_crafting_material"
+  },
+  {
+    "Id": 41,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 127,
+    "BaseId": "adamant_sollerets_boots_armor_slot_base"
+  },
+  {
+    "Id": 42,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "jagged_bloodgrass_herbalism_material"
+  },
+  {
+    "Id": 43,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "crystallized_venom_crafting_material"
+  },
+  {
+    "Id": 44,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "adamant_loop_ring_1/2_slot_base"
+  },
+  {
+    "Id": 45,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "elder_trees_woodcutting_material"
+  },
+  {
+    "Id": 46,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "harpy_talon_crafting_material"
+  },
+  {
+    "Id": 47,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 127,
+    "BaseId": "adamant_plate_chest_armor_slot_base"
+  },
+  {
+    "Id": 48,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "canyon_catfish_raw_fishing_material"
+  },
+  {
+    "Id": 49,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "gargoyle_heart_shard_alchemy_material"
+  },
+  {
+    "Id": 50,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 127,
+    "BaseId": "adamant_leggings_leggings_armor_slot_base"
+  },
+  {
+    "Id": 51,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "subterranean_sawdust_rare_alchemy_ingredient"
+  },
+  {
+    "Id": 52,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 127,
+    "BaseId": "adamant_helm_helmet_armor_slot_base"
+  },
+  {
+    "Id": 53,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 127,
+    "BaseId": "adamant_tower_shield_shield_slot_base"
+  },
+  {
+    "Id": 54,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "zmey_core_scale_unique_regional_boss_material"
+  },
+  {
+    "Id": 55,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 254,
+    "FlatDefenseRating": 0,
+    "BaseId": "volcanic_warhammer_blunt_weapon_slot_base"
+  },
+  {
+    "Id": 56,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "draconic_eye_talisman_amulet_slot_base"
+  },
+  {
+    "Id": 57,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "obsidian_ore_crafting_material"
+  },
+  {
+    "Id": 58,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "frosted_down_crafting_material"
+  },
+  {
+    "Id": 59,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 169,
+    "BaseId": "runed_boots_boots_armor_slot_base"
+  },
+  {
+    "Id": 60,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "frost_moonflower_herbalism_material"
+  },
+  {
+    "Id": 61,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "glacial_claw_crafting_material"
+  },
+  {
+    "Id": 62,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "runed_engraving_ring_1/2_slot_base"
+  },
+  {
+    "Id": 63,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "ancient_wood_woodcutting_material"
+  },
+  {
+    "Id": 64,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "runestone_shard_crafting_material"
+  },
+  {
+    "Id": 65,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 169,
+    "BaseId": "runed_hauberk_chest_armor_slot_base"
+  },
+  {
+    "Id": 66,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "fjord_shark_raw_fishing_material"
+  },
+  {
+    "Id": 67,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "ancient_burial_cloth_crafting_material"
+  },
+  {
+    "Id": 68,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 169,
+    "BaseId": "runed_cuisses_leggings_armor_slot_base"
+  },
+  {
+    "Id": 69,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "berserker_blood_essence_rare_alchemy_ingredient"
+  },
+  {
+    "Id": 70,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 169,
+    "BaseId": "runed_greathelm_helmet_armor_slot_base"
+  },
+  {
+    "Id": 71,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 169,
+    "BaseId": "runed_aegis_shield_slot_base"
+  },
+  {
+    "Id": 72,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "glacial_hearthstone_unique_regional_boss_material"
+  },
+  {
+    "Id": 73,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 338,
+    "FlatDefenseRating": 0,
+    "BaseId": "northern_greataxe_melee_weapon_slot_base"
+  },
+  {
+    "Id": 74,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "jotunn_ice_medallion_amulet_slot_base"
+  },
+  {
+    "Id": 75,
+    "RegionTier": 10,
+    "BaseValueGold": 1000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "celestial_ore_crafting_material"
+  },
+  {
+    "Id": 76,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "pure_aurora_filament_crafting_material"
+  },
+  {
+    "Id": 77,
+    "RegionTier": 10,
+    "BaseValueGold": 1000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 221,
+    "BaseId": "transcendent_sollerets_boots_armor_slot_base"
+  },
+  {
+    "Id": 78,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "golden_ambrosia_herbalism_material"
+  },
+  {
+    "Id": 79,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "sentinel_alloy_plate_crafting_material"
+  },
+  {
+    "Id": 80,
+    "RegionTier": 10,
+    "BaseValueGold": 1000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "transcendent_loop_ring_1/2_slot_base"
+  },
+  {
+    "Id": 81,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "yggdrasil_burl_woodcutting_material"
+  },
+  {
+    "Id": 82,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "prismatic_core_prism_crafting_material"
+  },
+  {
+    "Id": 83,
+    "RegionTier": 10,
+    "BaseValueGold": 1000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 221,
+    "BaseId": "transcendent_cuirass_chest_armor_slot_base"
+  },
+  {
+    "Id": 84,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "astral_whale_raw_fishing_material"
+  },
+  {
+    "Id": 85,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "ethereal_shroud_fabric_crafting_material"
+  },
+  {
+    "Id": 86,
+    "RegionTier": 10,
+    "BaseValueGold": 1000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 221,
+    "BaseId": "transcendent_platelegs_leggings_armor_slot_base"
+  },
+  {
+    "Id": 87,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "revenant_phylactery_rare_alchemy_ingredient"
+  },
+  {
+    "Id": 88,
+    "RegionTier": 10,
+    "BaseValueGold": 1000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 221,
+    "BaseId": "transcendent_armet_helmet_armor_slot_base"
+  },
+  {
+    "Id": 89,
+    "RegionTier": 10,
+    "BaseValueGold": 1000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 221,
+    "BaseId": "transcendent_greatshield_shield_slot_base"
+  },
+  {
+    "Id": 90,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "lightning_bolt_fragment_ultimate_mythic_upgrade_material"
+  },
+  {
+    "Id": 91,
+    "RegionTier": 10,
+    "BaseValueGold": 1000,
+    "FlatAttackPower": 443,
+    "FlatDefenseRating": 0,
+    "BaseId": "peruns_stormcaller_structural_weapon_slot_base___adapts_to_matching_high_weapon_skill_archetype_upon_compilation"
+  },
+  {
+    "Id": 92,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "divine_crest_pendant_amulet_slot_base"
+  },
+  {
+    "Id": 93,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "tin_ore_crafting_material"
+  },
+  {
+    "Id": 94,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "viper_venom_alchemy_material"
+  },
+  {
+    "Id": 95,
+    "RegionTier": 2,
+    "BaseValueGold": 40,
+    "FlatAttackPower": 23,
+    "FlatDefenseRating": 0,
+    "BaseId": "bronze_dagger_melee_weapon_slot_base"
+  },
+  {
+    "Id": 96,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "bog_nightshade_herbalism_material"
+  },
+  {
+    "Id": 97,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "luminous_dust_alchemy_material"
+  },
+  {
+    "Id": 98,
+    "RegionTier": 2,
+    "BaseValueGold": 40,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "bronze_ring_ring_1/2_slot_base"
+  },
+  {
+    "Id": 99,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "oak_logs_woodcutting_material"
+  },
+  {
+    "Id": 100,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "waterlogged_cloth_crafting_material"
+  },
+  {
+    "Id": 101,
+    "RegionTier": 2,
+    "BaseValueGold": 40,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 11,
+    "BaseId": "bronze_cuirass_chest_armor_slot_base"
+  },
+  {
+    "Id": 102,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "river_trout_raw_fishing_material"
+  },
+  {
+    "Id": 103,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "essence_of_mists_alchemy_material"
+  },
+  {
+    "Id": 104,
+    "RegionTier": 2,
+    "BaseValueGold": 40,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 11,
+    "BaseId": "bronze_greaves_leggings_armor_slot_base"
+  },
+  {
+    "Id": 105,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "hag_eye_rare_alchemy_ingredient"
+  },
+  {
+    "Id": 106,
+    "RegionTier": 2,
+    "BaseValueGold": 40,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 11,
+    "BaseId": "bronze_helmet_helmet_armor_slot_base"
+  },
+  {
+    "Id": 107,
+    "RegionTier": 2,
+    "BaseValueGold": 40,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 11,
+    "BaseId": "bronze_buckler_shield_slot_base"
+  },
+  {
+    "Id": 108,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "regent_ribbon_unique_regional_boss_material"
+  },
+  {
+    "Id": 109,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 10,
+    "FlatDefenseRating": 0,
+    "BaseId": "vodnk_harpoon_range_weapon_slot_base"
+  },
+  {
+    "Id": 110,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "coral_amulet_amulet_slot_base"
+  },
+  {
+    "Id": 111,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "iron_ore_crafting_material"
+  },
+  {
+    "Id": 112,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "bat_wing_crafting_material"
+  },
+  {
+    "Id": 113,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 20,
+    "BaseId": "iron_sabatons_boots_armor_slot_base"
+  },
+  {
+    "Id": 114,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "cave_moss_herbalism_material"
+  },
+  {
+    "Id": 115,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "carapace_shard_crafting_material"
+  },
+  {
+    "Id": 116,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "iron_band_ring_1/2_slot_base"
+  },
+  {
+    "Id": 117,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "willow_logs_woodcutting_material"
+  },
+  {
+    "Id": 118,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "chitin_segment_crafting_material"
+  },
+  {
+    "Id": 119,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 20,
+    "BaseId": "iron_breastplate_chest_armor_slot_base"
+  },
+  {
+    "Id": 120,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "mud_carp_raw_fishing_material"
+  },
+  {
+    "Id": 121,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "sulfuric_ash_alchemy_material"
+  },
+  {
+    "Id": 122,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 20,
+    "BaseId": "iron_platelegs_leggings_armor_slot_base"
+  },
+  {
+    "Id": 123,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "blasting_powder_rare_crafting_ingredient"
+  },
+  {
+    "Id": 124,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 20,
+    "BaseId": "iron_armet_helmet_armor_slot_base"
+  },
+  {
+    "Id": 125,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 20,
+    "BaseId": "iron_kite_shield_shield_slot_base"
+  },
+  {
+    "Id": 126,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "overlord_crest_unique_regional_boss_material"
+  },
+  {
+    "Id": 127,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 41,
+    "FlatDefenseRating": 0,
+    "BaseId": "kobold_sledge_blunt_weapon_slot_base"
+  },
+  {
+    "Id": 128,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 41,
+    "FlatDefenseRating": 0,
+    "BaseId": "spike_spatha_melee_weapon_slot_base"
+  },
+  {
+    "Id": 129,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "coal_node_crafting_material"
+  },
+  {
+    "Id": 130,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "eagle_feather_crafting_material"
+  },
+  {
+    "Id": 131,
+    "RegionTier": 4,
+    "BaseValueGold": 160,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 32,
+    "BaseId": "steel_sollerets_boots_armor_slot_base"
+  },
+  {
+    "Id": 132,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "mountain_ginger_herbalism_material"
+  },
+  {
+    "Id": 133,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "thick_goat_horn_crafting_material"
+  },
+  {
+    "Id": 134,
+    "RegionTier": 4,
+    "BaseValueGold": 160,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "steel_signet_ring_1/2_slot_base"
+  },
+  {
+    "Id": 135,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "pine_trees_woodcutting_material"
+  },
+  {
+    "Id": 136,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "frozen_scale_crafting_material"
+  },
+  {
+    "Id": 137,
+    "RegionTier": 4,
+    "BaseValueGold": 160,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 32,
+    "BaseId": "steel_hauberk_chest_armor_slot_base"
+  },
+  {
+    "Id": 138,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "chasm_pike_raw_fishing_material"
+  },
+  {
+    "Id": 139,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "core_fragment_alchemy_material"
+  },
+  {
+    "Id": 140,
+    "RegionTier": 4,
+    "BaseValueGold": 160,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 32,
+    "BaseId": "steel_chausses_leggings_armor_slot_base"
+  },
+  {
+    "Id": 141,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "wyrm_blood_rare_alchemy_ingredient"
+  },
+  {
+    "Id": 142,
+    "RegionTier": 4,
+    "BaseValueGold": 160,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 32,
+    "BaseId": "steel_sallet_helmet_armor_slot_base"
+  },
+  {
+    "Id": 143,
+    "RegionTier": 4,
+    "BaseValueGold": 160,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 32,
+    "BaseId": "steel_heater_shield_shield_slot_base"
+  },
+  {
+    "Id": 144,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "wurm_eye_unique_regional_boss_material"
+  },
+  {
+    "Id": 145,
+    "RegionTier": 4,
+    "BaseValueGold": 160,
+    "FlatAttackPower": 65,
+    "FlatDefenseRating": 0,
+    "BaseId": "tatzel_crossbow_range_weapon_slot_base"
+  },
+  {
+    "Id": 146,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alpine_talisman_amulet_slot_base"
+  },
+  {
+    "Id": 147,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "silver_ore_crafting_material"
+  },
+  {
+    "Id": 148,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "locust_wing_crafting_material"
+  },
+  {
+    "Id": 149,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 48,
+    "BaseId": "silvered_greaves_boots_armor_slot_base"
+  },
+  {
+    "Id": 150,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "wild_ginseng_herbalism_material"
+  },
+  {
+    "Id": 151,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "falcon_talon_crafting_material"
+  },
+  {
+    "Id": 152,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "silvered_loop_ring_1/2_slot_base"
+  },
+  {
+    "Id": 153,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "birch_trees_woodcutting_material"
+  },
+  {
+    "Id": 154,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "desiccated_bone_crafting_material"
+  },
+  {
+    "Id": 155,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 48,
+    "BaseId": "silvered_cuirass_chest_armor_slot_base"
+  },
+  {
+    "Id": 156,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "steppe_salmon_raw_fishing_material"
+  },
+  {
+    "Id": 157,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "arid_core_alchemy_material"
+  },
+  {
+    "Id": 158,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 48,
+    "BaseId": "silvered_platelegs_leggings_armor_slot_base"
+  },
+  {
+    "Id": 159,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "specter_dust_rare_alchemy_ingredient"
+  },
+  {
+    "Id": 160,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 48,
+    "BaseId": "silvered_helm_helmet_armor_slot_base"
+  },
+  {
+    "Id": 161,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 48,
+    "BaseId": "silvered_pavise_shield_slot_base"
+  },
+  {
+    "Id": 162,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "noon_shroud_unique_regional_boss_material"
+  },
+  {
+    "Id": 163,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 96,
+    "FlatDefenseRating": 0,
+    "BaseId": "poludnica_scythe_melee_weapon_slot_base"
+  },
+  {
+    "Id": 164,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "solar_pendant_amulet_slot_base"
+  },
+  {
+    "Id": 165,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "copper_ore_crafting_material"
+  },
+  {
+    "Id": 166,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "rat_pelt_crafting_material"
+  },
+  {
+    "Id": 167,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 5,
+    "BaseId": "leather_boots_footwear_armor_slot_base"
+  },
+  {
+    "Id": 168,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "pond_minnow_raw_cooking_ingredient"
+  },
+  {
+    "Id": 169,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "lily_root_alchemy_ingredient"
+  },
+  {
+    "Id": 170,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 5,
+    "BaseId": "leather_hood_helmet_armor_slot_base"
+  },
+  {
+    "Id": 171,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "field_marigold_herbalism/cooking_ingredient"
+  },
+  {
+    "Id": 172,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "sharp_claw_crafting_material"
+  },
+  {
+    "Id": 173,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 10,
+    "FlatDefenseRating": 0,
+    "BaseId": "wooden_bow_ranged_weapon_slot_base"
+  },
+  {
+    "Id": 174,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "beech_logs_raw_woodcutting_material"
+  },
+  {
+    "Id": 175,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "wolf_tooth_crafting_material"
+  },
+  {
+    "Id": 176,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 5,
+    "BaseId": "leather_tunic_chest_armor_slot_base"
+  },
+  {
+    "Id": 177,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "thick_wolf_hide_rare_crafting_material"
+  },
+  {
+    "Id": 178,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 5,
+    "BaseId": "leather_chaps_leggings_armor_slot_base"
+  },
+  {
+    "Id": 179,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 5,
+    "BaseId": "crude_copper_shield_shield_slot_base"
+  },
+  {
+    "Id": 180,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "mossy_troll_hide_unique_regional_boss_material"
+  },
+  {
+    "Id": 181,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "premium_diamond_cluster_guaranteed_currency_payout"
+  },
+  {
+    "Id": 182,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 10,
+    "FlatDefenseRating": 0,
+    "BaseId": "troll_club_blunt_weapon_slot_base"
+  },
+  {
+    "Id": 183,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 10,
+    "FlatDefenseRating": 0,
+    "BaseId": "copper_greatsword_melee_weapon_slot_base"
+  },
+  {
+    "Id": 184,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "copper_bar_crafting_material"
+  },
+  {
+    "Id": 185,
+    "RegionTier": 2,
+    "BaseValueGold": 40,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "bronze_bar_crafting_material"
+  },
+  {
+    "Id": 186,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "iron_bar_crafting_material"
+  },
+  {
+    "Id": 187,
+    "RegionTier": 4,
+    "BaseValueGold": 160,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "steel_bar_crafting_material"
+  },
+  {
+    "Id": 188,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "silver_bar_crafting_material"
+  },
+  {
+    "Id": 189,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "gold_bar_crafting_material"
+  },
+  {
+    "Id": 190,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "mithril_bar_crafting_material"
+  },
+  {
+    "Id": 191,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "adamantite_bar_crafting_material"
+  },
+  {
+    "Id": 192,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "obsidian_bar_crafting_material"
+  },
+  {
+    "Id": 193,
+    "RegionTier": 10,
+    "BaseValueGold": 1000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "celestial_bar_crafting_material"
+  },
+  {
+    "Id": 194,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "cooked_pond_minnow_t1_food"
+  },
+  {
+    "Id": 195,
+    "RegionTier": 2,
+    "BaseValueGold": 40,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "cooked_river_trout_t2_food"
+  },
+  {
+    "Id": 196,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "cooked_mud_carp_t3_food"
+  },
+  {
+    "Id": 197,
+    "RegionTier": 4,
+    "BaseValueGold": 160,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "cooked_chasm_pike_t4_food"
+  },
+  {
+    "Id": 198,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "cooked_steppe_salmon_t5_food"
+  },
+  {
+    "Id": 199,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "cooked_coastline_cod_t6_food"
+  },
+  {
+    "Id": 200,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "cooked_deep_mire_eel_t7_food"
+  },
+  {
+    "Id": 201,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "cooked_canyon_catfish_t8_food"
+  },
+  {
+    "Id": 202,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "cooked_fjord_shark_t9_food"
+  },
+  {
+    "Id": 203,
+    "RegionTier": 10,
+    "BaseValueGold": 1000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "cooked_astral_whale_t10_food"
+  },
+  {
+    "Id": 204,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_off_t01"
+  },
+  {
+    "Id": 205,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_def_t01"
+  },
+  {
+    "Id": 206,
+    "RegionTier": 2,
+    "BaseValueGold": 40,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_off_t02"
+  },
+  {
+    "Id": 207,
+    "RegionTier": 2,
+    "BaseValueGold": 40,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_def_t02"
+  },
+  {
+    "Id": 208,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_off_t03"
+  },
+  {
+    "Id": 209,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_def_t03"
+  },
+  {
+    "Id": 210,
+    "RegionTier": 4,
+    "BaseValueGold": 160,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_off_t04"
+  },
+  {
+    "Id": 211,
+    "RegionTier": 4,
+    "BaseValueGold": 160,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_def_t04"
+  },
+  {
+    "Id": 212,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_off_t05"
+  },
+  {
+    "Id": 213,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_def_t05"
+  },
+  {
+    "Id": 214,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_off_t06"
+  },
+  {
+    "Id": 215,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_def_t06"
+  },
+  {
+    "Id": 216,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_off_t07"
+  },
+  {
+    "Id": 217,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_def_t07"
+  },
+  {
+    "Id": 218,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_off_t08"
+  },
+  {
+    "Id": 219,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_def_t08"
+  },
+  {
+    "Id": 220,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_off_t09"
+  },
+  {
+    "Id": 221,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_def_t09"
+  },
+  {
+    "Id": 222,
+    "RegionTier": 10,
+    "BaseValueGold": 1000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_off_t10"
+  },
+  {
+    "Id": 223,
+    "RegionTier": 10,
+    "BaseValueGold": 1000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "alc_def_t10"
+  }
+]

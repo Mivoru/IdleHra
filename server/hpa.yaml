@@ -16,3 +16,30 @@ spec:
       target:
         type: Utilization
         averageUtilization: 70
+  # Custom metrics sourced from folkidle-server's own /metrics endpoint (see
+  # NetworkBroadcastSystem.HandleMetrics and deployment.yaml's
+  # prometheus.io/* scrape annotations) via the Kubernetes custom.metrics.k8s.io
+  # API, typically backed by prometheus-adapter reading these same Prometheus
+  # series out of a running Prometheus instance. This structure is prepared
+  # for that setup even when no Custom Metrics API server is registered in
+  # the local cluster - the HPA controller simply cannot evaluate these
+  # entries until one exists, and continues scaling on the CPU metric above
+  # in the meantime.
+  #
+  # Pods-type: averaged per currently running pod, matching how
+  # folkidle_active_sessions_total and folkidle_tick_duration_milliseconds
+  # are each reported per-pod (not cluster-aggregated) by HandleMetrics.
+  - type: Pods
+    pods:
+      metric:
+        name: folkidle_active_sessions_total
+      target:
+        type: AverageValue
+        averageValue: "500"
+  - type: Pods
+    pods:
+      metric:
+        name: folkidle_tick_duration_milliseconds
+      target:
+        type: AverageValue
+        averageValue: "80"

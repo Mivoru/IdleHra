@@ -7,11 +7,15 @@ using FolkIdle.Client.Network;
 namespace FolkIdle.Client.UI
 {
     // Active Skill Tree: node-based skill unlock UI. Mirrors the four fixed
-    // skills in the server's ActiveSkillEngine registry (SkillId 1-4, no
-    // server-side name - display names/costs below are presentation-only
-    // client data, matching the registry's ManaCost/CooldownMs/
-    // DamageMultiplierPct/RequiredSkillPointCost values exactly so the UI
-    // never shows a cost the server would actually reject).
+    // skills in the server's ActiveSkillEngine registry (SkillId 1-4).
+    // Numeric costs/cooldowns/damage read live from ClientContentRegistry
+    // (parsed from the same server/GameData/skills.json the server itself
+    // loads - see ClientContentRegistry.Initialize), so the UI can never
+    // show a cost the server would actually reject. SkillNames stays a
+    // client-only array: skills.json carries no display-name field (the
+    // server has no source of truth for presentation text, only the
+    // balance numbers a designer would tune), so there is nothing to
+    // synchronize against for names specifically.
     //
     // No dedicated "skills changed" event exists on VisualSyncProxy for
     // VisualUnlockedSkillsBitmask/VisualAvailableSkillPoints (unlike
@@ -24,10 +28,6 @@ namespace FolkIdle.Client.UI
     public class UiSkillTreeWindow : MonoBehaviour
     {
         private static readonly string[] SkillNames = { "Power Strike", "Heavy Blow", "Rupture", "Execute" };
-        private static readonly int[] SkillManaCosts = { 10, 20, 30, 50 };
-        private static readonly int[] SkillCooldownMs = { 3000, 6000, 10000, 20000 };
-        private static readonly int[] SkillDamageMultiplierPct = { 150, 200, 300, 500 };
-        private static readonly int[] SkillPointCosts = { 1, 1, 2, 3 };
 
         public WebSocketClient NetworkClient;
         public VisualSyncProxy SyncProxy;
@@ -97,14 +97,15 @@ namespace FolkIdle.Client.UI
             for (int i = 0; i < 4; i++)
             {
                 int skillId = i + 1;
+                SkillEntry skill = ClientContentRegistry.GetSkill(skillId);
                 bool isUnlocked = (bitmask & (1u << i)) != 0;
-                bool canAfford = skillPoints >= SkillPointCosts[i];
+                bool canAfford = skillPoints >= skill.RequiredSkillPointCost;
 
                 if (_nodeTexts[i] != null)
                 {
-                    _nodeTexts[i].text = SkillNames[i] + "\nCost: " + SkillPointCosts[i] + " pt\n" +
-                        "Mana: " + SkillManaCosts[i] + "  CD: " + (SkillCooldownMs[i] / 1000) + "s\n" +
-                        "Damage: " + SkillDamageMultiplierPct[i] + "%";
+                    _nodeTexts[i].text = SkillNames[i] + "\nCost: " + skill.RequiredSkillPointCost + " pt\n" +
+                        "Mana: " + skill.ManaCost + "  CD: " + (skill.CooldownMs / 1000) + "s\n" +
+                        "Damage: " + skill.DamageMultiplierPct + "%";
                 }
 
                 if (_unlockedOverlays[i] != null)

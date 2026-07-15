@@ -1,0 +1,62 @@
+[
+  {
+    "ActivityId": 101,
+    "ProfessionType": 0,
+    "BaseTickThreshold": 30,
+    "BaseMasteryXpReward": 15
+  },
+  {
+    "ActivityId": 102,
+    "ProfessionType": 0,
+    "BaseTickThreshold": 45,
+    "BaseMasteryXpReward": 30
+  },
+  {
+    "ActivityId": 103,
+    "ProfessionType": 0,
+    "BaseTickThreshold": 60,
+    "BaseMasteryXpReward": 55
+  },
+  {
+    "ActivityId": 104,
+    "ProfessionType": 0,
+    "BaseTickThreshold": 80,
+    "BaseMasteryXpReward": 90
+  },
+  {
+    "ActivityId": 105,
+    "ProfessionType": 0,
+    "BaseTickThreshold": 100,
+    "BaseMasteryXpReward": 140
+  },
+  {
+    "ActivityId": 201,
+    "ProfessionType": 1,
+    "BaseTickThreshold": 30,
+    "BaseMasteryXpReward": 15
+  },
+  {
+    "ActivityId": 202,
+    "ProfessionType": 1,
+    "BaseTickThreshold": 45,
+    "BaseMasteryXpReward": 30
+  },
+  {
+    "ActivityId": 203,
+    "ProfessionType": 1,
+    "BaseTickThreshold": 60,
+    "BaseMasteryXpReward": 55
+  },
+  {
+    "ActivityId": 204,
+    "ProfessionType": 1,
+    "BaseTickThreshold": 80,
+    "BaseMasteryXpReward": 90
+  },
+  {
+    "ActivityId": 205,
+    "ProfessionType": 1,
+    "BaseTickThreshold": 100,
+    "BaseMasteryXpReward": 140
+  }
+]

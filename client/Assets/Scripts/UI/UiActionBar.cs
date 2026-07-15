@@ -12,11 +12,13 @@ namespace FolkIdle.Client.UI
     // gating (mana/cooldown/unlocked checks before sending) is prediction
     // only for responsiveness - SimulationEngine's RequestCastSkill handler
     // is the sole source of truth and silently no-ops an invalid cast rather
-    // than trusting anything this file computes.
+    // than trusting anything this file computes. Mana cost/cooldown values
+    // read live from ClientContentRegistry (parsed from the same
+    // server/GameData/skills.json the server loads) instead of a
+    // hand-copied local constant, so this file can never silently drift
+    // from the server's real balance values.
     public class UiActionBar : MonoBehaviour
     {
-        private static readonly int[] SkillManaCosts = { 10, 20, 30, 50 };
-        private static readonly int[] SkillCooldownMs = { 3000, 6000, 10000, 20000 };
         private static readonly KeyCode[] SkillHotkeys = { KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3, KeyCode.Alpha4 };
 
         private const float CastFlashDurationSeconds = 0.25f;
@@ -75,7 +77,7 @@ namespace FolkIdle.Client.UI
 
                 if (manaCostTexts[i] != null)
                 {
-                    manaCostTexts[i].text = SkillManaCosts[i].ToString();
+                    manaCostTexts[i].text = ClientContentRegistry.GetSkill(skillId).ManaCost.ToString();
                 }
 
                 if (_flashOverlays[i] != null)
@@ -113,10 +115,10 @@ namespace FolkIdle.Client.UI
             // arithmetic on values VisualSyncProxy already interpolated this
             // frame (see VisualSyncProxy.Update), no per-frame allocation or
             // GetComponent lookups (references cached above in Awake).
-            SetCooldownFill(_cooldownOverlays[0], SyncProxy.VisualSkill1CooldownRemainingMs, SkillCooldownMs[0]);
-            SetCooldownFill(_cooldownOverlays[1], SyncProxy.VisualSkill2CooldownRemainingMs, SkillCooldownMs[1]);
-            SetCooldownFill(_cooldownOverlays[2], SyncProxy.VisualSkill3CooldownRemainingMs, SkillCooldownMs[2]);
-            SetCooldownFill(_cooldownOverlays[3], SyncProxy.VisualSkill4CooldownRemainingMs, SkillCooldownMs[3]);
+            SetCooldownFill(_cooldownOverlays[0], SyncProxy.VisualSkill1CooldownRemainingMs, ClientContentRegistry.GetSkill(1).CooldownMs);
+            SetCooldownFill(_cooldownOverlays[1], SyncProxy.VisualSkill2CooldownRemainingMs, ClientContentRegistry.GetSkill(2).CooldownMs);
+            SetCooldownFill(_cooldownOverlays[2], SyncProxy.VisualSkill3CooldownRemainingMs, ClientContentRegistry.GetSkill(3).CooldownMs);
+            SetCooldownFill(_cooldownOverlays[3], SyncProxy.VisualSkill4CooldownRemainingMs, ClientContentRegistry.GetSkill(4).CooldownMs);
 
             float currentMana = SyncProxy.VisualCurrentMana;
             uint unlockedBitmask = SyncProxy.VisualUnlockedSkillsBitmask;
@@ -125,7 +127,7 @@ namespace FolkIdle.Client.UI
                 if (_castButtons[i] != null)
                 {
                     bool isUnlocked = (unlockedBitmask & (1u << i)) != 0;
-                    bool hasMana = currentMana >= SkillManaCosts[i];
+                    bool hasMana = currentMana >= ClientContentRegistry.GetSkill(i + 1).ManaCost;
                     _castButtons[i].interactable = isUnlocked && hasMana;
                 }
 
@@ -171,7 +173,7 @@ namespace FolkIdle.Client.UI
             if (index < 0 || index >= 4) return;
 
             bool isUnlocked = (SyncProxy.VisualUnlockedSkillsBitmask & (1u << index)) != 0;
-            bool hasMana = SyncProxy.VisualCurrentMana >= SkillManaCosts[index];
+            bool hasMana = SyncProxy.VisualCurrentMana >= ClientContentRegistry.GetSkill(skillId).ManaCost;
             bool offCooldown = GetCooldownRemainingMs(index) <= 0f;
 
             if (!isUnlocked || !hasMana || !offCooldown) return;

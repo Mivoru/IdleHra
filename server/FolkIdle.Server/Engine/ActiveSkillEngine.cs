@@ -28,15 +28,96 @@ namespace FolkIdle.Server.Engine
         public const int MaxManaPerLevel = 2;
         public const int ManaRegenPerTick = 1;
 
-        private static readonly SkillDefinition[] _skills = new SkillDefinition[]
-        {
-            new SkillDefinition { SkillId = 1, ManaCost = 10, CooldownMs = 3000, DamageMultiplierPct = 150, RequiredSkillPointCost = 1 },
-            new SkillDefinition { SkillId = 2, ManaCost = 20, CooldownMs = 6000, DamageMultiplierPct = 200, RequiredSkillPointCost = 1 },
-            new SkillDefinition { SkillId = 3, ManaCost = 30, CooldownMs = 10000, DamageMultiplierPct = 300, RequiredSkillPointCost = 2 },
-            new SkillDefinition { SkillId = 4, ManaCost = 50, CooldownMs = 20000, DamageMultiplierPct = 500, RequiredSkillPointCost = 3 },
-        };
+        private static SkillDefinition[] _skills = Array.Empty<SkillDefinition>();
 
         public static ReadOnlySpan<SkillDefinition> Skills => _skills;
+
+        private sealed class SkillJson
+        {
+            public int SkillId { get; set; }
+            public int ManaCost { get; set; }
+            public int CooldownMs { get; set; }
+            public int DamageMultiplierPct { get; set; }
+            public int RequiredSkillPointCost { get; set; }
+        }
+
+        // Modul: parses server/GameData/skills.json into the flat _skills
+        // array, replacing what used to be a hardcoded 4-entry C# array
+        // literal - see ContentRegistry.Initialize for the identical
+        // local-build/atomic-commit/throw-on-failure design this mirrors.
+        // Requires exactly MaxSkillId entries with SkillId values exactly
+        // {1, 2, 3, 4} - GetSkillCooldownExpiresAtMs/SetSkillCooldownExpiresAtMs
+        // switch on skillId 1-4 to select one of TickStatePayload's four
+        // dedicated cooldown fields, so any other SkillId would silently
+        // no-op there instead of failing loudly, which is exactly the kind
+        // of corrupted-content bug this validation exists to catch at boot
+        // instead of at runtime.
+        public static void Initialize(string? gameDataDirectory = null)
+        {
+            string dir = gameDataDirectory ?? System.IO.Path.Combine(AppContext.BaseDirectory, "GameData");
+
+            if (!System.IO.Directory.Exists(dir))
+            {
+                throw new InvalidOperationException($"ActiveSkillEngine.Initialize: GameData directory not found at '{dir}'.");
+            }
+
+            string path = System.IO.Path.Combine(dir, "skills.json");
+            if (!System.IO.File.Exists(path))
+            {
+                throw new InvalidOperationException($"ActiveSkillEngine.Initialize: required content file 'skills.json' was not found at '{path}'.");
+            }
+
+            string text = System.IO.File.ReadAllText(path);
+            System.Collections.Generic.List<SkillJson>? parsed;
+            try
+            {
+                parsed = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<SkillJson>>(text);
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                throw new InvalidOperationException($"ActiveSkillEngine.Initialize: 'skills.json' contains malformed JSON: {ex.Message}", ex);
+            }
+
+            if (parsed == null || parsed.Count == 0)
+            {
+                throw new InvalidOperationException("ActiveSkillEngine.Initialize: 'skills.json' parsed to null or an empty list.");
+            }
+
+            if (parsed.Count != MaxSkillId)
+            {
+                throw new InvalidOperationException($"ActiveSkillEngine.Initialize: 'skills.json' must contain exactly {MaxSkillId} entries, found {parsed.Count}.");
+            }
+
+            var newSkills = new SkillDefinition[MaxSkillId];
+            var seenSkillIds = new bool[MaxSkillId];
+            foreach (SkillJson s in parsed)
+            {
+                if (s.SkillId < 1 || s.SkillId > MaxSkillId)
+                {
+                    throw new InvalidOperationException($"ActiveSkillEngine.Initialize: 'skills.json' has a SkillId ({s.SkillId}) outside the required range 1..{MaxSkillId}.");
+                }
+                if (seenSkillIds[s.SkillId - 1])
+                {
+                    throw new InvalidOperationException($"ActiveSkillEngine.Initialize: 'skills.json' has a duplicate SkillId ({s.SkillId}).");
+                }
+                if (s.ManaCost <= 0 || s.CooldownMs <= 0 || s.DamageMultiplierPct <= 0 || s.RequiredSkillPointCost <= 0)
+                {
+                    throw new InvalidOperationException($"ActiveSkillEngine.Initialize: 'skills.json' SkillId={s.SkillId} has a non-positive ManaCost, CooldownMs, DamageMultiplierPct, or RequiredSkillPointCost.");
+                }
+
+                seenSkillIds[s.SkillId - 1] = true;
+                newSkills[s.SkillId - 1] = new SkillDefinition
+                {
+                    SkillId = s.SkillId,
+                    ManaCost = s.ManaCost,
+                    CooldownMs = s.CooldownMs,
+                    DamageMultiplierPct = s.DamageMultiplierPct,
+                    RequiredSkillPointCost = s.RequiredSkillPointCost
+                };
+            }
+
+            _skills = newSkills;
+        }
 
         public static bool TryGetSkill(int skillId, out SkillDefinition skill)
         {

@@ -1,12 +1,16 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
 WORKDIR /src
 
-# Copy csproj and restore as distinct layers
-COPY ["FolkIdle.Server.csproj", "./"]
-RUN dotnet restore "FolkIdle.Server.csproj"
+# Build context is server/ (see docker-compose.yml) so this can also see the
+# sibling GameData/ directory - Content Pipeline JSON data copied via
+# FolkIdle.Server.csproj's CopyToOutputDirectory item, not an explicit COPY
+# here.
+COPY ["FolkIdle.Server/FolkIdle.Server.csproj", "FolkIdle.Server/"]
+RUN dotnet restore "FolkIdle.Server/FolkIdle.Server.csproj"
 
 # Copy everything else and build
 COPY . .
+WORKDIR /src/FolkIdle.Server
 RUN dotnet build "FolkIdle.Server.csproj" -c Release -o /app/build
 
 # Publish

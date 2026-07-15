@@ -13,6 +13,20 @@ namespace FolkIdle.Server.Engine
         public long TotalTicksProcessed;
         public long LastExecutionTimeMs;
         public long ThrottledPacketsDropped;
+
+        // Prometheus histogram for folkidle_tick_duration_milliseconds (see
+        // NetworkBroadcastSystem's /metrics handler). Buckets are cumulative
+        // (le semantics - each bucket counts every observation less than or
+        // equal to its bound), matching the standard Prometheus histogram
+        // exposition format. TotalTicksProcessed above doubles as the
+        // histogram's _count.
+        public long TickDurationBucketCount10Ms;
+        public long TickDurationBucketCount25Ms;
+        public long TickDurationBucketCount50Ms;
+        public long TickDurationBucketCount100Ms;
+        public long TickDurationBucketCount250Ms;
+        public long TickDurationBucketCountInf;
+        public long TickDurationSumMs;
     }
 
     public class SimulationEngine
@@ -1903,7 +1917,15 @@ namespace FolkIdle.Server.Engine
                 stopwatch.Stop();
                 long tickEndTimestamp = Stopwatch.GetTimestamp();
                 _metrics.TotalTicksProcessed++;
-                _metrics.LastExecutionTimeMs = stopwatch.ElapsedMilliseconds;
+                long tickElapsedForMetricsMs = stopwatch.ElapsedMilliseconds;
+                _metrics.LastExecutionTimeMs = tickElapsedForMetricsMs;
+                _metrics.TickDurationSumMs += tickElapsedForMetricsMs;
+                if (tickElapsedForMetricsMs <= 10) _metrics.TickDurationBucketCount10Ms++;
+                if (tickElapsedForMetricsMs <= 25) _metrics.TickDurationBucketCount25Ms++;
+                if (tickElapsedForMetricsMs <= 50) _metrics.TickDurationBucketCount50Ms++;
+                if (tickElapsedForMetricsMs <= 100) _metrics.TickDurationBucketCount100Ms++;
+                if (tickElapsedForMetricsMs <= 250) _metrics.TickDurationBucketCount250Ms++;
+                _metrics.TickDurationBucketCountInf++;
 
                 if (isBenchmarking)
                 {

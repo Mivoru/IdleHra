@@ -1,0 +1,30 @@
+[
+  {
+    "SkillId": 1,
+    "ManaCost": 10,
+    "CooldownMs": 3000,
+    "DamageMultiplierPct": 150,
+    "RequiredSkillPointCost": 1
+  },
+  {
+    "SkillId": 2,
+    "ManaCost": 20,
+    "CooldownMs": 6000,
+    "DamageMultiplierPct": 200,
+    "RequiredSkillPointCost": 1
+  },
+  {
+    "SkillId": 3,
+    "ManaCost": 30,
+    "CooldownMs": 10000,
+    "DamageMultiplierPct": 300,
+    "RequiredSkillPointCost": 2
+  },
+  {
+    "SkillId": 4,
+    "ManaCost": 50,
+    "CooldownMs": 20000,
+    "DamageMultiplierPct": 500,
+    "RequiredSkillPointCost": 3
+  }
+]

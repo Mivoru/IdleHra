@@ -25,6 +25,15 @@ namespace FolkIdle.Server.Tests
 
         public async Task InitializeAsync()
         {
+            // Content Pipeline: SimulationEngine-dependent tests need real
+            // monster/item/skill data resolved through ContentRegistry/
+            // ActiveSkillEngine, which are empty until Initialize() parses
+            // server/GameData/*.json (see Program.cs's identical boot-time
+            // call). Safe to call once per fixture - see Initialize's
+            // atomic-commit design.
+            ContentRegistry.Initialize();
+            ActiveSkillEngine.Initialize();
+
             _container = new PostgreSqlBuilder("postgres:16")
                 .WithDatabase("folkidle_test")
                 .WithUsername("postgres")
@@ -2539,6 +2548,108 @@ namespace FolkIdle.Server.Tests
             {
                 Assert.NotNull(order.EquipmentInstanceId);
                 Assert.Contains(marketMirrors, m => m.Id == order.EquipmentInstanceId!.Value);
+            }
+        }
+
+        // Modul: Content Pipeline fast-fail coverage. ContentRegistry.Initialize/
+        // ActiveSkillEngine.Initialize are deliberately parameterized to accept
+        // an explicit directory (rather than always resolving AppContext.
+        // BaseDirectory internally) precisely so this can be tested directly
+        // against a deliberately broken temp directory, without needing to
+        // spawn a separate process to observe a real boot crash. The
+        // atomic-commit design in both Initialize methods (build into local
+        // variables, only assign the static fields after every file parses
+        // and validates successfully) means a failed call here must leave the
+        // real content data - already loaded once by PostgresTestFixture.
+        // InitializeAsync/E2EGameLoopTest.InitializeAsync before any test in
+        // this class runs - completely untouched, which this test also
+        // verifies explicitly so a regression that broke that guarantee would
+        // itself fail this test.
+        [Fact]
+        public void Test_ContentPipeline_MissingOrMalformedJson_FailsFast()
+        {
+            string tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "folkidle_content_test_" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                // Case 1: directory exists but is entirely empty - every
+                // required file is missing.
+                Assert.Throws<InvalidOperationException>(() => ContentRegistry.Initialize(tempDir));
+                Assert.Throws<InvalidOperationException>(() => ActiveSkillEngine.Initialize(tempDir));
+
+                // Case 2: files exist but contain malformed or structurally
+                // invalid JSON (unterminated object, plain non-JSON text, and
+                // a syntactically valid but semantically empty array, which
+                // Initialize must also reject rather than silently loading
+                // zero content entries).
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "monsters.json"), "{ this is not valid json ");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "items.json"), "[]");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "gathering_nodes.json"), "[]");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "skills.json"), "not json at all");
+
+                Assert.Throws<InvalidOperationException>(() => ContentRegistry.Initialize(tempDir));
+                Assert.Throws<InvalidOperationException>(() => ActiveSkillEngine.Initialize(tempDir));
+
+                // Case 3: a monster with a non-contiguous Id (a gap) - the
+                // rest of the engine indexes ContentRegistry.Monsters[id - 1]
+                // directly, so this must be rejected even though it is
+                // otherwise well-formed JSON.
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "monsters.json"),
+                    "[{\"Id\":1,\"MaxHp\":100,\"AttackPower\":1,\"BaseGoldReward\":1,\"BaseXpReward\":1,\"AttackIntervalMs\":1000,\"LootTableId\":1,\"Name\":\"X\",\"EnemyId\":\"x\"}," +
+                    "{\"Id\":3,\"MaxHp\":100,\"AttackPower\":1,\"BaseGoldReward\":1,\"BaseXpReward\":1,\"AttackIntervalMs\":1000,\"LootTableId\":1,\"Name\":\"Y\",\"EnemyId\":\"y\"}]");
+                Assert.Throws<InvalidOperationException>(() => ContentRegistry.Initialize(tempDir));
+
+                // Every failed call above must have left the real,
+                // already-loaded content completely untouched.
+                Assert.True(ContentRegistry.Monsters.Length > 0);
+                Assert.True(ContentRegistry.ItemDefinitions.Length > 0);
+                Assert.True(ContentRegistry.GatheringNodes.Length > 0);
+                Assert.True(ActiveSkillEngine.Skills.Length > 0);
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        // Modul: /metrics is unauthenticated (matching /health/liveness and
+        // /health/readiness) and must return HTTP 200 with a Prometheus
+        // text-exposition-format body containing all three metrics this
+        // task requires, even with no SimulationEngine registered and no
+        // active sessions - HandleMetrics defaults every value to 0 in that
+        // case rather than failing the scrape.
+        [Fact]
+        public async Task Test_MetricsEndpoint_ReturnsPlainTextPrometheusFormat()
+        {
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8094/");
+            networkSystem.Start();
+
+            try
+            {
+                using var httpClient = new System.Net.Http.HttpClient();
+                var response = await httpClient.GetAsync("http://localhost:8094/metrics");
+
+                Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+                Assert.StartsWith("text/plain", response.Content.Headers.ContentType?.MediaType ?? string.Empty);
+
+                string body = await response.Content.ReadAsStringAsync();
+
+                Assert.Contains("# TYPE folkidle_active_sessions_total gauge", body);
+                Assert.Contains("folkidle_active_sessions_total 0", body);
+
+                Assert.Contains("# TYPE folkidle_tick_duration_milliseconds histogram", body);
+                Assert.Contains("folkidle_tick_duration_milliseconds_bucket{le=\"10\"}", body);
+                Assert.Contains("folkidle_tick_duration_milliseconds_bucket{le=\"+Inf\"}", body);
+                Assert.Contains("folkidle_tick_duration_milliseconds_sum", body);
+                Assert.Contains("folkidle_tick_duration_milliseconds_count", body);
+
+                Assert.Contains("# TYPE folkidle_database_write_queue_length gauge", body);
+                Assert.Contains("folkidle_database_write_queue_length", body);
+            }
+            finally
+            {
+                networkSystem.Stop();
             }
         }
     }

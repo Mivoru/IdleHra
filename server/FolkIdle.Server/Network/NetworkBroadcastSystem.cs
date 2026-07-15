@@ -58,6 +58,7 @@ namespace FolkIdle.Server.Network
         private readonly RedisPlayerSessionLock? _redisSessionLock;
         private readonly string _jwtSecretKey;
         private AntiCheatTelemetryEngine? _antiCheatTelemetryEngine;
+        private SimulationEngine? _simulationEngine;
 
         public NetworkBroadcastSystem(IServiceProvider serviceProvider, string jwtSecretKey, string uriPrefix = "http://localhost:8080/")
         {
@@ -77,6 +78,17 @@ namespace FolkIdle.Server.Network
         public void RegisterAntiCheatTelemetryEngine(AntiCheatTelemetryEngine engine)
         {
             _antiCheatTelemetryEngine = engine;
+        }
+
+        // Modul: back-reference for the /metrics endpoint's tick-duration
+        // histogram (see HandleMetrics) - mirrors the existing
+        // RegisterCheckpointManager/RegisterAntiCheatTelemetryEngine wiring
+        // pattern, since SimulationEngine and NetworkBroadcastSystem are
+        // constructed independently in Program.cs with no natural
+        // constructor-time reference in either direction.
+        public void RegisterSimulationEngine(SimulationEngine engine)
+        {
+            _simulationEngine = engine;
         }
 
         public void Start()
@@ -173,6 +185,19 @@ namespace FolkIdle.Server.Network
                     {
                         context.Response.StatusCode = 200;
                         context.Response.Close();
+                        continue;
+                    }
+
+                    // Modul: Prometheus scrape target. Exempt from the
+                    // cold-boot-recovery/shutdown gate below, same as the
+                    // health endpoints above - Prometheus should keep
+                    // observing a pod's state (including zero active
+                    // sessions during cold boot) rather than getting 503s
+                    // that would just show up as scrape failures in its own
+                    // monitoring instead of real data.
+                    if (requestPath == "/metrics" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleMetrics(context);
                         continue;
                     }
 
@@ -1630,6 +1655,89 @@ namespace FolkIdle.Server.Network
         {
             public string Token { get; set; } = string.Empty;
             public long ExpiresAtEpoch { get; set; }
+        }
+
+        // Modul: hand-rolled Prometheus text-exposition-format metrics
+        // endpoint (no prometheus-net or other external dependency, per this
+        // task's explicit constraint). Unauthenticated, matching the
+        // existing /health/* endpoints - Prometheus scraping is expected to
+        // happen from inside the cluster network, not across the public
+        // internet. TickDurationBucketCount*/TickDurationSumMs read directly
+        // off SimulationEngine.GetMetrics() (a ref struct accessor, no
+        // allocation) if a SimulationEngine has been registered; the write
+        // queue length comes from SCARD against RedisSessionCache.
+        // DirtyPlayersSetKey (see RedisWriteBehindEngine.FlushNowAsync,
+        // which drains that same Redis set), defaulting to 0 if Redis is
+        // unavailable rather than failing the whole scrape.
+        private async Task HandleMetrics(HttpListenerContext context)
+        {
+            try
+            {
+                int activeSessions = _connectedClients.Count;
+
+                long tickCount = 0;
+                long tickSumMs = 0;
+                long bucket10 = 0, bucket25 = 0, bucket50 = 0, bucket100 = 0, bucket250 = 0, bucketInf = 0;
+                if (_simulationEngine != null)
+                {
+                    EngineMetricsPayload metrics = _simulationEngine.GetMetrics();
+                    tickCount = metrics.TotalTicksProcessed;
+                    tickSumMs = metrics.TickDurationSumMs;
+                    bucket10 = metrics.TickDurationBucketCount10Ms;
+                    bucket25 = metrics.TickDurationBucketCount25Ms;
+                    bucket50 = metrics.TickDurationBucketCount50Ms;
+                    bucket100 = metrics.TickDurationBucketCount100Ms;
+                    bucket250 = metrics.TickDurationBucketCount250Ms;
+                    bucketInf = metrics.TickDurationBucketCountInf;
+                }
+
+                long writeQueueLength = 0;
+                var redis = _serviceProvider.GetService<StackExchange.Redis.IConnectionMultiplexer>();
+                if (redis != null && redis.IsConnected)
+                {
+                    try
+                    {
+                        writeQueueLength = await redis.GetDatabase().SetLengthAsync(RedisSessionCache.DirtyPlayersSetKey);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Metrics: failed to read write-behind queue length: {ex.Message}");
+                    }
+                }
+
+                var body = new System.Text.StringBuilder();
+                body.Append("# HELP folkidle_active_sessions_total Current number of connected WebSocket sessions.\n");
+                body.Append("# TYPE folkidle_active_sessions_total gauge\n");
+                body.Append("folkidle_active_sessions_total ").Append(activeSessions).Append('\n');
+                body.Append('\n');
+                body.Append("# HELP folkidle_tick_duration_milliseconds Duration of the 10Hz simulation tick loop.\n");
+                body.Append("# TYPE folkidle_tick_duration_milliseconds histogram\n");
+                body.Append("folkidle_tick_duration_milliseconds_bucket{le=\"10\"} ").Append(bucket10).Append('\n');
+                body.Append("folkidle_tick_duration_milliseconds_bucket{le=\"25\"} ").Append(bucket25).Append('\n');
+                body.Append("folkidle_tick_duration_milliseconds_bucket{le=\"50\"} ").Append(bucket50).Append('\n');
+                body.Append("folkidle_tick_duration_milliseconds_bucket{le=\"100\"} ").Append(bucket100).Append('\n');
+                body.Append("folkidle_tick_duration_milliseconds_bucket{le=\"250\"} ").Append(bucket250).Append('\n');
+                body.Append("folkidle_tick_duration_milliseconds_bucket{le=\"+Inf\"} ").Append(bucketInf).Append('\n');
+                body.Append("folkidle_tick_duration_milliseconds_sum ").Append(tickSumMs).Append('\n');
+                body.Append("folkidle_tick_duration_milliseconds_count ").Append(tickCount).Append('\n');
+                body.Append('\n');
+                body.Append("# HELP folkidle_database_write_queue_length Players with state pending Redis write-behind flush.\n");
+                body.Append("# TYPE folkidle_database_write_queue_length gauge\n");
+                body.Append("folkidle_database_write_queue_length ").Append(writeQueueLength).Append('\n');
+
+                byte[] payload = System.Text.Encoding.UTF8.GetBytes(body.ToString());
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "text/plain; version=0.0.4";
+                context.Response.ContentLength64 = payload.Length;
+                await context.Response.OutputStream.WriteAsync(payload, 0, payload.Length);
+                context.Response.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Metrics endpoint error: {ex.Message}");
+                context.Response.StatusCode = 500;
+                context.Response.Close();
+            }
         }
 
         // Modul: sole controlled entry point for account identity issuance.

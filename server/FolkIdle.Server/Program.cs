@@ -17,6 +17,13 @@ if (args.Length > 0 && args[0] == "--layout-check")
     return;
 }
 
+// Content Pipeline: parses server/GameData/*.json into ContentRegistry's/
+// ActiveSkillEngine's flat struct arrays before anything else starts - an
+// uncaught InvalidOperationException here is the intended fast-fail/
+// crash-on-boot behavior for malformed or missing content data.
+ContentRegistry.Initialize();
+ActiveSkillEngine.Initialize();
+
 var serviceCollection = new ServiceCollection();
 var connectionString = Environment.GetEnvironmentVariable("FOLKIDLE_DB_CONN");
 if (connectionString == null)
@@ -104,6 +111,7 @@ var billingVerificationEngine = new BillingVerificationEngine(serviceProvider.Ge
 networkSystem.RegisterAntiCheatTelemetryEngine(antiCheatTelemetryEngine);
 
 var engine = new SimulationEngine(lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine, escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine, villageBuildingEngine, villageManagementEngine, mentorshipEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine, guildLogisticsDepotEngine, guildCombatSimulationEngine, antiCheatTelemetryEngine, pushNotificationTriggerEngine, compliancePurgeEngine, billingVerificationEngine, redisMultiplexer, serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), guildRaidEngine, equipmentSlotEngine);
+networkSystem.RegisterSimulationEngine(engine);
 var timeBankService = new TimeBankService(engine, checkpointManager);
 
 mailboxEngine.StartCleanupCron();
