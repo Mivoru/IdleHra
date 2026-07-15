@@ -101,7 +101,8 @@ namespace FolkIdle.Server.Engine
                     QualityTier = equip.QualityTier,
                     Price = limitPrice,
                     Status = 0,
-                    IsQuarantined = isQuarantined
+                    IsQuarantined = isQuarantined,
+                    CreatedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                 };
                 db.MarketOrderRecords.Add(order);
 

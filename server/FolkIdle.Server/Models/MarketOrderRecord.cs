@@ -28,7 +28,13 @@ namespace FolkIdle.Server.Models
         public string BaseItemId { get; set; } = string.Empty;
 
         public int QualityTier { get; set; }
-        
+
         public bool IsQuarantined { get; set; }
+
+        // Modul 40: deterministic tiebreak for FetchActiveListingsAsync's
+        // Price-ascending sort (older listings surface first at an identical
+        // price), set once at insert time from the same monotonic clock used
+        // elsewhere in this codebase (see HistoricalMarketArchive.ExecutionTimestampEpoch).
+        public long CreatedAtEpoch { get; set; }
     }
 }

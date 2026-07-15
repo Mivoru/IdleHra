@@ -234,6 +234,12 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/codex/regions" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleCodexRegionsSnapshot(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/mastery/snapshot" && context.Request.HttpMethod == "GET")
                     {
                         await HandleMasterySnapshot(context);
@@ -249,6 +255,12 @@ namespace FolkIdle.Server.Network
                     if (requestPath == "/api/v1/leaderboard/global" && context.Request.HttpMethod == "GET")
                     {
                         await HandleGlobalLeaderboard(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/market/listings" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleMarketBrowserListings(context);
                         continue;
                     }
 
@@ -359,6 +371,86 @@ namespace FolkIdle.Server.Network
             public string DisplayName { get; set; } = string.Empty;
             public int Level { get; set; }
             public long Xp { get; set; }
+        }
+
+        private sealed class MarketListingResponse
+        {
+            public long OrderId { get; set; }
+            public string BaseItemId { get; set; } = string.Empty;
+            public int QualityTier { get; set; }
+            public long Price { get; set; }
+            public long CreatedAtEpoch { get; set; }
+        }
+
+        // Modul 40: marketplace browser page. Uses the authenticated HTTP
+        // snapshot pattern established by HandleForgeInventorySnapshot /
+        // HandleGuildLogisticsSnapshot / HandleGlobalLeaderboard for
+        // variable-length, on-demand player data rather than a fixed-layout
+        // WebSocket packet - a paginated result set has no natural fixed
+        // size, so it does not fit StateUpdatePacket's binary layout the way
+        // scalar per-tick fields do.
+        private async Task HandleMarketBrowserListings(HttpListenerContext context)
+        {
+            try
+            {
+                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                string baseItemId = query["baseItemId"] ?? string.Empty;
+                int.TryParse(query["qualityTier"], out int qualityTier);
+                int.TryParse(query["pageIndex"], out int pageIndex);
+                if (!int.TryParse(query["pageSize"], out int pageSize))
+                {
+                    pageSize = 20;
+                }
+
+                if (string.IsNullOrEmpty(baseItemId) || !ClientCommandValidator.ValidateMarketBrowserQuery(playerId, pageIndex, pageSize))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                bool isQuarantined = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => p.Id == playerId)
+                    .Select(p => p.IsQuarantined || p.Quarantine_Active)
+                    .SingleOrDefaultAsync();
+
+                var listings = await MarketOrderBookEngine.FetchActiveListingsAsync(db, baseItemId, qualityTier, isQuarantined, pageIndex, pageSize);
+
+                var response = new System.Collections.Generic.List<MarketListingResponse>(listings.Count);
+                for (int i = 0; i < listings.Count; i++)
+                {
+                    response.Add(new MarketListingResponse
+                    {
+                        OrderId = listings[i].Id,
+                        BaseItemId = listings[i].BaseItemId,
+                        QualityTier = listings[i].QualityTier,
+                        Price = listings[i].Price,
+                        CreatedAtEpoch = listings[i].CreatedAtEpoch
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Market browser listings error: {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
         }
 
         private async Task HandleGlobalLeaderboard(HttpListenerContext context)
@@ -631,6 +723,16 @@ namespace FolkIdle.Server.Network
         // is read directly off the persisted column rather than recomputed here,
         // so this endpoint can never drift from CodexEngine.CalculateLevelFromKillCount
         // (Level = KillCount / 10, uncapped) if that formula ever changes.
+        // Modul 23 fix: previously ran raw SQL against "MonsterCodexEntries"
+        // (PascalCase, quoted), but the table is mapped via
+        // [Table("monster_codex_entries")] (lowercase, unlike every other
+        // table in this codebase - see FolkIdleDbContextModelSnapshot's
+        // ToTable("monster_codex_entries")), so the quoted identifier never
+        // matched the real table and Postgres would reject it outright.
+        // Switched to plain LINQ, matching HandleMasterySnapshot's established
+        // fix for this exact lowercase-table situation - EF Core resolves the
+        // mapping correctly on its own, sidestepping manual identifier
+        // quoting entirely.
         private async Task HandleCodexSnapshot(HttpListenerContext context)
         {
             try
@@ -645,15 +747,10 @@ namespace FolkIdle.Server.Network
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
-                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
-                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
-
                 var entries = await db.MonsterCodexEntries
-                    .FromSqlInterpolated($"SELECT * FROM \"MonsterCodexEntries\" WHERE \"PlayerId\" = {playerId}")
                     .AsNoTracking()
+                    .Where(e => e.PlayerId == playerId)
                     .ToListAsync();
-
-                await transaction.CommitAsync();
 
                 var response = new System.Collections.Generic.List<CodexSnapshotEntryResponse>(entries.Count);
 
@@ -675,6 +772,111 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Codex snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class RegionProgressResponse
+        {
+            public int RegionId { get; set; }
+            public int CurrentKills { get; set; }
+            public int RequiredKills { get; set; }
+            public bool IsCompleted { get; set; }
+            public int LootLuckBonusPct { get; set; }
+        }
+
+        // Modul 13.4.3: region-completion progress for the Codex regions UI. A
+        // region is 6 distinct monster ids (5 standard/elite + 1 regional
+        // boss, see CodexEngine's ((MonsterId - 1) % 30) / 6 + 1 grouping) and
+        // completes only once every monster in it individually reaches 1000
+        // kills - so CurrentKills here is the MINIMUM kill count across the
+        // region's monsters (the true bottleneck to completion), not a sum.
+        // IsCompleted comes from PlayerRegionCompletions (the durable ledger
+        // CodexEngine writes to and never re-grants) rather than being
+        // re-derived from kill counts here, so it can never flip back to
+        // false if kill counts are read at a slightly different instant than
+        // the completion check ran. LootLuckBonusPct mirrors
+        // StatsCalculator's "+1.0% Loot Luck per completed area" exactly.
+        private async Task HandleCodexRegionsSnapshot(HttpListenerContext context)
+        {
+            try
+            {
+                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var codexEntries = await db.MonsterCodexEntries
+                    .AsNoTracking()
+                    .Where(e => e.PlayerId == playerId)
+                    .ToListAsync();
+
+                var completedRegionIds = await db.PlayerRegionCompletions
+                    .AsNoTracking()
+                    .Where(r => r.PlayerId == playerId)
+                    .Select(r => r.RegionId)
+                    .ToListAsync();
+                var completedRegionSet = new System.Collections.Generic.HashSet<int>(completedRegionIds);
+
+                var killsByMonsterId = new System.Collections.Generic.Dictionary<int, int>(codexEntries.Count);
+                for (int i = 0; i < codexEntries.Count; i++)
+                {
+                    killsByMonsterId[codexEntries[i].MonsterId] = codexEntries[i].KillCount;
+                }
+
+                var response = new System.Collections.Generic.List<RegionProgressResponse>(10);
+                for (int region = 1; region <= 10; region++)
+                {
+                    int minKillsInRegion = -1;
+                    bool regionExists = false;
+
+                    for (int monsterIndex = 0; monsterIndex < ContentRegistry.Monsters.Length; monsterIndex++)
+                    {
+                        int monsterId = ContentRegistry.Monsters[monsterIndex].Id;
+                        if (((monsterId - 1) % 30) / 6 + 1 != region)
+                        {
+                            continue;
+                        }
+
+                        regionExists = true;
+                        killsByMonsterId.TryGetValue(monsterId, out int killCount);
+                        if (killCount > 1000) killCount = 1000;
+                        if (minKillsInRegion < 0 || killCount < minKillsInRegion)
+                        {
+                            minKillsInRegion = killCount;
+                        }
+                    }
+
+                    if (!regionExists)
+                    {
+                        continue;
+                    }
+
+                    bool isCompleted = completedRegionSet.Contains(region);
+                    response.Add(new RegionProgressResponse
+                    {
+                        RegionId = region,
+                        CurrentKills = minKillsInRegion < 0 ? 0 : minKillsInRegion,
+                        RequiredKills = 1000,
+                        IsCompleted = isCompleted,
+                        LootLuckBonusPct = isCompleted ? 1 : 0
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Codex regions snapshot error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

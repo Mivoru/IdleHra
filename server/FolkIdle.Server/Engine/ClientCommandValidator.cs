@@ -975,6 +975,29 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
+        // Modul 40: gateway-level bounds check for the marketplace browser's
+        // paginated listing query, mirroring ValidateLeaderboardQuery. Rejects
+        // before FetchActiveListingsAsync ever runs a Skip/Take against the
+        // caller-supplied values - a negative pageIndex would Skip a negative
+        // count (an ArgumentException from EF Core), and an unbounded pageSize
+        // would let a single request pull the entire active order book.
+        public static bool ValidateMarketBrowserQuery(long playerId, int pageIndex, int pageSize)
+        {
+            if (pageIndex < 0 || pageIndex > 10000)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 39, Value2 = 1, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            if (pageSize <= 0 || pageSize > 50)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 39, Value2 = 2, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            return true;
+        }
+
         public static bool ValidateAchievementClaimRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
         {
             if (payload.IsQuarantined || payload.Quarantine_Active) return false;

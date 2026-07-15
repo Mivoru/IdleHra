@@ -58,6 +58,29 @@ namespace FolkIdle.Server.Engine
             return null;
         }
 
+        // Modul 40: paginated read of currently active SELL listings for the
+        // marketplace browser. Deterministic ordering (Price ascending, then
+        // CreatedAtEpoch ascending as the tiebreak) keeps page N stable across
+        // repeated requests even as unrelated listings are created/filled
+        // between pages - callers must clamp pageIndex/pageSize themselves
+        // (see ClientCommandValidator.ValidateMarketBrowserQuery) before this
+        // runs an unbounded Skip/Take against the caller-supplied values.
+        // isQuarantined must be the requesting player's own flag - matching
+        // MarketEscrowEngine.BuyItemAsync's isolation check, a browser must
+        // never surface listings the requester could not actually buy (or let
+        // a quarantined player see the real, non-isolated economy).
+        public static async Task<System.Collections.Generic.List<MarketOrderRecord>> FetchActiveListingsAsync(FolkIdleDbContext db, string baseItemId, int qualityTier, bool isQuarantined, int pageIndex, int pageSize)
+        {
+            return await db.MarketOrderRecords
+                .AsNoTracking()
+                .Where(o => o.Status == 0 && o.OrderType == "SELL" && o.BaseItemId == baseItemId && o.QualityTier == qualityTier && o.IsQuarantined == isQuarantined)
+                .OrderBy(o => o.Price)
+                .ThenBy(o => o.CreatedAtEpoch)
+                .Skip(pageIndex * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+        }
+
         public async Task PlaceLimitOrderAsync(long playerId, bool isBuy, long instanceId, long price, string baseItemId, int qualityTier)
         {
             using var scope = _serviceProvider.CreateScope();
@@ -110,7 +133,8 @@ namespace FolkIdle.Server.Engine
                         QualityTier = qualityTier,
                         Price = price,
                         Status = 0,
-                        IsQuarantined = isQuarantined
+                        IsQuarantined = isQuarantined,
+                        CreatedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                     };
                     db.MarketOrderRecords.Add(order);
                 }
@@ -161,7 +185,8 @@ namespace FolkIdle.Server.Engine
                         QualityTier = equip.QualityTier,
                         Price = price,
                         Status = 0,
-                        IsQuarantined = isQuarantined
+                        IsQuarantined = isQuarantined,
+                        CreatedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                     };
                     db.MarketOrderRecords.Add(order);
                 }
