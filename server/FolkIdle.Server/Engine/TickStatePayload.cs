@@ -248,6 +248,31 @@ namespace FolkIdle.Server.Engine
         public uint ActiveChroniclePassLevel;
         public uint AccumulatedSeasonalXp;
 
+        // Active Skill Tree (see ActiveSkillEngine). CurrentMana is a live
+        // combat-session resource, not persisted to PlayerRecord - it resets
+        // to full at login, the same convention PlayerHp already uses.
+        // AvailableSkillPoints and UnlockedSkillsBitmask ARE persisted (see
+        // PlayerRecord.AvailableSkillPoints and the PlayerSkillUnlocks table,
+        // hydrated once at login into this bitmask so the hot loop never hits
+        // the DB to check unlock state). Cooldown expiry timestamps are
+        // Environment.TickCount64 milliseconds, not wall-clock epoch.
+        public int CurrentMana;
+        public int AvailableSkillPoints;
+        public uint UnlockedSkillsBitmask;
+        public long Skill1CooldownExpiresAtMs;
+        public long Skill2CooldownExpiresAtMs;
+        public long Skill3CooldownExpiresAtMs;
+        public long Skill4CooldownExpiresAtMs;
+
+        // Set by a successful RequestCastSkill and consumed by the very next
+        // attack resolution in ProcessSubTick (then reset to 0) - "injected
+        // into the next tick's StatsCalculator combat resolution" per the
+        // task. 0 means no active skill bonus.
+        public float PendingSkillDamageMultiplier;
+        public byte LastSkillCastId;
+        public byte LastSkillCastSuccess;
+        public uint LastSkillCastResultTick;
+
         public void InitializeObfuscation(long sessionKey)
         {
             ObfuscationSessionKey = sessionKey == 0L ? PlayerId ^ 0x5F3759DF5F3759DFL : sessionKey;

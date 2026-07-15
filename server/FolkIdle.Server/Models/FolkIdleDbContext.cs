@@ -56,6 +56,7 @@ namespace FolkIdle.Server.Models
         public DbSet<GuildDefenseRoster> GuildDefenseRosters { get; set; }
         public DbSet<AccountAnalyticsLog> AccountAnalyticsLogs { get; set; }
         public DbSet<AccountSecurityQuota> AccountSecurityQuotas { get; set; }
+        public DbSet<PlayerSkillUnlock> PlayerSkillUnlocks { get; set; }
 
         public FolkIdleDbContext(DbContextOptions<FolkIdleDbContext> options) : base(options)
         {
@@ -253,6 +254,11 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<PlayerLifetimeAchievement>()
                 .HasKey(p => new { p.PlayerId, p.AchievementId });
+
+            modelBuilder.Entity<PlayerSkillUnlock>()
+                .HasKey(s => new { s.PlayerId, s.SkillId });
+            modelBuilder.Entity<PlayerSkillUnlock>()
+                .HasIndex(s => s.PlayerId);
 
         }
     }

@@ -57,7 +57,9 @@ namespace FolkIdle.Server.Network
         LaunchGuildRaid = 53,
         EquipItem = 54,
         UnequipItem = 55,
-        TerminateMentorship = 56
+        TerminateMentorship = 56,
+        RequestUnlockSkill = 57,
+        RequestCastSkill = 58
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

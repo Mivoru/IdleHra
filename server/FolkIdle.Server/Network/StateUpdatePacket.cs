@@ -204,5 +204,31 @@ namespace FolkIdle.Server.Network
         // no upgrade is currently in flight for this player's village.
         public byte PendingUpgradeBuildingId;
         public long PendingUpgradeCompletesAtEpoch;
+
+        // Active Skill Tree (see ActiveSkillEngine). "ResponseSkillCastPacket"
+        // semantics are carried as fields on this recurring broadcast rather
+        // than as a separate wire message type - this is the only channel
+        // the client's receive loop ever parses (see UnsafePacketParser/
+        // WebSocketClient.ParseAndEnqueuePacket), and every prior feature in
+        // this codebase followed the same "add fields to the existing
+        // packet" convention rather than inventing a new one (e.g. breeding
+        // confirmation has no dedicated packet either). LastSkillCastResultTick
+        // increments on every RequestCastSkill the server processes so the
+        // client can edge-detect "a new cast just resolved" versus "the same
+        // result repeated," mirroring the existing ActiveChallengeSeed
+        // edge-detection pattern.
+        public uint UnlockedSkillsBitmask;
+        public int CurrentMana;
+        public int MaxMana;
+        public int AvailableSkillPoints;
+        public uint Skill1CooldownRemainingMs;
+        public uint Skill2CooldownRemainingMs;
+        public uint Skill3CooldownRemainingMs;
+        public uint Skill4CooldownRemainingMs;
+        public byte LastSkillCastId;
+        public byte LastSkillCastSuccess;
+        public byte SkillReserved0;
+        public byte SkillReserved1;
+        public uint LastSkillCastResultTick;
     }
 }

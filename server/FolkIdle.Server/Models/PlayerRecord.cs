@@ -52,5 +52,12 @@ namespace FolkIdle.Server.Models
         // consumers of TickStatePayload.XpPenaltyExpiresEpoch). 0 means no
         // active penalty.
         public long XpPenaltyExpiresEpoch { get; set; }
+
+        // Active Skill Tree: earned on level-up (see SimulationEngine.
+        // ApplyBulkExperience), spent unlocking a skill (see
+        // ActiveSkillEngine and the PlayerSkillUnlocks table, which records
+        // WHICH skills were unlocked - this column only tracks the
+        // remaining, unspent balance).
+        public int AvailableSkillPoints { get; set; }
     }
 }

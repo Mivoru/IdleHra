@@ -146,6 +146,31 @@ namespace FolkIdle.Client.Engine
         public long VisualEquippedWeaponId { get; private set; }
         public long VisualEquippedArmorId { get; private set; }
 
+        // Active Skill Tree (see server ActiveSkillEngine/StateUpdatePacket).
+        // Bitmask/skill points are discrete - assigned straight from the
+        // latest packet in both the first-packet and steady-state paths,
+        // matching VisualActiveMasteryBitmask/VisualCompletedAreaFlags.
+        // Mana and the four cooldown-remaining values are Lerp'd every frame
+        // like VisualPlayerHp/VisualWorldBossMaxHp, so UiActionBar's radial
+        // cooldown overlay sweeps smoothly between the ~100ms server ticks
+        // instead of stepping.
+        public uint VisualUnlockedSkillsBitmask;
+        public int VisualAvailableSkillPoints;
+        public float VisualCurrentMana;
+        public float VisualMaxMana;
+        public float VisualSkill1CooldownRemainingMs;
+        public float VisualSkill2CooldownRemainingMs;
+        public float VisualSkill3CooldownRemainingMs;
+        public float VisualSkill4CooldownRemainingMs;
+
+        // Modul: edge-detected skill cast result - fires exactly once per
+        // real RequestCastSkill the server processed (see
+        // LastSkillCastResultTick's doc comment on StateUpdatePacket),
+        // never once per packet/frame, mirroring OnMonsterHit/OnPlayerHit's
+        // edge-detection precedent above.
+        public event System.Action<int, bool> OnSkillCastResult;
+        private uint _lastAppliedSkillCastResultTick;
+
         public event System.Action OnVillageStateUpdated;
         public event System.Action OnGuildStateUpdated;
         public static event System.Action OnCharacterStateUpdated;
@@ -261,10 +286,20 @@ namespace FolkIdle.Client.Engine
                     VisualActiveMatchId = packet.ActiveMatchId;
                     VisualTotalAnalyticsEventsLoggedCount = packet.TotalAnalyticsEventsLoggedCount;
 
+                    VisualUnlockedSkillsBitmask = packet.UnlockedSkillsBitmask;
+                    VisualAvailableSkillPoints = packet.AvailableSkillPoints;
+                    VisualCurrentMana = packet.CurrentMana;
+                    VisualMaxMana = packet.MaxMana;
+                    VisualSkill1CooldownRemainingMs = packet.Skill1CooldownRemainingMs;
+                    VisualSkill2CooldownRemainingMs = packet.Skill2CooldownRemainingMs;
+                    VisualSkill3CooldownRemainingMs = packet.Skill3CooldownRemainingMs;
+                    VisualSkill4CooldownRemainingMs = packet.Skill4CooldownRemainingMs;
+
                     ApplyVillagePacketState(in packet);
                     ApplyGuildPacketState(in packet);
                     ApplyCharacterPacketState(in packet);
                     ApplyCombatPacketState(in packet);
+                    ApplyLastSkillCastState(in packet);
 
                     _hasReceivedState = true;
                 }
@@ -387,10 +422,20 @@ namespace FolkIdle.Client.Engine
             VisualEnemyLogisticsPoints = _snapshotB.Packet.EnemyProductionLogisticsPoints;
             VisualEnemySupplyPoints = _snapshotB.Packet.EnemyGatheringSupplyChainPoints;
 
+            VisualUnlockedSkillsBitmask = _snapshotB.Packet.UnlockedSkillsBitmask;
+            VisualAvailableSkillPoints = _snapshotB.Packet.AvailableSkillPoints;
+            VisualCurrentMana = Mathf.Lerp(_snapshotA.Packet.CurrentMana, _snapshotB.Packet.CurrentMana, t);
+            VisualMaxMana = Mathf.Lerp(_snapshotA.Packet.MaxMana, _snapshotB.Packet.MaxMana, t);
+            VisualSkill1CooldownRemainingMs = Mathf.Lerp(_snapshotA.Packet.Skill1CooldownRemainingMs, _snapshotB.Packet.Skill1CooldownRemainingMs, t);
+            VisualSkill2CooldownRemainingMs = Mathf.Lerp(_snapshotA.Packet.Skill2CooldownRemainingMs, _snapshotB.Packet.Skill2CooldownRemainingMs, t);
+            VisualSkill3CooldownRemainingMs = Mathf.Lerp(_snapshotA.Packet.Skill3CooldownRemainingMs, _snapshotB.Packet.Skill3CooldownRemainingMs, t);
+            VisualSkill4CooldownRemainingMs = Mathf.Lerp(_snapshotA.Packet.Skill4CooldownRemainingMs, _snapshotB.Packet.Skill4CooldownRemainingMs, t);
+
             ApplyVillagePacketState(in _snapshotB.Packet);
             ApplyGuildPacketState(in _snapshotB.Packet);
             ApplyCharacterPacketState(in _snapshotB.Packet);
             ApplyCombatPacketState(in _snapshotB.Packet);
+            ApplyLastSkillCastState(in _snapshotB.Packet);
         }
 
         // Modul: discrete combat-instance identity (which monster, which
@@ -412,6 +457,21 @@ namespace FolkIdle.Client.Engine
             VisualActiveAudioTrackId = audioTrackId;
 
             OnCombatInstanceChanged?.Invoke();
+        }
+
+        // Modul: edge-detects a newly-resolved skill cast via
+        // LastSkillCastResultTick (a per-cast incrementing counter, not a
+        // boolean flag - a flag would either miss two casts landing in the
+        // same 100ms tick or need its own separate acknowledgement
+        // round-trip). Tick 0 means "no cast has ever resolved this
+        // session" and is never fired.
+        private void ApplyLastSkillCastState(in StateUpdatePacket packet)
+        {
+            uint resultTick = packet.LastSkillCastResultTick;
+            if (resultTick == 0 || resultTick == _lastAppliedSkillCastResultTick) return;
+
+            _lastAppliedSkillCastResultTick = resultTick;
+            OnSkillCastResult?.Invoke(packet.LastSkillCastId, packet.LastSkillCastSuccess != 0);
         }
 
         // Modul: fires OnMonsterHit/OnPlayerHit exactly once per real server

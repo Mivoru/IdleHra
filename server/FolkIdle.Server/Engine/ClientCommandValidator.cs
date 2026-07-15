@@ -620,6 +620,24 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
+        // Modul: structural validity only - is skillId even a real skill ID.
+        // Soft-fail conditions (not yet unlocked, insufficient mana, still on
+        // cooldown, insufficient skill points) are normal gameplay outcomes,
+        // not a cheat signal, so they are handled inline in SimulationEngine's
+        // RequestCastSkill/RequestUnlockSkill dispatch without disconnecting
+        // the session - only a structurally impossible skillId (one the real
+        // client UI could never produce) reaches this check and disconnects.
+        public static bool ValidateSkillCommand(ref TickStatePayload payload, long skillId, byte commandType)
+        {
+            if (skillId < 1 || skillId > ActiveSkillEngine.MaxSkillId)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = commandType, Value2 = 1, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            return true;
+        }
+
         public static bool ValidateGuildContributions(ref TickStatePayload payload, long quantity)
         {
             if (quantity <= 0)

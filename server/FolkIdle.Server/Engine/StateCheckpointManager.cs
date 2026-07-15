@@ -162,6 +162,7 @@ namespace FolkIdle.Server.Engine
                     player.EquippedArmorId = state.EquippedArmorId == 0L ? null : state.EquippedArmorId;
                     player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
                     player.PremiumDiamonds = state.PremiumCurrency;
+                    player.AvailableSkillPoints = state.AvailableSkillPoints;
                     await UpsertAccountChronoRegistryAsync(dbContext, state);
                     await UpsertChroniclePassAsync(dbContext, state);
                     await UpsertLifetimeAchievementsAsync(dbContext, player, state);
@@ -240,7 +241,10 @@ namespace FolkIdle.Server.Engine
                     IsQuarantined = false,
                     ActiveLanguageState = 1,
                     ActiveChroniclePassLevel = 0,
-                    AccumulatedSeasonalXp = 0
+                    AccumulatedSeasonalXp = 0,
+                    CurrentMana = ActiveSkillEngine.ComputeMaxMana(1),
+                    AvailableSkillPoints = 0,
+                    UnlockedSkillsBitmask = 0
                 };
                 defaultPayload.InitializeObfuscation(GenerateSessionXorKey(playerId, 0));
                 return defaultPayload;
@@ -392,6 +396,19 @@ namespace FolkIdle.Server.Engine
             long stoneStock = villageCommodityRows.FirstOrDefault(c => c.ItemId == VillageManagementEngine.StoneCommodityId)?.Quantity ?? 0L;
             long ironOreStock = villageCommodityRows.FirstOrDefault(c => c.ItemId == VillageManagementEngine.IronOreCommodityId)?.Quantity ?? 0L;
 
+            // Active Skill Tree: hydrate the persisted unlock set into a
+            // bitmask once at login (see ActiveSkillEngine) - never queried
+            // from the 10 Hz hot loop again this session.
+            var unlockedSkillRows = await dbContext.PlayerSkillUnlocks
+                .AsNoTracking()
+                .Where(s => s.PlayerId == playerId)
+                .ToListAsync();
+            uint unlockedSkillsBitmask = 0;
+            for (int i = 0; i < unlockedSkillRows.Count; i++)
+            {
+                unlockedSkillsBitmask = ActiveSkillEngine.WithSkillUnlocked(unlockedSkillsBitmask, unlockedSkillRows[i].SkillId);
+            }
+
             int activeResidentCount = await dbContext.VillageResidents
                 .AsNoTracking()
                 .CountAsync(v => v.PlayerId == playerId && v.IsActive);
@@ -515,7 +532,10 @@ namespace FolkIdle.Server.Engine
                 IsQuarantined = player.IsQuarantined,
                 ActiveLanguageState = 1,
                 ActiveChroniclePassLevel = (uint)Math.Max(0, chroniclePass?.PassLevel ?? 0),
-                AccumulatedSeasonalXp = (uint)Math.Max(0, chroniclePass?.AccumulatedXp ?? 0)
+                AccumulatedSeasonalXp = (uint)Math.Max(0, chroniclePass?.AccumulatedXp ?? 0),
+                CurrentMana = ActiveSkillEngine.ComputeMaxMana(player.CurrentLevel),
+                AvailableSkillPoints = player.AvailableSkillPoints,
+                UnlockedSkillsBitmask = unlockedSkillsBitmask
             };
 
             payload.InitializeObfuscation(GenerateSessionXorKey(playerId, player.LogicEpochCounter));

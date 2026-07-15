@@ -220,6 +220,13 @@ namespace FolkIdle.Server.Engine
             return value > uint.MaxValue ? uint.MaxValue : (uint)value;
         }
 
+        private static uint ComputeSkillCooldownRemainingMs(in TickStatePayload payload, int skillId)
+        {
+            long remaining = ActiveSkillEngine.GetSkillCooldownExpiresAtMs(in payload, skillId) - Environment.TickCount64;
+            if (remaining <= 0) return 0;
+            return remaining > uint.MaxValue ? uint.MaxValue : (uint)remaining;
+        }
+
         private static uint ResolveChronoEngineStatus(ref TickStatePayload payload)
         {
             if (payload.IsChronoAccelerating && (payload.SpeedMultiplier == 2 || payload.SpeedMultiplier == 4))
@@ -1592,6 +1599,82 @@ namespace FolkIdle.Server.Engine
                         currentPayload.ActiveUiContextBitmask = cmd.ActiveUiContextBitmask;
                         currentPayload.IsDirty = true;
                     }
+                    else if (cmd.Command == CommandType.RequestUnlockSkill)
+                    {
+                        if (!ClientCommandValidator.ValidateSkillCommand(ref currentPayload, cmd.TargetId, (byte)cmd.Command))
+                        {
+                            _activePlayers.Remove(routingPlayerId);
+                            _networkSystem.ForceDisconnect(routingPlayerId);
+                            continue;
+                        }
+
+                        int unlockSkillId = (int)cmd.TargetId;
+                        uint unlockSkillBit = 1u << (unlockSkillId - 1);
+                        bool alreadyUnlocked = (currentPayload.UnlockedSkillsBitmask & unlockSkillBit) != 0;
+
+                        if (!alreadyUnlocked && ActiveSkillEngine.TryGetSkill(unlockSkillId, out var unlockDef) &&
+                            currentPayload.AvailableSkillPoints >= unlockDef.RequiredSkillPointCost)
+                        {
+                            currentPayload.AvailableSkillPoints -= unlockDef.RequiredSkillPointCost;
+                            currentPayload.UnlockedSkillsBitmask |= unlockSkillBit;
+                            currentPayload.IsDirty = true;
+
+                            long unlockPlayerId = currentPayload.PlayerId;
+                            long unlockEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                            Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    await using var context = await _contextFactory.CreateDbContextAsync();
+                                    context.PlayerSkillUnlocks.Add(new PlayerSkillUnlock
+                                    {
+                                        PlayerId = unlockPlayerId,
+                                        SkillId = unlockSkillId,
+                                        UnlockedAtEpoch = unlockEpoch
+                                    });
+                                    await context.SaveChangesAsync();
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"Failed to persist skill unlock for player {unlockPlayerId}, skill {unlockSkillId}: {ex.Message}");
+                                }
+                            });
+                        }
+                    }
+                    else if (cmd.Command == CommandType.RequestCastSkill)
+                    {
+                        if (!ClientCommandValidator.ValidateSkillCommand(ref currentPayload, cmd.TargetId, (byte)cmd.Command))
+                        {
+                            _activePlayers.Remove(routingPlayerId);
+                            _networkSystem.ForceDisconnect(routingPlayerId);
+                            continue;
+                        }
+
+                        int castSkillId = (int)cmd.TargetId;
+                        currentPayload.LastSkillCastResultTick++;
+                        currentPayload.LastSkillCastId = (byte)castSkillId;
+                        currentPayload.LastSkillCastSuccess = 0;
+
+                        if (ActiveSkillEngine.TryGetSkill(castSkillId, out var castDef))
+                        {
+                            uint castSkillBit = 1u << (castSkillId - 1);
+                            bool isUnlocked = (currentPayload.UnlockedSkillsBitmask & castSkillBit) != 0;
+                            long nowMs = Environment.TickCount64;
+                            long cooldownExpiresAt = ActiveSkillEngine.GetSkillCooldownExpiresAtMs(in currentPayload, castSkillId);
+                            bool offCooldown = nowMs >= cooldownExpiresAt;
+                            bool hasMana = currentPayload.CurrentMana >= castDef.ManaCost;
+
+                            if (isUnlocked && offCooldown && hasMana)
+                            {
+                                currentPayload.CurrentMana -= castDef.ManaCost;
+                                ActiveSkillEngine.SetSkillCooldownExpiresAtMs(ref currentPayload, castSkillId, nowMs + castDef.CooldownMs);
+                                currentPayload.PendingSkillDamageMultiplier = castDef.DamageMultiplierPct / 100f;
+                                currentPayload.LastSkillCastSuccess = 1;
+                            }
+                        }
+
+                        currentPayload.IsDirty = true;
+                    }
                 }
 
                 while (_readyLogins.TryDequeue(out var readyState))
@@ -1798,7 +1881,18 @@ namespace FolkIdle.Server.Engine
                                 CachedStoneStock = currentPayload.CachedStoneStock,
                                 CachedIronOreStock = currentPayload.CachedIronOreStock,
                                 PendingUpgradeBuildingId = currentPayload.PendingUpgradeBuildingId,
-                                PendingUpgradeCompletesAtEpoch = currentPayload.PendingUpgradeCompletesAtEpoch
+                                PendingUpgradeCompletesAtEpoch = currentPayload.PendingUpgradeCompletesAtEpoch,
+                                UnlockedSkillsBitmask = currentPayload.UnlockedSkillsBitmask,
+                                CurrentMana = currentPayload.CurrentMana,
+                                MaxMana = ActiveSkillEngine.ComputeMaxMana(currentPayload.CurrentLevel),
+                                AvailableSkillPoints = currentPayload.AvailableSkillPoints,
+                                Skill1CooldownRemainingMs = ComputeSkillCooldownRemainingMs(in currentPayload, 1),
+                                Skill2CooldownRemainingMs = ComputeSkillCooldownRemainingMs(in currentPayload, 2),
+                                Skill3CooldownRemainingMs = ComputeSkillCooldownRemainingMs(in currentPayload, 3),
+                                Skill4CooldownRemainingMs = ComputeSkillCooldownRemainingMs(in currentPayload, 4),
+                                LastSkillCastId = currentPayload.LastSkillCastId,
+                                LastSkillCastSuccess = currentPayload.LastSkillCastSuccess,
+                                LastSkillCastResultTick = currentPayload.LastSkillCastResultTick
                             };
                             _networkSystem.Broadcast(ref packet);
                             currentPayload.NetworkDiagnosticsToken = 0; // Clear it so it only echoes once
@@ -2237,6 +2331,13 @@ namespace FolkIdle.Server.Engine
             }
 
             RaceAttributeGrowth.ApplyLevelUpGrowth(ref payload, activeRaceId, levelsGained);
+
+            // Active Skill Tree: one skill point per level gained, spent via
+            // RequestUnlockSkill (see ActiveSkillEngine).
+            if (levelsGained > 0)
+            {
+                payload.AvailableSkillPoints += levelsGained;
+            }
         }
 
         private static int ClampLongToInt(long value)
@@ -2699,6 +2800,16 @@ namespace FolkIdle.Server.Engine
                 payload.IsDirty = true; // Flashes state to client implicitly via network loop
             }
 
+            // Active Skill Tree: passive mana regen, unconditional like potion
+            // duration below - runs regardless of gathering/combat activity
+            // type so mana is topped up between casts.
+            int maxMana = ActiveSkillEngine.ComputeMaxMana(payload.CurrentLevel);
+            if (payload.CurrentMana < maxMana)
+            {
+                payload.CurrentMana += ActiveSkillEngine.ManaRegenPerTick;
+                if (payload.CurrentMana > maxMana) payload.CurrentMana = maxMana;
+            }
+
             if (payload.OffensivePotionDurationMs > 0)
             {
                 payload.OffensivePotionDurationMs -= 100;
@@ -2942,6 +3053,16 @@ namespace FolkIdle.Server.Engine
 
                     long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel);
                     int rawDamage = (int)(effectiveMilliAttack * critMult);
+
+                    // Active Skill Tree: a successful RequestCastSkill sets this
+                    // for exactly one attack resolution, then it is consumed
+                    // (reset to 0) here - "injected into the next tick's
+                    // StatsCalculator combat resolution" per the task.
+                    if (payload.PendingSkillDamageMultiplier > 0f)
+                    {
+                        rawDamage = (int)(rawDamage * payload.PendingSkillDamageMultiplier);
+                        payload.PendingSkillDamageMultiplier = 0f;
+                    }
 
                     // Step 3 (Mitigation)
                     int defenderArmor = 0;
