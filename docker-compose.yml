@@ -40,6 +40,11 @@ services:
       # defined in this compose file, and Program.cs already degrades
       # gracefully without one (AbortOnConnectFail=false; session locking,
       # write-behind, and telemetry streaming simply no-op).
+      # JWT_SECRET_KEY is mandatory once DOTNET_ENVIRONMENT=Production - see
+      # Program.cs's isProductionForJwt guard. This placeholder value is for
+      # local compose orchestration only; replace it with a real secret
+      # (e.g. an env_file entry or Docker secret) for any shared deployment.
+      - JWT_SECRET_KEY=folkidle-compose-local-jwt-secret-key-not-for-production-use
     ports:
       - "8080:8080"
     depends_on:

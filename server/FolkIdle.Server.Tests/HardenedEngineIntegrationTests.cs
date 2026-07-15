@@ -1489,7 +1489,7 @@ namespace FolkIdle.Server.Tests
             var playerRegistry = _fixture.PlayerRegistry;
             var contextFactory = _fixture.DbContextFactory;
 
-            var networkSystem = new NetworkBroadcastSystem(serviceProvider, "http://localhost:8082/");
+            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8082/");
             var lootEngine = new LootTableEngine();
             var checkpointManager = new StateCheckpointManager(serviceProvider);
             var forgeEngine = new ForgeSplicingEngine(serviceProvider);
@@ -1684,6 +1684,274 @@ namespace FolkIdle.Server.Tests
             return ConnectionMultiplexer.Connect(options);
         }
 
+        private static string MintTestJwt(Guid accountId)
+        {
+            return AuthenticationEngine.GenerateJwt(accountId, AuthenticationEngine.GenerateSessionNonce(), AuthenticationDefaults.LocalDevelopmentFallback, out _);
+        }
+
+        // Mirrors WebSocketClient.SendAuthHandshakeAsync's fixed-buffer write
+        // pattern - MemoryMarshal.Write needs the JwtToken bytes already
+        // placed inside the struct's fixed buffer before it can blit the
+        // whole AuthHandshakePacket into a wire-ready byte array.
+        private static unsafe byte[] BuildAuthHandshakeBuffer(string jwt)
+        {
+            byte[] jwtBytes = System.Text.Encoding.UTF8.GetBytes(jwt);
+            var packet = new AuthHandshakePacket
+            {
+                JwtTokenLength = (ushort)jwtBytes.Length,
+                AssetHash = 0,
+                PlatformSignature = 0
+            };
+
+            byte* target = packet.JwtToken;
+            for (int i = 0; i < AuthHandshakePacket.JwtTokenCapacity; i++)
+            {
+                target[i] = i < jwtBytes.Length ? jwtBytes[i] : (byte)0;
+            }
+
+            byte[] buffer = new byte[Marshal.SizeOf<AuthHandshakePacket>()];
+            MemoryMarshal.Write(new Span<byte>(buffer), packet);
+            return buffer;
+        }
+
+        // Replicates AuthenticationEngine.GenerateJwt's exact encode shape
+        // locally (rather than adding a test-only overload to production
+        // code) so a token with a past-dated exp claim can be hand-minted.
+        private static string BuildRawJwtWithExpiration(Guid accountId, string sessionNonce, long expirationEpoch, string secretKey)
+        {
+            const string headerJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
+            string headerSegment = Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(headerJson));
+            string payloadJson = "{\"aid\":\"" + accountId.ToString("N") + "\",\"nonce\":\"" + sessionNonce + "\",\"exp\":" + expirationEpoch.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}";
+            string payloadSegment = Base64UrlEncode(System.Text.Encoding.UTF8.GetBytes(payloadJson));
+
+            string signingInput = headerSegment + "." + payloadSegment;
+            using var hmac = new System.Security.Cryptography.HMACSHA256(System.Text.Encoding.UTF8.GetBytes(secretKey));
+            byte[] signature = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(signingInput));
+
+            return signingInput + "." + Base64UrlEncode(signature);
+        }
+
+        private static string Base64UrlEncode(byte[] data)
+        {
+            return Convert.ToBase64String(data).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        }
+
+        private static string TamperSignature(string jwt)
+        {
+            string[] parts = jwt.Split('.');
+            char[] signatureChars = parts[2].ToCharArray();
+            signatureChars[0] = signatureChars[0] == 'A' ? 'B' : 'A';
+            parts[2] = new string(signatureChars);
+            return parts[0] + "." + parts[1] + "." + parts[2];
+        }
+
+        // Sends a handshake packet carrying jwt and asserts the server
+        // closes the connection rather than accepting it - shared by every
+        // "this token must be rejected" scenario below.
+        private static async Task AssertHandshakeRejectedAsync(string wsUrl, string jwt)
+        {
+            using var clientSocket = new ClientWebSocket();
+            try
+            {
+                await clientSocket.ConnectAsync(new Uri(wsUrl), CancellationToken.None);
+            }
+            catch (WebSocketException ex)
+            {
+                Console.WriteLine($"WARNING: Skipping handshake-rejection verification because the local WebSocket listener is unavailable: {ex.Message}");
+                return;
+            }
+
+            byte[] authBuffer = BuildAuthHandshakeBuffer(jwt);
+            await clientSocket.SendAsync(new ArraySegment<byte>(authBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var recvBuffer = new byte[1024];
+            WebSocketReceiveResult result;
+            try
+            {
+                result = await clientSocket.ReceiveAsync(new ArraySegment<byte>(recvBuffer), cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                Assert.Fail("Server never responded to an invalid handshake token; expected a close.");
+                return;
+            }
+
+            Assert.Equal(WebSocketMessageType.Close, result.MessageType);
+        }
+
+        [Fact]
+        public async Task Test_Handshake_GameplayCommandBeforeAuth_TerminatesConnection()
+        {
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8090/");
+            networkSystem.Start();
+
+            try
+            {
+                using var clientSocket = new ClientWebSocket();
+                try
+                {
+                    await clientSocket.ConnectAsync(new Uri("ws://localhost:8090/"), CancellationToken.None);
+                }
+                catch (WebSocketException ex)
+                {
+                    Console.WriteLine($"WARNING: Skipping unauthenticated-gameplay-rejection verification because the local WebSocket listener is unavailable: {ex.Message}");
+                    return;
+                }
+
+                // A gameplay command sent as the very first message - never
+                // preceded by an AuthHandshakePacket - must be rejected
+                // outright, regardless of its contents.
+                var gameplayPacket = new ClientCommandPacket { Command = CommandType.ChangeActivity, TargetId = 1 };
+                byte[] gameplayBuffer = new byte[Marshal.SizeOf<ClientCommandPacket>()];
+                MemoryMarshal.Write(new Span<byte>(gameplayBuffer), gameplayPacket);
+                await clientSocket.SendAsync(new ArraySegment<byte>(gameplayBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+                var recvBuffer = new byte[1024];
+                WebSocketReceiveResult result;
+                try
+                {
+                    result = await clientSocket.ReceiveAsync(new ArraySegment<byte>(recvBuffer), cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    Assert.Fail("Server never responded to a pre-handshake gameplay packet; expected an aggressive close.");
+                    return;
+                }
+
+                Assert.Equal(WebSocketMessageType.Close, result.MessageType);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
+        [Fact]
+        public async Task Test_Auth_ExpiredAndTamperedJwt_RejectedAtHandshakeAndHttp()
+        {
+            const long testPlayerId = 970000010L;
+            Guid accountId = Guid.NewGuid();
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            string expiredJwt = BuildRawJwtWithExpiration(accountId, AuthenticationEngine.GenerateSessionNonce(), DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 3600L, AuthenticationDefaults.LocalDevelopmentFallback);
+            string tamperedJwt = TamperSignature(MintTestJwt(accountId));
+
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8091/");
+            networkSystem.Start();
+
+            try
+            {
+                await AssertHandshakeRejectedAsync("ws://localhost:8091/", expiredJwt);
+                await AssertHandshakeRejectedAsync("ws://localhost:8091/", tamperedJwt);
+
+                using var httpClient = new System.Net.Http.HttpClient();
+
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", expiredJwt);
+                var expiredResponse = await httpClient.GetAsync("http://localhost:8091/api/v1/market/listings?baseItemId=x&qualityTier=0&pageIndex=0&pageSize=10");
+                Assert.Equal(System.Net.HttpStatusCode.Unauthorized, expiredResponse.StatusCode);
+
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", tamperedJwt);
+                var tamperedResponse = await httpClient.GetAsync("http://localhost:8091/api/v1/market/listings?baseItemId=x&qualityTier=0&pageIndex=0&pageSize=10");
+                Assert.Equal(System.Net.HttpStatusCode.Unauthorized, tamperedResponse.StatusCode);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
+        [Fact]
+        public async Task Test_Handshake_ConcurrentConnectionsSameAccount_EvictsStaleSession()
+        {
+            const long testPlayerId = 970000011L;
+            Guid accountId = Guid.NewGuid();
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8092/");
+            networkSystem.Start();
+
+            try
+            {
+                using var firstSocket = new ClientWebSocket();
+                try
+                {
+                    await firstSocket.ConnectAsync(new Uri("ws://localhost:8092/"), CancellationToken.None);
+                }
+                catch (WebSocketException ex)
+                {
+                    Console.WriteLine($"WARNING: Skipping concurrent-session-eviction verification because the local WebSocket listener is unavailable: {ex.Message}");
+                    return;
+                }
+
+                byte[] firstAuthBuffer = BuildAuthHandshakeBuffer(MintTestJwt(accountId));
+                await firstSocket.SendAsync(new ArraySegment<byte>(firstAuthBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                // Give the accept loop time to complete the first handshake
+                // and register the session before the second connection
+                // contests ownership of the same account.
+                await Task.Delay(500);
+                Assert.Equal(WebSocketState.Open, firstSocket.State);
+
+                var firstCloseDetected = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _ = Task.Run(async () =>
+                {
+                    var buffer = new byte[64];
+                    try
+                    {
+                        while (firstSocket.State == WebSocketState.Open)
+                        {
+                            var result = await firstSocket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                            if (result.MessageType == WebSocketMessageType.Close)
+                            {
+                                firstCloseDetected.TrySetResult(true);
+                                break;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        firstCloseDetected.TrySetResult(true);
+                    }
+                });
+
+                using var secondSocket = new ClientWebSocket();
+                await secondSocket.ConnectAsync(new Uri("ws://localhost:8092/"), CancellationToken.None);
+
+                byte[] secondAuthBuffer = BuildAuthHandshakeBuffer(MintTestJwt(accountId));
+                await secondSocket.SendAsync(new ArraySegment<byte>(secondAuthBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                var completed = await Task.WhenAny(firstCloseDetected.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+                Assert.True(completed == firstCloseDetected.Task, "Expected the first (stale) session to be evicted once the second connection authenticated for the same account.");
+
+                // The second connection is the new live session for this
+                // account - confirm the eviction did not also take it down.
+                await Task.Delay(300);
+                Assert.Equal(WebSocketState.Open, secondSocket.State);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
         [Fact]
         public async Task Test_ChronoCore_ConcurrentConsumption_SerializesViaForUpdateLock()
         {
@@ -1774,25 +2042,23 @@ namespace FolkIdle.Server.Tests
         public async Task Test_AntiCheat_AutomationFlag_TriggersImmediateSocketEvictionAndMarketSequestration()
         {
             const long testPlayerId = 970000003L;
-            var authToken = Guid.NewGuid();
+            Guid accountId = Guid.NewGuid();
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), IsQuarantined = false, Quarantine_Active = false });
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid(), IsQuarantined = false, Quarantine_Active = false });
                 db.MarketOrderRecords.Add(new MarketOrderRecord { SellerId = testPlayerId, Price = 100, Status = 0, OrderType = "SELL", BaseItemId = "copper_ore", QualityTier = 0 });
                 await db.SaveChangesAsync();
             }
 
             using var offlineRedis = CreateOfflineRedisMultiplexer();
-            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, "http://localhost:8083/");
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8083/");
             var antiCheatEngine = new AntiCheatTelemetryEngine(_fixture.ServiceProvider, offlineRedis, _fixture.PlayerRegistry, networkSystem);
             networkSystem.RegisterAntiCheatTelemetryEngine(antiCheatEngine);
             networkSystem.Start();
 
             try
             {
-                networkSystem.ActiveTokenCache.TryAdd(authToken, new CachedTokenEntry { PlayerId = testPlayerId, ExpirationEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 3600L });
-
                 using var clientSocket = new ClientWebSocket();
                 try
                 {
@@ -1807,9 +2073,7 @@ namespace FolkIdle.Server.Tests
                     return;
                 }
 
-                var authPacket = new ClientAuthPacket { PlayerGuid = Guid.NewGuid(), AuthenticatorToken = authToken, EpochExpirationTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds() };
-                byte[] authBuffer = new byte[Marshal.SizeOf<ClientAuthPacket>()];
-                MemoryMarshal.Write(new Span<byte>(authBuffer), authPacket);
+                byte[] authBuffer = BuildAuthHandshakeBuffer(MintTestJwt(accountId));
                 await clientSocket.SendAsync(new ArraySegment<byte>(authBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
 
                 // Give the accept loop time to complete the handshake and

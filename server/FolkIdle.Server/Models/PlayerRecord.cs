@@ -8,6 +8,14 @@ namespace FolkIdle.Server.Models
         public int SelectedLineageId { get; set; }
         public System.Guid PlayerGuid { get; set; }
         public System.Guid AuthenticatorToken { get; set; }
+
+        // Modul: device-ID login identity, resolved by AuthenticationEngine.
+        // LoginOrProvisionAsync at /api/v1/auth/login. Null for any row
+        // created before this existed (DbSeeder rows, pre-JWT test fixtures).
+        // Nothing reads this outside the login flow itself - PlayerGuid
+        // remains the AccountId used everywhere else (AccountSecurityQuotas,
+        // JWT claims, purchase/refund webhooks).
+        public string? DeviceId { get; set; }
         public long LastLogoutTimestamp { get; set; }
         public int AccumulatedTimeBankSeconds { get; set; }
         public long GuildId { get; set; }

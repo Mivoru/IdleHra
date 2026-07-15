@@ -32,6 +32,17 @@ serviceCollection.AddDbContextFactory<FolkIdleDbContext>(options =>
     options.UseNpgsql(connectionString));
 serviceCollection.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
 
+var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
+if (jwtSecretKey == null)
+{
+    bool isProductionForJwt = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") == "Production";
+    if (isProductionForJwt)
+    {
+        throw new InvalidOperationException("JWT_SECRET_KEY must be set when DOTNET_ENVIRONMENT is Production.");
+    }
+    jwtSecretKey = AuthenticationDefaults.LocalDevelopmentFallback;
+}
+
 var redisConfiguration = ConfigurationOptions.Parse(Environment.GetEnvironmentVariable("REDIS_CONNECTION") ?? "localhost:6379");
 redisConfiguration.AbortOnConnectFail = false;
 redisConfiguration.ConnectRetry = 1;
@@ -54,7 +65,7 @@ if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") != "Production")
 var redisMultiplexer = serviceProvider.GetRequiredService<IConnectionMultiplexer>();
 TelemetryStreamer.ConfigureRedis(redisMultiplexer);
 
-var networkSystem = new NetworkBroadcastSystem(serviceProvider, "http://localhost:8080/");
+var networkSystem = new NetworkBroadcastSystem(serviceProvider, jwtSecretKey, "http://localhost:8080/");
 var lootEngine = new LootTableEngine();
 var checkpointManager = new StateCheckpointManager(serviceProvider);
 var playerRegistry = new PlayerSessionRegistry();

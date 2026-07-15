@@ -11,6 +11,7 @@ using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 
 namespace FolkIdle.Server.Network
 {
@@ -39,28 +40,10 @@ namespace FolkIdle.Server.Network
         public int MultiplierValue;
     }
 
-    // Modul 29/45: ActiveTokenCache entry. ExpirationEpoch is always
-    // server-computed (nowEpoch + TokenFreshnessWindowSeconds) at the time the
-    // token was resolved - never taken directly from the client-supplied
-    // ClientAuthPacket.EpochExpirationTime, so a client cannot extend its own
-    // cache lifetime by claiming a far-future timestamp. That client-supplied
-    // timestamp is only used for the one-time handshake freshness check.
-    public struct CachedTokenEntry
-    {
-        public long PlayerId;
-        public long ExpirationEpoch;
-    }
-
     public class NetworkBroadcastSystem
     {
         private readonly HttpListener _httpListener;
         private readonly ConcurrentDictionary<long, WebSocketSession> _connectedClients = new();
-        public ConcurrentDictionary<Guid, CachedTokenEntry> ActiveTokenCache { get; } = new();
-
-        // Modul 29/45: 24-hour freshness window, applied both to the initial
-        // handshake check against the client-supplied EpochExpirationTime and
-        // to the server's own ActiveTokenCache entry lifetime.
-        private const long TokenFreshnessWindowSeconds = 86400L;
 
         private bool _isRunning;
         private readonly byte[] _broadcastBuffer = new byte[Marshal.SizeOf<StateUpdatePacket>()];
@@ -73,13 +56,15 @@ namespace FolkIdle.Server.Network
         private readonly IServiceProvider _serviceProvider;
         private readonly IDbContextFactory<FolkIdleDbContext> _contextFactory;
         private readonly RedisPlayerSessionLock? _redisSessionLock;
+        private readonly string _jwtSecretKey;
         private AntiCheatTelemetryEngine? _antiCheatTelemetryEngine;
 
-        public NetworkBroadcastSystem(IServiceProvider serviceProvider, string uriPrefix = "http://localhost:8080/")
+        public NetworkBroadcastSystem(IServiceProvider serviceProvider, string jwtSecretKey, string uriPrefix = "http://localhost:8080/")
         {
             _serviceProvider = serviceProvider;
             _contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
             _redisSessionLock = serviceProvider.GetService<RedisPlayerSessionLock>();
+            _jwtSecretKey = jwtSecretKey;
             _httpListener = new HttpListener();
             _httpListener.Prefixes.Add(uriPrefix);
         }
@@ -99,6 +84,50 @@ namespace FolkIdle.Server.Network
             _httpListener.Start();
             _isRunning = true;
             Task.Run(ListenLoopAsync);
+            SubscribeToSessionEviction();
+        }
+
+        // Modul: one persistent pod-wide subscription (not one per
+        // connection) to RedisPlayerSessionLock.EvictionChannel - a login on
+        // any pod (including this one) publishes "{playerId}:{newToken}"
+        // whenever it force-acquires that player's session lock. If this pod
+        // is holding a _connectedClients entry for that player whose lock
+        // token does not match what was just announced, that connection is
+        // the one that just got superseded and is disconnected immediately -
+        // this is what makes eviction work across pods, not just within one.
+        private void SubscribeToSessionEviction()
+        {
+            var redis = _serviceProvider.GetService<IConnectionMultiplexer>();
+            if (redis == null || !redis.IsConnected)
+            {
+                return;
+            }
+
+            var subscriber = redis.GetSubscriber();
+            subscriber.Subscribe(RedisChannel.Literal(RedisPlayerSessionLock.EvictionChannel), HandleSessionEvictionMessage);
+        }
+
+        private void HandleSessionEvictionMessage(RedisChannel channel, RedisValue message)
+        {
+            string payload = message.ToString();
+            int separatorIndex = payload.IndexOf(':');
+            if (separatorIndex <= 0)
+            {
+                return;
+            }
+
+            if (!long.TryParse(payload.AsSpan(0, separatorIndex), out long playerId))
+            {
+                return;
+            }
+
+            string newToken = payload.Substring(separatorIndex + 1);
+
+            if (_connectedClients.TryGetValue(playerId, out var session) && session.RedisLockToken != newToken)
+            {
+                Console.WriteLine($"Session eviction: player {playerId} superseded by a new login, disconnecting stale connection.");
+                ForceDisconnect(playerId);
+            }
         }
 
         public void Stop()
@@ -183,6 +212,12 @@ namespace FolkIdle.Server.Network
 
                         context.Response.StatusCode = 200;
                         context.Response.Close();
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/auth/login" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleAuthLogin(context);
                         continue;
                     }
 
@@ -419,7 +454,8 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
                 {
                     context.Response.StatusCode = 401;
                     context.Response.Close();
@@ -483,7 +519,8 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
                 {
                     context.Response.StatusCode = 401;
                     context.Response.Close();
@@ -585,7 +622,8 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
                 {
                     context.Response.StatusCode = 401;
                     context.Response.Close();
@@ -648,7 +686,8 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
                 {
                     context.Response.StatusCode = 401;
                     context.Response.Close();
@@ -763,7 +802,8 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
                 {
                     context.Response.StatusCode = 401;
                     context.Response.Close();
@@ -829,7 +869,8 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
                 {
                     context.Response.StatusCode = 401;
                     context.Response.Close();
@@ -942,7 +983,8 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
                 {
                     context.Response.StatusCode = 401;
                     context.Response.Close();
@@ -1051,7 +1093,8 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
                 {
                     context.Response.StatusCode = 401;
                     context.Response.Close();
@@ -1174,7 +1217,8 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
                 {
                     context.Response.StatusCode = 401;
                     context.Response.Close();
@@ -1222,7 +1266,8 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
                 {
                     context.Response.StatusCode = 401;
                     context.Response.Close();
@@ -1273,7 +1318,8 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                if (!TryResolveAuthenticatedPlayer(context.Request, out long playerId))
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
                 {
                     context.Response.StatusCode = 401;
                     context.Response.Close();
@@ -1331,31 +1377,49 @@ namespace FolkIdle.Server.Network
             context.Response.Close();
         }
 
-        private bool TryResolveAuthenticatedPlayer(HttpListenerRequest request, out long playerId)
+        // Modul: small in-memory cache to avoid a DB round trip on every
+        // single authenticated HTTP request (market/codex/breeding/mastery/
+        // achievements/forge/guild-logistics/storefront/leaderboard
+        // snapshots all call through here) - the AccountId<->PlayerId
+        // mapping is immutable once an account exists, so this never needs
+        // invalidation or expiry.
+        private readonly ConcurrentDictionary<Guid, long> _accountIdToPlayerIdCache = new();
+
+        private async Task<long> TryResolveAuthenticatedPlayerAsync(HttpListenerRequest request)
         {
-            playerId = 0;
-
-            Guid token;
-            string headerToken = request.Headers["X-Authenticator-Token"] ?? string.Empty;
-            if (!Guid.TryParse(headerToken, out token))
+            const string bearerPrefix = "Bearer ";
+            string bearerHeader = request.Headers["Authorization"] ?? string.Empty;
+            if (bearerHeader.Length <= bearerPrefix.Length || !bearerHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
             {
-                const string bearerPrefix = "Bearer ";
-                string bearerHeader = request.Headers["Authorization"] ?? string.Empty;
-                if (bearerHeader.Length <= bearerPrefix.Length ||
-                    !bearerHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase) ||
-                    !Guid.TryParse(bearerHeader.AsSpan(bearerPrefix.Length), out token))
-                {
-                    return false;
-                }
+                return 0L;
             }
 
-            if (ActiveTokenCache.TryGetValue(token, out CachedTokenEntry entry) && entry.ExpirationEpoch > DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+            string token = bearerHeader.Substring(bearerPrefix.Length);
+            JwtValidationResult result = AuthenticationEngine.ValidateJwt(token, _jwtSecretKey);
+            if (!result.IsValid)
             {
-                playerId = entry.PlayerId;
-                return true;
+                return 0L;
             }
 
-            return false;
+            return await ResolvePlayerIdFromAccountIdAsync(result.AccountId);
+        }
+
+        private async Task<long> ResolvePlayerIdFromAccountIdAsync(Guid accountId)
+        {
+            if (_accountIdToPlayerIdCache.TryGetValue(accountId, out long cachedPlayerId))
+            {
+                return cachedPlayerId;
+            }
+
+            await using var db = await _contextFactory.CreateDbContextAsync();
+            var player = await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.PlayerGuid == accountId);
+            if (player == null)
+            {
+                return 0L;
+            }
+
+            _accountIdToPlayerIdCache[accountId] = player.Id;
+            return player.Id;
         }
 
         private async Task HandleVerifyReceipt(HttpListenerContext context)
@@ -1509,10 +1573,28 @@ namespace FolkIdle.Server.Network
             return true;
         }
 
-        private ClientAuthPacket ParseAuthPacket(byte[] buffer, int count)
+        private AuthHandshakePacket ParseAuthHandshakePacket(byte[] buffer, int count)
         {
             ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(buffer, 0, count);
-            return MemoryMarshal.Read<ClientAuthPacket>(span);
+            return MemoryMarshal.Read<AuthHandshakePacket>(span);
+        }
+
+        // Mirrors SimulationEngine.CopyDeviceTokenBytes's exact fixed-buffer
+        // read pattern (see ClientCommandPacket.DeviceTokenBytes), just
+        // trimmed to the sender-declared JwtTokenLength instead of always
+        // copying the full fixed capacity.
+        private static unsafe string ExtractJwtToken(ref AuthHandshakePacket packet)
+        {
+            int length = packet.JwtTokenLength;
+            if (length < 0 || length > AuthHandshakePacket.JwtTokenCapacity)
+            {
+                length = 0;
+            }
+
+            fixed (byte* source = packet.JwtToken)
+            {
+                return System.Text.Encoding.UTF8.GetString(source, length);
+            }
         }
 
         private void ParseAdminCommand(byte[] buffer, int count)
@@ -1544,68 +1626,81 @@ namespace FolkIdle.Server.Network
             Interlocked.Increment(ref _acceptedPacketsWindow);
         }
 
-        // Modul 16/21: creates a brand new PlayerRecord + its default active
-        // Character/lineage row + starting resources for a client whose token
-        // was never registered. This is the only production path that ever
-        // creates a PlayerRecord from a live client connection - everything
-        // else (DbSeeder, tests) is offline seeding. The new character becomes
-        // Slot1 automatically on next login: StateCheckpointManager.LoadPlayerState
-        // hydrates Slot1 from simply "the player's first CharacterRecord", with
-        // no separate roster-assignment table to populate.
-        private async Task<long> AutoProvisionPlayerAsync(Guid authenticatorToken)
+        private sealed class AuthLoginResponse
         {
-            using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-            using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            public string Token { get; set; } = string.Empty;
+            public long ExpiresAtEpoch { get; set; }
+        }
 
+        // Modul: sole controlled entry point for account identity issuance.
+        // DeviceId is a client-persisted GUID (see UiLoginWindow on the
+        // client) - looked up or auto-provisioned via AuthenticationEngine.
+        // LoginOrProvisionAsync, then a fresh SessionNonce is minted and
+        // signed into a JWT. That SessionNonce round-trips through the
+        // WebSocket AuthHandshakePacket at connect time and is what the
+        // Redis eviction check in HandleClientLoopAsync uses to detect and
+        // kick a stale prior session for the same account.
+        private async Task HandleAuthLogin(HttpListenerContext context)
+        {
             try
             {
-                Guid characterId = Guid.NewGuid();
-
-                var player = new PlayerRecord
+                if (!context.Request.HasEntityBody)
                 {
-                    CurrentLevel = 1,
-                    CurrentXp = 0L,
-                    SelectedLineageId = 1,
-                    PlayerGuid = characterId,
-                    AuthenticatorToken = authenticatorToken,
-                    LastLogoutTimestamp = 0L,
-                    PremiumDiamonds = 0
-                };
-                db.PlayerRecords.Add(player);
-                await db.SaveChangesAsync();
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
 
-                db.CharacterRecords.Add(new CharacterRecord
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                string body = await reader.ReadToEndAsync();
+
+                string deviceId;
+                try
                 {
-                    Id = characterId,
-                    PlayerId = player.Id,
-                    Level = 1,
-                    AgePhase = 1,
-                    AgeTicks = 0L
-                });
-
-                db.CharacterLineages.Add(new CharacterLineageRegistry
+                    using var document = System.Text.Json.JsonDocument.Parse(body);
+                    if (!document.RootElement.TryGetProperty("deviceId", out var deviceIdElement))
+                    {
+                        context.Response.StatusCode = 400;
+                        context.Response.Close();
+                        return;
+                    }
+                    deviceId = deviceIdElement.GetString() ?? string.Empty;
+                }
+                catch (System.Text.Json.JsonException)
                 {
-                    CharacterId = characterId,
-                    GenerationIndex = 0,
-                    GeneticVector = RaceIds.Human
-                });
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
 
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = "gold", Quantity = 1000L });
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = ContentRegistry.GetMaterialString(1), Quantity = 25L });
+                if (string.IsNullOrWhiteSpace(deviceId) || deviceId.Length > 128)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
 
-                await db.SaveChangesAsync();
-                await transaction.CommitAsync();
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
-                Console.WriteLine($"Auto-provisioned new player {player.Id} for a previously unregistered token.");
-                return player.Id;
+                (_, Guid accountId) = await AuthenticationEngine.LoginOrProvisionAsync(db, deviceId);
+
+                string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
+                string token = AuthenticationEngine.GenerateJwt(accountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);
+
+                var response = new AuthLoginResponse { Token = token, ExpiresAtEpoch = expiresAtEpoch };
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
-                Console.WriteLine($"Auto-provisioning failed: {ex.Message}");
-                return 0L;
+                Console.WriteLine($"Auth login error: {ex}");
+                context.Response.StatusCode = 500;
             }
+
+            context.Response.Close();
         }
 
         private async Task<bool> IsPlayerBlacklistedAsync(long playerId)
@@ -1660,92 +1755,85 @@ namespace FolkIdle.Server.Network
             {
                 using var cts = new CancellationTokenSource(5000);
                 var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
-                
-                if (result.MessageType == WebSocketMessageType.Binary && result.Count >= Marshal.SizeOf<ClientAuthPacket>())
+
+                // Modul: mandatory JWT-gated handshake. No gameplay CommandType
+                // is ever accepted before this succeeds - the receive loop
+                // below is only reached once playerId has been resolved from a
+                // cryptographically verified token, replacing the old scheme
+                // where any syntactically-valid, previously-unseen raw Guid
+                // token auto-provisioned a brand new account with zero
+                // credential verification (the exact vulnerability this
+                // handshake exists to close).
+                if (result.MessageType == WebSocketMessageType.Binary && result.Count >= Marshal.SizeOf<AuthHandshakePacket>())
                 {
-                    var authPacket = ParseAuthPacket(buffer, result.Count);
+                    var authPacket = ParseAuthHandshakePacket(buffer, result.Count);
+                    string jwtToken = ExtractJwtToken(ref authPacket);
 
-                    long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-
-                    // Modul 29/45: structured handshake freshness check. This is
-                    // a replay-window check against the client-supplied payload
-                    // timestamp (reject if older than 24 hours), not full JWT
-                    // signature verification - there is no shared-secret signing
-                    // scheme elsewhere in this codebase to verify a signature
-                    // against, so a genuine JWT would need its own dedicated
-                    // key-distribution design rather than being bolted on here.
-                    if (authPacket.EpochExpirationTime <= 0 || nowEpoch - authPacket.EpochExpirationTime > TokenFreshnessWindowSeconds)
+                    JwtValidationResult validation = AuthenticationEngine.ValidateJwt(jwtToken, _jwtSecretKey);
+                    if (!validation.IsValid)
                     {
-                        await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Token expired", CancellationToken.None);
+                        await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Invalid or expired token", CancellationToken.None);
                         return;
                     }
 
-                    EvictExpiredTokens(nowEpoch);
-
-                    bool tokenResolved = ActiveTokenCache.TryGetValue(authPacket.AuthenticatorToken, out CachedTokenEntry cachedEntry) && cachedEntry.ExpirationEpoch > nowEpoch;
-                    long mappedId = tokenResolved ? cachedEntry.PlayerId : 0L;
-
-                    // Modul 16/21: there is no OAuth/guest-issuance flow anywhere in this
-                    // codebase - DbSeeder and test fixtures are the only other writers of
-                    // PlayerRecords, and neither runs against a live client connection. A
-                    // syntactically valid (non-empty) token the server has never seen
-                    // before auto-provisions a brand new account instead of being rejected,
-                    // so a fresh client can actually enter the game.
-                    if (!tokenResolved && authPacket.AuthenticatorToken != Guid.Empty)
+                    long resolvedPlayerId = await ResolvePlayerIdFromAccountIdAsync(validation.AccountId);
+                    if (resolvedPlayerId <= 0)
                     {
-                        mappedId = await AutoProvisionPlayerAsync(authPacket.AuthenticatorToken);
-                        tokenResolved = mappedId > 0;
-                    }
-
-                    if (tokenResolved)
-                    {
-                        ActiveTokenCache[authPacket.AuthenticatorToken] = new CachedTokenEntry { PlayerId = mappedId, ExpirationEpoch = nowEpoch + TokenFreshnessWindowSeconds };
-                    }
-
-                    if (tokenResolved)
-                    {
-                        playerId = mappedId;
-                        if (await IsPlayerBlacklistedAsync(playerId))
-                        {
-                            await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Account blacklisted", CancellationToken.None);
-                            return;
-                        }
-
-                        if (_redisSessionLock != null)
-                        {
-                            redisLockToken = await _redisSessionLock.TryAcquireAsync(playerId);
-                            if (redisLockToken == null)
-                            {
-                                await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Session lock held", CancellationToken.None);
-                                return;
-                            }
-
-                            lockRenewalCts = new CancellationTokenSource();
-                            lockRenewalTask = RunRedisLockRenewalAsync(playerId, redisLockToken, lockRenewalCts.Token);
-                        }
-
-                        if (!ClientCommandValidator.ValidateAssetIntegrity(authPacket.AssetHash, authPacket.PlatformSignature, playerId))
-                        {
-                            await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Asset Integrity Failure", CancellationToken.None);
-                            return;
-                        }
-
-                        if (!_connectedClients.TryAdd(playerId, new WebSocketSession(socket, redisLockToken ?? string.Empty)))
-                        {
-                            await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Session already active", CancellationToken.None);
-                            return;
-                        }
-                        CommandQueue.Enqueue(new PlayerCommand { PlayerId = playerId, Packet = new ClientCommandPacket { Command = CommandType.Login, TargetId = playerId } }); 
-                    }
-                    else
-                    {
-                        await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Invalid token", CancellationToken.None);
+                        await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Unknown account", CancellationToken.None);
                         return;
                     }
+
+                    playerId = resolvedPlayerId;
+
+                    if (await IsPlayerBlacklistedAsync(playerId))
+                    {
+                        await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Account blacklisted", CancellationToken.None);
+                        return;
+                    }
+
+                    // Modul: force-acquire always succeeds and publishes an
+                    // eviction notice (see RedisPlayerSessionLock.
+                    // ForceAcquireAndEvictAsync) rather than the old
+                    // TryAcquireAsync, which rejected a NEW connection outright
+                    // whenever an old lock was still held - a successful JWT
+                    // handshake is a deliberate, authenticated act of claiming
+                    // this account's single live session, so it always wins
+                    // against whatever connection existed before it, closing
+                    // the multi-boxing exploit this task's Part 2 exists to fix.
+                    if (_redisSessionLock != null)
+                    {
+                        redisLockToken = await _redisSessionLock.ForceAcquireAndEvictAsync(playerId);
+
+                        lockRenewalCts = new CancellationTokenSource();
+                        lockRenewalTask = RunRedisLockRenewalAsync(playerId, redisLockToken, lockRenewalCts.Token);
+                    }
+
+                    if (!ClientCommandValidator.ValidateAssetIntegrity(authPacket.AssetHash, authPacket.PlatformSignature, playerId))
+                    {
+                        await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Asset Integrity Failure", CancellationToken.None);
+                        return;
+                    }
+
+                    // Modul: same-pod eviction complements the cross-pod Redis
+                    // Pub/Sub eviction above - if this exact pod already holds
+                    // the stale connection for this account (the common case
+                    // for a simple reconnect), it is force-disconnected here
+                    // immediately rather than waiting on the eviction message
+                    // this same handshake just published to itself.
+                    if (_connectedClients.TryRemove(playerId, out var staleSession))
+                    {
+                        if (staleSession.Socket.State == WebSocketState.Open)
+                        {
+                            _ = staleSession.Socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Superseded by a new login", CancellationToken.None);
+                        }
+                    }
+
+                    _connectedClients[playerId] = new WebSocketSession(socket, redisLockToken ?? string.Empty);
+                    CommandQueue.Enqueue(new PlayerCommand { PlayerId = playerId, Packet = new ClientCommandPacket { Command = CommandType.Login, TargetId = playerId } });
                 }
                 else
                 {
-                    await socket.CloseAsync(WebSocketCloseStatus.InvalidMessageType, "Expected Auth Packet", CancellationToken.None);
+                    await socket.CloseAsync(WebSocketCloseStatus.InvalidMessageType, "Expected Auth Handshake Packet", CancellationToken.None);
                     return;
                 }
 
@@ -1887,37 +1975,20 @@ namespace FolkIdle.Server.Network
             }
         }
 
+        // Modul: no-op under the JWT scheme - there is no server-side token
+        // cache to purge anymore (a JWT is self-verifying and stateless; it
+        // remains cryptographically valid until it naturally expires).
+        // Retained only so the ~10 existing SimulationEngine call sites that
+        // pair this with ForceDisconnect on a validation failure need no
+        // changes - ForceDisconnect is what actually terminates the
+        // connection at each of those sites; this call was never anything
+        // more than a companion cleanup step even under the old scheme.
         public void PurgeTokensForPlayer(long playerId)
         {
-            foreach (var kvp in ActiveTokenCache)
-            {
-                if (kvp.Value.PlayerId == playerId)
-                {
-                    ActiveTokenCache.TryRemove(kvp.Key, out _);
-                }
-            }
-        }
-
-        // Modul 29/45: thread-safe eviction of stale ActiveTokenCache entries.
-        // ConcurrentDictionary's TryRemove is safe to call concurrently with
-        // readers/writers on other keys, mirroring PurgeTokensForPlayer's
-        // existing iterate-and-remove pattern. Invoked inline on every new
-        // handshake rather than from a separate background timer, since
-        // connection attempts already provide a natural, frequent trigger.
-        private void EvictExpiredTokens(long nowEpoch)
-        {
-            foreach (var kvp in ActiveTokenCache)
-            {
-                if (kvp.Value.ExpirationEpoch <= nowEpoch)
-                {
-                    ActiveTokenCache.TryRemove(kvp.Key, out _);
-                }
-            }
         }
 
         public async Task DisconnectAllClientsGracefullyAsync()
         {
-            ActiveTokenCache.Clear();
             var tasks = new System.Collections.Generic.List<Task>();
             var sockets = new System.Collections.Generic.List<WebSocket>();
             foreach (var kvp in _connectedClients)

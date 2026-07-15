@@ -32,7 +32,8 @@ spec:
         # to this repository. Example:
         #   kubectl create secret generic folkidle-server-secrets \
         #     --from-literal=postgres-connection-string="Host=...;Database=...;Username=...;Password=..." \
-        #     --from-literal=redis-connection-string="redis-host:6379"
+        #     --from-literal=redis-connection-string="redis-host:6379" \
+        #     --from-literal=jwt-secret-key="<random high-entropy secret, rotate periodically>"
         env:
         - name: DOTNET_ENVIRONMENT
           value: "Production"
@@ -46,6 +47,11 @@ spec:
             secretKeyRef:
               name: folkidle-server-secrets
               key: redis-connection-string
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: folkidle-server-secrets
+              key: jwt-secret-key
         resources:
           requests:
             cpu: "500m"

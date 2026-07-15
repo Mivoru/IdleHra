@@ -17,9 +17,6 @@
 **/Build/
 **/.AssetsBin/
 
-# Target: Local developer secrets (see StreamingAssets/auth_config.json.example)
-**/StreamingAssets/auth_config.json
-
 # Target: OS & IDE files
 .DS_Store
 Thumbs.db

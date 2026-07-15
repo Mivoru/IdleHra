@@ -137,12 +137,27 @@ on top of the primary key.
 ## 7. Client Network Layer
 
 Binary, fixed-layout packet structs shared in spirit (not in code) between
-client and server: `ClientAuthPacket` (48 bytes), `ClientCommandPacket`
+client and server: `AuthHandshakePacket` (530 bytes), `ClientCommandPacket`
 (384 bytes), `StateUpdatePacket` (654 bytes). Both sides validate their own
 compiled struct size at startup against these constants
-(`server/FolkIdle.Server/Network/NetworkPacketLayoutGuard.cs`, called from
-`Program.cs`; no client-side equivalent existed prior to this pass - see
-below).
+(`server/FolkIdle.Server/Network/NetworkPacketLayoutGuard.cs` /
+`client/Assets/Scripts/Network/NetworkPacketLayoutGuard.cs`, the latter
+called from `WebSocketClient.Start`).
+
+Connections authenticate via a hand-rolled HMAC-SHA256 JWT
+(`Engine/AuthenticationEngine.cs`), not a raw bearer Guid. The client obtains
+one from `POST /api/v1/auth/login` (device-ID login-or-provision, see
+`UiLoginWindow.cs`), then sends it as the very first WebSocket message inside
+an `AuthHandshakePacket`; `NetworkBroadcastSystem.HandleClientLoopAsync`
+rejects any connection whose first message is not a valid, cryptographically
+verified handshake, closing the socket before any gameplay `CommandType`
+packet is ever read. A successful handshake force-acquires that account's
+`RedisPlayerSessionLock` and evicts any existing session for the same
+`AccountId` (same-pod via direct `_connectedClients` replacement, cross-pod
+via the `session-evict` Redis Pub/Sub channel), preventing multi-boxing.
+Authenticated HTTP endpoints (forge inventory, market browser, breeding
+roster/preview, codex, race mastery, achievements) read the same JWT from an
+`Authorization: Bearer` header via `TryResolveAuthenticatedPlayerAsync`.
 
 `client/Assets/Scripts/Network/UnsafePacketParser.cs` deserializes inbound
 `StateUpdatePacket`s via `Unsafe.ReadUnaligned`. As of this pass it exposes

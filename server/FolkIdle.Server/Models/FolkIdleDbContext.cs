@@ -68,6 +68,15 @@ namespace FolkIdle.Server.Models
             modelBuilder.Entity<GuildMatchmakingSnapshot>()
                 .HasIndex(g => g.TournamentGroupIndex);
 
+            // Modul: unique login identity for AuthenticationEngine.
+            // LoginOrProvisionAsync. Postgres unique indexes treat NULL as
+            // distinct from every other NULL, so rows without a DeviceId
+            // (every row created before this existed) never collide with
+            // each other.
+            modelBuilder.Entity<PlayerRecord>()
+                .HasIndex(p => p.DeviceId)
+                .IsUnique();
+
             modelBuilder.Entity<GuildWarDefensiveSnapshot>()
                 .Property(g => g.RosterPayloadJson)
                 .HasColumnType("jsonb");

@@ -10,22 +10,30 @@ namespace FolkIdle.Client.Network
 {
     public class WebSocketClient : MonoBehaviour
     {
-        // Session token expected by NetworkBroadcastSystem's authenticated HTTP
-        // endpoints (X-Authenticator-Token header) and by the WS ClientAuthPacket
-        // handshake. Neither the WS auth handshake nor a login flow are implemented
-        // on the client yet, so this stays empty until that module exists; callers
-        // that send it today (e.g. EquipmentInventoryCache) will simply get 401s.
+        // JWT issued by POST /api/v1/auth/login (see UiLoginWindow) - sent as
+        // the WS AuthHandshakePacket's payload and as the Authorization: Bearer
+        // header on authenticated HTTP endpoints (e.g. EquipmentInventoryCache).
+        // Stays empty until UiLoginWindow completes a successful login; Connect()
+        // refuses to open a socket while empty.
         public static string AuthenticatorToken = string.Empty;
+
+        // Fires exactly once per connection, the first time a StateUpdatePacket
+        // arrives after a successful handshake - this is the "state confirmation"
+        // UiLoginWindow waits on before hiding its blocking panel, since it is
+        // the first proof the server accepted the JWT and resolved a playerId.
+        public event Action OnStateConfirmed;
+        public bool IsAuthenticated { get; private set; }
 
         private ClientWebSocket _webSocket;
         private CancellationTokenSource _cts;
+        private bool _isConnecting;
 
         // Single reusable buffer to prevent GC allocations in unity Update
         private byte[] _receiveBuffer = new byte[1024];
 
         // Reused across connection attempts/retries so the handshake send never
         // allocates on the hot path.
-        private readonly byte[] _authBuffer = new byte[Marshal.SizeOf<ClientAuthPacket>()];
+        private readonly byte[] _authBuffer = new byte[Marshal.SizeOf<AuthHandshakePacket>()];
 
         // Thread-safe queue for main-thread consumption
         public ConcurrentQueue<StateUpdatePacket> PacketQueue { get; } = new ConcurrentQueue<StateUpdatePacket>();
@@ -35,9 +43,19 @@ namespace FolkIdle.Client.Network
 
         public void Start()
         {
-            AuthTokenBootstrap.Initialize();
             NetworkPacketLayoutGuard.Validate();
             FlightRecorder.Initialize();
+        }
+
+        // Called by UiLoginWindow only after a successful /api/v1/auth/login
+        // response has populated AuthenticatorToken - the socket is never
+        // opened before a JWT exists, so there is no window where a gameplay
+        // command could race the handshake.
+        public void Connect()
+        {
+            if (_isConnecting) return;
+            _isConnecting = true;
+            IsAuthenticated = false;
             _webSocket = new ClientWebSocket();
             _cts = new CancellationTokenSource();
             _ = ConnectAndReceiveLoopAsync();
@@ -47,18 +65,17 @@ namespace FolkIdle.Client.Network
         {
             try
             {
+                if (string.IsNullOrEmpty(AuthenticatorToken))
+                {
+                    Debug.LogError("WebSocketClient: Connect() called with an empty AuthenticatorToken; aborting before opening a socket.");
+                    return;
+                }
+
                 await _webSocket.ConnectAsync(new Uri("ws://localhost:8080/"), _cts.Token);
                 FlightRecorder.RecordNetworkState(1);
                 Debug.Log("WebSocket Connected.");
 
-                if (!Guid.TryParse(AuthenticatorToken, out Guid authenticatorTokenGuid))
-                {
-                    Debug.LogError("WebSocketClient: AuthenticatorToken is empty or invalid; aborting before handshake.");
-                    await _webSocket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Missing authenticator token", CancellationToken.None);
-                    return;
-                }
-
-                await SendAuthHandshakeAsync(authenticatorTokenGuid);
+                await SendAuthHandshakeAsync();
 
                 var segment = new ArraySegment<byte>(_receiveBuffer);
 
@@ -81,25 +98,43 @@ namespace FolkIdle.Client.Network
                 FlightRecorder.RecordNetworkState(3);
                 Debug.LogError($"WebSocket Error: {ex.Message}");
             }
+            finally
+            {
+                _isConnecting = false;
+            }
         }
 
         // Must be the very first message on the socket - NetworkBroadcastSystem
-        // gives the connection 5 seconds to send a binary ClientAuthPacket before
-        // dropping it. AssetHash/PlatformSignature are sent as 0 (the server only
-        // enforces them when ExpectedCatalogHashLong/ExpectedPlatformSignatureLong
-        // are configured); PlayerGuid is sent as Guid.Empty since the server never
-        // reads it back off the auth packet and the client has no PlayerGuid of
-        // its own to report yet.
-        private async Task SendAuthHandshakeAsync(Guid authenticatorTokenGuid)
+        // gives the connection 5 seconds to send a binary AuthHandshakePacket
+        // before dropping it, and rejects any gameplay CommandType packet sent
+        // before this succeeds. AssetHash/PlatformSignature are sent as 0 (the
+        // server only enforces them when ExpectedCatalogHashLong/
+        // ExpectedPlatformSignatureLong are configured).
+        private async Task SendAuthHandshakeAsync()
         {
-            ClientAuthPacket authPacket = new ClientAuthPacket
+            byte[] jwtBytes = System.Text.Encoding.UTF8.GetBytes(AuthenticatorToken);
+            if (jwtBytes.Length > AuthHandshakePacket.JwtTokenCapacity)
             {
-                PlayerGuid = Guid.Empty,
-                AuthenticatorToken = authenticatorTokenGuid,
+                Debug.LogError($"WebSocketClient: JWT length {jwtBytes.Length} exceeds AuthHandshakePacket capacity {AuthHandshakePacket.JwtTokenCapacity}; aborting handshake.");
+                await _webSocket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Token too large", CancellationToken.None);
+                return;
+            }
+
+            AuthHandshakePacket authPacket = new AuthHandshakePacket
+            {
+                JwtTokenLength = (ushort)jwtBytes.Length,
                 AssetHash = 0,
-                PlatformSignature = 0,
-                EpochExpirationTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                PlatformSignature = 0
             };
+
+            unsafe
+            {
+                byte* target = authPacket.JwtToken;
+                for (int i = 0; i < AuthHandshakePacket.JwtTokenCapacity; i++)
+                {
+                    target[i] = i < jwtBytes.Length ? jwtBytes[i] : (byte)0;
+                }
+            }
 
             System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref _authBuffer[0], authPacket);
             var segment = new ArraySegment<byte>(_authBuffer);
@@ -112,6 +147,12 @@ namespace FolkIdle.Client.Network
             {
                 Debug.LogWarning($"WebSocketClient: rejected malformed inbound packet (length {length}).");
                 return;
+            }
+
+            if (!IsAuthenticated)
+            {
+                IsAuthenticated = true;
+                OnStateConfirmed?.Invoke();
             }
 
             _lastPlayerId = packet.PlayerId;

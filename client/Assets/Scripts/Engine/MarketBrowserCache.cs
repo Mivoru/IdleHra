@@ -66,7 +66,7 @@ namespace FolkIdle.Client.Engine
             {
                 string url = $"{ServerBaseUrl}/api/v1/market/listings?baseItemId={UnityWebRequest.EscapeURL(baseItemId)}&qualityTier={qualityTier}&pageIndex={pageIndex}&pageSize={pageSize}";
                 using UnityWebRequest request = UnityWebRequest.Get(url);
-                request.SetRequestHeader("X-Authenticator-Token", WebSocketClient.AuthenticatorToken);
+                request.SetRequestHeader("Authorization", $"Bearer {WebSocketClient.AuthenticatorToken}");
 
                 UnityWebRequestAsyncOperation operation = request.SendWebRequest();
                 while (!operation.isDone)

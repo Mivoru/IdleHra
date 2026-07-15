@@ -59,7 +59,7 @@ namespace FolkIdle.Client.Engine
             try
             {
                 using UnityWebRequest request = UnityWebRequest.Get($"{ServerBaseUrl}/api/v1/breeding/roster");
-                request.SetRequestHeader("X-Authenticator-Token", WebSocketClient.AuthenticatorToken);
+                request.SetRequestHeader("Authorization", $"Bearer {WebSocketClient.AuthenticatorToken}");
 
                 UnityWebRequestAsyncOperation operation = request.SendWebRequest();
                 while (!operation.isDone)

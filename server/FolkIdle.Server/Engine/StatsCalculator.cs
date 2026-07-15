@@ -11,7 +11,7 @@ namespace FolkIdle.Server.Engine
     // GuildCombatSimulationEngine read it), so it must stay properties.
     // StructLayout is not load-bearing here - CombatStats never crosses the
     // network boundary directly (only StateUpdatePacket/ClientCommandPacket/
-    // ClientAuthPacket do, see NetworkPacketLayoutGuard), it is only ever
+    // AuthHandshakePacket do, see NetworkPacketLayoutGuard), it is only ever
     // JSON-serialized into a DB text column.
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct CombatStats

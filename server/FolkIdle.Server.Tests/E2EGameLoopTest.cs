@@ -14,6 +14,16 @@ using FolkIdle.Server.Network;
 
 namespace FolkIdle.Server.Tests
 {
+    // Shares the "Postgres collection" with HardenedEngineIntegrationTests
+    // (see PostgresCollection) purely to serialize execution against it -
+    // this class does not use PostgresTestFixture, it builds its own
+    // container. Both classes spin up long-lived background engine threads
+    // and mutate the shared static GlobalEngineState.IsColdBootRecoveryComplete;
+    // running them in xUnit's default cross-class parallelism let one
+    // class's container get disposed while the other's still-live engine
+    // thread was mid-query against it, crashing the whole test host with an
+    // unhandled ObjectDisposedException on a background Thread.
+    [Collection("Postgres collection")]
     public class E2EGameLoopTest : IAsyncLifetime
     {
         private PostgreSqlContainer? _dbContainer;
@@ -46,6 +56,36 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        private static string MintTestJwt(Guid accountId)
+        {
+            return AuthenticationEngine.GenerateJwt(accountId, AuthenticationEngine.GenerateSessionNonce(), AuthenticationDefaults.LocalDevelopmentFallback, out _);
+        }
+
+        // Mirrors WebSocketClient.SendAuthHandshakeAsync's fixed-buffer write
+        // pattern - MemoryMarshal.Write needs the JwtToken bytes already
+        // placed inside the struct's fixed buffer before it can blit the
+        // whole AuthHandshakePacket into a wire-ready byte array.
+        private static unsafe byte[] BuildAuthHandshakeBuffer(string jwt)
+        {
+            byte[] jwtBytes = System.Text.Encoding.UTF8.GetBytes(jwt);
+            var packet = new AuthHandshakePacket
+            {
+                JwtTokenLength = (ushort)jwtBytes.Length,
+                AssetHash = 0,
+                PlatformSignature = 0
+            };
+
+            byte* target = packet.JwtToken;
+            for (int i = 0; i < AuthHandshakePacket.JwtTokenCapacity; i++)
+            {
+                target[i] = i < jwtBytes.Length ? jwtBytes[i] : (byte)0;
+            }
+
+            byte[] buffer = new byte[Marshal.SizeOf<AuthHandshakePacket>()];
+            MemoryMarshal.Write(new Span<byte>(buffer), packet);
+            return buffer;
+        }
+
         [Fact]
         public async Task Test_E2E_ClosedLoopVerification()
         {
@@ -69,7 +109,7 @@ namespace FolkIdle.Server.Tests
                 await db.Database.MigrateAsync();
             }
 
-            var networkSystem = new NetworkBroadcastSystem(serviceProvider, "http://localhost:8081/");
+            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8081/");
             var lootEngine = new LootTableEngine();
             var checkpointManager = new StateCheckpointManager(serviceProvider);
             var forgeEngine = new ForgeSplicingEngine(serviceProvider);
@@ -118,18 +158,22 @@ namespace FolkIdle.Server.Tests
             networkSystem.Start();
             simulationEngine.Start();
 
-            // Seed Token Cache
-            var token = Guid.NewGuid();
-            networkSystem.ActiveTokenCache.TryAdd(token, new CachedTokenEntry { PlayerId = 1L, ExpirationEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 3600L });
+            // Seed the PlayerRecord the handshake resolves against - the JWT
+            // flow does a real PlayerGuid lookup instead of trusting an
+            // arbitrary PlayerId out of an in-memory cache.
+            Guid accountId = Guid.NewGuid();
+            await using (var db = await contextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = 1L, PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
 
             // 2. Mock a Client Connection
             using var clientSocket = new ClientWebSocket();
             await clientSocket.ConnectAsync(new Uri("ws://localhost:8081/"), CancellationToken.None);
 
             // Send Handshake Auth Packet
-            var authPacket = new ClientAuthPacket { PlayerGuid = Guid.NewGuid(), AuthenticatorToken = token, EpochExpirationTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds() };
-            byte[] authBuffer = new byte[Marshal.SizeOf<ClientAuthPacket>()];
-            MemoryMarshal.Write(new Span<byte>(authBuffer), authPacket);
+            byte[] authBuffer = BuildAuthHandshakeBuffer(MintTestJwt(accountId));
             await clientSocket.SendAsync(new ArraySegment<byte>(authBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
 
             // 3. Simulate execution. The receive loop starts before any gameplay
@@ -216,22 +260,30 @@ namespace FolkIdle.Server.Tests
             // opens fresh, blasts past NetworkThrottlingEngine.Capacity (20
             // tokens) instantly, and gets terminated - exercising the real
             // flood-kill path in isolation instead of fighting it.
+            // Seed a PlayerRecord per flood connection up front - the
+            // handshake now requires a real DB row per AccountId.
+            var floodAccountIds = new Guid[5];
+            await using (var db = await contextFactory.CreateDbContextAsync())
+            {
+                for (int f = 0; f < floodAccountIds.Length; f++)
+                {
+                    floodAccountIds[f] = Guid.NewGuid();
+                    db.PlayerRecords.Add(new PlayerRecord { Id = 900000 + f, PlayerGuid = floodAccountIds[f], AuthenticatorToken = Guid.NewGuid() });
+                }
+                await db.SaveChangesAsync();
+            }
+
             var floodTasks = new Task[5];
             for (int f = 0; f < floodTasks.Length; f++)
             {
-                int floodPlayerId = 900000 + f;
+                Guid floodAccountId = floodAccountIds[f];
                 floodTasks[f] = Task.Run(async () =>
                 {
                     using var floodSocket = new ClientWebSocket();
-                    var floodToken = Guid.NewGuid();
-                    networkSystem.ActiveTokenCache.TryAdd(floodToken, new CachedTokenEntry { PlayerId = floodPlayerId, ExpirationEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 3600L });
-
                     using var floodCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                     await floodSocket.ConnectAsync(new Uri("ws://localhost:8081/"), floodCts.Token);
 
-                    var floodAuth = new ClientAuthPacket { PlayerGuid = Guid.NewGuid(), AuthenticatorToken = floodToken, EpochExpirationTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds() };
-                    byte[] floodAuthBuffer = new byte[Marshal.SizeOf<ClientAuthPacket>()];
-                    MemoryMarshal.Write(new Span<byte>(floodAuthBuffer), floodAuth);
+                    byte[] floodAuthBuffer = BuildAuthHandshakeBuffer(MintTestJwt(floodAccountId));
                     await floodSocket.SendAsync(new ArraySegment<byte>(floodAuthBuffer), WebSocketMessageType.Binary, true, floodCts.Token);
 
                     var floodCmd = new ClientCommandPacket { Command = CommandType.ChangeActivity, TargetId = 1 };
@@ -313,7 +365,7 @@ namespace FolkIdle.Server.Tests
                 await db.Database.MigrateAsync();
             }
 
-            var networkSystem = new NetworkBroadcastSystem(serviceProvider, "http://localhost:8082/");
+            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8082/");
             var lootEngine = new LootTableEngine();
             var checkpointManager = new StateCheckpointManager(serviceProvider);
             var forgeEngine = new ForgeSplicingEngine(serviceProvider);
@@ -348,26 +400,41 @@ namespace FolkIdle.Server.Tests
             int clientCount = 500;
             var connectedClients = new System.Collections.Concurrent.ConcurrentBag<ClientWebSocket>();
             var tasks = new List<Task>();
-            
+
+            // Seed a PlayerRecord per simulated client up front - the JWT
+            // handshake now resolves playerId from a real PlayerGuid lookup
+            // instead of an arbitrary query-string token.
+            var stressAccountIds = new Guid[clientCount + 1];
+            await using (var db = await contextFactory.CreateDbContextAsync())
+            {
+                for (int i = 1; i <= clientCount; i++)
+                {
+                    stressAccountIds[i] = Guid.NewGuid();
+                    db.PlayerRecords.Add(new PlayerRecord { Id = i, PlayerGuid = stressAccountIds[i], AuthenticatorToken = Guid.NewGuid() });
+                }
+                await db.SaveChangesAsync();
+            }
+
             // Allow server to boot
             await Task.Delay(100);
 
             for (int i = 1; i <= clientCount; i++)
             {
                 int playerId = i;
+                Guid accountId = stressAccountIds[i];
                 tasks.Add(Task.Run(async () =>
                 {
                     try
                     {
                         var ws = new ClientWebSocket();
                         connectedClients.Add(ws);
-                        var uri = new Uri($"ws://localhost:8082/?token={Guid.NewGuid()}");
-                        
-                        // Fake token for test
-                        networkSystem.ActiveTokenCache.TryAdd(Guid.Parse(uri.Query.Split('=')[1]), new CachedTokenEntry { PlayerId = playerId, ExpirationEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 3600L });
+                        var uri = new Uri("ws://localhost:8082/");
 
                         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                         await ws.ConnectAsync(uri, cts.Token);
+
+                        byte[] authBuffer = BuildAuthHandshakeBuffer(MintTestJwt(accountId));
+                        await ws.SendAsync(new ArraySegment<byte>(authBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
 
                         // Send login
                         var loginPacket = new ClientCommandPacket { Command = CommandType.Login, TargetId = playerId };
@@ -468,10 +535,11 @@ namespace FolkIdle.Server.Tests
 
             const long testPlayerId = 1L;
             const string baseItemId = "market_browser_test_item";
+            Guid testAccountId = Guid.NewGuid();
 
             await using (var db = await contextFactory.CreateDbContextAsync())
             {
-                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = testAccountId, AuthenticatorToken = Guid.NewGuid() });
 
                 // Seeded out of price order and out of insertion-time order to
                 // prove the query sorts rather than returning insertion order.
@@ -486,15 +554,14 @@ namespace FolkIdle.Server.Tests
                 await db.SaveChangesAsync();
             }
 
-            var networkSystem = new NetworkBroadcastSystem(serviceProvider, "http://localhost:8083/");
+            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8083/");
             GlobalEngineState.IsColdBootRecoveryComplete = true;
             networkSystem.Start();
 
-            var token = Guid.NewGuid();
-            networkSystem.ActiveTokenCache.TryAdd(token, new CachedTokenEntry { PlayerId = testPlayerId, ExpirationEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 3600L });
+            string jwt = MintTestJwt(testAccountId);
 
             using var httpClient = new System.Net.Http.HttpClient();
-            httpClient.DefaultRequestHeaders.Add("X-Authenticator-Token", token.ToString());
+            httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", jwt);
 
             try
             {
