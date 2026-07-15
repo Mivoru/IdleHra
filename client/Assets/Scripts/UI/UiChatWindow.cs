@@ -1,18 +1,22 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using FolkIdle.Client.Engine;
 using FolkIdle.Client.Network;
 
 namespace FolkIdle.Client.UI
 {
     // Global chat window. Virtualized: exactly RowCount UiChatMessageRow
-    // GameObjects are instantiated once in Awake and never again - message
+    // GameObjects are instantiated once (as soon as RowPrefabAddressableKey
+    // finishes loading through AssetManager) and never again - message
     // history (up to HistoryCapacity entries) lives in a pre-allocated
     // circular buffer of plain data, and scrolling only ever changes WHICH
     // history entries the fixed rows are bound to display (Bind(), not
     // Instantiate). This satisfies the task's explicit "no Instantiate per
-    // message" constraint - see Awake for the one and only place
-    // Object.Instantiate appears in this file.
+    // message" constraint - see CreateRows for the one and only place
+    // Object.Instantiate appears in this file. The row prefab itself is an
+    // Addressable rather than a baked scene/prefab reference so it can ship
+    // and update over-the-air independently of the client build.
     public class UiChatWindow : MonoBehaviour
     {
         public WebSocketClient NetworkClient;
@@ -20,7 +24,7 @@ namespace FolkIdle.Client.UI
         [Header("Virtualization")]
         public ScrollRect ChatScrollRect;
         public RectTransform RowContainer;
-        public UiChatMessageRow RowPrefab;
+        public string RowPrefabAddressableKey = "UiChatMessageRow";
         public int RowCount = 15;
         public int HistoryCapacity = 200;
         public float RowHeight = 30f;
@@ -68,7 +72,49 @@ namespace FolkIdle.Client.UI
             _rows = new UiChatMessageRow[RowCount];
             _rowRectTransforms = new RectTransform[RowCount];
             _rowBoundGlobalIndex = new long[RowCount];
+            for (int i = 0; i < RowCount; i++)
+            {
+                _rowBoundGlobalIndex[i] = -1;
+            }
 
+            if (MessageInputField != null)
+            {
+                MessageInputField.characterLimit = RequestChatMessagePacket.MessageCapacity;
+                MessageInputField.onSubmit.AddListener(HandleSubmit);
+            }
+
+            if (SendButton != null)
+            {
+                SendButton.onClick.AddListener(HandleSendButtonClicked);
+            }
+
+            if (ChatScrollRect != null)
+            {
+                ChatScrollRect.onValueChanged.AddListener(HandleScrollValueChanged);
+            }
+
+            if (AssetManager.Instance != null)
+            {
+                AssetManager.Instance.LoadAsync<GameObject>(RowPrefabAddressableKey, HandleRowPrefabLoaded);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (AssetManager.Instance != null)
+            {
+                AssetManager.Instance.Release(RowPrefabAddressableKey);
+            }
+        }
+
+        // Fires exactly once, when RowPrefabAddressableKey finishes loading
+        // through AssetManager - everything downstream of this (the fixed
+        // RowCount instantiate loop) is unchanged from before the
+        // Addressables migration, just deferred until the prefab is
+        // actually available instead of assuming a baked scene reference.
+        private void HandleRowPrefabLoaded(GameObject prefabAsset)
+        {
+            UiChatMessageRow rowPrefab = prefabAsset != null ? prefabAsset.GetComponent<UiChatMessageRow>() : null;
             Transform parent = RowContainer != null ? RowContainer : (ChatScrollRect != null ? ChatScrollRect.content : null);
 
             for (int i = 0; i < RowCount; i++)
@@ -76,12 +122,11 @@ namespace FolkIdle.Client.UI
                 // The only Instantiate call in this file - fires exactly
                 // RowCount times, once, here, regardless of how many chat
                 // messages this window ever displays over its lifetime.
-                UiChatMessageRow row = RowPrefab != null && parent != null
-                    ? Instantiate(RowPrefab, parent)
+                UiChatMessageRow row = rowPrefab != null && parent != null
+                    ? Instantiate(rowPrefab, parent)
                     : null;
 
                 _rows[i] = row;
-                _rowBoundGlobalIndex[i] = -1;
 
                 if (row != null)
                 {
@@ -107,21 +152,11 @@ namespace FolkIdle.Client.UI
                 RowContainer.sizeDelta = new Vector2(RowContainer.sizeDelta.x, RowCount * RowHeight);
             }
 
-            if (MessageInputField != null)
-            {
-                MessageInputField.characterLimit = RequestChatMessagePacket.MessageCapacity;
-                MessageInputField.onSubmit.AddListener(HandleSubmit);
-            }
-
-            if (SendButton != null)
-            {
-                SendButton.onClick.AddListener(HandleSendButtonClicked);
-            }
-
-            if (ChatScrollRect != null)
-            {
-                ChatScrollRect.onValueChanged.AddListener(HandleScrollValueChanged);
-            }
+            // A chat packet may already be queued from before the prefab
+            // finished loading (Update keeps dequeuing regardless) - rebind
+            // immediately so it is not silently skipped until the next
+            // packet arrives.
+            RebindVisibleRows();
         }
 
         private void Update()

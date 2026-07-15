@@ -177,75 +177,103 @@ namespace FolkIdle.Server.Engine
         // WebSocket handshake - that auto-provision-on-any-token path was the
         // exact vulnerability this task exists to close, so it has been
         // removed from the handshake, not preserved alongside this.
-        public static async Task<(long PlayerId, Guid AccountId)> LoginOrProvisionAsync(FolkIdleDbContext db, string deviceId)
+        public static async Task<(long PlayerId, Guid AccountId)> LoginOrProvisionAsync(AuthProvisioningDbOptions authOptions, string deviceId)
         {
-            var existing = await db.PlayerRecords.FirstOrDefaultAsync(p => p.DeviceId == deviceId);
+            // A dedicated, retry-configured context is constructed here
+            // rather than accepting a caller-supplied FolkIdleDbContext -
+            // see AuthProvisioningDbOptions for why this path cannot share
+            // the DbContextOptions every other engine resolves through
+            // IDbContextFactory<FolkIdleDbContext>.
+            await using var db = new FolkIdleDbContext(authOptions.Options);
+
+            var existing = await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.DeviceId == deviceId);
             if (existing != null)
             {
                 return (existing.Id, existing.PlayerGuid);
             }
 
-            using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-            try
+            // Modul: the provisioning transaction runs at Serializable
+            // isolation, so concurrent inserts for different devices can
+            // legitimately collide on Postgres's read/write dependency
+            // graph (SQLSTATE 40001) even though they touch unrelated rows.
+            // CreateExecutionStrategy().ExecuteAsync wraps the whole
+            // check-then-insert unit so the Npgsql retrying strategy
+            // configured in Program.cs can replay the entire delegate on
+            // that failure - EF Core requires explicit transactions to be
+            // scoped this way once a retrying strategy is registered.
+            var executionStrategy = db.Database.CreateExecutionStrategy();
+            return await executionStrategy.ExecuteAsync(async () =>
             {
-                Guid characterId = Guid.NewGuid();
+                // A retried attempt may still be holding entities tracked
+                // by a prior failed attempt against this same DbContext
+                // instance - start every attempt from a clean slate.
+                db.ChangeTracker.Clear();
 
-                var player = new PlayerRecord
+                using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                try
                 {
-                    CurrentLevel = 1,
-                    CurrentXp = 0L,
-                    SelectedLineageId = 1,
-                    PlayerGuid = characterId,
-                    DeviceId = deviceId,
-                    LastLogoutTimestamp = 0L,
-                    PremiumDiamonds = 0
-                };
-                db.PlayerRecords.Add(player);
-                await db.SaveChangesAsync();
+                    Guid characterId = Guid.NewGuid();
 
-                db.CharacterRecords.Add(new CharacterRecord
-                {
-                    Id = characterId,
-                    PlayerId = player.Id,
-                    Level = 1,
-                    AgePhase = 1,
-                    AgeTicks = 0L
-                });
+                    var player = new PlayerRecord
+                    {
+                        CurrentLevel = 1,
+                        CurrentXp = 0L,
+                        SelectedLineageId = 1,
+                        PlayerGuid = characterId,
+                        DeviceId = deviceId,
+                        LastLogoutTimestamp = 0L,
+                        PremiumDiamonds = 0
+                    };
+                    db.PlayerRecords.Add(player);
+                    await db.SaveChangesAsync();
 
-                db.CharacterLineages.Add(new CharacterLineageRegistry
-                {
-                    CharacterId = characterId,
-                    GenerationIndex = 0,
-                    GeneticVector = RaceIds.Human
-                });
+                    db.CharacterRecords.Add(new CharacterRecord
+                    {
+                        Id = characterId,
+                        PlayerId = player.Id,
+                        Level = 1,
+                        AgePhase = 1,
+                        AgeTicks = 0L
+                    });
 
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = "gold", Quantity = 1000L });
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = ContentRegistry.GetMaterialString(1), Quantity = 25L });
+                    db.CharacterLineages.Add(new CharacterLineageRegistry
+                    {
+                        CharacterId = characterId,
+                        GenerationIndex = 0,
+                        GeneticVector = RaceIds.Human
+                    });
 
-                await db.SaveChangesAsync();
-                await transaction.CommitAsync();
+                    db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = "gold", Quantity = 1000L });
+                    db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = ContentRegistry.GetMaterialString(1), Quantity = 25L });
 
-                Console.WriteLine($"Auto-provisioned new player {player.Id} for device login.");
-                return (player.Id, characterId);
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
+                    await db.SaveChangesAsync();
+                    await transaction.CommitAsync();
 
-                // A concurrent first-login for the same device may have won
-                // the unique-index race while this transaction was rolling
-                // back - re-check before surfacing a hard failure to the
-                // caller for what is, from the losing request's point of
-                // view, actually a successful login.
-                var raced = await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.DeviceId == deviceId);
-                if (raced != null)
-                {
-                    return (raced.Id, raced.PlayerGuid);
+                    Console.WriteLine($"Auto-provisioned new player {player.Id} for device login.");
+                    return (player.Id, characterId);
                 }
+                catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation)
+                {
+                    // A concurrent first-login for the same device won the
+                    // unique-index race. This is not a transient failure
+                    // the execution strategy should replay - retrying an
+                    // insert that violates a unique constraint fails
+                    // identically every time - so it is handled here
+                    // directly: roll back and return the winner's row,
+                    // which is, from this request's point of view, actually
+                    // a successful login rather than a hard failure.
+                    await transaction.RollbackAsync();
 
-                Console.WriteLine($"Device login provisioning failed: {ex.Message}");
-                throw;
-            }
+                    var raced = await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.DeviceId == deviceId);
+                    if (raced != null)
+                    {
+                        return (raced.Id, raced.PlayerGuid);
+                    }
+
+                    Console.WriteLine($"Device login provisioning failed: {ex.Message}");
+                    throw;
+                }
+            });
         }
     }
 }

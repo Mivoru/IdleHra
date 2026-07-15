@@ -8,8 +8,26 @@ namespace FolkIdle.Client.Engine
         public WebSocketClient NetworkClient;
         
         public float VisualProgressTicks;
-        public float VisualPlayerHp;
         public float VisualMonsterHp;
+
+        // Modul: memory anti-cheat. Player HP and the four skill cooldowns
+        // below are the fields a Cheat-Engine-style scanner would most
+        // plausibly target (freeze HP, zero cooldowns), so each is backed by
+        // an ObfuscatedValue<float> cell instead of a bare field - the
+        // plaintext is only ever materialized inside the property getter,
+        // and RotateObfuscationCells (called periodically from Update)
+        // re-keys every cell in place so the stored bytes keep moving even
+        // while the logical value does not. Gold/legacy shard already have
+        // their own per-packet-keyed ObfuscatedInt64/ObfuscatedInt32
+        // protection further down this file (arguably rotating even more
+        // often, once per packet) and are deliberately left as-is rather
+        // than migrated, to avoid regressing a scheme that already works.
+        private ObfuscatedValue<float> _playerHpCell;
+        public float VisualPlayerHp
+        {
+            get => _playerHpCell.Value;
+            private set => _playerHpCell.Value = value;
+        }
 
         // Modul: Combat Arena signals. VisualCurrentMonsterId/
         // VisualActiveAudioTrackId are discrete (no interpolation, matching
@@ -158,10 +176,31 @@ namespace FolkIdle.Client.Engine
         public int VisualAvailableSkillPoints;
         public float VisualCurrentMana;
         public float VisualMaxMana;
-        public float VisualSkill1CooldownRemainingMs;
-        public float VisualSkill2CooldownRemainingMs;
-        public float VisualSkill3CooldownRemainingMs;
-        public float VisualSkill4CooldownRemainingMs;
+
+        private ObfuscatedValue<float> _skill1CooldownCell;
+        private ObfuscatedValue<float> _skill2CooldownCell;
+        private ObfuscatedValue<float> _skill3CooldownCell;
+        private ObfuscatedValue<float> _skill4CooldownCell;
+        public float VisualSkill1CooldownRemainingMs
+        {
+            get => _skill1CooldownCell.Value;
+            private set => _skill1CooldownCell.Value = value;
+        }
+        public float VisualSkill2CooldownRemainingMs
+        {
+            get => _skill2CooldownCell.Value;
+            private set => _skill2CooldownCell.Value = value;
+        }
+        public float VisualSkill3CooldownRemainingMs
+        {
+            get => _skill3CooldownCell.Value;
+            private set => _skill3CooldownCell.Value = value;
+        }
+        public float VisualSkill4CooldownRemainingMs
+        {
+            get => _skill4CooldownCell.Value;
+            private set => _skill4CooldownCell.Value = value;
+        }
 
         // Modul: edge-detected skill cast result - fires exactly once per
         // real RequestCastSkill the server processed (see
@@ -201,9 +240,64 @@ namespace FolkIdle.Client.Engine
         private const float IntervalSmoothingFactor = 0.2f;
         private float _emaPacketIntervalSeconds = TargetTickIntervalSeconds;
 
+        // Modul: memory anti-cheat key rotation cadence and PRNG state - see
+        // _playerHpCell/_skill1-4CooldownCell above.
+        private const float ObfuscationRotationIntervalSeconds = 2.0f;
+        private float _lastObfuscationRotationTime;
+        private uint _obfuscationPrngState;
+
+        private void Awake()
+        {
+            _obfuscationPrngState = unchecked((uint)System.DateTime.UtcNow.Ticks) ^ unchecked((uint)GetInstanceID());
+            if (_obfuscationPrngState == 0u) _obfuscationPrngState = 0x6D2B79F5u;
+
+            _playerHpCell = new ObfuscatedValue<float>(0f, RollObfuscationKey());
+            _skill1CooldownCell = new ObfuscatedValue<float>(0f, RollObfuscationKey());
+            _skill2CooldownCell = new ObfuscatedValue<float>(0f, RollObfuscationKey());
+            _skill3CooldownCell = new ObfuscatedValue<float>(0f, RollObfuscationKey());
+            _skill4CooldownCell = new ObfuscatedValue<float>(0f, RollObfuscationKey());
+            _lastObfuscationRotationTime = Time.time;
+        }
+
+        // Hand-rolled xorshift, matching WebSocketClient's ComputeChallengeHash
+        // convention - unpredictable-looking key material, not a
+        // cryptographic guarantee, exactly matching this obfuscation's
+        // actual threat model (defeat casual memory scanning, not
+        // nation-state cryptanalysis).
+        private static uint XorShift32(uint value)
+        {
+            value ^= value << 13;
+            value ^= value >> 17;
+            value ^= value << 5;
+            return value == 0u ? 0x6D2B79F5u : value;
+        }
+
+        private long RollObfuscationKey()
+        {
+            _obfuscationPrngState = XorShift32(_obfuscationPrngState);
+            uint high = _obfuscationPrngState;
+            _obfuscationPrngState = XorShift32(_obfuscationPrngState);
+            uint low = _obfuscationPrngState;
+            return unchecked((long)(((ulong)high << 32) | low));
+        }
+
+        private void RotateObfuscationCellsIfDue()
+        {
+            if (Time.time - _lastObfuscationRotationTime < ObfuscationRotationIntervalSeconds) return;
+
+            _playerHpCell.Rotate(RollObfuscationKey());
+            _skill1CooldownCell.Rotate(RollObfuscationKey());
+            _skill2CooldownCell.Rotate(RollObfuscationKey());
+            _skill3CooldownCell.Rotate(RollObfuscationKey());
+            _skill4CooldownCell.Rotate(RollObfuscationKey());
+            _lastObfuscationRotationTime = Time.time;
+        }
+
         public void Update()
         {
             if (NetworkClient == null) return;
+
+            RotateObfuscationCellsIfDue();
 
             while (NetworkClient.PacketQueue.TryDequeue(out var packet))
             {

@@ -39,8 +39,19 @@ namespace FolkIdle.Client.UI
         public RectTransform EnemyAnchor;
         public Image EnemyHealthBarFill;
         public TMP_Text EnemyHealthText;
+        public Image EnemyPortraitIcon;
 
         private readonly char[] _healthUiBuffer = new char[32];
+
+        // Modul: enemy portrait icon, loaded through AssetManager (not
+        // Resources.Load) keyed by the current monster id, so per-monster
+        // portrait art ships and updates over-the-air. Only requested when
+        // OnCombatInstanceChanged actually reports a new monster id - never
+        // per frame - and the previous monster's reference is released
+        // before the new one is acquired, so at most one portrait is ever
+        // held at a time.
+        private int _loadedPortraitMonsterId = -1;
+        private string _loadedPortraitAddressableKey;
 
         // High-water-mark max HP: monsters always broadcast their full HP
         // the instant they spawn (SimulationEngine sets CurrentMonsterHp to
@@ -82,6 +93,11 @@ namespace FolkIdle.Client.UI
             }
         }
 
+        private void OnDestroy()
+        {
+            ReleaseEnemyPortrait();
+        }
+
         // Health bars only - this is the one thing that legitimately needs
         // per-frame updates, since VisualSyncProxy's interpolated HP moves
         // every frame between packets. Everything else in this arena is
@@ -119,7 +135,39 @@ namespace FolkIdle.Client.UI
                 // HP before any hit can land against it - see the class
                 // comment on _monsterMaxHpObserved.
                 _monsterMaxHpObserved = SyncProxy.VisualMonsterHp;
+
+                RequestEnemyPortrait(SyncProxy.VisualCurrentMonsterId);
             }
+        }
+
+        private void RequestEnemyPortrait(int monsterId)
+        {
+            if (EnemyPortraitIcon == null || AssetManager.Instance == null) return;
+            if (monsterId == _loadedPortraitMonsterId) return;
+
+            ReleaseEnemyPortrait();
+
+            string addressableKey = "monster_icon_" + monsterId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            _loadedPortraitMonsterId = monsterId;
+            _loadedPortraitAddressableKey = addressableKey;
+
+            Image targetIcon = EnemyPortraitIcon;
+            AssetManager.Instance.LoadAsync<Sprite>(addressableKey, sprite =>
+            {
+                if (targetIcon != null && sprite != null)
+                {
+                    targetIcon.sprite = sprite;
+                }
+            });
+        }
+
+        private void ReleaseEnemyPortrait()
+        {
+            if (_loadedPortraitAddressableKey == null || AssetManager.Instance == null) return;
+
+            AssetManager.Instance.Release(_loadedPortraitAddressableKey);
+            _loadedPortraitAddressableKey = null;
+            _loadedPortraitMonsterId = -1;
         }
 
         private void HandleMonsterHit(int damageAmount, bool isCritical)

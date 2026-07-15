@@ -304,7 +304,22 @@ namespace FolkIdle.Server.Network
 
                     if (requestPath == "/api/v1/auth/login" && context.Request.HttpMethod == "POST")
                     {
-                        await HandleAuthLogin(context);
+                        // Modul: dispatched fire-and-forget, not awaited
+                        // inline, matching the WebSocket branch's own
+                        // _ = HandleClientLoopAsync(...) pattern below. This
+                        // loop otherwise processes one HttpListener context
+                        // at a time end to end - under concurrent load,
+                        // awaiting a provisioning transaction here (which
+                        // may now retry with backoff under Serializable
+                        // contention, see LoginOrProvisionAsync) would
+                        // serialize every other connection's login behind
+                        // it, compounding retry latency across all of them
+                        // instead of letting them resolve in parallel.
+                        // HandleAuthLogin already wraps its entire body in
+                        // its own try/catch and always closes the response,
+                        // so dispatching it this way does not drop error
+                        // visibility.
+                        _ = HandleAuthLogin(context);
                         continue;
                     }
 
@@ -1868,10 +1883,9 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var scope = _serviceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var authOptions = _serviceProvider.GetRequiredService<AuthProvisioningDbOptions>();
 
-                (_, Guid accountId) = await AuthenticationEngine.LoginOrProvisionAsync(db, deviceId);
+                (_, Guid accountId) = await AuthenticationEngine.LoginOrProvisionAsync(authOptions, deviceId);
 
                 string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
                 string token = AuthenticationEngine.GenerateJwt(accountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);

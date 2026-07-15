@@ -18,6 +18,35 @@ services:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
 
+  folk-idle-pgbouncer:
+    image: edoburu/pgbouncer:1.21.0
+    container_name: folk-idle-pgbouncer
+    environment:
+      - DB_HOST=folk-idle-db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=folkidle_prod
+      # Transaction-mode pooling: a pooled connection is only reserved for
+      # the lifetime of one transaction and returned to the pool the moment
+      # it commits or rolls back. This matches how the server ever uses a
+      # connection - AuthenticationEngine.LoginOrProvisionAsync and every
+      # other transaction in this codebase is opened, used, and committed
+      # or rolled back within a single logical operation, never held open
+      # across unrelated requests - so pooling at the transaction boundary
+      # is safe and lets far more concurrent short-lived Serializable
+      # transactions share a small, fixed number of real Postgres backend
+      # connections instead of each request opening its own.
+      - POOL_MODE=transaction
+      - MAX_CLIENT_CONN=1000
+      - DEFAULT_POOL_SIZE=50
+      - AUTH_TYPE=plain
+    ports:
+      - "6432:5432"
+    depends_on:
+      - folk-idle-db
+    restart: unless-stopped
+
   folk-idle-server:
     build:
       # Context is server/ (not server/FolkIdle.Server/) so the build can see
@@ -39,7 +68,10 @@ services:
       # so any future regression of this kind fails loudly at startup instead
       # of silently connecting to the wrong host.
       - DOTNET_ENVIRONMENT=Production
-      - FOLKIDLE_DB_CONN=Host=folk-idle-db;Database=folkidle_prod;Username=postgres;Password=postgres
+      # Points at folk-idle-pgbouncer, not folk-idle-db directly - every
+      # connection the server opens is now pooled by pgbouncer rather than
+      # consuming a dedicated Postgres backend connection per request.
+      - FOLKIDLE_DB_CONN=Host=folk-idle-pgbouncer;Port=5432;Database=folkidle_prod;Username=postgres;Password=postgres
       # REDIS_CONNECTION is intentionally not set here - no Redis service is
       # defined in this compose file, and Program.cs already degrades
       # gracefully without one (AbortOnConnectFail=false; session locking,
@@ -53,6 +85,7 @@ services:
       - "8080:8080"
     depends_on:
       - folk-idle-db
+      - folk-idle-pgbouncer
     restart: unless-stopped
 
 volumes:

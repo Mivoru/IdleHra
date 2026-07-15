@@ -36,6 +36,9 @@ POSTGRES_PASSWORD="postgres"
 POSTGRES_DB="folkidle_prod"
 POSTGRES_SERVICE="folkidle-postgres"
 
+PGBOUNCER_IMAGE="edoburu/pgbouncer:1.21.0"
+PGBOUNCER_SERVICE="folkidle-pgbouncer"
+
 REDIS_IMAGE="redis:7-alpine"
 REDIS_SERVICE="folkidle-redis"
 
@@ -191,6 +194,75 @@ EOF
     kubectl -n "$NAMESPACE" rollout status deployment/"$POSTGRES_SERVICE" --timeout=180s
 }
 
+# Deploys pgbouncer as a connection pooler sitting between folkidle-server
+# and Postgres. create_secrets points the server's connection string at this
+# Service rather than at $POSTGRES_SERVICE directly, so every pooled
+# connection request is served from a small, fixed pool of real Postgres
+# backend connections instead of each server pod/request opening its own.
+deploy_pgbouncer() {
+    log "deploying pgbouncer ($PGBOUNCER_IMAGE) in front of $POSTGRES_SERVICE..."
+    kubectl -n "$NAMESPACE" apply -f - <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${PGBOUNCER_SERVICE}
+  labels:
+    app: ${PGBOUNCER_SERVICE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${PGBOUNCER_SERVICE}
+  template:
+    metadata:
+      labels:
+        app: ${PGBOUNCER_SERVICE}
+    spec:
+      containers:
+      - name: pgbouncer
+        image: ${PGBOUNCER_IMAGE}
+        ports:
+        - containerPort: 5432
+        env:
+        - name: DB_HOST
+          value: "${POSTGRES_SERVICE}"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          value: "${POSTGRES_USER}"
+        - name: DB_PASSWORD
+          value: "${POSTGRES_PASSWORD}"
+        - name: DB_NAME
+          value: "${POSTGRES_DB}"
+        - name: POOL_MODE
+          value: "transaction"
+        - name: MAX_CLIENT_CONN
+          value: "1000"
+        - name: DEFAULT_POOL_SIZE
+          value: "50"
+        - name: AUTH_TYPE
+          value: "plain"
+        readinessProbe:
+          tcpSocket:
+            port: 5432
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${PGBOUNCER_SERVICE}
+spec:
+  selector:
+    app: ${PGBOUNCER_SERVICE}
+  ports:
+  - port: 6432
+    targetPort: 5432
+EOF
+
+    kubectl -n "$NAMESPACE" rollout status deployment/"$PGBOUNCER_SERVICE" --timeout=180s
+}
+
 deploy_redis() {
     log "deploying Redis ($REDIS_IMAGE) with a persistent volume..."
     kubectl -n "$NAMESPACE" apply -f - <<EOF
@@ -267,7 +339,9 @@ create_secrets() {
     local jwt_secret
     jwt_secret="$(openssl rand -hex 32)"
 
-    local postgres_conn="Host=${POSTGRES_SERVICE}.${NAMESPACE}.svc.cluster.local;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+    # Routed through pgbouncer, not $POSTGRES_SERVICE directly - see
+    # deploy_pgbouncer.
+    local postgres_conn="Host=${PGBOUNCER_SERVICE}.${NAMESPACE}.svc.cluster.local;Port=6432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
     local redis_conn="${REDIS_SERVICE}.${NAMESPACE}.svc.cluster.local:6379"
 
     kubectl -n "$NAMESPACE" create secret generic folkidle-server-secrets \
@@ -317,6 +391,7 @@ print_summary() {
     echo "Namespace:        $NAMESPACE"
     echo "Server image:     $IMAGE_TAG"
     echo "Postgres service: ${POSTGRES_SERVICE}.${NAMESPACE}.svc.cluster.local:5432"
+    echo "pgbouncer service: ${PGBOUNCER_SERVICE}.${NAMESPACE}.svc.cluster.local:6432"
     echo "Redis service:    ${REDIS_SERVICE}.${NAMESPACE}.svc.cluster.local:6379"
     echo
     echo "Reach the server locally with:"
@@ -332,6 +407,7 @@ main() {
     ensure_cluster
     reset_namespace
     deploy_postgres
+    deploy_pgbouncer
     deploy_redis
     create_secrets
     build_and_load_image

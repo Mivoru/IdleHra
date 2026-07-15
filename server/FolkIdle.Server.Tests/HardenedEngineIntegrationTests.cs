@@ -36,6 +36,7 @@ namespace FolkIdle.Server.Tests
         private RedisContainer _redisContainer = null!;
 
         public IDbContextFactory<FolkIdleDbContext> DbContextFactory { get; private set; } = null!;
+        public AuthProvisioningDbOptions AuthOptions { get; private set; } = null!;
         public IServiceProvider ServiceProvider { get; private set; } = null!;
         public PlayerSessionRegistry PlayerRegistry { get; } = new();
 
@@ -64,12 +65,32 @@ namespace FolkIdle.Server.Tests
             services.AddDbContextFactory<FolkIdleDbContext>(options => options.UseNpgsql(_container.GetConnectionString()));
             services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
 
+            // Mirrors Program.cs's dedicated retry-configured options exactly
+            // - see AuthProvisioningDbOptions and
+            // Test_AuthenticationEngine_ConcurrentAutoProvisioning_ResolvesViaRetryStrategy,
+            // which specifically exercises this retry path and would not be
+            // proving anything if it were not configured the same way the
+            // real server is.
+            var authRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+                .UseNpgsql(_container.GetConnectionString(), npgsqlOptions =>
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 6,
+                        maxRetryDelay: TimeSpan.FromSeconds(8),
+                        errorCodesToAdd: new[]
+                        {
+                            Npgsql.PostgresErrorCodes.SerializationFailure,
+                            Npgsql.PostgresErrorCodes.DeadlockDetected
+                        }))
+                .Options;
+            services.AddSingleton(new AuthProvisioningDbOptions(authRetryOptions));
+
             var redisMultiplexer = await StackExchange.Redis.ConnectionMultiplexer.ConnectAsync(_redisContainer.GetConnectionString());
             services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(redisMultiplexer);
             services.AddSingleton(new RedisPlayerSessionLock(redisMultiplexer));
 
             ServiceProvider = services.BuildServiceProvider();
             DbContextFactory = ServiceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+            AuthOptions = ServiceProvider.GetRequiredService<AuthProvisioningDbOptions>();
 
             await using var db = await DbContextFactory.CreateDbContextAsync();
             await db.Database.MigrateAsync();
@@ -2323,6 +2344,56 @@ namespace FolkIdle.Server.Tests
 
             var ledgerCount = await verifyDb.PrimaryPurchaseLedgers.AsNoTracking().CountAsync(l => l.TransactionId == transactionId);
             Assert.Equal(1, ledgerCount);
+        }
+
+        [Fact]
+        public async Task Test_AuthenticationEngine_ConcurrentAutoProvisioning_ResolvesViaRetryStrategy()
+        {
+            const int concurrentNewAccounts = 50;
+            string devicePrefix = "chaos_device_" + Guid.NewGuid().ToString("N") + "_";
+
+            Task<(long PlayerId, Guid AccountId)> ProvisionOneAsync(int index)
+            {
+                string deviceId = devicePrefix + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                return AuthenticationEngine.LoginOrProvisionAsync(_fixture.AuthOptions, deviceId);
+            }
+
+            // Mirrors the Chaos Tester's real-world failure mode: N distinct,
+            // never-seen-before device IDs all provisioning for the first
+            // time at once, each opening its own Serializable transaction on
+            // its own dedicated retry-configured context - matching
+            // HandleAuthLogin's call shape exactly (see AuthProvisioningDbOptions).
+            // This is deliberately NOT
+            // a same-device race (Test_Breeding_ConcurrentAttemptsSharingParent_OnlyOneSucceeds
+            // and AuthenticationEngine's own unique-index re-check already
+            // cover that shape) - it is Postgres's Serializable Snapshot
+            // Isolation rejecting otherwise-unrelated concurrent inserts via
+            // SQLSTATE 40001, which is exactly what CreateExecutionStrategy's
+            // retry configured on the test fixture above must resolve
+            // transparently. If any of the 50 propagates an unhandled
+            // serialization failure, Task.WhenAll surfaces it and this test
+            // fails.
+            var tasks = new Task<(long PlayerId, Guid AccountId)>[concurrentNewAccounts];
+            for (int i = 0; i < concurrentNewAccounts; i++)
+            {
+                tasks[i] = ProvisionOneAsync(i);
+            }
+
+            var results = await Task.WhenAll(tasks);
+
+            Assert.Equal(concurrentNewAccounts, results.Select(r => r.PlayerId).Distinct().Count());
+            Assert.Equal(concurrentNewAccounts, results.Select(r => r.AccountId).Distinct().Count());
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            int provisionedCount = await verifyDb.PlayerRecords.AsNoTracking()
+                .CountAsync(p => p.DeviceId != null && p.DeviceId.StartsWith(devicePrefix));
+            Assert.Equal(concurrentNewAccounts, provisionedCount);
+
+            foreach (var (playerId, _) in results)
+            {
+                int commodityCount = await verifyDb.CommodityRecords.AsNoTracking().CountAsync(c => c.PlayerId == playerId);
+                Assert.Equal(2, commodityCount);
+            }
         }
 
         [Fact]

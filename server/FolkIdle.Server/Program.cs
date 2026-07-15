@@ -39,6 +39,28 @@ serviceCollection.AddDbContextFactory<FolkIdleDbContext>(options =>
     options.UseNpgsql(connectionString));
 serviceCollection.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
 
+// Modul: dedicated retry-configured options for AuthenticationEngine's
+// auto-provisioning transaction only - see AuthProvisioningDbOptions for why
+// this is not applied to the shared factory above. Covers both transient
+// network failures (Npgsql's default detection) and Postgres
+// Serializable-isolation conflicts, which are expected and recoverable
+// under concurrent write load rather than genuine faults - the provisioning
+// transaction runs at IsolationLevel.Serializable and this retry is what
+// resolves concurrent new-account insert collisions instead of failing the
+// login.
+var authRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+    .UseNpgsql(connectionString, npgsqlOptions =>
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 6,
+            maxRetryDelay: TimeSpan.FromSeconds(8),
+            errorCodesToAdd: new[]
+            {
+                Npgsql.PostgresErrorCodes.SerializationFailure,
+                Npgsql.PostgresErrorCodes.DeadlockDetected
+            }))
+    .Options;
+serviceCollection.AddSingleton(new AuthProvisioningDbOptions(authRetryOptions));
+
 var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
 if (jwtSecretKey == null)
 {
