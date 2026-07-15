@@ -16,6 +16,18 @@ namespace FolkIdle.Server.Models
         // remains the AccountId used everywhere else (AccountSecurityQuotas,
         // JWT claims, purchase/refund webhooks).
         public string? DeviceId { get; set; }
+
+        // Modul: OAuth account binding. ProviderType 0 means "not linked to
+        // any external provider" - ExternalProviderId is null in that case,
+        // matching DeviceId's existing convention for this same unique-
+        // index-with-many-NULLs shape (Postgres treats NULL as distinct from
+        // every other NULL, so unlinked rows never collide with each other).
+        // Linking is irreversible by design (see AuthenticationEngine.
+        // LinkOAuthAccountAsync) - once set, these two fields are never
+        // cleared back to their unlinked state.
+        public int ProviderType { get; set; }
+        public string? ExternalProviderId { get; set; }
+
         public long LastLogoutTimestamp { get; set; }
         public int AccumulatedTimeBankSeconds { get; set; }
         public long GuildId { get; set; }

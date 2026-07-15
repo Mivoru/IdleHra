@@ -25,6 +25,16 @@ namespace FolkIdle.Server.Engine
         public static readonly JwtValidationResult Invalid = new JwtValidationResult(false, Guid.Empty, string.Empty, 0L);
     }
 
+    public enum OAuthLinkOutcome
+    {
+        Success,
+        InvalidToken,
+        AccountNotFound,
+        AlreadyLinked,
+        ExternalIdentityInUse,
+        Failed
+    }
+
     // Modul: hand-rolled minimal JWT (RFC 7519 shape: base64url(header).
     // base64url(payload).base64url(HMACSHA256 signature)) - no external JWT
     // library dependency, matching this codebase's established preference
@@ -274,6 +284,100 @@ namespace FolkIdle.Server.Engine
                     throw;
                 }
             });
+        }
+
+        // Modul: resolves the PlayerRecord bound to accountId and updates
+        // its OAuth identity - see PlayerRecord.ProviderType/
+        // ExternalProviderId. Linking is irreversible: a player that has
+        // already linked any provider cannot link a different one or
+        // re-link the same one through this method (AlreadyLinked), and the
+        // validated external identity cannot already belong to a different
+        // account (ExternalIdentityInUse) - the composite unique index is
+        // the final authority on that second case, catching a concurrent
+        // double-link race that a pre-check alone could miss, not just a
+        // convenience check.
+        public static async Task<OAuthLinkOutcome> LinkOAuthAccountAsync(RetryingDbContextOptions authOptions, Guid accountId, string providerToken, IOAuthTokenValidator validator)
+        {
+            OAuthTokenValidationResult validation = validator.Validate(providerToken);
+            if (!validation.IsValid)
+            {
+                return OAuthLinkOutcome.InvalidToken;
+            }
+
+            await using var db = new FolkIdleDbContext(authOptions.Options);
+            var strategy = db.Database.CreateExecutionStrategy();
+
+            try
+            {
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    db.ChangeTracker.Clear();
+                    using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                    try
+                    {
+                        var player = await db.PlayerRecords
+                            .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"PlayerGuid\" = {0} FOR UPDATE", accountId)
+                            .FirstOrDefaultAsync();
+
+                        if (player == null)
+                        {
+                            await transaction.RollbackAsync();
+                            return OAuthLinkOutcome.AccountNotFound;
+                        }
+
+                        if (player.ProviderType != 0)
+                        {
+                            await transaction.RollbackAsync();
+                            return OAuthLinkOutcome.AlreadyLinked;
+                        }
+
+                        player.ProviderType = (int)validation.ProviderType;
+                        player.ExternalProviderId = validation.ExternalProviderId;
+
+                        await db.SaveChangesAsync();
+                        await transaction.CommitAsync();
+                        return OAuthLinkOutcome.Success;
+                    }
+                    catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation)
+                    {
+                        // A concurrent link already claimed this exact
+                        // (ProviderType, ExternalProviderId) pair for a
+                        // different account - not retryable, a real
+                        // conflict that will fail identically every time.
+                        await transaction.RollbackAsync();
+                        return OAuthLinkOutcome.ExternalIdentityInUse;
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"OAuth link failed for account {accountId}: {ex.Message}");
+                return OAuthLinkOutcome.Failed;
+            }
+        }
+
+        // Modul: recovery login only - looks up an existing link, never
+        // creates one. A read-only query, no transaction needed (matches
+        // LoginOrProvisionAsync's own initial existence check above).
+        public static async Task<(bool Found, long PlayerId, Guid AccountId)> TryLoginByOAuthAsync(RetryingDbContextOptions authOptions, string providerToken, IOAuthTokenValidator validator)
+        {
+            OAuthTokenValidationResult validation = validator.Validate(providerToken);
+            if (!validation.IsValid)
+            {
+                return (false, 0L, Guid.Empty);
+            }
+
+            await using var db = new FolkIdleDbContext(authOptions.Options);
+            int providerType = (int)validation.ProviderType;
+            var existing = await db.PlayerRecords.AsNoTracking()
+                .FirstOrDefaultAsync(p => p.ProviderType == providerType && p.ExternalProviderId == validation.ExternalProviderId);
+
+            if (existing == null)
+            {
+                return (false, 0L, Guid.Empty);
+            }
+
+            return (true, existing.Id, existing.PlayerGuid);
         }
     }
 }

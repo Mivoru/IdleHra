@@ -104,6 +104,7 @@ namespace FolkIdle.Server.Network
         private readonly string _jwtSecretKey;
         private AntiCheatTelemetryEngine? _antiCheatTelemetryEngine;
         private SimulationEngine? _simulationEngine;
+        private BillingVerificationEngine? _billingVerificationEngine;
         private readonly ChatEngine _chatEngine;
         private readonly byte[] _chatBroadcastBuffer = new byte[Marshal.SizeOf<ResponseChatMessagePacket>()];
 
@@ -138,6 +139,17 @@ namespace FolkIdle.Server.Network
         public void RegisterSimulationEngine(SimulationEngine engine)
         {
             _simulationEngine = engine;
+        }
+
+        // Modul: matches the RegisterSimulationEngine wiring pattern -
+        // BillingVerificationEngine is constructed independently in
+        // Program.cs (it needs RetryingDbContextOptions and
+        // IIapReceiptValidator, neither registered in the DI container),
+        // so it is handed to NetworkBroadcastSystem explicitly rather than
+        // resolved through _serviceProvider.
+        public void RegisterBillingVerificationEngine(BillingVerificationEngine engine)
+        {
+            _billingVerificationEngine = engine;
         }
 
         public void Start()
@@ -366,6 +378,12 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/auth/oauth-link" && context.Request.HttpMethod == "POST")
+                    {
+                        _ = HandleOAuthLink(context);
+                        continue;
+                    }
+
                     if (requestPath == "/admin/liveops" && context.Request.HttpMethod == "POST")
                     {
                         string secretKey = context.Request.Headers["X-Admin-Secret-Key"] ?? string.Empty;
@@ -394,13 +412,27 @@ namespace FolkIdle.Server.Network
 
                     if (requestPath == "/api/v1/billing/verify-receipt" && context.Request.HttpMethod == "POST")
                     {
-                        await HandleVerifyReceipt(context);
+                        // Modul: dispatched fire-and-forget, matching the
+                        // auth-login branch above - both handlers wrap
+                        // their entire body in a try/catch and always close
+                        // the response, and both may now retry a
+                        // Serializable conflict (see BillingVerificationEngine),
+                        // so awaiting inline here would serialize every
+                        // other connection behind a slow purchase
+                        // verification the same way it would for login.
+                        _ = HandleVerifyReceipt(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/billing/verify" && context.Request.HttpMethod == "POST")
+                    {
+                        _ = HandleBillingVerify(context);
                         continue;
                     }
 
                     if (requestPath == "/api/v1/billing/refund-webhook" && context.Request.HttpMethod == "POST")
                     {
-                        await HandleRefundWebhook(context);
+                        _ = HandleRefundWebhook(context);
                         continue;
                     }
 
@@ -1567,57 +1599,100 @@ namespace FolkIdle.Server.Network
             return player.Id;
         }
 
+        // Modul: legacy webhook-style verification path - identifies the
+        // player by AccountId (not a session Bearer token, matching a
+        // platform-webhook caller rather than the game client itself).
+        // Previously inserted a PrimaryPurchaseLedger row with PlayerId = 0
+        // and returned 200 even when the account could not be resolved (the
+        // purchase was silently lost with the TransactionId marked
+        // processed, unrecoverable), and credited a hardcoded 100 diamonds
+        // regardless of ProductId/CostCents. Both fixed here by delegating
+        // to BillingVerificationEngine.VerifyPurchaseAsync, which resolves
+        // the actual reward from ProductId server-side and never writes a
+        // ledger row for an unresolved account.
         private async Task HandleVerifyReceipt(HttpListenerContext context)
         {
             try
             {
+                if (_billingVerificationEngine == null)
+                {
+                    context.Response.StatusCode = 503;
+                    context.Response.Close();
+                    return;
+                }
+
                 using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
                 var body = await reader.ReadToEndAsync();
                 var payload = JsonSerializer.Deserialize<JsonElement>(body);
 
                 var accountId = payload.GetProperty("AccountId").GetGuid();
-                var transactionId = payload.GetProperty("TransactionId").GetString();
-                var productId = payload.GetProperty("ProductId").GetString();
-                var costCents = payload.GetProperty("CostCents").GetInt32();
+                var transactionId = payload.GetProperty("TransactionId").GetString() ?? string.Empty;
+                var productId = payload.GetProperty("ProductId").GetString() ?? string.Empty;
 
-                using var scope = _serviceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-
-                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-
-                var existing = await db.PrimaryPurchaseLedgers.FirstOrDefaultAsync(p => p.TransactionId == transactionId);
-                if (existing != null)
+                long playerId = await ResolvePlayerIdFromAccountIdAsync(accountId);
+                if (playerId == 0L)
                 {
-                    context.Response.StatusCode = 409;
+                    context.Response.StatusCode = 404;
                     context.Response.Close();
                     return;
                 }
 
-                var purchase = new PrimaryPurchaseLedger
-                {
-                    PlayerId = 0, // Wait, it needs a long playerId, but we only have a Guid accountId in webhook. We need to look up PlayerId first!
-                    TransactionId = transactionId ?? string.Empty,
-                    ProductId = productId ?? string.Empty,
-                    TimestampProcessed = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                };
-                
-                var player = await db.PlayerRecords.FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"PlayerGuid\" = {0} FOR UPDATE", accountId).FirstOrDefaultAsync();
-                if (player != null)
-                {
-                    purchase.PlayerId = player.Id;
-                    player.PremiumDiamonds += 100; // Arbitrary 100 per purchase for now, or based on costCents
-                }
-                
-                db.PrimaryPurchaseLedgers.Add(purchase);
-
-                await db.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                context.Response.StatusCode = 200;
+                bool success = await _billingVerificationEngine.VerifyPurchaseAsync(playerId, transactionId, productId);
+                context.Response.StatusCode = success ? 200 : 409;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Verify receipt error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            context.Response.Close();
+        }
+
+        // Modul: the real, hardened IAP verification endpoint. Identifies
+        // the player from the caller's own session Bearer JWT (see
+        // TryResolveAuthenticatedPlayerAsync) rather than trusting a
+        // client-supplied AccountId, and passes the raw base64 receipt
+        // straight through to BillingVerificationEngine.VerifyReceiptAsync,
+        // which is the only place TransactionId/ProductId/reward amount are
+        // ever derived from - none of them come from this request body
+        // directly.
+        private async Task HandleBillingVerify(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId == 0L)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (_billingVerificationEngine == null)
+                {
+                    context.Response.StatusCode = 503;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var body = await reader.ReadToEndAsync();
+                var payload = JsonSerializer.Deserialize<JsonElement>(body);
+
+                if (!payload.TryGetProperty("receipt", out var receiptElement))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                string base64Receipt = receiptElement.GetString() ?? string.Empty;
+                bool success = await _billingVerificationEngine.VerifyReceiptAsync(playerId, base64Receipt);
+                context.Response.StatusCode = success ? 200 : 409;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Billing verify error: {ex}");
                 context.Response.StatusCode = 500;
             }
             context.Response.Close();
@@ -1886,6 +1961,16 @@ namespace FolkIdle.Server.Network
         // WebSocket AuthHandshakePacket at connect time and is what the
         // Redis eviction check in HandleClientLoopAsync uses to detect and
         // kick a stale prior session for the same account.
+        // Modul: accepts either deviceId (existing login-or-provision flow,
+        // unchanged) or oauthProviderToken (OAuth recovery login, Part 1 of
+        // this task). oauthProviderToken is a validated PROOF-OF-OWNERSHIP
+        // token, never a bare provider ID - accepting a raw ID directly
+        // would let any caller claim any linked account just by supplying
+        // its external ID with no proof of ownership at all. Recovery only:
+        // if no account is linked to the validated (ProviderType,
+        // ExternalProviderId) pair, this returns 404 rather than
+        // auto-provisioning a new account - linking is a separate,
+        // explicit, authenticated action (see HandleOAuthLink).
         private async Task HandleAuthLogin(HttpListenerContext context)
         {
             try
@@ -1900,17 +1985,19 @@ namespace FolkIdle.Server.Network
                 using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
                 string body = await reader.ReadToEndAsync();
 
-                string deviceId;
+                string deviceId = string.Empty;
+                string oauthProviderToken = string.Empty;
                 try
                 {
                     using var document = System.Text.Json.JsonDocument.Parse(body);
-                    if (!document.RootElement.TryGetProperty("deviceId", out var deviceIdElement))
+                    if (document.RootElement.TryGetProperty("oauthProviderToken", out var oauthElement))
                     {
-                        context.Response.StatusCode = 400;
-                        context.Response.Close();
-                        return;
+                        oauthProviderToken = oauthElement.GetString() ?? string.Empty;
                     }
-                    deviceId = deviceIdElement.GetString() ?? string.Empty;
+                    if (document.RootElement.TryGetProperty("deviceId", out var deviceIdElement))
+                    {
+                        deviceId = deviceIdElement.GetString() ?? string.Empty;
+                    }
                 }
                 catch (System.Text.Json.JsonException)
                 {
@@ -1919,16 +2006,31 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                if (string.IsNullOrWhiteSpace(deviceId) || deviceId.Length > 128)
+                var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+                Guid accountId;
+
+                if (!string.IsNullOrWhiteSpace(oauthProviderToken))
+                {
+                    var validator = _serviceProvider.GetRequiredService<IOAuthTokenValidator>();
+                    var oauthResult = await AuthenticationEngine.TryLoginByOAuthAsync(authOptions, oauthProviderToken, validator);
+                    if (!oauthResult.Found)
+                    {
+                        context.Response.StatusCode = 404;
+                        context.Response.Close();
+                        return;
+                    }
+                    accountId = oauthResult.AccountId;
+                }
+                else if (!string.IsNullOrWhiteSpace(deviceId) && deviceId.Length <= 128)
+                {
+                    (_, accountId) = await AuthenticationEngine.LoginOrProvisionAsync(authOptions, deviceId);
+                }
+                else
                 {
                     context.Response.StatusCode = 400;
                     context.Response.Close();
                     return;
                 }
-
-                var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
-
-                (_, Guid accountId) = await AuthenticationEngine.LoginOrProvisionAsync(authOptions, deviceId);
 
                 string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
                 string token = AuthenticationEngine.GenerateJwt(accountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);
@@ -1942,6 +2044,71 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Auth login error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: irreversibly links the caller's OWN authenticated session
+        // (resolved from the Bearer JWT, see TryResolveAuthenticatedPlayerAsync)
+        // to an external OAuth identity. Requires an already-authenticated
+        // session precisely because linking must bind to "the current
+        // active session's AccountId", not to an AccountId the caller could
+        // otherwise supply directly in the request body.
+        private async Task HandleOAuthLink(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId == 0L)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                Guid accountId = await ResolveAccountIdAsync(playerId);
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                string body = await reader.ReadToEndAsync();
+
+                string oauthProviderToken;
+                try
+                {
+                    using var document = System.Text.Json.JsonDocument.Parse(body);
+                    if (!document.RootElement.TryGetProperty("oauthProviderToken", out var tokenElement))
+                    {
+                        context.Response.StatusCode = 400;
+                        context.Response.Close();
+                        return;
+                    }
+                    oauthProviderToken = tokenElement.GetString() ?? string.Empty;
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+                var validator = _serviceProvider.GetRequiredService<IOAuthTokenValidator>();
+                OAuthLinkOutcome outcome = await AuthenticationEngine.LinkOAuthAccountAsync(authOptions, accountId, oauthProviderToken, validator);
+
+                context.Response.StatusCode = outcome switch
+                {
+                    OAuthLinkOutcome.Success => 200,
+                    OAuthLinkOutcome.InvalidToken => 400,
+                    OAuthLinkOutcome.AccountNotFound => 404,
+                    OAuthLinkOutcome.AlreadyLinked => 409,
+                    OAuthLinkOutcome.ExternalIdentityInUse => 409,
+                    _ => 500
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"OAuth link error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

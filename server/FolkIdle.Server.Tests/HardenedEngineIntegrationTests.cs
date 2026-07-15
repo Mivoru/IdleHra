@@ -2447,13 +2447,13 @@ namespace FolkIdle.Server.Tests
 
             using var offlineRedis = CreateOfflineRedisMultiplexer();
             var redisCache = new RedisSessionCache(offlineRedis);
-            var billingEngine = new BillingVerificationEngine(_fixture.DbContextFactory, redisCache, _fixture.PlayerRegistry);
+            var billingEngine = new BillingVerificationEngine(_fixture.DbContextFactory, redisCache, _fixture.PlayerRegistry, _fixture.RetryingOptions, new MockIapReceiptValidator());
 
             async Task<bool> SafeVerifyAsync()
             {
                 try
                 {
-                    return await billingEngine.VerifyPurchaseAsync(testPlayerId, transactionId, "gems_pack_small", premiumAmount);
+                    return await billingEngine.VerifyPurchaseAsync(testPlayerId, transactionId, "gems_pack_small");
                 }
                 catch
                 {
@@ -2483,6 +2483,137 @@ namespace FolkIdle.Server.Tests
 
             var ledgerCount = await verifyDb.PrimaryPurchaseLedgers.AsNoTracking().CountAsync(l => l.TransactionId == transactionId);
             Assert.Equal(1, ledgerCount);
+        }
+
+        [Fact]
+        public async Task Test_BillingVerificationEngine_DuplicateReceiptTransactionId_RejectedOnSecondAttempt()
+        {
+            const long testPlayerId = 970000201L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), PremiumDiamonds = 0 });
+                await db.SaveChangesAsync();
+            }
+
+            using var offlineRedis = CreateOfflineRedisMultiplexer();
+            var redisCache = new RedisSessionCache(offlineRedis);
+            var billingEngine = new BillingVerificationEngine(_fixture.DbContextFactory, redisCache, _fixture.PlayerRegistry, _fixture.RetryingOptions, new MockIapReceiptValidator());
+
+            // Modul: the mock receipt validator decodes exactly this shape -
+            // see MockIapReceiptValidator. TransactionId/ProductId come
+            // only from the decoded receipt, never from a separate
+            // caller-supplied parameter, matching the real REST endpoint's
+            // contract (see NetworkBroadcastSystem.HandleBillingVerify).
+            string receiptJson = "{\"transactionId\":\"iap_replay_970000201\",\"productId\":\"gems_pack_small\"}";
+            string base64Receipt = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(receiptJson));
+
+            bool firstAttempt = await billingEngine.VerifyReceiptAsync(testPlayerId, base64Receipt);
+            bool secondAttempt = await billingEngine.VerifyReceiptAsync(testPlayerId, base64Receipt);
+
+            Assert.True(firstAttempt, "The first submission of a never-before-seen transaction ID must be accepted.");
+            Assert.False(secondAttempt, "Resubmitting the exact same transaction ID must be strictly rejected.");
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var profile = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+            Assert.Equal(BillingVerificationEngine.ResolvePremiumDiamondsForProduct("gems_pack_small"), profile.PremiumDiamonds);
+
+            int processedCount = await verifyDb.ProcessedTransactions.AsNoTracking().CountAsync(t => t.TransactionId == "iap_replay_970000201");
+            Assert.Equal(1, processedCount);
+        }
+
+        [Fact]
+        public async Task Test_AuthenticationEngine_OAuthLink_AllowsLoginRecoveryWithoutDeviceId()
+        {
+            const long testPlayerId = 970000202L;
+            string originalDeviceId = "device_oauth_recovery_970000202";
+            Guid accountId = Guid.NewGuid();
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = accountId,
+                    AuthenticatorToken = Guid.NewGuid(),
+                    DeviceId = originalDeviceId
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var validator = new MockOAuthTokenValidator();
+            string oauthToken = "mock:Google:google_user_970000202";
+
+            var linkOutcome = await AuthenticationEngine.LinkOAuthAccountAsync(_fixture.RetryingOptions, accountId, oauthToken, validator);
+            Assert.Equal(OAuthLinkOutcome.Success, linkOutcome);
+
+            // Recovery login succeeds via the OAuth token alone - nothing
+            // here references originalDeviceId.
+            var recovery = await AuthenticationEngine.TryLoginByOAuthAsync(_fixture.RetryingOptions, oauthToken, validator);
+
+            Assert.True(recovery.Found);
+            Assert.Equal(testPlayerId, recovery.PlayerId);
+            Assert.Equal(accountId, recovery.AccountId);
+
+            // Linking is irreversible - a second link attempt against the
+            // same already-linked account must be rejected outright.
+            var relinkOutcome = await AuthenticationEngine.LinkOAuthAccountAsync(_fixture.RetryingOptions, accountId, "mock:Apple:some_other_id", validator);
+            Assert.Equal(OAuthLinkOutcome.AlreadyLinked, relinkOutcome);
+        }
+
+        [Fact]
+        public async Task Test_OfflineSimulationEngine_SevenDayOfflinePeriod_GrantsExactAnalyticalYieldInO1Time()
+        {
+            const long testPlayerId = 970000203L;
+            const long sevenDaysSeconds = 604800L;
+
+            long currentUnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long lastLogoutTimestamp = currentUnixTimestamp - sevenDaysSeconds;
+
+            var payload = new TickStatePayload
+            {
+                PlayerId = testPlayerId,
+                LastLogoutTimestamp = lastLogoutTimestamp,
+                ActiveActivityId = 0,
+                LumberjackLevel = 1,
+                WarehouseLevel = 100,
+                InventorySpaceRemaining = 20
+            };
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                payload = await OfflineSimulationEngine.ExtrapolateOfflineProgressAsync(db, payload, currentUnixTimestamp);
+            }
+            stopwatch.Stop();
+
+            // O(1) analytical projection - a loop touching the database once
+            // per elapsed second would take drastically longer than this for
+            // a 604,800-second gap; a closed-form calculation completes in a
+            // handful of milliseconds regardless of how large deltaSeconds is.
+            Assert.True(stopwatch.ElapsedMilliseconds < 3000,
+                $"Offline extrapolation took {stopwatch.ElapsedMilliseconds}ms for a 7-day gap - expected O(1) analytical projection, not a per-second loop.");
+
+            Assert.Equal(currentUnixTimestamp, payload.LastLogoutTimestamp);
+            Assert.True(payload.IsDirty);
+
+            // Modul: OfflineSimulationEngine deliberately caps analytically-
+            // projected offline time at 12 hours (43200 seconds) as an
+            // anti-abuse measure - see MaxOfflineSeconds and its doc
+            // comment - regardless of how much real time actually elapsed.
+            // A 7-day gap is exactly the scenario that cap exists for: the
+            // expected yield below reflects the CAPPED 43200 seconds, not
+            // the full 604800, which is the correct, intentional behavior
+            // being verified here, not an oversight.
+            const long cappedElapsedSeconds = 43200L;
+            long expectedWood = (long)(cappedElapsedSeconds * VillageManagementEngine.LumberjackWoodRatePerLevel);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var woodCommodity = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleOrDefaultAsync(c => c.PlayerId == testPlayerId && c.ItemId == VillageManagementEngine.WoodCommodityId);
+
+            Assert.NotNull(woodCommodity);
+            Assert.Equal(expectedWood, woodCommodity!.Quantity);
         }
 
         [Fact]

@@ -982,6 +982,24 @@ namespace FolkIdle.Server.Engine
                             {
                                 payload = await OfflineSimulationEngine.ExtrapolateOfflineProgressAsync(offlineDb, payload, currentUnixTimestamp);
                             }
+
+                            // Modul: persist the offline catch-up immediately
+                            // rather than waiting for the next regular
+                            // checkpoint boundary (~5 minutes of active play)
+                            // or disconnect - a substantial multi-day
+                            // catch-up sitting only in memory until then
+                            // would be lost entirely if the server crashed
+                            // or the player disconnected before that
+                            // boundary was ever reached. Only worth the
+                            // extra write when ExtrapolateOfflineProgressAsync
+                            // actually applied a delta (IsDirty set) - a
+                            // same-second relogin with nothing to catch up
+                            // does not need one.
+                            if (payload.IsDirty)
+                            {
+                                _checkpointManager.FlushStateAndAdvance(ref payload);
+                            }
+
                             _readyLogins.Enqueue(payload);
                         });
                         continue;
@@ -1752,10 +1770,24 @@ namespace FolkIdle.Server.Engine
                             transactionId = System.Text.Encoding.UTF8.GetString(ptr, 64).TrimEnd('\0');
                         }
                         string productId = $"Product_{cmd.TargetProductIdHash}";
-                        int premiumAmount = (int)cmd.LimitPrice;
-                        
+
+                        // Modul: the reward amount is no longer taken from
+                        // cmd.LimitPrice - a client could previously claim
+                        // any premiumAmount it liked over this WebSocket
+                        // command with zero receipt verification, the exact
+                        // spoofing vector this task exists to close.
+                        // VerifyPurchaseAsync now always resolves the amount
+                        // itself from productId via
+                        // ResolvePremiumDiamondsForProduct. This 64-byte
+                        // WebSocket packet was never able to carry a real
+                        // signed store receipt anyway (see
+                        // RawTransactionReceipt's fixed size) - real
+                        // purchase verification is VerifyReceiptAsync,
+                        // reached only through the REST
+                        // /api/v1/billing/verify endpoint, which can carry
+                        // an arbitrarily large base64 receipt body.
                         SafeDispatchAsync("Billing.VerifyPurchase", pId, async () => {
-                            bool success = await _billingVerificationEngine.VerifyPurchaseAsync(pId, transactionId, productId, premiumAmount);
+                            bool success = await _billingVerificationEngine.VerifyPurchaseAsync(pId, transactionId, productId);
                             if (success) {
                                 _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
                             }

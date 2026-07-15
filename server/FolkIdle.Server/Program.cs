@@ -58,6 +58,12 @@ var retryConfiguredOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
     .Options;
 serviceCollection.AddSingleton(new RetryingDbContextOptions(retryConfiguredOptions));
 
+// Modul: MockOAuthTokenValidator performs no cryptographic verification -
+// see its own doc comment. A real deployment must register a real
+// IOAuthTokenValidator (Google tokeninfo / Apple JWKS) before accepting
+// real OAuth links or logins.
+serviceCollection.AddSingleton<IOAuthTokenValidator, MockOAuthTokenValidator>();
+
 var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
 if (jwtSecretKey == null)
 {
@@ -125,7 +131,13 @@ var liveOpsTickEngine = new LiveOpsTickEngine(serviceProvider, playerRegistry, w
 var pushNotificationTriggerEngine = new PushNotificationTriggerEngine(serviceProvider, redisMultiplexer);
 var compliancePurgeEngine = new CompliancePurgeEngine(serviceProvider, redisMultiplexer);
 var leaderboardCronEngine = new LeaderboardCronEngine(serviceProvider, redisMultiplexer);
-var billingVerificationEngine = new BillingVerificationEngine(serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), serviceProvider.GetRequiredService<RedisSessionCache>(), playerRegistry, networkSystem);
+// Modul: MockIapReceiptValidator performs no cryptographic verification -
+// see its own doc comment. A real deployment must supply an
+// IIapReceiptValidator backed by Apple's App Store Server API / Google's
+// Play Developer API before accepting real purchases.
+var iapReceiptValidator = new MockIapReceiptValidator();
+var billingVerificationEngine = new BillingVerificationEngine(serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), serviceProvider.GetRequiredService<RedisSessionCache>(), playerRegistry, serviceProvider.GetRequiredService<RetryingDbContextOptions>(), iapReceiptValidator, networkSystem);
+networkSystem.RegisterBillingVerificationEngine(billingVerificationEngine);
 
 networkSystem.RegisterAntiCheatTelemetryEngine(antiCheatTelemetryEngine);
 

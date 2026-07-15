@@ -35,6 +35,7 @@ namespace FolkIdle.Server.Models
         public DbSet<GuildWarDefensiveSnapshot> GuildWarDefensiveSnapshots { get; set; }
         public DbSet<GuildTradeListing> GuildTradeListings { get; set; }
         public DbSet<PrimaryPurchaseLedger> PrimaryPurchaseLedgers { get; set; }
+        public DbSet<ProcessedTransaction> ProcessedTransactions { get; set; }
         public DbSet<EventHorizonPremiumLedger> EventHorizonPremiumLedgers { get; set; }
         public DbSet<EcoTelemetryLedger> EcoTelemetryLedgers { get; set; }
         public DbSet<SeasonalEraRecord> SeasonalEraRecords { get; set; }
@@ -78,11 +79,22 @@ namespace FolkIdle.Server.Models
                 .HasIndex(p => p.DeviceId)
                 .IsUnique();
 
+            // Modul: OAuth account binding - see PlayerRecord.ExternalProviderId.
+            // Composite so the same raw external ID cannot collide across two
+            // different providers (a Google user ID string and an Apple user
+            // ID string are never guaranteed disjoint on their own).
+            modelBuilder.Entity<PlayerRecord>()
+                .HasIndex(p => new { p.ProviderType, p.ExternalProviderId })
+                .IsUnique();
+
             modelBuilder.Entity<GuildWarDefensiveSnapshot>()
                 .Property(g => g.RosterPayloadJson)
                 .HasColumnType("jsonb");
 
             modelBuilder.Entity<PrimaryPurchaseLedger>()
+                .HasIndex(p => p.PlayerId);
+
+            modelBuilder.Entity<ProcessedTransaction>()
                 .HasIndex(p => p.PlayerId);
 
             modelBuilder.Entity<EventHorizonPremiumLedger>()
