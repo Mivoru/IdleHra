@@ -8,6 +8,8 @@ namespace FolkIdle.Server.Network
         public const int ExpectedClientCommandSize = 384;
         public const int ExpectedStateUpdateSize = 703;
         public const int ExpectedAuthHandshakeSize = 530;
+        public const int ExpectedRequestChatMessageSize = 130;
+        public const int ExpectedResponseChatMessageSize = 146;
 
         public static void Validate()
         {
@@ -27,6 +29,25 @@ namespace FolkIdle.Server.Network
             if (authSize != ExpectedAuthHandshakeSize)
             {
                 throw new InvalidOperationException($"AuthHandshakePacket byte layout mismatch. Expected {ExpectedAuthHandshakeSize}, got {authSize}.");
+            }
+
+            int requestChatSize = Unsafe.SizeOf<RequestChatMessagePacket>();
+            if (requestChatSize != ExpectedRequestChatMessageSize)
+            {
+                throw new InvalidOperationException($"RequestChatMessagePacket byte layout mismatch. Expected {ExpectedRequestChatMessageSize}, got {requestChatSize}.");
+            }
+
+            int responseChatSize = Unsafe.SizeOf<ResponseChatMessagePacket>();
+            if (responseChatSize != ExpectedResponseChatMessageSize)
+            {
+                throw new InvalidOperationException($"ResponseChatMessagePacket byte layout mismatch. Expected {ExpectedResponseChatMessageSize}, got {responseChatSize}.");
+            }
+
+            if (ExpectedRequestChatMessageSize == ExpectedClientCommandSize || ExpectedRequestChatMessageSize == ExpectedStateUpdateSize || ExpectedRequestChatMessageSize == ExpectedAuthHandshakeSize ||
+                ExpectedResponseChatMessageSize == ExpectedClientCommandSize || ExpectedResponseChatMessageSize == ExpectedStateUpdateSize || ExpectedResponseChatMessageSize == ExpectedAuthHandshakeSize ||
+                ExpectedRequestChatMessageSize == ExpectedResponseChatMessageSize)
+            {
+                throw new InvalidOperationException("Packet size collision detected - the WS receive loops on both sides distinguish inbound message types by exact byte size, so every packet type must have a unique size.");
             }
         }
     }

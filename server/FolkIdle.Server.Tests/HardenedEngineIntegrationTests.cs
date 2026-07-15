@@ -12,12 +12,28 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
 using Testcontainers.PostgreSql;
+using Testcontainers.Redis;
 
 namespace FolkIdle.Server.Tests
 {
     public class PostgresTestFixture : IAsyncLifetime
     {
         private PostgreSqlContainer _container = null!;
+
+        // Modul: a real Redis container, not just a null-and-degrade stub -
+        // ChatEngine has no same-pod fallback (unlike RedisPlayerSessionLock's
+        // eviction, which still works locally via _connectedClients when
+        // Redis is unavailable), by design: a chat message's sender is meant
+        // to see their own message echo back through the exact same
+        // publish/subscribe path as everyone else, with zero special-cased
+        // local delivery. Without a real IConnectionMultiplexer registered
+        // here, every chat publish silently no-ops (see ChatEngine.
+        // PublishMessageAsync's redis == null guard), making chat completely
+        // untestable - this container exists specifically so
+        // Test_ChatEngine_RateLimiter_DropsExcessMessagesWithoutDisconnecting
+        // and Test_ChatEngine_RedisPubSub_ForwardsMessagesAcrossPods can
+        // observe real publish/subscribe behavior end to end.
+        private RedisContainer _redisContainer = null!;
 
         public IDbContextFactory<FolkIdleDbContext> DbContextFactory { get; private set; } = null!;
         public IServiceProvider ServiceProvider { get; private set; } = null!;
@@ -40,11 +56,18 @@ namespace FolkIdle.Server.Tests
                 .WithPassword("postgres")
                 .Build();
 
-            await _container.StartAsync();
+            _redisContainer = new RedisBuilder("redis:7-alpine").Build();
+
+            await Task.WhenAll(_container.StartAsync(), _redisContainer.StartAsync());
 
             var services = new ServiceCollection();
             services.AddDbContextFactory<FolkIdleDbContext>(options => options.UseNpgsql(_container.GetConnectionString()));
             services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
+
+            var redisMultiplexer = await StackExchange.Redis.ConnectionMultiplexer.ConnectAsync(_redisContainer.GetConnectionString());
+            services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(redisMultiplexer);
+            services.AddSingleton(new RedisPlayerSessionLock(redisMultiplexer));
+
             ServiceProvider = services.BuildServiceProvider();
             DbContextFactory = ServiceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
 
@@ -56,6 +79,7 @@ namespace FolkIdle.Server.Tests
         public async Task DisposeAsync()
         {
             await _container.DisposeAsync();
+            await _redisContainer.DisposeAsync();
         }
     }
 
@@ -2651,6 +2675,269 @@ namespace FolkIdle.Server.Tests
             {
                 networkSystem.Stop();
             }
+        }
+
+        // Modul: ChatEngine's per-connection chat rate limit (5-message burst
+        // capacity, refilling at 0.5 messages/second - see
+        // ChatEngine.ChatBucketCapacity/ChatBucketRefillRatePerSecond) is
+        // deliberately a soft reject, never a disconnect - spam is normal,
+        // recoverable user behavior, unlike a structural protocol violation.
+        // Sending more RequestChatMessagePacket messages back to back than
+        // the bucket's burst capacity must result in only the capacity's
+        // worth being published (observable via the sender's own echoed
+        // ResponseChatMessagePacket, since every publish echoes back to the
+        // sender exactly like everyone else - see ChatEngine.
+        // HandleRedisMessage), while the connection itself stays open and
+        // fully functional afterward.
+        [Fact]
+        public async Task Test_ChatEngine_RateLimiter_DropsExcessMessagesWithoutDisconnecting()
+        {
+            const long testPlayerId = 970000021L;
+            const int burstCapacity = 5;
+            const int sendCount = 9;
+            Guid accountId = Guid.NewGuid();
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var (simulationEngine, networkSystem) = CreateLiveSimulationEngine("http://localhost:8095/");
+            networkSystem.Start();
+            simulationEngine.Start();
+
+            try
+            {
+                using var clientSocket = new ClientWebSocket();
+                await clientSocket.ConnectAsync(new Uri("ws://localhost:8095/"), CancellationToken.None);
+
+                byte[] authBuffer = BuildAuthHandshakeBuffer(MintTestJwt(accountId));
+                await clientSocket.SendAsync(new ArraySegment<byte>(authBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                var loginConfirmed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                int echoedChatCount = 0;
+                var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+
+                var receiveTask = Task.Run(async () =>
+                {
+                    var recvBuffer = new byte[1024];
+                    while (!cts.Token.IsCancellationRequested)
+                    {
+                        WebSocketReceiveResult result;
+                        try
+                        {
+                            result = await clientSocket.ReceiveAsync(new ArraySegment<byte>(recvBuffer), cts.Token);
+                        }
+                        catch
+                        {
+                            break;
+                        }
+
+                        if (result.MessageType == WebSocketMessageType.Close) break;
+
+                        if (result.Count == Marshal.SizeOf<ResponseChatMessagePacket>())
+                        {
+                            var chatPacket = MemoryMarshal.Read<ResponseChatMessagePacket>(new ReadOnlySpan<byte>(recvBuffer, 0, result.Count));
+                            if (chatPacket.SenderPlayerId == testPlayerId)
+                            {
+                                Interlocked.Increment(ref echoedChatCount);
+                            }
+                            continue;
+                        }
+
+                        if (result.Count < Marshal.SizeOf<StateUpdatePacket>()) continue;
+
+                        var state = MemoryMarshal.Read<StateUpdatePacket>(new ReadOnlySpan<byte>(recvBuffer, 0, result.Count));
+                        loginConfirmed.TrySetResult();
+
+                        if (state.ActiveChallengeSeed != 0)
+                        {
+                            uint hash = AntiCheatTelemetryEngine.ComputeChallengeHash(state.ActiveChallengeSeed, state.PlayerId, 0L);
+                            await SendCommandAsync(clientSocket, new ClientCommandPacket
+                            {
+                                Command = CommandType.AntiCheatChallengeResponse,
+                                ChallengeId = state.ActiveChallengeSeed,
+                                ChallengeVerificationHash = hash
+                            });
+                        }
+                    }
+                });
+
+                await Task.WhenAny(loginConfirmed.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+                Assert.True(loginConfirmed.Task.IsCompletedSuccessfully, "Did not observe the player enter the active tick loop before the rate limiter test began.");
+
+                for (int i = 0; i < sendCount; i++)
+                {
+                    byte[] chatBuffer = BuildChatMessageBuffer($"burst message {i}");
+                    await clientSocket.SendAsync(new ArraySegment<byte>(chatBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+                }
+
+                // Give every accepted publish time to round-trip back through
+                // Redis before counting - comfortably longer than a single
+                // local Redis Pub/Sub hop needs, short enough that the
+                // refill rate (0.5/sec) could not plausibly grant more than
+                // one extra token during the wait.
+                await Task.Delay(TimeSpan.FromSeconds(3));
+
+                Assert.True(echoedChatCount <= burstCapacity, $"Expected at most the {burstCapacity}-message burst capacity to be published, but observed {echoedChatCount} echoed messages.");
+                Assert.True(echoedChatCount > 0, "Expected at least some messages within the burst capacity to be published.");
+                Assert.True(echoedChatCount < sendCount, $"Expected the rate limiter to drop some of the {sendCount} sent messages, but all of them were echoed.");
+
+                // The core requirement: rate-limited messages are dropped,
+                // never disconnect-worthy - the socket must still be open
+                // and the connection still fully usable afterward.
+                Assert.Equal(WebSocketState.Open, clientSocket.State);
+                byte[] pingBuffer = new byte[Marshal.SizeOf<ClientCommandPacket>()];
+                MemoryMarshal.Write(new Span<byte>(pingBuffer), new ClientCommandPacket { Command = CommandType.ReloadState });
+                await clientSocket.SendAsync(new ArraySegment<byte>(pingBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+                await Task.Delay(TimeSpan.FromSeconds(1));
+                Assert.Equal(WebSocketState.Open, clientSocket.State);
+
+                cts.Cancel();
+                try { await receiveTask; } catch { }
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                simulationEngine.Stop();
+                networkSystem.Stop();
+            }
+        }
+
+        // Modul: validates chat genuinely goes through Redis Pub/Sub, not
+        // just a same-process in-memory fanout - two independent
+        // NetworkBroadcastSystem instances on different ports, both sharing
+        // this fixture's single Redis connection, stand in for two separate
+        // pods. Deliberately does NOT start a SimulationEngine on either
+        // side (unlike CreateLiveSimulationEngine's other consumers) -
+        // chat is handled entirely inside NetworkBroadcastSystem's own
+        // receive loop and never touches SimulationEngine/CommandQueue at
+        // all (see HandleClientLoopAsync's exact-size RequestChatMessagePacket
+        // branch), so a real tick loop is not needed to exercise it, and
+        // skipping it avoids two full engines (each spinning up its own
+        // pair of background threads) competing for scheduler time in one
+        // test process, which was observed to make login confirmation via
+        // "wait for the first StateUpdatePacket" flaky under this specific
+        // two-engines-in-one-process load (never a problem for any other
+        // test in this file, which all use at most one live engine).
+        // Handshake success is instead confirmed the same way the simpler,
+        // long-standing Test_Handshake_ConcurrentConnectionsSameAccount_
+        // EvictsStaleSession test above already does: the socket stays
+        // Open after a short grace delay (a failed handshake closes it
+        // immediately - see HandleClientLoopAsync's PolicyViolation closes).
+        // A message published by a connection on "pod A" must be observed
+        // by a connection on "pod B", which never received it through any
+        // local _connectedClients broadcast of its own - the only path
+        // between the two pods is ChatEngine.PublishMessageAsync -> Redis
+        // -> ChatEngine.HandleRedisMessageAsync on the other pod's
+        // subscription.
+        [Fact]
+        public async Task Test_ChatEngine_RedisPubSub_ForwardsMessagesAcrossPods()
+        {
+            const long playerAId = 970000022L;
+            const long playerBId = 970000023L;
+            Guid accountAId = Guid.NewGuid();
+            Guid accountBId = Guid.NewGuid();
+            const string messageText = "cross-pod chat forwarding test";
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerAId, PlayerGuid = accountAId, AuthenticatorToken = Guid.NewGuid() });
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerBId, PlayerGuid = accountBId, AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var networkSystemA = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8096/");
+            var networkSystemB = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8097/");
+            networkSystemA.Start();
+            networkSystemB.Start();
+
+            try
+            {
+                using var socketA = new ClientWebSocket();
+                await socketA.ConnectAsync(new Uri("ws://localhost:8096/"), CancellationToken.None);
+                await socketA.SendAsync(new ArraySegment<byte>(BuildAuthHandshakeBuffer(MintTestJwt(accountAId))), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                using var socketB = new ClientWebSocket();
+                await socketB.ConnectAsync(new Uri("ws://localhost:8097/"), CancellationToken.None);
+                await socketB.SendAsync(new ArraySegment<byte>(BuildAuthHandshakeBuffer(MintTestJwt(accountBId))), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                await Task.Delay(500);
+                Assert.Equal(WebSocketState.Open, socketA.State);
+                Assert.Equal(WebSocketState.Open, socketB.State);
+
+                var messageObservedOnB = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+
+                var receiveTaskB = Task.Run(async () =>
+                {
+                    var recvBuffer = new byte[1024];
+                    while (!cts.Token.IsCancellationRequested)
+                    {
+                        WebSocketReceiveResult result;
+                        try
+                        {
+                            result = await socketB.ReceiveAsync(new ArraySegment<byte>(recvBuffer), cts.Token);
+                        }
+                        catch
+                        {
+                            break;
+                        }
+
+                        if (result.MessageType == WebSocketMessageType.Close) break;
+                        if (result.Count != Marshal.SizeOf<ResponseChatMessagePacket>()) continue;
+
+                        var chatPacket = MemoryMarshal.Read<ResponseChatMessagePacket>(new ReadOnlySpan<byte>(recvBuffer, 0, result.Count));
+                        if (chatPacket.SenderPlayerId != playerAId) continue;
+
+                        string received;
+                        unsafe
+                        {
+                            received = System.Text.Encoding.UTF8.GetString(chatPacket.MessageText, chatPacket.MessageLength);
+                        }
+
+                        if (received == messageText)
+                        {
+                            messageObservedOnB.TrySetResult();
+                        }
+                    }
+                });
+
+                byte[] chatBuffer = BuildChatMessageBuffer(messageText);
+                await socketA.SendAsync(new ArraySegment<byte>(chatBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                var completed = await Task.WhenAny(messageObservedOnB.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+                Assert.True(completed == messageObservedOnB.Task, "Pod B never observed the chat message published on pod A - Redis Pub/Sub forwarding did not occur.");
+
+                cts.Cancel();
+                try { await receiveTaskB; } catch { }
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystemA.Stop();
+                networkSystemB.Stop();
+            }
+        }
+
+        private static unsafe byte[] BuildChatMessageBuffer(string messageText)
+        {
+            byte[] textBytes = System.Text.Encoding.UTF8.GetBytes(messageText);
+            int length = textBytes.Length > RequestChatMessagePacket.MessageCapacity ? RequestChatMessagePacket.MessageCapacity : textBytes.Length;
+
+            var packet = new RequestChatMessagePacket { MessageLength = (ushort)length };
+            byte* target = packet.MessageText;
+            for (int i = 0; i < RequestChatMessagePacket.MessageCapacity; i++)
+            {
+                target[i] = i < length ? textBytes[i] : (byte)0;
+            }
+
+            byte[] buffer = new byte[Marshal.SizeOf<RequestChatMessagePacket>()];
+            MemoryMarshal.Write(new Span<byte>(buffer), packet);
+            return buffer;
         }
     }
 }

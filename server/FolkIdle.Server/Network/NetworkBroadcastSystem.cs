@@ -21,6 +21,7 @@ namespace FolkIdle.Server.Network
         public ClientInputThrottler Throttler { get; }
         public string RedisLockToken { get; }
         public TokenBucket TokenBucket;
+        public TokenBucket ChatTokenBucket;
         public byte[] DiagnosticSendBuffer { get; }
 
         public WebSocketSession(WebSocket socket, string redisLockToken)
@@ -29,6 +30,7 @@ namespace FolkIdle.Server.Network
             RedisLockToken = redisLockToken;
             Throttler = new ClientInputThrottler();
             TokenBucket = NetworkThrottlingEngine.CreateBucket();
+            ChatTokenBucket = ChatEngine.CreateChatBucket();
             DiagnosticSendBuffer = new byte[Marshal.SizeOf<StateUpdatePacket>()];
         }
     }
@@ -46,7 +48,6 @@ namespace FolkIdle.Server.Network
         private readonly ConcurrentDictionary<long, WebSocketSession> _connectedClients = new();
 
         private bool _isRunning;
-        private readonly byte[] _broadcastBuffer = new byte[Marshal.SizeOf<StateUpdatePacket>()];
 
         public ref long GetThrottledCounter() => ref _throttledCounter;
         private long _throttledCounter;
@@ -59,6 +60,8 @@ namespace FolkIdle.Server.Network
         private readonly string _jwtSecretKey;
         private AntiCheatTelemetryEngine? _antiCheatTelemetryEngine;
         private SimulationEngine? _simulationEngine;
+        private readonly ChatEngine _chatEngine;
+        private readonly byte[] _chatBroadcastBuffer = new byte[Marshal.SizeOf<ResponseChatMessagePacket>()];
 
         public NetworkBroadcastSystem(IServiceProvider serviceProvider, string jwtSecretKey, string uriPrefix = "http://localhost:8080/")
         {
@@ -68,6 +71,8 @@ namespace FolkIdle.Server.Network
             _jwtSecretKey = jwtSecretKey;
             _httpListener = new HttpListener();
             _httpListener.Prefixes.Add(uriPrefix);
+            _chatEngine = new ChatEngine(serviceProvider);
+            _chatEngine.OnMessageReceived += BroadcastChatMessage;
         }
 
         public void RegisterCheckpointManager(StateCheckpointManager manager)
@@ -97,6 +102,63 @@ namespace FolkIdle.Server.Network
             _isRunning = true;
             Task.Run(ListenLoopAsync);
             SubscribeToSessionEviction();
+            _chatEngine.Subscribe();
+        }
+
+        // Modul: fired by ChatEngine.OnMessageReceived whenever this pod's
+        // Redis Pub/Sub subscription delivers a chat message - published by
+        // any pod's PublishMessageAsync, including this one's own, so a
+        // player sees their own message arrive back through the exact same
+        // path as everyone else's rather than being echoed locally as a
+        // special case. Sends to every currently connected local socket,
+        // mirroring Broadcast(ref StateUpdatePacket)'s fanout pattern but
+        // with its own buffer sized for ResponseChatMessagePacket - and,
+        // unlike that method, fully awaited rather than fire-and-forget.
+        // ChatEngine.Subscribe uses ChannelMessageQueue.OnMessage, which
+        // guarantees this handler is only ever invoked for one message at a
+        // time (never concurrently for a burst of near-simultaneous
+        // publishes), so awaiting every SendAsync here in turn is both safe
+        // and required: a fire-and-forget send here would let the next
+        // queued message's broadcast start before this one's SendAsync
+        // calls finished, racing multiple concurrent sends against the same
+        // WebSocket instance - which .NET does not allow (an unawaited
+        // second SendAsync on a socket with one already in flight throws,
+        // and since nothing observed that faulted task, the message was
+        // simply lost with no error surfaced anywhere).
+        private async Task BroadcastChatMessage(ResponseChatMessagePacket packet)
+        {
+            // Modul: the ref-based span copy is factored into its own
+            // synchronous method - ref locals/ref-returning APIs like
+            // MemoryMarshal.CreateReadOnlySpan cannot be used directly in an
+            // async method body (they cannot safely span an await),
+            // matching the exact same restriction and fix already applied
+            // to ContentRegistry's JSON export helper earlier in this
+            // session.
+            CopyChatPacketToBroadcastBuffer(packet);
+            var segment = new ArraySegment<byte>(_chatBroadcastBuffer);
+
+            foreach (var kvp in _connectedClients)
+            {
+                var socket = kvp.Value.Socket;
+                if (socket.State == WebSocketState.Open)
+                {
+                    try
+                    {
+                        await socket.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Chat broadcast send failed for player {kvp.Key}: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        private void CopyChatPacketToBroadcastBuffer(ResponseChatMessagePacket packet)
+        {
+            ReadOnlySpan<ResponseChatMessagePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
+            ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(span);
+            bytes.CopyTo(_chatBroadcastBuffer);
         }
 
         // Modul: one persistent pod-wide subscription (not one per
@@ -1622,6 +1684,24 @@ namespace FolkIdle.Server.Network
             }
         }
 
+        // Mirrors ExtractJwtToken's exact fixed-buffer read pattern, clamping
+        // an attacker-controlled MessageLength to the buffer's real capacity
+        // before ever reading it, so a lie about length cannot read past the
+        // fixed array.
+        private static unsafe string ExtractChatMessageText(ref RequestChatMessagePacket packet)
+        {
+            int length = packet.MessageLength;
+            if (length < 0 || length > RequestChatMessagePacket.MessageCapacity)
+            {
+                length = 0;
+            }
+
+            fixed (byte* source = packet.MessageText)
+            {
+                return System.Text.Encoding.UTF8.GetString(source, length);
+            }
+        }
+
         private void ParseAdminCommand(byte[] buffer, int count)
         {
             ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(buffer, 0, count);
@@ -1956,7 +2036,21 @@ namespace FolkIdle.Server.Network
                         break;
                     }
 
-                    if (result.MessageType == WebSocketMessageType.Binary && result.Count >= Marshal.SizeOf<ClientCommandPacket>())
+                    if (result.MessageType == WebSocketMessageType.Binary && result.Count == Marshal.SizeOf<RequestChatMessagePacket>())
+                    {
+                        // Modul: a rejected chat message (rate limited or
+                        // invalid content) is silently dropped, never a
+                        // disconnect-worthy event - spam is normal,
+                        // recoverable user behavior, unlike the structural
+                        // packet-flood violation the branch below guards.
+                        if (ChatEngine.TryConsumeChatToken(ref session.ChatTokenBucket))
+                        {
+                            var chatRequest = MemoryMarshal.Read<RequestChatMessagePacket>(new ReadOnlySpan<byte>(buffer, 0, result.Count));
+                            string chatText = ExtractChatMessageText(ref chatRequest);
+                            _ = _chatEngine.PublishMessageAsync(playerId, chatText);
+                        }
+                    }
+                    else if (result.MessageType == WebSocketMessageType.Binary && result.Count >= Marshal.SizeOf<ClientCommandPacket>())
                     {
                         if (ParseValidateAndEnqueue(buffer, result.Count, playerId, session))
                         {
@@ -2032,23 +2126,6 @@ namespace FolkIdle.Server.Network
                 {
                     ForceDisconnect(playerId);
                     return;
-                }
-            }
-        }
-
-        public void Broadcast(ref StateUpdatePacket packet)
-        {
-            ReadOnlySpan<StateUpdatePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
-            ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(span);
-            bytes.CopyTo(_broadcastBuffer);
-            var segment = new ArraySegment<byte>(_broadcastBuffer);
-
-            foreach (var kvp in _connectedClients)
-            {
-                var socket = kvp.Value.Socket;
-                if (socket.State == WebSocketState.Open)
-                {
-                    _ = socket.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
                 }
             }
         }

@@ -37,6 +37,15 @@ namespace FolkIdle.Client.Network
 
         // Thread-safe queue for main-thread consumption
         public ConcurrentQueue<StateUpdatePacket> PacketQueue { get; } = new ConcurrentQueue<StateUpdatePacket>();
+
+        // Chat messages are a dedicated, exact-size binary WS message
+        // (see ResponseChatMessagePacket) distinguished from StateUpdatePacket
+        // by byte count in the receive loop below, not by riding on the
+        // recurring per-tick state channel - routed into their own queue so
+        // UiChatWindow never has to filter them out of PacketQueue.
+        public ConcurrentQueue<ResponseChatMessagePacket> ChatMessageQueue { get; } = new ConcurrentQueue<ResponseChatMessagePacket>();
+        private readonly byte[] _chatSendBuffer = new byte[Marshal.SizeOf<RequestChatMessagePacket>()];
+
         private long _lastPlayerId;
         private long _lastLogicEpochCounter;
         private uint _lastChallengeSeed;
@@ -91,7 +100,14 @@ namespace FolkIdle.Client.Network
                         break;
                     }
 
-                    ParseAndEnqueuePacket(result.Count);
+                    if (result.Count == Marshal.SizeOf<ResponseChatMessagePacket>())
+                    {
+                        ParseAndEnqueueChatMessage(result.Count);
+                    }
+                    else
+                    {
+                        ParseAndEnqueuePacket(result.Count);
+                    }
                 }
             }
             catch (Exception ex)
@@ -166,6 +182,45 @@ namespace FolkIdle.Client.Network
                 SendAntiCheatChallengeResponseZeroAlloc(packet.ActiveChallengeSeed, verificationHash);
             }
             PacketQueue.Enqueue(packet);
+        }
+
+        private void ParseAndEnqueueChatMessage(int length)
+        {
+            if (!UnsafePacketParser.TryParseChatMessage(_receiveBuffer, length, out ResponseChatMessagePacket packet))
+            {
+                Debug.LogWarning($"WebSocketClient: rejected malformed inbound chat packet (length {length}).");
+                return;
+            }
+
+            ChatMessageQueue.Enqueue(packet);
+        }
+
+        // Zero-allocation-on-the-hot-path chat send: the packet struct and
+        // its UTF8 encode are stack/short-lived allocations from a discrete
+        // user action (pressing Enter in the chat box), not the 10Hz tick -
+        // _chatSendBuffer itself is the one reused buffer that matters, same
+        // as _outboundBuffer/_authBuffer below.
+        public unsafe void SendChatMessageZeroAlloc(string messageText)
+        {
+            if (_webSocket == null || _webSocket.State != WebSocketState.Open || string.IsNullOrEmpty(messageText)) return;
+
+            byte[] textBytes = System.Text.Encoding.UTF8.GetBytes(messageText);
+            int length = textBytes.Length > RequestChatMessagePacket.MessageCapacity ? RequestChatMessagePacket.MessageCapacity : textBytes.Length;
+
+            RequestChatMessagePacket packet = new RequestChatMessagePacket
+            {
+                MessageLength = (ushort)length
+            };
+
+            byte* target = packet.MessageText;
+            for (int i = 0; i < RequestChatMessagePacket.MessageCapacity; i++)
+            {
+                target[i] = i < length ? textBytes[i] : (byte)0;
+            }
+
+            System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref _chatSendBuffer[0], packet);
+            var segment = new ArraySegment<byte>(_chatSendBuffer);
+            _ = _webSocket.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
         }
 
         private readonly byte[] _outboundBuffer = new byte[Marshal.SizeOf<ClientCommandPacket>()];

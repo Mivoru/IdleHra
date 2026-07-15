@@ -1908,7 +1908,27 @@ namespace FolkIdle.Server.Engine
                                 LastSkillCastSuccess = currentPayload.LastSkillCastSuccess,
                                 LastSkillCastResultTick = currentPayload.LastSkillCastResultTick
                             };
-                            _networkSystem.Broadcast(ref packet);
+                            // Modul: this packet carries currentPayload's own
+                            // private data (gold, stats, equipment, mana,
+                            // skill cooldowns) - it must go to that player's
+                            // own connection only. Broadcast(ref packet)
+                            // sends to every connected socket regardless of
+                            // whose data it is, which both leaked every
+                            // player's private state to every other
+                            // connected player and, for N active players,
+                            // fired N times per active player per broadcast
+                            // cycle (N-squared unawaited concurrent SendAsync
+                            // calls against the same sockets) - discovered
+                            // via the Chaos Tester load test, where 50 real
+                            // connections produced zero successful chat
+                            // round-trips despite 100 percent successful
+                            // handshakes, because this flood of concurrent
+                            // sends against the same WebSocket instances
+                            // (which .NET does not allow) was corrupting
+                            // socket send state well before chat's own,
+                            // correctly-serialized broadcast ever got a
+                            // chance to run cleanly.
+                            _networkSystem.SendToPlayer(currentPayload.PlayerId, ref packet);
                             currentPayload.NetworkDiagnosticsToken = 0; // Clear it so it only echoes once
                         }
                     }

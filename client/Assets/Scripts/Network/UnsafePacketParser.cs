@@ -25,5 +25,23 @@ namespace FolkIdle.Client.Network
             }
             return true;
         }
+
+        // Mirrors TryParseState's exact truncated-buffer guard, for the
+        // separately-sized ResponseChatMessagePacket wire message.
+        public static unsafe bool TryParseChatMessage(byte[] buffer, int receivedCount, out ResponseChatMessagePacket packet)
+        {
+            int requiredSize = Unsafe.SizeOf<ResponseChatMessagePacket>();
+            if (buffer == null || receivedCount < requiredSize || buffer.Length < requiredSize)
+            {
+                packet = default;
+                return false;
+            }
+
+            fixed (byte* ptr = buffer)
+            {
+                packet = Unsafe.ReadUnaligned<ResponseChatMessagePacket>(ptr);
+            }
+            return true;
+        }
     }
 }
