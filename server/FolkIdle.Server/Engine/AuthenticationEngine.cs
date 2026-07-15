@@ -177,11 +177,11 @@ namespace FolkIdle.Server.Engine
         // WebSocket handshake - that auto-provision-on-any-token path was the
         // exact vulnerability this task exists to close, so it has been
         // removed from the handshake, not preserved alongside this.
-        public static async Task<(long PlayerId, Guid AccountId)> LoginOrProvisionAsync(AuthProvisioningDbOptions authOptions, string deviceId)
+        public static async Task<(long PlayerId, Guid AccountId)> LoginOrProvisionAsync(RetryingDbContextOptions authOptions, string deviceId)
         {
             // A dedicated, retry-configured context is constructed here
             // rather than accepting a caller-supplied FolkIdleDbContext -
-            // see AuthProvisioningDbOptions for why this path cannot share
+            // see RetryingDbContextOptions for why this path cannot share
             // the DbContextOptions every other engine resolves through
             // IDbContextFactory<FolkIdleDbContext>.
             await using var db = new FolkIdleDbContext(authOptions.Options);

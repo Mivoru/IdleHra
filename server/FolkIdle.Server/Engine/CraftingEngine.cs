@@ -11,11 +11,13 @@ namespace FolkIdle.Server.Engine
         private readonly IDbContextFactory<FolkIdleDbContext> _contextFactory;
         private readonly PlayerSessionRegistry _playerRegistry;
         private readonly GuildWarEngine? _guildWarEngine;
+        private readonly RetryingDbContextOptions _retryingDbOptions;
 
-        public CraftingEngine(IDbContextFactory<FolkIdleDbContext> contextFactory, PlayerSessionRegistry playerRegistry, GuildWarEngine? guildWarEngine = null)
+        public CraftingEngine(IDbContextFactory<FolkIdleDbContext> contextFactory, PlayerSessionRegistry playerRegistry, RetryingDbContextOptions retryingDbOptions, GuildWarEngine? guildWarEngine = null)
         {
             _contextFactory = contextFactory;
             _playerRegistry = playerRegistry;
+            _retryingDbOptions = retryingDbOptions;
             _guildWarEngine = guildWarEngine;
         }
 
@@ -26,13 +28,24 @@ namespace FolkIdle.Server.Engine
                 return;
             }
 
-            using var context = await _contextFactory.CreateDbContextAsync();
-            using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
+            var strategy = context.Database.CreateExecutionStrategy();
 
-            try
+            // Modul: the delegate returns (success, quantity) instead of
+            // throwing-and-catching for the expected "insufficient
+            // materials" outcome - that is a normal business result, not a
+            // failure, and must not be retried. A genuine Serializable
+            // conflict or transient failure is left to propagate out of the
+            // delegate so CreateExecutionStrategy retries it; this method no
+            // longer swallows exceptions itself, matching every other
+            // fire-and-forget dispatch site's SafeDispatchAsync wrapper.
+            (bool success, int quantityProduced) = await strategy.ExecuteAsync(async () =>
             {
+                context.ChangeTracker.Clear();
+                using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
                 var player = await context.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
-                if (player == null) return;
+                if (player == null) return (false, 0);
 
                 var charRecord = await context.CharacterRecords.FirstOrDefaultAsync(c => c.PlayerId == playerId && c.Id == player.PlayerGuid);
                 long geneticVector = 0;
@@ -49,7 +62,7 @@ namespace FolkIdle.Server.Engine
                 byte race = gv.LocusRace.Dominant;
 
                 int quantityProduced = 1;
-                
+
                 // Kobold passive: 10% chance to duplicate bar outcome in smelting (Prof 2)
                 if (recipe.ProfessionType == 2 && race == RaceIds.Kobold)
                 {
@@ -58,7 +71,7 @@ namespace FolkIdle.Server.Engine
                         quantityProduced++;
                     }
                 }
-                
+
                 // Vodník passive has been moved to item metadata payload in ExecuteEquipmentCraftingAsync
 
                 // Check and deduct mats
@@ -72,7 +85,7 @@ namespace FolkIdle.Server.Engine
                     if (mat1 == null || mat1.Quantity < recipe.Mat1Count)
                     {
                         await transaction.RollbackAsync();
-                        return;
+                        return (false, 0);
                     }
 
                     mat1.Quantity -= recipe.Mat1Count;
@@ -88,7 +101,7 @@ namespace FolkIdle.Server.Engine
                     if (mat2 == null || mat2.Quantity < recipe.Mat2Count)
                     {
                         await transaction.RollbackAsync();
-                        return;
+                        return (false, 0);
                     }
 
                     mat2.Quantity -= recipe.Mat2Count;
@@ -97,7 +110,11 @@ namespace FolkIdle.Server.Engine
 
                 await context.SaveChangesAsync();
                 await transaction.CommitAsync();
+                return (true, quantityProduced);
+            });
 
+            if (success)
+            {
                 // Enqueue completion
                 _playerRegistry.CraftingCompletionQueue.Enqueue(new CraftingCompletionNotification
                 {
@@ -105,10 +122,6 @@ namespace FolkIdle.Server.Engine
                     CraftedItemId = recipe.ResultItemId,
                     Quantity = quantityProduced
                 });
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
             }
         }
 
@@ -119,11 +132,19 @@ namespace FolkIdle.Server.Engine
                 return;
             }
 
-            using var context = await _contextFactory.CreateDbContextAsync();
-            using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
+            var strategy = context.Database.CreateExecutionStrategy();
 
-            try
+            // Modul: same result-tuple pattern as ExecuteCraftingAsync - the
+            // delegate returns the outcome instead of throwing for the
+            // expected "insufficient materials" case, and no longer
+            // swallows exceptions itself, so a Serializable conflict
+            // propagates out for CreateExecutionStrategy to retry.
+            (bool success, long guildId, long guildWarMatchId, int guildWarPoints) = await strategy.ExecuteAsync(async () =>
             {
+                context.ChangeTracker.Clear();
+                using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
                 // Lock commodity
                 string materialItemId = ContentRegistry.GetMaterialString(recipe.MaterialId);
                 var commodityRows = await context.CommodityRecords.FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {materialItemId} FOR UPDATE").ToListAsync();
@@ -132,12 +153,12 @@ namespace FolkIdle.Server.Engine
                 if (mat == null || mat.Quantity < recipe.MaterialCost)
                 {
                     await transaction.RollbackAsync();
-                    return;
+                    return (false, 0L, 0L, 0);
                 }
 
                 // Lock crafting slot
                 var slotRows = await context.PlayerCraftingSlots.FromSqlInterpolated($"SELECT * FROM \"PlayerCraftingSlots\" WHERE \"PlayerId\" = {playerId} AND \"SlotIndex\" = {(int)slotIndex} FOR UPDATE").ToListAsync();
-                
+
                 // Deduct materials
                 mat.Quantity -= recipe.MaterialCost;
                 context.CommodityRecords.Update(mat);
@@ -158,7 +179,7 @@ namespace FolkIdle.Server.Engine
 
                 // Generate item with AsNoTracking/batch write
                 var item = EquipmentGenerator.GenerateEquipment(playerId, tickToken, recipe, slotIndex);
-                
+
                 var affixes = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, int>>(item.AffixPayload) ?? new System.Collections.Generic.Dictionary<string, int>();
 
                 // Vodník cooking passive (Prof 4)
@@ -169,15 +190,15 @@ namespace FolkIdle.Server.Engine
                         affixes["HealingMultiplier"] = 150;
                     }
                 }
-                
+
                 // Moosleute alchemy passive (Prof 5)
                 if (recipe.ProfessionType == 5 && race == RaceIds.Moosleute)
                 {
                     affixes["PotencyMultiplier"] = 110;
                 }
-                
+
                 item.AffixPayload = System.Text.Json.JsonSerializer.Serialize(affixes);
-                
+
                 context.EquipmentInstances.Add(item);
 
                 // Modul 06/26: Guild War Production Logistics front (WP = 50 *
@@ -194,29 +215,37 @@ namespace FolkIdle.Server.Engine
                 await context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                if (activeGuildWarMatch != null && _guildWarEngine != null && player != null)
+                if (activeGuildWarMatch != null && player != null)
                 {
-                    _guildWarEngine.GuildWarPointQueue.Enqueue(new GuildWarPointEvent
-                    {
-                        MatchId = activeGuildWarMatch.MatchId,
-                        GuildId = player.GuildId,
-                        Front = 1,
-                        Points = 50 * recipe.TierIndex
-                    });
+                    return (true, player.GuildId, activeGuildWarMatch.MatchId, 50 * recipe.TierIndex);
                 }
 
-                // Notification queue pattern to avoid state mutation race
-                _playerRegistry.CraftingCompletionQueue.Enqueue(new CraftingCompletionNotification
+                return (true, 0L, 0L, 0);
+            });
+
+            if (!success)
+            {
+                return;
+            }
+
+            if (guildWarMatchId != 0L && _guildWarEngine != null)
+            {
+                _guildWarEngine.GuildWarPointQueue.Enqueue(new GuildWarPointEvent
                 {
-                    PlayerId = playerId,
-                    CraftedItemId = recipe.RecipeId,
-                    Quantity = 1
+                    MatchId = guildWarMatchId,
+                    GuildId = guildId,
+                    Front = 1,
+                    Points = guildWarPoints
                 });
             }
-            catch
+
+            // Notification queue pattern to avoid state mutation race
+            _playerRegistry.CraftingCompletionQueue.Enqueue(new CraftingCompletionNotification
             {
-                await transaction.RollbackAsync();
-            }
+                PlayerId = playerId,
+                CraftedItemId = recipe.RecipeId,
+                Quantity = 1
+            });
         }
     }
 }

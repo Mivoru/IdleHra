@@ -39,16 +39,13 @@ serviceCollection.AddDbContextFactory<FolkIdleDbContext>(options =>
     options.UseNpgsql(connectionString));
 serviceCollection.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
 
-// Modul: dedicated retry-configured options for AuthenticationEngine's
-// auto-provisioning transaction only - see AuthProvisioningDbOptions for why
-// this is not applied to the shared factory above. Covers both transient
-// network failures (Npgsql's default detection) and Postgres
+// Modul: dedicated retry-configured options for every engine that opens its
+// own explicit Serializable transaction - see RetryingDbContextOptions for
+// why this is not applied to the shared factory above. Covers both
+// transient network failures (Npgsql's default detection) and Postgres
 // Serializable-isolation conflicts, which are expected and recoverable
-// under concurrent write load rather than genuine faults - the provisioning
-// transaction runs at IsolationLevel.Serializable and this retry is what
-// resolves concurrent new-account insert collisions instead of failing the
-// login.
-var authRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+// under concurrent write load rather than genuine faults.
+var retryConfiguredOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
     .UseNpgsql(connectionString, npgsqlOptions =>
         npgsqlOptions.EnableRetryOnFailure(
             maxRetryCount: 6,
@@ -59,7 +56,7 @@ var authRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
                 Npgsql.PostgresErrorCodes.DeadlockDetected
             }))
     .Options;
-serviceCollection.AddSingleton(new AuthProvisioningDbOptions(authRetryOptions));
+serviceCollection.AddSingleton(new RetryingDbContextOptions(retryConfiguredOptions));
 
 var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
 if (jwtSecretKey == null)
@@ -109,7 +106,7 @@ var breedingEngine = new BreedingEngine(serviceProvider, playerRegistry);
 var guildLogisticsEngine = new GuildLogisticsEngine(serviceProvider, playerRegistry);
 var guildWarEngine = new GuildWarEngine(serviceProvider);
 var guildWarSnapshotEngine = new GuildWarSnapshotEngine(serviceProvider);
-var craftingEngine = new CraftingEngine(serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), playerRegistry, guildWarEngine);
+var craftingEngine = new CraftingEngine(serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), playerRegistry, serviceProvider.GetRequiredService<RetryingDbContextOptions>(), guildWarEngine);
 var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
 worldBossEngine.EnsureSnapshotAsync().GetAwaiter().GetResult();
 var villageBuildingEngine = new VillageBuildingEngine(serviceProvider, playerRegistry);

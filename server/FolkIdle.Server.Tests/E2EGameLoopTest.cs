@@ -106,9 +106,23 @@ namespace FolkIdle.Server.Tests
             services.AddDbContextFactory<FolkIdleDbContext>(options =>
                 options.UseNpgsql(_dbContainer.GetConnectionString()));
             services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
-            
+
+            var e2eRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 6,
+                        maxRetryDelay: TimeSpan.FromSeconds(8),
+                        errorCodesToAdd: new[]
+                        {
+                            Npgsql.PostgresErrorCodes.SerializationFailure,
+                            Npgsql.PostgresErrorCodes.DeadlockDetected
+                        }))
+                .Options;
+            services.AddSingleton(new RetryingDbContextOptions(e2eRetryOptions));
+
             var serviceProvider = services.BuildServiceProvider();
             var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+            var retryingDbOptions = serviceProvider.GetRequiredService<RetryingDbContextOptions>();
 
             await using (var db = await contextFactory.CreateDbContextAsync())
             {
@@ -127,7 +141,7 @@ namespace FolkIdle.Server.Tests
             var rerollEngine = new AffixRerollEngine(serviceProvider);
             var breedingEngine = new BreedingEngine(serviceProvider, playerRegistry);
             var guildLogisticsEngine = new GuildLogisticsEngine(serviceProvider, playerRegistry);
-            var craftingEngine = new CraftingEngine(contextFactory, playerRegistry);
+            var craftingEngine = new CraftingEngine(contextFactory, playerRegistry, retryingDbOptions);
             var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
             var villageBuildingEngine = new VillageBuildingEngine(serviceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
@@ -362,9 +376,23 @@ namespace FolkIdle.Server.Tests
             services.AddDbContextFactory<FolkIdleDbContext>(options =>
                 options.UseNpgsql(_dbContainer.GetConnectionString()));
             services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
-            
+
+            var e2eRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 6,
+                        maxRetryDelay: TimeSpan.FromSeconds(8),
+                        errorCodesToAdd: new[]
+                        {
+                            Npgsql.PostgresErrorCodes.SerializationFailure,
+                            Npgsql.PostgresErrorCodes.DeadlockDetected
+                        }))
+                .Options;
+            services.AddSingleton(new RetryingDbContextOptions(e2eRetryOptions));
+
             var serviceProvider = services.BuildServiceProvider();
             var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+            var retryingDbOptions = serviceProvider.GetRequiredService<RetryingDbContextOptions>();
 
             await using (var db = await contextFactory.CreateDbContextAsync())
             {
@@ -383,7 +411,7 @@ namespace FolkIdle.Server.Tests
             var rerollEngine = new AffixRerollEngine(serviceProvider);
             var breedingEngine = new BreedingEngine(serviceProvider, playerRegistry);
             var guildLogisticsEngine = new GuildLogisticsEngine(serviceProvider, playerRegistry);
-            var craftingEngine = new CraftingEngine(contextFactory, playerRegistry);
+            var craftingEngine = new CraftingEngine(contextFactory, playerRegistry, retryingDbOptions);
             var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
             var villageBuildingEngine = new VillageBuildingEngine(serviceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);

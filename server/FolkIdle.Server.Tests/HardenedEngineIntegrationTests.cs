@@ -36,7 +36,7 @@ namespace FolkIdle.Server.Tests
         private RedisContainer _redisContainer = null!;
 
         public IDbContextFactory<FolkIdleDbContext> DbContextFactory { get; private set; } = null!;
-        public AuthProvisioningDbOptions AuthOptions { get; private set; } = null!;
+        public RetryingDbContextOptions RetryingOptions { get; private set; } = null!;
         public IServiceProvider ServiceProvider { get; private set; } = null!;
         public PlayerSessionRegistry PlayerRegistry { get; } = new();
 
@@ -66,12 +66,15 @@ namespace FolkIdle.Server.Tests
             services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
 
             // Mirrors Program.cs's dedicated retry-configured options exactly
-            // - see AuthProvisioningDbOptions and
+            // - see RetryingDbContextOptions and
             // Test_AuthenticationEngine_ConcurrentAutoProvisioning_ResolvesViaRetryStrategy,
             // which specifically exercises this retry path and would not be
             // proving anything if it were not configured the same way the
-            // real server is.
-            var authRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+            // real server is. Shared by every engine under test that opens
+            // its own Serializable transaction (StateCheckpointManager,
+            // AchievementEngine, CraftingEngine, ColdRecoveryCoordinator),
+            // not just AuthenticationEngine.
+            var retryConfiguredOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
                 .UseNpgsql(_container.GetConnectionString(), npgsqlOptions =>
                     npgsqlOptions.EnableRetryOnFailure(
                         maxRetryCount: 6,
@@ -82,7 +85,7 @@ namespace FolkIdle.Server.Tests
                             Npgsql.PostgresErrorCodes.DeadlockDetected
                         }))
                 .Options;
-            services.AddSingleton(new AuthProvisioningDbOptions(authRetryOptions));
+            services.AddSingleton(new RetryingDbContextOptions(retryConfiguredOptions));
 
             var redisMultiplexer = await StackExchange.Redis.ConnectionMultiplexer.ConnectAsync(_redisContainer.GetConnectionString());
             services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(redisMultiplexer);
@@ -90,7 +93,7 @@ namespace FolkIdle.Server.Tests
 
             ServiceProvider = services.BuildServiceProvider();
             DbContextFactory = ServiceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
-            AuthOptions = ServiceProvider.GetRequiredService<AuthProvisioningDbOptions>();
+            RetryingOptions = ServiceProvider.GetRequiredService<RetryingDbContextOptions>();
 
             await using var db = await DbContextFactory.CreateDbContextAsync();
             await db.Database.MigrateAsync();
@@ -1554,7 +1557,7 @@ namespace FolkIdle.Server.Tests
             var rerollEngine = new AffixRerollEngine(serviceProvider);
             var breedingEngine = new BreedingEngine(serviceProvider, playerRegistry);
             var guildLogisticsEngine = new GuildLogisticsEngine(serviceProvider, playerRegistry);
-            var craftingEngine = new CraftingEngine(contextFactory, playerRegistry);
+            var craftingEngine = new CraftingEngine(contextFactory, playerRegistry, _fixture.RetryingOptions);
             var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
             var villageBuildingEngine = new VillageBuildingEngine(serviceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
@@ -1591,7 +1594,7 @@ namespace FolkIdle.Server.Tests
                 await db.SaveChangesAsync();
             }
 
-            var craftingEngine = new CraftingEngine(_fixture.DbContextFactory, _fixture.PlayerRegistry);
+            var craftingEngine = new CraftingEngine(_fixture.DbContextFactory, _fixture.PlayerRegistry, _fixture.RetryingOptions);
             await craftingEngine.ExecuteEquipmentCraftingAsync(testPlayerId, recipeId, slotIndex: 0, tickToken: 12345);
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
@@ -2006,6 +2009,142 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        [Fact]
+        public async Task Test_NetworkBroadcastSystem_ConcurrentSendToPlayer_DoesNotFaultSocket()
+        {
+            const long testPlayerId = 970000100L;
+            Guid accountId = Guid.NewGuid();
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8093/");
+            networkSystem.Start();
+
+            try
+            {
+                using var socket = new ClientWebSocket();
+                try
+                {
+                    await socket.ConnectAsync(new Uri("ws://localhost:8093/"), CancellationToken.None);
+                }
+                catch (WebSocketException ex)
+                {
+                    Console.WriteLine($"WARNING: Skipping concurrent-send verification because the local WebSocket listener is unavailable: {ex.Message}");
+                    return;
+                }
+
+                byte[] authBuffer = BuildAuthHandshakeBuffer(MintTestJwt(accountId));
+                await socket.SendAsync(new ArraySegment<byte>(authBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+                await Task.Delay(500);
+                Assert.Equal(WebSocketState.Open, socket.State);
+
+                int receivedCount = 0;
+                var receiveCts = new CancellationTokenSource();
+                var receiveTask = Task.Run(async () =>
+                {
+                    var buffer = new byte[4096];
+                    try
+                    {
+                        while (socket.State == WebSocketState.Open && !receiveCts.IsCancellationRequested)
+                        {
+                            var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), receiveCts.Token);
+                            if (result.MessageType == WebSocketMessageType.Close) break;
+                            Interlocked.Increment(ref receivedCount);
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
+                });
+
+                // Fires many concurrent sends at the same connection,
+                // mirroring the real race between the 1Hz state broadcast
+                // and any other independent sender hitting the same socket
+                // at once. Before the WebSocketSession semaphore fix, .NET's
+                // WebSocket throws "already one outstanding SendAsync call"
+                // the moment two of these overlap, which silently aborts
+                // the connection with the fire-and-forget exception never
+                // observed anywhere.
+                var sendTasks = new Task[50];
+                for (int i = 0; i < sendTasks.Length; i++)
+                {
+                    sendTasks[i] = Task.Run(() =>
+                    {
+                        var packet = new StateUpdatePacket { PlayerId = testPlayerId };
+                        networkSystem.SendToPlayer(testPlayerId, ref packet);
+                    });
+                }
+                await Task.WhenAll(sendTasks);
+
+                // Give the fire-and-forget sends time to actually complete
+                // and reach the client.
+                await Task.Delay(1000);
+
+                Assert.Equal(WebSocketState.Open, socket.State);
+                Assert.True(receivedCount > 0, "Expected at least one StateUpdatePacket to have been received despite the concurrent send burst.");
+
+                receiveCts.Cancel();
+                try { await receiveTask; } catch { }
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
+        [Fact]
+        public async Task Test_StateCheckpointManager_FlushFailure_RetainsDirtyFlagForNextCycle()
+        {
+            const long testPlayerId = 970000101L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid(),
+                    LogicEpochCounter = 50L
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var checkpointManager = new StateCheckpointManager(_fixture.ServiceProvider);
+
+            // A stale LogicEpochCounter (behind the DB's) deterministically
+            // triggers FlushState's split-brain sieve, which rolls back and
+            // returns false without throwing - the same "flush did not
+            // commit" outcome a Serializable conflict that exhausts its
+            // retries would produce (that path returns false via the outer
+            // catch instead, but TrackState cannot and should not
+            // distinguish the two - see FlushState). This is what Part 1's
+            // fix to TrackState is actually about: neither outcome may be
+            // treated as a successful checkpoint.
+            var state = new TickStatePayload
+            {
+                PlayerId = testPlayerId,
+                LogicEpochCounter = 10L,
+                TicksSinceLastFlush = 3000,
+                IsDirty = true,
+                InventorySpaceRemaining = 20
+            };
+
+            checkpointManager.TrackState(ref state);
+
+            Assert.True(state.IsDirty, "A failed flush must leave IsDirty set so the state is requeued on the next cycle instead of being silently discarded.");
+            Assert.Equal(3000, state.TicksSinceLastFlush);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var player = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+            Assert.Equal(50L, player.LogicEpochCounter);
+        }
+
         // Builds a fully live SimulationEngine + NetworkBroadcastSystem pair
         // (unlike CreateTestSimulationEngine, which returns a SimulationEngine
         // whose NetworkBroadcastSystem is never Start()-ed and is therefore
@@ -2031,7 +2170,7 @@ namespace FolkIdle.Server.Tests
             var rerollEngine = new AffixRerollEngine(serviceProvider);
             var breedingEngine = new BreedingEngine(serviceProvider, playerRegistry);
             var guildLogisticsEngine = new GuildLogisticsEngine(serviceProvider, playerRegistry);
-            var craftingEngine = new CraftingEngine(contextFactory, playerRegistry);
+            var craftingEngine = new CraftingEngine(contextFactory, playerRegistry, _fixture.RetryingOptions);
             var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
             var villageBuildingEngine = new VillageBuildingEngine(serviceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
@@ -2355,14 +2494,14 @@ namespace FolkIdle.Server.Tests
             Task<(long PlayerId, Guid AccountId)> ProvisionOneAsync(int index)
             {
                 string deviceId = devicePrefix + index.ToString(System.Globalization.CultureInfo.InvariantCulture);
-                return AuthenticationEngine.LoginOrProvisionAsync(_fixture.AuthOptions, deviceId);
+                return AuthenticationEngine.LoginOrProvisionAsync(_fixture.RetryingOptions, deviceId);
             }
 
             // Mirrors the Chaos Tester's real-world failure mode: N distinct,
             // never-seen-before device IDs all provisioning for the first
             // time at once, each opening its own Serializable transaction on
             // its own dedicated retry-configured context - matching
-            // HandleAuthLogin's call shape exactly (see AuthProvisioningDbOptions).
+            // HandleAuthLogin's call shape exactly (see RetryingDbContextOptions).
             // This is deliberately NOT
             // a same-device race (Test_Breeding_ConcurrentAttemptsSharingParent_OnlyOneSucceeds
             // and AuthenticationEngine's own unique-index re-check already

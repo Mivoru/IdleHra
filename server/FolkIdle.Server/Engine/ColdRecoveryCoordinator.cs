@@ -46,24 +46,27 @@ namespace FolkIdle.Server.Engine
         {
             List<long> playerIds;
 
-            using (var scope = _serviceProvider.CreateScope())
             {
-                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                // Fetch all T_stable player IDs using Serializable isolation.
-                await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
-                try
+                var retryingOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+                await using var db = new FolkIdleDbContext(retryingOptions.Options);
+
+                // Fetch all T_stable player IDs using Serializable isolation,
+                // retried on a 40001/40P01 conflict rather than failing cold
+                // boot recovery outright - this call has been observed
+                // throwing raw serialization failures under concurrent write
+                // load during boot.
+                var strategy = db.Database.CreateExecutionStrategy();
+                playerIds = await strategy.ExecuteAsync(async () =>
                 {
-                    playerIds = await db.PlayerRecords
+                    db.ChangeTracker.Clear();
+                    await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+                    var ids = await db.PlayerRecords
                         .Where(p => !p.Quarantine_Active)
                         .Select(p => p.Id)
                         .ToListAsync(cancellationToken);
                     await tx.CommitAsync(cancellationToken);
-                }
-                catch
-                {
-                    await tx.RollbackAsync(cancellationToken);
-                    throw;
-                }
+                    return ids;
+                });
             }
 
             Console.WriteLine($"ColdRecoveryCoordinator: Reconstructing {playerIds.Count} sessions in batches of {BatchSize}.");

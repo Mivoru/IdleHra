@@ -35,6 +35,24 @@ namespace FolkIdle.Client.Network
         // allocates on the hot path.
         private readonly byte[] _authBuffer = new byte[Marshal.SizeOf<AuthHandshakePacket>()];
 
+        // Modul: backpressure caps. An idle game is defined by long
+        // backgrounded/AFK sessions - the receive loop keeps enqueuing at
+        // the server's 10Hz cadence regardless of whether VisualSyncProxy's
+        // Update() is even running (a disabled/backgrounded scene still
+        // owns the socket), so an uncapped queue grows without bound over a
+        // multi-hour background period. Drop-oldest keeps memory bounded
+        // and is the semantically correct choice for both queues: a
+        // StateUpdatePacket fully supersedes every earlier one for the same
+        // player (there is nothing to lose by dropping a stale snapshot),
+        // and a chat backlog beyond this depth is already far past what
+        // ChatEngine's own server-side rate limiting and UiChatWindow's
+        // HistoryCapacity circular buffer are designed around. Combined
+        // with VisualSyncProxy's per-frame dequeue budget, the worst case
+        // after a long background period is a small, bounded catch-up
+        // instead of an unbounded one.
+        private const int MaxQueuedStatePackets = 8;
+        private const int MaxQueuedChatMessages = 128;
+
         // Thread-safe queue for main-thread consumption
         public ConcurrentQueue<StateUpdatePacket> PacketQueue { get; } = new ConcurrentQueue<StateUpdatePacket>();
 
@@ -44,6 +62,20 @@ namespace FolkIdle.Client.Network
         // recurring per-tick state channel - routed into their own queue so
         // UiChatWindow never has to filter them out of PacketQueue.
         public ConcurrentQueue<ResponseChatMessagePacket> ChatMessageQueue { get; } = new ConcurrentQueue<ResponseChatMessagePacket>();
+
+        // Modul: enqueues then trims from the front until back under the
+        // cap - safe under the single-producer (this receive loop is the
+        // only enqueuer) / single-consumer shape both queues actually have,
+        // and ConcurrentQueue<T>.TryDequeue is itself thread-safe against
+        // whichever thread is consuming, so no external lock is needed.
+        private static void EnqueueWithCap<T>(ConcurrentQueue<T> queue, T item, int maxDepth)
+        {
+            queue.Enqueue(item);
+            while (queue.Count > maxDepth && queue.TryDequeue(out _))
+            {
+            }
+        }
+
         private readonly byte[] _chatSendBuffer = new byte[Marshal.SizeOf<RequestChatMessagePacket>()];
 
         private long _lastPlayerId;
@@ -181,7 +213,7 @@ namespace FolkIdle.Client.Network
                 uint verificationHash = ComputeChallengeHash(packet.ActiveChallengeSeed, packet.PlayerId, packet.LogicEpochCounter);
                 SendAntiCheatChallengeResponseZeroAlloc(packet.ActiveChallengeSeed, verificationHash);
             }
-            PacketQueue.Enqueue(packet);
+            EnqueueWithCap(PacketQueue, packet, MaxQueuedStatePackets);
         }
 
         private void ParseAndEnqueueChatMessage(int length)
@@ -192,7 +224,7 @@ namespace FolkIdle.Client.Network
                 return;
             }
 
-            ChatMessageQueue.Enqueue(packet);
+            EnqueueWithCap(ChatMessageQueue, packet, MaxQueuedChatMessages);
         }
 
         // Zero-allocation-on-the-hot-path chat send: the packet struct and

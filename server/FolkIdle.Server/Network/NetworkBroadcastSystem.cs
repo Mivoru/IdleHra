@@ -24,6 +24,22 @@ namespace FolkIdle.Server.Network
         public TokenBucket ChatTokenBucket;
         public byte[] DiagnosticSendBuffer { get; }
 
+        // Modul: .NET's WebSocket forbids more than one outstanding
+        // send-family operation (SendAsync or CloseAsync) in flight at a
+        // time on the same instance. State broadcasts (SendToPlayer, 1Hz),
+        // chat broadcasts (BroadcastChatMessage), and disconnects
+        // (ForceDisconnect, DisconnectAllClientsGracefullyAsync, stale-
+        // session eviction) are independent call sites that can all target
+        // the same socket - each individually well-behaved in isolation,
+        // but unsynchronized against each other, which is what let two of
+        // them race and throw "already one outstanding SendAsync call",
+        // silently aborting the socket with no error surfaced anywhere.
+        // Every send/close on this session's socket MUST go through
+        // SendAsync/CloseAsync below rather than Socket.SendAsync/
+        // Socket.CloseAsync directly, so exactly one send-family operation
+        // is ever in flight regardless of which caller issued it.
+        private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
+
         public WebSocketSession(WebSocket socket, string redisLockToken)
         {
             Socket = socket;
@@ -32,6 +48,34 @@ namespace FolkIdle.Server.Network
             TokenBucket = NetworkThrottlingEngine.CreateBucket();
             ChatTokenBucket = ChatEngine.CreateChatBucket();
             DiagnosticSendBuffer = new byte[Marshal.SizeOf<StateUpdatePacket>()];
+        }
+
+        public async Task SendAsync(ArraySegment<byte> segment, WebSocketMessageType messageType, bool endOfMessage, CancellationToken cancellationToken)
+        {
+            await _sendLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                if (Socket.State != WebSocketState.Open) return;
+                await Socket.SendAsync(segment, messageType, endOfMessage, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _sendLock.Release();
+            }
+        }
+
+        public async Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken)
+        {
+            await _sendLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                if (Socket.State != WebSocketState.Open) return;
+                await Socket.CloseAsync(closeStatus, statusDescription, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                _sendLock.Release();
+            }
         }
     }
 
@@ -139,12 +183,11 @@ namespace FolkIdle.Server.Network
 
             foreach (var kvp in _connectedClients)
             {
-                var socket = kvp.Value.Socket;
-                if (socket.State == WebSocketState.Open)
+                if (kvp.Value.Socket.State == WebSocketState.Open)
                 {
                     try
                     {
-                        await socket.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
+                        await kvp.Value.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
                     }
                     catch (Exception ex)
                     {
@@ -1883,7 +1926,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                var authOptions = _serviceProvider.GetRequiredService<AuthProvisioningDbOptions>();
+                var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
 
                 (_, Guid accountId) = await AuthenticationEngine.LoginOrProvisionAsync(authOptions, deviceId);
 
@@ -1953,6 +1996,7 @@ namespace FolkIdle.Server.Network
             string? redisLockToken = null;
             CancellationTokenSource? lockRenewalCts = null;
             Task? lockRenewalTask = null;
+            WebSocketSession? session = null;
             try
             {
                 using var cts = new CancellationTokenSource(5000);
@@ -2026,7 +2070,7 @@ namespace FolkIdle.Server.Network
                     {
                         if (staleSession.Socket.State == WebSocketState.Open)
                         {
-                            _ = staleSession.Socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Superseded by a new login", CancellationToken.None);
+                            _ = ObserveSendFault(staleSession.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Superseded by a new login", CancellationToken.None), playerId);
                         }
                     }
 
@@ -2039,14 +2083,14 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                if (!_connectedClients.TryGetValue(playerId, out var session)) return;
+                if (!_connectedClients.TryGetValue(playerId, out session)) return;
 
                 while (socket.State == WebSocketState.Open)
                 {
                     result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
                     if (result.MessageType == WebSocketMessageType.Close)
                     {
-                        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None);
+                        await session.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by client", CancellationToken.None);
                         break;
                     }
 
@@ -2074,7 +2118,7 @@ namespace FolkIdle.Server.Network
                             Interlocked.Increment(ref _throttledCounter);
                             if (socket.State == WebSocketState.Open)
                             {
-                                await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Packet flood", CancellationToken.None);
+                                await session.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Packet flood", CancellationToken.None);
                             }
                             break;
                         }
@@ -2083,10 +2127,20 @@ namespace FolkIdle.Server.Network
             }
             catch (OperationCanceledException)
             {
-                // Timeout during handshake
+                // Timeout during handshake - session may not exist yet if
+                // this fired before registration (the common case), so
+                // fall back to closing the raw socket directly; nothing
+                // else can be racing an unregistered socket.
                 if (socket.State == WebSocketState.Open)
                 {
-                    await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Handshake timeout", CancellationToken.None);
+                    if (session != null)
+                    {
+                        await session.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Handshake timeout", CancellationToken.None);
+                    }
+                    else
+                    {
+                        await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Handshake timeout", CancellationToken.None);
+                    }
                 }
             }
             catch (Exception)
@@ -2155,7 +2209,25 @@ namespace FolkIdle.Server.Network
             ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(span);
             bytes.CopyTo(session.DiagnosticSendBuffer);
             var segment = new ArraySegment<byte>(session.DiagnosticSendBuffer);
-            _ = session.Socket.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
+
+            // Fire-and-forget is intentional here - SendToPlayer is called
+            // once per player per broadcast tick and must not block the
+            // caller - but the fault is still observed and logged rather
+            // than silently dropped, matching this task's error-
+            // observability requirement.
+            _ = ObserveSendFault(session.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None), playerId);
+        }
+
+        private static async Task ObserveSendFault(Task sendTask, long playerId)
+        {
+            try
+            {
+                await sendTask.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"State broadcast send failed for player {playerId}: {ex.Message}");
+            }
         }
 
         public void ForceDisconnect(long playerId)
@@ -2167,10 +2239,7 @@ namespace FolkIdle.Server.Network
                     _ = _redisSessionLock.ReleaseAsync(playerId, session.RedisLockToken);
                 }
 
-                if (session.Socket.State == WebSocketState.Open)
-                {
-                    _ = session.Socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Violent termination", CancellationToken.None);
-                }
+                _ = ObserveSendFault(session.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Violent termination", CancellationToken.None), playerId);
             }
         }
 
@@ -2196,7 +2265,7 @@ namespace FolkIdle.Server.Network
                 if (socket.State == WebSocketState.Open)
                 {
                     sockets.Add(socket);
-                    tasks.Add(socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Server shutting down", CancellationToken.None));
+                    tasks.Add(kvp.Value.CloseAsync(WebSocketCloseStatus.NormalClosure, "Server shutting down", CancellationToken.None));
                 }
             }
 

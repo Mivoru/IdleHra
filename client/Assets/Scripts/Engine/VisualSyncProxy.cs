@@ -240,6 +240,16 @@ namespace FolkIdle.Client.Engine
         private const float IntervalSmoothingFactor = 0.2f;
         private float _emaPacketIntervalSeconds = TargetTickIntervalSeconds;
 
+        // Modul: per-frame dequeue budget - WebSocketClient.PacketQueue is
+        // itself capped (see MaxQueuedStatePackets there), but this is a
+        // second, independent bound on the consumer side: without it, the
+        // first Update() after returning from a backgrounded/AFK period
+        // would drain the entire accumulated backlog synchronously in one
+        // frame, producing a hitch exactly at the moment the game becomes
+        // visible again. Processing at most this many packets per frame
+        // spreads a worst-case backlog across a couple of frames instead.
+        private const int MaxPacketsProcessedPerFrame = 8;
+
         // Modul: memory anti-cheat key rotation cadence and PRNG state - see
         // _playerHpCell/_skill1-4CooldownCell above.
         private const float ObfuscationRotationIntervalSeconds = 2.0f;
@@ -299,8 +309,11 @@ namespace FolkIdle.Client.Engine
 
             RotateObfuscationCellsIfDue();
 
-            while (NetworkClient.PacketQueue.TryDequeue(out var packet))
+            int packetsProcessedThisFrame = 0;
+            while (packetsProcessedThisFrame < MaxPacketsProcessedPerFrame && NetworkClient.PacketQueue.TryDequeue(out var packet))
             {
+                packetsProcessedThisFrame++;
+
                 if (!_hasReceivedState)
                 {
                     _snapshotA = new ServerSnapshot { Packet = packet, ReceivedTime = Time.time };

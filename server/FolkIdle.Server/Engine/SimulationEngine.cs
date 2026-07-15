@@ -201,11 +201,90 @@ namespace FolkIdle.Server.Engine
         private readonly System.Collections.Generic.Dictionary<long, TickStatePayload> _activePlayers = new();
         private readonly System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext> _liveSessionContexts = new();
 
+        // Modul: GuildId -> active member PlayerIds. Maintained incrementally
+        // on every _activePlayers add/remove below rather than derived by
+        // scanning _activePlayers - the four guild-scoped notification
+        // queues (GuildUpdateQueue, GuildLogisticsDepotUpdateQueue,
+        // GuildCombatSimulationUpdateQueue, GuildRaidBossUpdateQueue) used to
+        // do exactly that scan, once per dequeued event, every 100ms tick:
+        // O(events_per_tick x active_player_count) instead of O(guild_size).
+        // A player's GuildId is fixed for the lifetime of an active session
+        // (loaded once at login, never reassigned mid-session anywhere in
+        // this engine), so add/remove at session boundaries is sufficient -
+        // no update-in-place path is needed.
+        private readonly System.Collections.Generic.Dictionary<long, System.Collections.Generic.List<long>> _guildMembersIndex = new();
+
+        // Adds playerId to _guildMembersIndex[guildId] - called only at
+        // session-start (login, benchmark injection), never per tick, so the
+        // occasional List<long> allocation on a guild's first active member
+        // is outside the zero-allocation 10 Hz tick constraint (that
+        // constraint applies to the four read/dequeue loops below, which
+        // only ever iterate an already-allocated list).
+        private void AddToGuildIndex(long guildId, long playerId)
+        {
+            if (guildId <= 0) return;
+
+            if (!_guildMembersIndex.TryGetValue(guildId, out var members))
+            {
+                members = new System.Collections.Generic.List<long>();
+                _guildMembersIndex[guildId] = members;
+            }
+
+            if (!members.Contains(playerId))
+            {
+                members.Add(playerId);
+            }
+        }
+
+        // Removes playerId from _guildMembersIndex[guildId] - called only at
+        // session-end (disconnect, security termination, validation-failure
+        // eviction), never per tick.
+        private void RemoveFromGuildIndex(long guildId, long playerId)
+        {
+            if (guildId <= 0) return;
+
+            if (_guildMembersIndex.TryGetValue(guildId, out var members))
+            {
+                members.Remove(playerId);
+                if (members.Count == 0)
+                {
+                    _guildMembersIndex.Remove(guildId);
+                }
+            }
+        }
+
+        // Modul: single entry point for adding a player to _activePlayers -
+        // keeps _guildMembersIndex synchronized so no add site can forget
+        // the index update. See RemoveActivePlayer for the matching removal
+        // path.
+        private void AddActivePlayer(TickStatePayload payload)
+        {
+            _activePlayers[payload.PlayerId] = payload;
+            AddToGuildIndex(payload.GuildId, payload.PlayerId);
+        }
+
+        // Modul: single entry point for removing a player from
+        // _activePlayers - replaces every bare _activePlayers.Remove(id)
+        // call in this file so _guildMembersIndex cannot drift out of sync
+        // with _activePlayers (a player left in the guild index after
+        // disconnect would keep receiving guild broadcast writes into a
+        // TickStatePayload that no longer exists in _activePlayers, which
+        // GetValueRefOrNullRef already guards against, but would still leak
+        // the index entry itself indefinitely).
+        private void RemoveActivePlayer(long playerId)
+        {
+            if (_activePlayers.TryGetValue(playerId, out var payload))
+            {
+                RemoveFromGuildIndex(payload.GuildId, playerId);
+            }
+            _activePlayers.Remove(playerId);
+        }
+
         public void InjectVirtualPlayer(TickStatePayload payload)
         {
             lock (_activePlayers)
             {
-                _activePlayers[payload.PlayerId] = payload;
+                AddActivePlayer(payload);
                 _liveSessionContexts.TryAdd(payload.PlayerId, new LiveSessionContext(payload.PlayerId, payload.AccountId));
             }
         }
@@ -217,11 +296,54 @@ namespace FolkIdle.Server.Engine
 
         private void TerminateSessionForSecurity(long playerId)
         {
-            _activePlayers.Remove(playerId);
+            RemoveActivePlayer(playerId);
             _liveSessionContexts.TryRemove(playerId, out _);
             _playerRegistry.UnregisterPlayer(playerId);
             _networkSystem.PurgeTokensForPlayer(playerId);
             _networkSystem.ForceDisconnect(playerId);
+        }
+
+        // Modul: replaces every bare `Task.Run(async () => {...})` fire-and-
+        // forget dispatch in the command dispatch table below. A bare
+        // Task.Run there meant any exception inside it (a DB failure, a
+        // transient Npgsql error, a null ref) became an unobserved task
+        // exception - silently dropped by the CLR, never logged, and for
+        // command handlers that gate a client-visible state transition
+        // (CommandType.Login above all - see the comment on that branch)
+        // this looked exactly like a hang: the client's socket sits waiting
+        // for a StateUpdatePacket that will never arrive, with no error
+        // surfaced anywhere. This helper guarantees every dispatch is
+        // observed: failures are logged, and if playerIdToDisconnectOnFailure
+        // is nonzero that player's connection is force-severed instead of
+        // being left to hang silently.
+        //
+        // Deliberately (context, playerId, action) rather than the more
+        // natural-reading (action, context) order - action must stay the
+        // LAST parameter so every call site's existing multi-line lambda
+        // body and its closing `});` are untouched by this refactor; only
+        // the opening `Task.Run(async () => {` line changes to
+        // `SafeDispatchAsync("Context", playerId, async () => {`, which is
+        // what makes converting ~30 call sites mechanically safe rather
+        // than requiring a hand match of nested braces at every one.
+        private void SafeDispatchAsync(string context, long playerIdToDisconnectOnFailure, Func<Task> action)
+        {
+            _ = SafeDispatchAsyncCore(context, playerIdToDisconnectOnFailure, action);
+        }
+
+        private async Task SafeDispatchAsyncCore(string context, long playerIdToDisconnectOnFailure, Func<Task> action)
+        {
+            try
+            {
+                await action().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"SafeDispatchAsync[{context}] failed: {ex.Message}");
+                if (playerIdToDisconnectOnFailure != 0)
+                {
+                    _networkSystem.ForceDisconnect(playerIdToDisconnectOnFailure);
+                }
+            }
         }
 
         private static uint ClampWorldBossHpToUInt(long value)
@@ -482,21 +604,25 @@ namespace FolkIdle.Server.Engine
 
                 while (_playerRegistry.GuildUpdateQueue.TryDequeue(out var guildUpdate))
                 {
-                    // Real-time updates for guild members
-                    foreach (var kvp in _activePlayers)
+                    // Real-time updates for guild members - O(guild_size)
+                    // via _guildMembersIndex instead of O(active_player_count).
+                    if (_guildMembersIndex.TryGetValue(guildUpdate.GuildId, out var guildUpdateMembers))
                     {
-                        ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, kvp.Key);
-                        if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload) && currentPayload.GuildId == guildUpdate.GuildId)
+                        foreach (long memberId in guildUpdateMembers)
                         {
-                            if (guildUpdate.IsMining)
+                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
+                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
                             {
-                                currentPayload.CachedMiningMonolithLevel = guildUpdate.NewLevel;
+                                if (guildUpdate.IsMining)
+                                {
+                                    currentPayload.CachedMiningMonolithLevel = guildUpdate.NewLevel;
+                                }
+                                else
+                                {
+                                    currentPayload.CachedWoodcuttingMonolithLevel = guildUpdate.NewLevel;
+                                }
+                                currentPayload.IsDirty = true;
                             }
-                            else
-                            {
-                                currentPayload.CachedWoodcuttingMonolithLevel = guildUpdate.NewLevel;
-                            }
-                            currentPayload.IsDirty = true;
                         }
                     }
                 }
@@ -568,43 +694,70 @@ namespace FolkIdle.Server.Engine
 
                 while (_playerRegistry.GuildLogisticsDepotUpdateQueue.TryDequeue(out var depotNotif))
                 {
-                    foreach (var kvp in _activePlayers)
+                    if (_guildMembersIndex.TryGetValue(depotNotif.GuildId, out var depotMembers))
                     {
-                        ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, kvp.Key);
-                        if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload) && currentPayload.GuildId == depotNotif.GuildId)
+                        foreach (long memberId in depotMembers)
                         {
-                            currentPayload.GuildLogisticsCurrentStock = depotNotif.CurrentStock;
-                            currentPayload.GuildLogisticsTargetRequirement = depotNotif.TargetRequirement;
-                            currentPayload.CachedGuildLogisticsLevel = depotNotif.Level;
+                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
+                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                            {
+                                currentPayload.GuildLogisticsCurrentStock = depotNotif.CurrentStock;
+                                currentPayload.GuildLogisticsTargetRequirement = depotNotif.TargetRequirement;
+                                currentPayload.CachedGuildLogisticsLevel = depotNotif.Level;
+                            }
                         }
                     }
                 }
 
                 while (_playerRegistry.GuildCombatSimulationUpdateQueue.TryDequeue(out var combatNotif))
                 {
-                    foreach (var kvp in _activePlayers)
+                    // Two guilds are in this match - a player's fixed
+                    // per-session GuildId can only ever match one of them,
+                    // so no dedup is needed when both index lookups happen
+                    // to return non-empty lists.
+                    if (_guildMembersIndex.TryGetValue(combatNotif.AttackingGuildId, out var attackingMembers))
                     {
-                        ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, kvp.Key);
-                        if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload) &&
-                            (currentPayload.GuildId == combatNotif.AttackingGuildId || currentPayload.GuildId == combatNotif.DefendingGuildId))
+                        foreach (long memberId in attackingMembers)
                         {
-                            currentPayload.CombatSimulationMatchId = combatNotif.MatchId;
-                            currentPayload.CombatSimulationTurnCounter = combatNotif.TurnCounter;
-                            currentPayload.CombatSimulationDamageDelta = combatNotif.DamageDelta;
+                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
+                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                            {
+                                currentPayload.CombatSimulationMatchId = combatNotif.MatchId;
+                                currentPayload.CombatSimulationTurnCounter = combatNotif.TurnCounter;
+                                currentPayload.CombatSimulationDamageDelta = combatNotif.DamageDelta;
+                            }
+                        }
+                    }
+
+                    if (combatNotif.DefendingGuildId != combatNotif.AttackingGuildId &&
+                        _guildMembersIndex.TryGetValue(combatNotif.DefendingGuildId, out var defendingMembers))
+                    {
+                        foreach (long memberId in defendingMembers)
+                        {
+                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
+                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                            {
+                                currentPayload.CombatSimulationMatchId = combatNotif.MatchId;
+                                currentPayload.CombatSimulationTurnCounter = combatNotif.TurnCounter;
+                                currentPayload.CombatSimulationDamageDelta = combatNotif.DamageDelta;
+                            }
                         }
                     }
                 }
 
                 while (_playerRegistry.GuildRaidBossUpdateQueue.TryDequeue(out var raidNotif))
                 {
-                    foreach (var kvp in _activePlayers)
+                    if (_guildMembersIndex.TryGetValue(raidNotif.GuildId, out var raidMembers))
                     {
-                        ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, kvp.Key);
-                        if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload) && currentPayload.GuildId == raidNotif.GuildId)
+                        foreach (long memberId in raidMembers)
                         {
-                            currentPayload.CachedGuildRaidTier = raidNotif.RaidTier;
-                            currentPayload.CachedGuildRaidBossCurrentHp = raidNotif.RaidBossCurrentHp;
-                            currentPayload.CachedGuildRaidBossMaxHp = raidNotif.RaidBossMaxHp;
+                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
+                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                            {
+                                currentPayload.CachedGuildRaidTier = raidNotif.RaidTier;
+                                currentPayload.CachedGuildRaidBossCurrentHp = raidNotif.RaidBossCurrentHp;
+                                currentPayload.CachedGuildRaidBossMaxHp = raidNotif.RaidBossMaxHp;
+                            }
                         }
                     }
                 }
@@ -632,14 +785,14 @@ namespace FolkIdle.Server.Engine
                     {
                         if (req.HasItem && currentPayload.InventorySpaceRemaining <= 0)
                         {
-                            Task.Run(async () => { await _mailboxEngine.CommitMailClaimAsync(req.MailId, false); });
+                            SafeDispatchAsync("MailClaim.Reject", req.PlayerId, async () => { await _mailboxEngine.CommitMailClaimAsync(req.MailId, false); });
                         }
                         else
                         {
                             if (req.HasItem) currentPayload.InventorySpaceRemaining--;
                             currentPayload.AddGold(req.GoldAttachment);
                             currentPayload.IsDirty = true;
-                            Task.Run(async () => { await _mailboxEngine.CommitMailClaimAsync(req.MailId, true); });
+                            SafeDispatchAsync("MailClaim.Accept", req.PlayerId, async () => { await _mailboxEngine.CommitMailClaimAsync(req.MailId, true); });
                         }
                     }
                 }
@@ -651,13 +804,13 @@ namespace FolkIdle.Server.Engine
                     {
                         if (currentPayload.InventorySpaceRemaining <= 0)
                         {
-                            Task.Run(async () => { await _mailboxEngine.CommitBankWithdrawAsync(req.BankId, false); });
+                            SafeDispatchAsync("BankWithdraw.Reject", req.PlayerId, async () => { await _mailboxEngine.CommitBankWithdrawAsync(req.BankId, false); });
                         }
                         else
                         {
                             currentPayload.InventorySpaceRemaining--;
                             currentPayload.IsDirty = true;
-                            Task.Run(async () => { await _mailboxEngine.CommitBankWithdrawAsync(req.BankId, true); });
+                            SafeDispatchAsync("BankWithdraw.Accept", req.PlayerId, async () => { await _mailboxEngine.CommitBankWithdrawAsync(req.BankId, true); });
                         }
                     }
                 }
@@ -684,7 +837,7 @@ namespace FolkIdle.Server.Engine
                                         var stateDump = System.Runtime.InteropServices.MemoryMarshal.AsBytes(new System.ReadOnlySpan<TickStatePayload>(ref payload)).ToArray();
                                         
                                         uint token = cmd.MigrationToken;
-                                        Task.Run(async () => {
+                                        SafeDispatchAsync("NodeMigration.Outbound", pId, async () => {
                                             if (_redis != null && _redis.IsConnected)
                                             {
                                                 var redisDb = _redis.GetDatabase();
@@ -702,7 +855,7 @@ namespace FolkIdle.Server.Engine
                             // INBOUND Handshake
                             uint token = cmd.MigrationToken;
                             _playerRegistry.RegisterPlayer(pId);
-                            Task.Run(async () => {
+                            SafeDispatchAsync("NodeMigration.Inbound", pId, async () => {
                                 if (_redis != null && _redis.IsConnected)
                                 {
                                     var redisDb = _redis.GetDatabase();
@@ -753,7 +906,7 @@ namespace FolkIdle.Server.Engine
                                 }
                             }
 
-                            Task.Run(async () => {
+                            SafeDispatchAsync("ConsumeConsumable", pId, async () => {
                                 using var context = await _contextFactory.CreateDbContextAsync();
                                 using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
                                 try
@@ -814,7 +967,7 @@ namespace FolkIdle.Server.Engine
                     {
                         long tId = cmd.TargetId;
                         _playerRegistry.RegisterPlayer(tId);
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Login", tId, async () => {
                             var payload = await _checkpointManager.LoadPlayerState(tId);
                             
                             long currentUnixTimestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -886,7 +1039,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateMarketCommands(ref currentPayload, (byte)cmd.Command, cmd.TargetId, cmd.LimitPrice))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
                         }
@@ -900,7 +1053,7 @@ namespace FolkIdle.Server.Engine
                         bool isBuy = cmd.Command == CommandType.MarketBuyItem;
                         bool hasSpace = currentPayload.InventorySpaceRemaining > 0;
 
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Market.EscrowOrder", pId, async () => {
                             if (isBuy)
                             {
                                 await _escrowEngine.BuyItemAsync(pId, targetId, hasSpace);
@@ -925,7 +1078,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateGuildContributions(ref currentPayload, cmd.LimitPrice))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
                         }
@@ -937,7 +1090,7 @@ namespace FolkIdle.Server.Engine
 
                         if (guildId > 0 && quantity > 0)
                         {
-                            Task.Run(async () => {
+                            SafeDispatchAsync("Guild.Contribution", pId, async () => {
                                 await _guildLogisticsEngine.ExecuteGuildContributionAsync(pId, guildId, quantity, itemDefinitionId);
                             });
                         }
@@ -946,7 +1099,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateFusionCommand(ref currentPayload, cmd.TargetId, cmd.SecondaryId, cmd.TertiaryId))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.PurgeTokensForPlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
@@ -960,7 +1113,7 @@ namespace FolkIdle.Server.Engine
                         long cSecId = cmd.SecondaryId;
                         long cTerId = cmd.TertiaryId;
 
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Forge.Fusion", pId, async () => {
                             var result = await _forgeEngine.ExecuteFusionAsync(pId, cTargetId, cSecId, cTerId);
                             if (result == ForgeSplicingResult.InvalidRequest)
                             {
@@ -974,7 +1127,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateAffixReroll(ref currentPayload, cmd.TargetId, cmd.LimitPrice))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
                         }
@@ -986,7 +1139,7 @@ namespace FolkIdle.Server.Engine
                         long cTargetId = cmd.TargetId;
                         int affixIndex = cmd.LimitPrice;
 
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Affix.Reroll", pId, async () => {
                             await _rerollEngine.ExecuteRerollAsync(pId, cTargetId, affixIndex);
                             _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
                         });
@@ -995,7 +1148,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateBreedingRequest(ref currentPayload, ref cmd))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.PurgeTokensForPlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
@@ -1005,7 +1158,7 @@ namespace FolkIdle.Server.Engine
                         var patId = cmd.TargetGuid;
                         var matId = cmd.SecondaryGuid;
 
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Breeding.Execute", pId, async () => {
                             await _breedingEngine.ExecuteBreedingAsync(pId, patId, matId);
                         });
                     }
@@ -1014,7 +1167,7 @@ namespace FolkIdle.Server.Engine
                         long pId = currentPayload.PlayerId;
                         int resultItemId = (int)cmd.TargetId;
                         
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Crafting.Initialize", pId, async () => {
                             await _craftingEngine.ExecuteCraftingAsync(pId, resultItemId);
                         });
                     }
@@ -1022,7 +1175,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateCraftingRequest(ref currentPayload, ref cmd))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.PurgeTokensForPlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
@@ -1033,7 +1186,7 @@ namespace FolkIdle.Server.Engine
                         uint slotIndex = cmd.CraftingSlotIndex;
                         uint tickToken = (uint)currentPayload.LogicEpochCounter;
                         
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Crafting.Equipment", pId, async () => {
                             await _craftingEngine.ExecuteEquipmentCraftingAsync(pId, recipeId, slotIndex, tickToken);
                         });
                     }
@@ -1041,7 +1194,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateVillageManagementRequest(ref currentPayload, ref cmd))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.PurgeTokensForPlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
@@ -1050,7 +1203,7 @@ namespace FolkIdle.Server.Engine
                         long pId = currentPayload.PlayerId;
                         uint buildingId = cmd.TargetBuildingId;
                         
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Village.UpgradeBuilding", pId, async () => {
                             await _villageManagementEngine.ExecuteUpgradeBuildingAsync(pId, buildingId);
                         });
                     }
@@ -1058,7 +1211,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateVillageManagementRequest(ref currentPayload, ref cmd))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.PurgeTokensForPlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
@@ -1067,7 +1220,7 @@ namespace FolkIdle.Server.Engine
                         long pId = currentPayload.PlayerId;
                         uint villagerSlot = cmd.TargetVillagerSlot;
 
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Village.EvictVillager", pId, async () => {
                             await _villageManagementEngine.ExecuteEvictVillagerAsync(pId, villagerSlot);
                         });
                     }
@@ -1075,14 +1228,14 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateUpgradeRequest(ref currentPayload, (byte)cmd.Command, 0))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
                         }
 
                         long pId = currentPayload.PlayerId;
                         
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Village.UpgradeTool", pId, async () => {
                             await _villageBuildingEngine.ExecuteUpgradeToolAsync(pId);
                         });
                     }
@@ -1091,7 +1244,7 @@ namespace FolkIdle.Server.Engine
                         // TODO: Add validator check if needed, but the prompt says: ValidateMentorshipAssignment in ClientCommandValidator
                         if (!ClientCommandValidator.ValidateMentorshipAssignment(ref currentPayload, cmd.TargetGuid, (int)cmd.LimitPrice))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.PurgeTokensForPlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
@@ -1101,7 +1254,7 @@ namespace FolkIdle.Server.Engine
                         Guid charId = cmd.TargetGuid;
                         int slotIndex = cmd.LimitPrice;
                         
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Mentorship.AssignMentor", pId, async () => {
                             await _mentorshipEngine.ExecuteAssignMentorAsync(pId, charId, slotIndex);
                             // Trigger full reload so mentor count reflects accurately from DB
                             _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
@@ -1111,7 +1264,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateMentorshipRequest(ref currentPayload, ref cmd))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.PurgeTokensForPlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
@@ -1120,7 +1273,7 @@ namespace FolkIdle.Server.Engine
                         long menteePlayerId = currentPayload.PlayerId;
                         long mentorPlayerId = cmd.TargetPlayerId;
 
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Mentorship.Establish", menteePlayerId, async () => {
                             var result = await _mentorshipEngine.EstablishMentorshipContractAsync(menteePlayerId, mentorPlayerId);
                             if (result == MentorshipContractResult.InvalidRequest)
                             {
@@ -1133,7 +1286,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateMentorshipRequest(ref currentPayload, ref cmd))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.PurgeTokensForPlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
@@ -1142,7 +1295,7 @@ namespace FolkIdle.Server.Engine
                         long requestingPlayerId = currentPayload.PlayerId;
                         long counterpartyPlayerId = cmd.TargetPlayerId;
 
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Mentorship.Terminate", requestingPlayerId, async () => {
                             await _mentorshipEngine.ExecuteTerminateMentorshipAsync(requestingPlayerId, counterpartyPlayerId);
                         });
                     }
@@ -1172,7 +1325,7 @@ namespace FolkIdle.Server.Engine
                         int qualityTier = cmd.QualityTier;
                         string baseItemId = isBuy ? $"ItemType_{cmd.TargetId}" : ""; 
 
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Market.LimitOrder", pId, async () => {
                             await _marketEngine.PlaceLimitOrderAsync(pId, isBuy, instanceId, price, baseItemId, qualityTier);
                             _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
                         });
@@ -1187,7 +1340,7 @@ namespace FolkIdle.Server.Engine
 
                         long pId = currentPayload.PlayerId;
                         long mailId = cmd.TargetId;
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Mail.Claim", pId, async () => {
                             await _mailboxEngine.ClaimMailItemAsync(pId, mailId);
                         });
                     }
@@ -1240,7 +1393,7 @@ namespace FolkIdle.Server.Engine
                     {
                         long pId = currentPayload.PlayerId;
                         long instanceId = cmd.TargetId;
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Bank.Deposit", pId, async () => {
                             await _mailboxEngine.DepositToBankAsync(pId, instanceId);
                         });
                     }
@@ -1248,7 +1401,7 @@ namespace FolkIdle.Server.Engine
                     {
                         long pId = currentPayload.PlayerId;
                         long bankId = cmd.TargetId;
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Bank.Withdraw", pId, async () => {
                             await _mailboxEngine.WithdrawFromBankAsync(pId, bankId);
                         });
                     }
@@ -1360,7 +1513,7 @@ namespace FolkIdle.Server.Engine
                         long instanceId = cmd.TargetId;
                         long goldAmount = cmd.LimitPrice; 
 
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Guild.ContributeGoldOrEquipment", pId, async () => {
                             if (isGold)
                             {
                                 await _guildEngine.ContributeGoldAsync(pId, guildId, goldAmount);
@@ -1380,7 +1533,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateChronoCommands(ref currentPayload, ref cmd))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
                         }
@@ -1388,7 +1541,7 @@ namespace FolkIdle.Server.Engine
                         long pId = currentPayload.PlayerId;
                         long chronoCoreItemId = cmd.TargetId;
 
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Chrono.ConsumeCore", pId, async () => {
                             await _chronoCoreEngine.ConsumeChronoCoreAsync(pId, chronoCoreItemId);
                         });
                     }
@@ -1396,7 +1549,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateLegacyStoreRequest(ref currentPayload, ref cmd))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
                         }
@@ -1405,7 +1558,7 @@ namespace FolkIdle.Server.Engine
                         uint unlockId = cmd.TargetUnlockId;
                         uint slotIndex = cmd.RequestedSlotIndex;
 
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Legacy.PurchaseUnlock", pId, async () => {
                             await _legacyStoreEngine.PurchaseLegacyUnlockAsync(pId, unlockId, slotIndex);
                         });
                     }
@@ -1413,7 +1566,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateGuildDepositRequest(ref currentPayload, ref cmd))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.PurgeTokensForPlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
@@ -1424,7 +1577,7 @@ namespace FolkIdle.Server.Engine
                         uint materialId = cmd.MaterialId;
                         uint quantity = cmd.DepositQuantity;
 
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Guild.DepositMaterial", pId, async () => {
                             await _guildLogisticsDepotEngine.DepositMaterialAsync(pId, guildId, materialId, quantity);
                         });
                     }
@@ -1433,7 +1586,12 @@ namespace FolkIdle.Server.Engine
                         long raidGuildId = currentPayload.GuildId;
                         if (raidGuildId > 0 && _guildRaidEngine != null)
                         {
-                            Task.Run(async () => {
+                            // No single player to disconnect on failure here -
+                            // raidGuildId identifies a guild, not a player, and
+                            // passing it as playerIdToDisconnectOnFailure would
+                            // force-disconnect whichever unrelated player, if
+                            // any, happens to share that numeric id.
+                            SafeDispatchAsync("Guild.LaunchRaid", 0L, async () => {
                                 await _guildRaidEngine.TryStartRaidAsync(raidGuildId);
                             });
                         }
@@ -1444,7 +1602,7 @@ namespace FolkIdle.Server.Engine
                         long equipItemId = cmd.TargetId;
                         if (equipItemId > 0 && _equipmentSlotEngine != null)
                         {
-                            Task.Run(async () => {
+                            SafeDispatchAsync("Equipment.Equip", equipPlayerId, async () => {
                                 await _equipmentSlotEngine.EquipItemAsync(equipPlayerId, equipItemId);
                             });
                         }
@@ -1455,7 +1613,7 @@ namespace FolkIdle.Server.Engine
                         bool isArmorSlot = cmd.IsBuy != 0;
                         if (_equipmentSlotEngine != null)
                         {
-                            Task.Run(async () => {
+                            SafeDispatchAsync("Equipment.Unequip", unequipPlayerId, async () => {
                                 await _equipmentSlotEngine.UnequipItemAsync(unequipPlayerId, isArmorSlot);
                             });
                         }
@@ -1464,7 +1622,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateCombatTurnRequest(ref currentPayload, ref cmd))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.PurgeTokensForPlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
@@ -1474,7 +1632,7 @@ namespace FolkIdle.Server.Engine
                         long guildId = currentPayload.GuildId;
                         ClientCommandPacket capturedCommand = cmd;
 
-                        Task.Run(async () => {
+                        SafeDispatchAsync("GuildCombat.ExecuteTurn", pId, async () => {
                             var result = await _guildCombatSimulationEngine.ExecuteCombatTurnAsync(pId, guildId, capturedCommand);
                             if (result == GuildCombatTurnResult.InvalidRequest || result == GuildCombatTurnResult.NotFound)
                             {
@@ -1505,7 +1663,7 @@ namespace FolkIdle.Server.Engine
                         int thresholdValue = cmd.LimitPrice;
                         if (!ClientCommandValidator.ValidateCombatConfiguration(ref currentPayload, thresholdValue))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
                         }
@@ -1568,7 +1726,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateWorldBossRegistration(ref currentPayload, cmd.TargetId))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
                         }
@@ -1583,7 +1741,7 @@ namespace FolkIdle.Server.Engine
                         _checkpointManager.FlushStateAndAdvance(ref currentPayload);
                         _playerRegistry.UnregisterPlayer(cmd.TargetId);
                         currentPayload.IsSuspended = true;
-                        _activePlayers.Remove(routingPlayerId);
+                        RemoveActivePlayer(routingPlayerId);
                     }
                     else if (cmd.Command == CommandType.SubmitPurchaseReceipt)
                     {
@@ -1596,7 +1754,7 @@ namespace FolkIdle.Server.Engine
                         string productId = $"Product_{cmd.TargetProductIdHash}";
                         int premiumAmount = (int)cmd.LimitPrice;
                         
-                        Task.Run(async () => {
+                        SafeDispatchAsync("Billing.VerifyPurchase", pId, async () => {
                             bool success = await _billingVerificationEngine.VerifyPurchaseAsync(pId, transactionId, productId, premiumAmount);
                             if (success) {
                                 _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
@@ -1617,7 +1775,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateSkillCommand(ref currentPayload, cmd.TargetId, (byte)cmd.Command))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
                         }
@@ -1635,7 +1793,7 @@ namespace FolkIdle.Server.Engine
 
                             long unlockPlayerId = currentPayload.PlayerId;
                             long unlockEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                            Task.Run(async () =>
+                            SafeDispatchAsync("Skill.PersistUnlock", unlockPlayerId, async () =>
                             {
                                 try
                                 {
@@ -1659,7 +1817,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (!ClientCommandValidator.ValidateSkillCommand(ref currentPayload, cmd.TargetId, (byte)cmd.Command))
                         {
-                            _activePlayers.Remove(routingPlayerId);
+                            RemoveActivePlayer(routingPlayerId);
                             _networkSystem.ForceDisconnect(routingPlayerId);
                             continue;
                         }
@@ -1698,7 +1856,7 @@ namespace FolkIdle.Server.Engine
                         continue;
                     }
                     readyState.IsSuspended = false;
-                    _activePlayers[readyState.PlayerId] = readyState;
+                    AddActivePlayer(readyState);
                     _liveSessionContexts.TryAdd(readyState.PlayerId, new LiveSessionContext(readyState.PlayerId, readyState.AccountId));
                 }
 

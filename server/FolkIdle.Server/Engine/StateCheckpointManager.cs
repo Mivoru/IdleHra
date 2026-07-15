@@ -49,11 +49,26 @@ namespace FolkIdle.Server.Engine
 
             if (reachedCheckpointBoundary)
             {
-                FlushStateAndAdvance(ref state);
-                
-                state.TicksSinceLastFlush = 0;
-                state.IsDirty = false;
-                _dirtyStates.TryRemove(state.PlayerId, out _);
+                bool committed = FlushStateAndAdvance(ref state);
+                if (committed)
+                {
+                    state.TicksSinceLastFlush = 0;
+                    state.IsDirty = false;
+                    _dirtyStates.TryRemove(state.PlayerId, out _);
+                }
+                else
+                {
+                    // The flush failed - either a Serializable conflict that
+                    // exhausted its retries, or another DbException. Never
+                    // silently discard progress here: TicksSinceLastFlush is
+                    // left as-is so the next TrackState call re-attempts the
+                    // checkpoint immediately, and IsDirty/_dirtyStates are
+                    // forced so this player is requeued for the next flush
+                    // cycle (including FlushAllGracefully at shutdown)
+                    // regardless of what IsDirty held on entry.
+                    state.IsDirty = true;
+                    _dirtyStates[state.PlayerId] = state;
+                }
             }
             else if (state.IsDirty)
             {
@@ -75,125 +90,142 @@ namespace FolkIdle.Server.Engine
 
         public async Task<bool> FlushState(TickStatePayload state)
         {
-            using var scope = _serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            var retryingOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+            await using var dbContext = new FolkIdleDbContext(retryingOptions.Options);
 
-            using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            // Modul: the retried delegate below is only ever allowed to
+            // return false via the explicit split-brain branch (a detected,
+            // expected condition, not a failure) - it deliberately does NOT
+            // catch-and-return-false on a thrown exception. A thrown
+            // Serializable-conflict (40001) or deadlock (40P01) must
+            // propagate out of the delegate for CreateExecutionStrategy to
+            // retry it; catching it here would silently defeat that retry
+            // and reproduce the exact silent-data-loss bug this method was
+            // refactored to close. Only the outer catch, reached once
+            // retries are exhausted or the exception is not retryable,
+            // reports failure to the caller.
+            var strategy = dbContext.Database.CreateExecutionStrategy();
             try
             {
-                // Pessimistic row-level epoch lock. FOR UPDATE prevents concurrent epoch modification.
-                var player = await dbContext.PlayerRecords
-                    .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", state.PlayerId)
-                    .FirstOrDefaultAsync();
-
-                if (player != null)
+                return await strategy.ExecuteAsync(async () =>
                 {
-                    // Split-brain vector timestamp sieve: if db epoch is strictly ahead, a concurrent node already wrote.
-                    if (player.LogicEpochCounter > state.LogicEpochCounter)
+                    dbContext.ChangeTracker.Clear();
+
+                    using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+                    // Pessimistic row-level epoch lock. FOR UPDATE prevents concurrent epoch modification.
+                    var player = await dbContext.PlayerRecords
+                        .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", state.PlayerId)
+                        .FirstOrDefaultAsync();
+
+                    if (player != null)
                     {
-                        await transaction.RollbackAsync();
-
-                        // Calculate asset delta and compensate via Gold mailbox write (Module 31.2.2).
-                        long epochDelta = player.LogicEpochCounter - state.LogicEpochCounter;
-                        long compensationGold = epochDelta * 500L;
-
-                        TelemetryStreamer.TryWrite(new TelemetryEvent
+                        // Split-brain vector timestamp sieve: if db epoch is strictly ahead, a concurrent node already wrote.
+                        if (player.LogicEpochCounter > state.LogicEpochCounter)
                         {
-                            PlayerId = state.PlayerId,
-                            EventType = 5,
-                            Value1 = (int)(player.LogicEpochCounter & 0x7FFFFFFF),
-                            Value2 = (int)(state.LogicEpochCounter & 0x7FFFFFFF),
-                            Timestamp = Environment.TickCount64
-                        });
+                            await transaction.RollbackAsync();
 
-                        long capturedPlayerId = state.PlayerId;
-                        long capturedGold = compensationGold;
-                        _ = Task.Run(async () =>
-                        {
-                            try
+                            // Calculate asset delta and compensate via Gold mailbox write (Module 31.2.2).
+                            long epochDelta = player.LogicEpochCounter - state.LogicEpochCounter;
+                            long compensationGold = epochDelta * 500L;
+
+                            TelemetryStreamer.TryWrite(new TelemetryEvent
                             {
-                                using var bgScope = _serviceProvider.CreateScope();
-                                var bgDb = bgScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                                using var bgTx = await bgDb.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-                                bgDb.MailboxInstances.Add(new MailboxInstance
+                                PlayerId = state.PlayerId,
+                                EventType = 5,
+                                Value1 = (int)(player.LogicEpochCounter & 0x7FFFFFFF),
+                                Value2 = (int)(state.LogicEpochCounter & 0x7FFFFFFF),
+                                Timestamp = Environment.TickCount64
+                            });
+
+                            long capturedPlayerId = state.PlayerId;
+                            long capturedGold = compensationGold;
+                            _ = Task.Run(async () =>
+                            {
+                                try
                                 {
-                                    PlayerId = capturedPlayerId,
-                                    BaseItemId = "GOLD_COMPENSATION",
-                                    QualityTier = 0,
-                                    Quantity = 0,
-                                    GoldAttachment = capturedGold,
-                                    IsClaimed = false,
-                                    IsPending = false,
-                                    ReceivedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                                });
-                                await bgDb.SaveChangesAsync();
-                                await bgTx.CommitAsync();
-                            }
-                            catch (Exception bgEx)
-                            {
-                                Console.WriteLine($"Split-brain mailbox compensation failed for player {capturedPlayerId}: {bgEx.Message}");
-                            }
-                        });
+                                    using var bgScope = _serviceProvider.CreateScope();
+                                    var bgDb = bgScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                                    using var bgTx = await bgDb.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                                    bgDb.MailboxInstances.Add(new MailboxInstance
+                                    {
+                                        PlayerId = capturedPlayerId,
+                                        BaseItemId = "GOLD_COMPENSATION",
+                                        QualityTier = 0,
+                                        Quantity = 0,
+                                        GoldAttachment = capturedGold,
+                                        IsClaimed = false,
+                                        IsPending = false,
+                                        ReceivedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                                    });
+                                    await bgDb.SaveChangesAsync();
+                                    await bgTx.CommitAsync();
+                                }
+                                catch (Exception bgEx)
+                                {
+                                    Console.WriteLine($"Split-brain mailbox compensation failed for player {capturedPlayerId}: {bgEx.Message}");
+                                }
+                            });
 
-                        _forceDisconnectCallback?.Invoke(state.PlayerId);
-                        _dirtyStates.TryRemove(state.PlayerId, out _);
-                        return false;
+                            _forceDisconnectCallback?.Invoke(state.PlayerId);
+                            _dirtyStates.TryRemove(state.PlayerId, out _);
+                            return false;
+                        }
+
+                        player.CurrentLevel = state.CurrentLevel;
+                        player.CurrentXp = state.CurrentXp;
+                        player.SelectedLineageId = state.SelectedLineageId;
+                        player.LastLogoutTimestamp = state.LastLogoutTimestamp;
+                        player.AccumulatedTimeBankSeconds = (int)(state.AccumulatedTimeBankMs / 1000L);
+                        player.ActiveOffensivePotionId = state.ActiveOffensivePotionId;
+                        player.OffensivePotionDurationMs = state.OffensivePotionDurationMs;
+                        player.ActiveDefensivePotionId = state.ActiveDefensivePotionId;
+                        player.DefensivePotionDurationMs = state.DefensivePotionDurationMs;
+                        player.LogicEpochCounter = state.LogicEpochCounter + 1;
+                        player.BankedChronoSeconds = state.BankedChronoSeconds;
+                        player.IsChronoAccelerating = state.IsChronoAccelerating;
+                        player.Quarantine_Active = state.Quarantine_Active;
+                        player.IsQuarantined = state.IsQuarantined;
+                        player.BaseStrength = state.STR;
+                        player.BaseDexterity = state.DEX;
+                        player.BaseConstitution = state.CON;
+                        player.BaseLuck = state.LCK;
+                        player.EquippedWeaponId = state.EquippedWeaponId == 0L ? null : state.EquippedWeaponId;
+                        player.EquippedArmorId = state.EquippedArmorId == 0L ? null : state.EquippedArmorId;
+                        player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
+                        player.PremiumDiamonds = state.PremiumCurrency;
+                        player.AvailableSkillPoints = state.AvailableSkillPoints;
+                        await UpsertAccountChronoRegistryAsync(dbContext, state);
+                        await UpsertChroniclePassAsync(dbContext, state);
+                        await UpsertLifetimeAchievementsAsync(dbContext, player, state);
+                    }
+                    else
+                    {
+                        dbContext.PlayerRecords.Add(new PlayerRecord
+                        {
+                            Id = state.PlayerId,
+                            CurrentLevel = state.CurrentLevel,
+                            CurrentXp = state.CurrentXp,
+                            SelectedLineageId = state.SelectedLineageId,
+                            LastLogoutTimestamp = state.LastLogoutTimestamp,
+                            AccumulatedTimeBankSeconds = (int)(state.AccumulatedTimeBankMs / 1000L),
+                            LogicEpochCounter = state.LogicEpochCounter + 1,
+                            BankedChronoSeconds = state.BankedChronoSeconds,
+                            IsChronoAccelerating = state.IsChronoAccelerating,
+                            Quarantine_Active = state.Quarantine_Active,
+                            IsQuarantined = state.IsQuarantined
+                        });
+                        await UpsertAccountChronoRegistryAsync(dbContext, state);
+                        await UpsertChroniclePassAsync(dbContext, state);
                     }
 
-                    player.CurrentLevel = state.CurrentLevel;
-                    player.CurrentXp = state.CurrentXp;
-                    player.SelectedLineageId = state.SelectedLineageId;
-                    player.LastLogoutTimestamp = state.LastLogoutTimestamp;
-                    player.AccumulatedTimeBankSeconds = (int)(state.AccumulatedTimeBankMs / 1000L);
-                    player.ActiveOffensivePotionId = state.ActiveOffensivePotionId;
-                    player.OffensivePotionDurationMs = state.OffensivePotionDurationMs;
-                    player.ActiveDefensivePotionId = state.ActiveDefensivePotionId;
-                    player.DefensivePotionDurationMs = state.DefensivePotionDurationMs;
-                    player.LogicEpochCounter = state.LogicEpochCounter + 1;
-                    player.BankedChronoSeconds = state.BankedChronoSeconds;
-                    player.IsChronoAccelerating = state.IsChronoAccelerating;
-                    player.Quarantine_Active = state.Quarantine_Active;
-                    player.IsQuarantined = state.IsQuarantined;
-                    player.BaseStrength = state.STR;
-                    player.BaseDexterity = state.DEX;
-                    player.BaseConstitution = state.CON;
-                    player.BaseLuck = state.LCK;
-                    player.EquippedWeaponId = state.EquippedWeaponId == 0L ? null : state.EquippedWeaponId;
-                    player.EquippedArmorId = state.EquippedArmorId == 0L ? null : state.EquippedArmorId;
-                    player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
-                    player.PremiumDiamonds = state.PremiumCurrency;
-                    player.AvailableSkillPoints = state.AvailableSkillPoints;
-                    await UpsertAccountChronoRegistryAsync(dbContext, state);
-                    await UpsertChroniclePassAsync(dbContext, state);
-                    await UpsertLifetimeAchievementsAsync(dbContext, player, state);
-                }
-                else
-                {
-                    dbContext.PlayerRecords.Add(new PlayerRecord
-                    {
-                        Id = state.PlayerId,
-                        CurrentLevel = state.CurrentLevel,
-                        CurrentXp = state.CurrentXp,
-                        SelectedLineageId = state.SelectedLineageId,
-                        LastLogoutTimestamp = state.LastLogoutTimestamp,
-                        AccumulatedTimeBankSeconds = (int)(state.AccumulatedTimeBankMs / 1000L),
-                        LogicEpochCounter = state.LogicEpochCounter + 1,
-                        BankedChronoSeconds = state.BankedChronoSeconds,
-                        IsChronoAccelerating = state.IsChronoAccelerating,
-                        Quarantine_Active = state.Quarantine_Active,
-                        IsQuarantined = state.IsQuarantined
-                    });
-                    await UpsertAccountChronoRegistryAsync(dbContext, state);
-                    await UpsertChroniclePassAsync(dbContext, state);
-                }
-
-                await dbContext.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return true;
+                    await dbContext.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return true;
+                });
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
                 Console.WriteLine($"Failed to flush state for player {state.PlayerId}: {ex.Message}");
                 return false;
             }
@@ -201,8 +233,15 @@ namespace FolkIdle.Server.Engine
 
         public async Task<TickStatePayload> LoadPlayerState(long playerId)
         {
-            using var scope = _serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            // Modul: login-time state hydration - retry-configured so both
+            // this method's LoadOrUpdateAccountChronoRegistryAsync call
+            // (which opens its own Serializable transaction) and every
+            // other read below transparently survive a transient failure
+            // or Serializable conflict during a concurrent login burst
+            // (cold-boot recovery, many logins at once) instead of failing
+            // the session outright.
+            var retryingOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+            await using var dbContext = new FolkIdleDbContext(retryingOptions.Options);
 
             var player = await dbContext.PlayerRecords.FindAsync(playerId);
             if (player == null)
@@ -614,40 +653,52 @@ namespace FolkIdle.Server.Engine
         private static async Task<AccountChronoRegistry> LoadOrUpdateAccountChronoRegistryAsync(FolkIdleDbContext dbContext, PlayerRecord player, long currentUnixTimestamp)
         {
             Guid accountId = ResolveAccountId(player.Id, player.PlayerGuid);
-            await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-            var registry = await dbContext.AccountChronoRegistries
-                .FromSqlRaw("SELECT * FROM account_chrono_registry WHERE \"AccountId\" = {0} FOR UPDATE", accountId)
-                .FirstOrDefaultAsync();
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                // player was loaded by the caller before this retry boundary
+                // and is mutated below - ChangeTracker.Clear() would detach
+                // it (dropping those mutations from the next SaveChangesAsync)
+                // unless it is re-attached immediately after clearing.
+                dbContext.ChangeTracker.Clear();
+                dbContext.Attach(player);
 
-            if (registry == null)
-            {
-                registry = new AccountChronoRegistry
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+                var registry = await dbContext.AccountChronoRegistries
+                    .FromSqlRaw("SELECT * FROM account_chrono_registry WHERE \"AccountId\" = {0} FOR UPDATE", accountId)
+                    .FirstOrDefaultAsync();
+
+                if (registry == null)
                 {
-                    AccountId = accountId,
-                    BankedChronoSeconds = ChronoBufferEngine.ClampBankedSeconds(player.BankedChronoSeconds),
-                    ActiveSpeedMultiplier = 1.0,
-                    AccelerationTerminationEpoch = 0L,
-                    LastClockSyncEpoch = currentUnixTimestamp
-                };
-                dbContext.AccountChronoRegistries.Add(registry);
-            }
-            else
-            {
-                ChronoBufferEngine.ProcessLoginHandshake(registry, currentUnixTimestamp);
-                if (registry.AccelerationTerminationEpoch <= currentUnixTimestamp || registry.BankedChronoSeconds <= 0)
-                {
-                    registry.ActiveSpeedMultiplier = 1.0;
-                    registry.AccelerationTerminationEpoch = 0L;
+                    registry = new AccountChronoRegistry
+                    {
+                        AccountId = accountId,
+                        BankedChronoSeconds = ChronoBufferEngine.ClampBankedSeconds(player.BankedChronoSeconds),
+                        ActiveSpeedMultiplier = 1.0,
+                        AccelerationTerminationEpoch = 0L,
+                        LastClockSyncEpoch = currentUnixTimestamp
+                    };
+                    dbContext.AccountChronoRegistries.Add(registry);
                 }
-            }
+                else
+                {
+                    ChronoBufferEngine.ProcessLoginHandshake(registry, currentUnixTimestamp);
+                    if (registry.AccelerationTerminationEpoch <= currentUnixTimestamp || registry.BankedChronoSeconds <= 0)
+                    {
+                        registry.ActiveSpeedMultiplier = 1.0;
+                        registry.AccelerationTerminationEpoch = 0L;
+                    }
+                }
 
-            player.BankedChronoSeconds = registry.BankedChronoSeconds;
-            player.IsChronoAccelerating = registry.ActiveSpeedMultiplier > 1.0 && registry.AccelerationTerminationEpoch > currentUnixTimestamp;
+                player.BankedChronoSeconds = registry.BankedChronoSeconds;
+                player.IsChronoAccelerating = registry.ActiveSpeedMultiplier > 1.0 && registry.AccelerationTerminationEpoch > currentUnixTimestamp;
 
-            await dbContext.SaveChangesAsync();
-            await transaction.CommitAsync();
-            return registry;
+                await dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return registry;
+            });
         }
 
         private static async Task UpsertAccountChronoRegistryAsync(FolkIdleDbContext dbContext, TickStatePayload state)
@@ -765,22 +816,44 @@ namespace FolkIdle.Server.Engine
         public void FlushAllGracefully()
         {
             var states = _dirtyStates.Values.ToList();
-            FlushBatch(states).GetAwaiter().GetResult();
-            _dirtyStates.Clear();
+            bool committed = FlushBatch(states).GetAwaiter().GetResult();
+            if (committed)
+            {
+                _dirtyStates.Clear();
+            }
+            else
+            {
+                // Shutdown-time flush failed even after retries - there is
+                // no "next cycle" left to requeue onto since the process is
+                // exiting, so this is a genuine, unavoidable loss for this
+                // batch. Left in _dirtyStates (not cleared) and logged
+                // loudly rather than silently discarded, so this is visible
+                // in shutdown logs instead of vanishing the same way the
+                // per-tick path used to.
+                Console.WriteLine($"FlushAllGracefully: failed to persist {states.Count} dirty player state(s) during shutdown flush.");
+            }
         }
 
-        public async Task FlushBatch(System.Collections.Generic.IEnumerable<TickStatePayload> states)
+        public async Task<bool> FlushBatch(System.Collections.Generic.IEnumerable<TickStatePayload> states)
         {
-            using var scope = _serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-
             var stateList = new System.Collections.Generic.List<TickStatePayload>(states);
-
-            if (stateList.Count > 0)
+            if (stateList.Count == 0)
             {
-                using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-                try
+                return true;
+            }
+
+            var retryingOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+            await using var dbContext = new FolkIdleDbContext(retryingOptions.Options);
+
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            try
+            {
+                await strategy.ExecuteAsync(async () =>
                 {
+                    dbContext.ChangeTracker.Clear();
+
+                    using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
                     foreach (var state in stateList)
                     {
                         var player = await dbContext.PlayerRecords
@@ -836,12 +909,13 @@ namespace FolkIdle.Server.Engine
 
                     await dbContext.SaveChangesAsync();
                     await transaction.CommitAsync();
-                }
-                catch (Exception ex)
-                {
-                    await transaction.RollbackAsync();
-                    Console.WriteLine($"Failed to flush batch: {ex.Message}");
-                }
+                });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to flush batch: {ex.Message}");
+                return false;
             }
         }
     }
