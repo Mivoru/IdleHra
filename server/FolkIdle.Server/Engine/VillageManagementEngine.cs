@@ -62,6 +62,25 @@ namespace FolkIdle.Server.Engine
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
+                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+                // Modul 16: lazily apply any upgrade that already matured
+                // before deciding whether the (single, village-wide) upgrade
+                // slot is free - a request arriving right as the previous
+                // upgrade's timer expires must not be spuriously rejected.
+                await ResolveMaturedUpgradesAsync(db, playerId, nowEpoch);
+
+                bool slotOccupied = await db.VillageInfrastructures
+                    .AsNoTracking()
+                    .AnyAsync(v => v.PlayerId == playerId && v.UpgradeTargetLevel > 0);
+
+                if (slotOccupied)
+                {
+                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 29, Value2 = 2, Timestamp = Environment.TickCount64 });
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
                 await db.Database.ExecuteSqlRawAsync(
                     "INSERT INTO \"VillageInfrastructures\" (\"PlayerId\", \"BuildingId\", \"CurrentLevel\") VALUES ({0}, {1}, 0) ON CONFLICT (\"PlayerId\", \"BuildingId\") DO NOTHING",
                     playerId,
@@ -82,10 +101,11 @@ namespace FolkIdle.Server.Engine
                 // costs Wood and Stone rather than the Gold the original four
                 // service buildings (Forge/Inn/Breeding/Academy) use.
                 bool isProductionBuilding = targetBuildingId >= LumberjackBuildingId && targetBuildingId <= WarehouseBuildingId;
+                long cost;
 
                 if (isProductionBuilding)
                 {
-                    long productionCost = CalculateProductionUpgradeCost(infrastructure.CurrentLevel);
+                    cost = CalculateProductionUpgradeCost(infrastructure.CurrentLevel);
 
                     var woodRecord = await db.CommodityRecords
                         .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, WoodCommodityId)
@@ -95,14 +115,14 @@ namespace FolkIdle.Server.Engine
                         .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, StoneCommodityId)
                         .SingleOrDefaultAsync();
 
-                    if (woodRecord == null || stoneRecord == null || woodRecord.Quantity < productionCost || stoneRecord.Quantity < productionCost)
+                    if (woodRecord == null || stoneRecord == null || woodRecord.Quantity < cost || stoneRecord.Quantity < cost)
                     {
                         await transaction.RollbackAsync();
                         return;
                     }
 
-                    woodRecord.Quantity -= productionCost;
-                    stoneRecord.Quantity -= productionCost;
+                    woodRecord.Quantity -= cost;
+                    stoneRecord.Quantity -= cost;
                 }
                 else
                 {
@@ -110,7 +130,7 @@ namespace FolkIdle.Server.Engine
                         .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
                         .SingleOrDefaultAsync();
 
-                    long cost = CalculateUpgradeCost(infrastructure.CurrentLevel);
+                    cost = CalculateUpgradeCost(infrastructure.CurrentLevel);
 
                     if (goldRecord == null || goldRecord.Quantity < cost)
                     {
@@ -121,7 +141,8 @@ namespace FolkIdle.Server.Engine
                     goldRecord.Quantity -= cost;
                 }
 
-                infrastructure.CurrentLevel++;
+                infrastructure.UpgradeTargetLevel = infrastructure.CurrentLevel + 1;
+                infrastructure.UpgradeCompletesAtEpoch = nowEpoch + CalculateUpgradeDurationSeconds(cost);
 
                 await db.SaveChangesAsync();
                 var notification = await BuildInfrastructureNotificationAsync(db, playerId);
@@ -134,6 +155,46 @@ namespace FolkIdle.Server.Engine
                 await transaction.RollbackAsync();
                 Console.WriteLine($"Village upgrade failed: {ex.Message}");
             }
+        }
+
+        // Modul 16: applies any upgrade whose timer has already matured
+        // (CurrentLevel = UpgradeTargetLevel, queue cleared) so the next read
+        // or upgrade decision for this player never acts on stale data.
+        // Called both from ExecuteUpgradeBuildingAsync (before deciding
+        // whether the upgrade slot is free) and BuildInfrastructureNotificationAsync
+        // (so a plain village-state refresh self-heals too) - intentionally
+        // does not open its own transaction, so it composes inside whichever
+        // transaction the caller already has open.
+        public static async Task ResolveMaturedUpgradesAsync(FolkIdleDbContext db, long playerId, long nowEpoch)
+        {
+            var maturedRows = await db.VillageInfrastructures
+                .Where(v => v.PlayerId == playerId && v.UpgradeTargetLevel > 0 && v.UpgradeCompletesAtEpoch <= nowEpoch)
+                .ToListAsync();
+
+            if (maturedRows.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < maturedRows.Count; i++)
+            {
+                maturedRows[i].CurrentLevel = maturedRows[i].UpgradeTargetLevel;
+                maturedRows[i].UpgradeTargetLevel = 0;
+                maturedRows[i].UpgradeCompletesAtEpoch = 0;
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        private const long MinUpgradeDurationSeconds = 30L;
+
+        // Modul 16: upgrade duration scales with the same cost curve the gold/
+        // wood/stone price already uses (cost/10), floored so an early, cheap
+        // upgrade is never effectively instant.
+        public static long CalculateUpgradeDurationSeconds(long cost)
+        {
+            long duration = cost / 10L;
+            return duration < MinUpgradeDurationSeconds ? MinUpgradeDurationSeconds : duration;
         }
 
         public async Task ExecuteEvictVillagerAsync(long playerId, uint targetVillagerSlot)
@@ -206,6 +267,8 @@ namespace FolkIdle.Server.Engine
 
         private static async Task<InfrastructureUpdateNotification> BuildInfrastructureNotificationAsync(FolkIdleDbContext db, long playerId)
         {
+            await ResolveMaturedUpgradesAsync(db, playerId, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
             var levels = await db.VillageInfrastructures
                 .AsNoTracking()
                 .Where(v => v.PlayerId == playerId)
@@ -219,6 +282,8 @@ namespace FolkIdle.Server.Engine
             int quarryLevel = 0;
             int mineLevel = 0;
             int warehouseLevel = 0;
+            byte pendingUpgradeBuildingId = 0;
+            long pendingUpgradeCompletesAtEpoch = 0;
 
             for (int i = 0; i < levels.Count; i++)
             {
@@ -230,6 +295,12 @@ namespace FolkIdle.Server.Engine
                 else if (levels[i].BuildingId == QuarryBuildingId) quarryLevel = levels[i].CurrentLevel;
                 else if (levels[i].BuildingId == MineBuildingId) mineLevel = levels[i].CurrentLevel;
                 else if (levels[i].BuildingId == WarehouseBuildingId) warehouseLevel = levels[i].CurrentLevel;
+
+                if (levels[i].UpgradeTargetLevel > 0)
+                {
+                    pendingUpgradeBuildingId = (byte)levels[i].BuildingId;
+                    pendingUpgradeCompletesAtEpoch = levels[i].UpgradeCompletesAtEpoch;
+                }
             }
 
             int population = await db.VillageResidents
@@ -250,7 +321,9 @@ namespace FolkIdle.Server.Engine
                 LumberjackLevel = ClampByte(lumberjackLevel),
                 QuarryLevel = ClampByte(quarryLevel),
                 MineLevel = ClampByte(mineLevel),
-                WarehouseLevel = ClampByte(warehouseLevel)
+                WarehouseLevel = ClampByte(warehouseLevel),
+                PendingUpgradeBuildingId = pendingUpgradeBuildingId,
+                PendingUpgradeCompletesAtEpoch = pendingUpgradeCompletesAtEpoch
             };
         }
 

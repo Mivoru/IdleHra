@@ -199,5 +199,10 @@ namespace FolkIdle.Client.Network
         public long CachedWoodStock;
         public long CachedStoneStock;
         public long CachedIronOreStock;
+
+        // Modul 16: timed upgrade queue - PendingUpgradeBuildingId == 0 means
+        // no upgrade is currently in flight for this player's village.
+        public byte PendingUpgradeBuildingId;
+        public long PendingUpgradeCompletesAtEpoch;
     }
 }

@@ -105,6 +105,11 @@ namespace FolkIdle.Client.Engine
         public long StoneStock { get; private set; }
         public long IronOreStock { get; private set; }
 
+        // Modul 16: timed upgrade queue - PendingUpgradeBuildingId == 0 means
+        // no upgrade is currently in flight for this player's village.
+        public int PendingUpgradeBuildingId { get; private set; }
+        public long PendingUpgradeCompletesAtEpoch { get; private set; }
+
         // Modul 16/21: character attributes and equipped gear references.
         public int VisualSTR { get; private set; }
         public int VisualDEX { get; private set; }
@@ -341,6 +346,8 @@ namespace FolkIdle.Client.Engine
             long woodStock = packet.CachedWoodStock;
             long stoneStock = packet.CachedStoneStock;
             long ironOreStock = packet.CachedIronOreStock;
+            int pendingUpgradeBuildingId = packet.PendingUpgradeBuildingId;
+            long pendingUpgradeCompletesAtEpoch = packet.PendingUpgradeCompletesAtEpoch;
 
             bool changed = lumberjackLevel != LumberjackLevel
                 || quarryLevel != QuarryLevel
@@ -348,7 +355,9 @@ namespace FolkIdle.Client.Engine
                 || warehouseLevel != WarehouseLevel
                 || woodStock != WoodStock
                 || stoneStock != StoneStock
-                || ironOreStock != IronOreStock;
+                || ironOreStock != IronOreStock
+                || pendingUpgradeBuildingId != PendingUpgradeBuildingId
+                || pendingUpgradeCompletesAtEpoch != PendingUpgradeCompletesAtEpoch;
 
             if (!changed) return;
 
@@ -359,6 +368,8 @@ namespace FolkIdle.Client.Engine
             WoodStock = woodStock;
             StoneStock = stoneStock;
             IronOreStock = ironOreStock;
+            PendingUpgradeBuildingId = pendingUpgradeBuildingId;
+            PendingUpgradeCompletesAtEpoch = pendingUpgradeCompletesAtEpoch;
 
             OnVillageStateUpdated?.Invoke();
         }

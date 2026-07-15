@@ -498,6 +498,8 @@ namespace FolkIdle.Server.Engine
                         currentPayload.QuarryLevel = updateNotif.QuarryLevel;
                         currentPayload.MineLevel = updateNotif.MineLevel;
                         currentPayload.WarehouseLevel = updateNotif.WarehouseLevel;
+                        currentPayload.PendingUpgradeBuildingId = updateNotif.PendingUpgradeBuildingId;
+                        currentPayload.PendingUpgradeCompletesAtEpoch = updateNotif.PendingUpgradeCompletesAtEpoch;
                         currentPayload.IsDirty = true;
                     }
                 }
@@ -1794,7 +1796,9 @@ namespace FolkIdle.Server.Engine
                                 WarehouseLevel = currentPayload.WarehouseLevel,
                                 CachedWoodStock = currentPayload.CachedWoodStock,
                                 CachedStoneStock = currentPayload.CachedStoneStock,
-                                CachedIronOreStock = currentPayload.CachedIronOreStock
+                                CachedIronOreStock = currentPayload.CachedIronOreStock,
+                                PendingUpgradeBuildingId = currentPayload.PendingUpgradeBuildingId,
+                                PendingUpgradeCompletesAtEpoch = currentPayload.PendingUpgradeCompletesAtEpoch
                             };
                             _networkSystem.Broadcast(ref packet);
                             currentPayload.NetworkDiagnosticsToken = 0; // Clear it so it only echoes once
@@ -2493,7 +2497,7 @@ namespace FolkIdle.Server.Engine
 
             if (payload.Quarantine_Active) return;
 
-            ProcessPassiveVillageTick(ref payload, TickIntervalSeconds);
+            ProcessPassiveVillageTick(ref payload, TickIntervalSeconds, now);
             ProcessSubTick(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
 
             if (chronoAccelerating)
@@ -2506,7 +2510,7 @@ namespace FolkIdle.Server.Engine
                         break;
                     }
 
-                    ProcessPassiveVillageTick(ref payload, TickIntervalSeconds);
+                    ProcessPassiveVillageTick(ref payload, TickIntervalSeconds, now);
                     ProcessSubTick(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
                 }
 
@@ -2536,7 +2540,7 @@ namespace FolkIdle.Server.Engine
                 if (payload.AccumulatedTimeBankMs >= 100)
                 {
                     payload.AccumulatedTimeBankMs -= 100;
-                    ProcessPassiveVillageTick(ref payload, TickIntervalSeconds);
+                    ProcessPassiveVillageTick(ref payload, TickIntervalSeconds, now);
                     ProcessSubTick(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
                 }
                 else
@@ -2556,8 +2560,20 @@ namespace FolkIdle.Server.Engine
         // ticks) without being large enough to trigger a spurious extra unit.
         private const float ProductionAccumulatorEpsilon = 1e-4f;
 
-        internal static void ProcessPassiveVillageTick(ref TickStatePayload payload, double deltaTimeSeconds)
+        internal static void ProcessPassiveVillageTick(ref TickStatePayload payload, double deltaTimeSeconds, long nowEpoch)
         {
+            // Modul 16: live completion of a matured upgrade for players who
+            // are already online, so the progress bar/Upgrade button react at
+            // the exact moment the timer elapses instead of only refreshing
+            // on the player's next explicit action - VillageManagementEngine.
+            // ResolveMaturedUpgradesAsync is still the DB-level source of
+            // truth (reconciled before any new upgrade is granted), this is
+            // purely a same-tick in-memory mirror of that same completion.
+            if (payload.PendingUpgradeBuildingId != 0 && nowEpoch >= payload.PendingUpgradeCompletesAtEpoch)
+            {
+                ApplyMaturedUpgradeInMemory(ref payload);
+            }
+
             long maxStorage = VillageManagementEngine.CalculateWarehouseMaxStorage(payload.WarehouseLevel);
 
             float woodRate = payload.LumberjackLevel * VillageManagementEngine.LumberjackWoodRatePerLevel;
@@ -2601,6 +2617,47 @@ namespace FolkIdle.Server.Engine
                 payload.PendingIronDelta++;
                 payload.IsDirty = true;
             }
+        }
+
+        // Modul 16: mirrors VillageManagementEngine's BuildingId -> cached
+        // level field mapping (BuildInfrastructureNotificationAsync). Pure
+        // struct field arithmetic, no allocations.
+        private static void ApplyMaturedUpgradeInMemory(ref TickStatePayload payload)
+        {
+            switch (payload.PendingUpgradeBuildingId)
+            {
+                case VillageManagementEngine.ForgeBuildingId:
+                    payload.ForgeLevel++;
+                    payload.CachedCurrentToolTier = payload.ForgeLevel;
+                    break;
+                case VillageManagementEngine.InnBuildingId:
+                    payload.InnLevel++;
+                    payload.CachedMaxPopulationCapacity = VillageManagementEngine.CalculatePopulationCapacity(payload.InnLevel);
+                    payload.CachedInnMaturationBonus = payload.InnLevel;
+                    break;
+                case VillageManagementEngine.BreedingGroundsBuildingId:
+                    payload.BreedingLevel++;
+                    break;
+                case VillageManagementEngine.MentorshipAcademyBuildingId:
+                    payload.AcademyLevel++;
+                    break;
+                case VillageManagementEngine.LumberjackBuildingId:
+                    payload.LumberjackLevel++;
+                    break;
+                case VillageManagementEngine.QuarryBuildingId:
+                    payload.QuarryLevel++;
+                    break;
+                case VillageManagementEngine.MineBuildingId:
+                    payload.MineLevel++;
+                    break;
+                case VillageManagementEngine.WarehouseBuildingId:
+                    payload.WarehouseLevel++;
+                    break;
+            }
+
+            payload.PendingUpgradeBuildingId = 0;
+            payload.PendingUpgradeCompletesAtEpoch = 0;
+            payload.IsDirty = true;
         }
 
         private static bool ProcessAgeSlot(ref System.Guid characterId, ref long ageTicks, ref int agePhase)
@@ -2883,8 +2940,7 @@ namespace FolkIdle.Server.Engine
                         critMult = 1.5f;
                     }
 
-                    long baseMilliAttack = 15000L;
-                    long effectiveMilliAttack = baseMilliAttack + (baseMilliAttack * lineage.DamageScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.FlatMeleeDamage * 1000L);
+                    long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel);
                     int rawDamage = (int)(effectiveMilliAttack * critMult);
 
                     // Step 3 (Mitigation)

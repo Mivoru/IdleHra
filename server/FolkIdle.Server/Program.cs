@@ -68,6 +68,7 @@ var rerollEngine = new AffixRerollEngine(serviceProvider);
 var breedingEngine = new BreedingEngine(serviceProvider, playerRegistry);
 var guildLogisticsEngine = new GuildLogisticsEngine(serviceProvider, playerRegistry);
 var guildWarEngine = new GuildWarEngine(serviceProvider);
+var guildWarSnapshotEngine = new GuildWarSnapshotEngine(serviceProvider);
 var craftingEngine = new CraftingEngine(serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), playerRegistry, guildWarEngine);
 var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
 worldBossEngine.EnsureSnapshotAsync().GetAwaiter().GetResult();
@@ -98,6 +99,7 @@ mailboxEngine.StartCleanupCron();
 liveOpsTickEngine.StartCron();
 pushNotificationTriggerEngine.StartCron();
 guildWarEngine.StartCron();
+guildWarSnapshotEngine.StartCron();
 guildMatchmakingEngine.StartCron();
 guildRaidEngine.StartCron();
 

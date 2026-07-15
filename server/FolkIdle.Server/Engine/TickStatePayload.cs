@@ -141,6 +141,11 @@ namespace FolkIdle.Server.Engine
         public byte MineLevel;
         public byte WarehouseLevel;
 
+        // Modul 16: timed upgrade queue - PendingUpgradeBuildingId == 0 means
+        // no upgrade is currently in flight for this player's village.
+        public byte PendingUpgradeBuildingId;
+        public long PendingUpgradeCompletesAtEpoch;
+
         // In-memory mirror of the player's wood/stone/iron_ore CommodityRecords,
         // refreshed at login. Used by the 10 Hz tick to check the warehouse cap
         // without a DB read on the hot path.

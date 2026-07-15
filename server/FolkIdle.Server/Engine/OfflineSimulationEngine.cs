@@ -258,8 +258,7 @@ namespace FolkIdle.Server.Engine
 
             // Analytical projection intentionally uses expected (average) damage per
             // hit rather than replaying per-swing hit/crit RNG.
-            long baseMilliAttack = 15000L;
-            long effectiveMilliAttack = baseMilliAttack + (baseMilliAttack * lineage.DamageScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.FlatMeleeDamage * 1000L);
+            long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel);
             int netDamage = Math.Max(1000, (int)effectiveMilliAttack);
             netDamage = (int)(netDamage * payload.CachedCodexDamageMultiplier);
 

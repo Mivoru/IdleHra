@@ -76,31 +76,19 @@ namespace FolkIdle.Server.Engine
                     return GuildCombatTurnResult.InvalidRequest;
                 }
 
-                // Modul: defending guild's Vodnik CritMitigationPct, read from
-                // the same GuildWarDefensiveSnapshots table GuildWarEngine's
-                // weekly matchmaking combat phase already uses (a generic,
-                // GuildId-keyed snapshot, not specific to either guild-combat
-                // system). Malformed/missing snapshot data defaults to no
-                // mitigation rather than failing the turn.
-                float defenderCritMitigationPct = 0f;
-                var defenderSnapshot = await db.GuildWarDefensiveSnapshots
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(s => s.GuildId == match.DefendingGuildId);
-                if (defenderSnapshot != null && !string.IsNullOrWhiteSpace(defenderSnapshot.RosterPayloadJson))
-                {
-                    try
-                    {
-                        CombatStats defenderStats = System.Text.Json.JsonSerializer.Deserialize<CombatStats>(defenderSnapshot.RosterPayloadJson);
-                        defenderCritMitigationPct = defenderStats.CritMitigationPct;
-                    }
-                    catch (Exception jsonEx)
-                    {
-                        Console.WriteLine($"Guild combat turn: failed to parse defensive snapshot for guild {match.DefendingGuildId}: {jsonEx.Message}");
-                    }
-                }
+                // Modul: both guilds' aggregate CombatStats, read from the same
+                // GuildWarDefensiveSnapshots table GuildWarEngine's weekly
+                // matchmaking combat phase already uses (a generic, GuildId-
+                // keyed snapshot, not specific to either guild-combat system -
+                // see GuildWarSnapshotEngine for how it is built from real
+                // member stats). Malformed/missing snapshot data for either
+                // side defaults to a zeroed CombatStats rather than failing
+                // the turn.
+                CombatStats attackerStats = await LoadGuildCombatStatsAsync(db, match.AttackingGuildId);
+                CombatStats defenderStats = await LoadGuildCombatStatsAsync(db, match.DefendingGuildId);
 
                 uint serverTurn = ExtractTurnCounter(match.CurrentStateBitmask);
-                int delta = CalculateDamageDelta(in match, serverTurn, defenderCritMitigationPct);
+                int delta = CalculateDamageDelta(in match, serverTurn, in attackerStats, in defenderStats);
                 uint nextTurn = (serverTurn + 1U) & TurnCounterMask;
                 uint momentum = delta >= 0 ? AttackerMomentumMask : 0U;
                 match.CurrentStateBitmask = momentum | nextTurn;
@@ -139,21 +127,62 @@ namespace FolkIdle.Server.Engine
             return stateBitmask & TurnCounterMask;
         }
 
-        private static int CalculateDamageDelta(in GuildWarActiveMatch match, uint serverTurn, float defenderCritMitigationPct)
+        // Modul: previously synthesized Attack/Defense/CriticalThreshold from
+        // guildId % constant (160 + guildId % 37, etc.) - a fixed placeholder
+        // completely disconnected from either guild's real combat power, so a
+        // freshly-formed guild of naked level-1 characters hit exactly as
+        // hard as one of fully-geared level-50 veterans. Now derived directly
+        // from the real, StatsCalculator-built aggregate CombatStats loaded
+        // via LoadGuildCombatStatsAsync - FlatMeleeDamage/FlatPhysicalArmor
+        // are already on the same rough 0-200+ magnitude the old synthetic
+        // constants used, so this does not blow out DamageDelta's existing
+        // scale (unlike StatsCalculator.ComputeEffectiveMilliAttack's
+        // milli-unit output, which is for the PvE/GuildWarEngine formula, not
+        // this turn-based register system).
+        private static int CalculateDamageDelta(in GuildWarActiveMatch match, uint serverTurn, in CombatStats attackerStats, in CombatStats defenderStats)
         {
+            int attackerCritThreshold = (int)Math.Clamp(attackerStats.CritChancePct, 0f, 100f);
+
             Span<GuildCombatRoundRegisters> registers = stackalloc GuildCombatRoundRegisters[1];
             registers[0] = new GuildCombatRoundRegisters
             {
-                Attacker = new GuildCombatParticipantRegisters(160 + (int)(match.AttackingGuildId % 37L), 40 + (int)(match.AttackingGuildId % 13L), 12),
-                Defender = new GuildCombatParticipantRegisters(140 + (int)(match.DefendingGuildId % 31L), 55 + (int)(match.DefendingGuildId % 17L), 10),
+                Attacker = new GuildCombatParticipantRegisters(attackerStats.FlatMeleeDamage, defenderStats.FlatPhysicalArmor, attackerCritThreshold),
+                Defender = new GuildCombatParticipantRegisters(defenderStats.FlatMeleeDamage, attackerStats.FlatPhysicalArmor, 0),
                 TurnCounter = serverTurn
             };
 
             uint randomState = unchecked((uint)match.InitialSeed);
             if (randomState == 0U) randomState = 0x6D2B79F5U;
             AdvanceSeed(ref randomState, serverTurn);
-            ExecuteDeterministicRound(ref registers[0], ref randomState, defenderCritMitigationPct);
+            ExecuteDeterministicRound(ref registers[0], ref randomState, defenderStats.CritMitigationPct);
             return registers[0].DamageDelta;
+        }
+
+        // Modul: mirrors GuildWarEngine.ResolveCombatPhaseAsync's snapshot
+        // read exactly (same table, same deserialize-with-fallback shape) -
+        // malformed/missing snapshot data defaults to a zeroed CombatStats
+        // rather than failing the turn, matching the previous defender-only
+        // fallback behavior this replaces.
+        private static async Task<CombatStats> LoadGuildCombatStatsAsync(FolkIdleDbContext db, long guildId)
+        {
+            var snapshot = await db.GuildWarDefensiveSnapshots
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.GuildId == guildId);
+
+            if (snapshot == null || string.IsNullOrWhiteSpace(snapshot.RosterPayloadJson))
+            {
+                return default;
+            }
+
+            try
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<CombatStats>(snapshot.RosterPayloadJson);
+            }
+            catch (Exception jsonEx)
+            {
+                Console.WriteLine($"Guild combat turn: failed to parse defensive snapshot for guild {guildId}: {jsonEx.Message}");
+                return default;
+            }
         }
 
         // Modul: offensive crit roll unchanged (deterministic seeded XORshift,

@@ -343,6 +343,12 @@ namespace FolkIdle.Server.Engine
                 .Where(m => m.MenteePlayerId == playerId)
                 .FirstOrDefaultAsync();
 
+            // Modul 16: resolve any upgrade that matured while this player was
+            // offline before hydrating the login payload, so a returning
+            // player never sees a stale CurrentLevel or a queue slot that is
+            // actually already free.
+            await VillageManagementEngine.ResolveMaturedUpgradesAsync(dbContext, playerId, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
             var villageRows = await dbContext.VillageInfrastructures
                 .AsNoTracking()
                 .Where(v => v.PlayerId == playerId)
@@ -355,6 +361,8 @@ namespace FolkIdle.Server.Engine
             int quarryLevel = 0;
             int mineLevel = 0;
             int warehouseLevel = 0;
+            byte pendingUpgradeBuildingId = 0;
+            long pendingUpgradeCompletesAtEpoch = 0;
             for (int i = 0; i < villageRows.Count; i++)
             {
                 if (villageRows[i].BuildingId == VillageManagementEngine.ForgeBuildingId) forgeLevel = villageRows[i].CurrentLevel;
@@ -365,6 +373,12 @@ namespace FolkIdle.Server.Engine
                 else if (villageRows[i].BuildingId == VillageManagementEngine.QuarryBuildingId) quarryLevel = villageRows[i].CurrentLevel;
                 else if (villageRows[i].BuildingId == VillageManagementEngine.MineBuildingId) mineLevel = villageRows[i].CurrentLevel;
                 else if (villageRows[i].BuildingId == VillageManagementEngine.WarehouseBuildingId) warehouseLevel = villageRows[i].CurrentLevel;
+
+                if (villageRows[i].UpgradeTargetLevel > 0)
+                {
+                    pendingUpgradeBuildingId = (byte)villageRows[i].BuildingId;
+                    pendingUpgradeCompletesAtEpoch = villageRows[i].UpgradeCompletesAtEpoch;
+                }
             }
 
             var villageCommodityRows = await dbContext.CommodityRecords
@@ -489,6 +503,8 @@ namespace FolkIdle.Server.Engine
                 QuarryLevel = ClampByte(quarryLevel),
                 MineLevel = ClampByte(mineLevel),
                 WarehouseLevel = ClampByte(warehouseLevel),
+                PendingUpgradeBuildingId = pendingUpgradeBuildingId,
+                PendingUpgradeCompletesAtEpoch = pendingUpgradeCompletesAtEpoch,
                 CachedWoodStock = woodStock,
                 CachedStoneStock = stoneStock,
                 CachedIronOreStock = ironOreStock,

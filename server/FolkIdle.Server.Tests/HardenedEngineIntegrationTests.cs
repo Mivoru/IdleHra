@@ -622,7 +622,7 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task Test_VillageUpgrade_SucceedsAndDeductsWoodAndStone()
+        public async Task Test_VillageUpgrade_QueuesUpgradeAndDeductsWoodAndStone()
         {
             const long testPlayerId = 950000007L;
 
@@ -646,6 +646,8 @@ namespace FolkIdle.Server.Tests
                 await db.SaveChangesAsync();
             }
 
+            long beforeUpgradeEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
             var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
             await villageManagementEngine.ExecuteUpgradeBuildingAsync(testPlayerId, VillageManagementEngine.LumberjackBuildingId);
 
@@ -660,9 +662,157 @@ namespace FolkIdle.Server.Tests
 
             long expectedCost = VillageManagementEngine.CalculateProductionUpgradeCost(0);
 
-            Assert.Equal(1, infrastructure.CurrentLevel);
+            // Upgrades are timed, not instant: cost is deducted immediately,
+            // but CurrentLevel only advances once ResolveMaturedUpgradesAsync
+            // observes UpgradeCompletesAtEpoch has passed.
+            Assert.Equal(0, infrastructure.CurrentLevel);
+            Assert.Equal(1, infrastructure.UpgradeTargetLevel);
+            Assert.True(infrastructure.UpgradeCompletesAtEpoch >= beforeUpgradeEpoch + VillageManagementEngine.CalculateUpgradeDurationSeconds(expectedCost));
             Assert.Equal(10000L - expectedCost, updatedWood.Quantity);
             Assert.Equal(10000L - expectedCost, updatedStone.Quantity);
+        }
+
+        [Fact]
+        public async Task Test_VillageUpgrade_RejectsSecondUpgradeWhileQueueOccupied()
+        {
+            const long testPlayerId = 950000107L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.LumberjackBuildingId,
+                    CurrentLevel = 0
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.QuarryBuildingId,
+                    CurrentLevel = 0
+                });
+                db.CommodityRecords.AddRange(
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "wood", Quantity = 10000L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "stone", Quantity = 10000L });
+                await db.SaveChangesAsync();
+            }
+
+            var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await villageManagementEngine.ExecuteUpgradeBuildingAsync(testPlayerId, VillageManagementEngine.LumberjackBuildingId);
+
+            // The village-wide upgrade slot is now occupied by Lumberjack - a
+            // second request against a DIFFERENT building must be rejected
+            // (not just a re-request against the same one), and must not
+            // spend the player's wood/stone a second time.
+            await villageManagementEngine.ExecuteUpgradeBuildingAsync(testPlayerId, VillageManagementEngine.QuarryBuildingId);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            var lumberjack = await verifyDb.VillageInfrastructures.AsNoTracking()
+                .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.LumberjackBuildingId);
+            var quarry = await verifyDb.VillageInfrastructures.AsNoTracking()
+                .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.QuarryBuildingId);
+            var wood = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "wood");
+            var stone = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "stone");
+
+            long expectedCost = VillageManagementEngine.CalculateProductionUpgradeCost(0);
+
+            Assert.Equal(1, lumberjack.UpgradeTargetLevel);
+            Assert.Equal(0, quarry.UpgradeTargetLevel);
+            Assert.Equal(0, quarry.CurrentLevel);
+            Assert.Equal(10000L - expectedCost, wood.Quantity);
+            Assert.Equal(10000L - expectedCost, stone.Quantity);
+        }
+
+        [Fact]
+        public async Task Test_VillageUpgrade_RejectsWhenResourcesInsufficient()
+        {
+            const long testPlayerId = 950000207L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.LumberjackBuildingId,
+                    CurrentLevel = 0
+                });
+                db.CommodityRecords.AddRange(
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "wood", Quantity = 1L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "stone", Quantity = 1L });
+                await db.SaveChangesAsync();
+            }
+
+            var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await villageManagementEngine.ExecuteUpgradeBuildingAsync(testPlayerId, VillageManagementEngine.LumberjackBuildingId);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            var infrastructure = await verifyDb.VillageInfrastructures.AsNoTracking()
+                .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.LumberjackBuildingId);
+            var wood = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "wood");
+            var stone = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "stone");
+
+            Assert.Equal(0, infrastructure.CurrentLevel);
+            Assert.Equal(0, infrastructure.UpgradeTargetLevel);
+            Assert.Equal(1L, wood.Quantity);
+            Assert.Equal(1L, stone.Quantity);
+        }
+
+        [Fact]
+        public async Task Test_VillageUpgrade_MaturesAfterCompletionEpochAndFreesQueue()
+        {
+            const long testPlayerId = 950000307L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                // Already-queued upgrade with a completion epoch in the past,
+                // simulating a player returning after the timer elapsed.
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.LumberjackBuildingId,
+                    CurrentLevel = 3,
+                    UpgradeTargetLevel = 4,
+                    UpgradeCompletesAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 10L
+                });
+                await db.SaveChangesAsync();
+            }
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await VillageManagementEngine.ResolveMaturedUpgradesAsync(db, testPlayerId, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            }
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var infrastructure = await verifyDb.VillageInfrastructures.AsNoTracking()
+                .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.LumberjackBuildingId);
+
+            Assert.Equal(4, infrastructure.CurrentLevel);
+            Assert.Equal(0, infrastructure.UpgradeTargetLevel);
+            Assert.Equal(0L, infrastructure.UpgradeCompletesAtEpoch);
         }
 
         [Fact]
@@ -684,6 +834,81 @@ namespace FolkIdle.Server.Tests
 
             Assert.True(withLoci.CritChancePct > baseline.CritChancePct);
             Assert.True(withLoci.AttackSpeedPct > baseline.AttackSpeedPct);
+        }
+
+        [Fact]
+        public void Test_StatsCalculator_ComputeEffectiveMilliAttack_ScalesWithGearAndLevel()
+        {
+            CombatStats naked = StatsCalculator.Calculate(str: 0, dex: 0, con: 0, lck: 0);
+            CombatStats geared = StatsCalculator.Calculate(str: 100, dex: 0, con: 0, lck: 0, equippedFlatAttack: 500);
+
+            long nakedAttack = StatsCalculator.ComputeEffectiveMilliAttack(in naked, damageScalePerLevelPct: 0, level: 0);
+            long gearedAttack = StatsCalculator.ComputeEffectiveMilliAttack(in geared, damageScalePerLevelPct: 0, level: 0);
+            long gearedHighLevelAttack = StatsCalculator.ComputeEffectiveMilliAttack(in geared, damageScalePerLevelPct: 5, level: 50);
+
+            Assert.Equal(StatsCalculator.BaseMilliAttack, nakedAttack);
+            Assert.True(gearedAttack > nakedAttack, "Geared attacker must hit harder than a naked one with identical level scaling.");
+            Assert.True(gearedHighLevelAttack > gearedAttack, "Level scaling must further increase effective attack on top of gear.");
+        }
+
+        // Modul: covers the actual guild-vs-guild combat pipeline this
+        // formula unification exists to fix - GuildWarDefensiveSnapshots
+        // previously had no writer at all, so ExecuteCombatTurnAsync's
+        // real-stats path (added alongside the shared formula extraction)
+        // had nothing to read. Two otherwise-identical matches differ only
+        // in the attacking guild's snapshot (fully geared vs a naked/never-
+        // played guild with a zeroed CombatStats snapshot); the geared
+        // attacker's recorded DamageDelta must be meaningfully larger,
+        // proving GuildCombatSimulationEngine's registers are actually
+        // derived from real stats rather than the old guildId-hash
+        // placeholder (which would show no such gap).
+        [Fact]
+        public async Task Test_GuildCombat_DamageScalesWithGearedVsNakedAttackerSnapshot()
+        {
+            const long gearedAttackingGuildId = 960000001L;
+            const long nakedAttackingGuildId = 960000002L;
+            const long defendingGuildId = 960000003L;
+            const long gearedMatchId = 960000011L;
+            const long nakedMatchId = 960000012L;
+
+            var gearedStats = new CombatStats { FlatMeleeDamage = 500, FlatPhysicalArmor = 0, CritChancePct = 0f, CritMitigationPct = 0f };
+            var nakedAttackerStats = new CombatStats { FlatMeleeDamage = 0, FlatPhysicalArmor = 0, CritChancePct = 0f, CritMitigationPct = 0f };
+            var defenderStats = new CombatStats { FlatMeleeDamage = 0, FlatPhysicalArmor = 0, CritChancePct = 0f, CritMitigationPct = 0f };
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.GuildWarDefensiveSnapshots.Add(new GuildWarDefensiveSnapshot { GuildId = gearedAttackingGuildId, RosterPayloadJson = System.Text.Json.JsonSerializer.Serialize(gearedStats) });
+                db.GuildWarDefensiveSnapshots.Add(new GuildWarDefensiveSnapshot { GuildId = nakedAttackingGuildId, RosterPayloadJson = System.Text.Json.JsonSerializer.Serialize(nakedAttackerStats) });
+                db.GuildWarDefensiveSnapshots.Add(new GuildWarDefensiveSnapshot { GuildId = defendingGuildId, RosterPayloadJson = System.Text.Json.JsonSerializer.Serialize(defenderStats) });
+
+                db.GuildWarActiveMatches.Add(new GuildWarActiveMatch { MatchId = gearedMatchId, AttackingGuildId = gearedAttackingGuildId, DefendingGuildId = defendingGuildId, InitialSeed = 12345, CurrentStateBitmask = 0 });
+                db.GuildWarActiveMatches.Add(new GuildWarActiveMatch { MatchId = nakedMatchId, AttackingGuildId = nakedAttackingGuildId, DefendingGuildId = defendingGuildId, InitialSeed = 12345, CurrentStateBitmask = 0 });
+
+                await db.SaveChangesAsync();
+            }
+
+            var guildCombatEngine = new GuildCombatSimulationEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            var gearedTurnPacket = new ClientCommandPacket { Command = CommandType.ExecuteCombatTurn, MatchId = (uint)gearedMatchId, ClientPredictedTurnCounter = 0 };
+            var gearedResult = await guildCombatEngine.ExecuteCombatTurnAsync(playerId: 1L, guildId: gearedAttackingGuildId, gearedTurnPacket);
+
+            var nakedTurnPacket = new ClientCommandPacket { Command = CommandType.ExecuteCombatTurn, MatchId = (uint)nakedMatchId, ClientPredictedTurnCounter = 0 };
+            var nakedResult = await guildCombatEngine.ExecuteCombatTurnAsync(playerId: 1L, guildId: nakedAttackingGuildId, nakedTurnPacket);
+
+            Assert.Equal(GuildCombatTurnResult.Applied, gearedResult);
+            Assert.Equal(GuildCombatTurnResult.Applied, nakedResult);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var gearedDamage = await verifyDb.GuildWarCombatHistory.AsNoTracking()
+                .Where(h => h.MatchId == gearedMatchId)
+                .Select(h => h.DamageDelta)
+                .SingleAsync();
+            var nakedDamage = await verifyDb.GuildWarCombatHistory.AsNoTracking()
+                .Where(h => h.MatchId == nakedMatchId)
+                .Select(h => h.DamageDelta)
+                .SingleAsync();
+
+            Assert.True(gearedDamage > nakedDamage, $"Geared attacker (FlatMeleeDamage=500) dealt {gearedDamage}, naked attacker dealt {nakedDamage} - expected geared to deal meaningfully more.");
         }
 
         [Fact]
@@ -1326,7 +1551,7 @@ namespace FolkIdle.Server.Tests
             // 1000 physical 10 Hz ticks (0.1s each) simulate 100 seconds of active play.
             for (int i = 0; i < 1000; i++)
             {
-                SimulationEngine.ProcessPassiveVillageTick(ref payload, 0.1);
+                SimulationEngine.ProcessPassiveVillageTick(ref payload, 0.1, 0L);
             }
 
             // Wood_Rate = 5 * 0.1 = 0.5/sec. The warehouse cap (Level 1 = 1000) chokes

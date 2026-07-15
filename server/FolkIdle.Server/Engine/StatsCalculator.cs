@@ -2,27 +2,38 @@ using System.Runtime.InteropServices;
 
 namespace FolkIdle.Server.Engine
 {
+    // Modul: fields (not auto-properties) would silently break
+    // System.Text.Json round-tripping - JsonSerializer only serializes
+    // properties by default, so a plain-field struct serializes to "{}" and
+    // deserializes back to all-zero with no error at either end. This struct
+    // is round-tripped through GuildWarDefensiveSnapshots.RosterPayloadJson
+    // (GuildWarSnapshotEngine writes it, GuildWarEngine/
+    // GuildCombatSimulationEngine read it), so it must stay properties.
+    // StructLayout is not load-bearing here - CombatStats never crosses the
+    // network boundary directly (only StateUpdatePacket/ClientCommandPacket/
+    // ClientAuthPacket do, see NetworkPacketLayoutGuard), it is only ever
+    // JSON-serialized into a DB text column.
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct CombatStats
     {
-        public int FlatMeleeDamage;
-        public int FlatRangedDamage;
-        public int FlatArmorPenetration;
-        public int FlatPhysicalArmor;
-        public int MaxHp;
-        public float AttackSpeedPct;
-        public float CritChancePct;
-        public float OutOfCombatHpRegen;
-        public float ForgeSuccessPct;
-        public float LootLuckPct;
-        public float DodgeChancePct;
-        public float LifestealPct;
+        public int FlatMeleeDamage { get; set; }
+        public int FlatRangedDamage { get; set; }
+        public int FlatArmorPenetration { get; set; }
+        public int FlatPhysicalArmor { get; set; }
+        public int MaxHp { get; set; }
+        public float AttackSpeedPct { get; set; }
+        public float CritChancePct { get; set; }
+        public float OutOfCombatHpRegen { get; set; }
+        public float ForgeSuccessPct { get; set; }
+        public float LootLuckPct { get; set; }
+        public float DodgeChancePct { get; set; }
+        public float LifestealPct { get; set; }
 
         // Modul 13.4.3: innate racial baseline passives.
-        public float GoldAcquisitionMultiplierPct;
-        public float MiningOreDuplicationBonusPct;
-        public float WoodcuttingYieldBonusPct;
-        public float CritMitigationPct;
+        public float GoldAcquisitionMultiplierPct { get; set; }
+        public float MiningOreDuplicationBonusPct { get; set; }
+        public float WoodcuttingYieldBonusPct { get; set; }
+        public float CritMitigationPct { get; set; }
     }
 
     public static class StatsCalculator
@@ -205,6 +216,24 @@ namespace FolkIdle.Server.Engine
             }
 
             return stats;
+        }
+
+        public const long BaseMilliAttack = 15000L;
+
+        // Modul: single shared definition of "effective milli-attack" -
+        // previously duplicated identically in SimulationEngine.ProcessSubTick
+        // and OfflineSimulationEngine.CalculateCombatProjection (live/offline
+        // PvE), and as a simplified copy missing the level-scaling term
+        // entirely in GuildWarEngine.ResolveCombatPhaseAsync (PvP) - the exact
+        // PVP/PVE math desync this collapses into one formula. For
+        // guild-vs-guild aggregate combat, pass damageScalePerLevelPct=0 and
+        // level=0: GuildWarSnapshotEngine already bakes each contributing
+        // member's own level-scaled attack into the aggregated
+        // FlatMeleeDamage at snapshot-build time, so applying level scaling a
+        // second time here would double-count it.
+        public static long ComputeEffectiveMilliAttack(in CombatStats stats, int damageScalePerLevelPct, int level)
+        {
+            return BaseMilliAttack + (BaseMilliAttack * damageScalePerLevelPct * level / 100) + (stats.FlatMeleeDamage * 1000L);
         }
     }
 }

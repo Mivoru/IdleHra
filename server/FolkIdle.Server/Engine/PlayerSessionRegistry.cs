@@ -112,6 +112,13 @@ namespace FolkIdle.Server.Engine
         public byte QuarryLevel;
         public byte MineLevel;
         public byte WarehouseLevel;
+
+        // Modul 16: timed upgrade queue - PendingUpgradeBuildingId == 0 means
+        // no upgrade is currently in flight for this player's village (only
+        // one building may be queued at a time, see
+        // VillageManagementEngine.ExecuteUpgradeBuildingAsync).
+        public byte PendingUpgradeBuildingId;
+        public long PendingUpgradeCompletesAtEpoch;
     }
 
     public struct MentorshipUpdateNotification
