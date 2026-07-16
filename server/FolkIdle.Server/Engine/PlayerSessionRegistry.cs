@@ -60,11 +60,11 @@ namespace FolkIdle.Server.Engine
     // Modul: generic client error-feedback channel - the engines that
     // reject a market/forge/reroll/guild-contribution request run on
     // background Task.Run threads (via SafeDispatchAsync) and cannot write
-    // TickStatePayload.LastCommandResultCode directly (it is a struct field
-    // on the tick-thread-owned dictionary, not reachable by reference from
-    // another thread); they enqueue this notification instead, and the
-    // tick thread drains it into the payload the same way every other
-    // cross-thread report in this codebase works (see
+    // TickStatePayload's CommandResultSlot0-3 ring buffer directly (it is
+    // a struct field on the tick-thread-owned dictionary, not reachable
+    // by reference from another thread); they enqueue this notification
+    // instead, and the tick thread drains it into the payload the same
+    // way every other cross-thread report in this codebase works (see
     // GuildMembershipChangeNotification for the identical pattern).
     public struct CommandResultNotification
     {
@@ -297,6 +297,16 @@ namespace FolkIdle.Server.Engine
         // operator (playerRegistry?.EnqueueCommandResult(...)) so a
         // registry-less construction (some test fixtures) degrades to a
         // safe no-op rather than a null-reference exception.
+        //
+        // Modul: Full-Stack Production Hardening Phase 3, Part 5. This
+        // method still only enqueues - it is called from arbitrary
+        // background SafeDispatchAsync threads (market/forge/reroll/guild
+        // engines) with no safe ref access to TickStatePayload, so the
+        // actual circular 4-slot ring-buffer append (advancing
+        // CommandResultRingWriteIndex, overwriting the oldest slot) happens
+        // in SimulationEngine's single-threaded tick-loop drain of
+        // CommandResultQueue, the only place that legitimately holds a ref
+        // into _activePlayers.
         public void EnqueueCommandResult(long playerId, byte resultCode)
         {
             CommandResultQueue.Enqueue(new CommandResultNotification { PlayerId = playerId, ResultCode = resultCode });

@@ -4,9 +4,10 @@ namespace FolkIdle.Client.Network
 {
     // Modul: mirrors server/FolkIdle.Server/Network/StateUpdatePacket.cs
     // exactly - see that file's comment. Generic client error-feedback
-    // channel: LastCommandResultCode carries the reason the most recently
-    // attempted rejectable command (forge fusion, market listing, guild
-    // contribution, reroll) failed, replacing the previous silent no-op.
+    // channel: the CommandResult0-3 ring buffer carries the reason(s) the
+    // most recently attempted rejectable command(s) (forge fusion, market
+    // listing, guild contribution, reroll) failed, replacing the previous
+    // silent no-op.
     public enum CommandResultCode : byte
     {
         Success = 0,
@@ -119,16 +120,25 @@ namespace FolkIdle.Client.Network
         public float PlayerBlockStrengthPct;
 
         // Modul: mirrors server/FolkIdle.Server/Network/StateUpdatePacket.cs
-        // exactly. Repurposes what was LiveOpsReserved13; packet size
-        // unchanged.
-        public byte LastCommandResultCode;
-
-        // Modul: mirrors server/FolkIdle.Server/Network/StateUpdatePacket.cs
-        // exactly - incrementing counter, not a flag, so two rejections
-        // with the identical CommandResultCode back-to-back are still
-        // distinguishable client-side. Repurposes what was
-        // LiveOpsReserved14; packet size unchanged.
-        public byte LastCommandResultTick;
+        // exactly - a flattened 4-slot ring buffer replacing the previous
+        // single-slot LastCommandResultCode/LastCommandResultTick pair. A
+        // scalar could only ever carry the single most recent rejection -
+        // a client that missed exactly one broadcast (e.g. across a
+        // reconnect gap) while two or more commands were rejected back to
+        // back would only ever see the last one, silently and permanently
+        // losing the earlier rejection's feedback. ResultTick is a
+        // per-player monotonically increasing counter (never reset), so
+        // VisualSyncProxy.ApplyCommandResultState can always tell which
+        // slots are newer than what it has already displayed and in what
+        // order to apply them.
+        public byte CommandResult0_Code;
+        public uint CommandResult0_Tick;
+        public byte CommandResult1_Code;
+        public uint CommandResult1_Tick;
+        public byte CommandResult2_Code;
+        public uint CommandResult2_Tick;
+        public byte CommandResult3_Code;
+        public uint CommandResult3_Tick;
 
         // Village Infrastructure
         public int CachedCurrentToolTier;
@@ -160,47 +170,15 @@ namespace FolkIdle.Client.Network
         public byte BreedingLevel;
         public byte AcademyLevel;
         public byte CurrentPopulationCount;
-        public byte VillageReserved0;
-        public byte VillageReserved1;
-        public byte VillageReserved2;
-        public byte VillageReserved3;
-        public byte VillageReserved4;
-        public byte VillageReserved5;
-        public byte VillageReserved6;
-        public byte VillageReserved7;
-        public byte VillageReserved8;
-        public byte VillageReserved9;
-        public byte VillageReserved10;
         public uint ActiveChallengeSeed;
         public byte IsQuarantineActive;
-        public byte AntiCheatReserved0;
-        public byte AntiCheatReserved1;
-        public byte AntiCheatReserved2;
         public byte NotificationQueueStateLength;
-        public byte NotificationReserved0;
-        public byte NotificationReserved1;
-        public byte NotificationReserved2;
-        public byte NotificationReserved3;
-        public byte NotificationReserved4;
-        public byte NotificationReserved5;
-        public byte NotificationReserved6;
         public byte ActiveLanguageState;
-        public byte ComplianceStateReserved0;
-        public byte ComplianceStateReserved1;
-        public byte ComplianceStateReserved2;
-        public byte ComplianceStateReserved3;
-        public byte ComplianceStateReserved4;
-        public byte ComplianceStateReserved5;
-        public byte ComplianceStateReserved6;
         public uint ActiveBankedChronoSeconds;
         public byte CurrentSimulationSpeedMultiplier;
-        public byte ChronoReserved0;
-        public byte ChronoReserved1;
-        public byte ChronoReserved2;
         public uint PremiumCurrencyBalance;
         public byte ActiveAudioTrackId;
         public byte UiScreenShakeIntensity;
-        public byte AudioReserved5;
         public uint TotalItemsCraftedCount;
         public byte CraftingEngineStatus;
         public uint ActiveMasteryBitmask;
@@ -257,8 +235,6 @@ namespace FolkIdle.Client.Network
         public uint Skill4CooldownRemainingMs;
         public byte LastSkillCastId;
         public byte LastSkillCastSuccess;
-        public byte SkillReserved0;
-        public byte SkillReserved1;
         public uint LastSkillCastResultTick;
 
         // Modul: Offline "Welcome Back" flow - mirrors server

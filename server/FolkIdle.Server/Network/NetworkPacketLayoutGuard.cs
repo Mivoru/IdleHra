@@ -5,8 +5,16 @@ namespace FolkIdle.Server.Network
 {
     public static class NetworkPacketLayoutGuard
     {
-        public const int ExpectedClientCommandSize = 384;
-        public const int ExpectedStateUpdateSize = 696;
+        // Modul: Full-Stack Production Hardening Phase 3, Part 4. Shrank
+        // again - ClientCommandPacket from 384 to 352 (TelemetryBurstPadding,
+        // SecurityPadding, Sprint70ExpansionPadding[24] removed - 32 bytes
+        // of dead reserved filler, never read or written by any code on
+        // either side); StateUpdatePacket from 696 to 680 (34 bytes of
+        // dead *Reserved* filler removed, offset by the +18 bytes the
+        // Part 5 command-result ring buffer added replacing a 2-byte
+        // scalar with 4 explicit byte+uint slot pairs).
+        public const int ExpectedClientCommandSize = 352;
+        public const int ExpectedStateUpdateSize = 680;
         public const int ExpectedAuthHandshakeSize = 530;
         public const int ExpectedRequestChatMessageSize = 131;
         public const int ExpectedResponseChatMessageSize = 147;

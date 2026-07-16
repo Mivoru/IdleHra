@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FolkIdle.Server.Engine
@@ -49,7 +50,17 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        private async Task ExecuteAuditAsync(CancellationToken stoppingToken)
+        // Test-only observability (via InternalsVisibleTo) for the Part 3
+        // isolation-level hardening - internal (not private) so
+        // Test_EcoTelemetryEngine_AuditQueries_RunUnderRepeatableReadIsolation
+        // can invoke this method directly instead of waiting on StartCron's
+        // 10-minute polling loop, and LastObservedAuditIsolationLevel
+        // captures what Npgsql/Postgres actually negotiated for the read
+        // transaction (not just what IsolationLevel.RepeatableRead was
+        // requested as - a stronger proof than inspecting the source).
+        internal static IsolationLevel LastObservedAuditIsolationLevel;
+
+        internal async Task ExecuteAuditAsync(CancellationToken stoppingToken)
         {
             long totalGoldMinted;
             long totalGoldConsumed;
@@ -59,7 +70,20 @@ namespace FolkIdle.Server.Engine
             using (var scope = _serviceProvider.CreateScope())
             {
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                await using var readTx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, stoppingToken);
+
+                // Modul: Full-Stack Production Hardening Phase 3, Part 3.
+                // Six independent SumAsync queries below previously ran
+                // under ReadCommitted, where Postgres gives each statement
+                // its own MVCC snapshot - a concurrent gold-minting commit
+                // between the first and last query produced an audit ratio
+                // computed from six different instants rather than one
+                // consistent point in time (a non-repeatable read). This
+                // transaction is READ ONLY (never writes), so RepeatableRead
+                // gives one consistent snapshot for its entire duration at
+                // no extra write-conflict cost - Serializable's additional
+                // guarantees are unnecessary here.
+                await using var readTx = await db.Database.BeginTransactionAsync(IsolationLevel.RepeatableRead, stoppingToken);
+                LastObservedAuditIsolationLevel = readTx.GetDbTransaction().IsolationLevel;
                 await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY", stoppingToken);
 
                 long goldBalances = await db.CommodityRecords

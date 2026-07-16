@@ -115,8 +115,5 @@ namespace FolkIdle.Client.Network
         public System.Guid TargetMatchUuid;
         public uint TelemetryEventCount;
         public uint NetworkDiagnosticsToken;
-        public uint TelemetryBurstPadding;
-        public uint SecurityPadding;
-        public fixed byte Sprint70ExpansionPadding[24];
     }
 }

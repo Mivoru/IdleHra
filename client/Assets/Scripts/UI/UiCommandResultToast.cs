@@ -15,6 +15,16 @@ namespace FolkIdle.Client.UI
     // fixed duration. Zero-allocation: char-buffer writes only, Update()'s
     // auto-hide timer is plain float subtraction, no string concatenation/
     // interpolation/coroutines.
+    //
+    // Modul: Full-Stack Production Hardening Phase 3, Part 5.
+    // VisualSyncProxy.ApplyCommandResultState now drains a 4-slot wire ring
+    // buffer and can fire OnCommandResultReceived more than once per
+    // packet - a small fixed-size (4 slot) FIFO queue here ensures each
+    // rejection is actually shown to the player in turn rather than a
+    // later call immediately overwriting the toast text before an earlier
+    // rejection was ever rendered on screen. 4 explicit fields (not a
+    // managed array/Queue<T>) to stay zero-allocation, matching the wire
+    // buffer's own capacity.
     public class UiCommandResultToast : MonoBehaviour
     {
         public VisualSyncProxy SyncProxy;
@@ -24,6 +34,12 @@ namespace FolkIdle.Client.UI
 
         private readonly char[] _lineBuffer = new char[64];
         private float _remainingVisibleSeconds;
+
+        private byte _pendingCode0;
+        private byte _pendingCode1;
+        private byte _pendingCode2;
+        private byte _pendingCode3;
+        private byte _pendingCount;
 
         private void OnEnable()
         {
@@ -42,16 +58,52 @@ namespace FolkIdle.Client.UI
 
         private void Update()
         {
-            if (_remainingVisibleSeconds <= 0f) return;
-
-            _remainingVisibleSeconds -= Time.unscaledDeltaTime;
-            if (_remainingVisibleSeconds <= 0f && ToastRoot != null)
+            if (_remainingVisibleSeconds > 0f)
             {
-                ToastRoot.SetActive(false);
+                _remainingVisibleSeconds -= Time.unscaledDeltaTime;
+                if (_remainingVisibleSeconds > 0f) return;
+
+                if (_pendingCount == 0)
+                {
+                    if (ToastRoot != null) ToastRoot.SetActive(false);
+                    return;
+                }
             }
+            else if (_pendingCount == 0)
+            {
+                return;
+            }
+
+            // Either nothing was showing and a rejection just got queued,
+            // or the current toast's display window just elapsed and
+            // another rejection is waiting - advance to it now so multiple
+            // concurrent rejections are shown one after another instead of
+            // one silently replacing another before ever reaching the
+            // screen.
+            byte nextCode = _pendingCode0;
+            _pendingCode0 = _pendingCode1;
+            _pendingCode1 = _pendingCode2;
+            _pendingCode2 = _pendingCode3;
+            _pendingCount--;
+            DisplayToast(nextCode);
         }
 
         private void HandleCommandResult(byte resultCode)
+        {
+            if (!TryResolveLocalizationKey((CommandResultCode)resultCode, out _)) return;
+            if (_pendingCount >= 4) return;
+
+            switch (_pendingCount)
+            {
+                case 0: _pendingCode0 = resultCode; break;
+                case 1: _pendingCode1 = resultCode; break;
+                case 2: _pendingCode2 = resultCode; break;
+                default: _pendingCode3 = resultCode; break;
+            }
+            _pendingCount++;
+        }
+
+        private void DisplayToast(byte resultCode)
         {
             if (ToastText == null) return;
             if (!TryResolveLocalizationKey((CommandResultCode)resultCode, out LocalizationKey key)) return;

@@ -302,6 +302,42 @@ namespace FolkIdle.Server.Engine
             }
         }
 
+        // Test-only observability (via InternalsVisibleTo) for the
+        // Full-Stack Production Hardening Phase 3, Part 1 session-registry
+        // leak fix - proves RemoveActivePlayer actually clears
+        // _liveSessionContexts on every disconnect path, not just
+        // TerminateSessionForSecurity's old explicit call.
+        internal bool IsLiveSessionContextPresent(long playerId)
+        {
+            return _liveSessionContexts.ContainsKey(playerId);
+        }
+
+        // Test-only observability (via InternalsVisibleTo) for the Part 5
+        // command-result ring buffer - returns all 4 slots (not just the
+        // newest, unlike GetActivePlayerLastCommandResultCode) so a test
+        // can assert every buffered rejection survived, in what order,
+        // and which slot a wraparound append overwrote. Allocates a small
+        // array - fine here since this is test-only diagnostic code, never
+        // reachable from the 10Hz tick hot path itself.
+        internal (byte code, uint tick)[] GetActivePlayerCommandResultSlots(long playerId)
+        {
+            lock (_activePlayers)
+            {
+                if (!_activePlayers.TryGetValue(playerId, out var payload))
+                {
+                    return Array.Empty<(byte, uint)>();
+                }
+
+                return new (byte, uint)[]
+                {
+                    (payload.CommandResultSlot0.ResultCode, payload.CommandResultSlot0.ResultTick),
+                    (payload.CommandResultSlot1.ResultCode, payload.CommandResultSlot1.ResultTick),
+                    (payload.CommandResultSlot2.ResultCode, payload.CommandResultSlot2.ResultTick),
+                    (payload.CommandResultSlot3.ResultCode, payload.CommandResultSlot3.ResultTick)
+                };
+            }
+        }
+
         internal bool IsActivePlayerSuspended(long playerId)
         {
             lock (_activePlayers)
@@ -314,7 +350,20 @@ namespace FolkIdle.Server.Engine
         {
             lock (_activePlayers)
             {
-                return _activePlayers.TryGetValue(playerId, out var payload) ? payload.LastCommandResultCode : -1;
+                if (!_activePlayers.TryGetValue(playerId, out var payload))
+                {
+                    return -1;
+                }
+
+                // Modul: reports whichever of the 4 ring-buffer slots holds
+                // the highest ResultTick (the most recently appended entry) -
+                // preserves this helper's original "most recent rejection"
+                // semantics now that a scalar no longer exists.
+                CommandResultEntry newest = payload.CommandResultSlot0;
+                if (payload.CommandResultSlot1.ResultTick > newest.ResultTick) newest = payload.CommandResultSlot1;
+                if (payload.CommandResultSlot2.ResultTick > newest.ResultTick) newest = payload.CommandResultSlot2;
+                if (payload.CommandResultSlot3.ResultTick > newest.ResultTick) newest = payload.CommandResultSlot3;
+                return newest.ResultCode;
             }
         }
 
@@ -345,6 +394,25 @@ namespace FolkIdle.Server.Engine
         // TickStatePayload that no longer exists in _activePlayers, which
         // GetValueRefOrNullRef already guards against, but would still leak
         // the index entry itself indefinitely).
+        //
+        // Modul: Full-Stack Production Hardening Phase 3, Part 1. Also the
+        // single authoritative choke point for _liveSessionContexts and
+        // PlayerSessionRegistry cleanup - previously only
+        // TerminateSessionForSecurity cleared _liveSessionContexts, so a
+        // normal Logout leaked one entry per session forever (unbounded
+        // growth with total historical logins, not concurrent players).
+        // Worse, every one of the ~21 anti-cheat/validation-failure sites
+        // called RemoveActivePlayer directly (never TerminateSessionForSecurity),
+        // which removed the _activePlayers entry immediately - so the
+        // deferred Logout command NetworkBroadcastSystem's socket-closure
+        // finally block enqueues afterward was silently dropped by the
+        // command loop's null-ref guard (_activePlayers no longer has the
+        // entry), meaning _playerRegistry.UnregisterPlayer never ran for a
+        // kicked player and PlayerSessionRegistry.IsPlayerOnline reported
+        // them online forever. Folding both removals in here, on the same
+        // O(1) ConcurrentDictionary operations, closes every disconnect
+        // path (clean logout, anti-cheat kick, crash-detected-via-Logout)
+        // through one place - no call site can bypass it.
         private void RemoveActivePlayer(long playerId)
         {
             if (_activePlayers.TryGetValue(playerId, out var payload))
@@ -352,6 +420,8 @@ namespace FolkIdle.Server.Engine
                 RemoveFromGuildIndex(payload.GuildId, playerId);
             }
             _activePlayers.Remove(playerId);
+            _liveSessionContexts.TryRemove(playerId, out _);
+            _playerRegistry.UnregisterPlayer(playerId);
         }
 
         public void InjectVirtualPlayer(TickStatePayload payload)
@@ -370,9 +440,11 @@ namespace FolkIdle.Server.Engine
 
         private void TerminateSessionForSecurity(long playerId)
         {
+            // Modul: _liveSessionContexts/_playerRegistry cleanup now lives
+            // inside RemoveActivePlayer itself (see that method's own doc
+            // comment) - this method only adds the token purge on top of
+            // the same choke point every other kick/disconnect site uses.
             RemoveActivePlayer(playerId);
-            _liveSessionContexts.TryRemove(playerId, out _);
-            _playerRegistry.UnregisterPlayer(playerId);
             _networkSystem.PurgeTokensForPlayer(playerId);
             _networkSystem.ForceDisconnect(playerId);
         }
@@ -718,13 +790,37 @@ namespace FolkIdle.Server.Engine
                 // pure struct field writes against an already-resolved ref
                 // into _activePlayers, matching the guild-membership drain
                 // immediately above.
+                //
+                // Modul: Full-Stack Production Hardening Phase 3, Part 5.
+                // Appends into the 4-slot ring buffer instead of
+                // overwriting a single scalar - the previous single-slot
+                // design meant a client that missed one broadcast (e.g.
+                // across a reconnect gap) while two or more commands were
+                // rejected back to back would only ever see the last one,
+                // silently losing the earlier rejection's feedback. The
+                // ring-buffer append itself must happen here on the tick
+                // thread (not inside PlayerSessionRegistry.EnqueueCommandResult,
+                // which runs on arbitrary background SafeDispatchAsync
+                // threads and has no safe ref access to TickStatePayload) -
+                // CommandResultTickCounter is a per-player monotonically
+                // increasing counter, never reset, so the client can always
+                // tell which slots are newer than what it has already
+                // displayed and in what order to apply them.
                 while (_playerRegistry.CommandResultQueue.TryDequeue(out var commandResult))
                 {
                     ref var resultPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, commandResult.PlayerId);
                     if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref resultPayload))
                     {
-                        resultPayload.LastCommandResultCode = commandResult.ResultCode;
-                        unchecked { resultPayload.LastCommandResultTick++; }
+                        unchecked { resultPayload.CommandResultTickCounter++; }
+                        var newEntry = new CommandResultEntry { ResultCode = commandResult.ResultCode, ResultTick = resultPayload.CommandResultTickCounter };
+                        switch (resultPayload.CommandResultRingWriteIndex)
+                        {
+                            case 0: resultPayload.CommandResultSlot0 = newEntry; break;
+                            case 1: resultPayload.CommandResultSlot1 = newEntry; break;
+                            case 2: resultPayload.CommandResultSlot2 = newEntry; break;
+                            default: resultPayload.CommandResultSlot3 = newEntry; break;
+                        }
+                        resultPayload.CommandResultRingWriteIndex = (byte)((resultPayload.CommandResultRingWriteIndex + 1) & 3);
                         resultPayload.IsDirty = true;
                     }
                 }
@@ -1913,8 +2009,10 @@ namespace FolkIdle.Server.Engine
                         currentPayload.LastLogoutTimestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                         currentPayload.IsDirty = true;
                         _checkpointManager.FlushStateAndAdvance(ref currentPayload);
-                        _playerRegistry.UnregisterPlayer(cmd.TargetId);
                         currentPayload.IsSuspended = true;
+                        // Modul: RemoveActivePlayer now clears
+                        // PlayerSessionRegistry registration itself - see
+                        // its own doc comment.
                         RemoveActivePlayer(routingPlayerId);
                     }
                     else if (cmd.Command == CommandType.SubmitPurchaseReceipt)
@@ -2330,8 +2428,14 @@ namespace FolkIdle.Server.Engine
                                 PlayerAccuracyRating = broadcastCombatStats.AccuracyRating,
                                 PlayerArmorRating = broadcastCombatStats.FlatPhysicalArmor,
                                 PlayerBlockStrengthPct = broadcastCombatStats.BlockStrengthPct,
-                                LastCommandResultCode = currentPayload.LastCommandResultCode,
-                                LastCommandResultTick = currentPayload.LastCommandResultTick,
+                                CommandResult0_Code = currentPayload.CommandResultSlot0.ResultCode,
+                                CommandResult0_Tick = currentPayload.CommandResultSlot0.ResultTick,
+                                CommandResult1_Code = currentPayload.CommandResultSlot1.ResultCode,
+                                CommandResult1_Tick = currentPayload.CommandResultSlot1.ResultTick,
+                                CommandResult2_Code = currentPayload.CommandResultSlot2.ResultCode,
+                                CommandResult2_Tick = currentPayload.CommandResultSlot2.ResultTick,
+                                CommandResult3_Code = currentPayload.CommandResultSlot3.ResultCode,
+                                CommandResult3_Tick = currentPayload.CommandResultSlot3.ResultTick,
                                 CitizenMultiSlotsUnlocked = currentPayload.CitizenMultiSlotsUnlocked,
                                 GuildLogisticsCurrentStock = currentPayload.GuildLogisticsCurrentStock,
                                 GuildLogisticsTargetRequirement = currentPayload.GuildLogisticsTargetRequirement,

@@ -103,17 +103,26 @@ namespace FolkIdle.Client.Engine
         // CommandResultCode in StateUpdatePacket.cs). Discrete, not
         // interpolated - it is a one-shot outcome code, not a continuously
         // varying value, so Lerp'ing it would produce meaningless
-        // intermediate byte values between two real codes. Edge-detected
-        // via LastCommandResultTick (an incrementing counter, not the code
-        // itself) exactly like ApplyLastSkillCastState/
-        // LastSkillCastResultTick below - comparing the code alone would
-        // miss two different rejections that happen to share the same
-        // CommandResultCode back-to-back. UI binding components (a toast/
-        // error panel) should subscribe to OnCommandResultReceived rather
-        // than polling VisualLastCommandResultCode directly.
+        // intermediate byte values between two real codes.
+        //
+        // Modul: Full-Stack Production Hardening Phase 3, Part 5. The
+        // packet now carries a 4-slot ring buffer (CommandResult0-3_Code/
+        // Tick) instead of one scalar - a single slot could only ever
+        // carry the most recent rejection, so a client that missed exactly
+        // one broadcast (e.g. across a reconnect gap) while two or more
+        // commands were rejected back to back would only ever see the
+        // last one, silently losing the earlier rejection's feedback.
+        // ApplyCommandResultState below processes every slot newer than
+        // the highest tick already applied, in ascending tick order, so
+        // UiCommandResultToast sees every rejection instead of only the
+        // newest overwriting the rest. UI binding components should
+        // subscribe to OnCommandResultReceived rather than polling
+        // VisualLastCommandResultCode directly (which only ever reflects
+        // whichever slot was processed last within the most recent
+        // packet).
         public byte VisualLastCommandResultCode { get; private set; }
         public event System.Action<byte> OnCommandResultReceived;
-        private byte _lastAppliedCommandResultTick;
+        private uint _lastAppliedCommandResultTick;
         private byte _lastAppliedOfflineSummaryTick;
 
         public int VisualMaxVillagePopulation;
@@ -688,20 +697,47 @@ namespace FolkIdle.Client.Engine
             OnSkillCastResult?.Invoke(packet.LastSkillCastId, packet.LastSkillCastSuccess != 0);
         }
 
-        // Modul: edge-detects a newly-resolved rejectable command via
-        // LastCommandResultTick, mirroring ApplyLastSkillCastState exactly
-        // above - see this class's own VisualLastCommandResultCode comment
-        // for why the tick counter, not the code itself, is what gets
-        // compared. Tick 0 means "no rejectable command has resolved this
-        // session" and is never fired.
+        // Modul: Full-Stack Production Hardening Phase 3, Part 5. Drains
+        // the packet's 4-slot command-result ring buffer instead of a
+        // single scalar - see this class's own VisualLastCommandResultCode
+        // comment for why. ResultTick is a per-player monotonically
+        // increasing counter (never reset, never reused), so "greater than
+        // the highest tick already applied" unambiguously identifies every
+        // slot this client has not yet displayed. Processes up to 4 slots
+        // per packet in ascending tick order via a fixed, unrolled
+        // repeated-minimum selection over exactly 4 local values - no
+        // array, no Span, no LINQ, zero managed heap allocation regardless
+        // of how many slots are newer than the last-seen tick.
         private void ApplyCommandResultState(in StateUpdatePacket packet)
         {
-            byte resultTick = packet.LastCommandResultTick;
-            if (resultTick == 0 || resultTick == _lastAppliedCommandResultTick) return;
+            byte code0 = packet.CommandResult0_Code; uint tick0 = packet.CommandResult0_Tick;
+            byte code1 = packet.CommandResult1_Code; uint tick1 = packet.CommandResult1_Tick;
+            byte code2 = packet.CommandResult2_Code; uint tick2 = packet.CommandResult2_Tick;
+            byte code3 = packet.CommandResult3_Code; uint tick3 = packet.CommandResult3_Tick;
 
-            _lastAppliedCommandResultTick = resultTick;
-            VisualLastCommandResultCode = packet.LastCommandResultCode;
-            OnCommandResultReceived?.Invoke(packet.LastCommandResultCode);
+            uint threshold = _lastAppliedCommandResultTick;
+
+            for (int pass = 0; pass < 4; pass++)
+            {
+                bool has0 = tick0 > threshold;
+                bool has1 = tick1 > threshold;
+                bool has2 = tick2 > threshold;
+                bool has3 = tick3 > threshold;
+                if (!has0 && !has1 && !has2 && !has3) break;
+
+                uint minTick = uint.MaxValue;
+                byte minCode = 0;
+                if (has0 && tick0 < minTick) { minTick = tick0; minCode = code0; }
+                if (has1 && tick1 < minTick) { minTick = tick1; minCode = code1; }
+                if (has2 && tick2 < minTick) { minTick = tick2; minCode = code2; }
+                if (has3 && tick3 < minTick) { minTick = tick3; minCode = code3; }
+
+                threshold = minTick;
+                VisualLastCommandResultCode = minCode;
+                OnCommandResultReceived?.Invoke(minCode);
+            }
+
+            _lastAppliedCommandResultTick = threshold;
         }
 
         // Modul: edge-detects a freshly-available offline catch-up summary

@@ -1,5 +1,18 @@
 namespace FolkIdle.Server.Engine
 {
+    // Modul: Full-Stack Production Hardening Phase 3, Part 5. Compact
+    // zero-allocation representation of one buffered command-rejection
+    // outcome. ResultTick is a per-player monotonically increasing
+    // counter, not a boolean edge-flag, so two rejections that happen to
+    // share the same ResultCode are still distinguishable and orderable -
+    // see TickStatePayload.CommandResultSlot0-3's own comment for the
+    // 4-slot ring buffer this populates.
+    public struct CommandResultEntry
+    {
+        public byte ResultCode;
+        public uint ResultTick;
+    }
+
     public struct TickStatePayload
     {
         public TickStatePayload()
@@ -256,22 +269,30 @@ namespace FolkIdle.Server.Engine
         public bool QuestSlot2Claimed;
         public bool QuestProgressDirty;
 
-        // Modul: generic client error-feedback channel - mirrors
-        // StateUpdatePacket.LastCommandResultCode (see that field's own
-        // comment). Set from the tick thread by draining
-        // PlayerSessionRegistry.CommandResultQueue (the engines that
-        // reject market/forge/reroll/guild-contribution requests run on
-        // background Task.Run threads via SafeDispatchAsync and cannot
-        // write this struct field directly, so they enqueue a
-        // notification the same way every other cross-thread report in
-        // this codebase does - see GuildMembershipChangeQueue for the
-        // identical pattern).
-        public byte LastCommandResultCode;
-
-        // Modul: incrementing counter, not a flag - see
-        // StateUpdatePacket.LastCommandResultTick's own comment. Incremented
-        // by the same tick-thread drain that sets LastCommandResultCode.
-        public byte LastCommandResultTick;
+        // Modul: Full-Stack Production Hardening Phase 3, Part 5. Replaces
+        // the single-slot LastCommandResultCode/LastCommandResultTick pair -
+        // a scalar could only ever carry the single most recent rejection,
+        // so a client that missed exactly one broadcast (e.g. across a
+        // reconnect gap) while two or more commands were rejected back to
+        // back would only ever see the last one; earlier rejections were
+        // silently and permanently lost. Four explicitly named slots (not
+        // a managed array) match this codebase's established fixed-size-
+        // buffer convention (see ActiveSkillEngine's four cooldown fields) -
+        // fully embedded value data, no heap array, no allocation risk
+        // from struct-copy or session re-creation. CommandResultRingWriteIndex
+        // tracks which slot the next append overwrites (mirrors
+        // PlayerSessionRegistry.CommandResultQueue's drain in
+        // SimulationEngine - see that drain loop's own comment).
+        // CommandResultTickCounter is a per-player monotonically
+        // increasing counter stamped onto each new entry (never reset), so
+        // the client can always tell which of the 4 slots are newer than
+        // what it has already displayed, and in what order to apply them.
+        public CommandResultEntry CommandResultSlot0;
+        public CommandResultEntry CommandResultSlot1;
+        public CommandResultEntry CommandResultSlot2;
+        public CommandResultEntry CommandResultSlot3;
+        public byte CommandResultRingWriteIndex;
+        public uint CommandResultTickCounter;
 
         // Race Masteries
         public int HumanMasteryLevel;

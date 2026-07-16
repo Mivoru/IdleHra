@@ -1,41 +1,37 @@
 using System;
 using System.Collections.Generic;
-using Unity.Collections;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace FolkIdle.Client.Engine
 {
+    // Modul: Full-Stack Production Hardening Phase 3, Part 6. This class
+    // previously also carried an Acquire(string)/Release(string) refcounting
+    // API (NativeHashMap<int,int> _assetReferenceCounts, a Queue<int>
+    // _evacuationLog, a Dictionary<int,string> _hashToKeyMap, and an
+    // Update() polling block that flushed them on a 5-second timer) that
+    // was never called from anywhere in the codebase - only
+    // LoadMonsterPrefabAsync/ReleaseMonsterPrefab below (the 3D codex
+    // model viewer's real, correctly load/release-matched lifecycle) were
+    // ever used. That dead path was also structurally broken if it had
+    // ever been exercised: Acquire() never actually called
+    // Addressables.LoadAssetAsync, yet Release() called
+    // Addressables.Release(addressableKey) on a bare string that was never
+    // loaded through this path - not a live leak (unreachable), but dead
+    // weight left in place risked a future caller mistaking it for a
+    // working alternate API. Removed outright rather than fixed, since
+    // nothing depends on it.
     public class AssetLifecycleCoordinator : MonoBehaviour
     {
-        private NativeHashMap<int, int> _assetReferenceCounts;
-        private Queue<int> _evacuationLog;
-        private float _lastUnloadTime;
-        private bool _unloadPending;
-        private Dictionary<int, string> _hashToKeyMap;
-
         // Modul 15/19: tracks in-flight/completed Addressables handles for the 3D
         // codex model viewer, keyed by asset key, so every load has an exact matching
         // release and no handle is ever dropped.
         private readonly Dictionary<string, AsyncOperationHandle<GameObject>> _activeHandles =
             new Dictionary<string, AsyncOperationHandle<GameObject>>();
 
-        private void Awake()
-        {
-            _assetReferenceCounts = new NativeHashMap<int, int>(1000, Allocator.Persistent);
-            _evacuationLog = new Queue<int>();
-            _hashToKeyMap = new Dictionary<int, string>();
-            _lastUnloadTime = Time.realtimeSinceStartup;
-        }
-
         private void OnDestroy()
         {
-            if (_assetReferenceCounts.IsCreated)
-            {
-                _assetReferenceCounts.Dispose();
-            }
-
             foreach (KeyValuePair<string, AsyncOperationHandle<GameObject>> entry in _activeHandles)
             {
                 Addressables.Release(entry.Value);
@@ -71,76 +67,6 @@ namespace FolkIdle.Client.Engine
             {
                 Addressables.Release(handle);
                 _activeHandles.Remove(assetKey);
-            }
-        }
-
-        private int GetDeterministicHash(string key)
-        {
-            // FNV-1a 32-bit hash
-            uint hash = 2166136261;
-            foreach (char c in key)
-            {
-                hash ^= c;
-                hash *= 16777619;
-            }
-            return (int)hash;
-        }
-
-        public void Acquire(string addressableKey)
-        {
-            int hash = GetDeterministicHash(addressableKey);
-
-            if (!_hashToKeyMap.ContainsKey(hash))
-            {
-                _hashToKeyMap[hash] = addressableKey;
-            }
-
-            if (_assetReferenceCounts.TryGetValue(hash, out int count))
-            {
-                _assetReferenceCounts[hash] = count + 1;
-            }
-            else
-            {
-                _assetReferenceCounts.Add(hash, 1);
-            }
-        }
-
-        public void Release(string addressableKey)
-        {
-            int hash = GetDeterministicHash(addressableKey);
-
-            if (_assetReferenceCounts.TryGetValue(hash, out int count))
-            {
-                count--;
-                if (count <= 0)
-                {
-                    _assetReferenceCounts.Remove(hash);
-                    Addressables.Release(addressableKey);
-                    _evacuationLog.Enqueue(hash);
-                    _unloadPending = true;
-                }
-                else
-                {
-                    _assetReferenceCounts[hash] = count;
-                }
-            }
-        }
-
-        private void Update()
-        {
-            if (_unloadPending && (Time.realtimeSinceStartup - _lastUnloadTime) >= 5.0f)
-            {
-                // Clear the evacuation log
-                while (_evacuationLog.Count > 0)
-                {
-                    int hash = _evacuationLog.Dequeue();
-                    _hashToKeyMap.Remove(hash);
-                }
-
-                Resources.UnloadUnusedAssets();
-                
-                _lastUnloadTime = Time.realtimeSinceStartup;
-                _unloadPending = false;
             }
         }
     }

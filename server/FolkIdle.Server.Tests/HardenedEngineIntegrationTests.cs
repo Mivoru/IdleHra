@@ -4047,9 +4047,10 @@ namespace FolkIdle.Server.Tests
         // premium_diamond CommodityRecord at all, a guaranteed
         // InsufficientMaterials rejection) must enqueue a
         // CommandResultNotification that the running SimulationEngine's
-        // own tick thread drains into TickStatePayload.LastCommandResultCode,
-        // the exact field StateUpdatePacket.LastCommandResultCode is
-        // populated from at broadcast time.
+        // own tick thread drains into TickStatePayload's 4-slot
+        // CommandResultSlot0-3 ring buffer, the exact slots
+        // StateUpdatePacket.CommandResult0-3_Code/Tick are populated from
+        // at broadcast time.
         [Fact]
         public async Task Test_CommandResultCode_RejectedRerollFlushesErrorCodeToTickStatePayload()
         {
@@ -4983,13 +4984,16 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(2400, cleartextPathPlayer.PremiumDiamonds);
         }
 
-        // Modul: Production Release Hardening, Part 2. StateUpdatePacket
-        // shrank from 744 bytes to 696 (ClaimedMilestonesBitmask, seasonal
+        // Modul: Production Release Hardening, Part 2, and Full-Stack
+        // Production Hardening Phase 3, Part 4. StateUpdatePacket shrank
+        // from 744 to 696 (ClaimedMilestonesBitmask, seasonal
         // meta-statistics, and static achievement data moved to
         // /api/v1/player/metadata and /api/v1/achievements/state - see
-        // that struct's own trailing doc comment) - this is the structural
+        // that struct's own trailing doc comment), then from 696 to 680
+        // (34 bytes of dead *Reserved* filler removed, offset by the
+        // command-result ring buffer's +18 bytes) - this is the structural
         // proof the 10Hz hot-path packet is strictly under 700 bytes, not
-        // just NetworkPacketLayoutGuard's exact-696 pin (which would also
+        // just NetworkPacketLayoutGuard's exact-680 pin (which would also
         // pass at, say, 699).
         [Fact]
         public void Test_StateUpdatePacket_StructuralSizeIsStrictlyUnder700Bytes()
@@ -5116,6 +5120,186 @@ namespace FolkIdle.Server.Tests
             float swiftSlashMultiplier = ActiveSkillEngine.ApplyStatusSynergy(ref payload, 4);
             Assert.Equal(ActiveSkillEngine.StatusSynergyDamageMultiplier, swiftSlashMultiplier);
             Assert.Equal(ActiveSkillEngine.StatusFlagChilled, payload.TargetStatusEffectBitmask);
+        }
+
+        // Modul: Full-Stack Production Hardening Phase 3, Part 1/7. Proves
+        // RemoveActivePlayer is now the single authoritative cleanup choke
+        // point - a real running SimulationEngine, one injected player
+        // kicked via a guaranteed-invalid MarketListItem (price <= 0,
+        // rejected by ClientCommandValidator.ValidateMarketCommands's
+        // earliest branch), one of the ~21 anti-cheat/validation-failure
+        // sites this fix centralizes cleanup for. Before this fix,
+        // _liveSessionContexts was only ever cleared by
+        // TerminateSessionForSecurity's own explicit call (never by a
+        // plain kick site), and PlayerSessionRegistry._onlinePlayers was
+        // only cleared by the Logout command handler - which a kicked
+        // player's deferred Logout (enqueued by ForceDisconnect's socket-
+        // closure finally block) never reached, because the command loop's
+        // null-ref guard silently dropped it once _activePlayers no longer
+        // held the entry. Both must now be gone immediately alongside
+        // _activePlayers removal, not eventually via that deferred command.
+        [Fact]
+        public async Task Test_SimulationEngine_KickedPlayer_CleansUpLiveSessionContextAndOnlineRegistration()
+        {
+            const long testPlayerId = 970001301L;
+
+            var simulationEngine = CreateTestSimulationEngine();
+
+            try
+            {
+                simulationEngine.Start();
+
+                simulationEngine.InjectVirtualPlayer(new TickStatePayload
+                {
+                    PlayerId = testPlayerId,
+                    InventorySpaceRemaining = 1000
+                });
+                _fixture.PlayerRegistry.RegisterPlayer(testPlayerId);
+
+                Assert.True(simulationEngine.IsActivePlayerPresent(testPlayerId));
+                Assert.True(simulationEngine.IsLiveSessionContextPresent(testPlayerId));
+                Assert.True(_fixture.PlayerRegistry.IsPlayerOnline(testPlayerId));
+
+                simulationEngine.InjectBenchmarkCommand(testPlayerId, new ClientCommandPacket
+                {
+                    Command = CommandType.MarketListItem,
+                    TargetId = 1,
+                    LimitPrice = 0
+                });
+
+                await WaitForConditionAsync(
+                    () => !simulationEngine.IsActivePlayerPresent(testPlayerId),
+                    "Kicked player was never removed from _activePlayers.");
+
+                Assert.False(simulationEngine.IsLiveSessionContextPresent(testPlayerId));
+                Assert.False(_fixture.PlayerRegistry.IsPlayerOnline(testPlayerId));
+            }
+            finally
+            {
+                simulationEngine.Stop();
+            }
+        }
+
+        // Modul: Full-Stack Production Hardening Phase 3, Part 2/7. The
+        // real bug in the old async Task ObserveSendFault wrapper was a
+        // brand new Task plus a boxed async state machine allocated on
+        // every single invocation, every tick, for every online player,
+        // regardless of whether a fault ever occurred. _logSendFault
+        // replaces that with a `static` (compiler-verified zero-capture,
+        // see that field's own doc comment) delegate assigned exactly
+        // once at class load, never re-created per call - proven here by
+        // reference identity across repeated field reads - and repeated
+        // direct invocations against an already-faulted, already-completed
+        // Task (bypassing ContinueWith/scheduling entirely, which is
+        // separate Task-API plumbing, not the callback body itself)
+        // allocate an identical, non-growing amount on every call rather
+        // than leaking or scaling with call volume.
+        [Fact]
+        public void Test_NetworkBroadcastSystem_LogSendFaultDelegate_IsStaticNonCapturingAndDoesNotGrowPerInvocation()
+        {
+            Action<Task, object?> callback = NetworkBroadcastSystem._logSendFault;
+
+            Assert.Same(callback, NetworkBroadcastSystem._logSendFault);
+
+            Task faultedTask = Task.FromException(new InvalidOperationException("test fault"));
+
+            // Warm-up call, not measured - the first invocation of any
+            // code path pays one-time JIT/lazy-init costs (here, largely
+            // the <>c display-class singleton's first allocation, see
+            // _logSendFault's own doc comment) that a steady-state
+            // per-call comparison must exclude to be meaningful.
+            callback(faultedTask, 970001401L);
+
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            callback(faultedTask, 970001401L);
+            long afterFirst = GC.GetAllocatedBytesForCurrentThread();
+            long firstCallBytes = afterFirst - before;
+
+            callback(faultedTask, 970001401L);
+            long afterSecond = GC.GetAllocatedBytesForCurrentThread();
+            long secondCallBytes = afterSecond - afterFirst;
+
+            Assert.Equal(firstCallBytes, secondCallBytes);
+        }
+
+        // Modul: Full-Stack Production Hardening Phase 3, Part 3/7.
+        // Invokes EcoTelemetryEngine.ExecuteAuditAsync directly (internal
+        // via InternalsVisibleTo, rather than waiting on StartCron's
+        // 10-minute polling loop) and reads back
+        // LastObservedAuditIsolationLevel, which captures what Npgsql/
+        // Postgres actually negotiated for the read transaction - a
+        // stronger proof than merely inspecting that RepeatableRead was
+        // requested in source, since it would also catch a silent
+        // downgrade.
+        [Fact]
+        public async Task Test_EcoTelemetryEngine_AuditQueries_RunUnderRepeatableReadIsolation()
+        {
+            var telemetryEngine = new EcoTelemetryEngine(_fixture.ServiceProvider);
+
+            await telemetryEngine.ExecuteAuditAsync(CancellationToken.None);
+
+            Assert.Equal(System.Data.IsolationLevel.RepeatableRead, EcoTelemetryEngine.LastObservedAuditIsolationLevel);
+        }
+
+        // Modul: Full-Stack Production Hardening Phase 3, Part 5/7. Proves
+        // the 4-slot command-result ring buffer end to end - 4 rapid
+        // concurrent rejections must all survive into distinct slots (not
+        // just the last one overwriting a single scalar), in ascending
+        // per-player-monotonic ResultTick order matching insertion order,
+        // and a 5th rejection must overwrite specifically the OLDEST slot
+        // (ring-buffer wraparound) while the 3 more recent ones remain
+        // untouched.
+        [Fact]
+        public async Task Test_SimulationEngine_CommandResultRingBuffer_BuffersMultipleConcurrentRejectionsWithoutLoss()
+        {
+            const long testPlayerId = 970001501L;
+
+            var simulationEngine = CreateTestSimulationEngine();
+
+            try
+            {
+                simulationEngine.Start();
+                simulationEngine.InjectVirtualPlayer(new TickStatePayload { PlayerId = testPlayerId, InventorySpaceRemaining = 1000 });
+
+                byte code1 = (byte)FolkIdle.Server.Network.CommandResultCode.InvalidPrice;
+                byte code2 = (byte)FolkIdle.Server.Network.CommandResultCode.ItemEquipped;
+                byte code3 = (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials;
+                byte code4 = (byte)FolkIdle.Server.Network.CommandResultCode.InvalidActivity;
+
+                _fixture.PlayerRegistry.EnqueueCommandResult(testPlayerId, code1);
+                _fixture.PlayerRegistry.EnqueueCommandResult(testPlayerId, code2);
+                _fixture.PlayerRegistry.EnqueueCommandResult(testPlayerId, code3);
+                _fixture.PlayerRegistry.EnqueueCommandResult(testPlayerId, code4);
+
+                await WaitForConditionAsync(
+                    () => simulationEngine.GetActivePlayerCommandResultSlots(testPlayerId).Count(s => s.tick > 0) == 4,
+                    "All 4 enqueued command results were not drained into the ring buffer.");
+
+                var slots = simulationEngine.GetActivePlayerCommandResultSlots(testPlayerId);
+                var codesPresent = slots.Select(s => s.code).OrderBy(c => c).ToArray();
+                Assert.Equal(new[] { code1, code2, code3, code4 }.OrderBy(c => c).ToArray(), codesPresent);
+
+                var byTick = slots.OrderBy(s => s.tick).Select(s => s.code).ToArray();
+                Assert.Equal(new[] { code1, code2, code3, code4 }, byTick);
+
+                byte code5 = (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientGold;
+                _fixture.PlayerRegistry.EnqueueCommandResult(testPlayerId, code5);
+
+                await WaitForConditionAsync(
+                    () => simulationEngine.GetActivePlayerCommandResultSlots(testPlayerId).Any(s => s.code == code5),
+                    "The 5th command result was never appended to the ring buffer.");
+
+                var slotsAfterWrap = simulationEngine.GetActivePlayerCommandResultSlots(testPlayerId);
+                Assert.DoesNotContain(slotsAfterWrap, s => s.code == code1);
+                Assert.Contains(slotsAfterWrap, s => s.code == code2);
+                Assert.Contains(slotsAfterWrap, s => s.code == code3);
+                Assert.Contains(slotsAfterWrap, s => s.code == code4);
+                Assert.Contains(slotsAfterWrap, s => s.code == code5);
+            }
+            finally
+            {
+                simulationEngine.Stop();
+            }
         }
     }
 }

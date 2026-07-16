@@ -6,13 +6,13 @@ namespace FolkIdle.Server.Network
     // rejected command (forge fusion, market listing, guild contribution,
     // reroll) was a silent no-op from the player's perspective - the
     // rejection reason existed only as a server-side Console.WriteLine.
-    // StateUpdatePacket.LastCommandResultCode carries the outcome of the
-    // most recently resolved rejectable command back to the client;
-    // Success (0) means either nothing has failed yet this session or the
-    // last attempted command succeeded - callers that need to distinguish
-    // "no command attempted" from "the last command succeeded" should track
-    // that separately client-side, this field only ever tells you the
-    // reason for the most recent rejection.
+    // The CommandResult0-3 ring buffer (see its own doc comment below)
+    // carries the outcome of up to the 4 most recently resolved
+    // rejectable commands back to the client; a ResultTick of 0 in a slot
+    // means that slot has never been populated this session - callers
+    // that need to distinguish "no command attempted" from "the last
+    // command succeeded" should track that separately client-side, these
+    // slots only ever tell you the reason for a rejection.
     public enum CommandResultCode : byte
     {
         Success = 0,
@@ -133,24 +133,31 @@ namespace FolkIdle.Server.Network
         public int PlayerArmorRating;
         public float PlayerBlockStrengthPct;
 
-        // Modul: generic client error-feedback channel - the result code of
-        // the most recently resolved rejectable command (see the
-        // CommandResultCode enum above). Repurposes what was
-        // LiveOpsReserved13 - same byte, same offset, packet size
-        // unchanged.
-        public byte LastCommandResultCode;
-
-        // Modul: incrementing counter, not a boolean flag - mirrors
-        // LastSkillCastResultTick's own rationale exactly (see below): a
-        // flag would either miss two rejections landing back-to-back with
-        // the identical CommandResultCode (e.g. two consecutive
-        // InsufficientGold rejections), or need its own separate
-        // acknowledgement round-trip. Incremented once per applied
-        // CommandResultNotification, regardless of whether the new code
-        // differs from the previous one. Repurposes what was
-        // LiveOpsReserved14 - same byte, same offset, packet size
-        // unchanged.
-        public byte LastCommandResultTick;
+        // Modul: Full-Stack Production Hardening Phase 3, Part 5. Replaces
+        // the single-slot LastCommandResultCode/LastCommandResultTick pair
+        // with a flattened 4-slot ring buffer (4 explicit byte+uint field
+        // pairs, matching this struct's own all-flat-fields convention
+        // rather than nesting a CommandResultEntry struct into a
+        // [Pack = 1] wire struct). A scalar could only ever carry the
+        // single most recent rejection - a client that missed exactly one
+        // broadcast (e.g. across a reconnect gap) while two or more
+        // commands were rejected back to back would only ever see the
+        // last one, silently and permanently losing the earlier
+        // rejection's feedback. ResultTick is a per-player monotonically
+        // increasing counter (never reset, never wraps in practice), so
+        // the client can always tell which slots are newer than what it
+        // has already displayed and in what order to apply them - see
+        // TickStatePayload.CommandResultSlot0-3 (server) and
+        // VisualSyncProxy.ApplyCommandResultState (client) for the
+        // producing/consuming ends.
+        public byte CommandResult0_Code;
+        public uint CommandResult0_Tick;
+        public byte CommandResult1_Code;
+        public uint CommandResult1_Tick;
+        public byte CommandResult2_Code;
+        public uint CommandResult2_Tick;
+        public byte CommandResult3_Code;
+        public uint CommandResult3_Tick;
 
         // Village Infrastructure
         public int CachedCurrentToolTier;
@@ -182,47 +189,15 @@ namespace FolkIdle.Server.Network
         public byte BreedingLevel;
         public byte AcademyLevel;
         public byte CurrentPopulationCount;
-        public byte VillageReserved0;
-        public byte VillageReserved1;
-        public byte VillageReserved2;
-        public byte VillageReserved3;
-        public byte VillageReserved4;
-        public byte VillageReserved5;
-        public byte VillageReserved6;
-        public byte VillageReserved7;
-        public byte VillageReserved8;
-        public byte VillageReserved9;
-        public byte VillageReserved10;
         public uint ActiveChallengeSeed;
         public byte IsQuarantineActive;
-        public byte AntiCheatReserved0;
-        public byte AntiCheatReserved1;
-        public byte AntiCheatReserved2;
         public byte NotificationQueueStateLength;
-        public byte NotificationReserved0;
-        public byte NotificationReserved1;
-        public byte NotificationReserved2;
-        public byte NotificationReserved3;
-        public byte NotificationReserved4;
-        public byte NotificationReserved5;
-        public byte NotificationReserved6;
         public byte ActiveLanguageState;
-        public byte ComplianceStateReserved0;
-        public byte ComplianceStateReserved1;
-        public byte ComplianceStateReserved2;
-        public byte ComplianceStateReserved3;
-        public byte ComplianceStateReserved4;
-        public byte ComplianceStateReserved5;
-        public byte ComplianceStateReserved6;
         public uint ActiveBankedChronoSeconds;
         public byte CurrentSimulationSpeedMultiplier;
-        public byte ChronoReserved0;
-        public byte ChronoReserved1;
-        public byte ChronoReserved2;
         public uint PremiumCurrencyBalance;
         public byte ActiveAudioTrackId;
         public byte UiScreenShakeIntensity;
-        public byte AudioReserved5;
         public uint TotalItemsCraftedCount;
         public byte CraftingEngineStatus;
         public uint ActiveMasteryBitmask;
@@ -284,17 +259,15 @@ namespace FolkIdle.Server.Network
         public uint Skill4CooldownRemainingMs;
         public byte LastSkillCastId;
         public byte LastSkillCastSuccess;
-        public byte SkillReserved0;
-        public byte SkillReserved1;
         public uint LastSkillCastResultTick;
 
         // Modul: Phase - Full-Stack Production Polish, Part 1.1 (Offline
         // "Welcome Back" flow). Set once by OfflineSimulationEngine.
         // ExtrapolateOfflineProgressAsync at login, carrying exactly what
         // that catch-up granted this session - never a running total.
-        // OfflineSummaryTick mirrors LastSkillCastResultTick/
-        // LastCommandResultTick's own edge-detection idiom exactly: it only
-        // increments when a real, non-zero catch-up ran, and never resets
+        // OfflineSummaryTick mirrors LastSkillCastResultTick's own
+        // edge-detection idiom exactly: it only increments when a real,
+        // non-zero catch-up ran, and never resets
         // afterward - the client is responsible for comparing it against
         // its own last-seen value to show the summary exactly once per
         // login, not on every subsequent broadcast of the same tick.

@@ -988,10 +988,15 @@ namespace FolkIdle.Client.Network
                     LimitPrice = 0,
                     IsBuy = 0,
                     QualityTier = 0,
-                    TelemetryEventCount = eventCount,
-                    TelemetryBurstPadding = eventTypeHash
+                    TelemetryEventCount = eventCount
                 };
 
+                // Modul: Full-Stack Production Hardening Phase 3, Part 4.
+                // TelemetryBurstPadding (removed - dead wire-bloat) was a
+                // redundant second copy of eventTypeHash - the server's
+                // TelemetryStreamingEngine.ReadPackedClientEvent only ever
+                // reads it back out of RawTransactionReceipt's packed long
+                // below, never from the old padding field by name.
                 long packedMetric = ((long)eventTypeHash << 32) | (payloadMetric & 0xFFFFFFFFL);
                 byte* target = packet.RawTransactionReceipt;
                 System.Runtime.CompilerServices.Unsafe.WriteUnaligned(target, packedMetric);
