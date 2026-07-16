@@ -570,6 +570,8 @@ namespace FolkIdle.Server.Engine
                 CachedStoneStock = stoneStock,
                 CachedIronOreStock = ironOreStock,
                 CachedCurrentToolTier = forgeLevel,
+                CachedLegacyPerks = player.LegacyPerks,
+                CachedLogisticsGatheringSpeedBonusPct = player.LogisticsGatheringSpeedBonusPct,
                 CachedMaxPopulationCapacity = VillageManagementEngine.CalculatePopulationCapacity(innLevel),
                 CachedInnMaturationBonus = innLevel,
                 Quarantine_Active = player.Quarantine_Active || player.IsQuarantined,
@@ -813,8 +815,14 @@ namespace FolkIdle.Server.Engine
             if (newTier > record.CompletedTier)
             {
                 int diamondsAwarded = AchievementMilestones.GetDiamondsForTiersCrossed(achievementId, record.CompletedTier, newTier);
+                int statBonusAwarded = AchievementMilestones.GetStatBonusForTiersCrossed(achievementId, record.CompletedTier, newTier);
                 record.CompletedTier = newTier;
                 player.PremiumDiamonds += diamondsAwarded;
+
+                if (achievementId == AchievementMilestones.LogisticsAchievementId && statBonusAwarded > 0)
+                {
+                    player.LogisticsGatheringSpeedBonusPct += statBonusAwarded;
+                }
             }
 
             record.CurrentProgress = currentProgress;

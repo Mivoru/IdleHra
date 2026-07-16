@@ -24,6 +24,15 @@ namespace FolkIdle.Server.Network
         public TokenBucket ChatTokenBucket;
         public byte[] DiagnosticSendBuffer { get; }
 
+        // Modul: cached from the player's live TickStatePayload.GuildId
+        // (see SimulationEngine.AddActivePlayer/UpdateSessionGuildId) so
+        // guild-channel chat routing (BroadcastGuildChatMessage) can filter
+        // _connectedClients without this network-layer class needing a
+        // reference back into SimulationEngine's own _guildMembersIndex. 0
+        // means "not in a guild" - never matches a real GuildId, which are
+        // always positive.
+        public long GuildId;
+
         // Modul: .NET's WebSocket forbids more than one outstanding
         // send-family operation (SendAsync or CloseAsync) in flight at a
         // time on the same instance. State broadcasts (SendToPlayer, 1Hz),
@@ -108,6 +117,17 @@ namespace FolkIdle.Server.Network
         private readonly ChatEngine _chatEngine;
         private readonly byte[] _chatBroadcastBuffer = new byte[Marshal.SizeOf<ResponseChatMessagePacket>()];
 
+        // Modul: a separate buffer from _chatBroadcastBuffer - the global
+        // and guild Redis Pub/Sub channels are two independent
+        // ChannelMessageQueue subscriptions (see ChatEngine.Subscribe), so
+        // their handlers (BroadcastChatMessage / BroadcastGuildChatMessage)
+        // can run concurrently with each other even though each
+        // individually guarantees only one in-flight invocation for its
+        // own channel. Sharing one buffer between the two would let a
+        // guild broadcast overwrite a global broadcast's bytes mid-send (or
+        // vice versa) - a real data race, not just a style preference.
+        private readonly byte[] _guildChatBroadcastBuffer = new byte[Marshal.SizeOf<ResponseChatMessagePacket>()];
+
         public NetworkBroadcastSystem(IServiceProvider serviceProvider, string jwtSecretKey, string uriPrefix = "http://localhost:8080/")
         {
             _serviceProvider = serviceProvider;
@@ -118,6 +138,20 @@ namespace FolkIdle.Server.Network
             _httpListener.Prefixes.Add(uriPrefix);
             _chatEngine = new ChatEngine(serviceProvider);
             _chatEngine.OnMessageReceived += BroadcastChatMessage;
+            _chatEngine.OnGuildMessageReceived += BroadcastGuildChatMessage;
+        }
+
+        // Modul: called from SimulationEngine.AddActivePlayer (initial
+        // login) and the GuildMembershipChangeQueue drain (join/leave) -
+        // the two points where a player's live GuildId is established or
+        // changes. A guildId of 0 (not in a guild) is a valid, expected
+        // value here, not an error.
+        public void UpdateSessionGuildId(long playerId, long guildId)
+        {
+            if (_connectedClients.TryGetValue(playerId, out var session))
+            {
+                session.GuildId = guildId;
+            }
         }
 
         public void RegisterCheckpointManager(StateCheckpointManager manager)
@@ -214,6 +248,48 @@ namespace FolkIdle.Server.Network
             ReadOnlySpan<ResponseChatMessagePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
             ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(span);
             bytes.CopyTo(_chatBroadcastBuffer);
+        }
+
+        // Modul: fired by ChatEngine.OnGuildMessageReceived - the guild-
+        // channel counterpart to BroadcastChatMessage above. Routes
+        // strictly to connected players sharing the identical GuildId
+        // (compared via each session's cached GuildId field, never a
+        // database read on this hot path), executing with zero managed
+        // heap allocations: a plain foreach over the existing
+        // _connectedClients dictionary with an int comparison filter, the
+        // same pattern the unfiltered global broadcast already uses, no
+        // LINQ, no intermediate collection.
+        private async Task BroadcastGuildChatMessage(ResponseChatMessagePacket packet, long guildId)
+        {
+            CopyGuildChatPacketToBroadcastBuffer(packet);
+            var segment = new ArraySegment<byte>(_guildChatBroadcastBuffer);
+
+            foreach (var kvp in _connectedClients)
+            {
+                if (kvp.Value.GuildId != guildId)
+                {
+                    continue;
+                }
+
+                if (kvp.Value.Socket.State == WebSocketState.Open)
+                {
+                    try
+                    {
+                        await kvp.Value.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Guild chat broadcast send failed for player {kvp.Key}: {ex.Message}");
+                    }
+                }
+            }
+        }
+
+        private void CopyGuildChatPacketToBroadcastBuffer(ResponseChatMessagePacket packet)
+        {
+            ReadOnlySpan<ResponseChatMessagePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
+            ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(span);
+            bytes.CopyTo(_guildChatBroadcastBuffer);
         }
 
         // Modul: one persistent pod-wide subscription (not one per
@@ -487,6 +563,29 @@ namespace FolkIdle.Server.Network
                     if (requestPath == "/api/v1/achievements/snapshot" && context.Request.HttpMethod == "GET")
                     {
                         await HandleAchievementsSnapshot(context);
+                        continue;
+                    }
+
+                    // Modul: Phase - Full-Stack Production Polish, Part 1.2.
+                    // MailboxAndBankEngine's Claim/Deposit/Withdraw commands
+                    // already existed on the WebSocket wire protocol
+                    // (ClaimMailItem/DepositToBank/WithdrawFromBank) - what
+                    // was missing was any way for the client to discover
+                    // WHICH ids exist to act on. Paginated-list snapshot
+                    // endpoints, mirroring HandleForgeInventorySnapshot's
+                    // exact shape (an authenticated, read-only, per-player
+                    // list query) rather than StateUpdatePacket's fixed
+                    // binary layout, for the same reason every other
+                    // variable-length listing in this file uses HTTP.
+                    if (requestPath == "/api/v1/mailbox/list" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleMailboxListSnapshot(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/bank/list" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleBankListSnapshot(context);
                         continue;
                     }
 
@@ -952,6 +1051,123 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Forge inventory snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class MailboxEntryResponse
+        {
+            public long Id { get; set; }
+            public string BaseItemId { get; set; } = string.Empty;
+            public int QualityTier { get; set; }
+            public int Quantity { get; set; }
+            public long GoldAttachment { get; set; }
+            public bool HasEquipmentAttachment { get; set; }
+            public long ReceivedTimestamp { get; set; }
+        }
+
+        // Modul: excludes rows already claimed or with a claim currently in
+        // flight (IsPending) - matches ClaimMailItemAsync's own rejection
+        // condition exactly, so the list a player sees only ever contains
+        // ids that a claim request against them can actually succeed on.
+        private async Task HandleMailboxListSnapshot(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                var entries = await db.MailboxInstances
+                    .AsNoTracking()
+                    .Where(m => m.PlayerId == playerId && !m.IsClaimed && !m.IsPending)
+                    .OrderByDescending(m => m.ReceivedTimestamp)
+                    .Select(m => new MailboxEntryResponse
+                    {
+                        Id = m.Id,
+                        BaseItemId = m.BaseItemId,
+                        QualityTier = m.QualityTier,
+                        Quantity = m.Quantity,
+                        GoldAttachment = m.GoldAttachment,
+                        HasEquipmentAttachment = m.AttachedEquipmentId.HasValue,
+                        ReceivedTimestamp = m.ReceivedTimestamp
+                    })
+                    .ToListAsync();
+
+                await transaction.CommitAsync();
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, entries);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Mailbox list snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class BankEntryResponse
+        {
+            public long Id { get; set; }
+            public string BaseItemId { get; set; } = string.Empty;
+            public int QualityTier { get; set; }
+            public bool IsAffixLocked { get; set; }
+        }
+
+        private async Task HandleBankListSnapshot(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                var entries = await db.BankEquipmentInstances
+                    .AsNoTracking()
+                    .Where(b => b.PlayerId == playerId)
+                    .Select(b => new BankEntryResponse
+                    {
+                        Id = b.Id,
+                        BaseItemId = b.BaseItemId,
+                        QualityTier = b.QualityTier,
+                        IsAffixLocked = b.IsAffixLocked
+                    })
+                    .ToListAsync();
+
+                await transaction.CommitAsync();
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, entries);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Bank list snapshot error: {ex}");
                 context.Response.StatusCode = 500;
             }
 
@@ -2282,7 +2498,23 @@ namespace FolkIdle.Server.Network
                         {
                             var chatRequest = MemoryMarshal.Read<RequestChatMessagePacket>(new ReadOnlySpan<byte>(buffer, 0, result.Count));
                             string chatText = ExtractChatMessageText(ref chatRequest);
-                            _ = _chatEngine.PublishMessageAsync(playerId, chatText);
+
+                            if (chatRequest.ChannelType == ChatEngine.GuildChannelType)
+                            {
+                                // A player not currently in a guild has
+                                // nothing to route a guild message to -
+                                // silently dropped, matching every other
+                                // rejected-chat-message path (rate limit,
+                                // empty content) rather than disconnecting.
+                                if (session.GuildId > 0)
+                                {
+                                    _ = _chatEngine.PublishGuildMessageAsync(playerId, session.GuildId, chatText);
+                                }
+                            }
+                            else
+                            {
+                                _ = _chatEngine.PublishMessageAsync(playerId, chatText);
+                            }
                         }
                     }
                     else if (result.MessageType == WebSocketMessageType.Binary && result.Count >= Marshal.SizeOf<ClientCommandPacket>())

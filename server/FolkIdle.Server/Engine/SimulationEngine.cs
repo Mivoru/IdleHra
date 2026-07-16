@@ -326,6 +326,15 @@ namespace FolkIdle.Server.Engine
         {
             _activePlayers[payload.PlayerId] = payload;
             AddToGuildIndex(payload.GuildId, payload.PlayerId);
+
+            // Modul: caches this player's GuildId directly on their
+            // WebSocketSession so NetworkBroadcastSystem can route guild-
+            // channel chat messages (BroadcastGuildChatMessage) without
+            // needing a reference back into this class's own
+            // _guildMembersIndex - see ChatEngine/NetworkBroadcastSystem's
+            // own comments for why a per-session cached value was chosen
+            // over that alternative.
+            _networkSystem.UpdateSessionGuildId(payload.PlayerId, payload.GuildId);
         }
 
         // Modul: single entry point for removing a player from
@@ -690,6 +699,7 @@ namespace FolkIdle.Server.Engine
                         AddToGuildIndex(membershipChange.NewGuildId, membershipChange.PlayerId);
                         membershipPayload.GuildId = membershipChange.NewGuildId;
                         membershipPayload.IsDirty = true;
+                        _networkSystem.UpdateSessionGuildId(membershipChange.PlayerId, membershipChange.NewGuildId);
 
                         // ReloadState forces the client to re-pull its full
                         // state so guild-scoped UI reflects the new
@@ -806,6 +816,20 @@ namespace FolkIdle.Server.Engine
                     {
                         currentPayload.SetLegacyShards(legacyNotif.LegacyShardBalance);
                         currentPayload.CitizenMultiSlotsUnlocked = legacyNotif.CitizenMultiSlotsUnlocked;
+                        if (legacyNotif.HasLegacyPerksUpdate)
+                        {
+                            currentPayload.CachedLegacyPerks = legacyNotif.LegacyPerks;
+                        }
+                    }
+                }
+
+                while (_playerRegistry.BillingSyncQueue.TryDequeue(out var billingSyncNotif))
+                {
+                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, billingSyncNotif.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                    {
+                        currentPayload.SetPremiumCurrency(billingSyncNotif.PremiumDiamondsBalance);
+                        currentPayload.IsDirty = true;
                     }
                 }
 
@@ -1726,15 +1750,21 @@ namespace FolkIdle.Server.Engine
                     else if (cmd.Command == CommandType.LaunchGuildRaid)
                     {
                         long raidGuildId = currentPayload.GuildId;
+                        long raidRequestingPlayerId = currentPayload.PlayerId;
                         if (raidGuildId > 0 && _guildRaidEngine != null)
                         {
                             // No single player to disconnect on failure here -
                             // raidGuildId identifies a guild, not a player, and
                             // passing it as playerIdToDisconnectOnFailure would
                             // force-disconnect whichever unrelated player, if
-                            // any, happens to share that numeric id.
+                            // any, happens to share that numeric id. Leader-only
+                            // enforcement happens inside TryStartRaidAsync
+                            // itself, against the locked GuildMembers row - a
+                            // non-leader's request simply rolls back with no
+                            // effect, matching every other rejected-command
+                            // path in this engine.
                             SafeDispatchAsync("Guild.LaunchRaid", 0L, async () => {
-                                await _guildRaidEngine.TryStartRaidAsync(raidGuildId);
+                                await _guildRaidEngine.TryStartRaidAsync(raidGuildId, raidRequestingPlayerId);
                             });
                         }
                     }
@@ -1919,8 +1949,42 @@ namespace FolkIdle.Server.Engine
                     }
                     else if (cmd.Command == CommandType.SyncBillingStatus)
                     {
-                        // No-op for now. Acknowledge and continue.
-                        currentPayload.IsDirty = true;
+                        // Modul: reconciles the live in-memory
+                        // TickStatePayload.PremiumCurrency against the
+                        // database-authoritative PlayerRecords.
+                        // PremiumDiamonds - the client calls this after
+                        // returning from a store purchase flow that was
+                        // verified through the REST
+                        // /api/v1/billing/verify endpoint (see
+                        // BillingVerificationEngine.VerifyReceiptAsync),
+                        // which writes directly to the database and never
+                        // touches this session's in-memory payload. Reads
+                        // the balance rather than re-running verification
+                        // on a stored receipt, since no such "pending
+                        // unapplied record" is ever persisted here - every
+                        // receipt is verified synchronously at submission
+                        // time by BillingVerificationEngine, either via
+                        // that REST endpoint or via
+                        // CommandType.SubmitPurchaseReceipt above.
+                        long syncPlayerId = currentPayload.PlayerId;
+                        SafeDispatchAsync("Billing.SyncStatus", syncPlayerId, async () =>
+                        {
+                            await using var syncDb = await _contextFactory.CreateDbContextAsync();
+                            int? balance = await syncDb.PlayerRecords
+                                .AsNoTracking()
+                                .Where(p => p.Id == syncPlayerId)
+                                .Select(p => (int?)p.PremiumDiamonds)
+                                .SingleOrDefaultAsync();
+
+                            if (balance.HasValue)
+                            {
+                                _playerRegistry.BillingSyncQueue.Enqueue(new BillingSyncNotification
+                                {
+                                    PlayerId = syncPlayerId,
+                                    PremiumDiamondsBalance = balance.Value
+                                });
+                            }
+                        });
                     }
                     else if (cmd.Command == CommandType.ReportUiContextSwitch)
                     {
@@ -2297,7 +2361,13 @@ namespace FolkIdle.Server.Engine
                                 Skill4CooldownRemainingMs = ComputeSkillCooldownRemainingMs(in currentPayload, 4),
                                 LastSkillCastId = currentPayload.LastSkillCastId,
                                 LastSkillCastSuccess = currentPayload.LastSkillCastSuccess,
-                                LastSkillCastResultTick = currentPayload.LastSkillCastResultTick
+                                LastSkillCastResultTick = currentPayload.LastSkillCastResultTick,
+                                OfflineElapsedSeconds = currentPayload.OfflineElapsedSeconds,
+                                OfflineGoldEarned = currentPayload.OfflineGoldEarned,
+                                OfflineXpEarned = currentPayload.OfflineXpEarned,
+                                OfflineMaterialDropsGranted = currentPayload.OfflineMaterialDropsGranted,
+                                OfflineSummaryTick = currentPayload.OfflineSummaryTick,
+                                TicksSinceLastFlush = currentPayload.TicksSinceLastFlush
                             };
                             // Modul: this packet carries currentPayload's own
                             // private data (gold, stats, equipment, mana,
@@ -2436,6 +2506,17 @@ namespace FolkIdle.Server.Engine
         {
             int masteryLevel = gatheringNode.ProfessionType == 0 ? payload.WoodcuttingMasteryLevel : payload.MiningMasteryLevel;
             int requiredTicks = gatheringNode.BaseTickThreshold - (masteryLevel * 2) - payload.CachedCurrentToolTier;
+            // Modul: Logistics achievement family's stackable claim reward
+            // (Phase: Full-Stack Production Polish, Part 2.3) - a flat
+            // percent reduction in the tick threshold, i.e. a gathering
+            // speed boost. Applied multiplicatively after the additive
+            // mastery/tool reductions above, matching how percentage
+            // bonuses are layered everywhere else in this codebase (see
+            // e.g. RaceMasteryResolver's own bonuses).
+            if (payload.CachedLogisticsGatheringSpeedBonusPct > 0)
+            {
+                requiredTicks -= (requiredTicks * payload.CachedLogisticsGatheringSpeedBonusPct) / 100;
+            }
             if (requiredTicks < 2) requiredTicks = 2;
 
             long progressedTicks = payload.GatheringProgressTicks + totalTicks;
@@ -2473,7 +2554,7 @@ namespace FolkIdle.Server.Engine
             }
 
             var monster = ContentRegistry.Monsters[monsterId - 1];
-            int attacksPerKill = EstimateAttacksPerKill(ref payload, monster);
+            int attacksPerKill = EstimateAttacksPerKill(ref payload, monsterId);
             long ticksPerAttack = 15L;
             long ticksPerKill = System.Math.Max(1L, attacksPerKill * ticksPerAttack);
             long completedKills = totalTicks / ticksPerKill;
@@ -2501,7 +2582,7 @@ namespace FolkIdle.Server.Engine
                 float warpMitigatedCritMult = Math.Max(1.0f, 1.5f - (warpCombatStats.CritMitigationPct / 100f));
                 float warpExpectedCritMultiplier = 1.0f + warpMonsterCritChance * (warpMitigatedCritMult - 1.0f);
 
-                long warpRawIncomingMilliDamage = (long)(monster.AttackPower * 1000 * warpExpectedCritMultiplier);
+                long warpRawIncomingMilliDamage = (long)(ContentRegistry.GetScaledMonsterAttackPower(monsterId) * 1000 * warpExpectedCritMultiplier);
                 long warpNetIncomingMilliDamage = Math.Max(1000L, warpRawIncomingMilliDamage - (warpCombatStats.FlatPhysicalArmor * 1000L));
 
                 double warpMonsterAttacksPerSecond = monster.AttackIntervalMs > 0 ? 1000.0 / monster.AttackIntervalMs : 0.0;
@@ -2545,7 +2626,7 @@ namespace FolkIdle.Server.Engine
             if (completedKills <= 0)
             {
                 payload.CurrentMonsterId = monsterId;
-                payload.CurrentMonsterHp = monster.MaxHp * 1000;
+                payload.CurrentMonsterHp = ContentRegistry.GetScaledMonsterMaxHp(monsterId) * 1000;
                 return;
             }
 
@@ -2556,6 +2637,7 @@ namespace FolkIdle.Server.Engine
             }
 
             finalXpMultiplier += RaceMasteryResolver.GetHumanXpBonusPct(payload.HumanMasteryLevel);
+            finalXpMultiplier += LegacyPerkResolver.GetXpBonusPct(payload.CachedLegacyPerks);
 
             if (payload.ActiveMentorPlayerId > 0 && payload.MentorshipExpBonusMultiplier > 1.0)
             {
@@ -2573,6 +2655,7 @@ namespace FolkIdle.Server.Engine
             // Modul 13.4.3: Human's innate +5% Gold acquisition passive, mirrored
             // for the offline warp path.
             goldReward = (long)(goldReward * (1.0f + warpCombatStats.GoldAcquisitionMultiplierPct / 100f));
+            goldReward = (long)(goldReward * (1.0f + LegacyPerkResolver.GetGoldBonusPct(payload.CachedLegacyPerks) / 100f));
 
             if (goldReward > 0)
             {
@@ -2600,7 +2683,7 @@ namespace FolkIdle.Server.Engine
             payload.InventorySpaceRemaining -= warpEquipmentDropsToGrant;
 
             payload.CurrentMonsterId = monsterId;
-            payload.CurrentMonsterHp = monster.MaxHp * 1000;
+            payload.CurrentMonsterHp = ContentRegistry.GetScaledMonsterMaxHp(monsterId) * 1000;
         }
 
         // Modul: drains Food1-3 in a fixed order, mirroring
@@ -2637,12 +2720,12 @@ namespace FolkIdle.Server.Engine
             return ((buffSeconds * boostedMultiplier) + baseSeconds) / warpSeconds;
         }
 
-        private static int EstimateAttacksPerKill(ref TickStatePayload payload, MonsterDefinition monster)
+        private static int EstimateAttacksPerKill(ref TickStatePayload payload, int monsterId)
         {
             int decayedStrength = payload.STR <= 0 ? 0 : (int)System.Math.Floor(System.Math.Log(payload.STR + 1.0) * 1000.0);
             long expectedDamage = 15000L + decayedStrength + (payload.CurrentLevel * 750L);
             if (expectedDamage < 1000L) expectedDamage = 1000L;
-            long monsterHp = (long)monster.MaxHp * 1000L;
+            long monsterHp = (long)ContentRegistry.GetScaledMonsterMaxHp(monsterId) * 1000L;
             long attacks = (monsterHp + expectedDamage - 1L) / expectedDamage;
             if (attacks <= 0L) return 1;
             if (attacks > int.MaxValue) return int.MaxValue;
@@ -3467,7 +3550,7 @@ namespace FolkIdle.Server.Engine
             if (payload.CurrentMonsterId <= 0)
             {
                 payload.CurrentMonsterId = fallbackId;
-                payload.CurrentMonsterHp = ContentRegistry.Monsters[payload.CurrentMonsterId - 1].MaxHp * 1000;
+                payload.CurrentMonsterHp = ContentRegistry.GetScaledMonsterMaxHp(payload.CurrentMonsterId) * 1000;
                 payload.CombatTargetTickAccumulator = 0;
             }
 
@@ -3501,6 +3584,19 @@ namespace FolkIdle.Server.Engine
                     }
 
                     long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel);
+
+                    // Modul: Prestige "combat speed" perk (LegacyPerkResolver) -
+                    // applied as a flat percent boost to effective damage
+                    // output per attack rather than to the attack-interval
+                    // tick cadence itself (AttackIntervalMs governs the
+                    // shared per-monster pacing loop below and is not a
+                    // per-player value), which is a materially equivalent
+                    // DPS increase without touching that shared cadence math.
+                    int legacyCombatSpeedBonusPct = LegacyPerkResolver.GetCombatSpeedBonusPct(payload.CachedLegacyPerks);
+                    if (legacyCombatSpeedBonusPct > 0)
+                    {
+                        effectiveMilliAttack += (effectiveMilliAttack * legacyCombatSpeedBonusPct) / 100;
+                    }
                     int rawDamage = (int)(effectiveMilliAttack * critMult);
 
                     // Active Skill Tree: a successful RequestCastSkill sets this
@@ -3565,7 +3661,7 @@ namespace FolkIdle.Server.Engine
                         monsterCritMult = Math.Max(1.0f, 1.5f - (combatStats.CritMitigationPct / 100f));
                     }
 
-                    int rawDamage = (int)(activeMonster.AttackPower * 1000 * monsterCritMult);
+                    int rawDamage = (int)(ContentRegistry.GetScaledMonsterAttackPower(payload.CurrentMonsterId) * 1000 * monsterCritMult);
 
                     // Step 3+4 (Armor then Block, combined): armor subtracts
                     // flat milli-damage, BlockStrengthPct (CON-derived, see
@@ -3640,6 +3736,7 @@ namespace FolkIdle.Server.Engine
                 }
 
                 finalXpMultiplier += RaceMasteryResolver.GetHumanXpBonusPct(payload.HumanMasteryLevel);
+            finalXpMultiplier += LegacyPerkResolver.GetXpBonusPct(payload.CachedLegacyPerks);
 
                 if (payload.ActiveMentorPlayerId > 0 && payload.MentorshipExpBonusMultiplier > 1.0)
                 {
@@ -3660,6 +3757,7 @@ namespace FolkIdle.Server.Engine
                 long goldReward = (activeMonster.BaseGoldReward * (long)GlobalEngineState.GlobalGoldDropMultiplier) / 100L;
                 // Modul 13.4.3: Human's innate +5% Gold acquisition passive.
                 goldReward = (long)(goldReward * (1.0f + combatStats.GoldAcquisitionMultiplierPct / 100f));
+                goldReward = (long)(goldReward * (1.0f + LegacyPerkResolver.GetGoldBonusPct(payload.CachedLegacyPerks) / 100f));
                 if (goldReward > 0)
                 {
                     payload.AddGold(goldReward);
@@ -3780,7 +3878,7 @@ namespace FolkIdle.Server.Engine
                 }
 
                 payload.CurrentMonsterId = fallbackId;
-                payload.CurrentMonsterHp = ContentRegistry.Monsters[payload.CurrentMonsterId - 1].MaxHp * 1000;
+                payload.CurrentMonsterHp = ContentRegistry.GetScaledMonsterMaxHp(payload.CurrentMonsterId) * 1000;
                 payload.CombatTargetTickAccumulator = 0;
             }
         }

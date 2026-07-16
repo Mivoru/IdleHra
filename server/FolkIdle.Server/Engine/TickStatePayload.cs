@@ -128,6 +128,31 @@ namespace FolkIdle.Server.Engine
         public int CachedCurrentToolTier;
         public int CachedMaxPopulationCapacity;
         public int CachedInnMaturationBonus;
+
+        // Modul: Prestige perk tree (see LegacyPerkResolver) and the
+        // Logistics achievement family's stackable gathering-speed reward
+        // (see AchievementMilestones) - both cached here from PlayerRecord
+        // at session load (StateCheckpointManager) so combat/gathering math
+        // can read them on the 10Hz hot path without a database round trip.
+        public long CachedLegacyPerks;
+        public int CachedLogisticsGatheringSpeedBonusPct;
+
+        // Modul: Phase - Full-Stack Production Polish, Part 1.1 (Offline
+        // "Welcome Back" flow). Populated once, at login, by
+        // OfflineSimulationEngine.ExtrapolateOfflineProgressAsync - the
+        // exact delta this catch-up projection just granted, not a running
+        // total. Never reset afterward (matches LastCommandResultTick/
+        // LastSkillCastResultTick's own established idiom exactly):
+        // OfflineSummaryTick only increments when a real, non-zero
+        // catch-up actually ran, and the client is responsible for
+        // edge-detecting a change in that tick value (never re-showing the
+        // same summary twice for an unchanged tick) rather than the server
+        // clearing these fields after one broadcast.
+        public long OfflineElapsedSeconds;
+        public long OfflineGoldEarned;
+        public long OfflineXpEarned;
+        public int OfflineMaterialDropsGranted;
+        public byte OfflineSummaryTick;
         public byte ForgeLevel;
         public byte InnLevel;
         public byte BreedingLevel;

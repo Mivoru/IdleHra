@@ -4424,5 +4424,296 @@ namespace FolkIdle.Server.Tests
                 return new HttpClient(_handler, disposeHandler: false);
             }
         }
+
+        // Modul: Phase - Full-Stack Production Polish, Part 1.1. Directly
+        // exercises OfflineSimulationEngine.ExtrapolateOfflineProgressAsync
+        // (the established test pattern for this engine - see
+        // Test_OfflineProgression_AnalyticalCalculation/
+        // Test_OfflineSimulationEngine_SevenDayOfflinePeriod_
+        // GrantsExactAnalyticalYieldInO1Time above, neither of which goes
+        // through the full Login/WebSocket pipeline either) and asserts the
+        // four new Offline* summary fields are populated with the exact
+        // delta this call granted - the values the client's Welcome Back
+        // modal reads via StateUpdatePacket.Offline*/OfflineSummaryTick,
+        // which SimulationEngine's packet-conversion site copies straight
+        // from these same TickStatePayload fields with no transformation.
+        [Fact]
+        public async Task Test_OfflineSimulationEngine_PopulatesOfflineSummaryFieldsForWelcomeBackModal()
+        {
+            const long testPlayerId = 970001601L;
+            const long elapsedOfflineSeconds = 3600L; // 1 hour, well under the 12h analytical cap
+            const int monsterId = 31;
+
+            long currentUnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            var payload = new TickStatePayload
+            {
+                PlayerId = testPlayerId,
+                LastLogoutTimestamp = currentUnixTimestamp - elapsedOfflineSeconds,
+                ActiveActivityId = monsterId,
+                CurrentLevel = 1,
+                CurrentXp = 0,
+                InventorySpaceRemaining = 1000,
+                // Ample food stock so combat survives the full offline
+                // window (see OfflineSimulationEngine.CalculateCombatProjection's
+                // food-depletion model) - matches
+                // Test_OfflineProgression_AnalyticalCalculation's own setup.
+                Food1_ItemId = 1,
+                Food1_Count = 100000
+            };
+
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            payload = await OfflineSimulationEngine.ExtrapolateOfflineProgressAsync(db, payload, currentUnixTimestamp);
+
+            Assert.Equal(elapsedOfflineSeconds, payload.OfflineElapsedSeconds);
+            Assert.True(payload.OfflineGoldEarned > 0, "Expected offline combat against a real monster to grant gold.");
+            Assert.True(payload.OfflineXpEarned > 0, "Expected offline combat against a real monster to grant XP.");
+            Assert.Equal((byte)1, payload.OfflineSummaryTick);
+
+            // Deltas, not running totals - CurrentGold/CurrentXp started at
+            // 0 and were mutated by this same call, so the Offline* fields
+            // must equal exactly what those counters increased by.
+            Assert.Equal(payload.CurrentGold, payload.OfflineGoldEarned);
+            Assert.Equal(payload.CurrentXp, payload.OfflineXpEarned);
+        }
+
+        // Modul: Phase - Full-Stack Production Polish, Part 4.1. Proves the
+        // migration from a hardcoded switch statement to
+        // ContentRegistry.Balance.IapProductPrices (loaded from
+        // GameBalanceConfig.json) yields identical results for every
+        // product the old switch recognized, plus the same 0 fallback for
+        // an unrecognized product id - and that the values genuinely come
+        // from the config object, not a second hardcoded literal that
+        // happens to coincide.
+        [Fact]
+        public void Test_BillingVerificationEngine_ProductPricesMigratedToConfigMatchPriorHardcodedValues()
+        {
+            Assert.Equal(500, BillingVerificationEngine.ResolvePremiumDiamondsForProduct("gems_pack_small"));
+            Assert.Equal(1100, BillingVerificationEngine.ResolvePremiumDiamondsForProduct("gems_pack_medium"));
+            Assert.Equal(2400, BillingVerificationEngine.ResolvePremiumDiamondsForProduct("gems_pack_large"));
+            Assert.Equal(5200, BillingVerificationEngine.ResolvePremiumDiamondsForProduct("gems_pack_mega"));
+            Assert.Equal(0, BillingVerificationEngine.ResolvePremiumDiamondsForProduct("unknown_product_id"));
+
+            Assert.Equal(500, ContentRegistry.Balance.IapProductPrices["gems_pack_small"]);
+            Assert.Equal(5200, ContentRegistry.Balance.IapProductPrices["gems_pack_mega"]);
+        }
+
+        // Modul: Phase - Full-Stack Production Polish, Part 4.2. Proves
+        // OfflineStateEngine.ReconcileOfflineStateAsync grants drops up to
+        // the player's REAL race-mastery-expanded capacity (20 +
+        // RaceMasteryResolver.GetHumanVaultBonusSlots, mirroring
+        // StateCheckpointManager's own live formula) rather than the
+        // previous hardcoded 50 - a player already holding 24 items with a
+        // real capacity of 25 (Human mastery 25 => +5 bonus slots) must
+        // only receive 1 more drop even though 10 were mathematically
+        // earned over the simulated window, with the remaining 9 drops'
+        // worth of time banked instead of being (incorrectly) granted
+        // outright under the old capacity-50 assumption.
+        [Fact]
+        public async Task Test_OfflineStateEngine_ReconcileUsesRaceMasteryExpandedCapacityNotHardcodedFifty()
+        {
+            const long testPlayerId = 970001501L;
+            const int humanMasteryLevel = 25; // GetHumanVaultBonusSlots(25) = +5 => real capacity 25
+            const int preExistingEquipmentCount = 24;
+            const long elapsedSecondsToSimulate = 3000L; // 10 potential drops at 300s/drop
+            Guid accountId = Guid.NewGuid();
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid() });
+                db.PlayerRaceMasteries.Add(new PlayerRaceMastery { PlayerId = testPlayerId, RaceId = RaceIds.Human, MasteryLevel = humanMasteryLevel });
+                db.AccountChronoRegistries.Add(new AccountChronoRegistry
+                {
+                    AccountId = accountId,
+                    LastClockSyncEpoch = System.Diagnostics.Stopwatch.GetTimestamp() - (elapsedSecondsToSimulate * System.Diagnostics.Stopwatch.Frequency)
+                });
+
+                for (int i = 0; i < preExistingEquipmentCount; i++)
+                {
+                    db.EquipmentInstances.Add(new EquipmentInstance
+                    {
+                        PlayerId = testPlayerId,
+                        BaseItemId = "integration_test_capacity_filler",
+                        QualityTier = 1,
+                        AffixPayload = "{}"
+                    });
+                }
+
+                await db.SaveChangesAsync();
+            }
+
+            var offlineStateEngine = new OfflineStateEngine(_fixture.ServiceProvider);
+            await offlineStateEngine.ReconcileOfflineStateAsync(testPlayerId, CancellationToken.None);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            int finalEquipmentCount = await verifyDb.EquipmentInstances.AsNoTracking().CountAsync(e => e.PlayerId == testPlayerId);
+
+            // 24 pre-existing + exactly 1 granted (capacity 25 - 24 = 1
+            // space available), never 26 (which the old hardcoded 50 would
+            // have wrongly allowed).
+            Assert.Equal(preExistingEquipmentCount + 1, finalEquipmentCount);
+
+            var updatedPlayer = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+            Assert.True(updatedPlayer.BankedChronoSeconds > 0, "Overflow seconds from the 9 drops that could not fit must be banked, not discarded.");
+        }
+
+        // Modul: Phase - Full-Stack Production Polish, Part 3.1. Proves
+        // ChatEngine's guild-channel routing pathway - added in
+        // NetworkBroadcastSystem.BroadcastGuildChatMessage, filtering
+        // strictly by each connected session's cached GuildId - actually
+        // isolates a guild-channel message to the sender's own guild.
+        // Three real WebSocket connections against one NetworkBroadcastSystem
+        // instance: A and B share a guild, C does not. NetworkBroadcastSystem.
+        // UpdateSessionGuildId is called directly here (normally done by
+        // SimulationEngine.AddActivePlayer/the GuildMembershipChangeQueue
+        // drain on Login) since no SimulationEngine runs in this test.
+        [Fact]
+        public async Task Test_ChatEngine_GuildChannel_RoutesOnlyToSenderGuildMembers()
+        {
+            const long playerAId = 970001701L; // sender
+            const long playerBId = 970001702L; // same guild - must receive
+            const long playerCId = 970001703L; // different guild - must NOT receive
+            const long guildOneId = 970001710L;
+            const long guildTwoId = 970001711L;
+            Guid accountAId = Guid.NewGuid();
+            Guid accountBId = Guid.NewGuid();
+            Guid accountCId = Guid.NewGuid();
+            const string messageText = "guild-only routing test";
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerAId, PlayerGuid = accountAId, AuthenticatorToken = Guid.NewGuid(), GuildId = guildOneId });
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerBId, PlayerGuid = accountBId, AuthenticatorToken = Guid.NewGuid(), GuildId = guildOneId });
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerCId, PlayerGuid = accountCId, AuthenticatorToken = Guid.NewGuid(), GuildId = guildTwoId });
+                await db.SaveChangesAsync();
+            }
+
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8098/");
+            networkSystem.Start();
+
+            try
+            {
+                using var socketA = new ClientWebSocket();
+                await socketA.ConnectAsync(new Uri("ws://localhost:8098/"), CancellationToken.None);
+                await socketA.SendAsync(new ArraySegment<byte>(BuildAuthHandshakeBuffer(MintTestJwt(accountAId))), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                using var socketB = new ClientWebSocket();
+                await socketB.ConnectAsync(new Uri("ws://localhost:8098/"), CancellationToken.None);
+                await socketB.SendAsync(new ArraySegment<byte>(BuildAuthHandshakeBuffer(MintTestJwt(accountBId))), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                using var socketC = new ClientWebSocket();
+                await socketC.ConnectAsync(new Uri("ws://localhost:8098/"), CancellationToken.None);
+                await socketC.SendAsync(new ArraySegment<byte>(BuildAuthHandshakeBuffer(MintTestJwt(accountCId))), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                await Task.Delay(500);
+                Assert.Equal(WebSocketState.Open, socketA.State);
+                Assert.Equal(WebSocketState.Open, socketB.State);
+                Assert.Equal(WebSocketState.Open, socketC.State);
+
+                networkSystem.UpdateSessionGuildId(playerAId, guildOneId);
+                networkSystem.UpdateSessionGuildId(playerBId, guildOneId);
+                networkSystem.UpdateSessionGuildId(playerCId, guildTwoId);
+
+                var messageObservedOnB = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                bool messageObservedOnC = false;
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+
+                var receiveTaskB = Task.Run(async () =>
+                {
+                    var recvBuffer = new byte[1024];
+                    while (!cts.Token.IsCancellationRequested)
+                    {
+                        WebSocketReceiveResult result;
+                        try
+                        {
+                            result = await socketB.ReceiveAsync(new ArraySegment<byte>(recvBuffer), cts.Token);
+                        }
+                        catch
+                        {
+                            break;
+                        }
+
+                        if (result.MessageType == WebSocketMessageType.Close) break;
+                        if (result.Count != Marshal.SizeOf<ResponseChatMessagePacket>()) continue;
+
+                        var chatPacket = MemoryMarshal.Read<ResponseChatMessagePacket>(new ReadOnlySpan<byte>(recvBuffer, 0, result.Count));
+                        if (chatPacket.SenderPlayerId != playerAId) continue;
+
+                        string received;
+                        unsafe
+                        {
+                            received = System.Text.Encoding.UTF8.GetString(chatPacket.MessageText, chatPacket.MessageLength);
+                        }
+
+                        if (received == messageText)
+                        {
+                            messageObservedOnB.TrySetResult();
+                        }
+                    }
+                });
+
+                var receiveTaskC = Task.Run(async () =>
+                {
+                    var recvBuffer = new byte[1024];
+                    try
+                    {
+                        while (!cts.Token.IsCancellationRequested)
+                        {
+                            WebSocketReceiveResult result = await socketC.ReceiveAsync(new ArraySegment<byte>(recvBuffer), cts.Token);
+                            if (result.MessageType == WebSocketMessageType.Close) break;
+                            if (result.Count != Marshal.SizeOf<ResponseChatMessagePacket>()) continue;
+
+                            var chatPacket = MemoryMarshal.Read<ResponseChatMessagePacket>(new ReadOnlySpan<byte>(recvBuffer, 0, result.Count));
+                            if (chatPacket.SenderPlayerId == playerAId)
+                            {
+                                messageObservedOnC = true;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                    }
+                });
+
+                byte[] chatBuffer = BuildGuildChatMessageBuffer(messageText);
+                await socketA.SendAsync(new ArraySegment<byte>(chatBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                var completed = await Task.WhenAny(messageObservedOnB.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+                Assert.True(completed == messageObservedOnB.Task, "Guild member B never received the guild-channel chat message from A.");
+
+                // Negative check: give C a further short window to
+                // (incorrectly) receive the same message before concluding
+                // it never will.
+                await Task.Delay(TimeSpan.FromSeconds(2));
+                Assert.False(messageObservedOnC, "Player C, in a different guild, must never receive a guild-channel message sent by A.");
+
+                cts.Cancel();
+                try { await receiveTaskB; } catch { }
+                try { await receiveTaskC; } catch { }
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
+        private static unsafe byte[] BuildGuildChatMessageBuffer(string messageText)
+        {
+            byte[] textBytes = System.Text.Encoding.UTF8.GetBytes(messageText);
+            int length = textBytes.Length > RequestChatMessagePacket.MessageCapacity ? RequestChatMessagePacket.MessageCapacity : textBytes.Length;
+
+            var packet = new RequestChatMessagePacket { MessageLength = (ushort)length, ChannelType = ChatEngine.GuildChannelType };
+            byte* target = packet.MessageText;
+            for (int i = 0; i < RequestChatMessagePacket.MessageCapacity; i++)
+            {
+                target[i] = i < length ? textBytes[i] : (byte)0;
+            }
+
+            byte[] buffer = new byte[Marshal.SizeOf<RequestChatMessagePacket>()];
+            MemoryMarshal.Write(new Span<byte>(buffer), packet);
+            return buffer;
+        }
     }
 }

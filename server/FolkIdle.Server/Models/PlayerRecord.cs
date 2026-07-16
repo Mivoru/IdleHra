@@ -81,5 +81,28 @@ namespace FolkIdle.Server.Models
         // WHICH skills were unlocked - this column only tracks the
         // remaining, unspent balance).
         public int AvailableSkillPoints { get; set; }
+
+        // Modul: Prestige (Legacy Shard) permanent perk tree - purchased
+        // through LegacyStoreEngine.PurchaseLegacyPerkAsync, distinct from
+        // CitizenMultiSlotsUnlocked (a per-era ledger field). Bitmask: each
+        // perk gets an 8-bit rank slot (0-255, though
+        // LegacyPerkResolver.MaxPerkRank caps purchasable rank well below
+        // that), packed as XpMultiplier in bits 0-7, GoldDropRate in bits
+        // 8-15, CombatSpeedMultiplier in bits 16-23 - see LegacyPerkResolver
+        // for the exact bit layout and per-rank bonus values. Survives
+        // across eras (unlike PlayerLegacyLedger.CitizenMultiSlotsUnlocked,
+        // which is per-EraId) since these are permanent account-wide power,
+        // not a seasonal unlock.
+        public long LegacyPerks { get; set; }
+
+        // Modul: Logistics achievement family's stackable claim reward
+        // (Phase: Full-Stack Production Polish, Part 2.3) - cumulative flat
+        // percent reduction applied to gathering-node tick thresholds,
+        // granted alongside PremiumDiamonds each time a Logistics tier is
+        // crossed (see AchievementMilestones.LogisticsStatBonusRewards and
+        // StateCheckpointManager.EvaluateAndAwardTierAsync). Never resets -
+        // once earned, always active, exactly like PremiumDiamonds rewards
+        // from the same tier crossing.
+        public int LogisticsGatheringSpeedBonusPct { get; set; }
     }
 }

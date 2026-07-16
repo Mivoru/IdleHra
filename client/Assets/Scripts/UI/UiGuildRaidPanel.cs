@@ -10,19 +10,25 @@ namespace FolkIdle.Client.UI
     // redraw strictly from VisualSyncProxy.OnGuildStateUpdated, never from
     // Update().
     //
-    // Boss-death detection note: GuildRaidEngine.ProcessGuildRaidTickAsync applies
-    // damage and, when it would drop HP to or below zero, tier-advances and resets
-    // to the new tier's full HP within the *same* transaction before ever pushing
-    // a notification - so a literal "CurrentHp reached 0" packet value is never
-    // actually observable on the wire. The only real, observable signal that a
-    // kill happened is RaidTier increasing between two OnGuildStateUpdated events,
-    // so that is what triggers the death SFX below.
+    // Boss-death detection note: GuildRaidEngine.ProcessGuildRaidTickAsync
+    // clamps RaidBossCurrentHp to exactly 0 on the killing tick and does NOT
+    // advance RaidTier or reset HP itself anymore (Phase: Full-Stack
+    // Production Polish, Part 3.2 removed that auto-advance) - a literal
+    // "CurrentHp reached 0" value is now genuinely observable on the wire,
+    // so that transition (not a RaidTier increase) is the real death
+    // signal. RaidTier only increases when a Guild Leader successfully
+    // spends gold to manually (re)start the next tier via
+    // SendLaunchGuildRaidCommandZeroAlloc below - a distinct "new raid
+    // begins" moment, reusing the same SFX for simplicity.
     //
-    // Launch Raid lifecycle note: once launched, a raid never stops - the cron
-    // auto-advances every subsequent tier forever with no explicit "next raid"
-    // action. So after a guild's first successful launch this button is
-    // permanently non-interactable for that guild; this matches the passive,
-    // always-on raid design and is not a bug.
+    // Launch Raid lifecycle note: a raid no longer auto-restarts after a
+    // kill - the Launch Raid button re-enables once the current boss is
+    // defeated (currentHp <= 0) or no raid has ever been started for this
+    // guild (maxHp <= 0), letting the Guild Leader manually begin the next
+    // tier at any time thereafter. Non-leader clients can still press the
+    // button (SendLaunchGuildRaidCommandZeroAlloc carries no role claim of
+    // its own), but the server-side leader check inside
+    // GuildRaidEngine.TryStartRaidAsync silently no-ops the request.
     public class UiGuildRaidPanel : MonoBehaviour
     {
         public VisualSyncProxy SyncProxy;
@@ -81,9 +87,10 @@ namespace FolkIdle.Client.UI
             long maxHp = SyncProxy.VisualGuildRaidBossMaxHp;
 
             bool isDamageActive = _lastObservedCurrentHp >= 0L && currentHp < _lastObservedCurrentHp;
-            bool bossWasDefeated = _lastObservedTier >= 0 && tier > _lastObservedTier;
+            bool bossJustDied = _lastObservedCurrentHp > 0L && currentHp <= 0L;
+            bool newTierStarted = _lastObservedTier >= 0 && tier > _lastObservedTier;
 
-            if (bossWasDefeated)
+            if (bossJustDied || newTierStarted)
             {
                 PlayBossDeathSfx();
             }

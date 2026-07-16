@@ -254,5 +254,23 @@ namespace FolkIdle.Client.Network
         public byte SkillReserved0;
         public byte SkillReserved1;
         public uint LastSkillCastResultTick;
+
+        // Modul: Offline "Welcome Back" flow - mirrors server
+        // StateUpdatePacket exactly. Set once at login, carrying exactly
+        // what OfflineSimulationEngine's catch-up granted this session -
+        // never a running total. OfflineSummaryTick only increments when a
+        // real, non-zero catch-up ran; this client edge-detects a change
+        // in that value (see VisualSyncProxy.OnOfflineSummaryAvailable) to
+        // show the summary exactly once per login.
+        public long OfflineElapsedSeconds;
+        public long OfflineGoldEarned;
+        public long OfflineXpEarned;
+        public int OfflineMaterialDropsGranted;
+        public byte OfflineSummaryTick;
+
+        // Modul: save trust indicator - mirrors server StateUpdatePacket
+        // exactly. TicksSinceLastFlush / 10 is the whole-second age of the
+        // last successful server-side save (see UiSaveTrustIndicator).
+        public int TicksSinceLastFlush;
     }
 }

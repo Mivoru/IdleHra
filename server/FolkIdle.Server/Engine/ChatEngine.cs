@@ -29,6 +29,22 @@ namespace FolkIdle.Server.Engine
     public sealed class ChatEngine
     {
         public const string GlobalChatChannel = "chat:global";
+
+        // Modul: a separate Redis channel from GlobalChatChannel, not a
+        // shared channel with an in-payload discriminator - keeps the
+        // existing "playerId:timestamp:message" global payload format
+        // completely untouched (no parsing ambiguity risk) and lets each
+        // pod subscribe/unsubscribe to the two independently if that is
+        // ever needed. Payload format is "playerId:guildId:timestamp:
+        // message" (4 colon-delimited parts, one more than global's 3).
+        public const string GuildChatChannel = "chat:guild";
+
+        // Modul: mirrors RequestChatMessagePacket/ResponseChatMessagePacket.
+        // ChannelType exactly (0 = Global, 1 = Guild) - both client and
+        // server wire-format mirrors must agree on these literal values.
+        public const byte GlobalChannelType = 0;
+        public const byte GuildChannelType = 1;
+
         public const double ChatBucketCapacity = 5.0;
         public const double ChatBucketRefillRatePerSecond = 0.5;
 
@@ -50,6 +66,16 @@ namespace FolkIdle.Server.Engine
         // exactly the ordering guarantee needed to make sequential SendAsync
         // calls per connection safe again.
         public event Func<ResponseChatMessagePacket, Task>? OnMessageReceived;
+
+        // Modul: guildId is a separate delegate parameter, not embedded in
+        // ResponseChatMessagePacket - the outgoing wire packet only needs
+        // ChannelType (so the client's chat UI can route it) since
+        // NetworkBroadcastSystem.BroadcastGuildChatMessage already performs
+        // guild-membership filtering server-side before any send occurs;
+        // by the time a client receives this, it is implicitly for their
+        // own guild, so a GuildId field on the packet would be pure dead
+        // weight over the wire.
+        public event Func<ResponseChatMessagePacket, long, Task>? OnGuildMessageReceived;
 
         public ChatEngine(IServiceProvider serviceProvider)
         {
@@ -111,6 +137,9 @@ namespace FolkIdle.Server.Engine
             var subscriber = redis.GetSubscriber();
             ChannelMessageQueue queue = subscriber.Subscribe(RedisChannel.Literal(GlobalChatChannel));
             queue.OnMessage(HandleRedisMessageAsync);
+
+            ChannelMessageQueue guildQueue = subscriber.Subscribe(RedisChannel.Literal(GuildChatChannel));
+            guildQueue.OnMessage(HandleGuildRedisMessageAsync);
         }
 
         private async Task HandleRedisMessageAsync(ChannelMessage message)
@@ -127,7 +156,41 @@ namespace FolkIdle.Server.Engine
                 return;
             }
 
-            string messageText = parts[2];
+            ResponseChatMessagePacket packet = BuildResponsePacket(senderPlayerId, timestampEpochMs, parts[2], GlobalChannelType);
+
+            if (OnMessageReceived != null)
+            {
+                await OnMessageReceived.Invoke(packet);
+            }
+        }
+
+        // Modul: payload format "playerId:guildId:timestamp:message" - one
+        // more colon-delimited part than the global channel's format (see
+        // GuildChatChannel's own comment).
+        private async Task HandleGuildRedisMessageAsync(ChannelMessage message)
+        {
+            string payload = message.Message.ToString();
+            string[] parts = payload.Split(':', 4);
+            if (parts.Length != 4)
+            {
+                return;
+            }
+
+            if (!long.TryParse(parts[0], out long senderPlayerId) || !long.TryParse(parts[1], out long guildId) || !long.TryParse(parts[2], out long timestampEpochMs))
+            {
+                return;
+            }
+
+            ResponseChatMessagePacket packet = BuildResponsePacket(senderPlayerId, timestampEpochMs, parts[3], GuildChannelType);
+
+            if (OnGuildMessageReceived != null)
+            {
+                await OnGuildMessageReceived.Invoke(packet, guildId);
+            }
+        }
+
+        private static unsafe ResponseChatMessagePacket BuildResponsePacket(long senderPlayerId, long timestampEpochMs, string messageText, byte channelType)
+        {
             byte[] textBytes = Encoding.UTF8.GetBytes(messageText);
             if (textBytes.Length > ResponseChatMessagePacket.MessageCapacity)
             {
@@ -138,22 +201,17 @@ namespace FolkIdle.Server.Engine
             {
                 SenderPlayerId = senderPlayerId,
                 TimestampEpochMs = timestampEpochMs,
-                MessageLength = (ushort)textBytes.Length
+                MessageLength = (ushort)textBytes.Length,
+                ChannelType = channelType
             };
 
-            unsafe
+            byte* target = packet.MessageText;
+            for (int i = 0; i < ResponseChatMessagePacket.MessageCapacity; i++)
             {
-                byte* target = packet.MessageText;
-                for (int i = 0; i < ResponseChatMessagePacket.MessageCapacity; i++)
-                {
-                    target[i] = i < textBytes.Length ? textBytes[i] : (byte)0;
-                }
+                target[i] = i < textBytes.Length ? textBytes[i] : (byte)0;
             }
 
-            if (OnMessageReceived != null)
-            {
-                await OnMessageReceived.Invoke(packet);
-            }
+            return packet;
         }
 
         // Modul: validates content and publishes to Redis - never touches a
@@ -197,6 +255,51 @@ namespace FolkIdle.Server.Engine
             catch (Exception ex)
             {
                 Console.WriteLine($"Chat publish failed for player {playerId}: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Modul: guild-channel counterpart to PublishMessageAsync above -
+        // same validation and never touches a WebSocket, but publishes to
+        // GuildChatChannel with guildId embedded in the payload so every
+        // pod's HandleGuildRedisMessageAsync can hand it to
+        // NetworkBroadcastSystem.BroadcastGuildChatMessage for server-side
+        // membership filtering. The caller (NetworkBroadcastSystem's
+        // receive loop) is responsible for resolving guildId from the
+        // sender's own cached session state and for never calling this
+        // with guildId <= 0.
+        public async Task<bool> PublishGuildMessageAsync(long playerId, long guildId, string messageText)
+        {
+            string trimmed = messageText.Trim();
+            if (trimmed.Length == 0 || guildId <= 0)
+            {
+                return false;
+            }
+
+            byte[] textBytes = Encoding.UTF8.GetBytes(trimmed);
+            if (textBytes.Length > RequestChatMessagePacket.MessageCapacity)
+            {
+                return false;
+            }
+
+            var redis = _serviceProvider.GetService<IConnectionMultiplexer>();
+            if (redis == null || !redis.IsConnected)
+            {
+                return false;
+            }
+
+            long timestampEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            string payload = $"{playerId}:{guildId}:{timestampEpochMs}:{trimmed}";
+
+            try
+            {
+                var subscriber = redis.GetSubscriber();
+                await subscriber.PublishAsync(RedisChannel.Literal(GuildChatChannel), payload);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild chat publish failed for player {playerId}: {ex.Message}");
                 return false;
             }
         }

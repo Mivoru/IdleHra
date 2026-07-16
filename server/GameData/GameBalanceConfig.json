@@ -4,5 +4,11 @@
   "GuildRaidTickIntervalSeconds": 5,
   "GuildRaidVictoryContributionPoints": 100,
   "GuildContributionEquipmentExpPerTier": 100,
-  "GuildContributionGoldToExpDivisor": 10
+  "GuildContributionGoldToExpDivisor": 10,
+  "IapProductPrices": {
+    "gems_pack_small": 500,
+    "gems_pack_medium": 1100,
+    "gems_pack_large": 2400,
+    "gems_pack_mega": 5200
+  }
 }

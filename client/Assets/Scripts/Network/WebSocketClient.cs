@@ -232,7 +232,17 @@ namespace FolkIdle.Client.Network
         // user action (pressing Enter in the chat box), not the 10Hz tick -
         // _chatSendBuffer itself is the one reused buffer that matters, same
         // as _outboundBuffer/_authBuffer below.
-        public unsafe void SendChatMessageZeroAlloc(string messageText)
+        public void SendChatMessageZeroAlloc(string messageText)
+        {
+            SendChatMessageZeroAlloc(messageText, ChatChannelType.Global);
+        }
+
+        // Modul: channelType selects which server-side routing pathway
+        // handles this message (see server ChatEngine.GlobalChannelType/
+        // GuildChannelType) - Guild-channel messages are routed strictly
+        // to the sender's own guild by the server, using its own cached
+        // GuildId for the connection, never anything the client supplies.
+        public unsafe void SendChatMessageZeroAlloc(string messageText, ChatChannelType channelType)
         {
             if (_webSocket == null || _webSocket.State != WebSocketState.Open || string.IsNullOrEmpty(messageText)) return;
 
@@ -241,7 +251,8 @@ namespace FolkIdle.Client.Network
 
             RequestChatMessagePacket packet = new RequestChatMessagePacket
             {
-                MessageLength = (ushort)length
+                MessageLength = (ushort)length,
+                ChannelType = (byte)channelType
             };
 
             byte* target = packet.MessageText;

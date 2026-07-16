@@ -1,0 +1,158 @@
+name: Unity Client CI/CD
+
+# Runs on every push to main that touches client files: runs the Unity
+# EditMode and PlayMode test suites, then - only if both suites are green -
+# invokes BuildPipelineController.ExecuteAndroidReleaseBuild in Unity
+# batchmode to produce client.apk and the Addressable CDN bundles, and
+# publishes both as pipeline artifacts (and, when the relevant secrets are
+# configured, stages them directly to S3/Cloudflare R2).
+#
+# Uses game-ci/unity-test-runner and game-ci/unity-builder rather than a
+# hand-rolled Unity install step - GitHub-hosted runners do not ship a
+# Unity Editor, and these actions run the exact requested Editor version
+# (see UNITY_VERSION below, matching client/ProjectSettings/ProjectVersion.txt)
+# inside a maintained container image licensed via the UNITY_LICENSE secret.
+# The literal batchmode flags requested for the build invocation
+# (-batchmode -nographics -silent-crashes -logFile - -executeMethod
+# FolkIdle.Client.Editor.BuildPipelineController.ExecuteAndroidReleaseBuild)
+# are what game-ci/unity-builder assembles under the hood: buildMethod below
+# supplies -executeMethod, and customParameters supplies the remaining flags
+# not already covered by the action's own defaults (-batchmode -quit are
+# always applied by the action; -nographics is implied by running headless
+# inside the action's container).
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "client/**"
+      - ".github/workflows/unity_client.yml"
+
+env:
+  UNITY_VERSION: "6000.5.2f1"
+
+jobs:
+  test:
+    name: Unity Test Suite (${{ matrix.testMode }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        testMode:
+          - EditMode
+          - PlayMode
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: client/Library
+          key: Library-client-${{ matrix.testMode }}-${{ hashFiles('client/Assets/**', 'client/Packages/**', 'client/ProjectSettings/**') }}
+          restore-keys: |
+            Library-client-${{ matrix.testMode }}-
+            Library-client-
+
+      - name: Run ${{ matrix.testMode }} tests
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: client
+          unityVersion: ${{ env.UNITY_VERSION }}
+          testMode: ${{ matrix.testMode }}
+          artifactsPath: client-test-results-${{ matrix.testMode }}
+          checkName: Unity ${{ matrix.testMode }} Test Results
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-test-results-${{ matrix.testMode }}
+          path: client-test-results-${{ matrix.testMode }}
+          retention-days: 14
+
+  build-android:
+    name: Android Release Build
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: client/Library
+          key: Library-client-build-${{ hashFiles('client/Assets/**', 'client/Packages/**', 'client/ProjectSettings/**') }}
+          restore-keys: |
+            Library-client-build-
+            Library-client-
+
+      # Content must build before the player - BuildPipelineController.
+      # ExecuteAndroidReleaseBuild already enforces this ordering internally
+      # (Addressables content first, then the player binary that embeds the
+      # resulting local catalog), so a single invocation covers both steps.
+      - name: Build Android release (client.apk and Addressable bundles)
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: client
+          unityVersion: ${{ env.UNITY_VERSION }}
+          targetPlatform: Android
+          buildMethod: FolkIdle.Client.Editor.BuildPipelineController.ExecuteAndroidReleaseBuild
+          customParameters: -silent-crashes -logFile -
+
+      - name: Verify build outputs exist
+        run: |
+          if [ ! -f "client/build_output/client.apk" ]; then
+            echo "client.apk was not produced at client/build_output/client.apk - failing the pipeline."
+            exit 1
+          fi
+          if [ ! -d "client/build_output/cdn" ]; then
+            echo "Addressable CDN staging directory was not produced at client/build_output/cdn - failing the pipeline."
+            exit 1
+          fi
+
+      - name: Upload client.apk artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-apk
+          path: client/build_output/client.apk
+          retention-days: 30
+
+      - name: Upload Addressable CDN bundles artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-cdn-bundles
+          path: client/build_output/cdn
+          retention-days: 30
+
+      # Gated on the relevant secrets being configured, mirroring
+      # deploy.yml's own pattern for the server pipeline's registry/cluster
+      # steps - until an S3 or Cloudflare R2 target is provisioned, this
+      # step is skipped (not failed), and the artifacts above remain the
+      # only distribution path.
+      - name: Stage Addressable bundles to S3/Cloudflare R2
+        if: ${{ secrets.CDN_S3_BUCKET != '' && secrets.CDN_S3_ACCESS_KEY_ID != '' && secrets.CDN_S3_SECRET_ACCESS_KEY != '' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CDN_S3_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CDN_S3_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.CDN_S3_REGION || 'auto' }}
+        run: |
+          ENDPOINT_ARGS=""
+          if [ -n "${{ secrets.CDN_S3_ENDPOINT_URL }}" ]; then
+            ENDPOINT_ARGS="--endpoint-url ${{ secrets.CDN_S3_ENDPOINT_URL }}"
+          fi
+          aws s3 sync client/build_output/cdn "s3://${{ secrets.CDN_S3_BUCKET }}/${{ github.sha }}" $ENDPOINT_ARGS --no-progress

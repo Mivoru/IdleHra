@@ -17,6 +17,14 @@ namespace FolkIdle.Server.Network
         public long SenderPlayerId;
         public long TimestampEpochMs;
         public ushort MessageLength;
+
+        // Modul: 0 = Global, 1 = Guild (see ChatEngine.GlobalChannelType/
+        // GuildChannelType) - lets the client route an incoming message
+        // into the correct chat UI channel without needing a GuildId on
+        // the wire (server-side membership filtering already guarantees
+        // any Guild-channel message received is for the client's own
+        // guild).
+        public byte ChannelType;
         public fixed byte MessageText[MessageCapacity];
     }
 }

@@ -62,7 +62,21 @@ namespace FolkIdle.Server.Engine
             }
 
             double elapsedSeconds = (double)elapsedTicks / Stopwatch.Frequency;
-            int inventoryCapacity = 50; // Hardcoded baseline capacity for now, in production query from upgrades
+
+            // Modul: mirrors StateCheckpointManager.FlushState's own
+            // InventorySpaceRemaining formula exactly (20 base slots plus
+            // RaceMasteryResolver.GetHumanVaultBonusSlots) - previously
+            // hardcoded to 50 here, silently diverging from the real
+            // capacity a live TickStatePayload uses. A player under the
+            // real (lower) capacity could have offline drops overflow into
+            // banked seconds too late, or a player past 50 real slots
+            // (Human mastery >= 25) could accept offline drops the client
+            // then has nowhere to place.
+            int humanMasteryLevel = await db.PlayerRaceMasteries
+                .Where(m => m.PlayerId == playerId && m.RaceId == RaceIds.Human)
+                .Select(m => (int?)m.MasteryLevel)
+                .FirstOrDefaultAsync(cancellationToken) ?? 0;
+            int inventoryCapacity = 20 + RaceMasteryResolver.GetHumanVaultBonusSlots(humanMasteryLevel);
             int currentInventoryCount = await db.EquipmentInstances.CountAsync(e => e.PlayerId == playerId, cancellationToken);
 
             // Fixed-point mathematical aggregation

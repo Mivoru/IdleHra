@@ -13,6 +13,16 @@ namespace FolkIdle.Server.Engine
         public const uint CitizenMultiSlotUnlockId = 1U;
         public const uint MaxCitizenSlotIndex = 31U;
 
+        // Modul: Prestige perk-tree unlock ids, dispatched from the same
+        // CommandType.PurchaseLegacyUnlocks wire command as the citizen-
+        // slot unlock above (requestedSlotIndex is unused/ignored for
+        // these three - ClientCommandPacket has no separate "perk" command
+        // and adding one would duplicate this entire validation/locking
+        // path for no behavioral difference).
+        public const uint XpMultiplierPerkUnlockId = 2U;
+        public const uint GoldDropRatePerkUnlockId = 3U;
+        public const uint CombatSpeedPerkUnlockId = 4U;
+
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry _playerRegistry;
 
@@ -30,7 +40,10 @@ namespace FolkIdle.Server.Engine
 
             try
             {
-                if (playerId <= 0 || targetUnlockId != CitizenMultiSlotUnlockId || requestedSlotIndex > MaxCitizenSlotIndex)
+                bool isPerkUnlock = targetUnlockId == XpMultiplierPerkUnlockId || targetUnlockId == GoldDropRatePerkUnlockId || targetUnlockId == CombatSpeedPerkUnlockId;
+                bool isValidTarget = isPerkUnlock || targetUnlockId == CitizenMultiSlotUnlockId;
+
+                if (playerId <= 0 || !isValidTarget || (!isPerkUnlock && requestedSlotIndex > MaxCitizenSlotIndex))
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 25, Value2 = 4, Timestamp = Environment.TickCount64 });
                     await transaction.RollbackAsync();
@@ -61,6 +74,12 @@ namespace FolkIdle.Server.Engine
                 {
                     unlockedMask |= ledgers[i].CitizenMultiSlotsUnlocked;
                     totalBalance += ledgers[i].LegacyShardBalance;
+                }
+
+                if (isPerkUnlock)
+                {
+                    await ExecutePerkPurchaseAsync(db, transaction, playerId, targetUnlockId, ledgers, totalBalance);
+                    return;
                 }
 
                 int requestedMask = 1 << (int)requestedSlotIndex;
@@ -107,6 +126,72 @@ namespace FolkIdle.Server.Engine
                 await transaction.RollbackAsync();
                 Console.WriteLine($"Legacy unlock purchase failed: {ex.Message}");
             }
+        }
+
+        // Modul: Prestige perk-tree purchase - shares the citizen-slot
+        // path's ledger loading/locking and debit-oldest-era-first spend
+        // order (see the caller), but the purchased effect lives on
+        // PlayerRecord.LegacyPerks, not on any single era's ledger row,
+        // since perk power is meant to persist across every future era
+        // rather than resetting with CitizenMultiSlotsUnlocked.
+        private async Task ExecutePerkPurchaseAsync(FolkIdleDbContext db, Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction transaction, long playerId, uint targetUnlockId, System.Collections.Generic.List<PlayerLegacyLedger> ledgers, long totalBalance)
+        {
+            int bitOffset = targetUnlockId switch
+            {
+                XpMultiplierPerkUnlockId => LegacyPerkResolver.XpMultiplierBitOffset,
+                GoldDropRatePerkUnlockId => LegacyPerkResolver.GoldDropRateBitOffset,
+                CombatSpeedPerkUnlockId => LegacyPerkResolver.CombatSpeedBitOffset,
+                _ => -1
+            };
+
+            if (bitOffset < 0)
+            {
+                await transaction.RollbackAsync();
+                return;
+            }
+
+            var player = await db.PlayerRecords
+                .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
+                .SingleOrDefaultAsync();
+
+            if (player == null)
+            {
+                await transaction.RollbackAsync();
+                return;
+            }
+
+            int currentRank = LegacyPerkResolver.GetPerkRank(player.LegacyPerks, bitOffset);
+            int cost = LegacyPerkResolver.CalculatePerkRankCost(currentRank);
+
+            if (totalBalance < cost)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 4, Value1 = 25, Value2 = cost, Timestamp = Environment.TickCount64 });
+                await transaction.RollbackAsync();
+                return;
+            }
+
+            int remainingCost = cost;
+            foreach (var ledger in ledgers.OrderByDescending(l => l.EraId))
+            {
+                if (remainingCost <= 0) break;
+                int debit = Math.Min(ledger.LegacyShardBalance, remainingCost);
+                ledger.LegacyShardBalance -= debit;
+                remainingCost -= debit;
+            }
+
+            player.LegacyPerks = LegacyPerkResolver.SetPerkRank(player.LegacyPerks, bitOffset, currentRank + 1);
+
+            await db.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            int newBalance = (int)Math.Min(int.MaxValue, totalBalance - cost);
+            _playerRegistry.LegacyStoreUpdateQueue.Enqueue(new LegacyStoreUpdateNotification
+            {
+                PlayerId = playerId,
+                LegacyShardBalance = newBalance,
+                LegacyPerks = player.LegacyPerks,
+                HasLegacyPerksUpdate = true
+            });
         }
 
         public static int CalculateCitizenSlotCost(uint requestedSlotIndex)

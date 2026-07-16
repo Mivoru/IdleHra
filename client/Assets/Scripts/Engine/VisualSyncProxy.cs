@@ -114,6 +114,7 @@ namespace FolkIdle.Client.Engine
         public byte VisualLastCommandResultCode { get; private set; }
         public event System.Action<byte> OnCommandResultReceived;
         private byte _lastAppliedCommandResultTick;
+        private byte _lastAppliedOfflineSummaryTick;
 
         public int VisualMaxVillagePopulation;
         public int VisualCurrentToolTier;
@@ -151,6 +152,11 @@ namespace FolkIdle.Client.Engine
         public byte VisualWorldBossEventState;
         public long VisualWorldBossEventEndEpoch;
         public int VisualCitizenMultiSlotsUnlocked;
+
+        // Modul: Phase - Full-Stack Production Polish, Part 1.3 (save trust
+        // indicator). VisualTicksSinceLastFlush / 10 is the whole-second age
+        // of the last successful server-side save (see UiSaveTrustIndicator).
+        public int VisualTicksSinceLastFlush;
         public long VisualGuildLogisticsCurrentStock;
         public long VisualGuildLogisticsTargetRequirement;
         public int VisualGuildLogisticsLevel;
@@ -249,6 +255,13 @@ namespace FolkIdle.Client.Engine
 
         public event System.Action OnVillageStateUpdated;
         public event System.Action OnGuildStateUpdated;
+
+        // Modul: Offline "Welcome Back" flow - fires exactly once per login
+        // that actually granted a non-zero offline catch-up, mirroring
+        // OnSkillCastResult/OnCommandResultReceived's own tick-counter
+        // edge-detection idiom (see ApplyOfflineSummaryState below).
+        // Parameters: elapsedSeconds, goldEarned, xpEarned, materialDrops.
+        public event System.Action<long, long, long, int> OnOfflineSummaryAvailable;
         public static event System.Action OnCharacterStateUpdated;
 
         private struct ServerSnapshot
@@ -442,6 +455,7 @@ namespace FolkIdle.Client.Engine
                     VisualSkill2CooldownRemainingMs = packet.Skill2CooldownRemainingMs;
                     VisualSkill3CooldownRemainingMs = packet.Skill3CooldownRemainingMs;
                     VisualSkill4CooldownRemainingMs = packet.Skill4CooldownRemainingMs;
+                    VisualTicksSinceLastFlush = packet.TicksSinceLastFlush;
 
                     ApplyVillagePacketState(in packet);
                     ApplyGuildPacketState(in packet);
@@ -449,6 +463,7 @@ namespace FolkIdle.Client.Engine
                     ApplyCombatPacketState(in packet);
                     ApplyLastSkillCastState(in packet);
                     ApplyCommandResultState(in packet);
+                    ApplyOfflineSummaryState(in packet);
 
                     _hasReceivedState = true;
                 }
@@ -590,6 +605,7 @@ namespace FolkIdle.Client.Engine
             ApplyCombatPacketState(in _snapshotB.Packet);
             ApplyLastSkillCastState(in _snapshotB.Packet);
             ApplyCommandResultState(in _snapshotB.Packet);
+            ApplyOfflineSummaryState(in _snapshotB.Packet);
         }
 
         // Modul: discrete combat-instance identity (which monster, which
@@ -642,6 +658,21 @@ namespace FolkIdle.Client.Engine
             _lastAppliedCommandResultTick = resultTick;
             VisualLastCommandResultCode = packet.LastCommandResultCode;
             OnCommandResultReceived?.Invoke(packet.LastCommandResultCode);
+        }
+
+        // Modul: edge-detects a freshly-available offline catch-up summary
+        // via OfflineSummaryTick, mirroring ApplyLastSkillCastState/
+        // ApplyCommandResultState exactly above. Tick 0 means "no catch-up
+        // has ever run this session" and is never fired - matches
+        // OfflineSimulationEngine only incrementing the tick when a real,
+        // non-zero elapsed offline period was actually processed.
+        private void ApplyOfflineSummaryState(in StateUpdatePacket packet)
+        {
+            byte resultTick = packet.OfflineSummaryTick;
+            if (resultTick == 0 || resultTick == _lastAppliedOfflineSummaryTick) return;
+
+            _lastAppliedOfflineSummaryTick = resultTick;
+            OnOfflineSummaryAvailable?.Invoke(packet.OfflineElapsedSeconds, packet.OfflineGoldEarned, packet.OfflineXpEarned, packet.OfflineMaterialDropsGranted);
         }
 
         // Modul: fires OnMonsterHit/OnPlayerHit exactly once per real server

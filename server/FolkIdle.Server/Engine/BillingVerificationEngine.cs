@@ -30,22 +30,18 @@ namespace FolkIdle.Server.Engine
             _networkSystem = networkSystem;
         }
 
-        // Modul: fixed server-side product catalog - the ONLY source of
-        // truth for how many diamonds a given ProductId is worth. Neither
-        // the WebSocket notification path nor the REST receipt-verification
+        // Modul: server-side product catalog - the ONLY source of truth for
+        // how many diamonds a given ProductId is worth. Neither the
+        // WebSocket notification path nor the REST receipt-verification
         // path ever trusts a client- or receipt-supplied amount; both
-        // resolve it here. gems_pack_small is 500 to match this engine's
-        // existing test coverage.
+        // resolve it here. Previously a hardcoded switch statement; prices
+        // now live in GameBalanceConfig.json (ContentRegistry.Balance.
+        // IapProductPrices) so a price change is a content-data deploy, not
+        // a code deploy. An unknown productId - one with no entry in the
+        // config - resolves to 0, matching the old switch's default arm.
         internal static int ResolvePremiumDiamondsForProduct(string productId)
         {
-            return productId switch
-            {
-                "gems_pack_small" => 500,
-                "gems_pack_medium" => 1100,
-                "gems_pack_large" => 2400,
-                "gems_pack_mega" => 5200,
-                _ => 0
-            };
+            return ContentRegistry.Balance.IapProductPrices.TryGetValue(productId, out int amount) ? amount : 0;
         }
 
         // Modul: the legacy in-session notification path (SimulationEngine's

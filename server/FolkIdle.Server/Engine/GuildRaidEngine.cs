@@ -27,6 +27,16 @@ namespace FolkIdle.Server.Engine
         private static int TickIntervalSeconds => ContentRegistry.Balance.GuildRaidTickIntervalSeconds;
         private static long RaidVictoryContributionPoints => ContentRegistry.Balance.GuildRaidVictoryContributionPoints;
 
+        // Modul: Phase - Full-Stack Production Polish, Part 3.2. Gold cost
+        // for a Guild Leader to manually start (or restart, after the
+        // previous tier's boss was defeated) the next raid tier, deducted
+        // from the requesting leader's own personal gold. Scales linearly
+        // with the tier being entered so later, harder tiers cost more to
+        // launch - deliberately not an exponential curve like the boss HP
+        // itself, since this is a launch fee, not the raid's core
+        // difficulty knob.
+        public const long RestartRaidBaseGoldCost = 5000L;
+
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry _playerRegistry;
         private CancellationTokenSource _cts = new();
@@ -83,14 +93,23 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        // Modul 18: bootstraps a guild's first GuildRaidState row so the passive
-        // DPS cron in ExecuteRaidTickAsync has something to process. Once created,
-        // that cron auto-advances every subsequent tier forever on its own (kill
-        // the boss -> tier++, full HP, keep going) - there is no repeatable
-        // "start next raid" action, so this is a no-op once a row already exists.
-        public async Task TryStartRaidAsync(long guildId)
+        // Modul: Phase - Full-Stack Production Polish, Part 3.2. Previously
+        // bootstrapped only the guild's FIRST GuildRaidState row (a no-op
+        // once one existed) and then relied entirely on the passive DPS
+        // cron in ExecuteRaidTickAsync/ProcessGuildRaidTickAsync to
+        // auto-advance every subsequent tier forever on its own (kill the
+        // boss -> tier++, full HP, keep going, with no player action ever
+        // required again). ProcessGuildRaidTickAsync no longer auto-
+        // advances - a defeated boss's HP stays at 0 and the tick sweep's
+        // own RaidBossCurrentHp > 0 filter naturally stops processing it -
+        // so this method is now the ONLY way a raid tier starts or
+        // restarts, gated on the requesting player actually being this
+        // guild's Leader (checked against the locked GuildMembers row, not
+        // a client-supplied claim) and consuming RestartRaidBaseGoldCost *
+        // nextTier gold from that leader's own personal balance.
+        public async Task TryStartRaidAsync(long guildId, long requestingPlayerId)
         {
-            if (guildId <= 0) return;
+            if (guildId <= 0 || requestingPlayerId <= 0) return;
 
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -98,27 +117,53 @@ namespace FolkIdle.Server.Engine
 
             try
             {
-                var existing = await db.GuildRaidStates
-                    .FromSqlRaw("SELECT * FROM \"GuildRaidStates\" WHERE \"GuildId\" = {0} FOR UPDATE", guildId)
+                var requester = await db.GuildMembers
+                    .FromSqlRaw("SELECT * FROM \"GuildMembers\" WHERE \"GuildId\" = {0} AND \"PlayerId\" = {1} FOR UPDATE", guildId, requestingPlayerId)
                     .SingleOrDefaultAsync();
 
-                if (existing != null)
+                if (requester == null || requester.Role != GuildManagementEngine.RoleLeader)
                 {
                     await transaction.RollbackAsync();
                     return;
                 }
 
-                const int initialTier = 1;
-                long initialMaxHp = (long)(RaidBossBaseHp * Math.Pow(1.5, initialTier));
+                var existing = await db.GuildRaidStates
+                    .FromSqlRaw("SELECT * FROM \"GuildRaidStates\" WHERE \"GuildId\" = {0} FOR UPDATE", guildId)
+                    .SingleOrDefaultAsync();
 
-                var raid = new GuildRaidState
+                if (existing != null && existing.RaidBossCurrentHp > 0)
                 {
-                    GuildId = guildId,
-                    RaidTier = initialTier,
-                    RaidBossCurrentHp = initialMaxHp,
-                    RaidBossMaxHp = initialMaxHp
-                };
-                db.GuildRaidStates.Add(raid);
+                    // Already active - nothing to (re)start.
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                int nextTier = (existing?.RaidTier ?? 0) + 1;
+                long cost = RestartRaidBaseGoldCost * nextTier;
+
+                var goldRecord = await db.CommodityRecords
+                    .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", requestingPlayerId)
+                    .SingleOrDefaultAsync();
+
+                if (goldRecord == null || goldRecord.Quantity < cost)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                goldRecord.Quantity -= cost;
+
+                long newMaxHp = (long)(RaidBossBaseHp * Math.Pow(1.5, nextTier));
+
+                if (existing == null)
+                {
+                    existing = new GuildRaidState { GuildId = guildId };
+                    db.GuildRaidStates.Add(existing);
+                }
+
+                existing.RaidTier = nextTier;
+                existing.RaidBossMaxHp = newMaxHp;
+                existing.RaidBossCurrentHp = newMaxHp;
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -126,9 +171,9 @@ namespace FolkIdle.Server.Engine
                 _playerRegistry.GuildRaidBossUpdateQueue.Enqueue(new GuildRaidBossUpdateNotification
                 {
                     GuildId = guildId,
-                    RaidTier = raid.RaidTier,
-                    RaidBossCurrentHp = raid.RaidBossCurrentHp,
-                    RaidBossMaxHp = raid.RaidBossMaxHp
+                    RaidTier = existing.RaidTier,
+                    RaidBossCurrentHp = existing.RaidBossCurrentHp,
+                    RaidBossMaxHp = existing.RaidBossMaxHp
                 });
             }
             catch (Exception ex)
@@ -164,14 +209,20 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
+                long previousHp = lockedRaid.RaidBossCurrentHp;
                 long damage = guildDps * TickIntervalSeconds;
                 lockedRaid.RaidBossCurrentHp -= damage;
 
-                if (lockedRaid.RaidBossCurrentHp <= 0)
+                if (lockedRaid.RaidBossCurrentHp <= 0 && previousHp > 0)
                 {
-                    lockedRaid.RaidTier++;
-                    lockedRaid.RaidBossMaxHp = (long)(RaidBossBaseHp * Math.Pow(1.5, lockedRaid.RaidTier));
-                    lockedRaid.RaidBossCurrentHp = lockedRaid.RaidBossMaxHp;
+                    // Modul: no automatic tier advance or HP reset here
+                    // anymore (see TryStartRaidAsync's own comment) - the
+                    // boss stays defeated (HP clamped to exactly 0) until a
+                    // Guild Leader spends gold to manually start the next
+                    // tier. ExecuteRaidTickAsync's own RaidBossCurrentHp > 0
+                    // filter means this raid simply stops being ticked from
+                    // here on, with no special "idle" state needed.
+                    lockedRaid.RaidBossCurrentHp = 0;
 
                     await db.Database.ExecuteSqlRawAsync(
                         "UPDATE \"GuildMembers\" SET \"ContributionPoints\" = \"ContributionPoints\" + {0} WHERE \"GuildId\" = {1}",

@@ -278,5 +278,30 @@ namespace FolkIdle.Server.Network
         public byte SkillReserved0;
         public byte SkillReserved1;
         public uint LastSkillCastResultTick;
+
+        // Modul: Phase - Full-Stack Production Polish, Part 1.1 (Offline
+        // "Welcome Back" flow). Set once by OfflineSimulationEngine.
+        // ExtrapolateOfflineProgressAsync at login, carrying exactly what
+        // that catch-up granted this session - never a running total.
+        // OfflineSummaryTick mirrors LastSkillCastResultTick/
+        // LastCommandResultTick's own edge-detection idiom exactly: it only
+        // increments when a real, non-zero catch-up ran, and never resets
+        // afterward - the client is responsible for comparing it against
+        // its own last-seen value to show the summary exactly once per
+        // login, not on every subsequent broadcast of the same tick.
+        public long OfflineElapsedSeconds;
+        public long OfflineGoldEarned;
+        public long OfflineXpEarned;
+        public int OfflineMaterialDropsGranted;
+        public byte OfflineSummaryTick;
+
+        // Modul: Phase - Full-Stack Production Polish, Part 1.3 (save trust
+        // indicator). Mirrors TickStatePayload.TicksSinceLastFlush exactly -
+        // resets to 0 the tick StateCheckpointManager.FlushState actually
+        // commits this player's row, increments by 1 every 10Hz tick
+        // otherwise (see SimulationEngine's main tick loop) - so
+        // TicksSinceLastFlush / 10 is exactly the whole-second age of the
+        // last successful save. Previously tracked only server-side.
+        public int TicksSinceLastFlush;
     }
 }

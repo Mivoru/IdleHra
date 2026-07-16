@@ -73,11 +73,23 @@ namespace FolkIdle.Server.Engine
 
             await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.QuarryLevel, payload.MineLevel, payload.WarehouseLevel, elapsedSeconds);
 
+            // Modul: Phase - Full-Stack Production Polish, Part 1.1 (Offline
+            // "Welcome Back" flow). Captured before the projection branches
+            // below mutate payload, so the deltas set at the bottom of this
+            // method are exactly what THIS catch-up granted - never a
+            // running lifetime total - matching OfflineElapsedSeconds/
+            // OfflineGoldEarned/OfflineXpEarned/OfflineMaterialDropsGranted's
+            // own doc comments on TickStatePayload.
+            long goldBeforeOfflineCatchUp = payload.CurrentGold;
+            long xpBeforeOfflineCatchUp = payload.CurrentXp;
+            int materialDropsGrantedThisCatchUp = 0;
+
             if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out GatheringNodeDefinition gatheringNode))
             {
                 LootProjection projection = CalculateGatheringProjection(ref payload, gatheringNode, elapsedSeconds);
                 int granted = await GrantProjectedLootAsync(db, payload.PlayerId, projection, payload.InventorySpaceRemaining);
                 payload.InventorySpaceRemaining -= granted;
+                materialDropsGrantedThisCatchUp += granted;
             }
             else if (payload.ActiveActivityId > 0)
             {
@@ -91,9 +103,11 @@ namespace FolkIdle.Server.Engine
                     // remains, and a long-offline player never enqueues more
                     // CombatLootEngine requests than they have room to receive.
                     payload.InventorySpaceRemaining -= projection.EquipmentDropsGranted;
+                    materialDropsGrantedThisCatchUp += projection.EquipmentDropsGranted;
 
                     int granted = await GrantProjectedLootAsync(db, payload.PlayerId, projection, payload.InventorySpaceRemaining);
                     payload.InventorySpaceRemaining -= granted;
+                    materialDropsGrantedThisCatchUp += granted;
                 }
                 else
                 {
@@ -104,6 +118,12 @@ namespace FolkIdle.Server.Engine
             {
                 BankOverflowSeconds(ref payload, elapsedSeconds);
             }
+
+            payload.OfflineElapsedSeconds = elapsedSeconds;
+            payload.OfflineGoldEarned = Math.Max(0L, payload.CurrentGold - goldBeforeOfflineCatchUp);
+            payload.OfflineXpEarned = Math.Max(0L, payload.CurrentXp - xpBeforeOfflineCatchUp);
+            payload.OfflineMaterialDropsGranted = materialDropsGrantedThisCatchUp;
+            payload.OfflineSummaryTick = unchecked((byte)(payload.OfflineSummaryTick + 1));
 
             payload.LastLogoutTimestamp = currentUnixTimestamp;
             payload.IsDirty = true;

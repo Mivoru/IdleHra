@@ -23,11 +23,22 @@ namespace FolkIdle.Server.Engine
         private static readonly int[] ForgingSynthesisTierThresholds = { 10, 14 };
         private static readonly int[] ForgingRewards = { 15, 75, 200, 1500 };
 
-        // Only Tier I is defined for Logistics per the design; entries 1-3
-        // (index 1-3) are unreachable placeholders so the reward-lookup helper
-        // below can stay uniform across all three achievement types.
-        private static readonly long[] LogisticsThresholds = { 5_000L, long.MaxValue, long.MaxValue, long.MaxValue };
-        private static readonly int[] LogisticsRewards = { 10, 0, 0, 0 };
+        // Modul: Phase - Full-Stack Production Polish, Part 2.3. Tiers II-IV
+        // were previously long.MaxValue placeholders - mathematically
+        // unattainable, so no player could ever cross them regardless of
+        // how many harvest loops they completed. Replaced with a realistic
+        // linear-then-exponential goal curve (10x growth per tier past I,
+        // matching the task's own "10k, 100k, 1M" example scale).
+        private static readonly long[] LogisticsThresholds = { 10_000L, 100_000L, 1_000_000L, 10_000_000L };
+        private static readonly int[] LogisticsRewards = { 10, 50, 200, 800 };
+
+        // Modul: stackable, permanent stat-bonus reward layered alongside
+        // the PremiumDiamonds reward above - flat percentage points of
+        // gathering speed (see LogisticsGatheringSpeedBonusPct on
+        // PlayerRecord/TickStatePayload), summed the same way diamonds are
+        // via GetStatBonusForTiersCrossed below. Only Logistics has a stat-
+        // bonus reward track; Treasury/Forging remain diamonds-only.
+        private static readonly int[] LogisticsStatBonusPctRewards = { 1, 2, 4, 8 };
 
         public static int EvaluateTreasuryTier(long currentGold)
         {
@@ -81,6 +92,26 @@ namespace FolkIdle.Server.Engine
             for (int tier = previousTier + 1; tier <= clampedNewTier; tier++)
             {
                 total += rewardTable[tier - 1];
+            }
+            return total;
+        }
+
+        // Modul: mirrors GetDiamondsForTiersCrossed's summation exactly, but
+        // over the stat-bonus table - currently only Logistics has one, so
+        // every other achievementId returns 0 (a genuine no-bonus result,
+        // not a missing-data fallback).
+        public static int GetStatBonusForTiersCrossed(int achievementId, int previousTier, int newTier)
+        {
+            if (achievementId != LogisticsAchievementId)
+            {
+                return 0;
+            }
+
+            int total = 0;
+            int clampedNewTier = System.Math.Min(newTier, LogisticsStatBonusPctRewards.Length);
+            for (int tier = previousTier + 1; tier <= clampedNewTier; tier++)
+            {
+                total += LogisticsStatBonusPctRewards[tier - 1];
             }
             return total;
         }

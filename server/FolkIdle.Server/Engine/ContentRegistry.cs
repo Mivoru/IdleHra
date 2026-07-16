@@ -146,6 +146,20 @@ namespace FolkIdle.Server.Engine
         public long GuildRaidVictoryContributionPoints { get; set; } = 100L;
         public long GuildContributionEquipmentExpPerTier { get; set; } = 100L;
         public long GuildContributionGoldToExpDivisor { get; set; } = 10L;
+
+        // Modul: previously a hardcoded switch statement inside
+        // BillingVerificationEngine.ResolvePremiumDiamondsForProduct - moved
+        // here so a price change is the same content-data deploy as every
+        // other balance constant on this class, not a code deploy. Defaults
+        // mirror the exact literals that switch statement used, so a
+        // missing/absent config file changes nothing.
+        public System.Collections.Generic.Dictionary<string, int> IapProductPrices { get; set; } = new System.Collections.Generic.Dictionary<string, int>
+        {
+            ["gems_pack_small"] = 500,
+            ["gems_pack_medium"] = 1100,
+            ["gems_pack_large"] = 2400,
+            ["gems_pack_mega"] = 5200
+        };
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -500,6 +514,63 @@ namespace FolkIdle.Server.Engine
 
             int authored = _monsters[monsterId - 1].RegionTier;
             return authored > 0 ? authored : ((monsterId - 1) % 30) / 6 + 1;
+        }
+
+        // Modul: infinite endgame scaling - authored content currently only
+        // defines RegionTier 1-10, so a player who out-levels the highest
+        // authored region previously hit a hard content wall (RegionTier
+        // never exceeds what content authors have manually placed).
+        // Procedural endgame zones (RegionTier > 10) instead multiply the
+        // monster's base MaxHp/AttackPower by 1.25^(RegionTier - 10),
+        // compounding per tier past 10 so difficulty keeps climbing
+        // indefinitely without requiring new authored content. Tiers 1-10
+        // are unaffected (multiplier of exactly 1.0) - this only ever
+        // scales UP, never down, so no existing authored balance changes.
+        // A pure double computation over primitive ints - no heap
+        // allocation, safe to call from the 10Hz combat-spawn path.
+        public const int MaxAuthoredRegionTier = 10;
+        private const double EndgameScalingBase = 1.25;
+
+        public static double GetEndgameScalingMultiplier(int regionTier)
+        {
+            if (regionTier <= MaxAuthoredRegionTier)
+            {
+                return 1.0;
+            }
+
+            return Math.Pow(EndgameScalingBase, regionTier - MaxAuthoredRegionTier);
+        }
+
+        // Modul: single source of truth for a monster's endgame-scaled
+        // combat stats, so every combat-resolution path (live tick,
+        // instant-warp, offline projection) applies the identical
+        // multiplier instead of each re-deriving RegionTier and re-calling
+        // Math.Pow independently. Returns int, matching MonsterDefinition's
+        // own field types and every existing call site's arithmetic
+        // (* 1000 for milli-hp, etc.) - the scaled result is floored, never
+        // rounded up, so it never exceeds the exact mathematical value.
+        public static int GetScaledMonsterMaxHp(int monsterId)
+        {
+            if (monsterId < 1 || monsterId > _monsters.Length)
+            {
+                return 0;
+            }
+
+            int baseMaxHp = _monsters[monsterId - 1].MaxHp;
+            int regionTier = GetMonsterRegionTier(monsterId);
+            return regionTier <= MaxAuthoredRegionTier ? baseMaxHp : (int)(baseMaxHp * GetEndgameScalingMultiplier(regionTier));
+        }
+
+        public static int GetScaledMonsterAttackPower(int monsterId)
+        {
+            if (monsterId < 1 || monsterId > _monsters.Length)
+            {
+                return 0;
+            }
+
+            int baseAttackPower = _monsters[monsterId - 1].AttackPower;
+            int regionTier = GetMonsterRegionTier(monsterId);
+            return regionTier <= MaxAuthoredRegionTier ? baseAttackPower : (int)(baseAttackPower * GetEndgameScalingMultiplier(regionTier));
         }
 
         private static Dictionary<string, int> _baseIdToItemDefinitionIndex = new();

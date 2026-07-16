@@ -17,6 +17,12 @@ namespace FolkIdle.Server.Network
         public const int MessageCapacity = 128;
 
         public ushort MessageLength;
+
+        // Modul: 0 = Global, 1 = Guild (see ChatEngine.GlobalChannelType/
+        // GuildChannelType). Guild-channel messages are routed strictly to
+        // the sender's own guild members by NetworkBroadcastSystem, using
+        // the sender's server-cached GuildId, never a client-supplied one.
+        public byte ChannelType;
         public fixed byte MessageText[MessageCapacity];
     }
 }

@@ -181,6 +181,30 @@ namespace FolkIdle.Server.Engine
         public long PlayerId;
         public int LegacyShardBalance;
         public int CitizenMultiSlotsUnlocked;
+
+        // Modul: only the Prestige perk-purchase path (LegacyStoreEngine.
+        // ExecutePerkPurchaseAsync) populates LegacyPerks and sets this
+        // true - the citizen-slot path leaves both at their default (0/
+        // false), so the drain in SimulationEngine must check this flag
+        // before overwriting CachedLegacyPerks, or every citizen-slot
+        // purchase would silently zero out a player's purchased perk ranks.
+        public long LegacyPerks;
+        public bool HasLegacyPerksUpdate;
+    }
+
+    // Modul: CommandType.SyncBillingStatus's result - the client's live
+    // TickStatePayload.PremiumCurrency only ever changes through explicit
+    // in-tick mutation (see SetPremiumCurrency call sites), so a purchase
+    // verified out-of-band through the REST /api/v1/billing/verify endpoint
+    // (which writes PlayerRecords.PremiumDiamonds directly to the database
+    // and never touches the in-memory active-player payload) would
+    // otherwise stay invisible to an already-connected session until its
+    // next full ReloadState. This notification carries the DB-authoritative
+    // balance back onto the live payload on demand instead.
+    public struct BillingSyncNotification
+    {
+        public long PlayerId;
+        public int PremiumDiamondsBalance;
     }
 
     public struct GuildLogisticsDepotUpdateNotification
@@ -261,6 +285,7 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<CombatLootDropNotification> CombatLootDropQueue { get; } = new();
         public ConcurrentQueue<GuildMembershipChangeNotification> GuildMembershipChangeQueue { get; } = new();
         public ConcurrentQueue<CommandResultNotification> CommandResultQueue { get; } = new();
+        public ConcurrentQueue<BillingSyncNotification> BillingSyncQueue { get; } = new();
 
         // Modul: single shared enqueue point for the generic client
         // error-feedback channel, called from every engine that rejects a
