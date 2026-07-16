@@ -4915,5 +4915,112 @@ namespace FolkIdle.Server.Tests
             Assert.NotEqual(highValueActiveCohort, churnRiskVeteranCohort);
             Assert.NotEqual(highValueActiveCohort, newAccountCohort);
         }
+
+        // Modul: Production Release Hardening, Part 1. Proves
+        // ProductIdHasher is deterministic (the exact property
+        // string.GetHashCode() lacked, since .NET randomizes it per
+        // process - the actual root cause TargetProductIdHash never
+        // resolved before this fix) and that ContentRegistry's reverse
+        // lookup table, built once at Initialize from the same
+        // GameBalanceConfig.json IapProductPrices catalog
+        // ResolvePremiumDiamondsForProduct reads, correctly resolves a
+        // real product id back from its hash - and gracefully (never
+        // throwing) reports failure for an unrecognized hash.
+        [Fact]
+        public void Test_ProductIdHasher_HashIsStableAndResolvesViaContentRegistry()
+        {
+            uint hash = ProductIdHasher.HashProductId("gems_pack_small");
+            Assert.Equal(hash, ProductIdHasher.HashProductId("gems_pack_small"));
+
+            Assert.True(ContentRegistry.TryResolveProductIdFromHash(hash, out string resolvedProductId));
+            Assert.Equal("gems_pack_small", resolvedProductId);
+
+            Assert.False(ContentRegistry.TryResolveProductIdFromHash(0xDEADBEEFU, out string unresolvedProductId));
+            Assert.Null(unresolvedProductId);
+        }
+
+        // Modul: Production Release Hardening, Part 1. Exercises
+        // BillingVerificationEngine.VerifyPurchaseAsync (the method
+        // SimulationEngine's SubmitPurchaseReceipt handler ultimately
+        // calls) against both resolution paths that handler now supports:
+        // a hash successfully resolved via ContentRegistry.
+        // TryResolveProductIdFromHash (the primary path), and a cleartext
+        // product id submitted directly as both transactionId and
+        // productId (the bulletproof fallback path - mirrors
+        // SimulationEngine's own "productId = transactionId" fallback
+        // exactly, for when TargetProductIdHash does not resolve). Both
+        // must grant the correct, real GameBalanceConfig.json-configured
+        // diamond amount.
+        [Fact]
+        public async Task Test_BillingVerificationEngine_HashResolvedAndCleartextFallbackProductIds_BothGrantCorrectDiamonds()
+        {
+            const long testPlayerIdHashPath = 970003001L;
+            const long testPlayerIdCleartextPath = 970003002L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerIdHashPath, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), PremiumDiamonds = 0 });
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerIdCleartextPath, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), PremiumDiamonds = 0 });
+                await db.SaveChangesAsync();
+            }
+
+            using var offlineRedis = CreateOfflineRedisMultiplexer();
+            var redisCache = new RedisSessionCache(offlineRedis);
+            var billingEngine = new BillingVerificationEngine(_fixture.DbContextFactory, redisCache, _fixture.PlayerRegistry, _fixture.RetryingOptions, new MockIapReceiptValidator());
+
+            Assert.True(ContentRegistry.TryResolveProductIdFromHash(ProductIdHasher.HashProductId("gems_pack_medium"), out string hashResolvedProductId));
+            bool hashPathSuccess = await billingEngine.VerifyPurchaseAsync(testPlayerIdHashPath, "txn_hash_path_970003001", hashResolvedProductId);
+            Assert.True(hashPathSuccess);
+
+            bool cleartextPathSuccess = await billingEngine.VerifyPurchaseAsync(testPlayerIdCleartextPath, "gems_pack_large", "gems_pack_large");
+            Assert.True(cleartextPathSuccess);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var hashPathPlayer = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerIdHashPath);
+            var cleartextPathPlayer = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerIdCleartextPath);
+
+            Assert.Equal(1100, hashPathPlayer.PremiumDiamonds);
+            Assert.Equal(2400, cleartextPathPlayer.PremiumDiamonds);
+        }
+
+        // Modul: Production Release Hardening, Part 2. StateUpdatePacket
+        // shrank from 744 bytes to 696 (ClaimedMilestonesBitmask, seasonal
+        // meta-statistics, and static achievement data moved to
+        // /api/v1/player/metadata and /api/v1/achievements/state - see
+        // that struct's own trailing doc comment) - this is the structural
+        // proof the 10Hz hot-path packet is strictly under 700 bytes, not
+        // just NetworkPacketLayoutGuard's exact-696 pin (which would also
+        // pass at, say, 699).
+        [Fact]
+        public void Test_StateUpdatePacket_StructuralSizeIsStrictlyUnder700Bytes()
+        {
+            int actualSize = System.Runtime.InteropServices.Marshal.SizeOf<StateUpdatePacket>();
+            Assert.True(actualSize < 700, $"StateUpdatePacket is {actualSize} bytes - expected strictly under 700.");
+        }
+
+        // Modul: Production Release Hardening, Part 3. Exercises
+        // ContentRegistry.TryGetLocalization against the real, dynamically
+        // parsed server/GameData/localizations.json (loaded once by
+        // PostgresTestFixture.InitializeAsync's own ContentRegistry.
+        // Initialize call, the same boot path the real server uses) -
+        // proves German and Czech resolve correctly, and that both a
+        // wholly unrecognized key and an unrecognized language code
+        // degrade gracefully to the English fallback rather than throwing.
+        [Fact]
+        public void Test_ContentRegistry_LocalizationLookup_ResolvesGermanAndCzechWithEnglishFallback()
+        {
+            Assert.True(ContentRegistry.TryGetLocalization("BossHpPrefix", "de", out string deValue));
+            Assert.Equal("Boss LP: ", deValue);
+
+            Assert.True(ContentRegistry.TryGetLocalization("ActiveEventPrefix", "cs", out string csValue));
+            Assert.Equal("Aktivni event: ", csValue);
+
+            bool resolvedMissingKey = ContentRegistry.TryGetLocalization("ThisKeyDoesNotExist", "de", out string missingKeyValue);
+            Assert.False(resolvedMissingKey);
+            Assert.Equal(string.Empty, missingKeyValue);
+
+            Assert.True(ContentRegistry.TryGetLocalization("EventNone", "fr", out string fallbackValue));
+            Assert.Equal("None", fallbackValue);
+        }
     }
 }

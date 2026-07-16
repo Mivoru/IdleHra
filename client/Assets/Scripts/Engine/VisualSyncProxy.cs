@@ -169,16 +169,26 @@ namespace FolkIdle.Client.Engine
         public long VisualActiveMentorPlayerId;
         public double VisualMentorshipExpBonusMultiplier = 1.0;
         public uint VisualPremiumCurrencyBalance { get; private set; }
-        public uint VisualEventHorizonTransactionCount { get; private set; }
+
+        // Modul: Production Release Hardening, Part 2. These six no longer
+        // come from StateUpdatePacket (removed to shrink the 10Hz hot-path
+        // packet - see that struct's own trailing doc comment) - plain
+        // public fields now, set directly by PlayerMetadataCache/
+        // AchievementsStateCache's update callbacks instead of this
+        // class's own packet-driven Apply* methods. UI code that already
+        // reads these properties (UiDataBinder, UiSeasonPassWindow) needs
+        // no changes - only where the value comes from changed.
+        public uint VisualEventHorizonTransactionCount;
+        public uint VisualTotalAchievementsClaimedCount;
+        public uint VisualActiveChroniclePassLevel;
+        public uint VisualAccumulatedSeasonalXp;
+        public ulong VisualClaimedMilestonesBitmask;
+
         public uint VisualTotalItemsCraftedCount { get; private set; }
         public byte VisualCraftingEngineStatus { get; private set; }
-        public uint VisualTotalAchievementsClaimedCount { get; private set; }
         public uint VisualActiveMasteryBitmask { get; private set; }
         public uint VisualActiveStatusEffectModifierBitmask { get; private set; }
         public uint VisualRemainingBuffDurationTicks { get; private set; }
-        public uint VisualActiveChroniclePassLevel { get; private set; }
-        public uint VisualAccumulatedSeasonalXp { get; private set; }
-        public ulong VisualClaimedMilestonesBitmask { get; private set; }
         public uint VisualActiveMatchMmr { get; private set; }
         public uint VisualGlobalNodeRemainingHp { get; private set; }
         public System.Guid VisualActiveMatchId { get; private set; }
@@ -307,6 +317,15 @@ namespace FolkIdle.Client.Engine
         private float _lastObfuscationRotationTime;
         private uint _obfuscationPrngState;
 
+        // Modul: Production Release Hardening, Part 2. Slow poll, not a
+        // per-packet field anymore - these six values (achievements,
+        // Chronicle Pass level/XP/claimed-milestones, lifetime purchase
+        // count) change rarely enough that a periodic REST fetch is a far
+        // better fit than a 10Hz binary field, which is exactly why they
+        // were removed from StateUpdatePacket.
+        private const float MetadataRefreshIntervalSeconds = 15f;
+        private float _lastMetadataRefreshTime;
+
         private void Awake()
         {
             _obfuscationPrngState = unchecked((uint)System.DateTime.UtcNow.Ticks) ^ unchecked((uint)GetInstanceID());
@@ -318,6 +337,29 @@ namespace FolkIdle.Client.Engine
             _skill3CooldownCell = new ObfuscatedValue<float>(0f, RollObfuscationKey());
             _skill4CooldownCell = new ObfuscatedValue<float>(0f, RollObfuscationKey());
             _lastObfuscationRotationTime = Time.time;
+
+            PlayerMetadataCache.OnPlayerMetadataUpdated += ApplyPlayerMetadata;
+            AchievementsStateCache.OnAchievementsStateUpdated += ApplyAchievementsState;
+        }
+
+        private void OnDestroy()
+        {
+            PlayerMetadataCache.OnPlayerMetadataUpdated -= ApplyPlayerMetadata;
+            AchievementsStateCache.OnAchievementsStateUpdated -= ApplyAchievementsState;
+        }
+
+        private void ApplyPlayerMetadata(PlayerMetadataData data)
+        {
+            VisualActiveChroniclePassLevel = (uint)data.ChroniclePassLevel;
+            VisualAccumulatedSeasonalXp = (uint)data.AccumulatedSeasonalXp;
+            VisualEventHorizonTransactionCount = (uint)data.EventHorizonTransactionCount;
+        }
+
+        private void ApplyAchievementsState(AchievementsStateData data)
+        {
+            VisualClaimedAchievementFlags = data.ClaimedAchievementFlags;
+            VisualTotalAchievementsClaimedCount = (uint)data.TotalAchievementsClaimedCount;
+            VisualClaimedMilestonesBitmask = data.ClaimedMilestonesBitmask;
         }
 
         // Hand-rolled xorshift, matching WebSocketClient's ComputeChallengeHash
@@ -342,6 +384,15 @@ namespace FolkIdle.Client.Engine
             return unchecked((long)(((ulong)high << 32) | low));
         }
 
+        private void RefreshMetadataCachesIfDue()
+        {
+            if (Time.time - _lastMetadataRefreshTime < MetadataRefreshIntervalSeconds) return;
+
+            _lastMetadataRefreshTime = Time.time;
+            PlayerMetadataCache.Refresh();
+            AchievementsStateCache.Refresh();
+        }
+
         private void RotateObfuscationCellsIfDue()
         {
             if (Time.time - _lastObfuscationRotationTime < ObfuscationRotationIntervalSeconds) return;
@@ -359,6 +410,7 @@ namespace FolkIdle.Client.Engine
             if (NetworkClient == null) return;
 
             RotateObfuscationCellsIfDue();
+            RefreshMetadataCachesIfDue();
 
             int packetsProcessedThisFrame = 0;
             while (packetsProcessedThisFrame < MaxPacketsProcessedPerFrame && NetworkClient.PacketQueue.TryDequeue(out var packet))
@@ -418,7 +470,6 @@ namespace FolkIdle.Client.Engine
                     VisualMentorCount = packet.CachedMentorCount;
                     
                     VisualCompletedAreaFlags = packet.CompletedAreaFlags;
-                    VisualClaimedAchievementFlags = packet.ClaimedAchievementFlags;
                     VisualHumanMasteryLevel = packet.HumanMasteryLevel;
                     VisualVilaMasteryLevel = packet.VilaMasteryLevel;
                     VisualDraugrMasteryLevel = packet.DraugrMasteryLevel;
@@ -434,16 +485,11 @@ namespace FolkIdle.Client.Engine
                     VisualCombatSimulationDamageDelta = packet.CombatSimulationDamageDelta;
                     VisualActiveMentorPlayerId = packet.ActiveMentorPlayerId;
                     VisualPremiumCurrencyBalance = packet.PremiumCurrencyBalance;
-                    VisualEventHorizonTransactionCount = packet.EventHorizonTransactionCount;
                     VisualTotalItemsCraftedCount = packet.TotalItemsCraftedCount;
                     VisualCraftingEngineStatus = packet.CraftingEngineStatus;
-                    VisualTotalAchievementsClaimedCount = packet.TotalAchievementsClaimedCount;
                     VisualActiveMasteryBitmask = packet.ActiveMasteryBitmask;
                     VisualActiveStatusEffectModifierBitmask = packet.ActiveStatusEffectModifierBitmask;
                     VisualRemainingBuffDurationTicks = packet.RemainingBuffDurationTicks;
-                    VisualActiveChroniclePassLevel = packet.ActiveChroniclePassLevel;
-                    VisualAccumulatedSeasonalXp = packet.AccumulatedSeasonalXp;
-                    VisualClaimedMilestonesBitmask = packet.ClaimedMilestonesBitmask;
                     VisualActiveMatchMmr = packet.VisualActiveMatchMmr;
                     VisualGlobalNodeRemainingHp = packet.GlobalNodeRemainingHp;
                     VisualActiveMatchId = packet.ActiveMatchId;
@@ -557,7 +603,6 @@ namespace FolkIdle.Client.Engine
             VisualMentorCount = _snapshotB.Packet.CachedMentorCount;
 
             VisualCompletedAreaFlags = _snapshotB.Packet.CompletedAreaFlags;
-            VisualClaimedAchievementFlags = _snapshotB.Packet.ClaimedAchievementFlags;
             VisualHumanMasteryLevel = _snapshotB.Packet.HumanMasteryLevel;
             VisualVilaMasteryLevel = _snapshotB.Packet.VilaMasteryLevel;
             VisualDraugrMasteryLevel = _snapshotB.Packet.DraugrMasteryLevel;
@@ -573,12 +618,8 @@ namespace FolkIdle.Client.Engine
             VisualCombatSimulationDamageDelta = _snapshotB.Packet.CombatSimulationDamageDelta;
             VisualMentorshipExpBonusMultiplier = _snapshotB.Packet.MentorshipExpBonusMultiplier;
             VisualPremiumCurrencyBalance = _snapshotB.Packet.PremiumCurrencyBalance;
-            VisualEventHorizonTransactionCount = _snapshotB.Packet.EventHorizonTransactionCount;
             VisualTotalItemsCraftedCount = _snapshotB.Packet.TotalItemsCraftedCount;
             VisualCraftingEngineStatus = _snapshotB.Packet.CraftingEngineStatus;
-            VisualActiveChroniclePassLevel = _snapshotB.Packet.ActiveChroniclePassLevel;
-            VisualAccumulatedSeasonalXp = _snapshotB.Packet.AccumulatedSeasonalXp;
-            VisualClaimedMilestonesBitmask = _snapshotB.Packet.ClaimedMilestonesBitmask;
             VisualActiveMatchMmr = _snapshotB.Packet.VisualActiveMatchMmr;
             VisualGlobalNodeRemainingHp = _snapshotB.Packet.GlobalNodeRemainingHp;
             VisualActiveMatchId = _snapshotB.Packet.ActiveMatchId;

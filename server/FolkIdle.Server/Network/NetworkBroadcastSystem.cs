@@ -577,6 +577,25 @@ namespace FolkIdle.Server.Network
                     // list query) rather than StateUpdatePacket's fixed
                     // binary layout, for the same reason every other
                     // variable-length listing in this file uses HTTP.
+                    // Modul: Production Release Hardening, Part 2. Both
+                    // routes below carry fields removed from
+                    // StateUpdatePacket to shrink the 10Hz hot-path packet
+                    // (see that struct's own trailing doc comment) -
+                    // low-frequency/static metadata that does not need a
+                    // ~10-times-per-second broadcast. Mirrors every other
+                    // REST-snapshot handler's exact shape.
+                    if (requestPath == "/api/v1/player/metadata" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandlePlayerMetadata(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/achievements/state" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleAchievementsState(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/mailbox/list" && context.Request.HttpMethod == "GET")
                     {
                         await HandleMailboxListSnapshot(context);
@@ -1322,6 +1341,142 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Guild roster error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class PlayerMetadataResponse
+        {
+            public int ChroniclePassLevel { get; set; }
+            public int AccumulatedSeasonalXp { get; set; }
+            public int EventHorizonTransactionCount { get; set; }
+        }
+
+        // Modul: Production Release Hardening, Part 2. ActiveChroniclePassLevel/
+        // AccumulatedSeasonalXp were removed from StateUpdatePacket - this
+        // is their new home. EventHorizonTransactionCount was never
+        // actually populated on the old packet field at all (dead code -
+        // always sent as 0); this computes the real value for the first
+        // time, from EventHorizonPremiumLedgers (the same ledger every
+        // premium-balance change already writes to).
+        private async Task HandlePlayerMetadata(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                var pass = await db.PlayerChroniclePasses
+                    .AsNoTracking()
+                    .Where(p => p.PlayerId == playerId)
+                    .Select(p => new { p.PassLevel, p.AccumulatedXp })
+                    .SingleOrDefaultAsync();
+
+                int transactionCount = await db.EventHorizonPremiumLedgers
+                    .AsNoTracking()
+                    .CountAsync(l => l.PlayerId == playerId);
+
+                await transaction.CommitAsync();
+
+                var response = new PlayerMetadataResponse
+                {
+                    ChroniclePassLevel = pass?.PassLevel ?? 0,
+                    AccumulatedSeasonalXp = pass?.AccumulatedXp ?? 0,
+                    EventHorizonTransactionCount = transactionCount
+                };
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Player metadata error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class AchievementsStateResponse
+        {
+            public int ClaimedAchievementFlags { get; set; }
+            public int TotalAchievementsClaimedCount { get; set; }
+            public ulong ClaimedMilestonesBitmask { get; set; }
+        }
+
+        // Modul: Production Release Hardening, Part 2. ClaimedAchievementFlags/
+        // TotalAchievementsClaimedCount/ClaimedMilestonesBitmask were
+        // removed from StateUpdatePacket - this is their new home. Distinct
+        // from the pre-existing /api/v1/achievements/snapshot (which lists
+        // the tiered Treasury/Forging/Logistics achievement family's
+        // per-achievement progress) - this endpoint covers the separate
+        // bitflag-based legacy achievement system plus the Chronicle Pass
+        // milestone claim bitmask, matching this task's explicitly named
+        // route.
+        private async Task HandleAchievementsState(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                int claimedAchievementFlags = await db.PlayerAchievements
+                    .AsNoTracking()
+                    .Where(a => a.PlayerId == playerId)
+                    .Select(a => a.ClaimedAchievementFlags)
+                    .SingleOrDefaultAsync();
+
+                int totalAchievementsClaimedCount = await db.PlayerLifetimeAchievements
+                    .AsNoTracking()
+                    .CountAsync(a => a.PlayerId == playerId && a.IsClaimed);
+
+                ulong claimedMilestonesBitmask = await db.PlayerChroniclePasses
+                    .AsNoTracking()
+                    .Where(p => p.PlayerId == playerId)
+                    .Select(p => p.ClaimedMilestonesBitmask)
+                    .SingleOrDefaultAsync();
+
+                await transaction.CommitAsync();
+
+                var response = new AchievementsStateResponse
+                {
+                    ClaimedAchievementFlags = claimedAchievementFlags,
+                    TotalAchievementsClaimedCount = totalAchievementsClaimedCount,
+                    ClaimedMilestonesBitmask = claimedMilestonesBitmask
+                };
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Achievements state error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

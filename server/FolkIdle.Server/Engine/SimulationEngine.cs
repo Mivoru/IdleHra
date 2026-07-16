@@ -1923,23 +1923,46 @@ namespace FolkIdle.Server.Engine
                             byte* ptr = cmd.RawTransactionReceipt;
                             transactionId = System.Text.Encoding.UTF8.GetString(ptr, 64).TrimEnd('\0');
                         }
-                        string productId = $"Product_{cmd.TargetProductIdHash}";
 
-                        // Modul: the reward amount is no longer taken from
-                        // cmd.LimitPrice - a client could previously claim
-                        // any premiumAmount it liked over this WebSocket
-                        // command with zero receipt verification, the exact
-                        // spoofing vector this task exists to close.
-                        // VerifyPurchaseAsync now always resolves the amount
-                        // itself from productId via
-                        // ResolvePremiumDiamondsForProduct. This 64-byte
-                        // WebSocket packet was never able to carry a real
-                        // signed store receipt anyway (see
-                        // RawTransactionReceipt's fixed size) - real
-                        // purchase verification is VerifyReceiptAsync,
-                        // reached only through the REST
-                        // /api/v1/billing/verify endpoint, which can carry
-                        // an arbitrarily large base64 receipt body.
+                        // Modul: Production Release Hardening, Part 1. This
+                        // used to build productId as the literal string
+                        // "Product_{hash}", which could never match a real
+                        // GameBalanceConfig.json key
+                        // (ResolvePremiumDiamondsForProduct's dictionary
+                        // lookup would always miss, silently resolving to 0
+                        // diamonds) - previously broken for every purchase
+                        // submitted through this command, a real financial
+                        // blocker. TryResolveProductIdFromHash resolves the
+                        // client-computed FNV-1a hash back to the real
+                        // product id via ContentRegistry's own reverse
+                        // lookup table (built once at boot, see
+                        // ContentRegistry.Initialize), never throwing on an
+                        // unresolved hash.
+                        //
+                        // Bulletproof fallback: if the hash does not
+                        // resolve (a stale client build, a corrupted
+                        // packet, or simply hash 0 from an
+                        // uninitialized/never-set client field), fall back
+                        // to treating transactionId itself as a cleartext
+                        // product id - this WebSocket command's only other
+                        // string payload - and accept it if it is a real,
+                        // known catalog entry. Genuine cryptographic
+                        // signed-receipt verification (where a cleartext
+                        // product id is extracted from a verified Apple/
+                        // Google payload) already exists as a separate,
+                        // correct path - VerifyReceiptAsync, reached only
+                        // through the REST /api/v1/billing/verify endpoint,
+                        // which is the only place a real signed receipt can
+                        // actually be carried (this 64-byte WebSocket
+                        // packet never could). Neither branch here ever
+                        // throws - an unresolved product id simply falls
+                        // through to VerifyPurchaseAsync's own existing
+                        // premiumAmount <= 0 rejection.
+                        if (!ContentRegistry.TryResolveProductIdFromHash(cmd.TargetProductIdHash, out string productId))
+                        {
+                            productId = transactionId;
+                        }
+
                         SafeDispatchAsync("Billing.VerifyPurchase", pId, async () => {
                             bool success = await _billingVerificationEngine.VerifyPurchaseAsync(pId, transactionId, productId);
                             if (success) {
@@ -2262,7 +2285,6 @@ namespace FolkIdle.Server.Engine
                                 MiningMasteryLevel = currentPayload.MiningMasteryLevel,
                                 GatheringProgressTicks = currentPayload.GatheringProgressTicks,
                                 CompletedAreaFlags = currentPayload.CompletedAreaFlags,
-                                ClaimedAchievementFlags = currentPayload.ClaimedAchievementFlags,
                                 HumanMasteryLevel = currentPayload.HumanMasteryLevel,
                                 VilaMasteryLevel = currentPayload.VilaMasteryLevel,
                                 DraugrMasteryLevel = currentPayload.DraugrMasteryLevel,
@@ -2322,14 +2344,11 @@ namespace FolkIdle.Server.Engine
                                 CurrentPopulationCount = currentPayload.CurrentPopulationCount,
                                 ActiveStatusEffectModifierBitmask = statBitmask,
                                 RemainingBuffDurationTicks = statDurTicks,
-                                ActiveChroniclePassLevel = currentPayload.ActiveChroniclePassLevel,
-                                AccumulatedSeasonalXp = currentPayload.AccumulatedSeasonalXp,
                                 ActiveChallengeSeed = currentPayload.ActiveChallengeSeed,
                                 IsQuarantineActive = (currentPayload.Quarantine_Active || currentPayload.IsQuarantined) ? (byte)1 : (byte)0,
                                 NotificationQueueStateLength = (byte)Math.Clamp(GlobalEngineState.NotificationQueueStateLength, 0, 255),
                                 ActiveLanguageState = currentPayload.ActiveLanguageState == 0 ? (byte)1 : currentPayload.ActiveLanguageState,
                                 ActiveAudioTrackId = audioTrackId,
-                                TotalAchievementsClaimedCount = currentPayload.TotalAchievementsClaimedCount,
                                 ActiveMasteryBitmask = _liveSessionContexts.TryGetValue(currentPayload.PlayerId, out var mCtx) ? mCtx.ActiveMasteryBitmask : 0,
                                 NetworkDiagnosticsToken = currentPayload.NetworkDiagnosticsToken,
                                 VisualActiveConnectionThroughput = (uint)GlobalEngineState.ActiveConnectionThroughput,
@@ -2367,8 +2386,7 @@ namespace FolkIdle.Server.Engine
                                 OfflineXpEarned = currentPayload.OfflineXpEarned,
                                 OfflineMaterialDropsGranted = currentPayload.OfflineMaterialDropsGranted,
                                 OfflineSummaryTick = currentPayload.OfflineSummaryTick,
-                                TicksSinceLastFlush = currentPayload.TicksSinceLastFlush,
-                                ClaimedMilestonesBitmask = currentPayload.CachedClaimedMilestonesBitmask
+                                TicksSinceLastFlush = currentPayload.TicksSinceLastFlush
                             };
                             // Modul: this packet carries currentPayload's own
                             // private data (gold, stats, equipment, mana,

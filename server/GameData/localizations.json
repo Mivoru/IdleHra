@@ -1,0 +1,58 @@
+[
+  {
+    "Key": "ActiveEventPrefix",
+    "En": "Active Event: ",
+    "Cs": "Aktivni event: ",
+    "De": "Aktives Ereignis: ",
+    "Pl": "Aktywne wydarzenie: "
+  },
+  {
+    "Key": "EventNone",
+    "En": "None",
+    "Cs": "Zadny",
+    "De": "Keins",
+    "Pl": "Brak"
+  },
+  {
+    "Key": "EventGoldenHarvest",
+    "En": "Golden Harvest",
+    "Cs": "Zlata sklizen",
+    "De": "Goldene Ernte",
+    "Pl": "Zlote zniwa"
+  },
+  {
+    "Key": "EventBloodMoon",
+    "En": "Blood Moon",
+    "Cs": "Krvavy mesic",
+    "De": "Blutmond",
+    "Pl": "Krwawy ksiezyc"
+  },
+  {
+    "Key": "EventMasterArtisan",
+    "En": "Master Artisan",
+    "Cs": "Mistr remesel",
+    "De": "Meister Handwerk",
+    "Pl": "Mistrz rzemiosla"
+  },
+  {
+    "Key": "EventDiamondStar",
+    "En": "Diamond Star",
+    "Cs": "Diamantova hvezda",
+    "De": "Diamantstern",
+    "Pl": "Diamentowa gwiazda"
+  },
+  {
+    "Key": "PushQueuePrefix",
+    "En": "Push Queue: ",
+    "Cs": "Push Fronta: ",
+    "De": "Push Warten: ",
+    "Pl": "Kolejka Push: "
+  },
+  {
+    "Key": "BossHpPrefix",
+    "En": "Boss HP: ",
+    "Cs": "Boss HP: ",
+    "De": "Boss LP: ",
+    "Pl": "Boss PZ: "
+  }
+]

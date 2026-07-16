@@ -71,7 +71,6 @@ namespace FolkIdle.Server.Network
         public int GatheringProgressTicks;
         
         public int CompletedAreaFlags;
-        public int ClaimedAchievementFlags;
         public int HumanMasteryLevel;
         public int VilaMasteryLevel;
         public int DraugrMasteryLevel;
@@ -211,29 +210,22 @@ namespace FolkIdle.Server.Network
         public byte ChronoReserved1;
         public byte ChronoReserved2;
         public uint PremiumCurrencyBalance;
-        public uint EventHorizonTransactionCount;
         public byte ActiveAudioTrackId;
         public byte UiScreenShakeIntensity;
         public byte AudioReserved5;
         public uint TotalItemsCraftedCount;
         public byte CraftingEngineStatus;
-        public uint TotalAchievementsClaimedCount;
         public uint ActiveMasteryBitmask;
         public ulong LogicalEpochFrameIndex;
         public uint ActiveStatusEffectModifierBitmask;
         public uint RemainingBuffDurationTicks;
-        public uint ActiveChroniclePassLevel;
-        public uint AccumulatedSeasonalXp;
         public uint VisualBankedChronoSeconds;
         public uint ActiveChronoEngineStatus;
         public ulong ActiveChronoLockExpirationTicks;
         public uint VisualActiveMatchMmr;
         public uint GlobalNodeRemainingHp;
         public System.Guid ActiveMatchId;
-        public ulong GuildWarExpansionPadding0;
-        public ulong GuildWarExpansionPadding1;
         public uint NetworkDiagnosticsToken;
-        public uint GuildWarExpansionPadding2;
         public ulong TotalAnalyticsEventsLoggedCount;
         public uint VisualActiveConnectionThroughput;
         public uint CurrentNodeMemoryLoadMetrics;
@@ -311,14 +303,17 @@ namespace FolkIdle.Server.Network
         // last successful save. Previously tracked only server-side.
         public int TicksSinceLastFlush;
 
-        // Modul: Phase - Full-Stack Production Polish Phase 2, Part 3.1
-        // (UiSeasonPassWindow). Mirrors PlayerChroniclePass.
-        // ClaimedMilestonesBitmask exactly (see SimulationEngine's
-        // ClaimBattlePassReward handler / StateCheckpointManager) - was
-        // never on the wire before, so the client had no way to know which
-        // of the 50 XP milestones (see ActiveChroniclePassLevel/
-        // AccumulatedSeasonalXp above) had already been claimed versus
-        // merely reached.
-        public ulong ClaimedMilestonesBitmask;
+        // Modul: Production Release Hardening, Part 2. ClaimedMilestonesBitmask,
+        // ActiveChroniclePassLevel, AccumulatedSeasonalXp,
+        // ClaimedAchievementFlags, TotalAchievementsClaimedCount, and
+        // EventHorizonTransactionCount were removed from this hot-path
+        // packet (all low-frequency/static metadata, none of them "ticks,
+        // health, resources, active XP, positioning, live combat status")
+        // and now live behind /api/v1/achievements/state and
+        // /api/v1/player/metadata instead - see
+        // NetworkBroadcastSystem.HandleAchievementsState/
+        // HandlePlayerMetadata. GuildWarExpansionPadding0/1/2 were also
+        // removed outright: dead reserved filler, never read or written by
+        // any code on either side.
     }
 }

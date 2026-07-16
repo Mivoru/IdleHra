@@ -63,7 +63,6 @@ namespace FolkIdle.Client.Network
         public int GatheringProgressTicks;
         
         public int CompletedAreaFlags;
-        public int ClaimedAchievementFlags;
         public int HumanMasteryLevel;
         public int VilaMasteryLevel;
         public int DraugrMasteryLevel;
@@ -190,29 +189,22 @@ namespace FolkIdle.Client.Network
         public byte ChronoReserved1;
         public byte ChronoReserved2;
         public uint PremiumCurrencyBalance;
-        public uint EventHorizonTransactionCount;
         public byte ActiveAudioTrackId;
         public byte UiScreenShakeIntensity;
         public byte AudioReserved5;
         public uint TotalItemsCraftedCount;
         public byte CraftingEngineStatus;
-        public uint TotalAchievementsClaimedCount;
         public uint ActiveMasteryBitmask;
         public ulong LogicalEpochFrameIndex;
         public uint ActiveStatusEffectModifierBitmask;
         public uint RemainingBuffDurationTicks;
-        public uint ActiveChroniclePassLevel;
-        public uint AccumulatedSeasonalXp;
         public uint VisualBankedChronoSeconds;
         public uint ActiveChronoEngineStatus;
         public ulong ActiveChronoLockExpirationTicks;
         public uint VisualActiveMatchMmr;
         public uint GlobalNodeRemainingHp;
         public System.Guid ActiveMatchId;
-        public ulong GuildWarExpansionPadding0;
-        public ulong GuildWarExpansionPadding1;
         public uint NetworkDiagnosticsToken;
-        public uint GuildWarExpansionPadding2;
         public ulong TotalAnalyticsEventsLoggedCount;
         public uint VisualActiveConnectionThroughput;
         public uint CurrentNodeMemoryLoadMetrics;
@@ -278,8 +270,13 @@ namespace FolkIdle.Client.Network
         // last successful server-side save (see UiSaveTrustIndicator).
         public int TicksSinceLastFlush;
 
-        // Modul: mirrors server StateUpdatePacket exactly - see
-        // UiSeasonPassWindow.
-        public ulong ClaimedMilestonesBitmask;
+        // Modul: Production Release Hardening, Part 2. ClaimedMilestonesBitmask,
+        // ActiveChroniclePassLevel, AccumulatedSeasonalXp,
+        // ClaimedAchievementFlags, TotalAchievementsClaimedCount, and
+        // EventHorizonTransactionCount were removed from this hot-path
+        // packet and now live behind PlayerMetadataCache/
+        // AchievementsStateCache (see /api/v1/player/metadata,
+        // /api/v1/achievements/state). GuildWarExpansionPadding0/1/2 were
+        // also removed outright: dead reserved filler, never read.
     }
 }

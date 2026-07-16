@@ -247,6 +247,43 @@ namespace FolkIdle.Server.Engine
         // within it) changes no behavior.
         public static GameBalanceDefinition Balance => _balance;
 
+        // Modul: Production Release Hardening, Part 3. Keyed by the same
+        // Key string localizations.json uses (matches client
+        // LocalizationMatrix's LocalizationKey enum member names) mapped
+        // to each of the four supported language codes. Server-side
+        // exposure exists for content-QA/testability, not because any
+        // gameplay logic reads localized text at runtime (nothing does -
+        // this is client-rendering-only data); see TryGetLocalization for
+        // the fallback-safe (default to "en", never throws) lookup this
+        // whole registry exists to prove correct.
+        private static Dictionary<string, LocalizationJson> _localizations = new Dictionary<string, LocalizationJson>();
+
+        public static bool TryGetLocalization(string key, string languageCode, out string value)
+        {
+            if (!_localizations.TryGetValue(key, out LocalizationJson? entry))
+            {
+                value = string.Empty;
+                return false;
+            }
+
+            string? resolved = languageCode switch
+            {
+                "en" => entry.En,
+                "cs" => entry.Cs,
+                "de" => entry.De,
+                "pl" => entry.Pl,
+                _ => entry.En
+            };
+
+            if (string.IsNullOrEmpty(resolved))
+            {
+                resolved = entry.En;
+            }
+
+            value = resolved ?? string.Empty;
+            return !string.IsNullOrEmpty(value);
+        }
+
         // Modul: gathering-yield loot data for the Fishing (ActivityId
         // 301-309) and Herbalism (401-412) gathering nodes added to close
         // the material acquisition loop for the Cooking and Alchemy
@@ -675,6 +712,23 @@ namespace FolkIdle.Server.Engine
             public int BaseMasteryXpReward { get; set; }
         }
 
+        // Modul: Production Release Hardening, Part 3. Flat localization
+        // schema - Key mapped directly to each of the four supported
+        // languages, one entry per translatable string. Mirrors client
+        // LocalizationMatrix.cs's own DTO exactly (Key matches that side's
+        // LocalizationKey enum member names, validated there via
+        // Enum.TryParse at boot - this server-side DTO deliberately does
+        // not depend on that client-only enum, so validation here is
+        // purely structural: every field present and non-empty).
+        private sealed class LocalizationJson
+        {
+            public string Key { get; set; } = string.Empty;
+            public string En { get; set; } = string.Empty;
+            public string Cs { get; set; } = string.Empty;
+            public string De { get; set; } = string.Empty;
+            public string Pl { get; set; } = string.Empty;
+        }
+
         // Modul: parses server/GameData/*.json into the flat struct arrays
         // above, replacing what used to be hardcoded C# array literals - see
         // the task's Content Pipeline requirement (data-driven balance
@@ -703,6 +757,26 @@ namespace FolkIdle.Server.Engine
             List<ItemJson> itemJson = ReadAndValidateJsonFile<ItemJson>(dir, "items.json");
             List<GatheringNodeJson> nodeJson = ReadAndValidateJsonFile<GatheringNodeJson>(dir, "gathering_nodes.json");
             GameBalanceDefinition balance = ReadOptionalBalanceConfig(dir);
+            List<LocalizationJson> localizationJson = ReadOptionalLocalizationsConfig(dir);
+
+            for (int i = 0; i < localizationJson.Count; i++)
+            {
+                LocalizationJson entry = localizationJson[i];
+                if (string.IsNullOrEmpty(entry.Key))
+                {
+                    throw new InvalidOperationException($"ContentRegistry.Initialize: 'localizations.json' entry at index {i} has an empty Key.");
+                }
+                if (string.IsNullOrEmpty(entry.En) || string.IsNullOrEmpty(entry.Cs) || string.IsNullOrEmpty(entry.De) || string.IsNullOrEmpty(entry.Pl))
+                {
+                    throw new InvalidOperationException($"ContentRegistry.Initialize: 'localizations.json' entry Key='{entry.Key}' is missing a translation for one or more of En/Cs/De/Pl.");
+                }
+            }
+
+            var newLocalizations = new Dictionary<string, LocalizationJson>(localizationJson.Count);
+            for (int i = 0; i < localizationJson.Count; i++)
+            {
+                newLocalizations[localizationJson[i].Key] = localizationJson[i];
+            }
 
             RequireContiguousIds(monsterJson.Count, monsterJson.Select(m => m.Id), "monsters.json", "Id");
             RequireContiguousIds(itemJson.Count, itemJson.Select(i => i.Id), "items.json", "Id");
@@ -804,6 +878,40 @@ namespace FolkIdle.Server.Engine
             _gatheringNodes = newGatheringNodes;
             _baseIdToItemDefinitionIndex = newBaseIdIndex;
             _balance = balance;
+
+            // Modul: Production Release Hardening, Part 1. Built once here
+            // (not per-lookup) from the same IapProductPrices catalog
+            // ResolvePremiumDiamondsForProduct already reads - see
+            // ProductIdHasher's own doc comment for why FNV-1a instead of
+            // the previous string.GetHashCode() (randomized per process,
+            // so it could never match a hash computed on a different
+            // process/machine, which is exactly why TargetProductIdHash
+            // never resolved before this fix). A hash collision between
+            // two real product ids would silently make the later one in
+            // iteration order win the dictionary slot - acceptable for a
+            // small, content-authored catalog (a handful of gem-pack
+            // ids), where a collision would surface immediately as an
+            // obviously wrong purchase during content QA, not silently in
+            // production against attacker-chosen input.
+            var newProductIdHashLookup = new Dictionary<uint, string>(balance.IapProductPrices.Count);
+            foreach (string productId in balance.IapProductPrices.Keys)
+            {
+                newProductIdHashLookup[ProductIdHasher.HashProductId(productId)] = productId;
+            }
+            _productIdHashLookup = newProductIdHashLookup;
+            _localizations = newLocalizations;
+        }
+
+        private static Dictionary<uint, string> _productIdHashLookup = new Dictionary<uint, string>();
+
+        // Modul: never throws on an unresolved hash (TryGetValue, not the
+        // throwing indexer) - an unrecognized TargetProductIdHash (a stale
+        // client build, a hash collision, or simply an invalid/forged
+        // value) must fail closed as "no product resolved," never as an
+        // uncaught exception on the billing hot path.
+        public static bool TryResolveProductIdFromHash(uint hash, out string productId)
+        {
+            return _productIdHashLookup.TryGetValue(hash, out productId!);
         }
 
         // Modul: GameBalanceConfig.json is deliberately optional, unlike
@@ -835,6 +943,37 @@ namespace FolkIdle.Server.Engine
             catch (System.Text.Json.JsonException ex)
             {
                 throw new InvalidOperationException($"ContentRegistry.Initialize: 'GameBalanceConfig.json' contains malformed JSON: {ex.Message}", ex);
+            }
+        }
+
+        // Modul: Production Release Hardening, Part 3. Deliberately
+        // optional, mirroring ReadOptionalBalanceConfig's exact posture
+        // (and for the same reason - existing ContentRegistry.Initialize
+        // call sites that build a minimal temporary GameData directory for
+        // unrelated tests have no reason to also carry a localizations
+        // file). Nothing server-side actually reads localized text at
+        // runtime - this file is client-facing only (see client
+        // LocalizationMatrix.cs, which parses the exact same file mirrored
+        // into StreamingAssets/GameData) - so this method exists purely to
+        // fail the build/boot fast on malformed or incomplete translation
+        // data, the same content-QA safety net every other authored
+        // content file gets.
+        private static List<LocalizationJson> ReadOptionalLocalizationsConfig(string directory)
+        {
+            string path = System.IO.Path.Combine(directory, "localizations.json");
+            if (!System.IO.File.Exists(path))
+            {
+                return new List<LocalizationJson>();
+            }
+
+            string text = System.IO.File.ReadAllText(path);
+            try
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<List<LocalizationJson>>(text) ?? new List<LocalizationJson>();
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                throw new InvalidOperationException($"ContentRegistry.Initialize: 'localizations.json' contains malformed JSON: {ex.Message}", ex);
             }
         }
 

@@ -100,7 +100,12 @@ namespace FolkIdle.Client.UI
             int copyLength = transactionIdBytes.Length > 64 ? 64 : transactionIdBytes.Length;
             System.Array.Copy(transactionIdBytes, receiptBytes, copyLength);
 
-            uint productIdHash = unchecked((uint)productId.GetHashCode());
+            // Modul: Production Release Hardening, Part 1. Was
+            // string.GetHashCode() - .NET randomizes that per process, so
+            // the server could never reproduce it. ProductIdHasher is a
+            // deterministic FNV-1a hash, mirrored identically server-side
+            // (see ContentRegistry.TryResolveProductIdFromHash).
+            uint productIdHash = ProductIdHasher.HashProductId(productId);
             NetworkClient.SendPurchaseReceiptCommandZeroAlloc(receiptBytes, productIdHash, 0);
         }
     }
