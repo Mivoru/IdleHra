@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
 
   folk-idle-pgbouncer:
-    image: edoburu/pgbouncer:1.21.0
+    image: edoburu/pgbouncer:v1.24.1-p1
     container_name: folk-idle-pgbouncer
     environment:
       - DB_HOST=folk-idle-db

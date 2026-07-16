@@ -97,7 +97,18 @@ if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") != "Production")
 var redisMultiplexer = serviceProvider.GetRequiredService<IConnectionMultiplexer>();
 TelemetryStreamer.ConfigureRedis(redisMultiplexer);
 
-var networkSystem = new NetworkBroadcastSystem(serviceProvider, jwtSecretKey, "http://localhost:8080/");
+// Modul: "+" is HttpListener's wildcard-bind prefix - listens on every
+// network interface, not just loopback. A prefix of "http://localhost:8080/"
+// only accepts connections arriving on the loopback interface; inside a
+// container, Kubernetes' liveness/readiness probes and all other pod
+// traffic arrive on the pod's real network interface (its assigned pod IP),
+// never through loopback, so a loopback-only bind makes the listener
+// completely unreachable from outside the container while the process
+// itself reports as running - every probe fails with connection refused
+// and the pod is killed and restarted in an infinite loop. The wildcard
+// bind still accepts loopback connections too, so this is not a regression
+// for local, non-containerized development.
+var networkSystem = new NetworkBroadcastSystem(serviceProvider, jwtSecretKey, "http://+:8080/");
 var lootEngine = new LootTableEngine();
 var checkpointManager = new StateCheckpointManager(serviceProvider);
 var playerRegistry = new PlayerSessionRegistry();

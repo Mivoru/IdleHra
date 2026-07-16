@@ -7,6 +7,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
+using FolkIdle.Client.Engine;
 using FolkIdle.Client.Network;
 
 namespace FolkIdle.Client.UI
@@ -73,7 +74,23 @@ namespace FolkIdle.Client.UI
         {
             string deviceId = LoadOrCreateDeviceId();
             if (DeviceIdInputField != null) DeviceIdInputField.text = deviceId;
-            _ = AttemptLoginAsync(deviceId);
+
+            // Modul: the OTA content catalog check runs to completion (or
+            // falls back to whatever content is already available locally
+            // - see AssetManager.InitializeRemoteCatalog) before the first
+            // login attempt fires, so a fresh catalog is in effect before
+            // any gameplay content is ever requested. If AssetManager is
+            // not present in this scene, login proceeds immediately rather
+            // than blocking startup on a component that does not exist.
+            if (AssetManager.Instance != null)
+            {
+                SetStatus("Checking for content updates...");
+                AssetManager.Instance.InitializeRemoteCatalog(() => { _ = AttemptLoginAsync(deviceId); });
+            }
+            else
+            {
+                _ = AttemptLoginAsync(deviceId);
+            }
         }
 
         private void HandleLoginButtonClicked()

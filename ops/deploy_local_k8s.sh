@@ -36,11 +36,17 @@ POSTGRES_PASSWORD="postgres"
 POSTGRES_DB="folkidle_prod"
 POSTGRES_SERVICE="folkidle-postgres"
 
-PGBOUNCER_IMAGE="edoburu/pgbouncer:1.21.0"
+PGBOUNCER_IMAGE="edoburu/pgbouncer:v1.24.1-p1"
 PGBOUNCER_SERVICE="folkidle-pgbouncer"
 
 REDIS_IMAGE="redis:7-alpine"
 REDIS_SERVICE="folkidle-redis"
+
+PROMETHEUS_IMAGE="prom/prometheus:v2.54.1"
+PROMETHEUS_SERVICE="folkidle-prometheus"
+
+PROMETHEUS_ADAPTER_IMAGE="registry.k8s.io/prometheus-adapter/prometheus-adapter:v0.11.2"
+PROMETHEUS_ADAPTER_SERVICE="folkidle-prometheus-adapter"
 
 CLUSTER_KIND=""
 
@@ -119,6 +125,18 @@ ensure_cluster() {
 # the cluster, and it guarantees a byte-for-byte fresh environment on every
 # run instead of accumulating stale state across repeated invocations.
 reset_namespace() {
+    # The custom.metrics.k8s.io APIService registered by
+    # deploy_prometheus_adapter is cluster-scoped, not namespaced, so it
+    # outlives this namespace's own resources during teardown - the API
+    # server then cannot complete namespace deletion at all, since it keeps
+    # trying (and failing) to run discovery against that APIService's now-
+    # deleted backing Service, permanently stalling with a
+    # NamespaceDeletionDiscoveryFailure condition instead of a bounded
+    # error. Deleting it first, before the namespace, avoids that
+    # chicken-and-egg deadlock.
+    log "removing the custom.metrics.k8s.io APIService from any previous run..."
+    kubectl delete apiservice v1beta1.custom.metrics.k8s.io --ignore-not-found
+
     log "removing any previous folkidle-local namespace (idempotent teardown)..."
     kubectl delete namespace "$NAMESPACE" --ignore-not-found --wait=true --timeout=120s
     kubectl create namespace "$NAMESPACE"
@@ -192,6 +210,56 @@ spec:
 EOF
 
     kubectl -n "$NAMESPACE" rollout status deployment/"$POSTGRES_SERVICE" --timeout=180s
+}
+
+# A freshly deployed Postgres container has no schema at all - folkidle-server
+# does not run migrations on startup (deliberately: applying migrations from
+# every replica's own startup path would race multiple pods against the
+# same migration history table), so without this step every folkidle-server
+# pod crash-loops immediately on its first query with a bare
+# "relation ... does not exist" error. Port-forwards Postgres out to the
+# host temporarily, runs the same dotnet ef database update tooling used
+# throughout this project's test fixtures, then tears the port-forward
+# down - the cluster is never left with a port exposed beyond this step.
+run_database_migrations() {
+    log "applying EF Core migrations against $POSTGRES_SERVICE..."
+
+    local local_port=15432
+    local pf_log
+    pf_log="$(mktemp)"
+    kubectl -n "$NAMESPACE" port-forward deployment/"$POSTGRES_SERVICE" "${local_port}:5432" >"$pf_log" 2>&1 &
+    local port_forward_pid=$!
+
+    local waited=0
+    while ! grep -q "Forwarding from" "$pf_log" 2>/dev/null; do
+        if ! kill -0 "$port_forward_pid" 2>/dev/null; then
+            cat "$pf_log" >&2
+            rm -f "$pf_log"
+            fail "kubectl port-forward to $POSTGRES_SERVICE exited before becoming ready."
+        fi
+        sleep 1
+        waited=$((waited + 1))
+        if [ "$waited" -ge 30 ]; then
+            kill "$port_forward_pid" 2>/dev/null || true
+            rm -f "$pf_log"
+            fail "timed out waiting for the Postgres port-forward to become ready."
+        fi
+    done
+
+    local migrate_status=0
+    (
+        cd server/FolkIdle.Server
+        FOLKIDLE_DB_CONN="Host=127.0.0.1;Port=${local_port};Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}" \
+            dotnet ef database update
+    ) || migrate_status=$?
+
+    kill "$port_forward_pid" 2>/dev/null || true
+    wait "$port_forward_pid" 2>/dev/null || true
+    rm -f "$pf_log"
+
+    if [ "$migrate_status" -ne 0 ]; then
+        fail "dotnet ef database update failed - see output above."
+    fi
 }
 
 # Deploys pgbouncer as a connection pooler sitting between folkidle-server
@@ -326,6 +394,350 @@ EOF
     kubectl -n "$NAMESPACE" rollout status deployment/"$REDIS_SERVICE" --timeout=180s
 }
 
+# Modul: enables the metrics-server addon (Minikube-specific - k3s ships
+# its own metrics-server by default and does not need this step), which is
+# what the HPA's CPU/RAM Resource metric entry in hpa.yaml actually needs
+# to resolve a value at all. Without it the HPA shows "unknown" for cpu
+# utilization indefinitely and never scales on that metric.
+enable_metrics_server() {
+    if [ "$CLUSTER_KIND" = "minikube" ]; then
+        log "enabling the metrics-server addon..."
+        minikube addons enable metrics-server
+    else
+        log "k3s ships its own metrics-server by default - skipping addon enable."
+    fi
+}
+
+# Deploys a minimal Prometheus scraping every pod in this namespace that
+# carries the prometheus.io/scrape annotation (see deployment.yaml) - the
+# same discovery convention real production Prometheus deployments use.
+# This is what actually makes the custom Prometheus metrics in hpa.yaml
+# (folkidle_active_sessions_total, folkidle_tick_duration_milliseconds)
+# observable at all; without a Prometheus instance scraping the pods there
+# is nothing for prometheus-adapter below to read.
+deploy_prometheus() {
+    log "deploying Prometheus ($PROMETHEUS_IMAGE) with pod-annotation scrape discovery..."
+    kubectl -n "$NAMESPACE" apply -f - <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ${PROMETHEUS_SERVICE}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ${PROMETHEUS_SERVICE}
+  namespace: ${NAMESPACE}
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ${PROMETHEUS_SERVICE}
+  namespace: ${NAMESPACE}
+subjects:
+- kind: ServiceAccount
+  name: ${PROMETHEUS_SERVICE}
+  namespace: ${NAMESPACE}
+roleRef:
+  kind: Role
+  name: ${PROMETHEUS_SERVICE}
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${PROMETHEUS_SERVICE}-config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 10s
+    scrape_configs:
+      - job_name: folkidle-server
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - ${NAMESPACE}
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: \$1:\$2
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${PROMETHEUS_SERVICE}
+  labels:
+    app: ${PROMETHEUS_SERVICE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${PROMETHEUS_SERVICE}
+  template:
+    metadata:
+      labels:
+        app: ${PROMETHEUS_SERVICE}
+    spec:
+      serviceAccountName: ${PROMETHEUS_SERVICE}
+      containers:
+      - name: prometheus
+        image: ${PROMETHEUS_IMAGE}
+        args:
+          - --config.file=/etc/prometheus/prometheus.yml
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+          - name: config
+            mountPath: /etc/prometheus
+        readinessProbe:
+          httpGet:
+            path: /-/ready
+            port: 9090
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: ${PROMETHEUS_SERVICE}-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${PROMETHEUS_SERVICE}
+spec:
+  selector:
+    app: ${PROMETHEUS_SERVICE}
+  ports:
+  - port: 9090
+    targetPort: 9090
+EOF
+
+    kubectl -n "$NAMESPACE" rollout status deployment/"$PROMETHEUS_SERVICE" --timeout=180s
+}
+
+# Deploys prometheus-adapter, which is what actually exposes Prometheus
+# series as the custom.metrics.k8s.io API the HPA controller reads
+# folkidle_active_sessions_total and folkidle_tick_duration_milliseconds
+# from (see hpa.yaml's two Pods-type metric entries). Registers as a
+# Kubernetes aggregated APIService - insecureSkipTLSVerify is used instead
+# of a real CA bundle because this is a local development cluster with a
+# self-signed serving certificate the adapter generates for itself at
+# startup; a real deployment must supply and verify a proper certificate.
+#
+# folkidle_tick_duration_milliseconds is a Prometheus histogram (_bucket/
+# _sum/_count series, not a single value - see NetworkBroadcastSystem.
+# HandleMetrics) - a bare HPA reference to that name cannot resolve to
+# anything on its own. The adapter rule below is what actually makes it
+# resolve: it computes the mean tick duration
+# (folkidle_tick_duration_milliseconds_sum / ..._count) per pod and
+# exposes that under the exact name folkidle_tick_duration_milliseconds,
+# which is the piece hpa.yaml alone cannot provide.
+deploy_prometheus_adapter() {
+    log "deploying prometheus-adapter ($PROMETHEUS_ADAPTER_IMAGE)..."
+    kubectl -n "$NAMESPACE" apply -f - <<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ${PROMETHEUS_ADAPTER_SERVICE}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ${PROMETHEUS_ADAPTER_SERVICE}
+rules:
+- apiGroups: [""]
+  resources: ["pods", "nodes", "namespaces", "services"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ${PROMETHEUS_ADAPTER_SERVICE}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ${PROMETHEUS_ADAPTER_SERVICE}
+subjects:
+- kind: ServiceAccount
+  name: ${PROMETHEUS_ADAPTER_SERVICE}
+  namespace: ${NAMESPACE}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ${PROMETHEUS_ADAPTER_SERVICE}-auth-delegator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+- kind: ServiceAccount
+  name: ${PROMETHEUS_ADAPTER_SERVICE}
+  namespace: ${NAMESPACE}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: custom-metrics-server-resources
+rules:
+- apiGroups: ["custom.metrics.k8s.io"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hpa-controller-custom-metrics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: custom-metrics-server-resources
+subjects:
+# Covers both possible identities the HPA controller may run as, depending
+# on whether the cluster's kube-controller-manager was started with
+# --use-service-account-credentials (kubeadm-based clusters, including
+# Minikube, typically enable this, giving each controller loop its own
+# ServiceAccount in kube-system) or not (falling back to the well-known
+# system:kube-controller-manager user).
+- kind: ServiceAccount
+  name: horizontal-pod-autoscaler
+  namespace: kube-system
+- kind: User
+  name: system:kube-controller-manager
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${PROMETHEUS_ADAPTER_SERVICE}-config
+data:
+  config.yaml: |
+    rules:
+    - seriesQuery: 'folkidle_active_sessions_total{namespace!="",pod!=""}'
+      resources:
+        overrides:
+          namespace: {resource: "namespace"}
+          pod: {resource: "pod"}
+      name:
+        matches: "folkidle_active_sessions_total"
+        as: "folkidle_active_sessions_total"
+      metricsQuery: 'avg(<<.Series>>{<<.LabelMatchers>>}) by (<<.GroupBy>>)'
+    - seriesQuery: 'folkidle_tick_duration_milliseconds_sum{namespace!="",pod!=""}'
+      resources:
+        overrides:
+          namespace: {resource: "namespace"}
+          pod: {resource: "pod"}
+      name:
+        matches: "folkidle_tick_duration_milliseconds_sum"
+        as: "folkidle_tick_duration_milliseconds"
+      metricsQuery: 'avg(rate(folkidle_tick_duration_milliseconds_sum{<<.LabelMatchers>>}[2m]) / rate(folkidle_tick_duration_milliseconds_count{<<.LabelMatchers>>}[2m])) by (<<.GroupBy>>)'
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${PROMETHEUS_ADAPTER_SERVICE}
+  labels:
+    app: ${PROMETHEUS_ADAPTER_SERVICE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${PROMETHEUS_ADAPTER_SERVICE}
+  template:
+    metadata:
+      labels:
+        app: ${PROMETHEUS_ADAPTER_SERVICE}
+    spec:
+      serviceAccountName: ${PROMETHEUS_ADAPTER_SERVICE}
+      containers:
+      - name: prometheus-adapter
+        image: ${PROMETHEUS_ADAPTER_IMAGE}
+        args:
+          - --prometheus-url=http://${PROMETHEUS_SERVICE}.${NAMESPACE}.svc.cluster.local:9090
+          - --metrics-relist-interval=30s
+          - --config=/etc/adapter/config.yaml
+          - --secure-port=6443
+          # Default working directory is not writable in this image - the
+          # adapter's self-signed serving certificate generation fails with
+          # a permission error unless redirected to a writable path.
+          - --cert-dir=/tmp/prometheus-adapter-certs
+        ports:
+        - containerPort: 6443
+        volumeMounts:
+          - name: config
+            mountPath: /etc/adapter
+      volumes:
+        - name: config
+          configMap:
+            name: ${PROMETHEUS_ADAPTER_SERVICE}-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${PROMETHEUS_ADAPTER_SERVICE}
+spec:
+  selector:
+    app: ${PROMETHEUS_ADAPTER_SERVICE}
+  ports:
+  - port: 443
+    targetPort: 6443
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  name: v1beta1.custom.metrics.k8s.io
+spec:
+  service:
+    name: ${PROMETHEUS_ADAPTER_SERVICE}
+    namespace: ${NAMESPACE}
+  group: custom.metrics.k8s.io
+  version: v1beta1
+  insecureSkipTLSVerify: true
+  groupPriorityMinimum: 100
+  versionPriority: 100
+EOF
+
+    # Applied separately, without -n "$NAMESPACE" - this RoleBinding
+    # declares its own namespace: kube-system (the aggregation layer's
+    # authentication-reader Role lives only there), which conflicts with a
+    # -n flag naming a different namespace on the same kubectl apply call.
+    kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ${PROMETHEUS_ADAPTER_SERVICE}-auth-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+- kind: ServiceAccount
+  name: ${PROMETHEUS_ADAPTER_SERVICE}
+  namespace: ${NAMESPACE}
+EOF
+
+    kubectl -n "$NAMESPACE" rollout status deployment/"$PROMETHEUS_ADAPTER_SERVICE" --timeout=180s
+}
+
 # Builds folkidle-server-secrets from the Postgres/Redis services just
 # deployed (in-cluster DNS names, so this only ever works from inside the
 # cluster - matching how deployment.yaml already expects to consume it) plus
@@ -393,6 +805,8 @@ print_summary() {
     echo "Postgres service: ${POSTGRES_SERVICE}.${NAMESPACE}.svc.cluster.local:5432"
     echo "pgbouncer service: ${PGBOUNCER_SERVICE}.${NAMESPACE}.svc.cluster.local:6432"
     echo "Redis service:    ${REDIS_SERVICE}.${NAMESPACE}.svc.cluster.local:6379"
+    echo "Prometheus:       kubectl -n $NAMESPACE port-forward deployment/${PROMETHEUS_SERVICE} 9090:9090"
+    echo "Custom metrics:   kubectl get --raw \"/apis/custom.metrics.k8s.io/v1beta1/namespaces/$NAMESPACE/pods/*/folkidle_active_sessions_total\""
     echo
     echo "Reach the server locally with:"
     echo "  kubectl -n $NAMESPACE port-forward deployment/folkidle-server 8080:8080"
@@ -405,10 +819,14 @@ print_summary() {
 main() {
     require_repo_root
     ensure_cluster
+    enable_metrics_server
     reset_namespace
     deploy_postgres
+    run_database_migrations
     deploy_pgbouncer
     deploy_redis
+    deploy_prometheus
+    deploy_prometheus_adapter
     create_secrets
     build_and_load_image
     apply_manifests

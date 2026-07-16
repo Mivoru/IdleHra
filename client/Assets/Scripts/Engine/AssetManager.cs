@@ -1,8 +1,10 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.ResourceManagement.ResourceLocators;
 
 namespace FolkIdle.Client.Engine
 {
@@ -35,9 +37,87 @@ namespace FolkIdle.Client.Engine
         private readonly Dictionary<string, AsyncOperationHandle> _activeHandles = new Dictionary<string, AsyncOperationHandle>();
         private readonly Dictionary<string, int> _refCounts = new Dictionary<string, int>();
 
+        // Modul: set once InitializeRemoteCatalog's routine has run to
+        // completion (success or fallback) - callers that need to know
+        // whether the OTA catalog check has finished, rather than just
+        // firing a completion callback, can poll this.
+        public bool IsRemoteCatalogReady { get; private set; }
+
         private void Awake()
         {
             _instance = this;
+        }
+
+        // Modul: OTA content catalog check - runs once at application
+        // startup, before UiLoginWindow attempts a login (see its Start()),
+        // so a fresh remote catalog is in effect before any gameplay
+        // content is ever requested through LoadAsync. This is a one-time
+        // startup routine, not a per-frame/per-tick hot path, so the
+        // allocations naturally involved in a coroutine and a handful of
+        // Addressables API calls are not in scope of this codebase's
+        // zero-allocation hot-path discipline (see SimulationEngine's tick
+        // loop server-side, WebSocketClient's per-frame dequeue budget
+        // client-side, for what that discipline actually targets).
+        //
+        // Every failure path below falls through to "keep using whatever
+        // catalog is already available locally" rather than blocking
+        // startup - Addressables.InitializeAsync failing, the remote
+        // catalog server being unreachable during CheckForCatalogUpdates,
+        // or UpdateCatalogs itself failing mid-download are all treated the
+        // same way: log a warning and proceed with onComplete, so offline
+        // play is never gated on the remote asset server responding.
+        public void InitializeRemoteCatalog(Action onComplete)
+        {
+            StartCoroutine(InitializeRemoteCatalogRoutine(onComplete));
+        }
+
+        private IEnumerator InitializeRemoteCatalogRoutine(Action onComplete)
+        {
+            AsyncOperationHandle<IResourceLocator> initHandle = Addressables.InitializeAsync(false);
+            yield return initHandle;
+
+            if (initHandle.Status != AsyncOperationStatus.Succeeded)
+            {
+                Debug.LogWarning("AssetManager: Addressables failed to initialize - continuing with whatever content is bundled in this build.");
+                Addressables.Release(initHandle);
+                IsRemoteCatalogReady = true;
+                onComplete?.Invoke();
+                yield break;
+            }
+            Addressables.Release(initHandle);
+
+            AsyncOperationHandle<List<string>> checkHandle = Addressables.CheckForCatalogUpdates(false);
+            yield return checkHandle;
+
+            // A network failure here (remote asset server unreachable)
+            // surfaces as a failed or empty result, not an exception -
+            // Addressables reports it the same way it reports "every
+            // catalog is already current." Either way the previously
+            // cached (or build-embedded, on first ever launch) catalog
+            // stays in effect, which is exactly the offline-play fallback
+            // this method exists to guarantee.
+            if (checkHandle.Status != AsyncOperationStatus.Succeeded || checkHandle.Result == null || checkHandle.Result.Count == 0)
+            {
+                Addressables.Release(checkHandle);
+                IsRemoteCatalogReady = true;
+                onComplete?.Invoke();
+                yield break;
+            }
+
+            List<string> catalogsToUpdate = checkHandle.Result;
+            Addressables.Release(checkHandle);
+
+            AsyncOperationHandle<List<IResourceLocator>> updateHandle = Addressables.UpdateCatalogs(catalogsToUpdate, false);
+            yield return updateHandle;
+
+            if (updateHandle.Status != AsyncOperationStatus.Succeeded)
+            {
+                Debug.LogWarning("AssetManager: failed to apply updated remote catalogs - continuing with the previously cached catalog.");
+            }
+
+            Addressables.Release(updateHandle);
+            IsRemoteCatalogReady = true;
+            onComplete?.Invoke();
         }
 
         private void OnDestroy()
