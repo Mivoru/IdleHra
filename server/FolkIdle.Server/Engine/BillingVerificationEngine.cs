@@ -145,6 +145,19 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
+            // Modul: mandatory signature-verification gate - checked
+            // explicitly and separately from IsValid so this requirement is
+            // visible at the call site that grants currency, rather than
+            // trusting whichever IIapReceiptValidator happens to be
+            // registered to have enforced it internally. No premium
+            // currency is granted, and no ledger row is written, unless the
+            // receipt's signature verified against a configured store
+            // public key.
+            if (!receipt.SignatureVerified)
+            {
+                return false;
+            }
+
             int premiumAmount = ResolvePremiumDiamondsForProduct(receipt.ProductId);
             if (premiumAmount <= 0)
             {
@@ -172,10 +185,7 @@ namespace FolkIdle.Server.Engine
                             return false;
                         }
 
-                        int previousBalance = profile.PremiumDiamonds;
-                        profile.PremiumDiamonds += premiumAmount;
-
-                        context.ProcessedTransactions.Add(new ProcessedTransaction
+                        bool markedProcessed = await TransactionDedupEngine.TryMarkProcessedAsync(context, new ProcessedTransaction
                         {
                             TransactionId = receipt.TransactionId,
                             PlayerId = playerId,
@@ -183,6 +193,19 @@ namespace FolkIdle.Server.Engine
                             PremiumDiamondsGranted = premiumAmount,
                             ProcessedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                         });
+
+                        if (!markedProcessed)
+                        {
+                            // Already processed - reject before granting any
+                            // currency or writing any other ledger row, even
+                            // though the store API call that produced this
+                            // receipt reported success.
+                            await transaction.RollbackAsync();
+                            return false;
+                        }
+
+                        int previousBalance = profile.PremiumDiamonds;
+                        profile.PremiumDiamonds += premiumAmount;
 
                         context.PrimaryPurchaseLedgers.Add(new PrimaryPurchaseLedger
                         {

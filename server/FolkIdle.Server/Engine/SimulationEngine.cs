@@ -1947,6 +1947,9 @@ namespace FolkIdle.Server.Engine
                     _metrics.ThrottledPacketsDropped = _networkSystem.GetThrottledCounter();
                     _ticksSinceLastBroadcast = 0;
 
+                    long broadcastSnapshotStartTimestamp = Stopwatch.GetTimestamp();
+                    FolkIdleEventSource.Log.BroadcastSnapshotStart(_activePlayers.Count);
+
                     foreach (var kvp in _activePlayers)
                     {
                         ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, kvp.Key);
@@ -1983,6 +1986,8 @@ namespace FolkIdle.Server.Engine
                                 statBitmask = sessionContextForPacket.ActiveStatusEffects.ActiveStatusEffectModifierBitmask;
                                 statDurTicks = sessionContextForPacket.ActiveStatusEffects.RemainingBuffDurationTicks;
                             }
+
+                            long packetSerializationStartTimestamp = Stopwatch.GetTimestamp();
 
                             StateUpdatePacket packet = new StateUpdatePacket
                             {
@@ -2120,8 +2125,14 @@ namespace FolkIdle.Server.Engine
                             // chance to run cleanly.
                             _networkSystem.SendToPlayer(currentPayload.PlayerId, ref packet);
                             currentPayload.NetworkDiagnosticsToken = 0; // Clear it so it only echoes once
+
+                            long packetSerializationElapsedMicroseconds = (Stopwatch.GetTimestamp() - packetSerializationStartTimestamp) * 1_000_000L / Stopwatch.Frequency;
+                            FolkIdleEventSource.Log.PacketSerializationLatency(currentPayload.PlayerId, packetSerializationElapsedMicroseconds);
                         }
                     }
+
+                    long broadcastSnapshotElapsedMicroseconds = (Stopwatch.GetTimestamp() - broadcastSnapshotStartTimestamp) * 1_000_000L / Stopwatch.Frequency;
+                    FolkIdleEventSource.Log.BroadcastSnapshotEnd(broadcastSnapshotElapsedMicroseconds, _activePlayers.Count);
                 }
 
                 stopwatch.Stop();

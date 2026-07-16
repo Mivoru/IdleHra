@@ -7,17 +7,31 @@ namespace FolkIdle.Server.Engine
     public readonly struct IapReceiptValidationResult
     {
         public readonly bool IsValid;
+
+        // Modul: a distinct, explicitly-checked flag rather than folding
+        // this into IsValid - BillingVerificationEngine.VerifyReceiptAsync
+        // gates currency-granting on this field specifically (see its own
+        // "mandatory signature-verification step" comment), so the
+        // requirement is visible at the call site that enforces it, not
+        // just buried inside whichever validator implementation happens to
+        // be registered. MockIapReceiptValidator sets this true
+        // unconditionally (it never performs a real check, by design - see
+        // its own doc comment); ProductionIapReceiptValidator sets it only
+        // when the receipt's signature actually verified against a
+        // configured store public key.
+        public readonly bool SignatureVerified;
         public readonly string TransactionId;
         public readonly string ProductId;
 
-        public IapReceiptValidationResult(bool isValid, string transactionId, string productId)
+        public IapReceiptValidationResult(bool isValid, bool signatureVerified, string transactionId, string productId)
         {
             IsValid = isValid;
+            SignatureVerified = signatureVerified;
             TransactionId = transactionId;
             ProductId = productId;
         }
 
-        public static readonly IapReceiptValidationResult Invalid = new IapReceiptValidationResult(false, string.Empty, string.Empty);
+        public static readonly IapReceiptValidationResult Invalid = new IapReceiptValidationResult(false, false, string.Empty, string.Empty);
     }
 
     // Modul: swappable store-receipt validator. TransactionId/ProductId are
@@ -27,20 +41,21 @@ namespace FolkIdle.Server.Engine
     // BillingVerificationEngine.ResolvePremiumDiamondsForProduct), so a
     // forged or replayed receipt cannot claim an arbitrary reward even if
     // it manages a plausible-looking TransactionId/ProductId pair.
-    // Production deployment must inject a real IIapReceiptValidator that
-    // verifies the receipt's signature against Apple's App Store Server API
-    // or Google's Play Developer API instead of this mock.
+    // Production deployment must inject a real IIapReceiptValidator (see
+    // ProductionIapReceiptValidator) that verifies the receipt's signature
+    // against the store's public key instead of this mock.
     public interface IIapReceiptValidator
     {
         IapReceiptValidationResult Validate(string base64Receipt);
     }
 
     // Modul: decodes the receipt as base64(JSON {"transactionId":"...",
-    // "productId":"..."}) with no signature check. Deliberately not
-    // cryptographically verified - this exists purely so the receipt
-    // decode/replay-rejection/credit flow can be exercised end to end
-    // before a real store SDK is wired in. NEVER register this
-    // implementation outside local development and tests.
+    // "productId":"..."}) with no signature check - SignatureVerified is
+    // set true unconditionally, a deliberate bypass, not an oversight, so
+    // this mock can exercise the decode/replay-rejection/credit flow
+    // without also requiring a real store key pair. Deliberately not
+    // cryptographically verified. NEVER register this implementation
+    // outside local development and tests.
     public sealed class MockIapReceiptValidator : IIapReceiptValidator
     {
         private sealed class MockReceiptPayload
@@ -84,7 +99,7 @@ namespace FolkIdle.Server.Engine
                 return IapReceiptValidationResult.Invalid;
             }
 
-            return new IapReceiptValidationResult(true, payload.TransactionId, payload.ProductId);
+            return new IapReceiptValidationResult(true, signatureVerified: true, payload.TransactionId, payload.ProductId);
         }
     }
 }

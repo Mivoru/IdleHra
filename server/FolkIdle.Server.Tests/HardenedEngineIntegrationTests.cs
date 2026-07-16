@@ -1,7 +1,10 @@
 using System;
+using System.Diagnostics.Tracing;
+using System.IO;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
@@ -3279,6 +3282,132 @@ namespace FolkIdle.Server.Tests
             byte[] buffer = new byte[Marshal.SizeOf<RequestChatMessagePacket>()];
             MemoryMarshal.Write(new Span<byte>(buffer), packet);
             return buffer;
+        }
+
+        // Modul: a fake receipt signed with a DIFFERENT key than the one
+        // ProductionIapReceiptValidator is configured to trust (the
+        // signature bytes are also explicitly corrupted, so this fails
+        // regardless of which key generated them) must be rejected by
+        // BillingVerificationEngine.VerifyReceiptAsync before any currency
+        // is granted or any ledger row is written - the mandatory
+        // signature-verification gate is BillingVerificationEngine's own
+        // explicit `if (!receipt.SignatureVerified) return false;` check,
+        // not something buried inside the validator.
+        [Fact]
+        public async Task Test_BillingVerificationEngine_InvalidReceiptSignature_RejectedWithoutBalanceChange()
+        {
+            const long testPlayerId = 970000401L;
+            const string transactionId = "iap_forged_970000401";
+            string envVarName = "FOLKIDLE_TEST_IAP_GOOGLE_PUBLIC_KEY_PATH_" + Guid.NewGuid().ToString("N");
+            string keyFilePath = Path.Combine(Path.GetTempPath(), envVarName + ".pem");
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), PremiumDiamonds = 0 });
+                await db.SaveChangesAsync();
+            }
+
+            try
+            {
+                using RSA trustedKeyPair = RSA.Create(2048);
+                File.WriteAllText(keyFilePath, trustedKeyPair.ExportSubjectPublicKeyInfoPem());
+                Environment.SetEnvironmentVariable(envVarName, keyFilePath);
+
+                string payloadJson = "{\"transactionId\":\"" + transactionId + "\",\"productId\":\"gems_pack_small\"}";
+                byte[] payloadBytes = System.Text.Encoding.UTF8.GetBytes(payloadJson);
+
+                // Signed with a key the validator was never configured to
+                // trust, then the signature bytes are corrupted on top -
+                // either defect alone is sufficient to fail verification.
+                using RSA forgingKeyPair = RSA.Create(2048);
+                byte[] signatureBytes = forgingKeyPair.SignData(payloadBytes, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                signatureBytes[0] ^= 0xFF;
+
+                string envelopeJson = "{\"provider\":\"GooglePlay\",\"payload\":\"" + Base64UrlEncode(payloadBytes) + "\",\"signature\":\"" + Base64UrlEncode(signatureBytes) + "\"}";
+                string base64Receipt = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(envelopeJson));
+
+                var receiptValidator = new ProductionIapReceiptValidator(
+                    new SecretRotationManager(envVarName),
+                    new SecretRotationManager(envVarName + "_apple_unused"));
+
+                using var offlineRedis = CreateOfflineRedisMultiplexer();
+                var redisCache = new RedisSessionCache(offlineRedis);
+                var billingEngine = new BillingVerificationEngine(_fixture.DbContextFactory, redisCache, _fixture.PlayerRegistry, _fixture.RetryingOptions, receiptValidator);
+
+                bool result = await billingEngine.VerifyReceiptAsync(testPlayerId, base64Receipt);
+
+                Assert.False(result, "A receipt with an invalid signature must be rejected.");
+
+                await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+                var profile = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+                Assert.Equal(0, profile.PremiumDiamonds);
+
+                bool anyProcessed = await verifyDb.ProcessedTransactions.AsNoTracking().AnyAsync(t => t.TransactionId == transactionId);
+                Assert.False(anyProcessed, "A rejected signature must never reach the ProcessedTransactions ledger.");
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(envVarName, null);
+                if (File.Exists(keyFilePath))
+                {
+                    File.Delete(keyFilePath);
+                }
+            }
+        }
+
+        // Modul: subscribes directly to FolkIdleEventSource - a new
+        // EventListener replays OnEventSourceCreated for every already-
+        // constructed EventSource (FolkIdleEventSource.Log is instantiated
+        // once, at static-field init), so this observes the event without
+        // needing to drive a full SimulationEngine broadcast tick.
+        [Fact]
+        public async Task Test_FolkIdleEventSource_BroadcastSnapshotEnd_CapturesLatencyEvent()
+        {
+            const long expectedElapsedMicroseconds = 42424L;
+            const long expectedActivePlayerCount = 7L;
+
+            using var listener = new CapturingEventListener();
+
+            FolkIdleEventSource.Log.BroadcastSnapshotEnd(expectedElapsedMicroseconds, expectedActivePlayerCount);
+
+            var completed = await Task.WhenAny(listener.CaptureCompletionSource.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+            Assert.True(completed == listener.CaptureCompletionSource.Task, "The EventListener never observed a BroadcastSnapshotEnd event.");
+
+            (long capturedElapsedMicroseconds, long capturedActivePlayerCount) = await listener.CaptureCompletionSource.Task;
+            Assert.Equal(expectedElapsedMicroseconds, capturedElapsedMicroseconds);
+            Assert.Equal(expectedActivePlayerCount, capturedActivePlayerCount);
+        }
+
+        private sealed class CapturingEventListener : EventListener
+        {
+            public readonly TaskCompletionSource<(long, long)> CaptureCompletionSource =
+                new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            protected override void OnEventSourceCreated(EventSource eventSource)
+            {
+                if (string.Equals(eventSource.Name, "FolkIdle-Server", StringComparison.Ordinal))
+                {
+                    EnableEvents(eventSource, EventLevel.Verbose);
+                }
+            }
+
+            protected override void OnEventWritten(EventWrittenEventArgs eventData)
+            {
+                if (eventData.EventId != FolkIdleEventSource.EventIds.BroadcastSnapshotEnd)
+                {
+                    return;
+                }
+
+                if (eventData.Payload == null || eventData.Payload.Count < 2)
+                {
+                    return;
+                }
+
+                if (eventData.Payload[0] is long elapsedMicroseconds && eventData.Payload[1] is long activePlayerCount)
+                {
+                    CaptureCompletionSource.TrySetResult((elapsedMicroseconds, activePlayerCount));
+                }
+            }
         }
     }
 }

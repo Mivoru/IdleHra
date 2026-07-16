@@ -97,6 +97,12 @@ if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") != "Production")
 var redisMultiplexer = serviceProvider.GetRequiredService<IConnectionMultiplexer>();
 TelemetryStreamer.ConfigureRedis(redisMultiplexer);
 
+// Modul: kept alive for the process lifetime via this top-level variable -
+// EventListener subscriptions are not rooted by the EventSource they
+// listen to, so an unreferenced instance is eligible for GC (silently
+// ending the subscription) the moment nothing else holds it.
+var broadcastLatencyProfiler = new BroadcastLatencyProfiler();
+
 // Modul: "+" is HttpListener's wildcard-bind prefix - listens on every
 // network interface, not just loopback. A prefix of "http://localhost:8080/"
 // only accepts connections arriving on the loopback interface; inside a
@@ -143,10 +149,20 @@ var pushNotificationTriggerEngine = new PushNotificationTriggerEngine(servicePro
 var compliancePurgeEngine = new CompliancePurgeEngine(serviceProvider, redisMultiplexer);
 var leaderboardCronEngine = new LeaderboardCronEngine(serviceProvider, redisMultiplexer);
 // Modul: MockIapReceiptValidator performs no cryptographic verification -
-// see its own doc comment. A real deployment must supply an
-// IIapReceiptValidator backed by Apple's App Store Server API / Google's
-// Play Developer API before accepting real purchases.
-var iapReceiptValidator = new MockIapReceiptValidator();
+// see its own doc comment. Production instead uses
+// ProductionIapReceiptValidator, which verifies each receipt's signature
+// against a store public key resolved through SecretRotationManager (a
+// file path injected via FOLKIDLE_IAP_GOOGLE_PUBLIC_KEY_PATH /
+// FOLKIDLE_IAP_APPLE_PUBLIC_KEY_PATH, never the key itself in an
+// environment variable - see SecretRotationManager's own doc comment).
+// Matches every other local-dev-fallback-vs-Production split already in
+// this file (connectionString/jwtSecretKey above).
+bool isProductionForIap = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") == "Production";
+IIapReceiptValidator iapReceiptValidator = isProductionForIap
+    ? new ProductionIapReceiptValidator(
+        new SecretRotationManager("FOLKIDLE_IAP_GOOGLE_PUBLIC_KEY_PATH"),
+        new SecretRotationManager("FOLKIDLE_IAP_APPLE_PUBLIC_KEY_PATH"))
+    : new MockIapReceiptValidator();
 var billingVerificationEngine = new BillingVerificationEngine(serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), serviceProvider.GetRequiredService<RedisSessionCache>(), playerRegistry, serviceProvider.GetRequiredService<RetryingDbContextOptions>(), iapReceiptValidator, networkSystem);
 networkSystem.RegisterBillingVerificationEngine(billingVerificationEngine);
 
