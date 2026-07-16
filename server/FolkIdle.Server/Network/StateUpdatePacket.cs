@@ -2,6 +2,30 @@ using System.Runtime.InteropServices;
 
 namespace FolkIdle.Server.Network
 {
+    // Modul: generic client error-feedback channel. Previously every
+    // rejected command (forge fusion, market listing, guild contribution,
+    // reroll) was a silent no-op from the player's perspective - the
+    // rejection reason existed only as a server-side Console.WriteLine.
+    // StateUpdatePacket.LastCommandResultCode carries the outcome of the
+    // most recently resolved rejectable command back to the client;
+    // Success (0) means either nothing has failed yet this session or the
+    // last attempted command succeeded - callers that need to distinguish
+    // "no command attempted" from "the last command succeeded" should track
+    // that separately client-side, this field only ever tells you the
+    // reason for the most recent rejection.
+    public enum CommandResultCode : byte
+    {
+        Success = 0,
+        InvalidPrice = 1,
+        ItemEquipped = 2,
+        InsufficientMaterials = 3,
+        InvalidActivity = 4,
+        InsufficientGold = 5,
+        TargetNotFound = 6,
+        GuildNotFound = 7,
+        GenericValidationFailure = 8
+    }
+
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct StateUpdatePacket
     {
@@ -93,8 +117,24 @@ namespace FolkIdle.Server.Network
         public int PlayerArmorRating;
         public float PlayerBlockStrengthPct;
 
-        public byte LiveOpsReserved13;
-        public byte LiveOpsReserved14;
+        // Modul: generic client error-feedback channel - the result code of
+        // the most recently resolved rejectable command (see the
+        // CommandResultCode enum above). Repurposes what was
+        // LiveOpsReserved13 - same byte, same offset, packet size
+        // unchanged.
+        public byte LastCommandResultCode;
+
+        // Modul: incrementing counter, not a boolean flag - mirrors
+        // LastSkillCastResultTick's own rationale exactly (see below): a
+        // flag would either miss two rejections landing back-to-back with
+        // the identical CommandResultCode (e.g. two consecutive
+        // InsufficientGold rejections), or need its own separate
+        // acknowledgement round-trip. Incremented once per applied
+        // CommandResultNotification, regardless of whether the new code
+        // differs from the previous one. Repurposes what was
+        // LiveOpsReserved14 - same byte, same offset, packet size
+        // unchanged.
+        public byte LastCommandResultTick;
 
         // Village Infrastructure
         public int CachedCurrentToolTier;

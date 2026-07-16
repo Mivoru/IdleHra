@@ -3864,5 +3864,229 @@ namespace FolkIdle.Server.Tests
             Assert.True(machine.IsInteractionAllowed(TutorialUiElement.Market));
             Assert.True(machine.IsInteractionAllowed(TutorialUiElement.Inventory));
         }
+
+        // Modul: proves the tick-thread exception isolation added to
+        // EngineLoop's per-player foreach actually works - a real running
+        // SimulationEngine, one player deliberately carrying a payload that
+        // throws IndexOutOfRangeException inside ProcessTick's combat
+        // resolution (CurrentMonsterId set to a value beyond
+        // ContentRegistry.Monsters' authored range - a genuine, still-open
+        // crash vector this pass did not specifically guard, used here
+        // precisely because it is real, not contrived), alongside a second,
+        // healthy player whose gathering progress must keep advancing
+        // across further real ticks. If the isolation regressed back to no
+        // try/catch, this test would never reach its assertions - the
+        // exception would propagate out of the tick thread and crash the
+        // whole test process, not just fail an assertion.
+        [Fact]
+        public async Task Test_SimulationEngine_TickException_IsolatesFailureAndKeepsOtherPlayersTicking()
+        {
+            const long healthyPlayerId = 970001001L;
+            const long brokenPlayerId = 970001002L;
+
+            var simulationEngine = CreateTestSimulationEngine();
+
+            try
+            {
+                simulationEngine.Start();
+
+                simulationEngine.InjectVirtualPlayer(new TickStatePayload
+                {
+                    PlayerId = healthyPlayerId,
+                    ActiveActivityId = 101,
+                    GatheringProgressTicks = 0,
+                    InventorySpaceRemaining = 1000
+                });
+
+                simulationEngine.InjectVirtualPlayer(new TickStatePayload
+                {
+                    PlayerId = brokenPlayerId,
+                    ActiveActivityId = 1,
+                    CurrentMonsterId = 999999,
+                    CurrentMonsterHp = 1_000_000,
+                    PlayerHp = 1_000_000,
+                    InventorySpaceRemaining = 1000
+                });
+
+                int initialHealthyProgress = simulationEngine.GetActivePlayerGatheringProgressTicks(healthyPlayerId);
+
+                await WaitForConditionAsync(
+                    () => simulationEngine.GetActivePlayerGatheringProgressTicks(healthyPlayerId) > initialHealthyProgress,
+                    "Healthy player's gathering progress never advanced - the tick thread did not survive the broken player's ProcessTick exception.");
+
+                // The broken player must be isolated (suspended, no longer
+                // ticked every cycle) rather than repeatedly re-throwing on
+                // every subsequent tick, and must still be present in
+                // _activePlayers (this pass deliberately does not remove
+                // it mid-enumeration - see the catch block's own comment).
+                await WaitForConditionAsync(
+                    () => simulationEngine.IsActivePlayerSuspended(brokenPlayerId),
+                    "Broken player was never marked suspended after its ProcessTick exception.");
+                Assert.True(simulationEngine.IsActivePlayerPresent(brokenPlayerId));
+
+                // The healthy player must keep advancing for multiple
+                // further ticks, not just the one increment already
+                // observed above - proving sustained isolation, not a
+                // one-off fluke.
+                int progressAfterIsolation = simulationEngine.GetActivePlayerGatheringProgressTicks(healthyPlayerId);
+                await WaitForConditionAsync(
+                    () => simulationEngine.GetActivePlayerGatheringProgressTicks(healthyPlayerId) > progressAfterIsolation,
+                    "Healthy player's gathering progress stalled after the broken player was isolated.");
+            }
+            finally
+            {
+                simulationEngine.Stop();
+            }
+        }
+
+        // Modul: proves ContentRegistry.GetLootTable's defensive bounds
+        // check (Part 1 of this pass) - an out-of-range or non-positive
+        // lootTableId must return an empty span, never throw, while a
+        // genuinely populated id (one of this pass's own new Fishing
+        // gathering nodes) still returns real data, proving the bounds
+        // check does not accidentally blank out valid lookups too.
+        [Fact]
+        public void Test_ContentRegistry_GetLootTable_OutOfBoundsIndexReturnsEmptySpanWithoutThrowing()
+        {
+            Assert.True(ContentRegistry.GetLootTable(-5).IsEmpty);
+            Assert.True(ContentRegistry.GetLootTable(0).IsEmpty);
+            Assert.True(ContentRegistry.GetLootTable(int.MaxValue).IsEmpty);
+            Assert.True(ContentRegistry.GetLootTable(999999).IsEmpty);
+
+            Assert.False(ContentRegistry.GetLootTable(301).IsEmpty);
+        }
+
+        // Modul: proves the guild lock-order normalization (Part 2) -
+        // concurrent JoinGuildAsync and LeaveGuildAsync requests against
+        // the SAME guild must all complete successfully (each engine
+        // method already catches and reports its own failures as a
+        // returned false rather than propagating an exception, so a
+        // lock-order-inversion deadlock that exhausted the Serializable
+        // retry policy would surface here as an unexpected false in the
+        // results, not necessarily a thrown exception).
+        [Fact]
+        public async Task Test_GuildManagementEngine_ConcurrentJoinAndLeave_NoDeadlock()
+        {
+            const long leaderPlayerId = 970001101L;
+            const string guildName = "ConcurrencyTestGuild970001101";
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = leaderPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                // Covers both the pre-join range (970001110-970001114) and
+                // the concurrent-new-joiner range (970001120-970001124)
+                // used below.
+                for (int i = 0; i < 20; i++)
+                {
+                    db.PlayerRecords.Add(new PlayerRecord { Id = 970001110L + i, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                }
+                await db.SaveChangesAsync();
+            }
+
+            var managementEngine = new GuildManagementEngine(_fixture.RetryingOptions, _fixture.PlayerRegistry);
+
+            long guildId = await managementEngine.CreateGuildAsync(leaderPlayerId, guildName);
+            Assert.True(guildId > 0);
+
+            // Raise MaxMembers so the concurrent phase below exercises
+            // lock ordering, not the (correctly enforced, but irrelevant
+            // to this test) capacity cap - leader + 5 pre-joins + 5 new
+            // concurrent joins is 11, one over the default cap of 10.
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var guildRow = await db.GuildRecords.SingleAsync(g => g.Id == guildId);
+                guildRow.MaxMembers = 50;
+                await db.SaveChangesAsync();
+            }
+
+            for (int i = 0; i < 5; i++)
+            {
+                bool preJoined = await managementEngine.JoinGuildAsync(970001110L + i, guildId);
+                Assert.True(preJoined);
+            }
+
+            // Five NEW players joining and the five already-joined members
+            // leaving, all fired concurrently against the SAME guild - the
+            // exact overlapping Join-vs-Leave race that previously risked
+            // a deadlock between JoinGuildAsync's GuildRecords-then-
+            // PlayerRecords lock order and the old LeaveGuildAsync's
+            // reversed PlayerRecords-then-GuildRecords order.
+            var tasks = new List<Task<bool>>();
+            for (int i = 0; i < 5; i++)
+            {
+                tasks.Add(managementEngine.JoinGuildAsync(970001120L + i, guildId));
+            }
+            for (int i = 0; i < 5; i++)
+            {
+                tasks.Add(managementEngine.LeaveGuildAsync(970001110L + i));
+            }
+
+            bool[] results = await Task.WhenAll(tasks);
+
+            Assert.All(results, r => Assert.True(r));
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            int remainingMembers = await verifyDb.GuildMembers.AsNoTracking().CountAsync(m => m.GuildId == guildId);
+            Assert.Equal(6, remainingMembers);
+        }
+
+        // Modul: proves the generic client error-feedback channel (Part 4)
+        // end to end - a rejected AffixRerollEngine request (no
+        // premium_diamond CommodityRecord at all, a guaranteed
+        // InsufficientMaterials rejection) must enqueue a
+        // CommandResultNotification that the running SimulationEngine's
+        // own tick thread drains into TickStatePayload.LastCommandResultCode,
+        // the exact field StateUpdatePacket.LastCommandResultCode is
+        // populated from at broadcast time.
+        [Fact]
+        public async Task Test_CommandResultCode_RejectedRerollFlushesErrorCodeToTickStatePayload()
+        {
+            const long testPlayerId = 970001201L;
+            long equipmentId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                var equipment = new EquipmentInstance
+                {
+                    PlayerId = testPlayerId,
+                    BaseItemId = "integration_test_command_result_reroll_sword",
+                    QualityTier = 1,
+                    AffixPayload = "{\"flat_hp_aaaa\":10}"
+                };
+                db.EquipmentInstances.Add(equipment);
+                await db.SaveChangesAsync();
+                equipmentId = equipment.Id;
+            }
+
+            var simulationEngine = CreateTestSimulationEngine();
+
+            try
+            {
+                simulationEngine.Start();
+
+                simulationEngine.InjectVirtualPlayer(new TickStatePayload
+                {
+                    PlayerId = testPlayerId,
+                    InventorySpaceRemaining = 1000
+                });
+
+                Assert.Equal(0, simulationEngine.GetActivePlayerLastCommandResultCode(testPlayerId));
+
+                // No premium_diamond CommodityRecord exists for this player
+                // at all - ExecuteRerollAsync must reject with
+                // InsufficientMaterials.
+                var rerollEngine = new AffixRerollEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+                await rerollEngine.ExecuteRerollAsync(testPlayerId, equipmentId, 0);
+
+                await WaitForConditionAsync(
+                    () => simulationEngine.GetActivePlayerLastCommandResultCode(testPlayerId) == (int)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials,
+                    "Rejected reroll never flushed CommandResultCode.InsufficientMaterials onto the tick-owned TickStatePayload.");
+            }
+            finally
+            {
+                simulationEngine.Stop();
+            }
+        }
     }
 }

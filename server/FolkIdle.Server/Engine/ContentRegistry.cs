@@ -147,7 +147,7 @@ namespace FolkIdle.Server.Engine
     public struct GatheringNodeDefinition
     {
         public int ActivityId;
-        public int ProfessionType; // 0 = Woodcutting, 1 = Mining
+        public int ProfessionType; // 0 = Woodcutting, 1 = Mining, 2 = Fishing, 3 = Herbalism
         public int BaseTickThreshold;
         public int BaseMasteryXpReward;
     }
@@ -198,72 +198,97 @@ namespace FolkIdle.Server.Engine
         // within it) changes no behavior.
         public static GameBalanceDefinition Balance => _balance;
 
+        // Modul: gathering-yield loot data for the Fishing (ActivityId
+        // 301-309) and Herbalism (401-412) gathering nodes added to close
+        // the material acquisition loop for the Cooking and Alchemy
+        // recipe chains (RecipeDefinition ProfessionType 4 and 5 below) -
+        // every ItemId here is one of the specific items.json material ids
+        // those recipes' Mat1Id/Mat2Id fields actually reference, verified
+        // by direct cross-reference against the recipe list. Each table is
+        // a single guaranteed entry (Weight is irrelevant with only one
+        // candidate, kept at 100 for consistency with a normal weighted
+        // table in case a second drop is ever added).
+        //
+        // Pre-existing monster (LootTableId 1-90) and Woodcutting/Mining
+        // (101-105/201-205) loot tables remain intentionally untouched and
+        // still resolve to an empty table via GetLootTable's dictionary
+        // miss path below - populating those is a separate, larger
+        // content-authoring gap outside this pass's scope (closing
+        // specifically the Alchemy/Cooking loop), not a regression
+        // introduced by this change.
         private static readonly LootTableEntry[] _lootEntries = new LootTableEntry[]
         {
+            new LootTableEntry { ItemId = 11, Weight = 100 },  // index 0: coastline_cod_raw_fishing_material
+            new LootTableEntry { ItemId = 30, Weight = 100 },  // index 1: deep_mire_eel_raw_fishing_material
+            new LootTableEntry { ItemId = 48, Weight = 100 },  // index 2: canyon_catfish_raw_fishing_material
+            new LootTableEntry { ItemId = 66, Weight = 100 },  // index 3: fjord_shark_raw_fishing_material
+            new LootTableEntry { ItemId = 84, Weight = 100 },  // index 4: astral_whale_raw_fishing_material
+            new LootTableEntry { ItemId = 102, Weight = 100 }, // index 5: river_trout_raw_fishing_material
+            new LootTableEntry { ItemId = 120, Weight = 100 }, // index 6: mud_carp_raw_fishing_material
+            new LootTableEntry { ItemId = 138, Weight = 100 }, // index 7: chasm_pike_raw_fishing_material
+            new LootTableEntry { ItemId = 156, Weight = 100 }, // index 8: steppe_salmon_raw_fishing_material
+            new LootTableEntry { ItemId = 5, Weight = 100 },   // index 9: salt_lotus_herbalism_material
+            new LootTableEntry { ItemId = 9, Weight = 100 },   // index 10: condensation_essence_alchemy_material
+            new LootTableEntry { ItemId = 14, Weight = 100 },  // index 11: peat_clump_rare_alchemy_ingredient
+            new LootTableEntry { ItemId = 24, Weight = 100 },  // index 12: screaming_mandrake_herbalism_material
+            new LootTableEntry { ItemId = 28, Weight = 100 },  // index 13: spore_pod_alchemy_material
+            new LootTableEntry { ItemId = 31, Weight = 100 },  // index 14: heartwood_core_alchemy_material
+            new LootTableEntry { ItemId = 33, Weight = 100 },  // index 15: schrat_horn_rare_alchemy_ingredient
+            new LootTableEntry { ItemId = 42, Weight = 100 },  // index 16: jagged_bloodgrass_herbalism_material
+            new LootTableEntry { ItemId = 49, Weight = 100 },  // index 17: gargoyle_heart_shard_alchemy_material
+            new LootTableEntry { ItemId = 51, Weight = 100 },  // index 18: subterranean_sawdust_rare_alchemy_ingredient
+            new LootTableEntry { ItemId = 60, Weight = 100 },  // index 19: frost_moonflower_herbalism_material
+            new LootTableEntry { ItemId = 69, Weight = 100 },  // index 20: berserker_blood_essence_rare_alchemy_ingredient
+            new LootTableEntry { ItemId = 129, Weight = 100 }, // index 21: coal_node_crafting_material - see Mining node 201 below
         };
 
-        private static readonly (int Start, int Count)[] _lootSegments = new (int Start, int Count)[]
+        // Modul: LootTableId -> (Start, Count) into _lootEntries, keyed by
+        // Dictionary rather than a fixed-size array indexed by
+        // LootTableId-1. LootTableId spans both monster ids (1-90) and
+        // gathering ActivityIds (101-412), a sparse range a dense array
+        // would need hundreds of mostly-empty slots to cover safely - the
+        // previous array was in fact sized for only 60 entries, silently
+        // stale relative to the 90 monsters currently authored. A
+        // dictionary miss (any LootTableId with no entry here) returns an
+        // empty table via GetLootTable, identical in effect to the old
+        // array's (0, 0) default for every id not listed below - this is a
+        // representation change, not a behavior change, for every existing
+        // monster and Woodcutting/Mining LootTableId.
+        private static readonly Dictionary<int, (int Start, int Count)> _lootSegments = new()
         {
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
-            (0, 0),
+            // Modul: every single Cooking recipe (ProfessionType 4) also
+            // requires Mat2Id = 129 (coal_node_crafting_material) - a
+            // Mining-sourced item, not a fishing one. Mining node 201's
+            // loot table (previously empty, like every other Woodcutting/
+            // Mining node) gets exactly this one entry so Cooking's second
+            // material is actually obtainable; the other four Mining nodes
+            // and all five Woodcutting nodes remain untouched/empty,
+            // matching the deliberate scope boundary documented above -
+            // this is the minimum addition needed to satisfy the "fully
+            // close the loop for Cooking" requirement, not a general
+            // Woodcutting/Mining loot-table fix.
+            { 201, (21, 1) },
+            { 301, (0, 1) },
+            { 302, (1, 1) },
+            { 303, (2, 1) },
+            { 304, (3, 1) },
+            { 305, (4, 1) },
+            { 306, (5, 1) },
+            { 307, (6, 1) },
+            { 308, (7, 1) },
+            { 309, (8, 1) },
+            { 401, (9, 1) },
+            { 402, (10, 1) },
+            { 403, (11, 1) },
+            { 404, (12, 1) },
+            { 405, (13, 1) },
+            { 406, (14, 1) },
+            { 407, (15, 1) },
+            { 408, (16, 1) },
+            { 409, (17, 1) },
+            { 410, (18, 1) },
+            { 411, (19, 1) },
+            { 412, (20, 1) },
         };
 
         private static ItemDefinition[] _itemDefinitions = Array.Empty<ItemDefinition>();
@@ -356,16 +381,27 @@ namespace FolkIdle.Server.Engine
             new RecipeDefinition { ResultItemId = 176, ProfessionType = 3, RequiredLevel = 10, Mat1Id = 184, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // leather_tunic_chest_armor_slot_base
             new RecipeDefinition { ResultItemId = 178, ProfessionType = 3, RequiredLevel = 10, Mat1Id = 184, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // leather_chaps_leggings_armor_slot_base
             new RecipeDefinition { ResultItemId = 179, ProfessionType = 3, RequiredLevel = 10, Mat1Id = 184, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // crude_copper_shield_shield_slot_base
-            new RecipeDefinition { ResultItemId = 194, ProfessionType = 4, RequiredLevel = 10, Mat1Id = 11, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_pond_minnow_t1_food
-            new RecipeDefinition { ResultItemId = 195, ProfessionType = 4, RequiredLevel = 20, Mat1Id = 1, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_river_trout_t2_food
-            new RecipeDefinition { ResultItemId = 196, ProfessionType = 4, RequiredLevel = 30, Mat1Id = 1, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_mud_carp_t3_food
-            new RecipeDefinition { ResultItemId = 197, ProfessionType = 4, RequiredLevel = 40, Mat1Id = 1, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_chasm_pike_t4_food
-            new RecipeDefinition { ResultItemId = 198, ProfessionType = 4, RequiredLevel = 50, Mat1Id = 1, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_steppe_salmon_t5_food
-            new RecipeDefinition { ResultItemId = 199, ProfessionType = 4, RequiredLevel = 60, Mat1Id = 1, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_coastline_cod_t6_food
-            new RecipeDefinition { ResultItemId = 200, ProfessionType = 4, RequiredLevel = 70, Mat1Id = 1, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_deep_mire_eel_t7_food
-            new RecipeDefinition { ResultItemId = 201, ProfessionType = 4, RequiredLevel = 80, Mat1Id = 1, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_canyon_catfish_t8_food
-            new RecipeDefinition { ResultItemId = 202, ProfessionType = 4, RequiredLevel = 90, Mat1Id = 1, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_fjord_shark_t9_food
-            new RecipeDefinition { ResultItemId = 203, ProfessionType = 4, RequiredLevel = 100, Mat1Id = 1, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_astral_whale_t10_food
+            // Modul: tiers 2-10 previously all repeated Mat1Id = 1
+            // (gold_ore_crafting_material, a Smithing-tier bar-refining
+            // input, not a fishing material at all) - an evident
+            // copy-paste authoring error, since every result item name
+            // already names the exact raw fish it should consume and
+            // items.json has a *_raw_fishing_material entry matching each
+            // name precisely. Corrected to the matching fish item id below;
+            // this is what actually makes Cooking craftable end to end once
+            // the Fishing gathering nodes (ActivityId 301-309) can supply
+            // these materials - unlike Alchemy's Mat1Id/Mat2Id chain, which
+            // was already internally consistent and required no fix.
+            new RecipeDefinition { ResultItemId = 194, ProfessionType = 4, RequiredLevel = 10, Mat1Id = 11, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_pond_minnow_t1_food (coastline_cod_raw_fishing_material)
+            new RecipeDefinition { ResultItemId = 195, ProfessionType = 4, RequiredLevel = 20, Mat1Id = 102, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_river_trout_t2_food (river_trout_raw_fishing_material)
+            new RecipeDefinition { ResultItemId = 196, ProfessionType = 4, RequiredLevel = 30, Mat1Id = 120, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_mud_carp_t3_food (mud_carp_raw_fishing_material)
+            new RecipeDefinition { ResultItemId = 197, ProfessionType = 4, RequiredLevel = 40, Mat1Id = 138, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_chasm_pike_t4_food (chasm_pike_raw_fishing_material)
+            new RecipeDefinition { ResultItemId = 198, ProfessionType = 4, RequiredLevel = 50, Mat1Id = 156, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_steppe_salmon_t5_food (steppe_salmon_raw_fishing_material)
+            new RecipeDefinition { ResultItemId = 199, ProfessionType = 4, RequiredLevel = 60, Mat1Id = 11, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_coastline_cod_t6_food (coastline_cod_raw_fishing_material)
+            new RecipeDefinition { ResultItemId = 200, ProfessionType = 4, RequiredLevel = 70, Mat1Id = 30, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_deep_mire_eel_t7_food (deep_mire_eel_raw_fishing_material)
+            new RecipeDefinition { ResultItemId = 201, ProfessionType = 4, RequiredLevel = 80, Mat1Id = 48, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_canyon_catfish_t8_food (canyon_catfish_raw_fishing_material)
+            new RecipeDefinition { ResultItemId = 202, ProfessionType = 4, RequiredLevel = 90, Mat1Id = 66, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_fjord_shark_t9_food (fjord_shark_raw_fishing_material)
+            new RecipeDefinition { ResultItemId = 203, ProfessionType = 4, RequiredLevel = 100, Mat1Id = 84, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_astral_whale_t10_food (astral_whale_raw_fishing_material)
             new RecipeDefinition { ResultItemId = 204, ProfessionType = 5, RequiredLevel = 10, Mat1Id = 5, Mat1Count = 2, Mat2Id = 14, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_off_t01
             new RecipeDefinition { ResultItemId = 205, ProfessionType = 5, RequiredLevel = 10, Mat1Id = 5, Mat1Count = 2, Mat2Id = 14, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_def_t01
             new RecipeDefinition { ResultItemId = 206, ProfessionType = 5, RequiredLevel = 20, Mat1Id = 9, Mat1Count = 2, Mat2Id = 24, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_off_t02
@@ -475,9 +511,23 @@ namespace FolkIdle.Server.Engine
             return false;
         }
 
+        // Modul: defensive bounds check - this is called unconditionally
+        // from the 10 Hz tick thread on every completed gather and every
+        // monster kill (SimulationEngine's gathering-yield and combat-death
+        // blocks), which as of this pass has its own outer exception
+        // isolation, but a content-authoring mistake (a gathering node or
+        // monster referencing a LootTableId outside the authored range)
+        // should not even need that safety net to fire - it degrades to
+        // "no loot this drop" instead of throwing. Zero allocation on
+        // either path: an out-of-range id returns ReadOnlySpan<LootTableEntry>.Empty,
+        // a pre-existing static value, not a newly constructed span.
         public static ReadOnlySpan<LootTableEntry> GetLootTable(int lootTableId)
         {
-            var segment = _lootSegments[lootTableId - 1];
+            if (lootTableId <= 0 || !_lootSegments.TryGetValue(lootTableId, out var segment))
+            {
+                return ReadOnlySpan<LootTableEntry>.Empty;
+            }
+
             return new ReadOnlySpan<LootTableEntry>(_lootEntries, segment.Start, segment.Count);
         }
 

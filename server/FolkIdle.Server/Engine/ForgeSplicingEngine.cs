@@ -78,6 +78,7 @@ namespace FolkIdle.Server.Engine
                 {
                     await transaction.RollbackAsync();
                     Console.WriteLine("Fusion failed: target or sacrifice item is currently equipped.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.ItemEquipped);
                     return ForgeSplicingResult.FailedItemEquipped;
                 }
 
@@ -136,6 +137,7 @@ namespace FolkIdle.Server.Engine
                 {
                     await transaction.RollbackAsync();
                     Console.WriteLine("Fusion failed: Insufficient gold.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientGold);
                     return ForgeSplicingResult.InsufficientGold;
                 }
 
@@ -188,6 +190,7 @@ namespace FolkIdle.Server.Engine
                         PlayerId = playerId,
                         ResultingQualityTier = targetItem.QualityTier
                     });
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
 
                     return ForgeSplicingResult.Success;
                 }

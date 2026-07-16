@@ -57,6 +57,21 @@ namespace FolkIdle.Server.Engine
         public long NewGuildId;
     }
 
+    // Modul: generic client error-feedback channel - the engines that
+    // reject a market/forge/reroll/guild-contribution request run on
+    // background Task.Run threads (via SafeDispatchAsync) and cannot write
+    // TickStatePayload.LastCommandResultCode directly (it is a struct field
+    // on the tick-thread-owned dictionary, not reachable by reference from
+    // another thread); they enqueue this notification instead, and the
+    // tick thread drains it into the payload the same way every other
+    // cross-thread report in this codebase works (see
+    // GuildMembershipChangeNotification for the identical pattern).
+    public struct CommandResultNotification
+    {
+        public long PlayerId;
+        public byte ResultCode;
+    }
+
     public struct MailClaimRequest
     {
         public long PlayerId;
@@ -245,6 +260,22 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<RegionCompletionNotification> RegionCompletionUpdateQueue { get; } = new();
         public ConcurrentQueue<CombatLootDropNotification> CombatLootDropQueue { get; } = new();
         public ConcurrentQueue<GuildMembershipChangeNotification> GuildMembershipChangeQueue { get; } = new();
+        public ConcurrentQueue<CommandResultNotification> CommandResultQueue { get; } = new();
+
+        // Modul: single shared enqueue point for the generic client
+        // error-feedback channel, called from every engine that rejects a
+        // market/forge/reroll/guild-contribution request (MarketEscrowEngine,
+        // ForgeSplicingEngine, AffixRerollEngine, GuildContributionEngine)
+        // instead of each duplicating the same three-line notification
+        // construction. Callers holding an optional/nullable
+        // PlayerSessionRegistry reference use the null-conditional
+        // operator (playerRegistry?.EnqueueCommandResult(...)) so a
+        // registry-less construction (some test fixtures) degrades to a
+        // safe no-op rather than a null-reference exception.
+        public void EnqueueCommandResult(long playerId, byte resultCode)
+        {
+            CommandResultQueue.Enqueue(new CommandResultNotification { PlayerId = playerId, ResultCode = resultCode });
+        }
 
         public void RegisterPlayer(long playerId)
         {

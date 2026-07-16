@@ -223,6 +223,23 @@ namespace FolkIdle.Server.Engine
         public bool QuestSlot2Claimed;
         public bool QuestProgressDirty;
 
+        // Modul: generic client error-feedback channel - mirrors
+        // StateUpdatePacket.LastCommandResultCode (see that field's own
+        // comment). Set from the tick thread by draining
+        // PlayerSessionRegistry.CommandResultQueue (the engines that
+        // reject market/forge/reroll/guild-contribution requests run on
+        // background Task.Run threads via SafeDispatchAsync and cannot
+        // write this struct field directly, so they enqueue a
+        // notification the same way every other cross-thread report in
+        // this codebase does - see GuildMembershipChangeQueue for the
+        // identical pattern).
+        public byte LastCommandResultCode;
+
+        // Modul: incrementing counter, not a flag - see
+        // StateUpdatePacket.LastCommandResultTick's own comment. Incremented
+        // by the same tick-thread drain that sets LastCommandResultCode.
+        public byte LastCommandResultTick;
+
         // Race Masteries
         public int HumanMasteryLevel;
         public int VilaMasteryLevel;

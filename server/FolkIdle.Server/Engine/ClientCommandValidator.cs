@@ -587,6 +587,46 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
+        // Modul: CommandType.ChangeActivity previously wrote cmd.TargetId
+        // (an unbounded client-supplied long) straight into
+        // currentPayload.ActiveActivityId with no validator call at all -
+        // every sibling command branch gates through one. A negative or
+        // arbitrarily large TargetId was not immediately exploitable only
+        // because downstream bound checks elsewhere in the tick happened
+        // to catch it; this closes the gap at the source instead of
+        // depending on that being true forever. Accepts exactly the
+        // domain the tick loop already treats as a valid activity: 0
+        // (idle), the World Boss sentinel, any authored gathering node
+        // ActivityId, or any id within the authored monster range.
+        private const long WorldBossActivityId = 9999L;
+
+        public static bool ValidateChangeActivityRequest(ref TickStatePayload payload, long targetActivityId)
+        {
+            if (targetActivityId < 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 6, Value1 = 1, Value2 = 0, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            if (targetActivityId == 0 || targetActivityId == WorldBossActivityId)
+            {
+                return true;
+            }
+
+            if (ContentRegistry.TryGetGatheringNode(targetActivityId, out _))
+            {
+                return true;
+            }
+
+            if (targetActivityId <= ContentRegistry.Monsters.Length)
+            {
+                return true;
+            }
+
+            TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 6, Value1 = 2, Value2 = 0, Timestamp = Environment.TickCount64 });
+            return false;
+        }
+
         public static bool ValidateMailCommands(ref TickStatePayload payload, byte commandType, long targetId)
         {
             if (commandType == 11 || commandType == 12)

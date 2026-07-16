@@ -2,6 +2,24 @@ using System.Runtime.InteropServices;
 
 namespace FolkIdle.Client.Network
 {
+    // Modul: mirrors server/FolkIdle.Server/Network/StateUpdatePacket.cs
+    // exactly - see that file's comment. Generic client error-feedback
+    // channel: LastCommandResultCode carries the reason the most recently
+    // attempted rejectable command (forge fusion, market listing, guild
+    // contribution, reroll) failed, replacing the previous silent no-op.
+    public enum CommandResultCode : byte
+    {
+        Success = 0,
+        InvalidPrice = 1,
+        ItemEquipped = 2,
+        InsufficientMaterials = 3,
+        InvalidActivity = 4,
+        InsufficientGold = 5,
+        TargetNotFound = 6,
+        GuildNotFound = 7,
+        GenericValidationFailure = 8
+    }
+
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct StateUpdatePacket
     {
@@ -87,8 +105,17 @@ namespace FolkIdle.Client.Network
         public int PlayerArmorRating;
         public float PlayerBlockStrengthPct;
 
-        public byte LiveOpsReserved13;
-        public byte LiveOpsReserved14;
+        // Modul: mirrors server/FolkIdle.Server/Network/StateUpdatePacket.cs
+        // exactly. Repurposes what was LiveOpsReserved13; packet size
+        // unchanged.
+        public byte LastCommandResultCode;
+
+        // Modul: mirrors server/FolkIdle.Server/Network/StateUpdatePacket.cs
+        // exactly - incrementing counter, not a flag, so two rejections
+        // with the identical CommandResultCode back-to-back are still
+        // distinguishable client-side. Repurposes what was
+        // LiveOpsReserved14; packet size unchanged.
+        public byte LastCommandResultTick;
 
         // Village Infrastructure
         public int CachedCurrentToolTier;

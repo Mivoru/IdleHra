@@ -10,10 +10,12 @@ namespace FolkIdle.Server.Engine
     public class GuildContributionEngine
     {
         private readonly IServiceProvider _serviceProvider;
+        private readonly PlayerSessionRegistry? _playerRegistry;
 
-        public GuildContributionEngine(IServiceProvider serviceProvider)
+        public GuildContributionEngine(IServiceProvider serviceProvider, PlayerSessionRegistry? playerRegistry = null)
         {
             _serviceProvider = serviceProvider;
+            _playerRegistry = playerRegistry;
         }
 
         public async Task ContributeEquipmentAsync(long playerId, long guildId, long equipmentInstanceId)
@@ -30,6 +32,7 @@ namespace FolkIdle.Server.Engine
                 if (equip == null || equip.PlayerId != playerId || equip.IsLockedInEscrow)
                 {
                     Console.WriteLine("Contribution failed: Equipment unavailable.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                     return;
                 }
 
@@ -44,6 +47,7 @@ namespace FolkIdle.Server.Engine
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
             }
             catch (Exception ex)
             {
@@ -66,6 +70,7 @@ namespace FolkIdle.Server.Engine
                 if (goldRecord == null || goldRecord.Quantity < goldAmount)
                 {
                     Console.WriteLine("Contribution failed: Insufficient gold.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientGold);
                     return;
                 }
 
@@ -89,6 +94,7 @@ namespace FolkIdle.Server.Engine
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
             }
             catch (Exception ex)
             {

@@ -45,6 +45,7 @@ namespace FolkIdle.Server.Engine
                 {
                     await transaction.RollbackAsync();
                     Console.WriteLine("MarketListItem failed: Item unavailable.");
+                    _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                     return false;
                 }
 
@@ -55,6 +56,7 @@ namespace FolkIdle.Server.Engine
                 {
                     await transaction.RollbackAsync();
                     Console.WriteLine("MarketListItem failed: Item is currently equipped.");
+                    _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.ItemEquipped);
                     return false;
                 }
 
@@ -72,6 +74,7 @@ namespace FolkIdle.Server.Engine
                     {
                         await transaction.RollbackAsync();
                         Console.WriteLine($"MarketListItem rejected: price {limitPrice} outside volatility corridor [{minPrice}, {maxPrice}] for {equip.BaseItemId} T{equip.QualityTier}.");
+                        _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InvalidPrice);
                         return false;
                     }
                 }
@@ -110,6 +113,7 @@ namespace FolkIdle.Server.Engine
                 await transaction.CommitAsync();
 
                 Console.WriteLine($"Direct Listing: Item {instanceId} listed by Player {playerId} for {limitPrice}g.");
+                _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
                 return true;
             }
             catch (Exception ex)
@@ -160,6 +164,7 @@ namespace FolkIdle.Server.Engine
                 if (buyerGold == null || buyerGold.Quantity < order.Price)
                 {
                     Console.WriteLine("MarketBuyItem failed: Insufficient gold.");
+                    _playerRegistry.EnqueueCommandResult(buyerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientGold);
                     return;
                 }
 
@@ -169,6 +174,7 @@ namespace FolkIdle.Server.Engine
                 if (equip == null)
                 {
                     Console.WriteLine("MarketBuyItem failed: Equipment not found.");
+                    _playerRegistry.EnqueueCommandResult(buyerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                     return;
                 }
 
@@ -296,6 +302,7 @@ namespace FolkIdle.Server.Engine
                 await transaction.CommitAsync();
 
                 Console.WriteLine($"Direct Buy: Order {orderId} purchased by {buyerId} for {order.Price}g.");
+                _playerRegistry.EnqueueCommandResult(buyerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
             }
             catch (Exception ex)
             {

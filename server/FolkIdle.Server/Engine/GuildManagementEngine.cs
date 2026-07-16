@@ -200,6 +200,24 @@ namespace FolkIdle.Server.Engine
         // member with the highest ContributionPoints (lowest PlayerId on a
         // tie, so the outcome is deterministic). If the caller was the last
         // member, the guild record itself is deleted.
+        //
+        // Modul: lock-order normalization. Every other guild-mutating
+        // method (JoinGuildAsync, KickMemberAsync) locks GuildRecords
+        // before PlayerRecords; this method previously locked PlayerRecords
+        // first (needed the profile row to discover which guild to act on)
+        // then GuildRecords second - the exact reverse order, which is a
+        // genuine Postgres Serializable deadlock hazard the moment a leave
+        // and a concurrent join/kick target the same guild. Resolving the
+        // target guild id from the GuildMembers row via an unlocked,
+        // AsNoTracking read BEFORE taking any FOR UPDATE lock breaks that
+        // chicken-and-egg problem, letting this method lock in the same
+        // Guild-then-Player order as its siblings. The profile's GuildId is
+        // re-checked against the resolved guildId after both locks are
+        // held, since the unlocked lookup could be stale by the time the
+        // locks are acquired (the player left/rejoined a different guild
+        // in a concurrent, already-committed transaction) - a mismatch
+        // means this attempt is stale and must fail cleanly rather than
+        // mutate the wrong guild.
         public async Task<bool> LeaveGuildAsync(long playerId)
         {
             await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
@@ -212,21 +230,31 @@ namespace FolkIdle.Server.Engine
                     context.ChangeTracker.Clear();
                     using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
-                    var profile = await context.PlayerRecords
-                        .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
-                        .SingleOrDefaultAsync();
+                    var membershipLookup = await context.GuildMembers
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync(m => m.PlayerId == playerId);
 
-                    if (profile == null || profile.GuildId <= 0)
+                    if (membershipLookup == null)
                     {
                         await transaction.RollbackAsync();
                         return 0L;
                     }
 
-                    long guildId = profile.GuildId;
+                    long guildId = membershipLookup.GuildId;
 
                     var guild = await context.GuildRecords
                         .FromSqlRaw("SELECT * FROM \"GuildRecords\" WHERE \"Id\" = {0} FOR UPDATE", guildId)
                         .SingleOrDefaultAsync();
+
+                    var profile = await context.PlayerRecords
+                        .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
+                        .SingleOrDefaultAsync();
+
+                    if (profile == null || profile.GuildId != guildId)
+                    {
+                        await transaction.RollbackAsync();
+                        return 0L;
+                    }
 
                     var membership = await context.GuildMembers
                         .FirstOrDefaultAsync(m => m.PlayerId == playerId && m.GuildId == guildId);

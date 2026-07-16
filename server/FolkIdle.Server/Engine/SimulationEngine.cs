@@ -281,6 +281,43 @@ namespace FolkIdle.Server.Engine
             }
         }
 
+        // Test-only observability for tick-thread exception isolation:
+        // GatheringProgressTicks is a simple, RNG-free, monotonically
+        // increasing counter while a gathering activity is active, making
+        // it a clean proxy for "the tick thread is still alive and still
+        // processing this specific player" across repeated real ticks.
+        internal int GetActivePlayerGatheringProgressTicks(long playerId)
+        {
+            lock (_activePlayers)
+            {
+                return _activePlayers.TryGetValue(playerId, out var payload) ? payload.GatheringProgressTicks : -1;
+            }
+        }
+
+        internal bool IsActivePlayerPresent(long playerId)
+        {
+            lock (_activePlayers)
+            {
+                return _activePlayers.ContainsKey(playerId);
+            }
+        }
+
+        internal bool IsActivePlayerSuspended(long playerId)
+        {
+            lock (_activePlayers)
+            {
+                return _activePlayers.TryGetValue(playerId, out var payload) && payload.IsSuspended;
+            }
+        }
+
+        internal int GetActivePlayerLastCommandResultCode(long playerId)
+        {
+            lock (_activePlayers)
+            {
+                return _activePlayers.TryGetValue(playerId, out var payload) ? payload.LastCommandResultCode : -1;
+            }
+        }
+
         // Modul: single entry point for adding a player to _activePlayers -
         // keeps _guildMembersIndex synchronized so no add site can forget
         // the index update. See RemoveActivePlayer for the matching removal
@@ -663,6 +700,22 @@ namespace FolkIdle.Server.Engine
                             Packet = new ClientCommandPacket { Command = CommandType.ReloadState }
                         });
                         System.Threading.Interlocked.Increment(ref GuildMembershipReloadStatesIssued);
+                    }
+                }
+
+                // Modul: generic client error-feedback channel drain - see
+                // CommandResultNotification's own comment. Zero-allocation:
+                // pure struct field writes against an already-resolved ref
+                // into _activePlayers, matching the guild-membership drain
+                // immediately above.
+                while (_playerRegistry.CommandResultQueue.TryDequeue(out var commandResult))
+                {
+                    ref var resultPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, commandResult.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref resultPayload))
+                    {
+                        resultPayload.LastCommandResultCode = commandResult.ResultCode;
+                        unchecked { resultPayload.LastCommandResultTick++; }
+                        resultPayload.IsDirty = true;
                     }
                 }
 
@@ -1149,6 +1202,13 @@ namespace FolkIdle.Server.Engine
                     }
                     else if (cmd.Command == CommandType.ChangeActivity)
                     {
+                        if (!ClientCommandValidator.ValidateChangeActivityRequest(ref currentPayload, cmd.TargetId))
+                        {
+                            RemoveActivePlayer(routingPlayerId);
+                            _networkSystem.ForceDisconnect(routingPlayerId);
+                            continue;
+                        }
+
                         currentPayload.ActiveActivityId = cmd.TargetId;
                         currentPayload.CurrentProgressTicks = 0;
                         currentPayload.CurrentMonsterId = 0;
@@ -2000,8 +2060,45 @@ namespace FolkIdle.Server.Engine
                             }
                         }
 
-                        ProcessTick(ref currentPayload);
-                        _checkpointManager.TrackState(ref currentPayload);
+                        // Modul: tick-thread exception isolation. This
+                        // foreach runs on the single dedicated tick thread -
+                        // an uncaught exception here previously propagated
+                        // straight out of EngineLoop and killed the whole
+                        // process, taking down every connected player's
+                        // session at once over one corrupt payload. The
+                        // try/catch itself costs nothing when no exception
+                        // is thrown (the .NET JIT does not allocate or
+                        // branch-cost a try region on the non-throwing
+                        // path), so this does not violate the 10 Hz loop's
+                        // zero-allocation discipline - only the actual
+                        // catch body (an exceptional, not-every-tick path)
+                        // allocates, the same way any other error-logging
+                        // call in this codebase does.
+                        //
+                        // Cannot call RemoveActivePlayer here - this block
+                        // is iterating _activePlayers itself via foreach,
+                        // and mutating the dictionary mid-enumeration would
+                        // throw InvalidOperationException on the very next
+                        // MoveNext, defeating the isolation this exists to
+                        // provide. Setting IsSuspended instead relies on
+                        // this loop's own guard above (line ~1962) to skip
+                        // the player on every subsequent tick without
+                        // touching the collection's structure; ForceDisconnect
+                        // only touches NetworkBroadcastSystem's own
+                        // _connectedClients dictionary, never _activePlayers,
+                        // so it is safe to call mid-enumeration too.
+                        try
+                        {
+                            ProcessTick(ref currentPayload);
+                            _checkpointManager.TrackState(ref currentPayload);
+                        }
+                        catch (Exception tickException)
+                        {
+                            Console.WriteLine($"Tick processing failed for PlayerId {currentPayload.PlayerId}: {tickException.Message}");
+                            currentPayload.IsSuspended = true;
+                            currentPayload.IsDirty = true;
+                            _networkSystem.ForceDisconnect(currentPayload.PlayerId);
+                        }
                     }
                 }
 
@@ -2144,6 +2241,8 @@ namespace FolkIdle.Server.Engine
                                 PlayerAccuracyRating = broadcastCombatStats.AccuracyRating,
                                 PlayerArmorRating = broadcastCombatStats.FlatPhysicalArmor,
                                 PlayerBlockStrengthPct = broadcastCombatStats.BlockStrengthPct,
+                                LastCommandResultCode = currentPayload.LastCommandResultCode,
+                                LastCommandResultTick = currentPayload.LastCommandResultTick,
                                 CitizenMultiSlotsUnlocked = currentPayload.CitizenMultiSlotsUnlocked,
                                 GuildLogisticsCurrentStock = currentPayload.GuildLogisticsCurrentStock,
                                 GuildLogisticsTargetRequirement = currentPayload.GuildLogisticsTargetRequirement,
@@ -3238,10 +3337,15 @@ namespace FolkIdle.Server.Engine
                         int additionalYieldBonus = (int)(100f * (yieldBonusPct / 100f)); // Add to multiplier
 
                         // Modul 13: Kobold ore duplication (Mining) / Moosleute yield
-                        // bonus. No dedicated Herbalism profession exists in this
-                        // codebase (only Woodcutting=0 and Mining=1), so Moosleute's
-                        // "double harvest" is applied to Woodcutting as the closest
-                        // available gathering profession.
+                        // bonus. Fishing (ProfessionType 2) and Herbalism
+                        // (ProfessionType 3) fall through to the Moosleute
+                        // branch below along with Woodcutting - Kobold's ore
+                        // duplication is intentionally Mining-specific, and
+                        // no dedicated racial bonus exists yet for Fishing/
+                        // Herbalism, so Moosleute's "double harvest" is
+                        // applied to them as the closest available bonus
+                        // rather than granting neither profession any
+                        // racial yield bonus at all.
                         if (gatheringNode.ProfessionType == 1)
                         {
                             additionalYieldBonus += (int)RaceMasteryResolver.GetKoboldOreDuplicationBonusPct(payload.KoboldMasteryLevel);

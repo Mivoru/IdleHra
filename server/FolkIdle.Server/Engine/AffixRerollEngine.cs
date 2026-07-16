@@ -12,10 +12,12 @@ namespace FolkIdle.Server.Engine
     public class AffixRerollEngine
     {
         private readonly IServiceProvider _serviceProvider;
+        private readonly PlayerSessionRegistry? _playerRegistry;
 
-        public AffixRerollEngine(IServiceProvider serviceProvider)
+        public AffixRerollEngine(IServiceProvider serviceProvider, PlayerSessionRegistry? playerRegistry = null)
         {
             _serviceProvider = serviceProvider;
+            _playerRegistry = playerRegistry;
         }
 
         public async Task ExecuteRerollAsync(long playerId, long targetItemGuid, int affixIndex)
@@ -32,18 +34,21 @@ namespace FolkIdle.Server.Engine
                 if (targetItem == null || targetItem.PlayerId != playerId)
                 {
                     Console.WriteLine("Reroll failed: Item not found or ownership mismatch.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(targetItem.AffixPayload))
                 {
                     Console.WriteLine("Reroll failed: Item has no affixes.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                     return;
                 }
 
                 if (targetItem.IsAffixLocked || targetItem.AffixPayload.Contains("\"is_affix_locked\":true", StringComparison.OrdinalIgnoreCase))
                 {
                     Console.WriteLine("Reroll failed: Item affixes are locked.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                     return;
                 }
 
@@ -60,6 +65,7 @@ namespace FolkIdle.Server.Engine
                 if (rerollableKeys.Count <= affixIndex || affixIndex < 0)
                 {
                     Console.WriteLine("Reroll failed: Affix index out of bounds.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                     return;
                 }
 
@@ -73,6 +79,7 @@ namespace FolkIdle.Server.Engine
                 if (premiumRecord == null || premiumRecord.Quantity < cost)
                 {
                     Console.WriteLine("Reroll failed: Insufficient premium currency (premium_diamond).");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
                     return;
                 }
 
@@ -104,6 +111,7 @@ namespace FolkIdle.Server.Engine
                 await transaction.CommitAsync();
                 
                 Console.WriteLine($"Reroll Success: {affixKeyToReroll} -> {newAffixKey}");
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
             }
             catch (Exception ex)
             {

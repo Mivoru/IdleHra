@@ -97,6 +97,24 @@ namespace FolkIdle.Client.Engine
         // interpolation and no re-derivation needed here.
         public bool VisualIsFreshAccount { get; private set; }
 
+        // Modul: generic client error-feedback channel - the result code
+        // of the most recently resolved rejectable command (market orders,
+        // forge fusion, item reroll, guild contribution - see
+        // CommandResultCode in StateUpdatePacket.cs). Discrete, not
+        // interpolated - it is a one-shot outcome code, not a continuously
+        // varying value, so Lerp'ing it would produce meaningless
+        // intermediate byte values between two real codes. Edge-detected
+        // via LastCommandResultTick (an incrementing counter, not the code
+        // itself) exactly like ApplyLastSkillCastState/
+        // LastSkillCastResultTick below - comparing the code alone would
+        // miss two different rejections that happen to share the same
+        // CommandResultCode back-to-back. UI binding components (a toast/
+        // error panel) should subscribe to OnCommandResultReceived rather
+        // than polling VisualLastCommandResultCode directly.
+        public byte VisualLastCommandResultCode { get; private set; }
+        public event System.Action<byte> OnCommandResultReceived;
+        private byte _lastAppliedCommandResultTick;
+
         public int VisualMaxVillagePopulation;
         public int VisualCurrentToolTier;
         public int VisualInnMaturationBonus;
@@ -430,6 +448,7 @@ namespace FolkIdle.Client.Engine
                     ApplyCharacterPacketState(in packet);
                     ApplyCombatPacketState(in packet);
                     ApplyLastSkillCastState(in packet);
+                    ApplyCommandResultState(in packet);
 
                     _hasReceivedState = true;
                 }
@@ -570,6 +589,7 @@ namespace FolkIdle.Client.Engine
             ApplyCharacterPacketState(in _snapshotB.Packet);
             ApplyCombatPacketState(in _snapshotB.Packet);
             ApplyLastSkillCastState(in _snapshotB.Packet);
+            ApplyCommandResultState(in _snapshotB.Packet);
         }
 
         // Modul: discrete combat-instance identity (which monster, which
@@ -606,6 +626,22 @@ namespace FolkIdle.Client.Engine
 
             _lastAppliedSkillCastResultTick = resultTick;
             OnSkillCastResult?.Invoke(packet.LastSkillCastId, packet.LastSkillCastSuccess != 0);
+        }
+
+        // Modul: edge-detects a newly-resolved rejectable command via
+        // LastCommandResultTick, mirroring ApplyLastSkillCastState exactly
+        // above - see this class's own VisualLastCommandResultCode comment
+        // for why the tick counter, not the code itself, is what gets
+        // compared. Tick 0 means "no rejectable command has resolved this
+        // session" and is never fired.
+        private void ApplyCommandResultState(in StateUpdatePacket packet)
+        {
+            byte resultTick = packet.LastCommandResultTick;
+            if (resultTick == 0 || resultTick == _lastAppliedCommandResultTick) return;
+
+            _lastAppliedCommandResultTick = resultTick;
+            VisualLastCommandResultCode = packet.LastCommandResultCode;
+            OnCommandResultReceived?.Invoke(packet.LastCommandResultCode);
         }
 
         // Modul: fires OnMonsterHit/OnPlayerHit exactly once per real server
