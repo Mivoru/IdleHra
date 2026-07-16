@@ -178,6 +178,7 @@ namespace FolkIdle.Client.Engine
         public uint VisualRemainingBuffDurationTicks { get; private set; }
         public uint VisualActiveChroniclePassLevel { get; private set; }
         public uint VisualAccumulatedSeasonalXp { get; private set; }
+        public ulong VisualClaimedMilestonesBitmask { get; private set; }
         public uint VisualActiveMatchMmr { get; private set; }
         public uint VisualGlobalNodeRemainingHp { get; private set; }
         public System.Guid VisualActiveMatchId { get; private set; }
@@ -442,6 +443,7 @@ namespace FolkIdle.Client.Engine
                     VisualRemainingBuffDurationTicks = packet.RemainingBuffDurationTicks;
                     VisualActiveChroniclePassLevel = packet.ActiveChroniclePassLevel;
                     VisualAccumulatedSeasonalXp = packet.AccumulatedSeasonalXp;
+                    VisualClaimedMilestonesBitmask = packet.ClaimedMilestonesBitmask;
                     VisualActiveMatchMmr = packet.VisualActiveMatchMmr;
                     VisualGlobalNodeRemainingHp = packet.GlobalNodeRemainingHp;
                     VisualActiveMatchId = packet.ActiveMatchId;
@@ -576,6 +578,7 @@ namespace FolkIdle.Client.Engine
             VisualCraftingEngineStatus = _snapshotB.Packet.CraftingEngineStatus;
             VisualActiveChroniclePassLevel = _snapshotB.Packet.ActiveChroniclePassLevel;
             VisualAccumulatedSeasonalXp = _snapshotB.Packet.AccumulatedSeasonalXp;
+            VisualClaimedMilestonesBitmask = _snapshotB.Packet.ClaimedMilestonesBitmask;
             VisualActiveMatchMmr = _snapshotB.Packet.VisualActiveMatchMmr;
             VisualGlobalNodeRemainingHp = _snapshotB.Packet.GlobalNodeRemainingHp;
             VisualActiveMatchId = _snapshotB.Packet.ActiveMatchId;

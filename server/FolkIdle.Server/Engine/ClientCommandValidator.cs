@@ -953,13 +953,6 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
-            int cohort = StorefrontSegmentationEngine.ResolveCohort(playerId);
-            if (!StorefrontSegmentationEngine.IsValidCohort(cohort))
-            {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 47, Value2 = 2, Timestamp = Environment.TickCount64 });
-                return false;
-            }
-
             return true;
         }
 

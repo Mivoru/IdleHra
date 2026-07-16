@@ -6,7 +6,7 @@ namespace FolkIdle.Server.Network
     public static class NetworkPacketLayoutGuard
     {
         public const int ExpectedClientCommandSize = 384;
-        public const int ExpectedStateUpdateSize = 736;
+        public const int ExpectedStateUpdateSize = 744;
         public const int ExpectedAuthHandshakeSize = 530;
         public const int ExpectedRequestChatMessageSize = 131;
         public const int ExpectedResponseChatMessageSize = 147;

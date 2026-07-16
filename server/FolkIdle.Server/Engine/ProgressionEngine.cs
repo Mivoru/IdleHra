@@ -49,8 +49,16 @@ namespace FolkIdle.Server.Engine
 
             while (true)
             {
-                // Must execute using 64-bit integer math to prevent overflow
-                long requiredXp = 100L * payload.CurrentLevel * payload.CurrentLevel;
+                // Modul: GDD-mandated exponential curve - Cost = 100 *
+                // 1.15^level - replacing the previous quadratic
+                // 100 * level^2, which grew far too slowly at high levels
+                // to remain a meaningful gold/time sink relative to the
+                // rest of this game's exponential economy (forge, village
+                // production, legacy perks all scale geometrically).
+                // Math.Pow is a pure floating-point intrinsic - no managed
+                // heap allocation - so this stays safe on the same
+                // ProcessMonsterDeath call path the old formula ran on.
+                long requiredXp = (long)Math.Ceiling(100.0 * Math.Pow(1.15, payload.CurrentLevel));
 
                 if (payload.CurrentXp >= requiredXp)
                 {

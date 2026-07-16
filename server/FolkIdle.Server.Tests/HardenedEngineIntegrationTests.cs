@@ -146,8 +146,14 @@ namespace FolkIdle.Server.Tests
                 sacrificeQualityTier: 4,
                 forgeEngine);
 
-            Assert.Equal(8000L, lowQualityCost);
-            Assert.Equal(2000L, highQualityCost);
+            // Modul: recomputed for the GDD exponential forge cost curve
+            // (BaseGoldCost * 1.5^currentTier, Phase 2 Part 2.3) - target
+            // starts at QualityTier 1, so baseGoldCost = ceil(1000 * 1.5^1)
+            // = 1500 (previously the linear 1000 * (1+1) = 2000). The
+            // fodder-quality penalty multiplier itself (4.0x for tier-1
+            // sacrifices, 1.0x for tier-4 sacrifices) is unchanged.
+            Assert.Equal(6000L, lowQualityCost);
+            Assert.Equal(1500L, highQualityCost);
             Assert.True(lowQualityCost > highQualityCost);
         }
 
@@ -1417,7 +1423,10 @@ namespace FolkIdle.Server.Tests
             int expectedLevel = 1;
             while (true)
             {
-                long requiredXp = 100L * expectedLevel * expectedLevel;
+                // Modul: mirrors the GDD exponential level-up curve (Phase 2
+                // Part 2.1) - 100 * 1.15^level, replacing the old quadratic
+                // 100 * level^2.
+                long requiredXp = (long)Math.Ceiling(100.0 * Math.Pow(1.15, expectedLevel));
                 if (expectedXp >= requiredXp)
                 {
                     expectedXp -= requiredXp;
@@ -4714,6 +4723,197 @@ namespace FolkIdle.Server.Tests
             byte[] buffer = new byte[Marshal.SizeOf<RequestChatMessagePacket>()];
             MemoryMarshal.Write(new Span<byte>(buffer), packet);
             return buffer;
+        }
+
+        // Modul: Phase - Full-Stack Production Polish Phase 2, Part 1.
+        // Fires two concurrent WithdrawFromBankAsync calls for the SAME
+        // BankEquipmentInstances row. TryBeginPendingTransaction's
+        // ConcurrentDictionary.TryAdd is atomic, so exactly one of the two
+        // must win and reach the queue; the other must be rejected with
+        // TransactionPending before ever touching the database. Then
+        // simulates the tick loop's terminal CommitBankWithdrawAsync step
+        // for the sole accepted request and proves only one real
+        // EquipmentInstances row was ever created - the previous
+        // double-enqueue race this task's Part 1 exists to close.
+        [Fact]
+        public async Task Test_MailboxAndBankEngine_ConcurrentWithdrawals_RejectSecondWithTransactionPendingAndPreventCloning()
+        {
+            const long testPlayerId = 970002001L;
+            const string baseItemId = "integration_test_bank_withdraw_concurrent";
+            long bankId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                var bankItem = new BankEquipmentInstance
+                {
+                    PlayerId = testPlayerId,
+                    BaseItemId = baseItemId,
+                    QualityTier = 1,
+                    AffixPayload = "{}"
+                };
+                db.BankEquipmentInstances.Add(bankItem);
+                await db.SaveChangesAsync();
+                bankId = bankItem.Id;
+            }
+
+            var playerRegistry = new PlayerSessionRegistry();
+            var mailboxEngine = new MailboxAndBankEngine(_fixture.ServiceProvider, playerRegistry);
+
+            await Task.WhenAll(
+                mailboxEngine.WithdrawFromBankAsync(testPlayerId, bankId),
+                mailboxEngine.WithdrawFromBankAsync(testPlayerId, bankId));
+
+            int queuedCount = 0;
+            while (playerRegistry.BankWithdrawRequestQueue.TryDequeue(out var req))
+            {
+                queuedCount++;
+                Assert.Equal(testPlayerId, req.PlayerId);
+                Assert.Equal(bankId, req.BankId);
+            }
+            Assert.Equal(1, queuedCount);
+
+            bool sawTransactionPending = false;
+            while (playerRegistry.CommandResultQueue.TryDequeue(out var result))
+            {
+                if (result.PlayerId == testPlayerId && result.ResultCode == (byte)FolkIdle.Server.Network.CommandResultCode.TransactionPending)
+                {
+                    sawTransactionPending = true;
+                }
+            }
+            Assert.True(sawTransactionPending, "The second concurrent withdrawal attempt must have been rejected with TransactionPending.");
+
+            await mailboxEngine.CommitBankWithdrawAsync(testPlayerId, bankId, true);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            int clonedEquipmentCount = await verifyDb.EquipmentInstances.AsNoTracking()
+                .CountAsync(e => e.PlayerId == testPlayerId && e.BaseItemId == baseItemId);
+            Assert.Equal(1, clonedEquipmentCount);
+
+            bool bankRowStillExists = await verifyDb.BankEquipmentInstances.AsNoTracking().AnyAsync(b => b.Id == bankId);
+            Assert.False(bankRowStillExists);
+        }
+
+        // Modul: Phase - Full-Stack Production Polish Phase 2, Part 2.1.
+        // Directly exercises ProgressionEngine.ProcessMonsterDeath's
+        // level-up threshold at several levels, asserting it matches the
+        // GDD exponential curve (100 * 1.15^level) exactly at both sides
+        // of the boundary - baseExpReward=0 means this call never adds any
+        // XP of its own, only evaluates the level-up check against
+        // whatever CurrentXp was set to beforehand.
+        [Fact]
+        public void Test_ProgressionEngine_LevelUpCost_ScalesExponentially()
+        {
+            for (int level = 1; level <= 8; level++)
+            {
+                long requiredXp = (long)Math.Ceiling(100.0 * Math.Pow(1.15, level));
+
+                var belowThreshold = new TickStatePayload { CurrentLevel = level, CurrentXp = requiredXp - 1 };
+                ProgressionEngine.ProcessMonsterDeath(ref belowThreshold, baseExpReward: 0, xpMultiplier: 100, activeGlobalEventId: 0);
+                Assert.Equal(level, belowThreshold.CurrentLevel);
+
+                var atThreshold = new TickStatePayload { CurrentLevel = level, CurrentXp = requiredXp };
+                ProgressionEngine.ProcessMonsterDeath(ref atThreshold, baseExpReward: 0, xpMultiplier: 100, activeGlobalEventId: 0);
+                Assert.Equal(level + 1, atThreshold.CurrentLevel);
+            }
+        }
+
+        // Modul: Phase - Full-Stack Production Polish Phase 2, Part 2.2.
+        // Asserts VillageManagementEngine.CalculateProductionUpgradeCost
+        // matches BaseCost * 1.5^currentLevel exactly, and that the
+        // level-to-level growth ratio is a constant 1.5x - the previous
+        // (currentLevel + 1)^1.8 polynomial curve's ratio would instead
+        // shrink toward 1.0 as currentLevel grew, which this test would
+        // catch as a ratio drifting away from 1.5.
+        [Fact]
+        public void Test_VillageManagementEngine_ProductionUpgradeCost_ScalesExponentially()
+        {
+            for (int level = 0; level <= 10; level++)
+            {
+                long expected = (long)Math.Ceiling(100.0 * Math.Pow(1.5, level));
+                Assert.Equal(expected, VillageManagementEngine.CalculateProductionUpgradeCost(level));
+            }
+
+            long costAtLevel5 = VillageManagementEngine.CalculateProductionUpgradeCost(5);
+            long costAtLevel6 = VillageManagementEngine.CalculateProductionUpgradeCost(6);
+            double ratio = costAtLevel6 / (double)costAtLevel5;
+            Assert.InRange(ratio, 1.49, 1.51);
+        }
+
+        // Modul: Phase - Full-Stack Production Polish Phase 2, Part 2.3.
+        // Measures ForgeSplicingEngine's real gold deduction for two
+        // different target QualityTiers, holding both sacrifices at
+        // QualityTier 4 in each measurement so the fodder-quality penalty
+        // multiplier stays a constant 1.0x - isolating baseGoldCost's own
+        // exponential term (ceil(BaseGoldCost * 1.5^currentTier)) from the
+        // unrelated penalty multiplier and letting the tier-to-tier ratio
+        // be asserted directly.
+        [Fact]
+        public async Task Test_ForgeSplicing_GoldCost_ScalesExponentiallyWithCurrentTier()
+        {
+            const long testPlayerId = 970002101L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = testPlayerId, BuildingId = VillageManagementEngine.ForgeBuildingId, CurrentLevel = 20 });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10_000_000L });
+                await db.SaveChangesAsync();
+            }
+
+            var forgeEngine = new ForgeSplicingEngine(_fixture.ServiceProvider);
+
+            long costAtTier2 = await MeasureForgeCostAtTierAsync(testPlayerId, "integration_test_forge_exp_tier2", startingTier: 2, forgeEngine);
+            long costAtTier3 = await MeasureForgeCostAtTierAsync(testPlayerId, "integration_test_forge_exp_tier3", startingTier: 3, forgeEngine);
+
+            Assert.Equal((long)Math.Ceiling(1000.0 * Math.Pow(1.5, 2)), costAtTier2);
+            Assert.Equal((long)Math.Ceiling(1000.0 * Math.Pow(1.5, 3)), costAtTier3);
+
+            double ratio = costAtTier3 / (double)costAtTier2;
+            Assert.InRange(ratio, 1.49, 1.51);
+        }
+
+        private async Task<long> MeasureForgeCostAtTierAsync(long playerId, string baseItemId, int startingTier, ForgeSplicingEngine forgeEngine)
+        {
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var target = new EquipmentInstance { PlayerId = playerId, BaseItemId = baseItemId, QualityTier = startingTier };
+                var sac1 = new EquipmentInstance { PlayerId = playerId, BaseItemId = baseItemId, QualityTier = 4 };
+                var sac2 = new EquipmentInstance { PlayerId = playerId, BaseItemId = baseItemId, QualityTier = 4 };
+                db.EquipmentInstances.AddRange(target, sac1, sac2);
+                await db.SaveChangesAsync();
+
+                long goldBefore = await GetGoldAsync(playerId);
+                await forgeEngine.ExecuteFusionAsync(playerId, target.Id, sac1.Id, sac2.Id);
+                long goldAfter = await GetGoldAsync(playerId);
+                return goldBefore - goldAfter;
+            }
+        }
+
+        // Modul: Phase - Full-Stack Production Polish Phase 2, Part 4.1.
+        // Directly exercises StorefrontSegmentationEngine.ResolveCohort's
+        // pure decision function against mock transactional signals,
+        // proving distinct, accurate cohort assignment driven by actual
+        // spending/activity behavior rather than the previous static
+        // playerId hash bucket - the same three synthetic input sets would
+        // previously have had no bearing whatsoever on cohort assignment.
+        [Fact]
+        public void Test_StorefrontSegmentationEngine_DynamicSegmentation_ReturnsDistinctCohortsBasedOnLtvAgeAndRecency()
+        {
+            int highValueActiveCohort = StorefrontSegmentationEngine.ResolveCohort(
+                lifetimeValue: 10_000L, ageInTicks: 100L, daysSinceLastTransaction: 2);
+            Assert.Equal(StorefrontSegmentationEngine.VariantB, highValueActiveCohort);
+
+            int churnRiskVeteranCohort = StorefrontSegmentationEngine.ResolveCohort(
+                lifetimeValue: 0L, ageInTicks: 1000L, daysSinceLastTransaction: 30);
+            Assert.Equal(StorefrontSegmentationEngine.VariantA, churnRiskVeteranCohort);
+
+            int newAccountCohort = StorefrontSegmentationEngine.ResolveCohort(
+                lifetimeValue: 0L, ageInTicks: 5L, daysSinceLastTransaction: int.MaxValue);
+            Assert.Equal(StorefrontSegmentationEngine.Control, newAccountCohort);
+
+            Assert.NotEqual(highValueActiveCohort, churnRiskVeteranCohort);
+            Assert.NotEqual(highValueActiveCohort, newAccountCohort);
         }
     }
 }

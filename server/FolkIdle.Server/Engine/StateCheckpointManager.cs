@@ -579,6 +579,7 @@ namespace FolkIdle.Server.Engine
                 ActiveLanguageState = 1,
                 ActiveChroniclePassLevel = (uint)Math.Max(0, chroniclePass?.PassLevel ?? 0),
                 AccumulatedSeasonalXp = (uint)Math.Max(0, chroniclePass?.AccumulatedXp ?? 0),
+                CachedClaimedMilestonesBitmask = chroniclePass?.ClaimedMilestonesBitmask ?? 0UL,
                 CurrentMana = ActiveSkillEngine.ComputeMaxMana(player.CurrentLevel),
                 AvailableSkillPoints = player.AvailableSkillPoints,
                 UnlockedSkillsBitmask = unlockedSkillsBitmask

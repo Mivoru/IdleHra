@@ -23,7 +23,14 @@ namespace FolkIdle.Server.Network
         InsufficientGold = 5,
         TargetNotFound = 6,
         GuildNotFound = 7,
-        GenericValidationFailure = 8
+        GenericValidationFailure = 8,
+
+        // Modul: Phase - Full-Stack Production Polish Phase 2, Part 1.
+        // Returned by MailboxAndBankEngine when a deposit/withdraw/claim
+        // command targets a player who already has an unresolved bank
+        // transaction in flight - see that engine's own doc comment on
+        // _pendingBankTransactions.
+        TransactionPending = 9
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -303,5 +310,15 @@ namespace FolkIdle.Server.Network
         // TicksSinceLastFlush / 10 is exactly the whole-second age of the
         // last successful save. Previously tracked only server-side.
         public int TicksSinceLastFlush;
+
+        // Modul: Phase - Full-Stack Production Polish Phase 2, Part 3.1
+        // (UiSeasonPassWindow). Mirrors PlayerChroniclePass.
+        // ClaimedMilestonesBitmask exactly (see SimulationEngine's
+        // ClaimBattlePassReward handler / StateCheckpointManager) - was
+        // never on the wire before, so the client had no way to know which
+        // of the 50 XP milestones (see ActiveChroniclePassLevel/
+        // AccumulatedSeasonalXp above) had already been claimed versus
+        // merely reached.
+        public ulong ClaimedMilestonesBitmask;
     }
 }

@@ -589,6 +589,32 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: Phase - Full-Stack Production Polish Phase 2,
+                    // Part 3.1. Exposes ContentRegistry.Balance.
+                    // IapProductPrices (loaded from GameBalanceConfig.json)
+                    // to the client's Store window - previously only read
+                    // server-side (BillingVerificationEngine.
+                    // ResolvePremiumDiamondsForProduct), with no way for a
+                    // client to discover which packages exist or what they
+                    // cost without hardcoding a second, driftable copy.
+                    if (requestPath == "/api/v1/store/catalog" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleStoreCatalog(context);
+                        continue;
+                    }
+
+                    // Modul: Phase - Full-Stack Production Polish Phase 2,
+                    // Part 3.1 (UiGuildRosterPanel). No prior endpoint
+                    // exposed a guild's member list at all - guild UI so
+                    // far (logistics/raid/war panels) only ever showed
+                    // aggregate guild-wide numbers, never individual
+                    // members or their Role.
+                    if (requestPath == "/api/v1/guild/roster" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleGuildRoster(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/leaderboard/global" && context.Request.HttpMethod == "GET")
                     {
                         await HandleGlobalLeaderboard(context);
@@ -1174,6 +1200,134 @@ namespace FolkIdle.Server.Network
             context.Response.Close();
         }
 
+        private sealed class StoreCatalogEntryResponse
+        {
+            public string ProductId { get; set; } = string.Empty;
+            public int DiamondAmount { get; set; }
+        }
+
+        // Modul: static content, not per-player data - no database access
+        // needed, just an authenticated read of ContentRegistry.Balance
+        // (already loaded once at boot from GameBalanceConfig.json).
+        private async Task HandleStoreCatalog(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var entries = new System.Collections.Generic.List<StoreCatalogEntryResponse>();
+                foreach (var kvp in ContentRegistry.Balance.IapProductPrices)
+                {
+                    entries.Add(new StoreCatalogEntryResponse { ProductId = kvp.Key, DiamondAmount = kvp.Value });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, entries);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Store catalog error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class GuildRosterEntryResponse
+        {
+            public long PlayerId { get; set; }
+            public int Role { get; set; }
+            public long ContributionPoints { get; set; }
+            public bool IsOnline { get; set; }
+        }
+
+        // Modul: resolves the requesting player's own GuildId first (never
+        // a client-supplied one), then lists every GuildMembers row sharing
+        // that GuildId - a player can only ever see their own guild's
+        // roster. IsOnline is resolved directly from this pod's own
+        // _connectedClients (the same dictionary BroadcastChatMessage/
+        // UpdateSessionGuildId already read/write), not a database column
+        // - guild membership is persistent, but presence is a live,
+        // in-memory fact. PlayerSessionRegistry is deliberately not used
+        // here - it is never registered in Program.cs's DI container
+        // (only ever constructed directly and passed to specific engine
+        // constructors), so resolving it via _serviceProvider.
+        // GetRequiredService would throw at runtime.
+        private async Task HandleGuildRoster(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                long guildId = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => p.Id == playerId)
+                    .Select(p => p.GuildId)
+                    .SingleOrDefaultAsync();
+
+                if (guildId <= 0)
+                {
+                    await transaction.CommitAsync();
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
+                    await JsonSerializer.SerializeAsync(context.Response.OutputStream, new System.Collections.Generic.List<GuildRosterEntryResponse>());
+                    context.Response.Close();
+                    return;
+                }
+
+                var members = await db.GuildMembers
+                    .AsNoTracking()
+                    .Where(m => m.GuildId == guildId)
+                    .OrderByDescending(m => m.Role)
+                    .ThenByDescending(m => m.ContributionPoints)
+                    .ToListAsync();
+
+                await transaction.CommitAsync();
+
+                var entries = new System.Collections.Generic.List<GuildRosterEntryResponse>(members.Count);
+                foreach (var member in members)
+                {
+                    entries.Add(new GuildRosterEntryResponse
+                    {
+                        PlayerId = member.PlayerId,
+                        Role = member.Role,
+                        ContributionPoints = member.ContributionPoints,
+                        IsOnline = _connectedClients.ContainsKey(member.PlayerId)
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, entries);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild roster error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
         // Modul 23: authorized snapshot of the player's real Monster Codex
         // progress. MonsterCodexEntries is already populated by CodexEngine's
         // kill-event cron (SimulationEngine enqueues a KillEvent on every monster
@@ -1728,17 +1882,55 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                int cohort = StorefrontSegmentationEngine.ResolveCohort(playerId);
-
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                // Modul: Phase - Full-Stack Production Polish Phase 2, Part
+                // 4.1. Resolves StorefrontSegmentationEngine.ResolveCohort's
+                // three real inputs from this player's own transaction
+                // history/account record, replacing the previous pure
+                // playerId-hash cohort assignment. lifetimeValue is the
+                // cumulative granted premium-diamond total (see
+                // ProcessedTransactions - the authoritative anti-replay IAP
+                // ledger); a player with no rows here has never purchased
+                // anything, so lastTransactionEpoch stays null and
+                // daysSinceLastTransaction resolves to int.MaxValue,
+                // correctly excluding them from both the "active high-value"
+                // and "recently active veteran" branches.
+                long lifetimeValue = await db.ProcessedTransactions
+                    .AsNoTracking()
+                    .Where(t => t.PlayerId == playerId)
+                    .Select(t => (long)t.PremiumDiamondsGranted)
+                    .SumAsync();
+
+                long? lastTransactionEpoch = await db.ProcessedTransactions
+                    .AsNoTracking()
+                    .Where(t => t.PlayerId == playerId)
+                    .OrderByDescending(t => t.ProcessedAtEpoch)
+                    .Select(t => (long?)t.ProcessedAtEpoch)
+                    .FirstOrDefaultAsync();
+
+                long ageInTicks = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => p.Id == playerId)
+                    .Select(p => p.LogicEpochCounter)
+                    .SingleOrDefaultAsync();
+
+                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                int daysSinceLastTransaction = lastTransactionEpoch.HasValue
+                    ? (int)Math.Min(int.MaxValue, (nowEpoch - lastTransactionEpoch.Value) / 86400L)
+                    : int.MaxValue;
+
+                int cohort = StorefrontSegmentationEngine.ResolveCohort(lifetimeValue, ageInTicks, daysSinceLastTransaction);
 
                 await using (var profileTransaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable))
                 {
                     await db.Database.ExecuteSqlRawAsync(
-                        "INSERT INTO \"PlayerSegmentationProfiles\" (\"PlayerId\", \"CohortTag\", \"LifetimeValueCents\", \"ChurnRiskScore\") VALUES ({0}, {1}, 0, 0) ON CONFLICT (\"PlayerId\") DO UPDATE SET \"CohortTag\" = EXCLUDED.\"CohortTag\";",
+                        "INSERT INTO \"PlayerSegmentationProfiles\" (\"PlayerId\", \"CohortTag\", \"LifetimeValueCents\", \"ChurnRiskScore\") VALUES ({0}, {1}, {2}, {3}) ON CONFLICT (\"PlayerId\") DO UPDATE SET \"CohortTag\" = EXCLUDED.\"CohortTag\", \"LifetimeValueCents\" = EXCLUDED.\"LifetimeValueCents\", \"ChurnRiskScore\" = EXCLUDED.\"ChurnRiskScore\";",
                         playerId,
-                        cohort);
+                        cohort,
+                        (int)Math.Min(int.MaxValue, lifetimeValue),
+                        Math.Min(1.0, daysSinceLastTransaction / 90.0));
                     await profileTransaction.CommitAsync();
                 }
 

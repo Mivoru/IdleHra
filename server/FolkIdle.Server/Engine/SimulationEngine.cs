@@ -926,14 +926,14 @@ namespace FolkIdle.Server.Engine
                     {
                         if (req.HasItem && currentPayload.InventorySpaceRemaining <= 0)
                         {
-                            SafeDispatchAsync("MailClaim.Reject", req.PlayerId, async () => { await _mailboxEngine.CommitMailClaimAsync(req.MailId, false); });
+                            SafeDispatchAsync("MailClaim.Reject", req.PlayerId, async () => { await _mailboxEngine.CommitMailClaimAsync(req.PlayerId, req.MailId, false); });
                         }
                         else
                         {
                             if (req.HasItem) currentPayload.InventorySpaceRemaining--;
                             currentPayload.AddGold(req.GoldAttachment);
                             currentPayload.IsDirty = true;
-                            SafeDispatchAsync("MailClaim.Accept", req.PlayerId, async () => { await _mailboxEngine.CommitMailClaimAsync(req.MailId, true); });
+                            SafeDispatchAsync("MailClaim.Accept", req.PlayerId, async () => { await _mailboxEngine.CommitMailClaimAsync(req.PlayerId, req.MailId, true); });
                         }
                     }
                 }
@@ -945,13 +945,13 @@ namespace FolkIdle.Server.Engine
                     {
                         if (currentPayload.InventorySpaceRemaining <= 0)
                         {
-                            SafeDispatchAsync("BankWithdraw.Reject", req.PlayerId, async () => { await _mailboxEngine.CommitBankWithdrawAsync(req.BankId, false); });
+                            SafeDispatchAsync("BankWithdraw.Reject", req.PlayerId, async () => { await _mailboxEngine.CommitBankWithdrawAsync(req.PlayerId, req.BankId, false); });
                         }
                         else
                         {
                             currentPayload.InventorySpaceRemaining--;
                             currentPayload.IsDirty = true;
-                            SafeDispatchAsync("BankWithdraw.Accept", req.PlayerId, async () => { await _mailboxEngine.CommitBankWithdrawAsync(req.BankId, true); });
+                            SafeDispatchAsync("BankWithdraw.Accept", req.PlayerId, async () => { await _mailboxEngine.CommitBankWithdrawAsync(req.PlayerId, req.BankId, true); });
                         }
                     }
                 }
@@ -2367,7 +2367,8 @@ namespace FolkIdle.Server.Engine
                                 OfflineXpEarned = currentPayload.OfflineXpEarned,
                                 OfflineMaterialDropsGranted = currentPayload.OfflineMaterialDropsGranted,
                                 OfflineSummaryTick = currentPayload.OfflineSummaryTick,
-                                TicksSinceLastFlush = currentPayload.TicksSinceLastFlush
+                                TicksSinceLastFlush = currentPayload.TicksSinceLastFlush,
+                                ClaimedMilestonesBitmask = currentPayload.CachedClaimedMilestonesBitmask
                             };
                             // Modul: this packet carries currentPayload's own
                             // private data (gold, stats, equipment, mana,
@@ -2841,7 +2842,10 @@ namespace FolkIdle.Server.Engine
             int levelsGained = 0;
             while (payload.CurrentLevel > 0)
             {
-                long requiredXp = 100L * payload.CurrentLevel * payload.CurrentLevel;
+                // Modul: mirrors ProgressionEngine.ProcessMonsterDeath's GDD
+                // exponential curve exactly (100 * 1.15^level) - this warp
+                // path must stay identical to the live-tick formula.
+                long requiredXp = (long)System.Math.Ceiling(100.0 * System.Math.Pow(1.15, payload.CurrentLevel));
                 if (payload.CurrentXp < requiredXp)
                 {
                     break;

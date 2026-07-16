@@ -254,13 +254,20 @@ namespace FolkIdle.Server.Engine
 
         private const long BaseProductionUpgradeCost = 100L;
 
-        // Modul 16: Wood/Stone cost for Lumberjack/Quarry/Mine/Warehouse upgrades.
-        // Uses (currentLevel + 1) rather than currentLevel as the exponent base so
-        // the very first upgrade (level 0 -> 1) is not free.
+        // Modul: GDD-mandated exponential curve, matching
+        // CalculateUpgradeCost's own formula exactly (BaseCost *
+        // 1.5^currentLevel) - previously a polynomial (currentLevel + 1)^1.8
+        // that grew far slower than the true exponential gold-upgrade
+        // formulas above, letting Lumberjack/Quarry/Mine/Warehouse scaling
+        // drift out of balance with the rest of the endgame economy.
+        // currentLevel (not currentLevel + 1) as the exponent base is
+        // correct here and does not need a level-0-is-free special case:
+        // 1.5^0 = 1, so the very first upgrade (level 0 -> 1) still costs
+        // exactly BaseProductionUpgradeCost, never zero.
         public static long CalculateProductionUpgradeCost(int currentLevel)
         {
             if (currentLevel < 0) currentLevel = 0;
-            double scaled = BaseProductionUpgradeCost * Math.Pow(currentLevel + 1, 1.8);
+            double scaled = BaseProductionUpgradeCost * Math.Pow(1.5, currentLevel);
             if (scaled > long.MaxValue) return long.MaxValue;
             return (long)Math.Ceiling(scaled);
         }

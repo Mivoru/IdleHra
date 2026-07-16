@@ -17,7 +17,12 @@ namespace FolkIdle.Client.Network
         InsufficientGold = 5,
         TargetNotFound = 6,
         GuildNotFound = 7,
-        GenericValidationFailure = 8
+        GenericValidationFailure = 8,
+
+        // Modul: mirrors server CommandResultCode exactly - returned when a
+        // deposit/withdraw/claim command targets a player who already has
+        // an unresolved bank transaction in flight.
+        TransactionPending = 9
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -272,5 +277,9 @@ namespace FolkIdle.Client.Network
         // exactly. TicksSinceLastFlush / 10 is the whole-second age of the
         // last successful server-side save (see UiSaveTrustIndicator).
         public int TicksSinceLastFlush;
+
+        // Modul: mirrors server StateUpdatePacket exactly - see
+        // UiSeasonPassWindow.
+        public ulong ClaimedMilestonesBitmask;
     }
 }

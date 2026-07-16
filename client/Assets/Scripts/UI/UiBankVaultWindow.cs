@@ -1,97 +1,141 @@
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 using FolkIdle.Client.Engine;
 using FolkIdle.Client.Network;
 
 namespace FolkIdle.Client.UI
 {
-    // Modul: Phase - Full-Stack Production Polish, Part 1.2. Vault (bank)
-    // panel - fetches the player's stored equipment via BankVaultCache and
-    // dispatches CommandType.WithdrawFromBank (13) / DepositToBank (12)
-    // through WebSocketClient.SendMailCommandZeroAlloc, both of which
-    // already existed on the wire protocol before this window did (see
-    // MailboxAndBankEngine.WithdrawFromBankAsync/DepositToBankAsync). Rows
-    // are pooled via UIComponentPool, mirroring UiMarketBrowserWindow.
-    //
-    // Deposit source note: depositing takes an EquipmentInstances.Id the
-    // player currently owns. This panel exposes a plain instance-id input
-    // field for that (mirroring UiMarketBrowserWindow's own BaseItemIdInput/
-    // QualityTierInput pattern for caller-supplied ids) rather than
-    // integrating with the separate equipment-inventory selection UI, which
-    // is out of this panel's scope.
+    // Modul: Phase - Full-Stack Production Polish, Part 1.2, refactored in
+    // Phase 2 Part 3.2. Vault (bank) panel - two side-by-side lists:
+    // BankVaultCache-backed stored items (withdraw) and
+    // EquipmentInventoryCache-backed owned backpack items (deposit). Both
+    // dispatch CommandType.WithdrawFromBank (13) / DepositToBank (12)
+    // through WebSocketClient.SendMailCommandZeroAlloc directly by each
+    // row's real EquipmentInstances.Id/BankEquipmentInstances.Id - the
+    // player selects an item from a live-populated grid, never types or
+    // pastes a raw instance id (the previous TMP_InputField-based deposit
+    // flow this replaces). Rows are pooled via UIComponentPool, mirroring
+    // UiMarketBrowserWindow.
     public class UiBankVaultWindow : MonoBehaviour
     {
-        [Header("Vault HUD")]
-        public Transform RowContainer;
-        public UiBankVaultEntryRow RowPrefab;
-        public int InitialRowPoolCapacity = 20;
+        [Header("Vault Contents (Withdraw)")]
+        public Transform VaultRowContainer;
+        public UiBankVaultEntryRow VaultRowPrefab;
+        public int InitialVaultRowPoolCapacity = 20;
 
-        [Header("Deposit")]
-        public TMP_InputField DepositInstanceIdInput;
-        public Button DepositButton;
+        [Header("Backpack (Deposit)")]
+        public EquipmentInventoryCache InventoryCache;
+        public Transform BackpackRowContainer;
+        public UiBankDepositCandidateRow BackpackRowPrefab;
+        public int InitialBackpackRowPoolCapacity = 20;
 
         public WebSocketClient NetworkClient;
 
-        private UIComponentPool<UiBankVaultEntryRow> _rowPool;
-        private readonly List<UiBankVaultEntryRow> _activeRows = new List<UiBankVaultEntryRow>();
-        private bool _isDirty;
+        private UIComponentPool<UiBankVaultEntryRow> _vaultRowPool;
+        private readonly List<UiBankVaultEntryRow> _activeVaultRows = new List<UiBankVaultEntryRow>();
+        private bool _isVaultDirty;
+
+        private UIComponentPool<UiBankDepositCandidateRow> _backpackRowPool;
+        private readonly List<UiBankDepositCandidateRow> _activeBackpackRows = new List<UiBankDepositCandidateRow>();
+        private bool _isBackpackDirty;
 
         private void Awake()
         {
-            if (RowPrefab != null && RowContainer != null)
+            if (VaultRowPrefab != null && VaultRowContainer != null)
             {
-                _rowPool = new UIComponentPool<UiBankVaultEntryRow>(RowPrefab, RowContainer, InitialRowPoolCapacity);
+                _vaultRowPool = new UIComponentPool<UiBankVaultEntryRow>(VaultRowPrefab, VaultRowContainer, InitialVaultRowPoolCapacity);
             }
 
-            if (DepositButton != null)
+            if (BackpackRowPrefab != null && BackpackRowContainer != null)
             {
-                DepositButton.onClick.AddListener(HandleDepositClicked);
+                _backpackRowPool = new UIComponentPool<UiBankDepositCandidateRow>(BackpackRowPrefab, BackpackRowContainer, InitialBackpackRowPoolCapacity);
             }
         }
 
         private void OnEnable()
         {
-            BankVaultCache.OnBankVaultCacheUpdated += HandleCacheUpdated;
+            BankVaultCache.OnBankVaultCacheUpdated += HandleVaultCacheUpdated;
             BankVaultCache.Refresh();
+
+            if (InventoryCache != null)
+            {
+                InventoryCache.OnSnapshotUpdated += HandleBackpackCacheUpdated;
+                InventoryCache.RequestSnapshot();
+            }
         }
 
         private void OnDisable()
         {
-            BankVaultCache.OnBankVaultCacheUpdated -= HandleCacheUpdated;
+            BankVaultCache.OnBankVaultCacheUpdated -= HandleVaultCacheUpdated;
+
+            if (InventoryCache != null)
+            {
+                InventoryCache.OnSnapshotUpdated -= HandleBackpackCacheUpdated;
+            }
         }
 
         private void Update()
         {
-            if (!_isDirty) return;
-
-            RefreshRows();
-            _isDirty = false;
-        }
-
-        private void HandleCacheUpdated()
-        {
-            _isDirty = true;
-        }
-
-        private void RefreshRows()
-        {
-            if (_rowPool == null) return;
-
-            for (int i = 0; i < _activeRows.Count; i++)
+            if (_isVaultDirty)
             {
-                _rowPool.Despawn(_activeRows[i]);
+                RefreshVaultRows();
+                _isVaultDirty = false;
             }
-            _activeRows.Clear();
+
+            if (_isBackpackDirty)
+            {
+                RefreshBackpackRows();
+                _isBackpackDirty = false;
+            }
+        }
+
+        private void HandleVaultCacheUpdated()
+        {
+            _isVaultDirty = true;
+        }
+
+        private void HandleBackpackCacheUpdated()
+        {
+            _isBackpackDirty = true;
+        }
+
+        private void RefreshVaultRows()
+        {
+            if (_vaultRowPool == null) return;
+
+            for (int i = 0; i < _activeVaultRows.Count; i++)
+            {
+                _vaultRowPool.Despawn(_activeVaultRows[i]);
+            }
+            _activeVaultRows.Clear();
 
             IReadOnlyList<BankVaultEntryData> entries = BankVaultCache.Entries;
             for (int i = 0; i < entries.Count; i++)
             {
                 BankVaultEntryData entry = entries[i];
-                UiBankVaultEntryRow row = _rowPool.Spawn();
+                UiBankVaultEntryRow row = _vaultRowPool.Spawn();
                 row.Bind(entry.Id, entry.BaseItemId, entry.QualityTier, entry.IsAffixLocked, HandleWithdrawClicked);
-                _activeRows.Add(row);
+                _activeVaultRows.Add(row);
+            }
+        }
+
+        private void RefreshBackpackRows()
+        {
+            if (_backpackRowPool == null || InventoryCache == null) return;
+
+            for (int i = 0; i < _activeBackpackRows.Count; i++)
+            {
+                _backpackRowPool.Despawn(_activeBackpackRows[i]);
+            }
+            _activeBackpackRows.Clear();
+
+            IReadOnlyList<ForgeEquipmentInstanceData> owned = InventoryCache.OwnedEquipment;
+            for (int i = 0; i < owned.Count; i++)
+            {
+                ForgeEquipmentInstanceData entry = owned[i];
+                UiBankDepositCandidateRow row = _backpackRowPool.Spawn();
+                row.Bind(entry.Id, entry.BaseItemId, entry.QualityTier, entry.IsAffixLocked, HandleDepositClicked);
+                _activeBackpackRows.Add(row);
             }
         }
 
@@ -103,26 +147,37 @@ namespace FolkIdle.Client.UI
             }
 
             BankVaultCache.RemoveEntryLocally(bankId);
+
+            // Safety-net re-fetch shortly after - a rejected withdrawal
+            // (e.g. TransactionPending, no inventory space) is not signaled
+            // synchronously here, so this reconciles the visible list
+            // against real server state a moment later, mirroring
+            // UiGuildRaidPanel's identical pattern.
+            Invoke(nameof(RequestVaultRefresh), 1.0f);
         }
 
-        private void HandleDepositClicked()
+        private void HandleDepositClicked(long instanceId)
         {
-            if (DepositInstanceIdInput == null || NetworkClient == null) return;
-            if (!long.TryParse(DepositInstanceIdInput.text, out long instanceId) || instanceId <= 0) return;
+            if (NetworkClient != null)
+            {
+                NetworkClient.SendMailCommandZeroAlloc((byte)CommandType.DepositToBank, instanceId);
+            }
 
-            NetworkClient.SendMailCommandZeroAlloc((byte)CommandType.DepositToBank, instanceId);
-            DepositInstanceIdInput.text = string.Empty;
-
-            // Safety-net re-fetch shortly after, mirroring UiGuildRaidPanel's
-            // identical pattern - deposit success/failure is not signaled
-            // synchronously, so this reconciles the visible list against
-            // real server state a moment later.
-            Invoke(nameof(RequestRefresh), 1.0f);
+            Invoke(nameof(RequestBackpackRefresh), 1.0f);
+            Invoke(nameof(RequestVaultRefresh), 1.0f);
         }
 
-        private void RequestRefresh()
+        private void RequestVaultRefresh()
         {
             BankVaultCache.Refresh();
+        }
+
+        private void RequestBackpackRefresh()
+        {
+            if (InventoryCache != null)
+            {
+                InventoryCache.RequestSnapshot();
+            }
         }
     }
 }

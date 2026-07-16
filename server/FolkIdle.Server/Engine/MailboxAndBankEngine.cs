@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +14,73 @@ namespace FolkIdle.Server.Engine
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry _playerRegistry;
 
+        // Modul: Phase - Full-Stack Production Polish Phase 2, Part 1.
+        // Claim/Deposit/Withdraw are all two-phase for the queued paths
+        // (an initial synchronous validation+enqueue, then an async
+        // Commit*Async that actually mutates rows once SimulationEngine's
+        // tick loop drains the notification queue) - previously nothing
+        // stopped a player from firing several requests for the SAME or
+        // DIFFERENT items before the first one's Commit* step ever ran,
+        // queuing up multiple in-flight bank mutations with no ordering
+        // guarantee against each other (see WithdrawFromBankAsync's own
+        // former comment openly describing this as an unresolved risk).
+        // This dictionary tracks, per player, the UTC tick timestamp a
+        // bank transaction started - TryBeginPendingTransaction/
+        // EndPendingTransaction below are the only two places that touch
+        // it, both lock-free (ConcurrentDictionary's own atomic TryAdd/
+        // TryUpdate/TryRemove, no explicit lock needed). A stale entry
+        // (older than PendingTransactionTimeoutTicks) is treated as
+        // resolved even if EndPendingTransaction was never called for it -
+        // the essential safety valve for a player who disconnects between
+        // the initial enqueue and the tick loop's drain (see
+        // SimulationEngine's MailClaimRequestQueue/BankWithdrawRequestQueue
+        // drains, which silently skip an offline player and would
+        // otherwise never call Commit*Async to clear the flag).
+        private readonly ConcurrentDictionary<long, long> _pendingBankTransactions = new();
+        private static readonly long PendingTransactionTimeoutTicks = TimeSpan.FromSeconds(10).Ticks;
+
         public MailboxAndBankEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry)
         {
             _serviceProvider = serviceProvider;
             _playerRegistry = playerRegistry;
+        }
+
+        private bool TryBeginPendingTransaction(long playerId)
+        {
+            long now = DateTime.UtcNow.Ticks;
+            long expiredBefore = now - PendingTransactionTimeoutTicks;
+
+            while (true)
+            {
+                if (_pendingBankTransactions.TryGetValue(playerId, out long existingStartedAt))
+                {
+                    if (existingStartedAt > expiredBefore)
+                    {
+                        return false;
+                    }
+
+                    // Stale - a prior transaction never cleared its flag
+                    // (most likely the player disconnected before the tick
+                    // loop's drain could call Commit*Async). Attempt to
+                    // atomically replace it; if another thread changed it
+                    // first, retry with the fresh value.
+                    if (_pendingBankTransactions.TryUpdate(playerId, now, existingStartedAt))
+                    {
+                        return true;
+                    }
+                    continue;
+                }
+
+                if (_pendingBankTransactions.TryAdd(playerId, now))
+                {
+                    return true;
+                }
+            }
+        }
+
+        private void EndPendingTransaction(long playerId)
+        {
+            _pendingBankTransactions.TryRemove(playerId, out _);
         }
 
         public void StartCleanupCron()
@@ -47,6 +111,12 @@ namespace FolkIdle.Server.Engine
 
         public async Task ClaimMailItemAsync(long playerId, long mailId)
         {
+            if (!TryBeginPendingTransaction(playerId))
+            {
+                _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TransactionPending);
+                return;
+            }
+
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
@@ -58,6 +128,7 @@ namespace FolkIdle.Server.Engine
 
                 if (mail == null || mail.PlayerId != playerId || mail.IsClaimed || mail.IsPending)
                 {
+                    EndPendingTransaction(playerId);
                     return;
                 }
 
@@ -65,6 +136,10 @@ namespace FolkIdle.Server.Engine
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
+                // Modul: the pending flag is deliberately NOT cleared here -
+                // this claim is still unresolved until SimulationEngine's
+                // tick loop drains MailClaimRequestQueue and calls
+                // CommitMailClaimAsync, which is what actually clears it.
                 _playerRegistry.MailClaimRequestQueue.Enqueue(new MailClaimRequest
                 {
                     PlayerId = playerId,
@@ -75,11 +150,12 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception)
             {
+                EndPendingTransaction(playerId);
                 await transaction.RollbackAsync();
             }
         }
 
-        public async Task CommitMailClaimAsync(long mailId, bool isSuccess)
+        public async Task CommitMailClaimAsync(long playerId, long mailId, bool isSuccess)
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -141,10 +217,24 @@ namespace FolkIdle.Server.Engine
             {
                 await transaction.RollbackAsync();
             }
+            finally
+            {
+                // Modul: the pending flag started in ClaimMailItemAsync is
+                // only ever cleared here, regardless of outcome (mail row
+                // missing, success, rejection, or a thrown exception) -
+                // this method is that claim's terminal step.
+                EndPendingTransaction(playerId);
+            }
         }
 
         public async Task DepositToBankAsync(long playerId, long instanceId)
         {
+            if (!TryBeginPendingTransaction(playerId))
+            {
+                _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TransactionPending);
+                return;
+            }
+
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
@@ -196,10 +286,23 @@ namespace FolkIdle.Server.Engine
             {
                 await transaction.RollbackAsync();
             }
+            finally
+            {
+                // Modul: Deposit is single-phase (no queued Commit* second
+                // step) - the pending flag is always cleared right here,
+                // on every exit path.
+                EndPendingTransaction(playerId);
+            }
         }
 
         public async Task WithdrawFromBankAsync(long playerId, long bankId)
         {
+            if (!TryBeginPendingTransaction(playerId))
+            {
+                _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TransactionPending);
+                return;
+            }
+
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
@@ -211,33 +314,36 @@ namespace FolkIdle.Server.Engine
 
                 if (bankItem == null || bankItem.PlayerId != playerId)
                 {
+                    EndPendingTransaction(playerId);
                     return;
                 }
 
-                // Instead of checking IsPending on BankEquipmentInstance, we just enqueue and risk a double-enqueue if spammed,
-                // but since the commit removes it, a double-commit would just fail the SELECT FOR UPDATE.
-                // However, to be safe, we could delete it here and create a "pending withdrawal" or just enqueue it.
-                // The prompt asks to use Command Piping. We will enqueue it.
-                // Wait! If the user spams "Withdraw", we could enqueue multiple requests and give them multiple items if the engine doesn't track pending.
-                // Let's add IsPending to BankEquipmentInstance! No, I'll just pipe it, but to prevent dupes, let's just do it directly if space is available? No, must use piping.
-                // Let's assume the engine will handle it, or we add IsPending to BankEquipmentInstance. But wait, I didn't add IsPending to BankEquipmentInstance.
-                // Let me just add a quick check or do the IsPending. For now, just enqueue. The Commit task will handle the actual row deletion.
-                
+                // Modul: previously an unresolved double-enqueue race (see
+                // this method's own former inline commentary, now
+                // resolved) - TryBeginPendingTransaction above already
+                // rejects any further deposit/withdraw/claim request for
+                // this player while this one is in flight, so at most one
+                // BankWithdrawRequest can ever be queued per player at a
+                // time. The pending flag is deliberately NOT cleared on
+                // this success path - it stays set until
+                // CommitBankWithdrawAsync (this withdrawal's terminal
+                // step) clears it.
                 _playerRegistry.BankWithdrawRequestQueue.Enqueue(new BankWithdrawRequest
                 {
                     PlayerId = playerId,
                     BankId = bankId
                 });
-                
+
                 await transaction.CommitAsync();
             }
             catch (Exception)
             {
+                EndPendingTransaction(playerId);
                 await transaction.RollbackAsync();
             }
         }
 
-        public async Task CommitBankWithdrawAsync(long bankId, bool isSuccess)
+        public async Task CommitBankWithdrawAsync(long playerId, long bankId, bool isSuccess)
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -271,6 +377,13 @@ namespace FolkIdle.Server.Engine
             catch (Exception)
             {
                 await transaction.RollbackAsync();
+            }
+            finally
+            {
+                // Modul: the pending flag started in WithdrawFromBankAsync
+                // is only ever cleared here, regardless of outcome - this
+                // method is that withdrawal's terminal step.
+                EndPendingTransaction(playerId);
             }
         }
     }

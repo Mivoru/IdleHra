@@ -149,7 +149,14 @@ namespace FolkIdle.Server.Engine
                     return ForgeSplicingResult.MaxTierReached;
                 }
 
-                long baseGoldCost = BaseGoldCost * (currentTier + 1);
+                // Modul: GDD-mandated exponential curve - Cost = BaseGoldCost
+                // * 1.5^currentTier - replacing the previous linear
+                // BaseGoldCost * (currentTier + 1), which grew far too
+                // slowly to remain a meaningful gold sink at high quality
+                // tiers relative to the rest of this game's exponential
+                // economy (village production, legacy perks, level-up cost
+                // all scale geometrically too).
+                long baseGoldCost = (long)Math.Ceiling(BaseGoldCost * Math.Pow(1.5, currentTier));
                 long cost = (long)(baseGoldCost * (1.0 + ((4 - sac1.QualityTier) * 0.50) + ((4 - sac2.QualityTier) * 0.50)));
 
                 // Lock and fetch gold record

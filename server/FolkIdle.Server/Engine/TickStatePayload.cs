@@ -137,6 +137,14 @@ namespace FolkIdle.Server.Engine
         public long CachedLegacyPerks;
         public int CachedLogisticsGatheringSpeedBonusPct;
 
+        // Modul: Phase - Full-Stack Production Polish Phase 2, Part 3.1
+        // (UiSeasonPassWindow). Mirrors PlayerChroniclePass.
+        // ClaimedMilestonesBitmask, loaded at session start/ReloadState
+        // (StateCheckpointManager) - previously tracked only in the
+        // database, never cached onto the live payload or sent to the
+        // client.
+        public ulong CachedClaimedMilestonesBitmask;
+
         // Modul: Phase - Full-Stack Production Polish, Part 1.1 (Offline
         // "Welcome Back" flow). Populated once, at login, by
         // OfflineSimulationEngine.ExtrapolateOfflineProgressAsync - the
