@@ -145,7 +145,7 @@ namespace FolkIdle.Server.Engine
                 {
                     await transaction.RollbackAsync();
                     Console.WriteLine("Fusion failed: target item has already reached MaxQualityTier.");
-                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.MaxTierReached);
                     return ForgeSplicingResult.MaxTierReached;
                 }
 

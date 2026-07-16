@@ -5022,5 +5022,100 @@ namespace FolkIdle.Server.Tests
             Assert.True(ContentRegistry.TryGetLocalization("EventNone", "fr", out string fallbackValue));
             Assert.Equal("None", fallbackValue);
         }
+
+        // Modul: Final Production Polish, Part 1/5. Every key appended to
+        // localizations.json for the UI-header/error-message/dynamic-state
+        // expansion must resolve to a non-empty value for all four
+        // supported languages - proving the same fallback-safe
+        // ContentRegistry parser the client's LocalizationMatrix mirrors
+        // (both read the exact same server/GameData/localizations.json,
+        // see LocalizationMatrix's own doc comment) indexes and resolves
+        // the expanded key set correctly. LocalizationMatrix itself cannot
+        // run inside this xunit project (it is a UnityEngine-dependent
+        // unsafe class - Application.streamingAssetsPath, Marshal.
+        // AllocHGlobal - with no headless equivalent here), so
+        // ContentRegistry.TryGetLocalization against the identical source
+        // JSON is the real, testable proxy for "the expanded matrix loads,
+        // indexes, and resolves all newly authored keys."
+        [Fact]
+        public void Test_ContentRegistry_LocalizationLookup_ResolvesFinalProductionPolishKeysAcrossAllLanguages()
+        {
+            string[] keys =
+            {
+                "HeaderMailbox", "HeaderBankVault", "HeaderStore", "HeaderSeasonPass",
+                "HeaderGuildRoster", "HeaderOfflineSummary",
+                "ErrorTransactionPending", "ErrorMaxTierReached", "ErrorInsufficientFunds", "ErrorInventoryFull",
+                "StateLevelUp", "StateAllProgressSaved", "StateSavedPrefix", "StateMinutesAgoSuffix", "StateHoursAgoSuffix",
+                "OfflineAwayForPrefix", "OfflineHoursSuffix", "OfflineMinutesSuffix",
+                "GuildWarStatusActive", "GuildWarStatusInactive"
+            };
+            string[] languageCodes = { "en", "cs", "de", "pl" };
+
+            foreach (string key in keys)
+            {
+                foreach (string languageCode in languageCodes)
+                {
+                    bool resolved = ContentRegistry.TryGetLocalization(key, languageCode, out string value);
+                    Assert.True(resolved, $"Expected '{key}' to resolve for language '{languageCode}'.");
+                    Assert.False(string.IsNullOrEmpty(value), $"Expected '{key}' to resolve to a non-empty value for language '{languageCode}'.");
+                }
+            }
+
+            Assert.True(ContentRegistry.TryGetLocalization("HeaderMailbox", "en", out string mailboxEn));
+            Assert.Equal("Mailbox", mailboxEn);
+
+            Assert.True(ContentRegistry.TryGetLocalization("ErrorMaxTierReached", "pl", out string maxTierPl));
+            Assert.Equal("Osiagnieto maksymalny poziom", maxTierPl);
+        }
+
+        // Modul: Final Production Polish, Part 4/5. ActiveSkillEngine.
+        // ApplyStatusSynergy is the sole logic implementing the Chilled/
+        // Vulnerable synergy (called from RequestCastSkill's success
+        // branch in SimulationEngine.cs) - a pure struct-in/float-out
+        // function, exercised directly here without any DB/network
+        // fixture, exactly like the existing StatsCalculator_* tests in
+        // this class. Skill 1 (Ice Bolt) applies Chilled with no bonus to
+        // itself; skill 2 (Heavy Strike) consumes it for the 1.5x
+        // synergy multiplier and clears the bit, so a second Heavy Strike
+        // with no Chilled active gets no bonus.
+        [Fact]
+        public void Test_ActiveSkillEngine_StatusSynergy_ChilledConsumedByHeavyStrikeForBonusMultiplier()
+        {
+            var payload = new TickStatePayload();
+
+            float iceBoltMultiplier = ActiveSkillEngine.ApplyStatusSynergy(ref payload, 1);
+            Assert.Equal(1f, iceBoltMultiplier);
+            Assert.Equal(ActiveSkillEngine.StatusFlagChilled, (byte)(payload.TargetStatusEffectBitmask & ActiveSkillEngine.StatusFlagChilled));
+
+            float heavyStrikeMultiplier = ActiveSkillEngine.ApplyStatusSynergy(ref payload, 2);
+            Assert.Equal(ActiveSkillEngine.StatusSynergyDamageMultiplier, heavyStrikeMultiplier);
+            Assert.Equal(0, payload.TargetStatusEffectBitmask & ActiveSkillEngine.StatusFlagChilled);
+
+            float heavyStrikeMultiplierAgain = ActiveSkillEngine.ApplyStatusSynergy(ref payload, 2);
+            Assert.Equal(1f, heavyStrikeMultiplierAgain);
+        }
+
+        // Modul: Final Production Polish, Part 4/5. Mirrors the Chilled/
+        // Heavy Strike test above for the Vulnerable/Swift Slash pairing,
+        // then proves the two status bits are independent - consuming
+        // Vulnerable (skill 4) must not clear a still-active Chilled bit
+        // applied earlier by skill 1, since both live in the same byte
+        // bitmask.
+        [Fact]
+        public void Test_ActiveSkillEngine_StatusSynergy_VulnerableAndChilledBitsAreIndependent()
+        {
+            var payload = new TickStatePayload();
+
+            ActiveSkillEngine.ApplyStatusSynergy(ref payload, 1);
+            float sunderingBlowMultiplier = ActiveSkillEngine.ApplyStatusSynergy(ref payload, 3);
+            Assert.Equal(1f, sunderingBlowMultiplier);
+            Assert.Equal(
+                (byte)(ActiveSkillEngine.StatusFlagChilled | ActiveSkillEngine.StatusFlagVulnerable),
+                payload.TargetStatusEffectBitmask);
+
+            float swiftSlashMultiplier = ActiveSkillEngine.ApplyStatusSynergy(ref payload, 4);
+            Assert.Equal(ActiveSkillEngine.StatusSynergyDamageMultiplier, swiftSlashMultiplier);
+            Assert.Equal(ActiveSkillEngine.StatusFlagChilled, payload.TargetStatusEffectBitmask);
+        }
     }
 }

@@ -926,6 +926,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (req.HasItem && currentPayload.InventorySpaceRemaining <= 0)
                         {
+                            _playerRegistry.EnqueueCommandResult(req.PlayerId, (byte)CommandResultCode.InventoryFull);
                             SafeDispatchAsync("MailClaim.Reject", req.PlayerId, async () => { await _mailboxEngine.CommitMailClaimAsync(req.PlayerId, req.MailId, false); });
                         }
                         else
@@ -945,6 +946,7 @@ namespace FolkIdle.Server.Engine
                     {
                         if (currentPayload.InventorySpaceRemaining <= 0)
                         {
+                            _playerRegistry.EnqueueCommandResult(req.PlayerId, (byte)CommandResultCode.InventoryFull);
                             SafeDispatchAsync("BankWithdraw.Reject", req.PlayerId, async () => { await _mailboxEngine.CommitBankWithdrawAsync(req.PlayerId, req.BankId, false); });
                         }
                         else
@@ -2083,7 +2085,8 @@ namespace FolkIdle.Server.Engine
                             {
                                 currentPayload.CurrentMana -= castDef.ManaCost;
                                 ActiveSkillEngine.SetSkillCooldownExpiresAtMs(ref currentPayload, castSkillId, nowMs + castDef.CooldownMs);
-                                currentPayload.PendingSkillDamageMultiplier = castDef.DamageMultiplierPct / 100f;
+                                float statusSynergyMultiplier = ActiveSkillEngine.ApplyStatusSynergy(ref currentPayload, castSkillId);
+                                currentPayload.PendingSkillDamageMultiplier = (castDef.DamageMultiplierPct / 100f) * statusSynergyMultiplier;
                                 currentPayload.LastSkillCastSuccess = 1;
                             }
                         }
@@ -3751,6 +3754,11 @@ namespace FolkIdle.Server.Engine
 
             if (payload.CurrentMonsterHp <= 0 && payload.ActiveActivityId > 0)
             {
+                // Modul: Chilled/Vulnerable are scoped to the currently
+                // fought monster - clear on kill/respawn so a status never
+                // leaks onto the next monster.
+                payload.TargetStatusEffectBitmask = 0;
+
                 int finalXpMultiplier = localXpMultiplier;
                 if (payload.CurrentLevel < 50 && payload.CachedMentorCount > 0)
                 {

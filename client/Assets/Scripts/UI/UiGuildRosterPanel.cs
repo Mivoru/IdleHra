@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using FolkIdle.Client.Engine;
 
@@ -12,13 +13,17 @@ namespace FolkIdle.Client.UI
     // this codebase.
     public class UiGuildRosterPanel : MonoBehaviour
     {
+        public VisualSyncProxy SyncProxy;
+
         [Header("Guild Roster HUD")]
         public Transform RowContainer;
         public UiGuildRosterEntryRow RowPrefab;
         public int InitialRowPoolCapacity = 20;
+        public TextMeshProUGUI HeaderText;
 
         private UIComponentPool<UiGuildRosterEntryRow> _rowPool;
         private readonly List<UiGuildRosterEntryRow> _activeRows = new List<UiGuildRosterEntryRow>();
+        private readonly char[] _headerBuffer = new char[32];
         private bool _isDirty;
 
         private void Awake()
@@ -26,6 +31,13 @@ namespace FolkIdle.Client.UI
             if (RowPrefab != null && RowContainer != null)
             {
                 _rowPool = new UIComponentPool<UiGuildRosterEntryRow>(RowPrefab, RowContainer, InitialRowPoolCapacity);
+            }
+
+            if (HeaderText != null)
+            {
+                byte activeLanguage = SyncProxy == null || SyncProxy.VisualActiveLanguageState == 0 ? (byte)1 : SyncProxy.VisualActiveLanguageState;
+                int offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, LocalizationKey.HeaderGuildRoster, _headerBuffer, 0);
+                HeaderText.SetCharArray(_headerBuffer, 0, offset);
             }
         }
 

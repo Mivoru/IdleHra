@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using TMPro;
 using UnityEngine;
 using FolkIdle.Client.Engine;
 using FolkIdle.Client.Network;
@@ -27,15 +28,19 @@ namespace FolkIdle.Client.UI
     // uses, rather than fabricating a fake signed receipt.
     public class UiStoreWindow : MonoBehaviour
     {
+        public VisualSyncProxy SyncProxy;
+
         [Header("Store HUD")]
         public Transform RowContainer;
         public UiStoreEntryRow RowPrefab;
         public int InitialRowPoolCapacity = 10;
+        public TextMeshProUGUI HeaderText;
 
         public WebSocketClient NetworkClient;
 
         private UIComponentPool<UiStoreEntryRow> _rowPool;
         private readonly List<UiStoreEntryRow> _activeRows = new List<UiStoreEntryRow>();
+        private readonly char[] _headerBuffer = new char[32];
         private bool _isDirty;
 
         private void Awake()
@@ -43,6 +48,13 @@ namespace FolkIdle.Client.UI
             if (RowPrefab != null && RowContainer != null)
             {
                 _rowPool = new UIComponentPool<UiStoreEntryRow>(RowPrefab, RowContainer, InitialRowPoolCapacity);
+            }
+
+            if (HeaderText != null)
+            {
+                byte activeLanguage = SyncProxy == null || SyncProxy.VisualActiveLanguageState == 0 ? (byte)1 : SyncProxy.VisualActiveLanguageState;
+                int offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, LocalizationKey.HeaderStore, _headerBuffer, 0);
+                HeaderText.SetCharArray(_headerBuffer, 0, offset);
             }
         }
 

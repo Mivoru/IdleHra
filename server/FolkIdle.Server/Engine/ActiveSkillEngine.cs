@@ -182,5 +182,49 @@ namespace FolkIdle.Server.Engine
                 case 4: payload.Skill4CooldownExpiresAtMs = expiresAtMs; break;
             }
         }
+
+        public const byte StatusFlagVulnerable = 1 << 0;
+        public const byte StatusFlagChilled = 1 << 1;
+        public const float StatusSynergyDamageMultiplier = 1.5f;
+
+        // Modul: allocation-free combat skill status synergies. Skill 1
+        // (Ice Bolt) applies Chilled to the player's active target; skill 2
+        // (Heavy Strike) consumes Chilled for a 1.5x multiplier. Skill 3
+        // (Sundering Blow) applies Vulnerable; skill 4 (Swift Slash)
+        // consumes Vulnerable for a 1.5x multiplier. Returns 1f (no bonus)
+        // for apply-only casts or when the expected bit isn't set. Pure
+        // bitwise/primitive math on the ref struct field - 0 bytes
+        // allocated. Called from RequestCastSkill's success branch, whose
+        // result is folded into PendingSkillDamageMultiplier so the bonus
+        // flows through the existing single consumption point at the
+        // player's next auto-attack resolution.
+        public static float ApplyStatusSynergy(ref TickStatePayload payload, int skillId)
+        {
+            switch (skillId)
+            {
+                case 1:
+                    payload.TargetStatusEffectBitmask |= StatusFlagChilled;
+                    return 1f;
+                case 2:
+                    if ((payload.TargetStatusEffectBitmask & StatusFlagChilled) != 0)
+                    {
+                        payload.TargetStatusEffectBitmask &= unchecked((byte)~StatusFlagChilled);
+                        return StatusSynergyDamageMultiplier;
+                    }
+                    return 1f;
+                case 3:
+                    payload.TargetStatusEffectBitmask |= StatusFlagVulnerable;
+                    return 1f;
+                case 4:
+                    if ((payload.TargetStatusEffectBitmask & StatusFlagVulnerable) != 0)
+                    {
+                        payload.TargetStatusEffectBitmask &= unchecked((byte)~StatusFlagVulnerable);
+                        return StatusSynergyDamageMultiplier;
+                    }
+                    return 1f;
+                default:
+                    return 1f;
+            }
+        }
     }
 }

@@ -349,6 +349,15 @@ namespace FolkIdle.Server.Engine
         public byte LastSkillCastSuccess;
         public uint LastSkillCastResultTick;
 
+        // Modul: status synergy bits applied to the player's currently
+        // fought monster by active skills (Chilled/Vulnerable). PvE combat
+        // is strictly one player vs one active monster at a time and
+        // monsters carry no independent session state, so a player-scoped
+        // field is semantically equivalent to a target-status field. Reset
+        // to 0 on monster kill/respawn so a status never leaks onto the
+        // next monster. Primitive byte bitmask - zero allocation.
+        public byte TargetStatusEffectBitmask;
+
         public void InitializeObfuscation(long sessionKey)
         {
             ObfuscationSessionKey = sessionKey == 0L ? PlayerId ^ 0x5F3759DF5F3759DFL : sessionKey;

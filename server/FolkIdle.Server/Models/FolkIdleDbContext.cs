@@ -47,7 +47,6 @@ namespace FolkIdle.Server.Models
         public DbSet<PlayerWorldBossAttempt> PlayerWorldBossAttempts { get; set; }
         public DbSet<LiveOpsEventRotation> LiveOpsEventRotations { get; set; }
         public DbSet<PlayerDeviceRegistration> PlayerDeviceRegistrations { get; set; }
-        public DbSet<PlayerChronoRegistry> PlayerChronoRegistries { get; set; }
         public DbSet<EquipmentAffixMatrix> EquipmentAffixMatrices { get; set; }
         public DbSet<PlayerCraftingSlot> PlayerCraftingSlots { get; set; }
         public DbSet<PlayerLifetimeAchievement> PlayerLifetimeAchievements { get; set; }
@@ -261,9 +260,6 @@ namespace FolkIdle.Server.Models
                 .HasMaxLength(64);
             modelBuilder.Entity<PlayerDeviceRegistration>()
                 .HasIndex(d => d.PlayerId);
-
-            modelBuilder.Entity<PlayerChronoRegistry>()
-                .HasKey(p => p.PlayerId);
 
             modelBuilder.Entity<PlayerCraftingSlot>()
                 .HasKey(p => new { p.PlayerId, p.SlotIndex });

@@ -38,16 +38,25 @@ namespace FolkIdle.Client.UI
         public UiSeasonPassMilestoneRow RowPrefab;
         public TextMeshProUGUI PassLevelText;
         public TextMeshProUGUI AccumulatedXpText;
+        public TextMeshProUGUI HeaderText;
 
         private UIComponentPool<UiSeasonPassMilestoneRow> _rowPool;
         private readonly UiSeasonPassMilestoneRow[] _activeRows = new UiSeasonPassMilestoneRow[MaxMilestones];
         private readonly char[] _headerBuffer = new char[32];
+        private readonly char[] _titleBuffer = new char[32];
 
         private void Awake()
         {
             if (RowPrefab != null && RowContainer != null)
             {
                 _rowPool = new UIComponentPool<UiSeasonPassMilestoneRow>(RowPrefab, RowContainer, (int)MaxMilestones);
+            }
+
+            if (HeaderText != null)
+            {
+                byte activeLanguage = SyncProxy == null || SyncProxy.VisualActiveLanguageState == 0 ? (byte)1 : SyncProxy.VisualActiveLanguageState;
+                int offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, LocalizationKey.HeaderSeasonPass, _titleBuffer, 0);
+                HeaderText.SetCharArray(_titleBuffer, 0, offset);
             }
         }
 

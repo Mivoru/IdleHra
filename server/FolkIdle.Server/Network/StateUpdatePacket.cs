@@ -30,7 +30,17 @@ namespace FolkIdle.Server.Network
         // command targets a player who already has an unresolved bank
         // transaction in flight - see that engine's own doc comment on
         // _pendingBankTransactions.
-        TransactionPending = 9
+        TransactionPending = 9,
+
+        // Modul: Final Production Polish, Part 1. Returned by
+        // ForgeSplicingEngine when the target item is already at
+        // MaxQualityTier and cannot be fused further.
+        MaxTierReached = 10,
+
+        // Modul: Final Production Polish, Part 1. Returned by the mail
+        // claim / bank withdraw request drains when InventorySpaceRemaining
+        // is exhausted and the item could not be delivered.
+        InventoryFull = 11
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

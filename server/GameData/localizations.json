@@ -54,5 +54,145 @@
     "Cs": "Boss HP: ",
     "De": "Boss LP: ",
     "Pl": "Boss PZ: "
+  },
+  {
+    "Key": "HeaderMailbox",
+    "En": "Mailbox",
+    "Cs": "Postovni schranka",
+    "De": "Postfach",
+    "Pl": "Skrzynka pocztowa"
+  },
+  {
+    "Key": "HeaderBankVault",
+    "En": "Bank Vault",
+    "Cs": "Bankovni trezor",
+    "De": "Banktresor",
+    "Pl": "Skarbiec bankowy"
+  },
+  {
+    "Key": "HeaderStore",
+    "En": "Store",
+    "Cs": "Obchod",
+    "De": "Shop",
+    "Pl": "Sklep"
+  },
+  {
+    "Key": "HeaderSeasonPass",
+    "En": "Season Pass",
+    "Cs": "Sezonni propustka",
+    "De": "Season-Pass",
+    "Pl": "Przepustka sezonowa"
+  },
+  {
+    "Key": "HeaderGuildRoster",
+    "En": "Guild Roster",
+    "Cs": "Seznam clenu gildy",
+    "De": "Gildenliste",
+    "Pl": "Lista gildii"
+  },
+  {
+    "Key": "HeaderOfflineSummary",
+    "En": "Offline Summary",
+    "Cs": "Souhrn offline",
+    "De": "Offline-Zusammenfassung",
+    "Pl": "Podsumowanie offline"
+  },
+  {
+    "Key": "ErrorTransactionPending",
+    "En": "Transaction pending",
+    "Cs": "Transakce probiha",
+    "De": "Transaktion ausstehend",
+    "Pl": "Transakcja w toku"
+  },
+  {
+    "Key": "ErrorMaxTierReached",
+    "En": "Max tier reached",
+    "Cs": "Maximalni uroven dosazena",
+    "De": "Maximale Stufe erreicht",
+    "Pl": "Osiagnieto maksymalny poziom"
+  },
+  {
+    "Key": "ErrorInsufficientFunds",
+    "En": "Insufficient funds",
+    "Cs": "Nedostatek prostredku",
+    "De": "Unzureichendes Guthaben",
+    "Pl": "Niewystarczajace srodki"
+  },
+  {
+    "Key": "ErrorInventoryFull",
+    "En": "Inventory full",
+    "Cs": "Inventar je plny",
+    "De": "Inventar voll",
+    "Pl": "Ekwipunek jest pelny"
+  },
+  {
+    "Key": "StateLevelUp",
+    "En": "Level Up!",
+    "Cs": "Postup na uroven!",
+    "De": "Stufenaufstieg!",
+    "Pl": "Nowy poziom!"
+  },
+  {
+    "Key": "StateAllProgressSaved",
+    "En": "All progress saved",
+    "Cs": "Veskery postup ulozen",
+    "De": "Gesamter Fortschritt gespeichert",
+    "Pl": "Caly postep zapisany"
+  },
+  {
+    "Key": "StateSavedPrefix",
+    "En": "Saved ",
+    "Cs": "Ulozeno pred ",
+    "De": "Gespeichert vor ",
+    "Pl": "Zapisano "
+  },
+  {
+    "Key": "StateMinutesAgoSuffix",
+    "En": "m ago",
+    "Cs": " min",
+    "De": " Min.",
+    "Pl": " min temu"
+  },
+  {
+    "Key": "StateHoursAgoSuffix",
+    "En": "h ago",
+    "Cs": " hod",
+    "De": " Std.",
+    "Pl": " godz temu"
+  },
+  {
+    "Key": "OfflineAwayForPrefix",
+    "En": "Away for ",
+    "Cs": "Nepritomen ",
+    "De": "Abwesend seit ",
+    "Pl": "Nieobecny przez "
+  },
+  {
+    "Key": "OfflineHoursSuffix",
+    "En": "h ",
+    "Cs": "h ",
+    "De": "Std. ",
+    "Pl": "godz "
+  },
+  {
+    "Key": "OfflineMinutesSuffix",
+    "En": "m",
+    "Cs": "m",
+    "De": "Min.",
+    "Pl": "min"
+  },
+  {
+    "Key": "GuildWarStatusActive",
+    "En": "War Active",
+    "Cs": "Valka probiha",
+    "De": "Krieg aktiv",
+    "Pl": "Wojna trwa"
+  },
+  {
+    "Key": "GuildWarStatusInactive",
+    "En": "No Active War",
+    "Cs": "Zadna aktivni valka",
+    "De": "Kein aktiver Krieg",
+    "Pl": "Brak aktywnej wojny"
   }
 ]

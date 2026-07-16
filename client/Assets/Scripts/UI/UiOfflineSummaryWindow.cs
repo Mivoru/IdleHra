@@ -21,6 +21,7 @@ namespace FolkIdle.Client.UI
         [Header("Modal Root")]
         public GameObject WindowRoot;
         public Button DismissButton;
+        public TextMeshProUGUI HeaderText;
 
         [Header("Summary Fields")]
         public TextMeshProUGUI ElapsedTimeText;
@@ -29,6 +30,7 @@ namespace FolkIdle.Client.UI
         public TextMeshProUGUI MaterialDropsText;
 
         private readonly char[] _lineBuffer = new char[64];
+        private readonly char[] _titleBuffer = new char[32];
 
         private void Awake()
         {
@@ -40,6 +42,13 @@ namespace FolkIdle.Client.UI
             if (WindowRoot != null)
             {
                 WindowRoot.SetActive(false);
+            }
+
+            if (HeaderText != null)
+            {
+                byte activeLanguage = SyncProxy == null || SyncProxy.VisualActiveLanguageState == 0 ? (byte)1 : SyncProxy.VisualActiveLanguageState;
+                int offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, LocalizationKey.HeaderOfflineSummary, _titleBuffer, 0);
+                HeaderText.SetCharArray(_titleBuffer, 0, offset);
             }
         }
 
@@ -103,16 +112,18 @@ namespace FolkIdle.Client.UI
             }
         }
 
-        private static int WriteElapsedTimeToBuffer(char[] buffer, int offset, long elapsedSeconds)
+        private int WriteElapsedTimeToBuffer(char[] buffer, int offset, long elapsedSeconds)
         {
             long hours = elapsedSeconds / 3600L;
             long minutes = (elapsedSeconds % 3600L) / 60L;
 
-            offset = WriteTextToBuffer(buffer, offset, "Away for ");
+            byte activeLanguage = SyncProxy == null || SyncProxy.VisualActiveLanguageState == 0 ? (byte)1 : SyncProxy.VisualActiveLanguageState;
+
+            offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, LocalizationKey.OfflineAwayForPrefix, buffer, offset);
             offset = WriteLongToBuffer(buffer, offset, hours);
-            offset = WriteTextToBuffer(buffer, offset, "h ");
+            offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, LocalizationKey.OfflineHoursSuffix, buffer, offset);
             offset = WriteLongToBuffer(buffer, offset, minutes);
-            offset = WriteTextToBuffer(buffer, offset, "m");
+            offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, LocalizationKey.OfflineMinutesSuffix, buffer, offset);
             return offset;
         }
 

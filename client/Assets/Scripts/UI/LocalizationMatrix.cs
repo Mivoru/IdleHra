@@ -17,7 +17,33 @@ namespace FolkIdle.Client.UI
         EventMasterArtisan = 4,
         EventDiamondStar = 5,
         PushQueuePrefix = 6,
-        BossHpPrefix = 7
+        BossHpPrefix = 7,
+
+        // Modul: Final Production Polish, Part 1 - UI headers, error
+        // messages, and dynamic states, appended after the original 8
+        // entries. Every existing member above keeps its original integer
+        // value (LocalizationMatrix addresses slots by this fixed integer,
+        // not by declaration order), so this expansion is purely additive.
+        HeaderMailbox = 8,
+        HeaderBankVault = 9,
+        HeaderStore = 10,
+        HeaderSeasonPass = 11,
+        HeaderGuildRoster = 12,
+        HeaderOfflineSummary = 13,
+        ErrorTransactionPending = 14,
+        ErrorMaxTierReached = 15,
+        ErrorInsufficientFunds = 16,
+        ErrorInventoryFull = 17,
+        StateLevelUp = 18,
+        StateAllProgressSaved = 19,
+        StateSavedPrefix = 20,
+        StateMinutesAgoSuffix = 21,
+        StateHoursAgoSuffix = 22,
+        OfflineAwayForPrefix = 23,
+        OfflineHoursSuffix = 24,
+        OfflineMinutesSuffix = 25,
+        GuildWarStatusActive = 26,
+        GuildWarStatusInactive = 27
     }
 
     // Modul: Production Release Hardening, Part 3. Previously a hardcoded

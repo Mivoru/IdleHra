@@ -100,24 +100,5 @@ namespace FolkIdle.Server.Engine
                 registry.ActiveSpeedMultiplier = 1.0;
             }
         }
-
-        public static void ProcessLoginHandshake(PlayerChronoRegistry registry, long currentTimestamp)
-        {
-            if (registry.LastDisconnectTimestamp == 0)
-            {
-                registry.LastDisconnectTimestamp = currentTimestamp;
-                return;
-            }
-
-            long deltaSeconds = currentTimestamp - registry.LastDisconnectTimestamp;
-            if (deltaSeconds <= 0)
-            {
-                return;
-            }
-
-            int earnedSeconds = CalculateOfflineBankedSeconds(deltaSeconds);
-            registry.BankedChronoSeconds = (uint)AddBankedSeconds((int)Math.Min(int.MaxValue, registry.BankedChronoSeconds), earnedSeconds);
-            registry.LastDisconnectTimestamp = currentTimestamp;
-        }
     }
 }

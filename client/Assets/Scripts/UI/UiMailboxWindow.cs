@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using FolkIdle.Client.Engine;
 using FolkIdle.Client.Network;
@@ -14,15 +15,19 @@ namespace FolkIdle.Client.UI
     // UiMarketBrowserWindow's exact pattern.
     public class UiMailboxWindow : MonoBehaviour
     {
+        public VisualSyncProxy SyncProxy;
+
         [Header("Inbox HUD")]
         public Transform RowContainer;
         public UiMailboxEntryRow RowPrefab;
         public int InitialRowPoolCapacity = 10;
+        public TextMeshProUGUI HeaderText;
 
         public WebSocketClient NetworkClient;
 
         private UIComponentPool<UiMailboxEntryRow> _rowPool;
         private readonly List<UiMailboxEntryRow> _activeRows = new List<UiMailboxEntryRow>();
+        private readonly char[] _headerBuffer = new char[32];
         private bool _isDirty;
 
         private void Awake()
@@ -30,6 +35,13 @@ namespace FolkIdle.Client.UI
             if (RowPrefab != null && RowContainer != null)
             {
                 _rowPool = new UIComponentPool<UiMailboxEntryRow>(RowPrefab, RowContainer, InitialRowPoolCapacity);
+            }
+
+            if (HeaderText != null)
+            {
+                byte activeLanguage = SyncProxy == null || SyncProxy.VisualActiveLanguageState == 0 ? (byte)1 : SyncProxy.VisualActiveLanguageState;
+                int offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, LocalizationKey.HeaderMailbox, _headerBuffer, 0);
+                HeaderText.SetCharArray(_headerBuffer, 0, offset);
             }
         }
 

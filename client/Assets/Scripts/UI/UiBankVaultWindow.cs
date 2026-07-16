@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using FolkIdle.Client.Engine;
 using FolkIdle.Client.Network;
@@ -18,6 +19,9 @@ namespace FolkIdle.Client.UI
     // UiMarketBrowserWindow.
     public class UiBankVaultWindow : MonoBehaviour
     {
+        public VisualSyncProxy SyncProxy;
+        public TextMeshProUGUI HeaderText;
+
         [Header("Vault Contents (Withdraw)")]
         public Transform VaultRowContainer;
         public UiBankVaultEntryRow VaultRowPrefab;
@@ -38,6 +42,7 @@ namespace FolkIdle.Client.UI
         private UIComponentPool<UiBankDepositCandidateRow> _backpackRowPool;
         private readonly List<UiBankDepositCandidateRow> _activeBackpackRows = new List<UiBankDepositCandidateRow>();
         private bool _isBackpackDirty;
+        private readonly char[] _headerBuffer = new char[32];
 
         private void Awake()
         {
@@ -49,6 +54,13 @@ namespace FolkIdle.Client.UI
             if (BackpackRowPrefab != null && BackpackRowContainer != null)
             {
                 _backpackRowPool = new UIComponentPool<UiBankDepositCandidateRow>(BackpackRowPrefab, BackpackRowContainer, InitialBackpackRowPoolCapacity);
+            }
+
+            if (HeaderText != null)
+            {
+                byte activeLanguage = SyncProxy == null || SyncProxy.VisualActiveLanguageState == 0 ? (byte)1 : SyncProxy.VisualActiveLanguageState;
+                int offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, LocalizationKey.HeaderBankVault, _headerBuffer, 0);
+                HeaderText.SetCharArray(_headerBuffer, 0, offset);
             }
         }
 

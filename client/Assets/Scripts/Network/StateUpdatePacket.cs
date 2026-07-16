@@ -22,7 +22,16 @@ namespace FolkIdle.Client.Network
         // Modul: mirrors server CommandResultCode exactly - returned when a
         // deposit/withdraw/claim command targets a player who already has
         // an unresolved bank transaction in flight.
-        TransactionPending = 9
+        TransactionPending = 9,
+
+        // Modul: mirrors server CommandResultCode exactly - the forge
+        // target item is already at MaxQualityTier.
+        MaxTierReached = 10,
+
+        // Modul: mirrors server CommandResultCode exactly - a mail claim
+        // or bank withdraw could not be delivered because inventory space
+        // is exhausted.
+        InventoryFull = 11
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

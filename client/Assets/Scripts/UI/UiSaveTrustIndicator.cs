@@ -49,23 +49,26 @@ namespace FolkIdle.Client.UI
 
             _lastDisplayedSeconds = ageSeconds;
 
+            byte activeLanguage = SyncProxy.VisualActiveLanguageState == 0 ? (byte)1 : SyncProxy.VisualActiveLanguageState;
+
             if (ageSeconds <= RecentThresholdSeconds)
             {
-                SaveStatusText.text = "All progress saved";
+                int savedOffset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, LocalizationKey.StateAllProgressSaved, _lineBuffer, 0);
+                SaveStatusText.SetCharArray(_lineBuffer, 0, savedOffset);
                 return;
             }
 
-            int offset = WriteTextToBuffer(_lineBuffer, 0, "Saved ");
+            int offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, LocalizationKey.StateSavedPrefix, _lineBuffer, 0);
 
             if (ageSeconds < 3600)
             {
                 offset = WriteIntToBuffer(_lineBuffer, offset, ageSeconds / 60);
-                offset = WriteTextToBuffer(_lineBuffer, offset, "m ago");
+                offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, LocalizationKey.StateMinutesAgoSuffix, _lineBuffer, offset);
             }
             else
             {
                 offset = WriteIntToBuffer(_lineBuffer, offset, ageSeconds / 3600);
-                offset = WriteTextToBuffer(_lineBuffer, offset, "h ago");
+                offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, LocalizationKey.StateHoursAgoSuffix, _lineBuffer, offset);
             }
 
             SaveStatusText.SetCharArray(_lineBuffer, 0, offset);

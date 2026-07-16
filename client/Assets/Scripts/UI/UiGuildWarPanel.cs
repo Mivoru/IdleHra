@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using FolkIdle.Client.Engine;
@@ -15,11 +16,12 @@ namespace FolkIdle.Client.UI
     // flowing from the server through StateUpdatePacket into
     // VisualSyncProxy before this panel existed - GuildWarEngine/
     // GuildCombatSimulationEngine needed no server-side change, only a
-    // client binding. Event-driven only, mirroring UiGuildRaidPanel - HUD
-    // text redraws strictly from VisualSyncProxy.OnGuildStateUpdated,
-    // never from Update(), and never allocates a string per refresh (plain
-    // char-buffer writes, matching the same convention every other
-    // zero-alloc HUD panel in this codebase uses).
+    // client binding. HUD text redraws strictly from
+    // VisualSyncProxy.OnGuildStateUpdated (Part 3 adds a second, narrowly
+    // scoped Update() for the real-time Sunday matchmaking countdown,
+    // which has no server push to hook), and never allocates a string per
+    // refresh (plain char-buffer writes, matching the same convention
+    // every other zero-alloc HUD panel in this codebase uses).
     public class UiGuildWarPanel : MonoBehaviour
     {
         public VisualSyncProxy SyncProxy;
@@ -47,10 +49,18 @@ namespace FolkIdle.Client.UI
         [Header("War Multiplier")]
         public TextMeshProUGUI WarMultiplierText;
 
+        [Header("Matchmaking Countdown")]
+        public TextMeshProUGUI MatchmakingCountdownText;
+
         private readonly char[] _lineBuffer = new char[64];
+        private readonly char[] _countdownBuffer = new char[32];
+        private float _countdownRefreshAccumulatorSeconds;
+        private const float CountdownRefreshIntervalSeconds = 1f;
 
         private void OnEnable()
         {
+            _countdownRefreshAccumulatorSeconds = CountdownRefreshIntervalSeconds;
+
             if (SyncProxy == null) return;
 
             SyncProxy.OnGuildStateUpdated += RefreshUI;
@@ -64,6 +74,61 @@ namespace FolkIdle.Client.UI
             SyncProxy.OnGuildStateUpdated -= RefreshUI;
         }
 
+        // Modul: Part 3, Guild War Sunday matchmaking countdown. This is
+        // the one place on this panel that legitimately needs Update() -
+        // unlike the rest of the panel (strictly event-driven off
+        // OnGuildStateUpdated), the countdown to the next matchmaking
+        // window ticks down in real time independent of any server push.
+        // Throttled to once per second (sub-second precision is not
+        // player-visible) purely to reduce UI-thread churn - the
+        // calculation itself is already zero-allocation regardless of
+        // frequency.
+        private void Update()
+        {
+            if (MatchmakingCountdownText == null) return;
+
+            _countdownRefreshAccumulatorSeconds += Time.unscaledDeltaTime;
+            if (_countdownRefreshAccumulatorSeconds < CountdownRefreshIntervalSeconds) return;
+            _countdownRefreshAccumulatorSeconds = 0f;
+
+            RefreshMatchmakingCountdown();
+        }
+
+        // Modul: matchmaking runs every Sunday at 23:30 UTC. Pure
+        // DateTime.UtcNow/TimeSpan struct arithmetic (both value types) -
+        // zero managed heap allocation. Written directly into a
+        // pre-allocated char buffer via the same WriteTextToBuffer/
+        // WriteIntToBuffer helpers every other panel in this codebase
+        // uses, never string concatenation/interpolation.
+        private void RefreshMatchmakingCountdown()
+        {
+            TimeSpan remaining = ComputeTimeUntilNextGuildWarMatchmaking(DateTime.UtcNow);
+
+            int offset = WriteTextToBuffer(_countdownBuffer, 0, "Next War In ");
+            offset = WriteIntToBuffer(_countdownBuffer, offset, remaining.Days);
+            offset = WriteTextToBuffer(_countdownBuffer, offset, "d ");
+            offset = WriteIntToBuffer(_countdownBuffer, offset, remaining.Hours);
+            offset = WriteTextToBuffer(_countdownBuffer, offset, "h ");
+            offset = WriteIntToBuffer(_countdownBuffer, offset, remaining.Minutes);
+            offset = WriteTextToBuffer(_countdownBuffer, offset, "m ");
+            offset = WriteIntToBuffer(_countdownBuffer, offset, remaining.Seconds);
+            offset = WriteTextToBuffer(_countdownBuffer, offset, "s");
+
+            MatchmakingCountdownText.SetCharArray(_countdownBuffer, 0, offset);
+        }
+
+        private static TimeSpan ComputeTimeUntilNextGuildWarMatchmaking(DateTime utcNow)
+        {
+            int daysUntilSunday = ((int)DayOfWeek.Sunday - (int)utcNow.DayOfWeek + 7) % 7;
+            DateTime candidate = utcNow.Date.AddDays(daysUntilSunday).AddHours(23).AddMinutes(30);
+            if (candidate <= utcNow)
+            {
+                candidate = candidate.AddDays(7);
+            }
+
+            return candidate - utcNow;
+        }
+
         private void RefreshUI()
         {
             if (SyncProxy == null) return;
@@ -75,7 +140,10 @@ namespace FolkIdle.Client.UI
 
             if (WarStatusText != null)
             {
-                WarStatusText.text = warActive ? "War Active" : "No Active War";
+                byte activeLanguage = SyncProxy.VisualActiveLanguageState == 0 ? (byte)1 : SyncProxy.VisualActiveLanguageState;
+                LocalizationKey statusKey = warActive ? LocalizationKey.GuildWarStatusActive : LocalizationKey.GuildWarStatusInactive;
+                int offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, statusKey, _lineBuffer, 0);
+                WarStatusText.SetCharArray(_lineBuffer, 0, offset);
             }
 
             if (!warActive)
