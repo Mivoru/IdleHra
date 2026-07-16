@@ -151,3 +151,46 @@ jobs:
           kubectl delete job folkidle-apply-migrations --ignore-not-found
           kubectl apply -f /tmp/apply-migrations.yaml
           kubectl wait --for=condition=complete --timeout=300s job/folkidle-apply-migrations
+
+  # Rolls the SHA-tagged image out to the actual server Deployment - gated
+  # on migrate, so this can never run against a database schema the new
+  # image has not already been migrated against. build-and-push alone only
+  # produces an image; this is the step that actually puts it in front of
+  # traffic. Same KUBE_DEPLOY_ENABLED/KUBE_CONFIG gating as migrate, for the
+  # same reason (skipped, not failed, until a production cluster is wired
+  # up).
+  deploy:
+    name: Deploy to Cluster
+    needs: migrate
+    runs-on: ubuntu-latest
+    if: ${{ vars.KUBE_DEPLOY_ENABLED == 'true' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure cluster access
+        run: |
+          mkdir -p "$HOME/.kube"
+          printf '%s' "${{ secrets.KUBE_CONFIG }}" > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Resolve container registry
+        id: registry
+        run: |
+          if [ -n "${{ secrets.REGISTRY_URL }}" ]; then
+            echo "url=${{ secrets.REGISTRY_URL }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "url=ghcr.io/${{ github.repository }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Substitutes the SHA-tagged image into deployment.yaml (mirroring the
+      # migrate job's IMAGE_PLACEHOLDER substitution pattern, just against
+      # deployment.yaml's own literal "folkidle-server:latest" placeholder
+      # tag rather than a dedicated token) and applies it alongside hpa.yaml,
+      # which carries no image reference and is applied unchanged. Blocks on
+      # rollout completion so a failed/stuck rollout fails this job loudly.
+      - name: Apply deployment manifests
+        run: |
+          sed "s|image: folkidle-server:latest|image: ${{ steps.registry.outputs.url }}:${{ github.sha }}|" server/deployment.yaml > /tmp/deployment.yaml
+          kubectl apply -f /tmp/deployment.yaml -f server/hpa.yaml
+          kubectl rollout status deployment/folkidle-server --timeout=180s

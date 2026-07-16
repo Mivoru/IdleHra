@@ -36,6 +36,11 @@ spec:
       target:
         type: AverageValue
         averageValue: "500"
+  # folkidle_tick_duration_milliseconds resolves through prometheus-adapter's
+  # custom rule (see deploy_prometheus_adapter in ops/deploy_local_k8s.sh),
+  # which derives this scalar as rate(_sum)/rate(_count) over a rolling
+  # 5-minute window - the HPA itself only ever sees the resulting mean, not
+  # the underlying histogram series.
   - type: Pods
     pods:
       metric:

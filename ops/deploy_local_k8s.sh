@@ -648,7 +648,13 @@ data:
       name:
         matches: "folkidle_tick_duration_milliseconds_sum"
         as: "folkidle_tick_duration_milliseconds"
-      metricsQuery: 'avg(rate(folkidle_tick_duration_milliseconds_sum{<<.LabelMatchers>>}[2m]) / rate(folkidle_tick_duration_milliseconds_count{<<.LabelMatchers>>}[2m])) by (<<.GroupBy>>)'
+      # Modul: mean tick duration = sum/count over a rolling 5-minute window
+      # (rate() over a matching window on both series, then divided), not a
+      # single instantaneous sample - this is the histogram-to-scalar
+      # derivation the HPA needs, since folkidle_tick_duration_milliseconds
+      # itself is only ever emitted as _sum/_count/_bucket series (see
+      # NetworkBroadcastSystem.HandleMetrics), never as a bare gauge.
+      metricsQuery: 'avg(rate(folkidle_tick_duration_milliseconds_sum{<<.LabelMatchers>>}[5m]) / rate(folkidle_tick_duration_milliseconds_count{<<.LabelMatchers>>}[5m])) by (<<.GroupBy>>)'
 ---
 apiVersion: apps/v1
 kind: Deployment
