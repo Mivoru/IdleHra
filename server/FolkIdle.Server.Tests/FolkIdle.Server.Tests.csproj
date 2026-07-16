@@ -30,4 +30,14 @@
     <ProjectReference Include="..\FolkIdle.Server\FolkIdle.Server.csproj" />
   </ItemGroup>
 
+  <!-- Modul: TutorialStateMachine.cs is a pure C# class (zero UnityEngine
+       references) shared verbatim with the Unity client via this link,
+       rather than duplicated - the onboarding integration tests exercise
+       the exact same file the client compiles, so a change to the client's
+       tutorial-blocking rules cannot silently diverge from what the tests
+       assert. -->
+  <ItemGroup>
+    <Compile Include="..\..\client\Assets\Scripts\Engine\TutorialStateMachine.cs" Link="Client\TutorialStateMachine.cs" />
+  </ItemGroup>
+
 </Project>

@@ -261,7 +261,19 @@ namespace FolkIdle.Server.Engine
                     var purchase = await context.PrimaryPurchaseLedgers
                         .FirstOrDefaultAsync(p => p.TransactionId == transactionId);
 
-                    if (purchase == null || purchase.PurchaseState == 2) return;
+                    // A refund alert for a transaction this server never
+                    // recorded means the purchase and refund ledgers have
+                    // diverged - fail loudly (the catch below logs and
+                    // rethrows) rather than silently swallowing a refund
+                    // that will never be clawed back.
+                    if (purchase == null)
+                    {
+                        throw new InvalidOperationException($"Refund alert for unknown TransactionId '{transactionId}' - no PrimaryPurchaseLedger row exists.");
+                    }
+
+                    // Already refunded - an idempotent repeat delivery of the
+                    // same alert, not an error.
+                    if (purchase.PurchaseState == 2) return;
 
                     purchase.PurchaseState = 2;
 
@@ -271,7 +283,28 @@ namespace FolkIdle.Server.Engine
                     if (profile != null)
                     {
                         int previousBalance = profile.PremiumDiamonds;
-                        int deduction = 1000; // Mapped via product lookup matrix
+
+                        // Claw back exactly what the original purchase
+                        // granted. ProcessedTransactions records the granted
+                        // amount for every receipt-verified purchase; the
+                        // legacy WebSocket notification path predates that
+                        // ledger, so fall back to re-resolving the amount
+                        // from the purchase's ProductId via the same fixed
+                        // price table that granted it. If neither source can
+                        // produce a positive amount, the ledgers are
+                        // inconsistent - throw (rolling back the
+                        // PurchaseState change above) instead of guessing.
+                        var processedTransaction = await context.ProcessedTransactions
+                            .FirstOrDefaultAsync(t => t.TransactionId == transactionId);
+
+                        int deduction = processedTransaction?.PremiumDiamondsGranted
+                            ?? ResolvePremiumDiamondsForProduct(purchase.ProductId);
+
+                        if (deduction <= 0)
+                        {
+                            throw new InvalidOperationException($"Refund alert for TransactionId '{transactionId}' cannot resolve the granted diamond amount - no ProcessedTransactions row and ProductId '{purchase.ProductId}' is not in the price table.");
+                        }
+
                         profile.PremiumDiamonds -= deduction;
 
                         var log = new EventHorizonPremiumLedger

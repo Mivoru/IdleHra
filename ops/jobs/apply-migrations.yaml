@@ -1,0 +1,55 @@
+# One-shot EF Core migration Job. Applied BEFORE the folkidle-server
+# Deployment rollout (see the "Run Migrations" step in
+# .github/workflows/deploy.yml) so schema changes land exactly once, from a
+# single container, instead of multiple server replicas racing to migrate
+# the same database at pod startup - Program.cs's normal boot path
+# deliberately never auto-migrates for exactly that reason.
+#
+# The image tag below is a placeholder: the CI deploy step substitutes the
+# SHA-tagged image it just pushed (sed s|IMAGE_PLACEHOLDER|...|) before
+# applying, so the migration binary is always the same build that is about
+# to be rolled out. ops/deploy_local_k8s.sh's local flow keeps using its
+# own port-forward + "dotnet ef database update" path and does not use this
+# manifest.
+#
+# backoffLimit 1: a migration that fails once will fail identically on
+# every retry (schema errors are deterministic, and transient connectivity
+# gets one more chance) - fail the Job fast so the rollout halts loudly
+# rather than retrying in a loop.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: folkidle-apply-migrations
+  labels:
+    app: folkidle-server
+    component: migrations
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: folkidle-server
+        component: migrations
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: apply-migrations
+        image: IMAGE_PLACEHOLDER
+        imagePullPolicy: IfNotPresent
+        command: ["dotnet", "FolkIdle.Server.dll", "--migrate"]
+        env:
+        - name: DOTNET_ENVIRONMENT
+          value: "Production"
+        - name: FOLKIDLE_DB_CONN
+          valueFrom:
+            secretKeyRef:
+              name: folkidle-server-secrets
+              key: postgres-connection-string
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "512Mi"

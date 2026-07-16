@@ -29,6 +29,18 @@ namespace FolkIdle.Server.Engine
         public float DodgeChancePct { get; set; }
         public float LifestealPct { get; set; }
 
+        // Additive accuracy score (DEX-derived) - hit chance against a
+        // monster is (100 + AccuracyRating) / (100 + monster.DodgeRating),
+        // so 0 reproduces the old fixed-midpoint hit chance exactly.
+        public int AccuracyRating { get; set; }
+
+        // Percent (0-100 scale, matching CritChancePct's convention) chance
+        // to reduce an incoming hit's damage multiplicatively (CON-derived
+        // - bulk/endurance shrugging off a blow). Clamped at the point of
+        // use, never here, so a single high-CON outlier cannot be assumed
+        // safe by every caller.
+        public float BlockStrengthPct { get; set; }
+
         // Modul 13.4.3: innate racial baseline passives.
         public float GoldAcquisitionMultiplierPct { get; set; }
         public float MiningOreDuplicationBonusPct { get; set; }
@@ -58,15 +70,19 @@ namespace FolkIdle.Server.Engine
             stats.FlatMeleeDamage = str * 2;
             stats.FlatArmorPenetration = str * 1;
             
-            // Dexterity (DEX): +2 Ranged Damage, +0.05% Attack Speed, +0.1% Critical Hit Chance.
+            // Dexterity (DEX): +2 Ranged Damage, +0.05% Attack Speed, +0.1% Critical Hit Chance,
+            // +1 Accuracy Rating.
             stats.FlatRangedDamage = dex * 2;
             stats.AttackSpeedPct = dex * 0.05f;
             stats.CritChancePct = dex * 0.1f;
-            
-            // Constitution (CON): +15 Max HP, +1 Physical Armor, +0.1 Out-of-Combat HP Regen/sec.
+            stats.AccuracyRating = dex * 1;
+
+            // Constitution (CON): +15 Max HP, +1 Physical Armor, +0.1 Out-of-Combat HP Regen/sec,
+            // +0.05% Block Strength.
             stats.MaxHp = con * 15;
             stats.FlatPhysicalArmor = con * 1;
             stats.OutOfCombatHpRegen = con * 0.1f;
+            stats.BlockStrengthPct = con * 0.05f;
             
             // Luck (LCK): +0.05% Forge Success, +0.1% Loot Luck.
             stats.ForgeSuccessPct = lck * 0.05f;

@@ -154,7 +154,7 @@ namespace FolkIdle.Server.Engine
 
         private async Task ProcessMonsterLootDropAsync(long playerId, int monsterId, float lootLuckPct)
         {
-            int monsterRegion = ((monsterId - 1) % 30) / 6 + 1;
+            int monsterRegion = ContentRegistry.GetMonsterRegionTier(monsterId);
             if (monsterRegion < 1) monsterRegion = 1;
 
             // Modul 03: no dedicated "IsRegionalBoss" flag exists anywhere in

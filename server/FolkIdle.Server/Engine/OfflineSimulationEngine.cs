@@ -277,7 +277,7 @@ namespace FolkIdle.Server.Engine
             // CritMitigationPct subtracted from that multiplier). Uses an
             // expected-value blend of crit/non-crit hits rather than replaying
             // per-swing RNG, consistent with the rest of this analytical path.
-            int monsterRegionTier = ((fallbackId - 1) % 30) / 6 + 1;
+            int monsterRegionTier = ContentRegistry.GetMonsterRegionTier(fallbackId);
             float monsterCritChance = 0.05f + (monsterRegionTier * 0.005f);
             float mitigatedCritMult = Math.Max(1.0f, 1.5f - (combatStats.CritMitigationPct / 100f));
             float expectedCritMultiplier = 1.0f + monsterCritChance * (mitigatedCritMult - 1.0f);

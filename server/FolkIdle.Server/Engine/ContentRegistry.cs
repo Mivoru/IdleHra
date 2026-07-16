@@ -98,6 +98,42 @@ namespace FolkIdle.Server.Engine
         public int BaseXpReward;
         public int AttackIntervalMs;
         public int LootTableId;
+
+        // Modul: data-driven difficulty region. Replaces the old
+        // ((Id - 1) % 30) / 6 + 1 arithmetic convention, which silently
+        // wrapped monster ids 31+ back onto tiers 1-5 regardless of their
+        // actual stats - the region a monster belongs to is now an authored
+        // content fact, not a property of its array position. 0 means "not
+        // authored yet"; ContentRegistry.GetMonsterRegionTier falls back to
+        // the legacy formula for such entries so stale content data
+        // degrades to the old behavior instead of breaking.
+        public int RegionTier;
+
+        // Flat whole-HP damage reduction applied per hit against this
+        // monster (see SimulationEngine's combat mitigation step).
+        public int Armor;
+
+        // Additive dodge score: hit chance against this monster is
+        // attackerAccuracy / (100 + DodgeRating), so 0 means base hit
+        // chance and higher values make the monster harder to connect with.
+        public int DodgeRating;
+    }
+
+    // Modul: tunable balancing constants previously hardcoded as C# consts
+    // in individual engines (GuildRaidEngine, GuildContributionEngine).
+    // Loaded from GameData/GameBalanceConfig.json by
+    // ContentRegistry.Initialize so a balance change is a content-data
+    // deploy, not a code deploy. Field defaults mirror the exact literals
+    // the engines used before externalization, so a missing optional field
+    // in the JSON changes nothing.
+    public sealed class GameBalanceDefinition
+    {
+        public long GuildRaidBossBaseHp { get; set; } = 1_000_000L;
+        public int GuildRaidDpsPerLevel { get; set; } = 10;
+        public int GuildRaidTickIntervalSeconds { get; set; } = 5;
+        public long GuildRaidVictoryContributionPoints { get; set; } = 100L;
+        public long GuildContributionEquipmentExpPerTier { get; set; } = 100L;
+        public long GuildContributionGoldToExpDivisor { get; set; } = 10L;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -151,6 +187,16 @@ namespace FolkIdle.Server.Engine
         private static string[] _itemBaseIds = Array.Empty<string>();
 
         private static MonsterDefinition[] _monsters = Array.Empty<MonsterDefinition>();
+        private static GameBalanceDefinition _balance = new GameBalanceDefinition();
+
+        // Modul: balancing constants formerly hardcoded as C# consts in
+        // GuildRaidEngine/GuildContributionEngine, now sourced from
+        // GameData/GameBalanceConfig.json so a tuning change is a content
+        // deploy, not a code deploy. Defaults on GameBalanceDefinition
+        // itself match the exact literals those engines used before
+        // externalization, so a missing config file (or a missing field
+        // within it) changes no behavior.
+        public static GameBalanceDefinition Balance => _balance;
 
         private static readonly LootTableEntry[] _lootEntries = new LootTableEntry[]
         {
@@ -364,6 +410,27 @@ namespace FolkIdle.Server.Engine
         public static string GetMonsterEnemyId(int id) => _monsterEnemyIds[id - 1];
         public static string GetItemBaseId(int itemId) => _itemBaseIds[itemId - 1];
 
+        // Modul: single source of truth for "which difficulty region does
+        // this monster belong to" - replaces the ((Id - 1) % 30) / 6 + 1
+        // arithmetic convention duplicated across NetworkBroadcastSystem,
+        // CombatLootEngine, CodexEngine, OfflineSimulationEngine,
+        // StateCheckpointManager, and SimulationEngine, which silently
+        // wrapped monster ids 31+ back onto tiers 1-5 regardless of their
+        // actual stats. Monsters authored with a RegionTier in content data
+        // use it directly; a RegionTier of 0 (unauthored/legacy content)
+        // falls back to the old formula so stale data degrades instead of
+        // producing a tier of 0.
+        public static int GetMonsterRegionTier(int monsterId)
+        {
+            if (monsterId < 1 || monsterId > _monsters.Length)
+            {
+                return 1;
+            }
+
+            int authored = _monsters[monsterId - 1].RegionTier;
+            return authored > 0 ? authored : ((monsterId - 1) % 30) / 6 + 1;
+        }
+
         private static Dictionary<string, int> _baseIdToItemDefinitionIndex = new();
 
         private static Dictionary<string, int> BuildBaseIdIndex()
@@ -425,6 +492,13 @@ namespace FolkIdle.Server.Engine
             public int LootTableId { get; set; }
             public string Name { get; set; } = string.Empty;
             public string EnemyId { get; set; } = string.Empty;
+
+            // Optional (default 0) so content data authored before these
+            // fields existed still parses - see MonsterDefinition's own
+            // doc comments for their semantics.
+            public int RegionTier { get; set; }
+            public int Armor { get; set; }
+            public int DodgeRating { get; set; }
         }
 
         private sealed class ItemJson
@@ -472,6 +546,7 @@ namespace FolkIdle.Server.Engine
             List<MonsterJson> monsterJson = ReadAndValidateJsonFile<MonsterJson>(dir, "monsters.json");
             List<ItemJson> itemJson = ReadAndValidateJsonFile<ItemJson>(dir, "items.json");
             List<GatheringNodeJson> nodeJson = ReadAndValidateJsonFile<GatheringNodeJson>(dir, "gathering_nodes.json");
+            GameBalanceDefinition balance = ReadOptionalBalanceConfig(dir);
 
             RequireContiguousIds(monsterJson.Count, monsterJson.Select(m => m.Id), "monsters.json", "Id");
             RequireContiguousIds(itemJson.Count, itemJson.Select(i => i.Id), "items.json", "Id");
@@ -495,6 +570,11 @@ namespace FolkIdle.Server.Engine
                     throw new InvalidOperationException($"ContentRegistry.Initialize: monsters.json entry Id={m.Id} is missing Name or EnemyId.");
                 }
 
+                if (m.RegionTier < 0 || m.Armor < 0 || m.DodgeRating < 0)
+                {
+                    throw new InvalidOperationException($"ContentRegistry.Initialize: monsters.json entry Id={m.Id} has a negative RegionTier, Armor, or DodgeRating.");
+                }
+
                 int index = m.Id - 1;
                 newMonsters[index] = new MonsterDefinition
                 {
@@ -504,7 +584,10 @@ namespace FolkIdle.Server.Engine
                     BaseGoldReward = m.BaseGoldReward,
                     BaseXpReward = m.BaseXpReward,
                     AttackIntervalMs = m.AttackIntervalMs,
-                    LootTableId = m.LootTableId
+                    LootTableId = m.LootTableId,
+                    RegionTier = m.RegionTier,
+                    Armor = m.Armor,
+                    DodgeRating = m.DodgeRating
                 };
                 newMonsterNames[index] = m.Name;
                 newMonsterEnemyIds[index] = m.EnemyId;
@@ -564,6 +647,39 @@ namespace FolkIdle.Server.Engine
             _itemBaseIds = newItemBaseIds;
             _gatheringNodes = newGatheringNodes;
             _baseIdToItemDefinitionIndex = newBaseIdIndex;
+            _balance = balance;
+        }
+
+        // Modul: GameBalanceConfig.json is deliberately optional, unlike
+        // monsters/items/gathering_nodes - many existing ContentRegistry.Initialize
+        // call sites (temp directories built for "malformed JSON" tests,
+        // the benchmark harness) supply a minimal custom gameDataDirectory
+        // with no reason to also carry a balance file. A missing file, or
+        // a missing individual field within it, silently falls back to
+        // GameBalanceDefinition's own defaults - which are the exact
+        // literals GuildRaidEngine/GuildContributionEngine used before
+        // externalization - so nothing behaves differently when this file
+        // is absent. A malformed (present but unparseable) file still
+        // fails loudly, the same fail-fast posture as every other content
+        // file, since a present-but-broken config is far more likely to be
+        // an authoring mistake than an intentional omission.
+        private static GameBalanceDefinition ReadOptionalBalanceConfig(string directory)
+        {
+            string path = System.IO.Path.Combine(directory, "GameBalanceConfig.json");
+            if (!System.IO.File.Exists(path))
+            {
+                return new GameBalanceDefinition();
+            }
+
+            string text = System.IO.File.ReadAllText(path);
+            try
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<GameBalanceDefinition>(text) ?? new GameBalanceDefinition();
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                throw new InvalidOperationException($"ContentRegistry.Initialize: 'GameBalanceConfig.json' contains malformed JSON: {ex.Message}", ex);
+            }
         }
 
         private static List<T> ReadAndValidateJsonFile<T>(string directory, string fileName)

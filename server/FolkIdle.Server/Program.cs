@@ -17,6 +17,47 @@ if (args.Length > 0 && args[0] == "--layout-check")
     return;
 }
 
+// Modul: one-shot migration entrypoint for ops/jobs/apply-migrations.yaml -
+// applies every pending EF Core migration and exits. Runs as its own
+// short-lived container BEFORE the server Deployment rollout proceeds, so
+// multiple server replicas never race to migrate the same database at
+// startup (the normal server boot path below deliberately never
+// auto-migrates for exactly that reason). An uncaught exception here exits
+// non-zero, failing the K8s Job and halting the rollout.
+if (args.Length > 0 && args[0] == "--migrate")
+{
+    var migrationConnectionString = Environment.GetEnvironmentVariable("FOLKIDLE_DB_CONN");
+    if (string.IsNullOrEmpty(migrationConnectionString))
+    {
+        throw new InvalidOperationException("FOLKIDLE_DB_CONN must be set to run --migrate.");
+    }
+
+    var migrationOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+        .UseNpgsql(migrationConnectionString)
+        .Options;
+    await using (var migrationContext = new FolkIdleDbContext(migrationOptions))
+    {
+        await migrationContext.Database.MigrateAsync();
+    }
+    Console.WriteLine("Database migrations applied successfully.");
+    return;
+}
+
+// Modul: content-validation entrypoint for the CI pipeline - exercises the
+// exact same ContentRegistry/ActiveSkillEngine parse-and-validate path the
+// real server boot runs, then exits. A malformed GameData JSON exits
+// non-zero here, failing the build before a broken image is ever pushed,
+// instead of only surfacing as a crash-looping pod at rollout time.
+// ops/validate_content.py is the fast Python pre-check mirroring the same
+// structural rules; this flag is the authoritative parity check.
+if (args.Length > 0 && args[0] == "--validate-content")
+{
+    ContentRegistry.Initialize();
+    ActiveSkillEngine.Initialize();
+    Console.WriteLine("Content validation passed.");
+    return;
+}
+
 // Content Pipeline: parses server/GameData/*.json into ContentRegistry's/
 // ActiveSkillEngine's flat struct arrays before anything else starts - an
 // uncaught InvalidOperationException here is the intended fast-fail/
@@ -144,10 +185,11 @@ var guildRaidEngine = new GuildRaidEngine(serviceProvider, playerRegistry);
 var equipmentSlotEngine = new EquipmentSlotEngine(serviceProvider, playerRegistry);
 var combatLootEngine = new CombatLootEngine(serviceProvider, playerRegistry);
 var redisWriteBehindEngine = new RedisWriteBehindEngine(serviceProvider, redisMultiplexer);
-var liveOpsTickEngine = new LiveOpsTickEngine(serviceProvider, playerRegistry, worldBossEngine);
 var pushNotificationTriggerEngine = new PushNotificationTriggerEngine(serviceProvider, redisMultiplexer);
+var liveOpsTickEngine = new LiveOpsTickEngine(serviceProvider, playerRegistry, worldBossEngine, pushNotificationTriggerEngine);
 var compliancePurgeEngine = new CompliancePurgeEngine(serviceProvider, redisMultiplexer);
 var leaderboardCronEngine = new LeaderboardCronEngine(serviceProvider, redisMultiplexer);
+var guildManagementEngine = new GuildManagementEngine(serviceProvider.GetRequiredService<RetryingDbContextOptions>(), playerRegistry);
 // Modul: MockIapReceiptValidator performs no cryptographic verification -
 // see its own doc comment. Production instead uses
 // ProductionIapReceiptValidator, which verifies each receipt's signature

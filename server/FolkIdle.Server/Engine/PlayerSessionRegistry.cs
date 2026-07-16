@@ -43,6 +43,20 @@ namespace FolkIdle.Server.Engine
         public int EquippedLuckBonus;
     }
 
+    // Modul: GuildManagementEngine's create/join/leave/kick handlers run on
+    // background threads and commit membership to the database first; this
+    // notification is how the tick thread learns a live player's GuildId
+    // changed mid-session so it can update the tick-thread-owned
+    // _guildMembersIndex and the player's TickStatePayload.GuildId, then
+    // push a ReloadState packet. Before this queue existed, GuildId was
+    // load-once-at-login and never changed for a session's lifetime.
+    public struct GuildMembershipChangeNotification
+    {
+        public long PlayerId;
+        public long OldGuildId;
+        public long NewGuildId;
+    }
+
     public struct MailClaimRequest
     {
         public long PlayerId;
@@ -230,6 +244,7 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<CodexMultiplierUpdateNotification> CodexMultiplierUpdateQueue { get; } = new();
         public ConcurrentQueue<RegionCompletionNotification> RegionCompletionUpdateQueue { get; } = new();
         public ConcurrentQueue<CombatLootDropNotification> CombatLootDropQueue { get; } = new();
+        public ConcurrentQueue<GuildMembershipChangeNotification> GuildMembershipChangeQueue { get; } = new();
 
         public void RegisterPlayer(long playerId)
         {

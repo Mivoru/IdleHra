@@ -160,7 +160,7 @@ namespace FolkIdle.Server.Engine
                         {
                             if (existingCompletionSet.Contains((touchedPlayerId, region))) continue;
 
-                            var monstersInRegion = ContentRegistry.Monsters.ToArray().Where(m => ((m.Id - 1) % 30) / 6 + 1 == region).ToList();
+                            var monstersInRegion = ContentRegistry.Monsters.ToArray().Where(m => ContentRegistry.GetMonsterRegionTier(m.Id) == region).ToList();
                             if (monstersInRegion.Count == 0) continue;
 
                             bool allKilled = true;

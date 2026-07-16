@@ -72,19 +72,21 @@ namespace FolkIdle.Client.Network
         public long WorldBossMaxHp;
         public uint WorldBossCurrentHp;
         public byte ActiveEventType;
-        public byte LiveOpsReserved0;
-        public byte LiveOpsReserved1;
-        public byte LiveOpsReserved2;
-        public byte LiveOpsReserved3;
-        public byte LiveOpsReserved4;
-        public byte LiveOpsReserved5;
-        public byte LiveOpsReserved6;
-        public byte LiveOpsReserved7;
-        public byte LiveOpsReserved8;
-        public byte LiveOpsReserved9;
-        public byte LiveOpsReserved10;
-        public byte LiveOpsReserved11;
-        public byte LiveOpsReserved12;
+
+        // Modul: mirrors server/FolkIdle.Server/Network/StateUpdatePacket.cs
+        // exactly - see that file's comment. Repurposes what was
+        // LiveOpsReserved0; packet size unchanged.
+        public byte IsFreshAccount;
+
+        // Modul: mirrors server/FolkIdle.Server/Network/StateUpdatePacket.cs
+        // exactly - Accuracy/Armor/BlockStrength combat axes, server-
+        // computed so client UI can never drift from what was actually
+        // rolled. Repurposes what were LiveOpsReserved1-12 (12 bytes);
+        // packet size unchanged.
+        public int PlayerAccuracyRating;
+        public int PlayerArmorRating;
+        public float PlayerBlockStrengthPct;
+
         public byte LiveOpsReserved13;
         public byte LiveOpsReserved14;
 

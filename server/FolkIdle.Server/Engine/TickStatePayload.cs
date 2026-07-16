@@ -197,6 +197,32 @@ namespace FolkIdle.Server.Engine
         public float CachedCodexYieldMultiplier = 1.0f;
         public float CachedCodexDamageMultiplier = 1.0f;
 
+        // Modul: daily quest live tracking - loaded once from
+        // DailyQuestRecords at login (see QuestEngine.LoadIntoPayloadAsync)
+        // and mutated as plain struct field increments inside the 10 Hz
+        // tick (monster-kill resolution, CraftingCompletionQueue drain),
+        // satisfying the "quest-tracking must use pre-allocated buffers"
+        // constraint - no dictionary/list allocation occurs on the
+        // increment path. QuestSlotDirty marks which slots changed since
+        // the last flush so StateCheckpointManager's periodic write-back
+        // (QuestEngine.FlushDirtySlotsAsync) only persists what actually
+        // moved. QuestType: 0 = KillMonsters, 1 = CraftItems (see
+        // QuestEngine.QuestType*).
+        public long DailyQuestDateKeyUtc;
+        public byte QuestSlot0Type;
+        public int QuestSlot0Target;
+        public int QuestSlot0Progress;
+        public bool QuestSlot0Claimed;
+        public byte QuestSlot1Type;
+        public int QuestSlot1Target;
+        public int QuestSlot1Progress;
+        public bool QuestSlot1Claimed;
+        public byte QuestSlot2Type;
+        public int QuestSlot2Target;
+        public int QuestSlot2Progress;
+        public bool QuestSlot2Claimed;
+        public bool QuestProgressDirty;
+
         // Race Masteries
         public int HumanMasteryLevel;
         public int VilaMasteryLevel;

@@ -29,6 +29,16 @@ namespace FolkIdle.Server.Models
         public string? ExternalProviderId { get; set; }
 
         public long LastLogoutTimestamp { get; set; }
+
+        // Modul: daily login reward tracking (DailyLoginRewardEngine).
+        // LastLoginTimestamp is the epoch second of the last login that was
+        // actually credited a reward - compared against the current UTC day
+        // boundary, not the exact previous login attempt, so multiple
+        // logins on the same UTC day never grant twice. LoginStreakDays
+        // counts consecutive credited days and resets to 1 (not 0) the
+        // moment a day is skipped, since a fresh streak still counts today.
+        public long LastLoginTimestamp { get; set; }
+        public int LoginStreakDays { get; set; }
         public int AccumulatedTimeBankSeconds { get; set; }
         public long GuildId { get; set; }
         public int ActiveOffensivePotionId { get; set; }

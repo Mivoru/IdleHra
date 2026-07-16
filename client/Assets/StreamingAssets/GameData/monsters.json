@@ -8,7 +8,10 @@
     "AttackIntervalMs": 2000,
     "LootTableId": 1,
     "Name": "Highland Ram",
-    "EnemyId": "highland_ram"
+    "EnemyId": "highland_ram",
+    "RegionTier": 1,
+    "Armor": 19,
+    "DodgeRating": 0
   },
   {
     "Id": 2,
@@ -19,7 +22,10 @@
     "AttackIntervalMs": 1100,
     "LootTableId": 2,
     "Name": "Moor Crow",
-    "EnemyId": "moor_crow"
+    "EnemyId": "moor_crow",
+    "RegionTier": 1,
+    "Armor": 22,
+    "DodgeRating": 2
   },
   {
     "Id": 3,
@@ -30,7 +36,10 @@
     "AttackIntervalMs": 1600,
     "LootTableId": 3,
     "Name": "Mist Stalker",
-    "EnemyId": "mist_stalker"
+    "EnemyId": "mist_stalker",
+    "RegionTier": 1,
+    "Armor": 26,
+    "DodgeRating": 0
   },
   {
     "Id": 4,
@@ -41,7 +50,10 @@
     "AttackIntervalMs": 1500,
     "LootTableId": 4,
     "Name": "Coastline Selkie Renegade",
-    "EnemyId": "coastline_selkie_renegade"
+    "EnemyId": "coastline_selkie_renegade",
+    "RegionTier": 1,
+    "Armor": 31,
+    "DodgeRating": 1
   },
   {
     "Id": 5,
@@ -52,7 +64,10 @@
     "AttackIntervalMs": 1800,
     "LootTableId": 5,
     "Name": "Bog Stalker",
-    "EnemyId": "bog_stalker"
+    "EnemyId": "bog_stalker",
+    "RegionTier": 1,
+    "Armor": 36,
+    "DodgeRating": 0
   },
   {
     "Id": 6,
@@ -63,7 +78,10 @@
     "AttackIntervalMs": 2200,
     "LootTableId": 6,
     "Name": "Kelpie Mare of the Depths",
-    "EnemyId": "kelpie_mare_of_the_depths"
+    "EnemyId": "kelpie_mare_of_the_depths",
+    "RegionTier": 1,
+    "Armor": 88,
+    "DodgeRating": 0
   },
   {
     "Id": 7,
@@ -74,7 +92,10 @@
     "AttackIntervalMs": 1200,
     "LootTableId": 7,
     "Name": "Shadow Raven",
-    "EnemyId": "shadow_raven"
+    "EnemyId": "shadow_raven",
+    "RegionTier": 2,
+    "Armor": 43,
+    "DodgeRating": 7
   },
   {
     "Id": 8,
@@ -85,7 +106,10 @@
     "AttackIntervalMs": 2400,
     "LootTableId": 8,
     "Name": "Bramble Boar",
-    "EnemyId": "bramble_boar"
+    "EnemyId": "bramble_boar",
+    "RegionTier": 2,
+    "Armor": 50,
+    "DodgeRating": 4
   },
   {
     "Id": 9,
@@ -96,7 +120,10 @@
     "AttackIntervalMs": 1400,
     "LootTableId": 9,
     "Name": "Wood Sprite",
-    "EnemyId": "wood_sprite"
+    "EnemyId": "wood_sprite",
+    "RegionTier": 2,
+    "Armor": 58,
+    "DodgeRating": 6
   },
   {
     "Id": 10,
@@ -107,7 +134,10 @@
     "AttackIntervalMs": 3200,
     "LootTableId": 10,
     "Name": "Bark Golem",
-    "EnemyId": "bark_golem"
+    "EnemyId": "bark_golem",
+    "RegionTier": 2,
+    "Armor": 68,
+    "DodgeRating": 3
   },
   {
     "Id": 11,
@@ -118,7 +148,10 @@
     "AttackIntervalMs": 1500,
     "LootTableId": 11,
     "Name": "Schrat Huntsman",
-    "EnemyId": "schrat_huntsman"
+    "EnemyId": "schrat_huntsman",
+    "RegionTier": 2,
+    "Armor": 79,
+    "DodgeRating": 5
   },
   {
     "Id": 12,
@@ -129,7 +162,10 @@
     "AttackIntervalMs": 1800,
     "LootTableId": 12,
     "Name": "Headless Dullahan Knight",
-    "EnemyId": "headless_dullahan_knight"
+    "EnemyId": "headless_dullahan_knight",
+    "RegionTier": 2,
+    "Armor": 204,
+    "DodgeRating": 7
   },
   {
     "Id": 13,
@@ -140,7 +176,10 @@
     "AttackIntervalMs": 1100,
     "LootTableId": 13,
     "Name": "Karst Scorpion",
-    "EnemyId": "karst_scorpion"
+    "EnemyId": "karst_scorpion",
+    "RegionTier": 3,
+    "Armor": 94,
+    "DodgeRating": 9
   },
   {
     "Id": 14,
@@ -151,7 +190,10 @@
     "AttackIntervalMs": 1400,
     "LootTableId": 14,
     "Name": "Canyon Viper",
-    "EnemyId": "canyon_viper"
+    "EnemyId": "canyon_viper",
+    "RegionTier": 3,
+    "Armor": 107,
+    "DodgeRating": 11
   },
   {
     "Id": 15,
@@ -162,7 +204,10 @@
     "AttackIntervalMs": 1300,
     "LootTableId": 15,
     "Name": "Cave Harpy",
-    "EnemyId": "cave_harpy"
+    "EnemyId": "cave_harpy",
+    "RegionTier": 3,
+    "Armor": 122,
+    "DodgeRating": 8
   },
   {
     "Id": 16,
@@ -173,7 +218,10 @@
     "AttackIntervalMs": 2800,
     "LootTableId": 16,
     "Name": "Stone Gargoyle",
-    "EnemyId": "stone_gargoyle"
+    "EnemyId": "stone_gargoyle",
+    "RegionTier": 3,
+    "Armor": 141,
+    "DodgeRating": 10
   },
   {
     "Id": 17,
@@ -184,7 +232,10 @@
     "AttackIntervalMs": 1600,
     "LootTableId": 17,
     "Name": "Kallikantzaroi Corruptor",
-    "EnemyId": "kallikantzaroi_corruptor"
+    "EnemyId": "kallikantzaroi_corruptor",
+    "RegionTier": 3,
+    "Armor": 163,
+    "DodgeRating": 12
   },
   {
     "Id": 18,
@@ -195,7 +246,10 @@
     "AttackIntervalMs": 2500,
     "LootTableId": 18,
     "Name": "Elder Balkan Dragon (Zmey)",
-    "EnemyId": "elder_balkan_dragon_zmey"
+    "EnemyId": "elder_balkan_dragon_zmey",
+    "RegionTier": 3,
+    "Armor": 414,
+    "DodgeRating": 9
   },
   {
     "Id": 19,
@@ -206,7 +260,10 @@
     "AttackIntervalMs": 1000,
     "LootTableId": 19,
     "Name": "Fjord Gull",
-    "EnemyId": "fjord_gull"
+    "EnemyId": "fjord_gull",
+    "RegionTier": 4,
+    "Armor": 197,
+    "DodgeRating": 16
   },
   {
     "Id": 20,
@@ -217,7 +274,10 @@
     "AttackIntervalMs": 2300,
     "LootTableId": 20,
     "Name": "Glacial Bear",
-    "EnemyId": "glacial_bear"
+    "EnemyId": "glacial_bear",
+    "RegionTier": 4,
+    "Armor": 229,
+    "DodgeRating": 13
   },
   {
     "Id": 21,
@@ -228,7 +288,10 @@
     "AttackIntervalMs": 3000,
     "LootTableId": 21,
     "Name": "Runestone Guard",
-    "EnemyId": "runestone_guard"
+    "EnemyId": "runestone_guard",
+    "RegionTier": 4,
+    "Armor": 265,
+    "DodgeRating": 15
   },
   {
     "Id": 22,
@@ -239,7 +302,10 @@
     "AttackIntervalMs": 1700,
     "LootTableId": 22,
     "Name": "Draugr Raider",
-    "EnemyId": "draugr_raider"
+    "EnemyId": "draugr_raider",
+    "RegionTier": 4,
+    "Armor": 306,
+    "DodgeRating": 17
   },
   {
     "Id": 23,
@@ -250,7 +316,10 @@
     "AttackIntervalMs": 1400,
     "LootTableId": 23,
     "Name": "Draugr Berserker",
-    "EnemyId": "draugr_berserker"
+    "EnemyId": "draugr_berserker",
+    "RegionTier": 4,
+    "Armor": 357,
+    "DodgeRating": 14
   },
   {
     "Id": 24,
@@ -261,7 +330,10 @@
     "AttackIntervalMs": 2600,
     "LootTableId": 24,
     "Name": "Frost Jtunn Exile",
-    "EnemyId": "frost_jtunn_exile"
+    "EnemyId": "frost_jtunn_exile",
+    "RegionTier": 4,
+    "Armor": 908,
+    "DodgeRating": 16
   },
   {
     "Id": 25,
@@ -272,7 +344,10 @@
     "AttackIntervalMs": 900,
     "LootTableId": 25,
     "Name": "Auroral Spark",
-    "EnemyId": "auroral_spark"
+    "EnemyId": "auroral_spark",
+    "RegionTier": 5,
+    "Armor": 429,
+    "DodgeRating": 18
   },
   {
     "Id": 26,
@@ -283,7 +358,10 @@
     "AttackIntervalMs": 1800,
     "LootTableId": 26,
     "Name": "Citadel Sentinel",
-    "EnemyId": "citadel_sentinel"
+    "EnemyId": "citadel_sentinel",
+    "RegionTier": 5,
+    "Armor": 499,
+    "DodgeRating": 20
   },
   {
     "Id": 27,
@@ -294,7 +372,10 @@
     "AttackIntervalMs": 2800,
     "LootTableId": 27,
     "Name": "Crystal Golem",
-    "EnemyId": "crystal_golem"
+    "EnemyId": "crystal_golem",
+    "RegionTier": 5,
+    "Armor": 582,
+    "DodgeRating": 22
   },
   {
     "Id": 28,
@@ -305,7 +386,10 @@
     "AttackIntervalMs": 1200,
     "LootTableId": 28,
     "Name": "Transcendent Shade",
-    "EnemyId": "transcendent_shade"
+    "EnemyId": "transcendent_shade",
+    "RegionTier": 5,
+    "Armor": 683,
+    "DodgeRating": 19
   },
   {
     "Id": 29,
@@ -316,7 +400,10 @@
     "AttackIntervalMs": 1500,
     "LootTableId": 29,
     "Name": "Arch-Revenant",
-    "EnemyId": "arch_revenant"
+    "EnemyId": "arch_revenant",
+    "RegionTier": 5,
+    "Armor": 805,
+    "DodgeRating": 21
   },
   {
     "Id": 30,
@@ -326,8 +413,11 @@
     "BaseXpReward": 28540000,
     "AttackIntervalMs": 2000,
     "LootTableId": 30,
-    "Name": "Perun\u0027s Celestial Avatar",
-    "EnemyId": "peruns_celestial_avatar"
+    "Name": "Perun's Celestial Avatar",
+    "EnemyId": "peruns_celestial_avatar",
+    "RegionTier": 5,
+    "Armor": 2059,
+    "DodgeRating": 18
   },
   {
     "Id": 31,
@@ -338,7 +428,10 @@
     "AttackIntervalMs": 1600,
     "LootTableId": 31,
     "Name": "Bog Viper",
-    "EnemyId": "bog_viper"
+    "EnemyId": "bog_viper",
+    "RegionTier": 1,
+    "Armor": 1,
+    "DodgeRating": 0
   },
   {
     "Id": 32,
@@ -349,7 +442,10 @@
     "AttackIntervalMs": 1000,
     "LootTableId": 32,
     "Name": "Swamp Firefly",
-    "EnemyId": "swamp_firefly"
+    "EnemyId": "swamp_firefly",
+    "RegionTier": 1,
+    "Armor": 1,
+    "DodgeRating": 2
   },
   {
     "Id": 33,
@@ -360,7 +456,10 @@
     "AttackIntervalMs": 2500,
     "LootTableId": 33,
     "Name": "Drowned Corpse",
-    "EnemyId": "drowned_corpse"
+    "EnemyId": "drowned_corpse",
+    "RegionTier": 1,
+    "Armor": 1,
+    "DodgeRating": 0
   },
   {
     "Id": 34,
@@ -371,7 +470,10 @@
     "AttackIntervalMs": 1200,
     "LootTableId": 34,
     "Name": "Willow Whisp",
-    "EnemyId": "willow_whisp"
+    "EnemyId": "willow_whisp",
+    "RegionTier": 1,
+    "Armor": 2,
+    "DodgeRating": 1
   },
   {
     "Id": 35,
@@ -382,7 +484,10 @@
     "AttackIntervalMs": 1800,
     "LootTableId": 35,
     "Name": "Marsh Hag",
-    "EnemyId": "marsh_hag"
+    "EnemyId": "marsh_hag",
+    "RegionTier": 1,
+    "Armor": 2,
+    "DodgeRating": 0
   },
   {
     "Id": 36,
@@ -393,7 +498,10 @@
     "AttackIntervalMs": 2000,
     "LootTableId": 36,
     "Name": "Ancient Vodnk Regent",
-    "EnemyId": "ancient_vodnk_regent"
+    "EnemyId": "ancient_vodnk_regent",
+    "RegionTier": 1,
+    "Armor": 4,
+    "DodgeRating": 0
   },
   {
     "Id": 37,
@@ -404,7 +512,10 @@
     "AttackIntervalMs": 1400,
     "LootTableId": 37,
     "Name": "Cave Bat",
-    "EnemyId": "cave_bat"
+    "EnemyId": "cave_bat",
+    "RegionTier": 1,
+    "Armor": 2,
+    "DodgeRating": 2
   },
   {
     "Id": 38,
@@ -415,7 +526,10 @@
     "AttackIntervalMs": 2800,
     "LootTableId": 38,
     "Name": "Iron Ore Beetle",
-    "EnemyId": "iron_ore_beetle"
+    "EnemyId": "iron_ore_beetle",
+    "RegionTier": 1,
+    "Armor": 2,
+    "DodgeRating": 0
   },
   {
     "Id": 39,
@@ -426,7 +540,10 @@
     "AttackIntervalMs": 2200,
     "LootTableId": 39,
     "Name": "Subterranean Burrower",
-    "EnemyId": "subterranean_burrower"
+    "EnemyId": "subterranean_burrower",
+    "RegionTier": 1,
+    "Armor": 3,
+    "DodgeRating": 1
   },
   {
     "Id": 40,
@@ -437,7 +554,10 @@
     "AttackIntervalMs": 1100,
     "LootTableId": 40,
     "Name": "Deep Earth Imp",
-    "EnemyId": "deep_earth_imp"
+    "EnemyId": "deep_earth_imp",
+    "RegionTier": 1,
+    "Armor": 3,
+    "DodgeRating": 0
   },
   {
     "Id": 41,
@@ -448,7 +568,10 @@
     "AttackIntervalMs": 1600,
     "LootTableId": 41,
     "Name": "Mine Saboteur",
-    "EnemyId": "mine_saboteur"
+    "EnemyId": "mine_saboteur",
+    "RegionTier": 1,
+    "Armor": 4,
+    "DodgeRating": 0
   },
   {
     "Id": 42,
@@ -459,7 +582,10 @@
     "AttackIntervalMs": 2400,
     "LootTableId": 42,
     "Name": "Great Kobold Overlord",
-    "EnemyId": "great_kobold_overlord"
+    "EnemyId": "great_kobold_overlord",
+    "RegionTier": 1,
+    "Armor": 9,
+    "DodgeRating": 2
   },
   {
     "Id": 43,
@@ -470,7 +596,10 @@
     "AttackIntervalMs": 1300,
     "LootTableId": 43,
     "Name": "Mountain Eagle",
-    "EnemyId": "mountain_eagle"
+    "EnemyId": "mountain_eagle",
+    "RegionTier": 1,
+    "Armor": 4,
+    "DodgeRating": 0
   },
   {
     "Id": 44,
@@ -481,7 +610,10 @@
     "AttackIntervalMs": 2000,
     "LootTableId": 44,
     "Name": "Crag Goat",
-    "EnemyId": "crag_goat"
+    "EnemyId": "crag_goat",
+    "RegionTier": 1,
+    "Armor": 5,
+    "DodgeRating": 1
   },
   {
     "Id": 45,
@@ -492,7 +624,10 @@
     "AttackIntervalMs": 1500,
     "LootTableId": 45,
     "Name": "Frost Lizard",
-    "EnemyId": "frost_lizard"
+    "EnemyId": "frost_lizard",
+    "RegionTier": 1,
+    "Armor": 6,
+    "DodgeRating": 0
   },
   {
     "Id": 46,
@@ -503,7 +638,10 @@
     "AttackIntervalMs": 3000,
     "LootTableId": 46,
     "Name": "Rock Elemental",
-    "EnemyId": "rock_elemental"
+    "EnemyId": "rock_elemental",
+    "RegionTier": 1,
+    "Armor": 7,
+    "DodgeRating": 0
   },
   {
     "Id": 47,
@@ -514,7 +652,10 @@
     "AttackIntervalMs": 1700,
     "LootTableId": 47,
     "Name": "Alpine Wyrm",
-    "EnemyId": "alpine_wyrm"
+    "EnemyId": "alpine_wyrm",
+    "RegionTier": 1,
+    "Armor": 8,
+    "DodgeRating": 2
   },
   {
     "Id": 48,
@@ -525,7 +666,10 @@
     "AttackIntervalMs": 2100,
     "LootTableId": 48,
     "Name": "Crested Tatzelwurm",
-    "EnemyId": "crested_tatzelwurm"
+    "EnemyId": "crested_tatzelwurm",
+    "RegionTier": 1,
+    "Armor": 19,
+    "DodgeRating": 0
   },
   {
     "Id": 49,
@@ -536,7 +680,10 @@
     "AttackIntervalMs": 800,
     "LootTableId": 49,
     "Name": "Field Locust",
-    "EnemyId": "field_locust"
+    "EnemyId": "field_locust",
+    "RegionTier": 1,
+    "Armor": 9,
+    "DodgeRating": 1
   },
   {
     "Id": 50,
@@ -547,7 +694,10 @@
     "AttackIntervalMs": 1200,
     "LootTableId": 50,
     "Name": "Steppe Falcon",
-    "EnemyId": "steppe_falcon"
+    "EnemyId": "steppe_falcon",
+    "RegionTier": 1,
+    "Armor": 11,
+    "DodgeRating": 0
   },
   {
     "Id": 51,
@@ -558,7 +708,10 @@
     "AttackIntervalMs": 1900,
     "LootTableId": 51,
     "Name": "Blighted Vulture",
-    "EnemyId": "blighted_vulture"
+    "EnemyId": "blighted_vulture",
+    "RegionTier": 1,
+    "Armor": 13,
+    "DodgeRating": 0
   },
   {
     "Id": 52,
@@ -569,7 +722,10 @@
     "AttackIntervalMs": 1500,
     "LootTableId": 52,
     "Name": "Dry Grass Spirit",
-    "EnemyId": "dry_grass_spirit"
+    "EnemyId": "dry_grass_spirit",
+    "RegionTier": 1,
+    "Armor": 15,
+    "DodgeRating": 2
   },
   {
     "Id": 53,
@@ -580,7 +736,10 @@
     "AttackIntervalMs": 1400,
     "LootTableId": 53,
     "Name": "Sunstroke Specter",
-    "EnemyId": "sunstroke_specter"
+    "EnemyId": "sunstroke_specter",
+    "RegionTier": 1,
+    "Armor": 17,
+    "DodgeRating": 0
   },
   {
     "Id": 54,
@@ -591,7 +750,10 @@
     "AttackIntervalMs": 1600,
     "LootTableId": 54,
     "Name": "Crimson Noon Wraith (Poludnica)",
-    "EnemyId": "crimson_noon_wraith_poludnica"
+    "EnemyId": "crimson_noon_wraith_poludnica",
+    "RegionTier": 1,
+    "Armor": 41,
+    "DodgeRating": 1
   },
   {
     "Id": 55,
@@ -602,7 +764,10 @@
     "AttackIntervalMs": 2000,
     "LootTableId": 55,
     "Name": "Forest Rat",
-    "EnemyId": "forest_rat"
+    "EnemyId": "forest_rat",
+    "RegionTier": 1,
+    "Armor": 0,
+    "DodgeRating": 0
   },
   {
     "Id": 56,
@@ -613,7 +778,10 @@
     "AttackIntervalMs": 1800,
     "LootTableId": 56,
     "Name": "Marsh Frog",
-    "EnemyId": "marsh_frog"
+    "EnemyId": "marsh_frog",
+    "RegionTier": 1,
+    "Armor": 0,
+    "DodgeRating": 0
   },
   {
     "Id": 57,
@@ -624,7 +792,10 @@
     "AttackIntervalMs": 1200,
     "LootTableId": 57,
     "Name": "Stray Feral Cat",
-    "EnemyId": "stray_feral_cat"
+    "EnemyId": "stray_feral_cat",
+    "RegionTier": 1,
+    "Armor": 0,
+    "DodgeRating": 2
   },
   {
     "Id": 58,
@@ -635,7 +806,10 @@
     "AttackIntervalMs": 2200,
     "LootTableId": 58,
     "Name": "Hungry Timber Dog",
-    "EnemyId": "hungry_timber_dog"
+    "EnemyId": "hungry_timber_dog",
+    "RegionTier": 1,
+    "Armor": 1,
+    "DodgeRating": 0
   },
   {
     "Id": 59,
@@ -646,7 +820,10 @@
     "AttackIntervalMs": 1500,
     "LootTableId": 59,
     "Name": "Rabid Alpha Wolf",
-    "EnemyId": "rabid_alpha_wolf"
+    "EnemyId": "rabid_alpha_wolf",
+    "RegionTier": 1,
+    "Armor": 1,
+    "DodgeRating": 1
   },
   {
     "Id": 60,
@@ -657,6 +834,429 @@
     "AttackIntervalMs": 3500,
     "LootTableId": 60,
     "Name": "Moss-Grown Forest Troll",
-    "EnemyId": "moss_grown_forest_troll"
+    "EnemyId": "moss_grown_forest_troll",
+    "RegionTier": 1,
+    "Armor": 2,
+    "DodgeRating": 0
+  },
+  {
+    "Id": 61,
+    "MaxHp": 11082181,
+    "AttackPower": 46646,
+    "BaseGoldReward": 167763,
+    "BaseXpReward": 2712208,
+    "AttackIntervalMs": 900,
+    "LootTableId": 61,
+    "Name": "Basalt Golem",
+    "EnemyId": "basalt_golem",
+    "RegionTier": 6,
+    "Armor": 933,
+    "DodgeRating": 25
+  },
+  {
+    "Id": 62,
+    "MaxHp": 13919370,
+    "AttackPower": 54236,
+    "BaseGoldReward": 204305,
+    "BaseXpReward": 3440702,
+    "AttackIntervalMs": 1100,
+    "LootTableId": 62,
+    "Name": "Cinder Wraith",
+    "EnemyId": "cinder_wraith",
+    "RegionTier": 6,
+    "Armor": 1085,
+    "DodgeRating": 27
+  },
+  {
+    "Id": 63,
+    "MaxHp": 17711658,
+    "AttackPower": 63238,
+    "BaseGoldReward": 250479,
+    "BaseXpReward": 4465744,
+    "AttackIntervalMs": 1300,
+    "LootTableId": 63,
+    "Name": "Obsidian Harpy",
+    "EnemyId": "obsidian_harpy",
+    "RegionTier": 6,
+    "Armor": 1265,
+    "DodgeRating": 24
+  },
+  {
+    "Id": 64,
+    "MaxHp": 22609245,
+    "AttackPower": 74102,
+    "BaseGoldReward": 313677,
+    "BaseXpReward": 5855535,
+    "AttackIntervalMs": 1500,
+    "LootTableId": 64,
+    "Name": "Molten Hound",
+    "EnemyId": "molten_hound",
+    "RegionTier": 6,
+    "Armor": 1482,
+    "DodgeRating": 26
+  },
+  {
+    "Id": 65,
+    "MaxHp": 29033565,
+    "AttackPower": 87307,
+    "BaseGoldReward": 395360,
+    "BaseXpReward": 7688754,
+    "AttackIntervalMs": 1700,
+    "LootTableId": 65,
+    "Name": "Ashen Colossus",
+    "EnemyId": "ashen_colossus",
+    "RegionTier": 6,
+    "Armor": 1746,
+    "DodgeRating": 23
+  },
+  {
+    "Id": 66,
+    "MaxHp": 320475343,
+    "AttackPower": 227045,
+    "BaseGoldReward": 7896550,
+    "BaseXpReward": 101667400,
+    "AttackIntervalMs": 1900,
+    "LootTableId": 66,
+    "Name": "Pyroclast Sovereign",
+    "EnemyId": "pyroclast_sovereign",
+    "RegionTier": 6,
+    "Armor": 4541,
+    "DodgeRating": 25
+  },
+  {
+    "Id": 67,
+    "MaxHp": 35592283,
+    "AttackPower": 101437,
+    "BaseGoldReward": 436349,
+    "BaseXpReward": 9025855,
+    "AttackIntervalMs": 2100,
+    "LootTableId": 67,
+    "Name": "Voidtouched Stalker",
+    "EnemyId": "voidtouched_stalker",
+    "RegionTier": 7,
+    "Armor": 2029,
+    "DodgeRating": 32
+  },
+  {
+    "Id": 68,
+    "MaxHp": 44799499,
+    "AttackPower": 117849,
+    "BaseGoldReward": 533767,
+    "BaseXpReward": 11555326,
+    "AttackIntervalMs": 2300,
+    "LootTableId": 68,
+    "Name": "Abyssal Chimera",
+    "EnemyId": "abyssal_chimera",
+    "RegionTier": 7,
+    "Armor": 2357,
+    "DodgeRating": 29
+  },
+  {
+    "Id": 69,
+    "MaxHp": 57192857,
+    "AttackPower": 137330,
+    "BaseGoldReward": 657649,
+    "BaseXpReward": 15200360,
+    "AttackIntervalMs": 2500,
+    "LootTableId": 69,
+    "Name": "Starless Wraith",
+    "EnemyId": "starless_wraith",
+    "RegionTier": 7,
+    "Armor": 2747,
+    "DodgeRating": 31
+  },
+  {
+    "Id": 70,
+    "MaxHp": 73190628,
+    "AttackPower": 160842,
+    "BaseGoldReward": 830321,
+    "BaseXpReward": 20234460,
+    "AttackIntervalMs": 2600,
+    "LootTableId": 70,
+    "Name": "Umbral Wyrm",
+    "EnemyId": "umbral_wyrm",
+    "RegionTier": 7,
+    "Armor": 3217,
+    "DodgeRating": 28
+  },
+  {
+    "Id": 71,
+    "MaxHp": 94230450,
+    "AttackPower": 189426,
+    "BaseGoldReward": 1054719,
+    "BaseXpReward": 26969404,
+    "AttackIntervalMs": 900,
+    "LootTableId": 71,
+    "Name": "Nightmare Reaver",
+    "EnemyId": "nightmare_reaver",
+    "RegionTier": 7,
+    "Armor": 3789,
+    "DodgeRating": 30
+  },
+  {
+    "Id": 72,
+    "MaxHp": 1071596063,
+    "AttackPower": 500674,
+    "BaseGoldReward": 21879124,
+    "BaseXpReward": 362167493,
+    "AttackIntervalMs": 1100,
+    "LootTableId": 72,
+    "Name": "Sovereign of the Void Rift",
+    "EnemyId": "sovereign_of_the_void_rift",
+    "RegionTier": 7,
+    "Armor": 10013,
+    "DodgeRating": 32
+  },
+  {
+    "Id": 73,
+    "MaxHp": 114310589,
+    "AttackPower": 220589,
+    "BaseGoldReward": 1134934,
+    "BaseXpReward": 30036804,
+    "AttackIntervalMs": 1300,
+    "LootTableId": 73,
+    "Name": "Frostbound Revenant",
+    "EnemyId": "frostbound_revenant",
+    "RegionTier": 8,
+    "Armor": 4412,
+    "DodgeRating": 34
+  },
+  {
+    "Id": 74,
+    "MaxHp": 144187206,
+    "AttackPower": 256075,
+    "BaseGoldReward": 1394519,
+    "BaseXpReward": 38807650,
+    "AttackIntervalMs": 1500,
+    "LootTableId": 74,
+    "Name": "Glacial Wyrmling",
+    "EnemyId": "glacial_wyrmling",
+    "RegionTier": 8,
+    "Armor": 5122,
+    "DodgeRating": 36
+  },
+  {
+    "Id": 75,
+    "MaxHp": 184681917,
+    "AttackPower": 298231,
+    "BaseGoldReward": 1726701,
+    "BaseXpReward": 51738505,
+    "AttackIntervalMs": 1700,
+    "LootTableId": 75,
+    "Name": "Rimefang Stalker",
+    "EnemyId": "rimefang_stalker",
+    "RegionTier": 8,
+    "Armor": 5965,
+    "DodgeRating": 33
+  },
+  {
+    "Id": 76,
+    "MaxHp": 236932629,
+    "AttackPower": 349113,
+    "BaseGoldReward": 2197908,
+    "BaseXpReward": 69922449,
+    "AttackIntervalMs": 1900,
+    "LootTableId": 76,
+    "Name": "Permafrost Colossus",
+    "EnemyId": "permafrost_colossus",
+    "RegionTier": 8,
+    "Armor": 6982,
+    "DodgeRating": 35
+  },
+  {
+    "Id": 77,
+    "MaxHp": 305831462,
+    "AttackPower": 410990,
+    "BaseGoldReward": 2813720,
+    "BaseXpReward": 94599042,
+    "AttackIntervalMs": 2100,
+    "LootTableId": 77,
+    "Name": "Blizzard Djinn",
+    "EnemyId": "blizzard_djinn",
+    "RegionTier": 8,
+    "Armor": 8220,
+    "DodgeRating": 37
+  },
+  {
+    "Id": 78,
+    "MaxHp": 1500000000,
+    "AttackPower": 1104075,
+    "BaseGoldReward": 60620910,
+    "BaseXpReward": 1290141118,
+    "AttackIntervalMs": 2300,
+    "LootTableId": 78,
+    "Name": "The Eternal Winter King",
+    "EnemyId": "the_eternal_winter_king",
+    "RegionTier": 8,
+    "Armor": 22082,
+    "DodgeRating": 34
+  },
+  {
+    "Id": 79,
+    "MaxHp": 367127635,
+    "AttackPower": 479700,
+    "BaseGoldReward": 2951939,
+    "BaseXpReward": 99958351,
+    "AttackIntervalMs": 2500,
+    "LootTableId": 79,
+    "Name": "Stormcaller Djinn",
+    "EnemyId": "stormcaller_djinn",
+    "RegionTier": 9,
+    "Armor": 9594,
+    "DodgeRating": 41
+  },
+  {
+    "Id": 80,
+    "MaxHp": 464066577,
+    "AttackPower": 556426,
+    "BaseGoldReward": 3643319,
+    "BaseXpReward": 130332422,
+    "AttackIntervalMs": 2600,
+    "LootTableId": 80,
+    "Name": "Thundercrag Titan",
+    "EnemyId": "thundercrag_titan",
+    "RegionTier": 9,
+    "Armor": 11129,
+    "DodgeRating": 38
+  },
+  {
+    "Id": 81,
+    "MaxHp": 596357871,
+    "AttackPower": 647650,
+    "BaseGoldReward": 4533566,
+    "BaseXpReward": 176105894,
+    "AttackIntervalMs": 900,
+    "LootTableId": 81,
+    "Name": "Riftborn Hydra",
+    "EnemyId": "riftborn_hydra",
+    "RegionTier": 9,
+    "Armor": 12953,
+    "DodgeRating": 40
+  },
+  {
+    "Id": 82,
+    "MaxHp": 766998076,
+    "AttackPower": 757762,
+    "BaseGoldReward": 5817995,
+    "BaseXpReward": 241624878,
+    "AttackIntervalMs": 1100,
+    "LootTableId": 82,
+    "Name": "Emberstorm Drake",
+    "EnemyId": "emberstorm_drake",
+    "RegionTier": 9,
+    "Armor": 15155,
+    "DodgeRating": 42
+  },
+  {
+    "Id": 83,
+    "MaxHp": 992597224,
+    "AttackPower": 891709,
+    "BaseGoldReward": 7506287,
+    "BaseXpReward": 331819678,
+    "AttackIntervalMs": 1300,
+    "LootTableId": 83,
+    "Name": "Cataclysm Herald",
+    "EnemyId": "cataclysm_herald",
+    "RegionTier": 9,
+    "Armor": 17834,
+    "DodgeRating": 39
+  },
+  {
+    "Id": 84,
+    "MaxHp": 1500000000,
+    "AttackPower": 2434681,
+    "BaseGoldReward": 167963526,
+    "BaseXpReward": 1500000000,
+    "AttackIntervalMs": 1500,
+    "LootTableId": 84,
+    "Name": "The Tempest Sovereign",
+    "EnemyId": "the_tempest_sovereign",
+    "RegionTier": 9,
+    "Armor": 48694,
+    "DodgeRating": 41
+  },
+  {
+    "Id": 85,
+    "MaxHp": 1179091997,
+    "AttackPower": 1043171,
+    "BaseGoldReward": 7677932,
+    "BaseXpReward": 332647645,
+    "AttackIntervalMs": 1700,
+    "LootTableId": 85,
+    "Name": "Astral Devourer",
+    "EnemyId": "astral_devourer",
+    "RegionTier": 10,
+    "Armor": 20863,
+    "DodgeRating": 43
+  },
+  {
+    "Id": 86,
+    "MaxHp": 1493598458,
+    "AttackPower": 1209060,
+    "BaseGoldReward": 9518528,
+    "BaseXpReward": 437711132,
+    "AttackIntervalMs": 1900,
+    "LootTableId": 86,
+    "Name": "Doomforged Automaton",
+    "EnemyId": "doomforged_automaton",
+    "RegionTier": 10,
+    "Armor": 24181,
+    "DodgeRating": 45
+  },
+  {
+    "Id": 87,
+    "MaxHp": 1500000000,
+    "AttackPower": 1406461,
+    "BaseGoldReward": 11903174,
+    "BaseXpReward": 599423695,
+    "AttackIntervalMs": 2100,
+    "LootTableId": 87,
+    "Name": "Chronoreaver",
+    "EnemyId": "chronoreaver",
+    "RegionTier": 10,
+    "Armor": 28129,
+    "DodgeRating": 47
+  },
+  {
+    "Id": 88,
+    "MaxHp": 1500000000,
+    "AttackPower": 1644751,
+    "BaseGoldReward": 15400579,
+    "BaseXpReward": 834961913,
+    "AttackIntervalMs": 2300,
+    "LootTableId": 88,
+    "Name": "World-Ender Wyrm",
+    "EnemyId": "world_ender_wyrm",
+    "RegionTier": 10,
+    "Armor": 32895,
+    "DodgeRating": 44
+  },
+  {
+    "Id": 89,
+    "MaxHp": 1500000000,
+    "AttackPower": 1934703,
+    "BaseGoldReward": 20024857,
+    "BaseXpReward": 1163905002,
+    "AttackIntervalMs": 2500,
+    "LootTableId": 89,
+    "Name": "Harbinger of the Last Dawn",
+    "EnemyId": "harbinger_of_the_last_dawn",
+    "RegionTier": 10,
+    "Armor": 38694,
+    "DodgeRating": 46
+  },
+  {
+    "Id": 90,
+    "MaxHp": 1500000000,
+    "AttackPower": 5368903,
+    "BaseGoldReward": 465379782,
+    "BaseXpReward": 1500000000,
+    "AttackIntervalMs": 2600,
+    "LootTableId": 90,
+    "Name": "Perun's Shattered Aspect",
+    "EnemyId": "peruns_shattered_aspect",
+    "RegionTier": 10,
+    "Armor": 107378,
+    "DodgeRating": 43
   }
 ]

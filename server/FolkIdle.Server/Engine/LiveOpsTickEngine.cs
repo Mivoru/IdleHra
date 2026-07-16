@@ -17,14 +17,23 @@ namespace FolkIdle.Server.Engine
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry _playerRegistry;
         private readonly WorldBossEngine _worldBossEngine;
+        private readonly PushNotificationTriggerEngine _pushNotificationTriggerEngine;
 
+        // Modul: push trigger types for the two events this engine now
+        // wires PushNotificationTriggerEngine into - previously fully
+        // built infrastructure with zero callers anywhere in the codebase.
+        private const byte PushTriggerTypeWorldBossWindowOpen = 2;
+        private const byte PushTriggerTypeDailyReset = 3;
+
+        private long _lastSeenUtcDateKey = -1L;
         private bool _isRunning;
 
-        public LiveOpsTickEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry, WorldBossEngine worldBossEngine)
+        public LiveOpsTickEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry, WorldBossEngine worldBossEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine)
         {
             _serviceProvider = serviceProvider;
             _playerRegistry = playerRegistry;
             _worldBossEngine = worldBossEngine;
+            _pushNotificationTriggerEngine = pushNotificationTriggerEngine;
         }
 
         public void StartCron()
@@ -51,6 +60,7 @@ namespace FolkIdle.Server.Engine
                         tickCounter = 0;
                         await UpdateActiveEventRotationAsync();
                         await EvaluateWorldBossEventWindowAsync();
+                        await EvaluateDailyResetAsync();
                     }
                 }
                 catch (Exception ex)
@@ -81,6 +91,23 @@ namespace FolkIdle.Server.Engine
                 int windowEndDay = inWindowA ? 7 : 22;
                 var windowEnd = new DateTimeOffset(now.Year, now.Month, windowEndDay, 23, 59, 59, TimeSpan.Zero);
                 await _worldBossEngine.ActivateEventWindowAsync(windowEnd.ToUnixTimeSeconds());
+
+                // Modul: wires the previously-dead PushNotificationTriggerEngine
+                // into the one moment a currently-offline player would
+                // actually want to hear about - the boss window opening.
+                // Scheduled for every currently-online player at "now" (the
+                // trigger poll picks these up within its own 1-second
+                // cadence) - offline players are not targeted here since
+                // there is no per-player scheduling ahead of a window whose
+                // open date is itself dynamic (month-dependent), unlike the
+                // daily reset below, which has a fixed, predictable next
+                // occurrence.
+                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long[] onlinePlayerIdsForBossAlert = _playerRegistry.GetOnlinePlayerIds();
+                for (int i = 0; i < onlinePlayerIdsForBossAlert.Length; i++)
+                {
+                    await _pushNotificationTriggerEngine.ScheduleTriggerAsync(onlinePlayerIdsForBossAlert[i], nowEpoch, PushTriggerTypeWorldBossWindowOpen, "world_boss_window_open");
+                }
             }
             else if (!shouldBeActive && _worldBossEngine.IsEventActive)
             {
@@ -96,6 +123,42 @@ namespace FolkIdle.Server.Engine
                 {
                     await _worldBossEngine.ProcessDefeatedBossAsync();
                 }
+            }
+        }
+
+        // Modul: daily reset loop - detects the UTC-midnight day-key
+        // rollover (see QuestEngine.GetUtcDateKey, the same boundary daily
+        // quests and the daily login reward use) and notifies every
+        // currently-online player that new quests are available. Offline
+        // players are not targeted proactively here; QuestEngine's own
+        // lazy regeneration at their next login is the actual source of
+        // truth for "quests reset," this is purely an engagement nudge for
+        // players already connected when the boundary crosses.
+        // _lastSeenUtcDateKey starts at -1 so the very first tick after
+        // process startup never fires a spurious reset notification (it
+        // just records "today" as the baseline).
+        private async Task EvaluateDailyResetAsync()
+        {
+            long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long currentDateKey = QuestEngine.GetUtcDateKey(nowEpoch);
+
+            if (_lastSeenUtcDateKey < 0)
+            {
+                _lastSeenUtcDateKey = currentDateKey;
+                return;
+            }
+
+            if (currentDateKey == _lastSeenUtcDateKey)
+            {
+                return;
+            }
+
+            _lastSeenUtcDateKey = currentDateKey;
+
+            long[] onlinePlayerIdsForDailyReset = _playerRegistry.GetOnlinePlayerIds();
+            for (int i = 0; i < onlinePlayerIdsForDailyReset.Length; i++)
+            {
+                await _pushNotificationTriggerEngine.ScheduleTriggerAsync(onlinePlayerIdsForDailyReset[i], nowEpoch, PushTriggerTypeDailyReset, "daily_quest_reset");
             }
         }
 

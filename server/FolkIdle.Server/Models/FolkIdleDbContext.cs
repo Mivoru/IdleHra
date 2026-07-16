@@ -42,6 +42,7 @@ namespace FolkIdle.Server.Models
         public DbSet<PlayerLegacyLedger> PlayerLegacyLedgers { get; set; }
         public DbSet<PlayerSegmentationProfile> PlayerSegmentationProfiles { get; set; }
         public DbSet<SegmentedStorefrontListing> SegmentedStorefrontListings { get; set; }
+        public DbSet<DailyQuestRecord> DailyQuestRecords { get; set; }
         public DbSet<WorldBossSnapshot> WorldBossSnapshots { get; set; }
         public DbSet<PlayerWorldBossAttempt> PlayerWorldBossAttempts { get; set; }
         public DbSet<LiveOpsEventRotation> LiveOpsEventRotations { get; set; }
@@ -194,6 +195,9 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<GuildMember>()
                 .HasIndex(m => m.GuildId);
+
+            modelBuilder.Entity<DailyQuestRecord>()
+                .HasKey(q => new { q.PlayerId, q.QuestSlot });
 
             modelBuilder.Entity<MarketEquipmentInstance>()
                 .Property(e => e.AffixPayload)

@@ -3,6 +3,7 @@ using System;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FolkIdle.Server.Migrations
 {
     [DbContext(typeof(FolkIdleDbContext))]
-    partial class FolkIdleDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260716072935_AddGuildMemberRole")]
+    partial class AddGuildMemberRole
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -222,34 +225,6 @@ namespace FolkIdle.Server.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("CommodityRecords");
-                });
-
-            modelBuilder.Entity("FolkIdle.Server.Models.DailyQuestRecord", b =>
-                {
-                    b.Property<long>("PlayerId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("QuestSlot")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("CurrentProgress")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("DateKeyUtc")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("QuestType")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("RewardClaimed")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("TargetAmount")
-                        .HasColumnType("integer");
-
-                    b.HasKey("PlayerId", "QuestSlot");
-
-                    b.ToTable("DailyQuestRecords");
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.EcoTelemetryLedger", b =>
@@ -1270,17 +1245,11 @@ namespace FolkIdle.Server.Migrations
                     b.Property<bool>("IsQuarantined")
                         .HasColumnType("boolean");
 
-                    b.Property<long>("LastLoginTimestamp")
-                        .HasColumnType("bigint");
-
                     b.Property<long>("LastLogoutTimestamp")
                         .HasColumnType("bigint");
 
                     b.Property<long>("LogicEpochCounter")
                         .HasColumnType("bigint");
-
-                    b.Property<int>("LoginStreakDays")
-                        .HasColumnType("integer");
 
                     b.Property<int>("OffensivePotionDurationMs")
                         .HasColumnType("integer");

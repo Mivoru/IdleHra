@@ -2,8 +2,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace FolkIdle.Server.Models
 {
-    // Raid participation reward ledger. Guild membership itself is tracked via
-    // PlayerRecord.GuildId; this table only accumulates raid contribution points.
+    // Guild membership and raid-contribution ledger. PlayerRecord.GuildId is
+    // the tick-loop-facing copy of membership (loaded into TickStatePayload
+    // at login); this table is the authoritative membership row that
+    // GuildManagementEngine creates/deletes, and both are always written
+    // inside the same transaction so they cannot diverge.
     public class GuildMember
     {
         [Key]
@@ -11,5 +14,11 @@ namespace FolkIdle.Server.Models
 
         public long GuildId { get; set; }
         public long ContributionPoints { get; set; }
+
+        // 0 = Member, 1 = Leader. Kick and (future) guild-administration
+        // actions are gated on Leader; a guild always has exactly one
+        // Leader, reassigned by GuildManagementEngine.LeaveGuildAsync when
+        // the current leader departs a non-empty guild.
+        public int Role { get; set; }
     }
 }

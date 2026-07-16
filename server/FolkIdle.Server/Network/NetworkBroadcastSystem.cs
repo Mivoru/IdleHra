@@ -1084,7 +1084,7 @@ namespace FolkIdle.Server.Network
                     for (int monsterIndex = 0; monsterIndex < ContentRegistry.Monsters.Length; monsterIndex++)
                     {
                         int monsterId = ContentRegistry.Monsters[monsterIndex].Id;
-                        if (((monsterId - 1) % 30) / 6 + 1 != region)
+                        if (ContentRegistry.GetMonsterRegionTier(monsterId) != region)
                         {
                             continue;
                         }
@@ -2031,6 +2031,16 @@ namespace FolkIdle.Server.Network
                     context.Response.Close();
                     return;
                 }
+
+                // Modul: daily login reward - server-authoritative, keyed
+                // off PlayerRecord.LastLoginTimestamp, so a replayed login
+                // request on the same UTC day is a genuine no-op rather
+                // than a repeat grant (see DailyLoginRewardEngine). A
+                // failed grant is logged internally and never blocks login
+                // - awaited inline rather than fired-and-forgotten only
+                // because this handler is already on the async HTTP path,
+                // not the 10 Hz tick.
+                await DailyLoginRewardEngine.TryGrantLoginRewardAsync(authOptions, accountId);
 
                 string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
                 string token = AuthenticationEngine.GenerateJwt(accountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);

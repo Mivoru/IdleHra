@@ -78,6 +78,25 @@ namespace FolkIdle.Client.Engine
         public int VisualNotificationQueueStateLength;
         public byte VisualActiveLanguageState = 1;
 
+        // Modul: Combat System Overhaul - the server-computed
+        // Accuracy/Armor/BlockStrength values actually used in that tick's
+        // combat resolution (see StateUpdatePacket.cs's identical comment
+        // on the server side). Discrete values, not interpolated - they
+        // change once per stat/equipment recompute, not every tick, so
+        // Lerp'ing them would just add stale-looking lag to a combat
+        // stats panel without any visual benefit.
+        public int VisualPlayerAccuracyRating { get; private set; }
+        public int VisualPlayerArmorRating { get; private set; }
+        public float VisualPlayerBlockStrengthPct { get; private set; }
+
+        // Modul: onboarding signal mirrored from StateUpdatePacket.IsFreshAccount -
+        // UiLoginWindow/UiTutorialController key off this to decide whether
+        // to arm the FTUE. Stable from the first received packet onward
+        // (the server computes it from Slot1_AgeTicks == 0, which does not
+        // change mid-session for an account past its first tick), so no
+        // interpolation and no re-derivation needed here.
+        public bool VisualIsFreshAccount { get; private set; }
+
         public int VisualMaxVillagePopulation;
         public int VisualCurrentToolTier;
         public int VisualInnMaturationBonus;
@@ -345,6 +364,10 @@ namespace FolkIdle.Client.Engine
                     VisualActiveLanguageState = packet.ActiveLanguageState == 0 ? (byte)1 : packet.ActiveLanguageState;
                     VisualActiveConnectionThroughput = packet.VisualActiveConnectionThroughput;
                     VisualCurrentNodeMemoryLoadMetrics = packet.CurrentNodeMemoryLoadMetrics;
+                    VisualPlayerAccuracyRating = packet.PlayerAccuracyRating;
+                    VisualPlayerArmorRating = packet.PlayerArmorRating;
+                    VisualPlayerBlockStrengthPct = packet.PlayerBlockStrengthPct;
+                    VisualIsFreshAccount = packet.IsFreshAccount != 0;
 
                     VisualMaxVillagePopulation = packet.CachedMaxPopulationCapacity;
                     VisualCurrentToolTier = packet.CachedCurrentToolTier;
@@ -476,6 +499,10 @@ namespace FolkIdle.Client.Engine
             VisualActiveLanguageState = _snapshotB.Packet.ActiveLanguageState == 0 ? (byte)1 : _snapshotB.Packet.ActiveLanguageState;
             VisualActiveConnectionThroughput = _snapshotB.Packet.VisualActiveConnectionThroughput;
             VisualCurrentNodeMemoryLoadMetrics = _snapshotB.Packet.CurrentNodeMemoryLoadMetrics;
+            VisualPlayerAccuracyRating = _snapshotB.Packet.PlayerAccuracyRating;
+            VisualPlayerArmorRating = _snapshotB.Packet.PlayerArmorRating;
+            VisualPlayerBlockStrengthPct = _snapshotB.Packet.PlayerBlockStrengthPct;
+            VisualIsFreshAccount = _snapshotB.Packet.IsFreshAccount != 0;
 
             VisualMaxVillagePopulation = _snapshotB.Packet.CachedMaxPopulationCapacity;
             VisualCurrentToolTier = _snapshotB.Packet.CachedCurrentToolTier;

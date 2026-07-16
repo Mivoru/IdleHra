@@ -1782,5 +1782,213 @@
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "alc_def_t10"
+  },
+  {
+    "Id": 224,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "bone_ring_ring_1/2_slot_base"
+  },
+  {
+    "Id": 225,
+    "RegionTier": 2,
+    "BaseValueGold": 40,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 10,
+    "BaseId": "bronze_sabatons_boots_armor_slot_base"
+  },
+  {
+    "Id": 226,
+    "RegionTier": 2,
+    "BaseValueGold": 40,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "bronze_locket_amulet_slot_base"
+  },
+  {
+    "Id": 227,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "iron_talisman_amulet_slot_base"
+  },
+  {
+    "Id": 228,
+    "RegionTier": 4,
+    "BaseValueGold": 160,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "steel_reliquary_amulet_slot_base"
+  },
+  {
+    "Id": 229,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "silvered_charm_amulet_slot_base"
+  },
+  {
+    "Id": 230,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "gilded_medallion_amulet_slot_base"
+  },
+  {
+    "Id": 231,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "mithril_sigil_amulet_slot_base"
+  },
+  {
+    "Id": 232,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "adamant_reliquary_amulet_slot_base"
+  },
+  {
+    "Id": 233,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "runed_talisman_amulet_slot_base"
+  },
+  {
+    "Id": 234,
+    "RegionTier": 10,
+    "BaseValueGold": 1000,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "transcendent_medallion_amulet_slot_base"
+  },
+  {
+    "Id": 235,
+    "RegionTier": 2,
+    "BaseValueGold": 40,
+    "FlatAttackPower": 23,
+    "FlatDefenseRating": 0,
+    "BaseId": "bronze_shortbow_range_weapon_slot_base"
+  },
+  {
+    "Id": 236,
+    "RegionTier": 2,
+    "BaseValueGold": 40,
+    "FlatAttackPower": 23,
+    "FlatDefenseRating": 0,
+    "BaseId": "bronze_mace_blunt_weapon_slot_base"
+  },
+  {
+    "Id": 237,
+    "RegionTier": 3,
+    "BaseValueGold": 90,
+    "FlatAttackPower": 41,
+    "FlatDefenseRating": 0,
+    "BaseId": "iron_crossbow_range_weapon_slot_base"
+  },
+  {
+    "Id": 238,
+    "RegionTier": 4,
+    "BaseValueGold": 160,
+    "FlatAttackPower": 65,
+    "FlatDefenseRating": 0,
+    "BaseId": "steel_longsword_melee_weapon_slot_base"
+  },
+  {
+    "Id": 239,
+    "RegionTier": 4,
+    "BaseValueGold": 160,
+    "FlatAttackPower": 65,
+    "FlatDefenseRating": 0,
+    "BaseId": "steel_warhammer_blunt_weapon_slot_base"
+  },
+  {
+    "Id": 240,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 96,
+    "FlatDefenseRating": 0,
+    "BaseId": "silvered_longbow_range_weapon_slot_base"
+  },
+  {
+    "Id": 241,
+    "RegionTier": 5,
+    "BaseValueGold": 250,
+    "FlatAttackPower": 96,
+    "FlatDefenseRating": 0,
+    "BaseId": "silvered_flail_blunt_weapon_slot_base"
+  },
+  {
+    "Id": 242,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 137,
+    "FlatDefenseRating": 0,
+    "BaseId": "gilded_broadsword_melee_weapon_slot_base"
+  },
+  {
+    "Id": 243,
+    "RegionTier": 6,
+    "BaseValueGold": 360,
+    "FlatAttackPower": 137,
+    "FlatDefenseRating": 0,
+    "BaseId": "gilded_maul_blunt_weapon_slot_base"
+  },
+  {
+    "Id": 244,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 188,
+    "FlatDefenseRating": 0,
+    "BaseId": "mithril_longbow_range_weapon_slot_base"
+  },
+  {
+    "Id": 245,
+    "RegionTier": 7,
+    "BaseValueGold": 490,
+    "FlatAttackPower": 188,
+    "FlatDefenseRating": 0,
+    "BaseId": "mithril_warpick_blunt_weapon_slot_base"
+  },
+  {
+    "Id": 246,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 254,
+    "FlatDefenseRating": 0,
+    "BaseId": "adamant_claymore_melee_weapon_slot_base"
+  },
+  {
+    "Id": 247,
+    "RegionTier": 8,
+    "BaseValueGold": 640,
+    "FlatAttackPower": 254,
+    "FlatDefenseRating": 0,
+    "BaseId": "adamant_ballista_range_weapon_slot_base"
+  },
+  {
+    "Id": 248,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 338,
+    "FlatDefenseRating": 0,
+    "BaseId": "runed_longbow_range_weapon_slot_base"
+  },
+  {
+    "Id": 249,
+    "RegionTier": 9,
+    "BaseValueGold": 810,
+    "FlatAttackPower": 338,
+    "FlatDefenseRating": 0,
+    "BaseId": "runed_greatmaul_blunt_weapon_slot_base"
   }
 ]

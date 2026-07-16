@@ -35,6 +35,15 @@ namespace FolkIdle.Client.UI
         [Header("Blocking Panel")]
         public GameObject BlockingPanelRoot;
 
+        // Modul: onboarding - arms the FTUE exactly once, on the first
+        // state confirmation of a fresh account (see HandleStateConfirmed).
+        // Both fields are optional (null-checked below) so a scene without
+        // the tutorial wired up behaves exactly as before this feature
+        // existed.
+        [Header("Onboarding")]
+        public VisualSyncProxy SyncProxy;
+        public UiTutorialController TutorialController;
+
         [Header("Manual Override")]
         public TMP_InputField DeviceIdInputField;
         public Button LoginButton;
@@ -181,6 +190,17 @@ namespace FolkIdle.Client.UI
         private void HandleStateConfirmed()
         {
             if (BlockingPanelRoot != null) BlockingPanelRoot.SetActive(false);
+
+            // Modul: fires on every reconnect, not just the very first
+            // login - TutorialController.BeginTutorial() is itself
+            // idempotent (both the PlayerPrefs completion check and
+            // TutorialStateMachine.Begin only arming from Inactive), so a
+            // reconnect on an account that already progressed or completed
+            // never restarts the flow.
+            if (TutorialController != null && SyncProxy != null && SyncProxy.VisualIsFreshAccount)
+            {
+                TutorialController.BeginTutorial();
+            }
         }
 
         private void SetStatus(string message)

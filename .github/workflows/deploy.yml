@@ -26,6 +26,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Required pre-build gate: structurally validates every
+      # server/GameData/*.json against the same rules
+      # ContentRegistry.Initialize/ActiveSkillEngine.Initialize enforce at
+      # server boot. A malformed content file fails the pipeline here, in
+      # seconds, before any dotnet build or Docker push - previously it
+      # would only surface as a crash-looping pod at rollout.
+      - name: Validate content data
+        run: python3 ops/validate_content.py --path server/GameData
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -97,3 +106,48 @@ jobs:
           tags: |
             ${{ steps.registry.outputs.url }}:${{ github.sha }}
             ${{ steps.registry.outputs.url }}:latest
+
+  # Applies pending EF Core migrations against the production database as a
+  # one-shot K8s Job (ops/jobs/apply-migrations.yaml) using the exact image
+  # just pushed, BEFORE any new server pods roll out - a single migration
+  # container instead of multiple replicas racing Database.Migrate at
+  # startup. The whole job is gated on the KUBE_CONFIG secret being
+  # configured: until a production cluster's kubeconfig is provided, this
+  # job is skipped (not failed), preserving the previous build-and-push-only
+  # behavior for forks and pre-production checkouts.
+  migrate:
+    name: Run Migrations
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: ${{ vars.KUBE_DEPLOY_ENABLED == 'true' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure cluster access
+        run: |
+          mkdir -p "$HOME/.kube"
+          printf '%s' "${{ secrets.KUBE_CONFIG }}" > "$HOME/.kube/config"
+          chmod 600 "$HOME/.kube/config"
+
+      - name: Resolve container registry
+        id: registry
+        run: |
+          if [ -n "${{ secrets.REGISTRY_URL }}" ]; then
+            echo "url=${{ secrets.REGISTRY_URL }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "url=ghcr.io/${{ github.repository }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Substitute the SHA-tagged image into the Job manifest, apply it,
+      # and block until it completes. A failed migration fails this job,
+      # which halts the pipeline before any rollout step that would depend
+      # on the new schema. The delete --ignore-not-found clears any
+      # previous run's completed Job (Job specs are immutable, so re-apply
+      # alone cannot update the image).
+      - name: Run Migrations
+        run: |
+          sed "s|IMAGE_PLACEHOLDER|${{ steps.registry.outputs.url }}:${{ github.sha }}|" ops/jobs/apply-migrations.yaml > /tmp/apply-migrations.yaml
+          kubectl delete job folkidle-apply-migrations --ignore-not-found
+          kubectl apply -f /tmp/apply-migrations.yaml
+          kubectl wait --for=condition=complete --timeout=300s job/folkidle-apply-migrations

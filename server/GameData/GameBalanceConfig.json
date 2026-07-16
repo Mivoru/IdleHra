@@ -1,0 +1,8 @@
+{
+  "GuildRaidBossBaseHp": 1000000,
+  "GuildRaidDpsPerLevel": 10,
+  "GuildRaidTickIntervalSeconds": 5,
+  "GuildRaidVictoryContributionPoints": 100,
+  "GuildContributionEquipmentExpPerTier": 100,
+  "GuildContributionGoldToExpDivisor": 10
+}

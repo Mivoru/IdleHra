@@ -198,6 +198,7 @@ namespace FolkIdle.Server.Engine
                         await UpsertAccountChronoRegistryAsync(dbContext, state);
                         await UpsertChroniclePassAsync(dbContext, state);
                         await UpsertLifetimeAchievementsAsync(dbContext, player, state);
+                        await QuestEngine.UpsertDailyQuestProgressAsync(dbContext, state);
                     }
                     else
                     {
@@ -353,7 +354,7 @@ namespace FolkIdle.Server.Engine
             int completedAreas = 0;
             for (int region = 1; region <= 10; region++)
             {
-                var monstersInRegion = ContentRegistry.Monsters.ToArray().Where(m => ((m.Id - 1) % 30) / 6 + 1 == region).ToList();
+                var monstersInRegion = ContentRegistry.Monsters.ToArray().Where(m => ContentRegistry.GetMonsterRegionTier(m.Id) == region).ToList();
                 if (monstersInRegion.Count > 0 && monstersInRegion.All(m => codexEntries.Any(c => c.MonsterId == m.Id && c.KillCount >= 1000)))
                 {
                     completedAreas |= (1 << region);
@@ -485,6 +486,10 @@ namespace FolkIdle.Server.Engine
 
             (float codexYieldMultiplier, float codexDamageMultiplier) = await CodexEngine.CalculateActiveMultipliersAsync(playerId, dbContext);
 
+            long questLoadEpochSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var dailyQuests = await QuestEngine.EnsureAndLoadDailyQuestsAsync(dbContext, playerId, questLoadEpochSeconds);
+            await dbContext.SaveChangesAsync();
+
             var payload = new TickStatePayload
             {
                 CachedCodexYieldMultiplier = codexYieldMultiplier,
@@ -578,6 +583,8 @@ namespace FolkIdle.Server.Engine
             };
 
             payload.InitializeObfuscation(GenerateSessionXorKey(playerId, player.LogicEpochCounter));
+
+            QuestEngine.ApplyToPayload(ref payload, dailyQuests, QuestEngine.GetUtcDateKey(questLoadEpochSeconds));
 
             if (characters.Count > 0)
             {

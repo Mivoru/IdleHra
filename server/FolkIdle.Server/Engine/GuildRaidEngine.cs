@@ -15,10 +15,17 @@ namespace FolkIdle.Server.Engine
     // turn-based war system.
     public class GuildRaidEngine
     {
-        private const long RaidBossBaseHp = 1_000_000L;
-        private const int DpsPerLevel = 10;
-        private const int TickIntervalSeconds = 5;
-        private const long RaidVictoryContributionPoints = 100L;
+        // Modul: sourced from GameData/GameBalanceConfig.json via
+        // ContentRegistry (see GameBalanceDefinition) instead of hardcoded
+        // constants, so tuning a raid balance value is a content deploy,
+        // not a code deploy. Read once per property access rather than
+        // cached in a field - ContentRegistry.Balance is itself a simple
+        // property read, no allocation or I/O, so there is no benefit to
+        // caching it locally.
+        private static long RaidBossBaseHp => ContentRegistry.Balance.GuildRaidBossBaseHp;
+        private static int DpsPerLevel => ContentRegistry.Balance.GuildRaidDpsPerLevel;
+        private static int TickIntervalSeconds => ContentRegistry.Balance.GuildRaidTickIntervalSeconds;
+        private static long RaidVictoryContributionPoints => ContentRegistry.Balance.GuildRaidVictoryContributionPoints;
 
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry _playerRegistry;

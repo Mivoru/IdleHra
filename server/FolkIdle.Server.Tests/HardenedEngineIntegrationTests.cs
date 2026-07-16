@@ -8,6 +8,7 @@ using System.Security.Cryptography;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
+using FolkIdle.Client.Engine;
 using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
 using FolkIdle.Server.Network;
@@ -3378,6 +3379,290 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(expectedActivePlayerCount, capturedActivePlayerCount);
         }
 
+        // Modul: proves the refund clawback matches the exact diamond amount
+        // the original purchase granted (previously a hardcoded 1000 -
+        // refunding a 1100-diamond gems_pack_medium clawed back 1000 and
+        // let the player keep 100 for free), and that a refund alert for a
+        // transaction with no purchase ledger row fails loudly instead of
+        // silently no-oping.
+        [Fact]
+        public async Task Test_BillingVerificationEngine_RefundClawback_DeductsExactGrantedAmount()
+        {
+            const long testPlayerId = 980000501L;
+            const string transactionId = "iap_refund_exact_980000501";
+            int expectedGrant = BillingVerificationEngine.ResolvePremiumDiamondsForProduct("gems_pack_medium");
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), PremiumDiamonds = 0 });
+                await db.SaveChangesAsync();
+            }
+
+            using var offlineRedis = CreateOfflineRedisMultiplexer();
+            var redisCache = new RedisSessionCache(offlineRedis);
+            var billingEngine = new BillingVerificationEngine(_fixture.DbContextFactory, redisCache, _fixture.PlayerRegistry, _fixture.RetryingOptions, new MockIapReceiptValidator());
+
+            string receiptJson = "{\"transactionId\":\"" + transactionId + "\",\"productId\":\"gems_pack_medium\"}";
+            string base64Receipt = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(receiptJson));
+
+            bool purchased = await billingEngine.VerifyReceiptAsync(testPlayerId, base64Receipt);
+            Assert.True(purchased);
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var profile = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+                Assert.Equal(expectedGrant, profile.PremiumDiamonds);
+            }
+
+            await billingEngine.HandleRefundAlertAsync(transactionId);
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var profile = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+                Assert.Equal(0, profile.PremiumDiamonds);
+
+                var purchase = await verifyDb.PrimaryPurchaseLedgers.AsNoTracking().SingleAsync(p => p.TransactionId == transactionId);
+                Assert.Equal(2, purchase.PurchaseState);
+            }
+
+            // A second delivery of the same refund alert is an idempotent
+            // repeat - the balance must not be deducted twice.
+            await billingEngine.HandleRefundAlertAsync(transactionId);
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var profile = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+                Assert.Equal(0, profile.PremiumDiamonds);
+            }
+
+            // A refund alert for a transaction that was never purchased
+            // must throw loudly, not silently deduct anything.
+            await Assert.ThrowsAsync<InvalidOperationException>(
+                () => billingEngine.HandleRefundAlertAsync("iap_refund_never_purchased_980000501"));
+        }
+
+        // Modul: proves the full guild-membership pipeline end to end -
+        // GuildManagementEngine commits create/join/leave to the database,
+        // enqueues GuildMembershipChangeNotification, and the running
+        // SimulationEngine tick drains it into _guildMembersIndex (checked
+        // via the internal test accessors), updates the live
+        // TickStatePayload.GuildId, and issues a ReloadState packet per
+        // change (checked via the drain's issued-count).
+        [Fact]
+        public async Task Test_GuildManagementEngine_MembershipChanges_UpdateIndexAndIssueReloadState()
+        {
+            const long leaderPlayerId = 980000601L;
+            const long memberPlayerId = 980000602L;
+            const string guildName = "IntegrationTestManagedGuild980000601";
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = leaderPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.PlayerRecords.Add(new PlayerRecord { Id = memberPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            var contextFactory = _fixture.DbContextFactory;
+            var retryingDbOptions = _fixture.RetryingOptions;
+            var playerRegistry = new PlayerSessionRegistry();
+
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8091/");
+            var lootEngine = new LootTableEngine();
+            var checkpointManager = new StateCheckpointManager(_fixture.ServiceProvider);
+            var forgeEngine = new ForgeSplicingEngine(_fixture.ServiceProvider);
+            var marketEngine = new MarketOrderBookEngine(_fixture.ServiceProvider, playerRegistry);
+            var guildEngine = new GuildContributionEngine(_fixture.ServiceProvider);
+            var escrowEngine = new MarketEscrowEngine(_fixture.ServiceProvider, playerRegistry);
+            var mailboxEngine = new MailboxAndBankEngine(_fixture.ServiceProvider, playerRegistry);
+            var rerollEngine = new AffixRerollEngine(_fixture.ServiceProvider);
+            var breedingEngine = new BreedingEngine(_fixture.ServiceProvider, playerRegistry);
+            var guildLogisticsEngine = new GuildLogisticsEngine(_fixture.ServiceProvider, playerRegistry);
+            var craftingEngine = new CraftingEngine(contextFactory, playerRegistry, retryingDbOptions);
+            var worldBossEngine = new WorldBossEngine(_fixture.ServiceProvider, playerRegistry);
+            var villageBuildingEngine = new VillageBuildingEngine(_fixture.ServiceProvider, playerRegistry);
+            var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, playerRegistry);
+            var mentorshipEngine = new MentorshipEngine(_fixture.ServiceProvider, playerRegistry);
+            var guildWarEngine = new GuildWarEngine(_fixture.ServiceProvider);
+            var chronoCoreEngine = new ChronoCoreEngine(_fixture.ServiceProvider, playerRegistry);
+            var legacyStoreEngine = new LegacyStoreEngine(_fixture.ServiceProvider, playerRegistry);
+            var guildLogisticsDepotEngine = new GuildLogisticsDepotEngine(_fixture.ServiceProvider, playerRegistry);
+            var guildCombatSimulationEngine = new GuildCombatSimulationEngine(_fixture.ServiceProvider, playerRegistry);
+
+            var simulationEngine = new SimulationEngine(
+                lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
+                escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
+                villageBuildingEngine, villageManagementEngine, mentorshipEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
+
+            var managementEngine = new GuildManagementEngine(retryingDbOptions, playerRegistry);
+
+            try
+            {
+                simulationEngine.Start();
+
+                simulationEngine.InjectVirtualPlayer(new TickStatePayload { PlayerId = leaderPlayerId, GuildId = 0 });
+                simulationEngine.InjectVirtualPlayer(new TickStatePayload { PlayerId = memberPlayerId, GuildId = 0 });
+
+                long guildId = await managementEngine.CreateGuildAsync(leaderPlayerId, guildName);
+                Assert.True(guildId > 0, "CreateGuildAsync must return the new guild's id.");
+
+                await WaitForConditionAsync(() => simulationEngine.IsPlayerInGuildIndex(guildId, leaderPlayerId),
+                    "Creator never appeared in _guildMembersIndex after CreateGuildAsync.");
+                Assert.Equal(guildId, simulationEngine.GetActivePlayerGuildId(leaderPlayerId));
+
+                bool joined = await managementEngine.JoinGuildAsync(memberPlayerId, guildId);
+                Assert.True(joined, "JoinGuildAsync must accept a guild with free capacity.");
+
+                await WaitForConditionAsync(() => simulationEngine.IsPlayerInGuildIndex(guildId, memberPlayerId),
+                    "Joiner never appeared in _guildMembersIndex after JoinGuildAsync.");
+                Assert.Equal(guildId, simulationEngine.GetActivePlayerGuildId(memberPlayerId));
+
+                await using (var verifyDb = await contextFactory.CreateDbContextAsync())
+                {
+                    var creatorRow = await verifyDb.GuildMembers.AsNoTracking().SingleAsync(m => m.PlayerId == leaderPlayerId);
+                    var joinerRow = await verifyDb.GuildMembers.AsNoTracking().SingleAsync(m => m.PlayerId == memberPlayerId);
+                    Assert.Equal(GuildManagementEngine.RoleLeader, creatorRow.Role);
+                    Assert.Equal(GuildManagementEngine.RoleMember, joinerRow.Role);
+
+                    var guildRow = await verifyDb.GuildRecords.AsNoTracking().SingleAsync(g => g.Id == guildId);
+                    Assert.Equal(2, guildRow.ActiveMembers);
+                }
+
+                bool left = await managementEngine.LeaveGuildAsync(leaderPlayerId);
+                Assert.True(left, "LeaveGuildAsync must accept a current member.");
+
+                await WaitForConditionAsync(() => !simulationEngine.IsPlayerInGuildIndex(guildId, leaderPlayerId),
+                    "Leaver never disappeared from _guildMembersIndex after LeaveGuildAsync.");
+                Assert.Equal(0L, simulationEngine.GetActivePlayerGuildId(leaderPlayerId));
+                Assert.True(simulationEngine.IsPlayerInGuildIndex(guildId, memberPlayerId),
+                    "Remaining member must stay in _guildMembersIndex after another member leaves.");
+
+                await using (var verifyDb = await contextFactory.CreateDbContextAsync())
+                {
+                    var successorRow = await verifyDb.GuildMembers.AsNoTracking().SingleAsync(m => m.PlayerId == memberPlayerId);
+                    Assert.Equal(GuildManagementEngine.RoleLeader, successorRow.Role);
+                }
+
+                // Three membership changes (create, join, leave) must have
+                // issued exactly three ReloadState packets to the affected
+                // live players.
+                Assert.Equal(3L, System.Threading.Interlocked.Read(ref simulationEngine.GuildMembershipReloadStatesIssued));
+            }
+            finally
+            {
+                simulationEngine.Stop();
+            }
+        }
+
+        private static async Task WaitForConditionAsync(Func<bool> condition, string failureMessage)
+        {
+            for (int i = 0; i < 100; i++)
+            {
+                if (condition()) return;
+                await Task.Delay(50);
+            }
+            Assert.Fail(failureMessage);
+        }
+
+        // Modul: proves the CI content gate (ops/validate_content.py, the
+        // "Validate content data" step in deploy.yml) rejects malformed
+        // GameData JSON with a non-zero exit code, which is what fails the
+        // pipeline before a broken image is built. Skips silently when no
+        // Python interpreter is on PATH (the C# side of the same rules is
+        // covered by Test_ContentPipeline_MissingOrMalformedJson_FailsFast).
+        [Fact]
+        public void Test_ContentValidatorScript_MalformedJson_ExitsNonZero()
+        {
+            string? pythonExe = ResolvePythonExecutable();
+            if (pythonExe == null)
+            {
+                return;
+            }
+
+            string? repoRoot = FindRepositoryRoot();
+            Assert.NotNull(repoRoot);
+            string validatorPath = Path.Combine(repoRoot!, "ops", "validate_content.py");
+            Assert.True(File.Exists(validatorPath), $"validate_content.py not found at {validatorPath}.");
+
+            string goodDataDir = Path.Combine(AppContext.BaseDirectory, "GameData");
+            Assert.True(RunValidator(pythonExe, validatorPath, goodDataDir) == 0,
+                "Validator must pass against the real GameData set.");
+
+            string badDataDir = Path.Combine(Path.GetTempPath(), "folkidle_baddata_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(badDataDir);
+            try
+            {
+                foreach (string file in Directory.GetFiles(goodDataDir, "*.json"))
+                {
+                    File.Copy(file, Path.Combine(badDataDir, Path.GetFileName(file)));
+                }
+                File.WriteAllText(Path.Combine(badDataDir, "monsters.json"), "{ this is not valid json");
+
+                Assert.True(RunValidator(pythonExe, validatorPath, badDataDir) != 0,
+                    "Validator must exit non-zero for malformed JSON.");
+            }
+            finally
+            {
+                Directory.Delete(badDataDir, recursive: true);
+            }
+        }
+
+        private static string? ResolvePythonExecutable()
+        {
+            foreach (string candidate in new[] { "python3", "python" })
+            {
+                try
+                {
+                    using var probe = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = candidate,
+                        Arguments = "--version",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false
+                    });
+                    if (probe != null)
+                    {
+                        probe.WaitForExit(10000);
+                        if (probe.ExitCode == 0) return candidate;
+                    }
+                }
+                catch
+                {
+                    // Candidate not on PATH - try the next one.
+                }
+            }
+            return null;
+        }
+
+        private static string? FindRepositoryRoot()
+        {
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir != null)
+            {
+                if (File.Exists(Path.Combine(dir.FullName, "ops", "validate_content.py")))
+                {
+                    return dir.FullName;
+                }
+                dir = dir.Parent;
+            }
+            return null;
+        }
+
+        private static int RunValidator(string pythonExe, string validatorPath, string dataDir)
+        {
+            using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = pythonExe,
+                Arguments = $"\"{validatorPath}\" --path \"{dataDir}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false
+            });
+            Assert.NotNull(process);
+            process!.WaitForExit(30000);
+            return process.ExitCode;
+        }
+
         private sealed class CapturingEventListener : EventListener
         {
             public readonly TaskCompletionSource<(long, long)> CaptureCompletionSource =
@@ -3408,6 +3693,176 @@ namespace FolkIdle.Server.Tests
                     CaptureCompletionSource.TrySetResult((elapsedMicroseconds, activePlayerCount));
                 }
             }
+        }
+
+        // Modul: proves daily quest generation is deterministic within a
+        // UTC day (regenerating mid-day never reshuffles what a player is
+        // already working toward) and genuinely resets at the UTC-midnight
+        // boundary (new quest set, progress wiped) - the two behaviors
+        // QuestEngine.GetUtcDateKey/EnsureAndLoadDailyQuestsAsync exist to
+        // guarantee.
+        [Fact]
+        public async Task Test_QuestEngine_DailyQuestGenerationAndUtcMidnightReset()
+        {
+            const long testPlayerId = 980000701L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            long day1Epoch = new DateTimeOffset(2026, 1, 10, 12, 0, 0, TimeSpan.Zero).ToUnixTimeSeconds();
+
+            DailyQuestRecord[] firstGeneration;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                firstGeneration = await QuestEngine.EnsureAndLoadDailyQuestsAsync(db, testPlayerId, day1Epoch);
+                await db.SaveChangesAsync();
+            }
+
+            Assert.Equal(3, firstGeneration.Length);
+            Assert.All(firstGeneration, q => Assert.True(q.TargetAmount > 0));
+            Assert.All(firstGeneration, q => Assert.True(q.QuestType == QuestEngine.QuestTypeKillMonsters || q.QuestType == QuestEngine.QuestTypeCraftItems));
+
+            // Determinism: reloading later the SAME UTC day must return the
+            // identical quest set, not reshuffle it.
+            long sameDayLaterEpoch = day1Epoch + 3600L;
+            DailyQuestRecord[] sameDayReload;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                sameDayReload = await QuestEngine.EnsureAndLoadDailyQuestsAsync(db, testPlayerId, sameDayLaterEpoch);
+                await db.SaveChangesAsync();
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                Assert.Equal(firstGeneration[i].QuestType, sameDayReload[i].QuestType);
+                Assert.Equal(firstGeneration[i].TargetAmount, sameDayReload[i].TargetAmount);
+            }
+
+            // Record progress that a UTC-midnight rollover must wipe.
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var slot0 = await db.DailyQuestRecords.SingleAsync(q => q.PlayerId == testPlayerId && q.QuestSlot == 0);
+                slot0.CurrentProgress = 5;
+                await db.SaveChangesAsync();
+            }
+
+            long day2Epoch = day1Epoch + 86400L;
+            Assert.NotEqual(QuestEngine.GetUtcDateKey(day1Epoch), QuestEngine.GetUtcDateKey(day2Epoch));
+
+            DailyQuestRecord[] secondGeneration;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                secondGeneration = await QuestEngine.EnsureAndLoadDailyQuestsAsync(db, testPlayerId, day2Epoch);
+                await db.SaveChangesAsync();
+            }
+
+            Assert.Equal(3, secondGeneration.Length);
+            Assert.All(secondGeneration, q => Assert.Equal(0, q.CurrentProgress));
+            Assert.All(secondGeneration, q => Assert.Equal(QuestEngine.GetUtcDateKey(day2Epoch), q.DateKeyUtc));
+        }
+
+        // Modul: proves the new Accuracy/Armor/BlockStrength combat axes
+        // are genuinely wired into SimulationEngine's live tick, not just
+        // present in StatsCalculator - a high-CON (armored) character must
+        // take strictly less cumulative damage from repeated monster
+        // attacks than an otherwise-identical naked character. DEX/LCK are
+        // left at 0 for both builds so hit chance is identical between the
+        // two samples, isolating the comparison to the armor+block
+        // mitigation step. Statistical (many samples), matching this
+        // codebase's existing RNG-involving test convention (e.g.
+        // Test_RarityTier_HighLuckIncreasesRareRollProbability), since a
+        // single hit/crit roll would be flaky.
+        [Fact]
+        public void Test_Combat_ArmorAndBlockStrengthReduceIncomingMonsterDamage()
+        {
+            var simulationEngine = CreateTestSimulationEngine();
+            const int monsterId = 1;
+
+            long nakedDamage = SimulateTotalDamageTakenFromMonster(simulationEngine, monsterId, con: 0);
+            long armoredDamage = SimulateTotalDamageTakenFromMonster(simulationEngine, monsterId, con: 500);
+
+            Assert.True(armoredDamage < nakedDamage,
+                $"Armored (CON=500) took {armoredDamage} total milli-damage across the sample, naked (CON=0) took {nakedDamage} - armor and block strength must reduce incoming monster damage.");
+        }
+
+        private static long SimulateTotalDamageTakenFromMonster(SimulationEngine simulationEngine, int monsterId, int con)
+        {
+            int attackIntervalMs = ContentRegistry.Monsters[monsterId - 1].AttackIntervalMs;
+            int ticksPerAttack = attackIntervalMs / 100;
+            const int sampleAttacks = 200;
+
+            long totalDamage = 0;
+            for (int attack = 0; attack < sampleAttacks; attack++)
+            {
+                var payload = new TickStatePayload
+                {
+                    PlayerId = 1,
+                    ActiveActivityId = monsterId,
+                    CurrentMonsterId = monsterId,
+                    CurrentMonsterHp = int.MaxValue / 2,
+                    PlayerHp = int.MaxValue / 2,
+                    CON = con,
+                    SpeedMultiplier = 1,
+                    InventorySpaceRemaining = 1000
+                };
+
+                int hpBefore = payload.PlayerHp;
+                for (int t = 0; t < ticksPerAttack; t++)
+                {
+                    simulationEngine.ProcessTick(ref payload);
+                }
+                totalDamage += hpBefore - payload.PlayerHp;
+            }
+
+            return totalDamage;
+        }
+
+        // Modul: proves TutorialStateMachine.IsInteractionAllowed genuinely
+        // blocks every UI surface except the one the current step needs -
+        // the rule UiTutorialInteractionGate enforces client-side. Pure
+        // logic test, no DB - TutorialStateMachine has zero UnityEngine
+        // references (see its own doc comment) and is compiled into this
+        // project via the csproj file link in FolkIdle.Server.Tests.csproj.
+        [Fact]
+        public void Test_TutorialStateMachine_BlocksNonTutorialUiUntilStepsComplete()
+        {
+            var machine = new TutorialStateMachine();
+
+            // Inactive: nothing is gated yet.
+            Assert.True(machine.IsInteractionAllowed(TutorialUiElement.Market));
+            Assert.True(machine.IsInteractionAllowed(TutorialUiElement.Inventory));
+
+            machine.Begin();
+            Assert.Equal(TutorialStep.LootFirstItem, machine.CurrentStep);
+            Assert.True(machine.IsInteractionAllowed(TutorialUiElement.Inventory));
+            Assert.False(machine.IsInteractionAllowed(TutorialUiElement.Forge));
+            Assert.False(machine.IsInteractionAllowed(TutorialUiElement.Arena));
+            Assert.False(machine.IsInteractionAllowed(TutorialUiElement.Market));
+            Assert.True(machine.IsInteractionAllowed(TutorialUiElement.Settings), "Settings must never be blocked by the tutorial.");
+
+            // Out-of-order signals must not skip ahead.
+            machine.NotifyItemCrafted();
+            Assert.Equal(TutorialStep.LootFirstItem, machine.CurrentStep);
+            machine.NotifyCombatWon();
+            Assert.Equal(TutorialStep.LootFirstItem, machine.CurrentStep);
+
+            machine.NotifyItemLooted();
+            Assert.Equal(TutorialStep.CraftFirstItem, machine.CurrentStep);
+            Assert.True(machine.IsInteractionAllowed(TutorialUiElement.Forge));
+            Assert.False(machine.IsInteractionAllowed(TutorialUiElement.Inventory));
+            Assert.False(machine.IsInteractionAllowed(TutorialUiElement.Arena));
+
+            machine.NotifyItemCrafted();
+            Assert.Equal(TutorialStep.WinFirstCombat, machine.CurrentStep);
+            Assert.True(machine.IsInteractionAllowed(TutorialUiElement.Arena));
+            Assert.False(machine.IsInteractionAllowed(TutorialUiElement.Forge));
+
+            machine.NotifyCombatWon();
+            Assert.Equal(TutorialStep.Completed, machine.CurrentStep);
+            Assert.True(machine.IsInteractionAllowed(TutorialUiElement.Market));
+            Assert.True(machine.IsInteractionAllowed(TutorialUiElement.Inventory));
         }
     }
 }

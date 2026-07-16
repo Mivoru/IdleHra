@@ -33,7 +33,9 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
-                long expValue = (equip.QualityTier + 1) * 100;
+                // Modul: sourced from GameData/GameBalanceConfig.json - see
+                // GuildRaidEngine's identical rationale.
+                long expValue = (equip.QualityTier + 1) * ContentRegistry.Balance.GuildContributionEquipmentExpPerTier;
 
                 // Delete item to create deflationary sink
                 db.MarketEquipmentInstances.Remove(equip);
@@ -81,7 +83,8 @@ namespace FolkIdle.Server.Engine
                 
                 ledger.TotalAmountContributed += goldAmount;
 
-                long expValue = goldAmount / 10; // e.g. 10g = 1 exp
+                // Modul: sourced from GameData/GameBalanceConfig.json.
+                long expValue = goldAmount / ContentRegistry.Balance.GuildContributionGoldToExpDivisor; // e.g. 10g = 1 exp
                 await ApplyGuildExperienceAsync(db, guildId, expValue);
 
                 await db.SaveChangesAsync();

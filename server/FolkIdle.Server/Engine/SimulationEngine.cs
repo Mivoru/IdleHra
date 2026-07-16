@@ -208,10 +208,13 @@ namespace FolkIdle.Server.Engine
         // GuildCombatSimulationUpdateQueue, GuildRaidBossUpdateQueue) used to
         // do exactly that scan, once per dequeued event, every 100ms tick:
         // O(events_per_tick x active_player_count) instead of O(guild_size).
-        // A player's GuildId is fixed for the lifetime of an active session
-        // (loaded once at login, never reassigned mid-session anywhere in
-        // this engine), so add/remove at session boundaries is sufficient -
-        // no update-in-place path is needed.
+        // A player's GuildId changes at session boundaries (login,
+        // disconnect) and, since GuildManagementEngine exists, mid-session
+        // via the GuildMembershipChangeQueue drain in the tick loop - that
+        // drain is the ONLY mid-session mutation path, and it goes through
+        // the same AddToGuildIndex/RemoveFromGuildIndex helpers as the
+        // session-boundary sites, so the index can never drift from the
+        // live TickStatePayload.GuildId values.
         private readonly System.Collections.Generic.Dictionary<long, System.Collections.Generic.List<long>> _guildMembersIndex = new();
 
         // Adds playerId to _guildMembersIndex[guildId] - called only at
@@ -250,6 +253,31 @@ namespace FolkIdle.Server.Engine
                 {
                     _guildMembersIndex.Remove(guildId);
                 }
+            }
+        }
+
+        // Test-only observability (via InternalsVisibleTo) for the
+        // guild-membership drain: how many ReloadState packets the drain
+        // has issued, and whether a player currently sits in a guild's
+        // index bucket. The tick thread owns both structures; tests poll
+        // these after enqueueing a GuildMembershipChangeNotification and
+        // must tolerate a tick's worth of latency, not expect synchronous
+        // visibility.
+        internal long GuildMembershipReloadStatesIssued;
+
+        internal bool IsPlayerInGuildIndex(long guildId, long playerId)
+        {
+            lock (_activePlayers)
+            {
+                return _guildMembersIndex.TryGetValue(guildId, out var members) && members.Contains(playerId);
+            }
+        }
+
+        internal long GetActivePlayerGuildId(long playerId)
+        {
+            lock (_activePlayers)
+            {
+                return _activePlayers.TryGetValue(playerId, out var payload) ? payload.GuildId : -1;
             }
         }
 
@@ -583,6 +611,8 @@ namespace FolkIdle.Server.Engine
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, craftCompletion.PlayerId);
                     if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
                     {
+                        QuestEngine.IncrementProgress(ref currentPayload, QuestEngine.QuestTypeCraftItems, 1);
+
                         if (currentPayload.ActiveGuildWarId > 0 && ContentRegistry.ItemDefinitions.Length >= craftCompletion.CraftedItemId)
                         {
                             var def = ContentRegistry.ItemDefinitions[craftCompletion.CraftedItemId - 1];
@@ -599,6 +629,40 @@ namespace FolkIdle.Server.Engine
                             }
                         }
                         currentPayload.IsDirty = true;
+                    }
+                }
+
+                while (_playerRegistry.GuildMembershipChangeQueue.TryDequeue(out var membershipChange))
+                {
+                    // GuildManagementEngine committed a membership change to
+                    // the database on a background thread; fold it into the
+                    // tick thread's own state here. Both the old and new
+                    // index entries are updated via the same helpers every
+                    // session-boundary site uses, so _guildMembersIndex
+                    // stays consistent with the live TickStatePayload.GuildId
+                    // for the four guild-scoped broadcast loops below. An
+                    // offline player has no _activePlayers entry and no
+                    // index entries to fix - the database is already
+                    // authoritative and their next login loads the new
+                    // GuildId - so the null-ref path intentionally does
+                    // nothing.
+                    ref var membershipPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, membershipChange.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref membershipPayload))
+                    {
+                        RemoveFromGuildIndex(membershipChange.OldGuildId, membershipChange.PlayerId);
+                        AddToGuildIndex(membershipChange.NewGuildId, membershipChange.PlayerId);
+                        membershipPayload.GuildId = membershipChange.NewGuildId;
+                        membershipPayload.IsDirty = true;
+
+                        // ReloadState forces the client to re-pull its full
+                        // state so guild-scoped UI reflects the new
+                        // membership immediately rather than on next login.
+                        _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand
+                        {
+                            PlayerId = membershipChange.PlayerId,
+                            Packet = new ClientCommandPacket { Command = CommandType.ReloadState }
+                        });
+                        System.Threading.Interlocked.Increment(ref GuildMembershipReloadStatesIssued);
                     }
                 }
 
@@ -1989,6 +2053,35 @@ namespace FolkIdle.Server.Engine
 
                             long packetSerializationStartTimestamp = Stopwatch.GetTimestamp();
 
+                            // Modul: Combat System Overhaul - recomputed here
+                            // with the exact same StatsCalculator.Calculate
+                            // call and parameter sourcing ProcessTick's own
+                            // combat resolution uses (see the identical call
+                            // near the monster-attack block), so the
+                            // Accuracy/Armor/BlockStrength values broadcast
+                            // to the client can never drift from what
+                            // actually governed that tick's combat rolls.
+                            // TickStatePayload does not cache CombatStats
+                            // across the tick/broadcast boundary - this
+                            // mirrors the existing "recompute per site from
+                            // raw fields" pattern already used at every
+                            // other StatsCalculator.Calculate call site.
+                            int broadcastActiveAgePhase = 1;
+                            int broadcastActiveRaceId = 0;
+                            if (currentPayload.Slot1_CharacterId != System.Guid.Empty)
+                            {
+                                broadcastActiveAgePhase = currentPayload.Slot1_AgePhase;
+                                broadcastActiveRaceId = (int)(currentPayload.Slot1_GeneticVector & 0xFF);
+                            }
+                            var broadcastCombatStats = StatsCalculator.Calculate(currentPayload.STR, currentPayload.DEX, currentPayload.CON, currentPayload.LCK, currentPayload.ActiveOffensivePotionId, currentPayload.ActiveDefensivePotionId, broadcastActiveAgePhase, currentPayload.CompletedAreaFlags, broadcastActiveRaceId, currentPayload.HumanMasteryLevel, currentPayload.VilaMasteryLevel, currentPayload.DraugrMasteryLevel, currentPayload.CachedEquippedFlatAttack, currentPayload.CachedEquippedFlatDefense, currentPayload.CachedEquippedCritBonus, currentPayload.CachedEquippedLuckBonus, currentPayload.IsEpicMutation, currentPayload.LocusSpeed, currentPayload.LocusCrit);
+
+                            // Modul: onboarding signal - true only while the
+                            // account's first character exists but has never
+                            // aged a single tick, matching the
+                            // CharacterRecord.AgeTicks == 0 condition
+                            // UiLoginWindow/UiTutorialController key off of.
+                            byte isFreshAccount = (currentPayload.Slot1_CharacterId != System.Guid.Empty && currentPayload.Slot1_AgeTicks == 0) ? (byte)1 : (byte)0;
+
                             StateUpdatePacket packet = new StateUpdatePacket
                             {
                                 PlayerId = currentPayload.PlayerId,
@@ -2047,6 +2140,10 @@ namespace FolkIdle.Server.Engine
                                 WorldBossMaxHp = _worldBossEngine.BossMaxHp,
                                 WorldBossCurrentHp = ClampWorldBossHpToUInt(_worldBossEngine.BossCurrentHp),
                                 ActiveEventType = (byte)ActiveGlobalEventId,
+                                IsFreshAccount = isFreshAccount,
+                                PlayerAccuracyRating = broadcastCombatStats.AccuracyRating,
+                                PlayerArmorRating = broadcastCombatStats.FlatPhysicalArmor,
+                                PlayerBlockStrengthPct = broadcastCombatStats.BlockStrengthPct,
                                 CitizenMultiSlotsUnlocked = currentPayload.CitizenMultiSlotsUnlocked,
                                 GuildLogisticsCurrentStock = currentPayload.GuildLogisticsCurrentStock,
                                 GuildLogisticsTargetRequirement = currentPayload.GuildLogisticsTargetRequirement,
@@ -2300,7 +2397,7 @@ namespace FolkIdle.Server.Engine
             // is scaled down to whatever was actually survivable.
             if (warpSeconds > 0)
             {
-                int warpMonsterRegionTier = ((monsterId - 1) % 30) / 6 + 1;
+                int warpMonsterRegionTier = ContentRegistry.GetMonsterRegionTier(monsterId);
                 float warpMonsterCritChance = 0.05f + (warpMonsterRegionTier * 0.005f);
                 float warpMitigatedCritMult = Math.Max(1.0f, 1.5f - (warpCombatStats.CritMitigationPct / 100f));
                 float warpExpectedCritMultiplier = 1.0f + warpMonsterCritChance * (warpMitigatedCritMult - 1.0f);
@@ -3280,9 +3377,14 @@ namespace FolkIdle.Server.Engine
 
             if ((payload.CombatTargetTickAccumulator * 100) % playerAttackSpeedMs == 0)
             {
-                // Step 1 (Hit Determination)
-                float attackerAccuracy = 100f; // Placeholder until Accuracy is defined
-                float defenderDodge = 100f; // Placeholder
+                // Step 1 (Hit Determination). AccuracyRating (DEX-derived,
+                // see StatsCalculator) and the monster's content-authored
+                // DodgeRating replace the previous fixed 100/100 placeholder
+                // pair - a 0-DEX/0-DodgeRating pairing reproduces the exact
+                // old fixed-midpoint hit chance, so this is a pure extension,
+                // not a rebalance of existing content.
+                float attackerAccuracy = 100f + combatStats.AccuracyRating;
+                float defenderDodge = 100f + activeMonster.DodgeRating;
                 float hitChance = Math.Clamp(attackerAccuracy / defenderDodge, 0.05f, 0.95f);
 
                 if (Random.Shared.NextDouble() <= hitChance)
@@ -3307,8 +3409,11 @@ namespace FolkIdle.Server.Engine
                         payload.PendingSkillDamageMultiplier = 0f;
                     }
 
-                    // Step 3 (Mitigation)
-                    int defenderArmor = 0;
+                    // Step 3 (Mitigation). Monsters carry no block stat (no
+                    // shields modeled on the PvE monster side), so this stays
+                    // a pure armor subtraction - activeMonster.Armor is now
+                    // sourced from content data instead of a hardcoded 0.
+                    int defenderArmor = activeMonster.Armor;
                     int netDamage = Math.Max(1000, rawDamage - (defenderArmor * 1000));
                     netDamage = (int)(netDamage * payload.CachedCodexDamageMultiplier);
 
@@ -3328,25 +3433,27 @@ namespace FolkIdle.Server.Engine
             // Monster attacks player
             if (payload.CurrentMonsterHp > 0 && (payload.CombatTargetTickAccumulator * 100) % activeMonster.AttackIntervalMs == 0)
             {
-                // Step 1 (Hit Determination)
+                // Step 1 (Hit Determination). Monsters have no authored
+                // accuracy stat (their content data only defines DodgeRating
+                // and Armor, both defensive), so attackerAccuracy stays the
+                // fixed baseline; combatStats.DodgeChancePct (defensive
+                // potions, Vila's innate racial passive) is the player's own
+                // defensive stat and was already wired here.
                 float attackerAccuracy = 100f;
-                // Modul 13.4.3: combatStats.DodgeChancePct (defensive potions,
-                // Vila's innate racial passive) was previously computed but never
-                // read here - defenderDodge was hardcoded to the same constant as
-                // attackerAccuracy, silently nullifying the stat. Now a higher
-                // dodge stat genuinely lowers hit chance.
                 float defenderDodge = 100f + combatStats.DodgeChancePct;
                 float hitChance = Math.Clamp(attackerAccuracy / defenderDodge, 0.05f, 0.95f);
 
                 if (Random.Shared.NextDouble() <= hitChance)
                 {
                     // Step 2 (Monster Crit Check): 5% base + 0.5% per region
-                    // tier (region derived from monster id via the established
-                    // ((Id - 1) % 30) / 6 + 1 convention). Vodnik's innate
+                    // tier (region now resolved via
+                    // ContentRegistry.GetMonsterRegionTier, which uses each
+                    // monster's authored RegionTier instead of wrapping ids
+                    // 31+ back onto tiers 1-5). Vodnik's innate
                     // CritMitigationPct subtracts directly from the crit
                     // damage multiplier, floored at 1.0 so mitigation can never
                     // make a crit deal less than a normal hit.
-                    int monsterRegionTier = ((payload.CurrentMonsterId - 1) % 30) / 6 + 1;
+                    int monsterRegionTier = ContentRegistry.GetMonsterRegionTier(payload.CurrentMonsterId);
                     float monsterCritChance = 0.05f + (monsterRegionTier * 0.005f);
                     float monsterCritMult = 1.0f;
                     if (Random.Shared.NextDouble() <= monsterCritChance)
@@ -3356,12 +3463,17 @@ namespace FolkIdle.Server.Engine
 
                     int rawDamage = (int)(activeMonster.AttackPower * 1000 * monsterCritMult);
 
-                    // Step 3 (Mitigation)
-                    int netDamage = Math.Max(1000, rawDamage - (combatStats.FlatPhysicalArmor * 1000));
-
-                    // Step 4 (Shield Check)
-                    int blockStrength = 0;
-                    int finalDamage = Math.Max(0, netDamage - (blockStrength * 1000));
+                    // Step 3+4 (Armor then Block, combined): armor subtracts
+                    // flat milli-damage, BlockStrengthPct (CON-derived, see
+                    // StatsCalculator) then reduces what remains
+                    // multiplicatively - a shield/bulk stat that shaves a
+                    // fraction off whatever armor did not already stop,
+                    // rather than stacking as another flat subtraction.
+                    // Clamped below 100% so a high-CON build can reduce a hit
+                    // close to the floor but never to true zero damage.
+                    float blockStrengthFraction = Math.Clamp(combatStats.BlockStrengthPct / 100f, 0f, 0.75f);
+                    int armorMitigatedDamage = rawDamage - (combatStats.FlatPhysicalArmor * 1000);
+                    int finalDamage = Math.Max(1000, (int)(armorMitigatedDamage * (1f - blockStrengthFraction)));
 
                     payload.PlayerHp -= finalDamage;
 
@@ -3438,6 +3550,8 @@ namespace FolkIdle.Server.Engine
                 {
                     sessionCtx.ThreadSafeAddMonsterKill();
                 }
+
+                QuestEngine.IncrementProgress(ref payload, QuestEngine.QuestTypeKillMonsters, 1);
 
                 long goldReward = (activeMonster.BaseGoldReward * (long)GlobalEngineState.GlobalGoldDropMultiplier) / 100L;
                 // Modul 13.4.3: Human's innate +5% Gold acquisition passive.
