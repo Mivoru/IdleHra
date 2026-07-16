@@ -16,7 +16,8 @@ namespace FolkIdle.Server.Engine
         CriticalFailure = 3,
         InvalidRequest = 4,
         InsufficientGold = 5,
-        FailedItemEquipped = 6
+        FailedItemEquipped = 6,
+        MaxTierReached = 7
     }
 
     public class ForgeSplicingEngine
@@ -24,6 +25,15 @@ namespace FolkIdle.Server.Engine
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry? _playerRegistry;
         private const long BaseGoldCost = 1000;
+
+        // Modul: GAME_DESIGN_SPEC.md/GDD's 14-tier geometric forge formula
+        // requires exactly 3^13 = 1,594,323 Normal item bases to synthesize
+        // one clean Transcendent-tier item, implying a hard ceiling at
+        // tier 13 (tiers 0-13 inclusive, 14 total states) - previously
+        // unenforced anywhere in this method, so QualityTier climbed
+        // unbounded on every successful fusion past the intended endgame
+        // cap.
+        public const int MaxQualityTier = 13;
 
         public ForgeSplicingEngine(IServiceProvider serviceProvider, PlayerSessionRegistry? playerRegistry = null)
         {
@@ -124,7 +134,21 @@ namespace FolkIdle.Server.Engine
                 }
 
                 int currentTier = targetItem.QualityTier;
-                
+
+                // Modul: hard tier cap - rejected before any resource
+                // consumption (the gold check/deduction below) or database
+                // write, matching every other early-rejection branch in
+                // this method (equipped-item guard, integrity gate). An
+                // item already at the Transcendent ceiling cannot be
+                // fused further regardless of gold or fodder quality.
+                if (currentTier >= MaxQualityTier)
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine("Fusion failed: target item has already reached MaxQualityTier.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                    return ForgeSplicingResult.MaxTierReached;
+                }
+
                 long baseGoldCost = BaseGoldCost * (currentTier + 1);
                 long cost = (long)(baseGoldCost * (1.0 + ((4 - sac1.QualityTier) * 0.50) + ((4 - sac2.QualityTier) * 0.50)));
 

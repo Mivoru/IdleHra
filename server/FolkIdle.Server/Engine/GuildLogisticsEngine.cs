@@ -86,12 +86,14 @@ namespace FolkIdle.Server.Engine
 
         private async Task ApplyMonolithProgressionAsync(FolkIdleDbContext db, long guildId, int itemDefinitionId, long quantity)
         {
-            // iron_ore = 3, oak_log = 4 are examples, let's assume raw_log (2) for woodcutting and copper_ore (1) for mining for now
-            // We can match any ore for mining, any log for woodcutting. Let's just use odd IDs for ore, even for logs based on registry.
-            // 1=copper_ore, 3=iron_ore, 5=gold_ore
-            // 2=raw_log, 4=oak_log, 6=magic_log
-            bool isMining = itemDefinitionId % 2 != 0; 
-            
+            // Modul: metadata-driven classification via
+            // ContentRegistry.GetMaterialProfessionType - replaces the
+            // previous itemDefinitionId % 2 != 0 parity heuristic, which
+            // broke silently if this material id space were ever
+            // renumbered. See that method's own comment for the explicit
+            // per-material mapping.
+            bool isMining = ContentRegistry.GetMaterialProfessionType(itemDefinitionId) == GatheringProfessionType.Mining;
+
             string progressColumn = isMining ? "MiningMonolithProgress" : "WoodcuttingMonolithProgress";
             string levelColumn = isMining ? "MiningMonolithLevel" : "WoodcuttingMonolithLevel";
 

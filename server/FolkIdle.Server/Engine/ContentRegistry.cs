@@ -5,6 +5,18 @@ using System.Runtime.InteropServices;
 
 namespace FolkIdle.Server.Engine
 {
+    // Modul: mirrors GatheringNodeDefinition.ProfessionType's own numbering
+    // (0 = Woodcutting, 1 = Mining) for the raw gathering material id space
+    // (GetMaterialString/GetMaterialId/GetMaterialProfessionType) - that
+    // space only ever contains Woodcutting or Mining materials, unlike the
+    // broader gathering_nodes.json ProfessionType field which also covers
+    // Fishing and Herbalism.
+    public enum GatheringProfessionType
+    {
+        Woodcutting = 0,
+        Mining = 1
+    }
+
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct Locus
     {
@@ -179,6 +191,29 @@ namespace FolkIdle.Server.Engine
                 "gold_ore" => 5,
                 "magic_log" => 6,
                 _ => 0
+            };
+        }
+
+        // Modul: metadata-driven profession classification for the raw
+        // gathering material id space above (GetMaterialString/GetMaterialId) -
+        // replaces GuildLogisticsEngine.ApplyMonolithProgressionAsync's
+        // previous itemDefinitionId % 2 != 0 parity heuristic ("let's just
+        // use odd IDs for ore, even for logs... for now"), which broke
+        // silently the moment this id space was ever renumbered or
+        // extended. Each material's profession is now an explicit,
+        // authored fact rather than an inferred numeric coincidence. Zero
+        // allocation - a switch expression over primitive int/enum values.
+        public static GatheringProfessionType GetMaterialProfessionType(int materialId)
+        {
+            return materialId switch
+            {
+                1 => GatheringProfessionType.Mining,      // copper_ore
+                2 => GatheringProfessionType.Woodcutting, // raw_log
+                3 => GatheringProfessionType.Mining,      // iron_ore
+                4 => GatheringProfessionType.Woodcutting, // oak_log
+                5 => GatheringProfessionType.Mining,      // gold_ore
+                6 => GatheringProfessionType.Woodcutting, // magic_log
+                _ => GatheringProfessionType.Woodcutting  // unknown material - matches GetMaterialString's own "unknown" fallback
             };
         }
 

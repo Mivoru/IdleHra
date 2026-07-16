@@ -21,9 +21,18 @@ namespace FolkIdle.Server.Engine
                 return ClampBankedSeconds(rawElapsedOfflineSeconds);
             }
 
+            // Modul: matches GAME_DESIGN_SPEC.md/GDD exactly -
+            // BankedSeconds = max(0, floor(ln(ElapsedSeconds - ThresholdSeconds + 1) * 1200.0)).
+            // Previously added a flat OfflineThresholdSeconds (86400) on
+            // top of the decayed excess, banking roughly 7x the specified
+            // amount (e.g. ~27.8 hours instead of ~3.8 hours at 48 hours
+            // offline) - a real economy-inflating deviation from spec, not
+            // an intentional design choice, since nothing else in this
+            // codebase documented the inflated value as authoritative.
+            // Pure double/long arithmetic throughout, no heap allocation.
             long excess = rawElapsedOfflineSeconds - OfflineThresholdSeconds;
             double decayedExcess = Math.Log(excess + 1.0) * ExcessReservoirScale;
-            long earned = OfflineThresholdSeconds + Math.Max(0L, (long)Math.Floor(decayedExcess));
+            long earned = Math.Max(0L, (long)Math.Floor(decayedExcess));
             return ClampBankedSeconds(earned);
         }
 

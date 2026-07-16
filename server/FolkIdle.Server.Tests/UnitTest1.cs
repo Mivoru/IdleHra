@@ -23,12 +23,18 @@ public class SeasonalRotationEngineTests
 
 public class ChronoBufferEngineTests
 {
+    // Modul: matches GAME_DESIGN_SPEC.md/GDD exactly - BankedSeconds =
+    // max(0, floor(ln(ElapsedSeconds - ThresholdSeconds + 1) * 1200.0)),
+    // with no additive OfflineThresholdSeconds term. This assertion was
+    // previously written against the buggy implementation (which added a
+    // flat 86400 seconds on top of the decayed excess, banking roughly 7x
+    // the specified amount) - updated to the corrected formula.
     [Fact]
     public void CalculateOfflineBankedSeconds_AppliesLogarithmicDecayAfterFirstDay()
     {
         int banked = ChronoBufferEngine.CalculateOfflineBankedSeconds(86400L + 100L);
 
-        Assert.Equal(86400 + (int)System.Math.Floor(System.Math.Log(101.0) * 1200.0), banked);
+        Assert.Equal((int)System.Math.Floor(System.Math.Log(101.0) * 1200.0), banked);
     }
 
     [Fact]

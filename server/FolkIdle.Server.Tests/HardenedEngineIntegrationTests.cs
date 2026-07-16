@@ -2,9 +2,12 @@ using System;
 using System.Diagnostics.Tracing;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
@@ -4086,6 +4089,339 @@ namespace FolkIdle.Server.Tests
             finally
             {
                 simulationEngine.Stop();
+            }
+        }
+
+        // Modul: Phase 4 Production Stabilization - Part 1. Previously
+        // additively stacked the full 24-hour OfflineThresholdSeconds on
+        // top of the logarithmic-decay result, banking roughly 7x the
+        // GDD-specified amount (~27.8 hours instead of ~3.8 hours at 48
+        // hours offline). Asserts the corrected formula matches the GDD
+        // exactly and no longer produces an inflated value.
+        [Fact]
+        public void Test_ChronoBufferEngine_FortyEightHoursOffline_BanksLogarithmicDecayWithoutThresholdInflation()
+        {
+            long fortyEightHoursSeconds = 48L * 3600L;
+            int banked = ChronoBufferEngine.CalculateOfflineBankedSeconds(fortyEightHoursSeconds);
+
+            long excess = fortyEightHoursSeconds - ChronoBufferEngine.OfflineThresholdSeconds;
+            int expected = (int)Math.Floor(Math.Log(excess + 1.0) * 1200.0);
+
+            Assert.Equal(expected, banked);
+            Assert.InRange(banked, (int)(3.7 * 3600), (int)(3.9 * 3600));
+            Assert.True(banked < ChronoBufferEngine.OfflineThresholdSeconds,
+                "Banked seconds must never reach the full threshold offset the old buggy formula additively granted.");
+        }
+
+        // Modul: Phase 4 Production Stabilization - Part 2. A Transcendent
+        // (tier 13) item must be rejected before any gold is deducted or
+        // sacrifices are consumed - proves the cap check runs ahead of
+        // every resource-consuming step in ExecuteFusionAsync.
+        [Fact]
+        public async Task Test_ForgeSplicing_RejectsFusionAtMaxQualityTier()
+        {
+            const long testPlayerId = 970001301L;
+            const string baseItemId = "integration_test_forge_max_tier_sword";
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.ForgeBuildingId,
+                    CurrentLevel = 20
+                });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 1000000L });
+                await db.SaveChangesAsync();
+            }
+
+            long targetId, sac1Id, sac2Id;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var target = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = baseItemId, QualityTier = ForgeSplicingEngine.MaxQualityTier };
+                var sac1 = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = baseItemId, QualityTier = ForgeSplicingEngine.MaxQualityTier };
+                var sac2 = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = baseItemId, QualityTier = ForgeSplicingEngine.MaxQualityTier };
+                db.EquipmentInstances.AddRange(target, sac1, sac2);
+                await db.SaveChangesAsync();
+                targetId = target.Id;
+                sac1Id = sac1.Id;
+                sac2Id = sac2.Id;
+            }
+
+            long goldBefore = await GetGoldAsync(testPlayerId);
+
+            var forgeEngine = new ForgeSplicingEngine(_fixture.ServiceProvider);
+            var result = await forgeEngine.ExecuteFusionAsync(testPlayerId, targetId, sac1Id, sac2Id);
+
+            Assert.Equal(ForgeSplicingResult.MaxTierReached, result);
+
+            long goldAfter = await GetGoldAsync(testPlayerId);
+            Assert.Equal(goldBefore, goldAfter);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var unchangedTarget = await verifyDb.EquipmentInstances.AsNoTracking().SingleAsync(e => e.Id == targetId);
+            Assert.Equal(ForgeSplicingEngine.MaxQualityTier, unchangedTarget.QualityTier);
+
+            int survivingSacrificeCount = await verifyDb.EquipmentInstances.AsNoTracking()
+                .CountAsync(e => e.Id == sac1Id || e.Id == sac2Id);
+            Assert.Equal(2, survivingSacrificeCount);
+        }
+
+        // Modul: Phase 4 Production Stabilization - Part 3. Locks in the
+        // explicit, authored material-to-profession mapping that replaced
+        // the itemDefinitionId % 2 != 0 parity heuristic.
+        [Fact]
+        public void Test_ContentRegistry_GetMaterialProfessionType_MapsAllKnownGatheringMaterials()
+        {
+            Assert.Equal(GatheringProfessionType.Mining, ContentRegistry.GetMaterialProfessionType(1));      // copper_ore
+            Assert.Equal(GatheringProfessionType.Woodcutting, ContentRegistry.GetMaterialProfessionType(2)); // raw_log
+            Assert.Equal(GatheringProfessionType.Mining, ContentRegistry.GetMaterialProfessionType(3));      // iron_ore
+            Assert.Equal(GatheringProfessionType.Woodcutting, ContentRegistry.GetMaterialProfessionType(4)); // oak_log
+            Assert.Equal(GatheringProfessionType.Mining, ContentRegistry.GetMaterialProfessionType(5));      // gold_ore
+            Assert.Equal(GatheringProfessionType.Woodcutting, ContentRegistry.GetMaterialProfessionType(6)); // magic_log
+        }
+
+        // Modul: Phase 4 Production Stabilization - Part 3, end to end.
+        // Proves GuildLogisticsEngine.ApplyMonolithProgressionAsync routes
+        // a contribution to the correct Monolith progress column via
+        // ContentRegistry.GetMaterialProfessionType, not raw ID parity.
+        [Fact]
+        public async Task Test_GuildLogistics_ContributionRoutesToCorrectMonolithByMetadataNotParity()
+        {
+            const long testGuildId = 970001401L;
+            const long miningPlayerId = 970001402L;
+            const long woodcuttingPlayerId = 970001403L;
+            const int ironOreMaterialId = 3; // Mining
+            const int oakLogMaterialId = 4;  // Woodcutting
+            const long contributionQuantity = 500L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.GuildRecords.Add(new GuildRecord { Id = testGuildId, Name = "IntegrationTestMonolithGuild970001401" });
+                db.PlayerRecords.Add(new PlayerRecord { Id = miningPlayerId, GuildId = testGuildId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.PlayerRecords.Add(new PlayerRecord { Id = woodcuttingPlayerId, GuildId = testGuildId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = miningPlayerId, ItemId = ContentRegistry.GetMaterialString(ironOreMaterialId), Quantity = contributionQuantity });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = woodcuttingPlayerId, ItemId = ContentRegistry.GetMaterialString(oakLogMaterialId), Quantity = contributionQuantity });
+                await db.SaveChangesAsync();
+            }
+
+            var logisticsEngine = new GuildLogisticsEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            await logisticsEngine.ExecuteGuildContributionAsync(miningPlayerId, testGuildId, contributionQuantity, ironOreMaterialId);
+
+            await using (var afterMiningDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var guild = await afterMiningDb.GuildRecords.AsNoTracking().SingleAsync(g => g.Id == testGuildId);
+                Assert.Equal((int)contributionQuantity, guild.MiningMonolithProgress);
+                Assert.Equal(0, guild.WoodcuttingMonolithProgress);
+            }
+
+            await logisticsEngine.ExecuteGuildContributionAsync(woodcuttingPlayerId, testGuildId, contributionQuantity, oakLogMaterialId);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var finalGuild = await verifyDb.GuildRecords.AsNoTracking().SingleAsync(g => g.Id == testGuildId);
+            Assert.Equal((int)contributionQuantity, finalGuild.MiningMonolithProgress);
+            Assert.Equal((int)contributionQuantity, finalGuild.WoodcuttingMonolithProgress);
+        }
+
+        // Modul: Phase 4 Production Stabilization - Part 4. Guild ids well
+        // past the old hardcoded int[1000] array bound must both write
+        // and read correctly, with no silent no-op and no exception.
+        [Fact]
+        public void Test_GuildBonusesCache_SupportsGuildIdsAboveLegacyThousandCeiling()
+        {
+            const long guildIdAboveLegacyArrayBound = 5000L;
+            const long anotherGuildIdAboveBound = 1500000L;
+
+            double defaultMultiplier = GuildBonusesCache.GetGuildEfficiencyMultiplier(guildIdAboveLegacyArrayBound);
+            Assert.Equal(1.0, defaultMultiplier);
+
+            GuildBonusesCache.UpdateGuildTier(guildIdAboveLegacyArrayBound, 10);
+            GuildBonusesCache.UpdateGuildTier(anotherGuildIdAboveBound, 25);
+
+            Assert.Equal(1.0 + (10 * 0.02), GuildBonusesCache.GetGuildEfficiencyMultiplier(guildIdAboveLegacyArrayBound));
+            Assert.Equal(1.0 + (25 * 0.02), GuildBonusesCache.GetGuildEfficiencyMultiplier(anotherGuildIdAboveBound));
+
+            // Updating one guild's tier must not disturb another's.
+            GuildBonusesCache.UpdateGuildTier(guildIdAboveLegacyArrayBound, 12);
+            Assert.Equal(1.0 + (12 * 0.02), GuildBonusesCache.GetGuildEfficiencyMultiplier(guildIdAboveLegacyArrayBound));
+            Assert.Equal(1.0 + (25 * 0.02), GuildBonusesCache.GetGuildEfficiencyMultiplier(anotherGuildIdAboveBound));
+        }
+
+        // Modul: Phase 4 Production Stabilization - Part 5. Exercises the
+        // real Google Play Developer API request/response plumbing
+        // (service-account JWT-bearer OAuth2 exchange, then a Bearer-
+        // authenticated purchase lookup) against a stub HttpMessageHandler
+        // standing in for live network access - no real Google credential
+        // or network call is available in this environment, but the JWT
+        // signing, HTTP call shape, and JSON parsing are all genuine.
+        [Fact]
+        public async Task Test_ProductionIapReceiptValidator_GooglePlayDeveloperApi_VerifiesSuccessfulPurchase()
+        {
+            var (secretManager, envVarName, filePath) = CreateFileBackedSecret(CreateStubGoogleServiceAccountJson());
+            try
+            {
+                var stubFactory = new StubHttpClientFactory(new StubHttpMessageHandler(request =>
+                    request.RequestUri!.Host.Contains("oauth2.googleapis.com")
+                        ? StubJsonResponse(HttpStatusCode.OK, "{\"access_token\":\"stub-access-token\",\"expires_in\":3600,\"token_type\":\"Bearer\"}")
+                        : StubJsonResponse(HttpStatusCode.OK, "{\"purchaseState\":0,\"consumptionState\":0}")));
+
+                var validator = new ProductionIapReceiptValidator(secretManager, secretManager, stubFactory);
+
+                IapStoreVerificationOutcome outcome = await validator.VerifyViaGooglePlayDeveloperApiAsync(
+                    secretManager, "com.folkidle.app", "premium_diamond_pack", "stub-purchase-token");
+
+                Assert.True(outcome.IsVerified);
+                Assert.Equal(string.Empty, outcome.ErrorMessage);
+            }
+            finally
+            {
+                CleanupFileBackedSecret(envVarName, filePath);
+            }
+        }
+
+        // Modul: a well-formed but non-purchased response (purchaseState=1,
+        // canceled) must be parsed successfully and rejected with a
+        // reason - not misreported as verified, and not an uncaught
+        // exception either.
+        [Fact]
+        public async Task Test_ProductionIapReceiptValidator_GooglePlayDeveloperApi_RejectsUnpurchasedStateWithoutThrowing()
+        {
+            var (secretManager, envVarName, filePath) = CreateFileBackedSecret(CreateStubGoogleServiceAccountJson());
+            try
+            {
+                var stubFactory = new StubHttpClientFactory(new StubHttpMessageHandler(request =>
+                    request.RequestUri!.Host.Contains("oauth2.googleapis.com")
+                        ? StubJsonResponse(HttpStatusCode.OK, "{\"access_token\":\"stub-access-token\",\"expires_in\":3600,\"token_type\":\"Bearer\"}")
+                        : StubJsonResponse(HttpStatusCode.OK, "{\"purchaseState\":1,\"consumptionState\":0}")));
+
+                var validator = new ProductionIapReceiptValidator(secretManager, secretManager, stubFactory);
+
+                IapStoreVerificationOutcome outcome = await validator.VerifyViaGooglePlayDeveloperApiAsync(
+                    secretManager, "com.folkidle.app", "premium_diamond_pack", "stub-purchase-token");
+
+                Assert.False(outcome.IsVerified);
+                Assert.NotEqual(string.Empty, outcome.ErrorMessage);
+            }
+            finally
+            {
+                CleanupFileBackedSecret(envVarName, filePath);
+            }
+        }
+
+        // Modul: Phase 4 Production Stabilization - Part 5, Apple side.
+        // Covers both a successful App Store Server API response
+        // (signedTransactionInfo present) and a store-side error response
+        // (HTTP 404 with a structured errorCode/errorMessage body) -
+        // both must be defensively parsed with no uncaught exception, and
+        // must map to the correct IsVerified/ErrorMessage outcome.
+        [Fact]
+        public async Task Test_ProductionIapReceiptValidator_AppleAppStoreApi_VerifiesSuccessAndRejectsErrorWithoutThrowing()
+        {
+            var (secretManager, envVarName, filePath) = CreateFileBackedSecret(CreateStubEcPrivateKeyPem());
+            try
+            {
+                var successFactory = new StubHttpClientFactory(new StubHttpMessageHandler(_ =>
+                    StubJsonResponse(HttpStatusCode.OK, "{\"signedTransactionInfo\":\"stub.jws.payload\"}")));
+                var successValidator = new ProductionIapReceiptValidator(secretManager, secretManager, successFactory);
+
+                IapStoreVerificationOutcome successOutcome = await successValidator.VerifyViaAppleAppStoreServerApiAsync(
+                    secretManager, "stub-key-id", "stub-issuer-id", "com.folkidle.app", "stub-transaction-id");
+
+                Assert.True(successOutcome.IsVerified);
+
+                var errorFactory = new StubHttpClientFactory(new StubHttpMessageHandler(_ =>
+                    StubJsonResponse(HttpStatusCode.NotFound, "{\"errorCode\":4040010,\"errorMessage\":\"Transaction id not found.\"}")));
+                var errorValidator = new ProductionIapReceiptValidator(secretManager, secretManager, errorFactory);
+
+                IapStoreVerificationOutcome errorOutcome = await errorValidator.VerifyViaAppleAppStoreServerApiAsync(
+                    secretManager, "stub-key-id", "stub-issuer-id", "com.folkidle.app", "stub-transaction-id-missing");
+
+                Assert.False(errorOutcome.IsVerified);
+                Assert.Contains("4040010", errorOutcome.ErrorMessage);
+            }
+            finally
+            {
+                CleanupFileBackedSecret(envVarName, filePath);
+            }
+        }
+
+        private static string CreateStubGoogleServiceAccountJson()
+        {
+            using RSA rsa = RSA.Create(2048);
+            return System.Text.Json.JsonSerializer.Serialize(new
+            {
+                client_email = "stub-service-account@example.iam.gserviceaccount.com",
+                private_key = rsa.ExportPkcs8PrivateKeyPem()
+            });
+        }
+
+        private static string CreateStubEcPrivateKeyPem()
+        {
+            using ECDsa ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+            return ecdsa.ExportPkcs8PrivateKeyPem();
+        }
+
+        // Modul: SecretRotationManager resolves its value through an
+        // environment-variable-named file path (never the secret itself
+        // in an env var) - mirrors that exact shape for tests instead of
+        // bypassing it, so this proves the same code path a real deployed
+        // secret takes. A guid-suffixed env var name keeps concurrently
+        // running tests in this class from colliding.
+        private static (SecretRotationManager Manager, string EnvVarName, string FilePath) CreateFileBackedSecret(string content)
+        {
+            string envVarName = $"FOLKIDLE_TEST_SECRET_{Guid.NewGuid():N}";
+            string filePath = Path.Combine(Path.GetTempPath(), $"{envVarName}.txt");
+            File.WriteAllText(filePath, content);
+            Environment.SetEnvironmentVariable(envVarName, filePath);
+            return (new SecretRotationManager(envVarName), envVarName, filePath);
+        }
+
+        private static void CleanupFileBackedSecret(string envVarName, string filePath)
+        {
+            Environment.SetEnvironmentVariable(envVarName, null);
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
+        }
+
+        private static HttpResponseMessage StubJsonResponse(HttpStatusCode statusCode, string jsonBody)
+        {
+            return new HttpResponseMessage(statusCode)
+            {
+                Content = new StringContent(jsonBody, Encoding.UTF8, "application/json")
+            };
+        }
+
+        private sealed class StubHttpMessageHandler : HttpMessageHandler
+        {
+            private readonly Func<HttpRequestMessage, HttpResponseMessage> _responder;
+
+            public StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responder)
+            {
+                _responder = responder;
+            }
+
+            protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(_responder(request));
+            }
+        }
+
+        private sealed class StubHttpClientFactory : IHttpClientFactory
+        {
+            private readonly HttpMessageHandler _handler;
+
+            public StubHttpClientFactory(HttpMessageHandler handler)
+            {
+                _handler = handler;
+            }
+
+            public HttpClient CreateClient(string name)
+            {
+                return new HttpClient(_handler, disposeHandler: false);
             }
         }
     }

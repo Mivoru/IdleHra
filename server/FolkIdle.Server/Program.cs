@@ -1,4 +1,5 @@
 using System;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using FolkIdle.Server.Engine;
@@ -124,6 +125,16 @@ serviceCollection.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexe
 serviceCollection.AddSingleton<RedisSessionCache>();
 serviceCollection.AddSingleton<RedisPlayerSessionLock>();
 
+// Modul: registers IHttpClientFactory - required by
+// ProductionIapReceiptValidator's live store-verification calls
+// (Google Play Developer API / Apple App Store Server API) so those
+// calls pool and reuse handlers instead of a fresh HttpClient/socket
+// per purchase, per IHttpClientFactory's own documented socket-exhaustion
+// guidance. Registered unconditionally (cheap, no local-dev/Production
+// split needed) so it is available to resolve below regardless of
+// which IIapReceiptValidator implementation ends up constructed.
+serviceCollection.AddHttpClient();
+
 // Hosted Services removed
 
 var serviceProvider = serviceCollection.BuildServiceProvider();
@@ -203,7 +214,8 @@ bool isProductionForIap = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT
 IIapReceiptValidator iapReceiptValidator = isProductionForIap
     ? new ProductionIapReceiptValidator(
         new SecretRotationManager("FOLKIDLE_IAP_GOOGLE_PUBLIC_KEY_PATH"),
-        new SecretRotationManager("FOLKIDLE_IAP_APPLE_PUBLIC_KEY_PATH"))
+        new SecretRotationManager("FOLKIDLE_IAP_APPLE_PUBLIC_KEY_PATH"),
+        serviceProvider.GetRequiredService<IHttpClientFactory>())
     : new MockIapReceiptValidator();
 var billingVerificationEngine = new BillingVerificationEngine(serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), serviceProvider.GetRequiredService<RedisSessionCache>(), playerRegistry, serviceProvider.GetRequiredService<RetryingDbContextOptions>(), iapReceiptValidator, networkSystem);
 networkSystem.RegisterBillingVerificationEngine(billingVerificationEngine);
