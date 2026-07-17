@@ -1653,6 +1653,19 @@ namespace FolkIdle.Server.Engine
                             context.TryEnqueueBattlePassClaim(in req);
                         }
                     }
+                    else if (cmd.Command == CommandType.PurchaseBattlePass)
+                    {
+                        // Modul: Comprehensive Game System Audit, Part 4.3.
+                        // Premium track unlock via in-game PremiumDiamonds -
+                        // dispatched off the tick thread like every other
+                        // DB-transactional command; balance check, deduction,
+                        // and PremiumUnlocked flag all resolve inside one
+                        // Serializable FOR UPDATE transaction server-side.
+                        long pId = currentPayload.PlayerId;
+                        SafeDispatchAsync("BattlePass.Purchase", pId, async () => {
+                            await ExecutePassPurchaseAsync(pId);
+                        });
+                    }
                     else if (cmd.Command == CommandType.DepositToBank)
                     {
                         long pId = currentPayload.PlayerId;
@@ -3080,6 +3093,88 @@ namespace FolkIdle.Server.Engine
             return (response, activeMatchMmr);
         }
 
+        // Modul: Comprehensive Game System Audit, Part 4.3. Unlocks the
+        // Chronicle Pass premium track by deducting
+        // ChroniclePassEconomy.PremiumPassPriceDiamonds from the player's
+        // PremiumDiamonds inside one Serializable FOR UPDATE transaction.
+        // Rejections (already unlocked, insufficient balance) surface
+        // through the generic command-result channel so UiCommandResultToast
+        // can display them.
+        internal async Task<bool> ExecutePassPurchaseAsync(long playerId)
+        {
+            using var context = await _contextFactory.CreateDbContextAsync();
+            await using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            try
+            {
+                var player = await context.PlayerRecords
+                    .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
+                    .FirstOrDefaultAsync();
+                if (player == null)
+                {
+                    await transaction.RollbackAsync();
+                    return false;
+                }
+
+                var pass = await context.PlayerChroniclePasses
+                    .FromSqlRaw("SELECT * FROM \"PlayerChroniclePasses\" WHERE \"PlayerId\" = {0} FOR UPDATE", playerId)
+                    .FirstOrDefaultAsync();
+
+                if (pass != null && pass.PremiumUnlocked)
+                {
+                    await transaction.RollbackAsync();
+                    _playerRegistry.EnqueueCommandResult(playerId, (byte)CommandResultCode.GenericValidationFailure);
+                    return false;
+                }
+
+                if (player.PremiumDiamonds < ChroniclePassEconomy.PremiumPassPriceDiamonds)
+                {
+                    await transaction.RollbackAsync();
+                    _playerRegistry.EnqueueCommandResult(playerId, (byte)CommandResultCode.InsufficientGold);
+                    return false;
+                }
+
+                int previousBalance = player.PremiumDiamonds;
+                player.PremiumDiamonds -= ChroniclePassEconomy.PremiumPassPriceDiamonds;
+
+                if (pass == null)
+                {
+                    pass = new PlayerChroniclePass
+                    {
+                        PlayerId = playerId,
+                        PassLevel = 0,
+                        AccumulatedXp = 0,
+                        ClaimedMilestonesBitmask = 0UL,
+                        PremiumUnlocked = true
+                    };
+                    context.PlayerChroniclePasses.Add(pass);
+                }
+                else
+                {
+                    pass.PremiumUnlocked = true;
+                }
+
+                context.EventHorizonPremiumLedgers.Add(new EventHorizonPremiumLedger
+                {
+                    TransactionId = $"pass_purchase_{playerId}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}",
+                    PlayerId = playerId,
+                    PreviousBalance = previousBalance,
+                    NewBalance = player.PremiumDiamonds,
+                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                });
+
+                await context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                Console.WriteLine($"Battle pass purchase failed for player {playerId}: {ex.Message}");
+                return false;
+            }
+        }
+
         private async Task<bool> ExecuteBattlePassClaimAsync(long playerId, uint milestoneIndex, uint seasonalXp, uint passLevel)
         {
             using var context = await _contextFactory.CreateDbContextAsync();
@@ -3153,7 +3248,18 @@ namespace FolkIdle.Server.Engine
                     IsAffixLocked = false
                 });
 
-                if (player.PremiumDiamonds > 0)
+                // Modul: Comprehensive Game System Audit, Part 4.2/4.3.
+                // Premium rewards now gate on a real purchased unlock
+                // (pass.PremiumUnlocked, set by ExecutePassPurchaseAsync
+                // after deducting the pass price) - previously merely
+                // HOLDING 1+ diamonds unlocked this branch without ever
+                // spending anything. Premium milestones additionally pay
+                // out the ChroniclePassEconomy diamond schedule, whose
+                // 50-tier sum strictly exceeds the pass price - the
+                // self-sustaining loop where a fully active player's
+                // season rewards cover the next season's purchase.
+                int previousDiamondBalance = player.PremiumDiamonds;
+                if (pass.PremiumUnlocked)
                 {
                     context.EquipmentInstances.Add(new EquipmentInstance
                     {
@@ -3163,13 +3269,19 @@ namespace FolkIdle.Server.Engine
                         AffixPayload = "{}",
                         IsAffixLocked = false
                     });
+
+                    int diamondReward = ChroniclePassEconomy.GetPremiumDiamondReward((int)milestoneIndex);
+                    if (diamondReward > 0)
+                    {
+                        player.PremiumDiamonds += diamondReward;
+                    }
                 }
 
                 context.EventHorizonPremiumLedgers.Add(new EventHorizonPremiumLedger
                 {
                     TransactionId = $"chronicle_{playerId}_{milestoneIndex + 1U}",
                     PlayerId = playerId,
-                    PreviousBalance = player.PremiumDiamonds,
+                    PreviousBalance = previousDiamondBalance,
                     NewBalance = player.PremiumDiamonds,
                     Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                 });

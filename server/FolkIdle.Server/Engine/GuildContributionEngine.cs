@@ -88,6 +88,25 @@ namespace FolkIdle.Server.Engine
                 
                 ledger.TotalAmountContributed += goldAmount;
 
+                // Modul: Comprehensive Game System Audit, Part 3.1. Gold
+                // contributions previously updated only the guild-level
+                // sink ledger and guild experience - never the
+                // contributing member's own ContributionPoints, so the
+                // roster's contribution ranking (HandleGuildRoster orders
+                // by ContributionPoints desc) reflected raid victories but
+                // was blind to gold donations. Same raw-SQL increment
+                // pattern GuildRaidEngine already uses, inside this
+                // method's existing Serializable transaction. Points scale
+                // with the same divisor as guild experience so both
+                // rankings share one unit of account.
+                long contributionPoints = goldAmount / ContentRegistry.Balance.GuildContributionGoldToExpDivisor;
+                if (contributionPoints > 0)
+                {
+                    await db.Database.ExecuteSqlRawAsync(
+                        "UPDATE \"GuildMembers\" SET \"ContributionPoints\" = \"ContributionPoints\" + {0} WHERE \"GuildId\" = {1} AND \"PlayerId\" = {2}",
+                        contributionPoints, guildId, playerId);
+                }
+
                 // Modul: sourced from GameData/GameBalanceConfig.json.
                 long expValue = goldAmount / ContentRegistry.Balance.GuildContributionGoldToExpDivisor; // e.g. 10g = 1 exp
                 await ApplyGuildExperienceAsync(db, guildId, expValue);

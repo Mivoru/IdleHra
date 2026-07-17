@@ -249,6 +249,31 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
+                // Modul: Comprehensive Game System Audit, Part 5.3.
+                // Equipped-item guard - previously MISSING here while
+                // MarketEscrowEngine and ForgeSplicingEngine both had it.
+                // Depositing an equipped item deleted the EquipmentInstances
+                // row outright while PlayerRecord.EquippedWeaponId/
+                // EquippedArmorId still referenced the dead id, leaving a
+                // dangling equip pointer plus stale cached equip stats
+                // (EquipmentSlotEngine only recomputes on equip/unequip
+                // events), while the item's copy sat in the bank and could
+                // be withdrawn as a brand new row and re-equipped - a
+                // stat-duplication vector. Same FOR UPDATE lock + rejection
+                // MarketEscrowEngine.ListItemAsync already uses.
+                var playerRow = await db.PlayerRecords
+                    .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
+                    .SingleOrDefaultAsync();
+                if (playerRow != null && (
+                    (playerRow.EquippedWeaponId.HasValue && playerRow.EquippedWeaponId.Value == eq.Id) ||
+                    (playerRow.EquippedArmorId.HasValue && playerRow.EquippedArmorId.Value == eq.Id)))
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine("BankDeposit failed: Item is currently equipped.");
+                    _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.ItemEquipped);
+                    return;
+                }
+
                 var bankCountQuery = "SELECT * FROM \"BankEquipmentInstances\" WHERE \"PlayerId\" = {0} FOR UPDATE";
                 var bankItems = await db.BankEquipmentInstances.FromSqlRaw(bankCountQuery, playerId).ToListAsync();
 

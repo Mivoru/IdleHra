@@ -59,7 +59,12 @@ namespace FolkIdle.Client.Network
         UnequipItem = 55,
         TerminateMentorship = 56,
         RequestUnlockSkill = 57,
-        RequestCastSkill = 58
+        RequestCastSkill = 58,
+
+        // Modul: mirrors server ClientCommandPacket.cs exactly - unlocks
+        // the Chronicle Pass premium track by spending the player's
+        // server-side PremiumDiamonds balance, not a cash IAP hook.
+        PurchaseBattlePass = 59
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

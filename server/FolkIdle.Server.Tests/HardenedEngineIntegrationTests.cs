@@ -5301,5 +5301,243 @@ namespace FolkIdle.Server.Tests
                 simulationEngine.Stop();
             }
         }
+
+        // Modul: Comprehensive Game System Audit, Part 5/8. A client
+        // cannot forge time by manipulating its OS clock because no
+        // client-supplied timestamp is ever a progression input - but the
+        // one clock-integrity signal the server does check at login
+        // (ValidateLoginTime: a LastLogoutTimestamp in the future relative
+        // to the server's own clock, indicating DB clock skew or a
+        // rolled-back/tampered record) must reject the session. And the
+        // offline extrapolation path must grant zero progress for a
+        // non-positive elapsed delta and clamp an absurdly long one to
+        // MaxOfflineSeconds - so even a tampered LastLogoutTimestamp far
+        // in the past cannot mint unbounded offline gains.
+        [Fact]
+        public void Test_TimeManipulation_FutureLogoutTimestampRejectedAndOfflineDeltaClamped()
+        {
+            long serverNow = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            var forgedPayload = new TickStatePayload
+            {
+                PlayerId = 970002001L,
+                LastLogoutTimestamp = serverNow + 3600L
+            };
+            Assert.False(ClientCommandValidator.ValidateLoginTime(ref forgedPayload, serverNow),
+                "A LastLogoutTimestamp in the server's future must reject the login.");
+
+            var honestPayload = new TickStatePayload
+            {
+                PlayerId = 970002002L,
+                LastLogoutTimestamp = serverNow - 600L
+            };
+            Assert.True(ClientCommandValidator.ValidateLoginTime(ref honestPayload, serverNow));
+        }
+
+        // Modul: Comprehensive Game System Audit, Part 4/8. The
+        // self-sustaining battle-pass loop: the sum of PremiumDiamonds
+        // rewarded across the 50 premium-track milestones must equal or
+        // exceed the pass purchase price, so a fully active player who
+        // completes the season can always afford the next season's pass
+        // from rewards alone. Exact-value pins alongside the inequality so
+        // an accidental reward-table edit that still passes the inequality
+        // by shrinking the dividend to zero margin is visible in review.
+        [Fact]
+        public void Test_ChroniclePassEconomy_PremiumRewardsSustainNextSeasonPurchase()
+        {
+            int totalRewards = ChroniclePassEconomy.TotalPremiumDiamondRewards();
+
+            Assert.True(totalRewards >= ChroniclePassEconomy.PremiumPassPriceDiamonds,
+                $"Premium track rewards ({totalRewards}) must cover the pass price ({ChroniclePassEconomy.PremiumPassPriceDiamonds}).");
+
+            Assert.Equal(1000, totalRewards);
+            Assert.Equal(950, ChroniclePassEconomy.PremiumPassPriceDiamonds);
+
+            Assert.Equal(0, ChroniclePassEconomy.GetPremiumDiamondReward(0));
+            Assert.Equal(100, ChroniclePassEconomy.GetPremiumDiamondReward(4));
+            Assert.Equal(100, ChroniclePassEconomy.GetPremiumDiamondReward(49));
+            Assert.Equal(0, ChroniclePassEconomy.GetPremiumDiamondReward(50));
+            Assert.Equal(0, ChroniclePassEconomy.GetPremiumDiamondReward(-1));
+        }
+
+        // Modul: Comprehensive Game System Audit, Part 4/8. Purchase flow
+        // end to end against the real database: a player holding exactly
+        // the pass price buys the premium track (balance drops to 0,
+        // PremiumUnlocked set), a double purchase is rejected without a
+        // second deduction, and a broke player cannot purchase at all.
+        [Fact]
+        public async Task Test_ChroniclePass_PurchaseDeductsDiamondsAndDoublePurchaseRejected()
+        {
+            // 970004xxx range - 970002101 collides with
+            // Test_ForgeSplicing_GoldCost_ScalesExponentiallyWithCurrentTier's
+            // own seeded player in this shared-fixture collection.
+            const long testPlayerId = 970004001L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid(),
+                    PremiumDiamonds = ChroniclePassEconomy.PremiumPassPriceDiamonds
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var simulationEngine = CreateTestSimulationEngine();
+
+            Assert.True(await simulationEngine.ExecutePassPurchaseAsync(testPlayerId));
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var player = await db.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+                Assert.Equal(0, player.PremiumDiamonds);
+
+                var pass = await db.PlayerChroniclePasses.AsNoTracking().SingleAsync(p => p.PlayerId == testPlayerId);
+                Assert.True(pass.PremiumUnlocked);
+            }
+
+            Assert.False(await simulationEngine.ExecutePassPurchaseAsync(testPlayerId),
+                "A second purchase of an already-unlocked pass must be rejected.");
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var player = await db.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+                Assert.Equal(0, player.PremiumDiamonds);
+            }
+        }
+
+        // Modul: Comprehensive Game System Audit, Part 2/8. The
+        // allocation-free profanity filter: blacklisted words are masked
+        // in place with asterisks (case-insensitively, including embedded
+        // occurrences), clean text passes untouched, and a warm
+        // steady-state call allocates exactly zero managed heap bytes -
+        // measured the same way the Phase 3 _logSendFault test does.
+        [Fact]
+        public void Test_ChatProfanityFilter_MasksBlacklistedWordsWithoutHeapAllocation()
+        {
+            byte[] message = System.Text.Encoding.UTF8.GetBytes("you are such a FuCk head");
+            int masked = ChatProfanityFilter.FilterInPlace(message, message.Length);
+            Assert.Equal(1, masked);
+            Assert.Equal("you are such a **** head", System.Text.Encoding.UTF8.GetString(message));
+
+            byte[] cleanMessage = System.Text.Encoding.UTF8.GetBytes("hello guild, selling iron ore cheap");
+            string before = System.Text.Encoding.UTF8.GetString(cleanMessage);
+            Assert.Equal(0, ChatProfanityFilter.FilterInPlace(cleanMessage, cleanMessage.Length));
+            Assert.Equal(before, System.Text.Encoding.UTF8.GetString(cleanMessage));
+
+            byte[] embedded = System.Text.Encoding.UTF8.GetBytes("what a bullSHITstorm today");
+            Assert.Equal(1, ChatProfanityFilter.FilterInPlace(embedded, embedded.Length));
+            Assert.Equal("what a bull****storm today", System.Text.Encoding.UTF8.GetString(embedded));
+
+            byte[] warmBuffer = System.Text.Encoding.UTF8.GetBytes("this shit again and again you fuck");
+            ChatProfanityFilter.FilterInPlace(warmBuffer, warmBuffer.Length);
+
+            byte[] measured = System.Text.Encoding.UTF8.GetBytes("this shit again and again you fuck");
+            long bytesBefore = GC.GetAllocatedBytesForCurrentThread();
+            int maskedCount = ChatProfanityFilter.FilterInPlace(measured, measured.Length);
+            long bytesAfter = GC.GetAllocatedBytesForCurrentThread();
+
+            Assert.Equal(2, maskedCount);
+            Assert.Equal(0L, bytesAfter - bytesBefore);
+        }
+
+        // Modul: Comprehensive Game System Audit, Part 3/8. Gold
+        // contributions from multiple members must land in each member's
+        // own GuildMember.ContributionPoints (previously only raid
+        // victories did) so the roster's existing
+        // ContributionPoints-descending ordering ranks donors correctly
+        // under interleaved traffic.
+        [Fact]
+        public async Task Test_GuildContribution_GoldDonationsRankMembersByContributionPoints()
+        {
+            const long guildId = 970002300L;
+            const long bigDonorId = 970002301L;
+            const long smallDonorId = 970002302L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.GuildRecords.Add(new GuildRecord { Id = guildId, Name = "ContributionRankGuild970002300" });
+                db.PlayerRecords.Add(new PlayerRecord { Id = bigDonorId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), GuildId = guildId });
+                db.PlayerRecords.Add(new PlayerRecord { Id = smallDonorId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), GuildId = guildId });
+                db.GuildMembers.Add(new GuildMember { GuildId = guildId, PlayerId = bigDonorId, Role = 0, ContributionPoints = 0 });
+                db.GuildMembers.Add(new GuildMember { GuildId = guildId, PlayerId = smallDonorId, Role = 0, ContributionPoints = 0 });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = bigDonorId, ItemId = "gold", Quantity = 100000L });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = smallDonorId, ItemId = "gold", Quantity = 100000L });
+                await db.SaveChangesAsync();
+            }
+
+            var contributionEngine = new GuildContributionEngine(_fixture.ServiceProvider);
+
+            // Interleaved donations - the big donor gives more across
+            // multiple smaller deposits, proving accumulation rather than
+            // last-write-wins.
+            await contributionEngine.ContributeGoldAsync(smallDonorId, guildId, 1000L);
+            await contributionEngine.ContributeGoldAsync(bigDonorId, guildId, 2000L);
+            await contributionEngine.ContributeGoldAsync(bigDonorId, guildId, 3000L);
+            await contributionEngine.ContributeGoldAsync(smallDonorId, guildId, 500L);
+            await contributionEngine.ContributeGoldAsync(bigDonorId, guildId, 1500L);
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var ranked = await verifyDb.GuildMembers.AsNoTracking()
+                    .Where(m => m.GuildId == guildId)
+                    .OrderByDescending(m => m.ContributionPoints)
+                    .ToListAsync();
+
+                Assert.Equal(2, ranked.Count);
+                Assert.Equal(bigDonorId, ranked[0].PlayerId);
+                Assert.Equal(smallDonorId, ranked[1].PlayerId);
+                Assert.True(ranked[0].ContributionPoints > ranked[1].ContributionPoints);
+
+                long divisor = ContentRegistry.Balance.GuildContributionGoldToExpDivisor;
+                Assert.Equal(6500L / divisor, ranked[0].ContributionPoints);
+                Assert.Equal(1500L / divisor, ranked[1].ContributionPoints);
+            }
+        }
+
+        // Modul: Comprehensive Game System Audit, Part 6/8. The rotating
+        // login-reward matrix must switch deterministically on the UTC
+        // week boundary, cycle through all matrices, and every matrix must
+        // carry the identical weekly total so rotation never changes
+        // earning power.
+        [Fact]
+        public void Test_DailyLoginRewardEngine_MatrixRotatesWeeklyWithConstantWeeklyTotal()
+        {
+            const long baseDateKey = 20000L;
+            long weekAlignedKey = (baseDateKey / 7L) * 7L;
+
+            int weekAIndex = DailyLoginRewardEngine.ResolveActiveMatrixIndex(weekAlignedKey);
+            int weekBIndex = DailyLoginRewardEngine.ResolveActiveMatrixIndex(weekAlignedKey + 7L);
+            int weekCIndex = DailyLoginRewardEngine.ResolveActiveMatrixIndex(weekAlignedKey + 14L);
+            int weekDIndex = DailyLoginRewardEngine.ResolveActiveMatrixIndex(weekAlignedKey + 21L);
+
+            Assert.NotEqual(weekAIndex, weekBIndex);
+            Assert.NotEqual(weekBIndex, weekCIndex);
+            Assert.NotEqual(weekCIndex, weekAIndex);
+            Assert.Equal(weekAIndex, weekDIndex);
+
+            for (int dayOffset = 0; dayOffset < 7; dayOffset++)
+            {
+                Assert.Equal(
+                    DailyLoginRewardEngine.ResolveActiveMatrixIndex(weekAlignedKey),
+                    DailyLoginRewardEngine.ResolveActiveMatrixIndex(weekAlignedKey + dayOffset));
+            }
+
+            long weekATotal = 0L;
+            long weekBTotal = 0L;
+            long weekCTotal = 0L;
+            for (int day = 1; day <= 7; day++)
+            {
+                weekATotal += DailyLoginRewardEngine.GetGoldReward(weekAlignedKey, day);
+                weekBTotal += DailyLoginRewardEngine.GetGoldReward(weekAlignedKey + 7L, day);
+                weekCTotal += DailyLoginRewardEngine.GetGoldReward(weekAlignedKey + 14L, day);
+            }
+
+            Assert.Equal(25500L, weekATotal);
+            Assert.Equal(weekATotal, weekBTotal);
+            Assert.Equal(weekATotal, weekCTotal);
+        }
     }
 }

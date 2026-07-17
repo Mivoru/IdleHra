@@ -18,12 +18,40 @@ namespace FolkIdle.Server.Engine
     // never as a login failure.
     public static class DailyLoginRewardEngine
     {
-        // Index 0 = day 1 ... index 6 = day 7. Day 7 also grants a small
-        // premium-currency bonus (see PremiumDiamondsOnDay7Completion)
-        // marking a completed week, then the streak wraps back to day 1 on
-        // the next consecutive login rather than growing unbounded.
-        private static readonly long[] GoldRewardByStreakDay = { 500L, 1000L, 1500L, 2500L, 4000L, 6000L, 10000L };
+        // Modul: Comprehensive Game System Audit, Part 6.3. Rotating
+        // retention matrices - previously one static 7-day table repeated
+        // forever. Now a small set of matrices is keyed by the UTC week
+        // number (todayDateKey / 7, pure integer arithmetic on the exact
+        // same server-authoritative date key the streak dedupe already
+        // uses - no schema change, no client input, no new state), so
+        // every weekly reset deterministically shifts the calendar to the
+        // next sheet and every player worldwide sees the same active
+        // matrix for a given week. Index 0 = day 1 ... index 6 = day 7.
+        // All matrices carry the same total weekly value (25500 gold) so
+        // rotation changes pacing/shape for engagement, never weekly
+        // earning power - matrix A is the original escalating curve,
+        // B is front-loaded, C is twin-peaks (mid-week and weekend spikes).
+        private static readonly long[][] GoldRewardMatrices =
+        {
+            new long[] { 500L, 1000L, 1500L, 2500L, 4000L, 6000L, 10000L },
+            new long[] { 4000L, 3000L, 2500L, 2500L, 3500L, 4000L, 6000L },
+            new long[] { 1000L, 2000L, 6000L, 2000L, 2500L, 4000L, 8000L }
+        };
         private const int PremiumDiamondsOnDay7Completion = 100;
+
+        // Exposed for tests: which matrix is active for a given UTC date
+        // key (epoch-seconds / 86400). Deterministic, server-clock-derived,
+        // cycles A-B-C weekly.
+        internal static int ResolveActiveMatrixIndex(long todayDateKey)
+        {
+            long weekNumber = todayDateKey / 7L;
+            return (int)(weekNumber % GoldRewardMatrices.Length);
+        }
+
+        internal static long GetGoldReward(long todayDateKey, int streakDay)
+        {
+            return GoldRewardMatrices[ResolveActiveMatrixIndex(todayDateKey)][streakDay - 1];
+        }
 
         public readonly struct LoginRewardResult
         {
@@ -86,7 +114,7 @@ namespace FolkIdle.Server.Engine
                     player.LastLoginTimestamp = nowEpoch;
                     player.LoginStreakDays = newStreakDay;
 
-                    long goldReward = GoldRewardByStreakDay[newStreakDay - 1];
+                    long goldReward = GetGoldReward(todayDateKey, newStreakDay);
                     int diamondReward = newStreakDay == 7 ? PremiumDiamondsOnDay7Completion : 0;
 
                     var goldRecord = await context.CommodityRecords

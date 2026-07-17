@@ -59,7 +59,13 @@ namespace FolkIdle.Server.Network
         UnequipItem = 55,
         TerminateMentorship = 56,
         RequestUnlockSkill = 57,
-        RequestCastSkill = 58
+        RequestCastSkill = 58,
+
+        // Modul: Comprehensive Game System Audit, Part 4.3. Unlocks the
+        // Chronicle Pass premium track by spending PremiumDiamonds
+        // server-side (see ChroniclePassEconomy.PremiumPassPriceDiamonds) -
+        // no direct cash IAP hook involved.
+        PurchaseBattlePass = 59
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

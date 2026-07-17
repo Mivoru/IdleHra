@@ -640,6 +640,12 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/leaderboard/guilds" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleGuildLeaderboard(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/market/listings" && context.Request.HttpMethod == "GET")
                     {
                         await HandleMarketBrowserListings(context);
@@ -915,6 +921,88 @@ namespace FolkIdle.Server.Network
             }
 
             context.Response.Close();
+        }
+
+        // Modul: Comprehensive Game System Audit, Part 3.2. Global guild
+        // leaderboard read endpoint - mirrors HandleGlobalLeaderboard's
+        // exact shape (authenticated GET, skip/take pagination through
+        // the same ValidateLeaderboardQuery bounds, Redis ZSET populated
+        // by LeaderboardCronEngine.SyncGuildLeaderboardAsync, DB hydration
+        // of display fields).
+        private async Task HandleGuildLeaderboard(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                int skip = 0;
+                int take = 50;
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                if (int.TryParse(query["skip"], out int parsedSkip)) skip = parsedSkip;
+                if (int.TryParse(query["take"], out int parsedTake)) take = parsedTake;
+
+                if (!ClientCommandValidator.ValidateLeaderboardQuery(playerId, skip, take))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                var dbRedis = _serviceProvider.GetRequiredService<StackExchange.Redis.IConnectionMultiplexer>().GetDatabase();
+                var redisEntries = await dbRedis.SortedSetRangeByRankWithScoresAsync("leaderboard:guilds", skip, skip + take - 1, StackExchange.Redis.Order.Descending);
+
+                var guildIds = redisEntries.Select(e => (long)e.Element).ToList();
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var guilds = await db.GuildRecords
+                    .AsNoTracking()
+                    .Where(g => guildIds.Contains(g.Id))
+                    .ToDictionaryAsync(g => g.Id);
+
+                var entries = new System.Collections.Generic.List<GuildLeaderboardEntryResponse>(redisEntries.Length);
+                for (int i = 0; i < redisEntries.Length; i++)
+                {
+                    long gId = (long)redisEntries[i].Element;
+                    if (guilds.TryGetValue(gId, out var g))
+                    {
+                        entries.Add(new GuildLeaderboardEntryResponse
+                        {
+                            Rank = skip + i + 1,
+                            GuildId = g.Id,
+                            Name = g.Name,
+                            GuildTier = g.CurrentTier,
+                            GuildMMR = g.GuildMMR
+                        });
+                    }
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, entries);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild leaderboard error: {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class GuildLeaderboardEntryResponse
+        {
+            public int Rank { get; set; }
+            public long GuildId { get; set; }
+            public string Name { get; set; } = string.Empty;
+            public int GuildTier { get; set; }
+            public int GuildMMR { get; set; }
         }
 
         private static System.Collections.Generic.List<LeaderboardEntryResponse> BuildSpoofedLeaderboard(long playerId)
@@ -2398,6 +2486,28 @@ namespace FolkIdle.Server.Network
             }
         }
 
+        // Modul: Comprehensive Game System Audit, Part 2.3. Masks
+        // blacklisted words in place over the packet's fixed byte buffer -
+        // see ChatProfanityFilter's own doc comment for the
+        // zero-allocation design. Lives in its own static method (not
+        // inline in the receive loop) because unsafe blocks are not
+        // permitted directly inside async methods in this project's
+        // language version - the exact split ExtractChatMessageText above
+        // already uses.
+        private static unsafe void ApplyProfanityFilterInPlace(ref RequestChatMessagePacket packet)
+        {
+            int length = packet.MessageLength;
+            if (length <= 0 || length > RequestChatMessagePacket.MessageCapacity)
+            {
+                return;
+            }
+
+            fixed (byte* source = packet.MessageText)
+            {
+                FolkIdle.Server.Engine.ChatProfanityFilter.FilterInPlace(new Span<byte>(source, length), length);
+            }
+        }
+
         private void ParseAdminCommand(byte[] buffer, int count)
         {
             ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(buffer, 0, count);
@@ -2845,6 +2955,20 @@ namespace FolkIdle.Server.Network
                         if (ChatEngine.TryConsumeChatToken(ref session.ChatTokenBucket))
                         {
                             var chatRequest = MemoryMarshal.Read<RequestChatMessagePacket>(new ReadOnlySpan<byte>(buffer, 0, result.Count));
+
+                            // Modul: Comprehensive Game System Audit, Part
+                            // 2.3. Profanity masking runs in place over the
+                            // packet's fixed byte buffer BEFORE
+                            // ExtractChatMessageText materializes any
+                            // managed string - the one zero-allocation
+                            // insertion point on this path, and the single
+                            // choke point both the global and guild
+                            // channels share. In its own static helper (not
+                            // inline) because unsafe blocks are not allowed
+                            // directly inside this async receive loop -
+                            // same split ExtractChatMessageText itself uses.
+                            ApplyProfanityFilterInPlace(ref chatRequest);
+
                             string chatText = ExtractChatMessageText(ref chatRequest);
 
                             if (chatRequest.ChannelType == ChatEngine.GuildChannelType)

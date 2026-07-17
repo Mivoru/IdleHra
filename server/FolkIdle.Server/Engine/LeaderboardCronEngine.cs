@@ -106,6 +106,19 @@ namespace FolkIdle.Server.Engine
 
                 // 3. Atomic RENAME
                 await dbRedis.KeyRenameAsync(stagingKey, prodKey);
+
+                // Modul: Comprehensive Game System Audit, Part 3.2. Global
+                // guild leaderboard - previously nothing anywhere ranked
+                // guilds. Same staging-ZSET-plus-atomic-rename pipeline as
+                // the player leaderboard above, scored by a combined
+                // weight of guild progression tier and active war
+                // placement: CurrentTier dominates (x10000) so a
+                // higher-tier guild always outranks a lower-tier one, and
+                // GuildMMR (the war matchmaking rating, baseline 1000)
+                // breaks ties within a tier - the "combined weight of
+                // Guild Level and active Guild War placement" the audit
+                // requires, from columns that already exist.
+                await SyncGuildLeaderboardAsync(dbRedis);
             }
             finally
             {
@@ -118,6 +131,47 @@ namespace FolkIdle.Server.Engine
                     end";
                 await dbRedis.ScriptEvaluateAsync(script, new RedisKey[] { lockKey }, new RedisValue[] { lockToken });
             }
+        }
+
+        // Modul: Comprehensive Game System Audit, Part 3.2. See the call
+        // site's comment for the ranking-weight rationale. Runs under the
+        // same distributed sync lock the player leaderboard holds.
+        private async Task SyncGuildLeaderboardAsync(IDatabase dbRedis)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+            await using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+            await dbContext.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+            var topGuilds = await dbContext.GuildRecords
+                .AsNoTracking()
+                .OrderByDescending(g => g.CurrentTier)
+                .ThenByDescending(g => g.GuildMMR)
+                .Take(1000)
+                .Select(g => new { g.Id, g.CurrentTier, g.GuildMMR })
+                .ToListAsync();
+
+            await transaction.CommitAsync();
+
+            string stagingKey = "leaderboard:guilds:staging";
+            string prodKey = "leaderboard:guilds";
+
+            await dbRedis.KeyDeleteAsync(stagingKey);
+
+            var entries = new SortedSetEntry[topGuilds.Count];
+            for (int i = 0; i < topGuilds.Count; i++)
+            {
+                double combinedScore = (double)topGuilds[i].CurrentTier * 10000.0 + topGuilds[i].GuildMMR;
+                entries[i] = new SortedSetEntry(topGuilds[i].Id, combinedScore);
+            }
+
+            if (entries.Length > 0)
+            {
+                await dbRedis.SortedSetAddAsync(stagingKey, entries);
+            }
+
+            await dbRedis.KeyRenameAsync(stagingKey, prodKey);
         }
     }
 }
