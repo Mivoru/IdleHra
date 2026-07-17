@@ -2778,7 +2778,11 @@ namespace FolkIdle.Server.Tests
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                // GuildId: market access now requires a guild trade license
+                // (Advanced Economy Refactoring, Part 2.1) - this test is
+                // about the price corridor, so the license must pass.
+                db.GuildRecords.Add(new GuildRecord { Id = 970000904L, Name = "CorridorTestGuild970000904" });
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), GuildId = 970000904L });
                 var equipment = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = baseItemId, QualityTier = qualityTier };
                 db.EquipmentInstances.Add(equipment);
                 await db.SaveChangesAsync();
@@ -2817,12 +2821,16 @@ namespace FolkIdle.Server.Tests
                 await db.SaveChangesAsync();
                 equipmentId = equipment.Id;
 
+                // GuildId: the trade license must pass so the
+                // equipped-item guard under test is actually reached.
+                db.GuildRecords.Add(new GuildRecord { Id = 970000905L, Name = "EquippedGuardGuild970000905" });
                 db.PlayerRecords.Add(new PlayerRecord
                 {
                     Id = testPlayerId,
                     PlayerGuid = Guid.NewGuid(),
                     AuthenticatorToken = Guid.NewGuid(),
-                    EquippedWeaponId = equipmentId
+                    EquippedWeaponId = equipmentId,
+                    GuildId = 970000905L
                 });
                 await db.SaveChangesAsync();
             }
@@ -2852,7 +2860,10 @@ namespace FolkIdle.Server.Tests
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                // GuildId: the trade license must pass so the concurrent
+                // listing behavior under test is actually reached.
+                db.GuildRecords.Add(new GuildRecord { Id = 970000906L, Name = "ConcurrentListGuild970000906" });
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), GuildId = 970000906L });
 
                 for (int i = 0; i < itemCount; i++)
                 {
@@ -3468,8 +3479,11 @@ namespace FolkIdle.Server.Tests
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                db.PlayerRecords.Add(new PlayerRecord { Id = leaderPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
-                db.PlayerRecords.Add(new PlayerRecord { Id = memberPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                // CurrentLevel 25: clears GuildManagementEngine's universal
+                // level-20 guild interaction gate (Advanced Economy
+                // Refactoring, Part 3.1).
+                db.PlayerRecords.Add(new PlayerRecord { Id = leaderPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 25 });
+                db.PlayerRecords.Add(new PlayerRecord { Id = memberPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 25 });
                 await db.SaveChangesAsync();
             }
 
@@ -3511,8 +3525,15 @@ namespace FolkIdle.Server.Tests
             {
                 simulationEngine.Start();
 
-                simulationEngine.InjectVirtualPlayer(new TickStatePayload { PlayerId = leaderPlayerId, GuildId = 0 });
-                simulationEngine.InjectVirtualPlayer(new TickStatePayload { PlayerId = memberPlayerId, GuildId = 0 });
+                // CurrentLevel 25 on the injected payloads too - the
+                // running engine's checkpoint flush writes TickStatePayload
+                // state back over the seeded PlayerRecords rows (every tick
+                // here, since InventorySpaceRemaining 0 forces the
+                // checkpoint boundary), so a level-0 payload would erase
+                // the seeded level and trip the level-20 guild gate
+                // mid-test.
+                simulationEngine.InjectVirtualPlayer(new TickStatePayload { PlayerId = leaderPlayerId, GuildId = 0, CurrentLevel = 25 });
+                simulationEngine.InjectVirtualPlayer(new TickStatePayload { PlayerId = memberPlayerId, GuildId = 0, CurrentLevel = 25 });
 
                 long guildId = await managementEngine.CreateGuildAsync(leaderPlayerId, guildName);
                 Assert.True(guildId > 0, "CreateGuildAsync must return the new guild's id.");
@@ -3984,13 +4005,15 @@ namespace FolkIdle.Server.Tests
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                db.PlayerRecords.Add(new PlayerRecord { Id = leaderPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                // CurrentLevel 25: clears the universal level-20 guild
+                // interaction gate (Advanced Economy Refactoring, Part 3.1).
+                db.PlayerRecords.Add(new PlayerRecord { Id = leaderPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 25 });
                 // Covers both the pre-join range (970001110-970001114) and
                 // the concurrent-new-joiner range (970001120-970001124)
                 // used below.
                 for (int i = 0; i < 20; i++)
                 {
-                    db.PlayerRecords.Add(new PlayerRecord { Id = 970001110L + i, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                    db.PlayerRecords.Add(new PlayerRecord { Id = 970001110L + i, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 25 });
                 }
                 await db.SaveChangesAsync();
             }
@@ -5538,6 +5561,330 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(25500L, weekATotal);
             Assert.Equal(weekATotal, weekBTotal);
             Assert.Equal(weekATotal, weekCTotal);
+        }
+
+        // Modul: Advanced Economy Refactoring, Part 1/4. Materials are ONE
+        // unified CommodityRecords pool - gathering (tick loop), village
+        // passive production (checkpoint flush), and every consumer
+        // (crafting, forge, village upgrades, vendors) read and write the
+        // same rows, so "hitting a workbench" never requires a transfer
+        // step. This test additionally pins the pool's unbounded-stack
+        // semantics: a quantity far beyond any supposed 999/9999 per-stack
+        // cap survives the store-and-consume round trip intact - if a
+        // stack cap is ever introduced on this path, this breaks loudly.
+        [Fact]
+        public async Task Test_UnifiedMaterialPool_CraftingConsumesDirectlyFromPoolBeyondLegacyStackCaps()
+        {
+            const long testPlayerId = 970005001L;
+            const long seededQuantity = 12000L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = seededQuantity });
+                await db.SaveChangesAsync();
+            }
+
+            var craftingEngine = new CraftingEngine(_fixture.DbContextFactory, _fixture.PlayerRegistry, _fixture.RetryingOptions);
+            await craftingEngine.ExecuteEquipmentCraftingAsync(testPlayerId, 1, slotIndex: 0, tickToken: 555);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var commodity = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
+
+            Assert.Equal(seededQuantity - 10L, commodity.Quantity);
+            Assert.True(commodity.Quantity > 9999L, "A material quantity beyond the legacy stack cap must survive intact - no cap exists on the unified pool.");
+
+            var crafted = await verifyDb.EquipmentInstances.AsNoTracking().SingleAsync(e => e.PlayerId == testPlayerId);
+            Assert.Equal("copper_greatsword_melee_weapon_slot_base", crafted.BaseItemId);
+        }
+
+        // Modul: Advanced Economy Refactoring, Part 2.1/4. Trade license -
+        // a player without a guild is completely blocked from both sides
+        // of the market: listing an owned item fails (the item never
+        // leaves their inventory) and buying an open order fails (order
+        // stays open, gold untouched).
+        [Fact]
+        public async Task Test_Market_GuildlessPlayerBlockedFromListingAndBuying()
+        {
+            const long guildlessSellerId = 970005101L;
+            const long guildlessBuyerId = 970005102L;
+            const long licensedSellerId = 970005103L;
+            const long sellerGuildId = 970005150L;
+
+            long ownedItemId;
+            long openOrderId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = guildlessSellerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.PlayerRecords.Add(new PlayerRecord { Id = guildlessBuyerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
+                db.PlayerRecords.Add(new PlayerRecord { Id = licensedSellerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), GuildId = sellerGuildId });
+                db.GuildRecords.Add(new GuildRecord { Id = sellerGuildId, Name = "TradeLicenseGuild970005150" });
+
+                var ownedItem = new EquipmentInstance { PlayerId = guildlessSellerId, BaseItemId = "copper_greatsword_melee_weapon_slot_base", QualityTier = 0, AffixPayload = "{}" };
+                db.EquipmentInstances.Add(ownedItem);
+
+                var escrowItem = new MarketEquipmentInstance { PlayerId = licensedSellerId, BaseItemId = "copper_greatsword_melee_weapon_slot_base", QualityTier = 0, AffixPayload = "{}", IsLockedInEscrow = true };
+                db.MarketEquipmentInstances.Add(escrowItem);
+                await db.SaveChangesAsync();
+
+                ownedItemId = ownedItem.Id;
+
+                var order = new MarketOrderRecord
+                {
+                    SellerId = licensedSellerId,
+                    OrderType = "SELL",
+                    EquipmentInstanceId = escrowItem.Id,
+                    BaseItemId = "copper_greatsword_melee_weapon_slot_base",
+                    QualityTier = 0,
+                    Price = 500L,
+                    Status = 0,
+                    CreatedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                };
+                db.MarketOrderRecords.Add(order);
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = guildlessBuyerId, ItemId = "gold", Quantity = 100000L });
+                await db.SaveChangesAsync();
+                openOrderId = order.Id;
+            }
+
+            var escrowEngine = new MarketEscrowEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            bool listed = await escrowEngine.ListItemAsync(guildlessSellerId, ownedItemId, 500L);
+            Assert.False(listed, "A guildless player must not be able to list on the market.");
+
+            await escrowEngine.BuyItemAsync(guildlessBuyerId, openOrderId, hasSpace: true);
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.True(await verifyDb.EquipmentInstances.AsNoTracking().AnyAsync(e => e.Id == ownedItemId && e.PlayerId == guildlessSellerId),
+                    "The rejected listing must leave the item in the seller's inventory.");
+
+                var order = await verifyDb.MarketOrderRecords.AsNoTracking().SingleAsync(o => o.Id == openOrderId);
+                Assert.Equal(0, order.Status);
+
+                var buyerGold = await verifyDb.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == guildlessBuyerId && c.ItemId == "gold");
+                Assert.Equal(100000L, buyerGold.Quantity);
+            }
+        }
+
+        // Modul: Advanced Economy Refactoring, Part 2.2/2.3/4. Anti-cheese
+        // level locks - a low-level buyer cannot purchase over-leveled
+        // market gear (region-9 T5 derives RequiredLevel 90), and the
+        // same gate blocks equipping such gear acquired through any other
+        // channel.
+        [Fact]
+        public async Task Test_Market_LowLevelPlayerBlockedFromBuyingAndEquippingOverLeveledGear()
+        {
+            const long lowLevelBuyerId = 970005201L;
+            const long sellerId = 970005202L;
+            const long buyerGuildId = 970005250L;
+            const string highTierBaseId = "northern_greataxe_melee_weapon_slot_base";
+
+            Assert.Equal(90, EquipmentLevelGate.DeriveRequiredLevel(9, 5));
+            Assert.Equal(90, EquipmentLevelGate.DeriveRequiredLevel(highTierBaseId, 5));
+            Assert.Equal(0, EquipmentLevelGate.DeriveRequiredLevel(1, 0));
+
+            long openOrderId;
+            long ownedHighTierItemId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = lowLevelBuyerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 10, GuildId = buyerGuildId });
+                db.PlayerRecords.Add(new PlayerRecord { Id = sellerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.GuildRecords.Add(new GuildRecord { Id = buyerGuildId, Name = "LevelLockGuild970005250" });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = lowLevelBuyerId, ItemId = "gold", Quantity = 1000000L });
+
+                var escrowItem = new MarketEquipmentInstance { PlayerId = sellerId, BaseItemId = highTierBaseId, QualityTier = 5, AffixPayload = "{}", IsLockedInEscrow = true };
+                db.MarketEquipmentInstances.Add(escrowItem);
+
+                var ownedItem = new EquipmentInstance { PlayerId = lowLevelBuyerId, BaseItemId = highTierBaseId, QualityTier = 5, AffixPayload = "{}" };
+                db.EquipmentInstances.Add(ownedItem);
+                await db.SaveChangesAsync();
+
+                ownedHighTierItemId = ownedItem.Id;
+
+                var order = new MarketOrderRecord
+                {
+                    SellerId = sellerId,
+                    OrderType = "SELL",
+                    EquipmentInstanceId = escrowItem.Id,
+                    BaseItemId = highTierBaseId,
+                    QualityTier = 5,
+                    Price = 1000L,
+                    Status = 0,
+                    CreatedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                };
+                db.MarketOrderRecords.Add(order);
+                await db.SaveChangesAsync();
+                openOrderId = order.Id;
+            }
+
+            var escrowEngine = new MarketEscrowEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await escrowEngine.BuyItemAsync(lowLevelBuyerId, openOrderId, hasSpace: true);
+
+            var equipmentSlotEngine = new EquipmentSlotEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await equipmentSlotEngine.EquipItemAsync(lowLevelBuyerId, ownedHighTierItemId);
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var order = await verifyDb.MarketOrderRecords.AsNoTracking().SingleAsync(o => o.Id == openOrderId);
+                Assert.Equal(0, order.Status);
+
+                var buyerGold = await verifyDb.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == lowLevelBuyerId && c.ItemId == "gold");
+                Assert.Equal(1000000L, buyerGold.Quantity);
+
+                var buyer = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == lowLevelBuyerId);
+                Assert.Null(buyer.EquippedWeaponId);
+            }
+        }
+
+        // Modul: Advanced Economy Refactoring, Part 2.5/4. Configurable
+        // guild sales tax - a completed purchase deducts the seller's
+        // guild's TaxRatePct cut from the gross price, deposits it into
+        // that guild's central gold ledger row, and awards only the net
+        // remainder (gross - wealth fee - guild tax) to the seller.
+        [Fact]
+        public async Task Test_Market_GuildSalesTaxDepositedToGuildLedgerAndNetProceedsToSeller()
+        {
+            const long buyerId = 970005301L;
+            const long sellerId = 970005302L;
+            const long buyerGuildId = 970005350L;
+            const long sellerGuildId = 970005351L;
+            const long price = 1000L;
+
+            long openOrderId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = buyerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100, GuildId = buyerGuildId });
+                db.PlayerRecords.Add(new PlayerRecord { Id = sellerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), GuildId = sellerGuildId });
+                db.GuildRecords.Add(new GuildRecord { Id = buyerGuildId, Name = "TaxBuyerGuild970005350" });
+                db.GuildRecords.Add(new GuildRecord { Id = sellerGuildId, Name = "TaxSellerGuild970005351", TaxRatePct = 20 });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = buyerId, ItemId = "gold", Quantity = 10000L });
+
+                var escrowItem = new MarketEquipmentInstance { PlayerId = sellerId, BaseItemId = "copper_greatsword_melee_weapon_slot_base", QualityTier = 0, AffixPayload = "{}", IsLockedInEscrow = true };
+                db.MarketEquipmentInstances.Add(escrowItem);
+                await db.SaveChangesAsync();
+
+                var order = new MarketOrderRecord
+                {
+                    SellerId = sellerId,
+                    OrderType = "SELL",
+                    EquipmentInstanceId = escrowItem.Id,
+                    BaseItemId = "copper_greatsword_melee_weapon_slot_base",
+                    QualityTier = 0,
+                    Price = price,
+                    Status = 0,
+                    CreatedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                };
+                db.MarketOrderRecords.Add(order);
+                await db.SaveChangesAsync();
+                openOrderId = order.Id;
+            }
+
+            var escrowEngine = new MarketEscrowEngine(_fixture.ServiceProvider, new PlayerSessionRegistry());
+            await escrowEngine.BuyItemAsync(buyerId, openOrderId, hasSpace: true);
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.False(await verifyDb.MarketOrderRecords.AsNoTracking().AnyAsync(o => o.Id == openOrderId),
+                    "The completed order must be evicted from the active ledger.");
+
+                // Gross 1000: wealth fee 5% (seller wealth 0) = 50, guild
+                // tax 20% = 200, net seller proceeds = 750 (seller offline
+                // with a fresh PlayerSessionRegistry, so gold is credited
+                // directly).
+                var guildLedger = await verifyDb.GuildMaterialSinkLedgers.AsNoTracking()
+                    .SingleAsync(l => l.GuildId == sellerGuildId && l.CommodityId == "gold");
+                Assert.Equal(200L, guildLedger.TotalAmountContributed);
+
+                var sellerGold = await verifyDb.CommodityRecords.AsNoTracking()
+                    .SingleAsync(c => c.PlayerId == sellerId && c.ItemId == "gold");
+                Assert.Equal(750L, sellerGold.Quantity);
+
+                var buyerGold = await verifyDb.CommodityRecords.AsNoTracking()
+                    .SingleAsync(c => c.PlayerId == buyerId && c.ItemId == "gold");
+                Assert.Equal(9000L, buyerGold.Quantity);
+            }
+        }
+
+        // Modul: Advanced Economy Refactoring, Part 3/4. Guild access
+        // gates - the universal level-20 unlock blocks creation and joins,
+        // a guild's custom MinApplicationLevel blocks auto-joins below it,
+        // application-required guilds route eligible joiners into the
+        // pending GuildApplications table (and reject ineligible ones
+        // without an application row), and the tax/access setters are
+        // leader-only with clamped bounds.
+        [Fact]
+        public async Task Test_GuildAccessControl_LevelGatesApplicationsAndLeaderOnlySettings()
+        {
+            const long underLeveledId = 970005401L;
+            const long leaderId = 970005402L;
+            const long eligibleJoinerId = 970005403L;
+            const long midLevelJoinerId = 970005404L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = underLeveledId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 5 });
+                db.PlayerRecords.Add(new PlayerRecord { Id = leaderId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 50 });
+                db.PlayerRecords.Add(new PlayerRecord { Id = eligibleJoinerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 45 });
+                db.PlayerRecords.Add(new PlayerRecord { Id = midLevelJoinerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 25 });
+                await db.SaveChangesAsync();
+            }
+
+            var managementEngine = new GuildManagementEngine(_fixture.RetryingOptions, _fixture.PlayerRegistry);
+
+            long rejectedGuildId = await managementEngine.CreateGuildAsync(underLeveledId, "UnderLeveledGuild970005401");
+            Assert.Equal(0L, rejectedGuildId);
+
+            long guildId = await managementEngine.CreateGuildAsync(leaderId, "AccessControlGuild970005402");
+            Assert.True(guildId > 0L);
+
+            // Leader raises the join bar to 40 and requires applications.
+            Assert.True(await managementEngine.SetGuildAccessPolicyAsync(leaderId, GuildManagementEngine.JoinTypeApplicationRequired, 40));
+
+            // Under-leveled (5) fails the universal gate; mid-level (25)
+            // fails the guild's custom bar - neither may leave an
+            // application row behind.
+            Assert.False(await managementEngine.JoinGuildAsync(underLeveledId, guildId));
+            Assert.False(await managementEngine.JoinGuildAsync(midLevelJoinerId, guildId));
+
+            // Eligible (45) is routed to a pending application, not an
+            // immediate join.
+            Assert.False(await managementEngine.JoinGuildAsync(eligibleJoinerId, guildId));
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var applications = await verifyDb.GuildApplications.AsNoTracking().Where(a => a.GuildId == guildId).ToListAsync();
+                Assert.Single(applications);
+                Assert.Equal(eligibleJoinerId, applications[0].PlayerId);
+                Assert.Equal(45, applications[0].ApplicantLevel);
+
+                var eligibleJoiner = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == eligibleJoinerId);
+                Assert.Equal(0L, eligibleJoiner.GuildId);
+            }
+
+            // Open guild with the bar back at 20: the mid-level joiner
+            // (25) now auto-joins immediately.
+            Assert.True(await managementEngine.SetGuildAccessPolicyAsync(leaderId, GuildManagementEngine.JoinTypeOpen, 20));
+            Assert.True(await managementEngine.JoinGuildAsync(midLevelJoinerId, guildId));
+
+            // Tax setter: leader-only, clamped to [5, 20].
+            Assert.True(await managementEngine.SetGuildTaxRateAsync(leaderId, 50));
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.Equal(20, (await verifyDb.GuildRecords.AsNoTracking().SingleAsync(g => g.Id == guildId)).TaxRatePct);
+            }
+
+            Assert.True(await managementEngine.SetGuildTaxRateAsync(leaderId, 1));
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.Equal(5, (await verifyDb.GuildRecords.AsNoTracking().SingleAsync(g => g.Id == guildId)).TaxRatePct);
+            }
+
+            Assert.False(await managementEngine.SetGuildTaxRateAsync(midLevelJoinerId, 10),
+                "A non-leader member must not be able to change the guild tax rate.");
         }
     }
 }

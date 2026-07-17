@@ -111,6 +111,45 @@ namespace FolkIdle.Client.UI
             _isBackpackDirty = true;
         }
 
+        // Modul: Advanced Economy Refactoring, Part 1.4. Allocation-free
+        // vault sorting and filtering. SortVaultByItemPowerDescending
+        // orders rows by derived Item Power (RegionTier and QualityTier,
+        // mirroring the server's EquipmentLevelGate formula) descending;
+        // VaultRarityFilterMask is a bitmask over QualityTier (bit t set =
+        // tier t visible; 0 = no filter, everything visible). Both are
+        // plain public fields a settings panel can toggle, followed by
+        // MarkVaultDirty() to re-render.
+        public bool SortVaultByItemPowerDescending;
+        public uint VaultRarityFilterMask;
+
+        // Grow-only primitive scratch arrays - resized only when the vault
+        // outgrows them, never per refresh, so steady-state re-sorts and
+        // re-filters allocate exactly zero managed heap bytes. Parallel
+        // index/power arrays + in-place insertion sort instead of
+        // List.Sort with a comparator (which allocates the delegate and
+        // boxes through the comparer path) or LINQ OrderBy (which
+        // allocates enumerators and buffers).
+        private int[] _vaultSortIndices = new int[64];
+        private int[] _vaultSortPowers = new int[64];
+
+        public void MarkVaultDirty()
+        {
+            _isVaultDirty = true;
+        }
+
+        private static int DeriveItemPower(string baseItemId, int qualityTier)
+        {
+            int regionTier = 1;
+            if (ClientContentRegistry.TryGetItemByBaseId(baseItemId, out var itemEntry))
+            {
+                regionTier = itemEntry.RegionTier;
+            }
+            if (regionTier < 1) regionTier = 1;
+            if (qualityTier < 0) qualityTier = 0;
+
+            return (regionTier - 1) * 10 + qualityTier * 2;
+        }
+
         private void RefreshVaultRows()
         {
             if (_vaultRowPool == null) return;
@@ -122,9 +161,56 @@ namespace FolkIdle.Client.UI
             _activeVaultRows.Clear();
 
             IReadOnlyList<BankVaultEntryData> entries = BankVaultCache.Entries;
-            for (int i = 0; i < entries.Count; i++)
+            int count = entries.Count;
+
+            if (_vaultSortIndices.Length < count)
             {
-                BankVaultEntryData entry = entries[i];
+                int newSize = _vaultSortIndices.Length;
+                while (newSize < count) newSize *= 2;
+                _vaultSortIndices = new int[newSize];
+                _vaultSortPowers = new int[newSize];
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                _vaultSortIndices[i] = i;
+                _vaultSortPowers[i] = DeriveItemPower(entries[i].BaseItemId, entries[i].QualityTier);
+            }
+
+            if (SortVaultByItemPowerDescending)
+            {
+                // In-place insertion sort over the parallel primitive
+                // arrays - stable, allocation-free, and O(n) on the
+                // already-sorted refreshes that dominate in practice.
+                for (int i = 1; i < count; i++)
+                {
+                    int power = _vaultSortPowers[i];
+                    int index = _vaultSortIndices[i];
+                    int j = i - 1;
+                    while (j >= 0 && _vaultSortPowers[j] < power)
+                    {
+                        _vaultSortPowers[j + 1] = _vaultSortPowers[j];
+                        _vaultSortIndices[j + 1] = _vaultSortIndices[j];
+                        j--;
+                    }
+                    _vaultSortPowers[j + 1] = power;
+                    _vaultSortIndices[j + 1] = index;
+                }
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                BankVaultEntryData entry = entries[_vaultSortIndices[i]];
+
+                if (VaultRarityFilterMask != 0u)
+                {
+                    int tierBit = entry.QualityTier;
+                    if (tierBit < 0 || tierBit > 31 || (VaultRarityFilterMask & (1u << tierBit)) == 0u)
+                    {
+                        continue;
+                    }
+                }
+
                 UiBankVaultEntryRow row = _vaultRowPool.Spawn();
                 row.Bind(entry.Id, entry.BaseItemId, entry.QualityTier, entry.IsAffixLocked, HandleWithdrawClicked);
                 _activeVaultRows.Add(row);

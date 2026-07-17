@@ -33,6 +33,18 @@ namespace FolkIdle.Server.Engine
         public const int RoleMember = 0;
         public const int RoleLeader = 1;
 
+        // Modul: Advanced Economy Refactoring, Part 3.1. Universal
+        // structural unlock gate - every guild interaction (creating,
+        // joining, applying) requires CurrentLevel >= 20. Enforced here
+        // rather than in SimulationEngine because this engine is the
+        // single authoritative entry point for all guild membership
+        // mutations (no guild-join wire command exists in
+        // SimulationEngine's command loop to gate).
+        public const int MinGuildInteractionLevel = 20;
+
+        public const int JoinTypeOpen = 0;
+        public const int JoinTypeApplicationRequired = 1;
+
         // Creates a new guild with the caller as its sole member and Leader.
         // Returns the new guild's id, or 0 if rejected (caller already in a
         // guild, empty/overlong name, or duplicate guild name).
@@ -58,6 +70,14 @@ namespace FolkIdle.Server.Engine
                         .SingleOrDefaultAsync();
 
                     if (profile == null || profile.GuildId > 0)
+                    {
+                        await transaction.RollbackAsync();
+                        return 0L;
+                    }
+
+                    // Modul: Advanced Economy Refactoring, Part 3.1 -
+                    // universal level-20 structural gate.
+                    if (profile.CurrentLevel < MinGuildInteractionLevel)
                     {
                         await transaction.RollbackAsync();
                         return 0L;
@@ -158,6 +178,46 @@ namespace FolkIdle.Server.Engine
                     if (profile == null || profile.GuildId > 0)
                     {
                         await transaction.RollbackAsync();
+                        return false;
+                    }
+
+                    // Modul: Advanced Economy Refactoring, Part 3.1/3.3.
+                    // Universal level-20 gate first, then the guild's own
+                    // (potentially stricter) MinApplicationLevel - both
+                    // apply identically to auto-joins and applications, so
+                    // an under-leveled player can neither join an open
+                    // guild nor spam pending applications at a gated one.
+                    int effectiveMinLevel = Math.Max(MinGuildInteractionLevel, guild.MinApplicationLevel);
+                    if (profile.CurrentLevel < effectiveMinLevel)
+                    {
+                        await transaction.RollbackAsync();
+                        return false;
+                    }
+
+                    // Modul: Advanced Economy Refactoring, Part 3.3.
+                    // Application-required guilds route the request into
+                    // the pending GuildApplications table for manual
+                    // approval instead of joining immediately - returns
+                    // false ("not joined") while the application row
+                    // persists. Duplicate open applications from the same
+                    // player are a no-op under this same Serializable
+                    // transaction.
+                    if (guild.JoinType == JoinTypeApplicationRequired)
+                    {
+                        bool alreadyApplied = await context.GuildApplications
+                            .AnyAsync(a => a.GuildId == guildId && a.PlayerId == playerId);
+                        if (!alreadyApplied)
+                        {
+                            context.GuildApplications.Add(new GuildApplication
+                            {
+                                GuildId = guildId,
+                                PlayerId = playerId,
+                                ApplicantLevel = profile.CurrentLevel,
+                                CreatedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                            });
+                            await context.SaveChangesAsync();
+                        }
+                        await transaction.CommitAsync();
                         return false;
                     }
 
@@ -391,6 +451,116 @@ namespace FolkIdle.Server.Engine
             catch (Exception ex)
             {
                 Console.WriteLine($"Guild kick failed - Kicker {kickerPlayerId}, Target {targetPlayerId}: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Modul: Advanced Economy Refactoring, Part 2.4. Leader-only
+        // setter for the guild sales tax rate, clamped strictly to
+        // [GuildRecord.MinTaxRatePct, GuildRecord.MaxTaxRatePct] - an
+        // out-of-range request is clamped, not rejected, so a Leader
+        // sliding a UI control past the bounds lands on the nearest legal
+        // rate rather than silently failing.
+        public async Task<bool> SetGuildTaxRateAsync(long leaderPlayerId, int requestedRatePct)
+        {
+            await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
+            var strategy = context.Database.CreateExecutionStrategy();
+
+            try
+            {
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    context.ChangeTracker.Clear();
+                    using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+                    var membership = await context.GuildMembers
+                        .AsNoTracking()
+                        .SingleOrDefaultAsync(m => m.PlayerId == leaderPlayerId);
+
+                    if (membership == null || membership.Role != RoleLeader)
+                    {
+                        await transaction.RollbackAsync();
+                        return false;
+                    }
+
+                    var guild = await context.GuildRecords
+                        .FromSqlRaw("SELECT * FROM \"GuildRecords\" WHERE \"Id\" = {0} FOR UPDATE", membership.GuildId)
+                        .SingleOrDefaultAsync();
+
+                    if (guild == null)
+                    {
+                        await transaction.RollbackAsync();
+                        return false;
+                    }
+
+                    guild.TaxRatePct = Math.Clamp(requestedRatePct, GuildRecord.MinTaxRatePct, GuildRecord.MaxTaxRatePct);
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return true;
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild tax rate change failed - Leader {leaderPlayerId}, Rate {requestedRatePct}: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Modul: Advanced Economy Refactoring, Part 3.2. Leader-only
+        // setter for the guild's access policy: JoinType (Open vs
+        // Application Required) and MinApplicationLevel. The minimum
+        // level floor is the universal MinGuildInteractionLevel gate - a
+        // guild cannot configure itself to admit players the structural
+        // unlock would block anyway.
+        public async Task<bool> SetGuildAccessPolicyAsync(long leaderPlayerId, int joinType, int minApplicationLevel)
+        {
+            if (joinType != JoinTypeOpen && joinType != JoinTypeApplicationRequired)
+            {
+                return false;
+            }
+
+            await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
+            var strategy = context.Database.CreateExecutionStrategy();
+
+            try
+            {
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    context.ChangeTracker.Clear();
+                    using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+                    var membership = await context.GuildMembers
+                        .AsNoTracking()
+                        .SingleOrDefaultAsync(m => m.PlayerId == leaderPlayerId);
+
+                    if (membership == null || membership.Role != RoleLeader)
+                    {
+                        await transaction.RollbackAsync();
+                        return false;
+                    }
+
+                    var guild = await context.GuildRecords
+                        .FromSqlRaw("SELECT * FROM \"GuildRecords\" WHERE \"Id\" = {0} FOR UPDATE", membership.GuildId)
+                        .SingleOrDefaultAsync();
+
+                    if (guild == null)
+                    {
+                        await transaction.RollbackAsync();
+                        return false;
+                    }
+
+                    guild.JoinType = joinType;
+                    guild.MinApplicationLevel = Math.Max(MinGuildInteractionLevel, minApplicationLevel);
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return true;
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild access policy change failed - Leader {leaderPlayerId}: {ex.Message}");
                 return false;
             }
         }

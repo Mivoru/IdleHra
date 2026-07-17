@@ -40,7 +40,19 @@ namespace FolkIdle.Server.Network
         // Modul: Final Production Polish, Part 1. Returned by the mail
         // claim / bank withdraw request drains when InventorySpaceRemaining
         // is exhausted and the item could not be delivered.
-        InventoryFull = 11
+        InventoryFull = 11,
+
+        // Modul: Advanced Economy Refactoring, Part 2.1. Returned by
+        // MarketEscrowEngine when a player without a guild (GuildId <= 0)
+        // attempts to list or buy on the global market - trading requires
+        // an active guild membership as its trade license.
+        NoGuildLicense = 12,
+
+        // Modul: Advanced Economy Refactoring, Part 2.3. Returned when a
+        // player's CurrentLevel is below an item's derived RequiredLevel -
+        // blocks both market purchase and equipping of over-leveled gear
+        // (see EquipmentLevelGate).
+        LevelTooLow = 13
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

@@ -18,6 +18,7 @@ namespace FolkIdle.Server.Models
         public DbSet<GuildContributionLedger> GuildContributionLedgers { get; set; }
         public DbSet<GuildRaidState> GuildRaidStates { get; set; }
         public DbSet<GuildMember> GuildMembers { get; set; }
+        public DbSet<GuildApplication> GuildApplications { get; set; }
         public DbSet<PlayerRecord> PlayerRecords { get; set; }
         public DbSet<CharacterRecord> CharacterRecords { get; set; }
         public DbSet<CharacterLineageRegistry> CharacterLineages { get; set; }

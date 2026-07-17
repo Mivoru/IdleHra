@@ -32,7 +32,15 @@ namespace FolkIdle.Client.Network
         // Modul: mirrors server CommandResultCode exactly - a mail claim
         // or bank withdraw could not be delivered because inventory space
         // is exhausted.
-        InventoryFull = 11
+        InventoryFull = 11,
+
+        // Modul: mirrors server CommandResultCode exactly - market
+        // interactions require an active guild membership (trade license).
+        NoGuildLicense = 12,
+
+        // Modul: mirrors server CommandResultCode exactly - the player's
+        // level is below the item's derived RequiredLevel.
+        LevelTooLow = 13
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

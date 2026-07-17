@@ -38,6 +38,18 @@ namespace FolkIdle.Server.Engine
                     return false;
                 }
 
+                // Modul: Advanced Economy Refactoring, Part 2.1. Trade
+                // license - global market access requires an active guild
+                // membership. Checked before any row mutation, mirroring
+                // the equipped-item guard's early-abort pattern below.
+                if (player.GuildId <= 0)
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine("MarketListItem failed: Player has no guild trade license.");
+                    _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.NoGuildLicense);
+                    return false;
+                }
+
                 var equipQuery = "SELECT * FROM \"EquipmentInstances\" WHERE \"Id\" = {0} FOR UPDATE";
                 var equip = await db.EquipmentInstances.FromSqlRaw(equipQuery, instanceId).SingleOrDefaultAsync();
 
@@ -158,6 +170,31 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
+                // Modul: Advanced Economy Refactoring, Part 2.1. Trade
+                // license - buying requires guild membership, matching
+                // ListItemAsync's own gate.
+                if (buyer == null || buyer.GuildId <= 0)
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine("MarketBuyItem failed: Buyer has no guild trade license.");
+                    _playerRegistry.EnqueueCommandResult(buyerId, (byte)FolkIdle.Server.Network.CommandResultCode.NoGuildLicense);
+                    return;
+                }
+
+                // Modul: Advanced Economy Refactoring, Part 2.3. Anti-cheese
+                // level lock - a buyer below the item's derived
+                // RequiredLevel (see EquipmentLevelGate) cannot buy it at
+                // all, closing the "buy over-leveled gear cheap and coast"
+                // loop at the purchase gate rather than only at equip time.
+                int requiredLevel = EquipmentLevelGate.DeriveRequiredLevel(order.BaseItemId, order.QualityTier);
+                if (buyer.CurrentLevel < requiredLevel)
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine($"MarketBuyItem failed: buyer level {buyer.CurrentLevel} below required {requiredLevel} for {order.BaseItemId} T{order.QualityTier}.");
+                    _playerRegistry.EnqueueCommandResult(buyerId, (byte)FolkIdle.Server.Network.CommandResultCode.LevelTooLow);
+                    return;
+                }
+
                 var goldQuery = "SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE";
                 var buyerGold = await db.CommodityRecords.FromSqlRaw(goldQuery, buyerId).SingleOrDefaultAsync();
 
@@ -242,19 +279,59 @@ namespace FolkIdle.Server.Engine
                 }
 
                 long executionPrice = order.Price;
-                
+
                 // Determine seller's wealth for tax bracket
                 var sellerGold = await db.CommodityRecords.FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", order.SellerId).SingleOrDefaultAsync();
                 long sellerWealth = sellerGold?.Quantity ?? 0;
-                
+
                 // Modul 40/51: wealth-scaled silver-sink tax burn, matching
                 // MarketOrderBookEngine.MatchOrdersAsync's brackets.
                 double totalFeeRate = 0.05;
                 if (sellerWealth > 5000000) totalFeeRate = 0.15;
                 else if (sellerWealth >= 500000) totalFeeRate = 0.08;
-                
+
                 long fee = (long)(executionPrice * totalFeeRate);
-                long sellerProceeds = executionPrice - fee;
+
+                // Modul: Advanced Economy Refactoring, Part 2.5. Guild
+                // sales tax - the SELLER's guild takes its configured
+                // TaxRatePct cut of the gross price, deposited into that
+                // guild's central gold ledger row (the same
+                // GuildMaterialSinkLedger gold row donations flow into),
+                // and only the net remainder reaches the seller. The
+                // seller had a guild at listing time (trade license), but
+                // may have left since - in that case no guild tax applies,
+                // matching the license's own semantics (no guild, no
+                // market participation, no tax relationship).
+                long guildTax = 0L;
+                var sellerRecord = await db.PlayerRecords
+                    .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", order.SellerId)
+                    .SingleOrDefaultAsync();
+                if (sellerRecord != null && sellerRecord.GuildId > 0)
+                {
+                    var sellerGuild = await db.GuildRecords
+                        .FromSqlRaw("SELECT * FROM \"GuildRecords\" WHERE \"Id\" = {0} FOR UPDATE", sellerRecord.GuildId)
+                        .SingleOrDefaultAsync();
+                    if (sellerGuild != null)
+                    {
+                        int taxRatePct = Math.Clamp(sellerGuild.TaxRatePct, GuildRecord.MinTaxRatePct, GuildRecord.MaxTaxRatePct);
+                        guildTax = executionPrice * taxRatePct / 100L;
+
+                        if (guildTax > 0L)
+                        {
+                            var guildGoldLedger = await db.GuildMaterialSinkLedgers
+                                .FromSqlRaw("SELECT * FROM \"GuildMaterialSinkLedgers\" WHERE \"GuildId\" = {0} AND \"CommodityId\" = 'gold' FOR UPDATE", sellerRecord.GuildId)
+                                .SingleOrDefaultAsync();
+                            if (guildGoldLedger == null)
+                            {
+                                guildGoldLedger = new GuildMaterialSinkLedger { GuildId = sellerRecord.GuildId, CommodityId = "gold", TotalAmountContributed = 0 };
+                                db.GuildMaterialSinkLedgers.Add(guildGoldLedger);
+                            }
+                            guildGoldLedger.TotalAmountContributed += guildTax;
+                        }
+                    }
+                }
+
+                long sellerProceeds = executionPrice - fee - guildTax;
 
                 if (_playerRegistry.IsPlayerOnline(order.SellerId))
                 {

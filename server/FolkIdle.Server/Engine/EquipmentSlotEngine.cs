@@ -67,6 +67,21 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
+                // Modul: Advanced Economy Refactoring, Part 2.3. Level
+                // gate at equip time - the second half of the anti-cheese
+                // lock (MarketEscrowEngine.BuyItemAsync blocks the
+                // purchase; this blocks equipping over-leveled gear
+                // acquired through any other channel: mail, bank
+                // withdrawal, pre-gate inventory).
+                int requiredLevel = EquipmentLevelGate.DeriveRequiredLevel(item.BaseItemId, item.QualityTier);
+                if (player.CurrentLevel < requiredLevel)
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine($"Equip rejected: player {playerId} level {player.CurrentLevel} below required {requiredLevel} for {item.BaseItemId} T{item.QualityTier}.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.LevelTooLow);
+                    return;
+                }
+
                 if (isWeapon)
                 {
                     player.EquippedWeaponId = item.Id;
