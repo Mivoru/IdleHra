@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -60,6 +61,30 @@ namespace FolkIdle.Server.Tests
             {
                 await _dbContainer.DisposeAsync().AsTask();
             }
+        }
+
+        // Modul: Phase 5, Part 1. Active, deterministic polling replacing
+        // rigid wall-clock Task.Delay waits, which assume the server's
+        // 10Hz tick loop keeps pace with real time - a false assumption
+        // under CI's CPU/IO scheduling pressure, where a starved test
+        // host can cause the tick loop itself to fall behind real time,
+        // so waiting a fixed number of real-world seconds does not
+        // guarantee a fixed number of simulated ticks actually ran.
+        // Polling the real observed state directly (received packets, live
+        // metrics) decouples verification from the runner's wall-clock
+        // scheduling entirely - the test now waits exactly as long as
+        // needed, up to a generous safety-net timeout, rather than a
+        // single fixed guess that must be long enough for the worst case
+        // yet short enough not to needlessly slow every passing run.
+        private static async Task<bool> WaitForConditionAsync(Func<bool> condition, int timeoutMs, int pollIntervalMs = 100)
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            while (stopwatch.ElapsedMilliseconds < timeoutMs)
+            {
+                if (condition()) return true;
+                await Task.Delay(pollIntervalMs);
+            }
+            return condition();
         }
 
         private static string MintTestJwt(Guid accountId)
@@ -184,7 +209,25 @@ namespace FolkIdle.Server.Tests
             Guid accountId = Guid.NewGuid();
             await using (var db = await contextFactory.CreateDbContextAsync())
             {
-                db.PlayerRecords.Add(new PlayerRecord { Id = 1L, PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid() });
+                // Modul: Phase 5, Part 1. Seeded 15 XP short of the Level 1
+                // threshold rather than starting at 0 - ProgressionEngine.
+                // ProcessMonsterDeath requires 100 XP (100 * 1.15^0) to reach
+                // Level 1, but a single Forest Rat (activity 55) kill only
+                // grants 21 XP (BaseXpReward in monsters.json). Starting from
+                // 0 XP would require roughly 5 full kills to level up, which
+                // was measured directly against this exact test harness at
+                // well over a minute of real time per attempt (each kill
+                // itself already taking many seconds of real 10Hz tick time)
+                // - this was the actual root cause of the "flakiness," not
+                // merely an under-provisioned wait window: the original
+                // fixed 9-second delay was never long enough for even one
+                // full leveling cycle, regardless of CI scheduling variance.
+                // Seeding to 85 XP means exactly one real kill (85 + 21 = 106
+                // >= 100) proves the same real, end-to-end
+                // combat/XP/level-up pipeline this test exists to verify,
+                // without requiring several minutes of simulated grinding
+                // per test run.
+                db.PlayerRecords.Add(new PlayerRecord { Id = 1L, PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 0, CurrentXp = 85L });
                 await db.SaveChangesAsync();
             }
 
@@ -252,7 +295,12 @@ namespace FolkIdle.Server.Tests
                 }
             });
 
-            await Task.WhenAny(loginConfirmed.Task, Task.Delay(TimeSpan.FromSeconds(3)));
+            // Widened from a 3s cap to 10s - still event-driven (races the
+            // real TaskCompletionSource, not a blind sleep), but a fixed
+            // upper bound this tight was itself a latent flake risk under
+            // CI CPU pressure, matching the same failure mode Part 1 fixes
+            // below for the combat-resolve wait.
+            await Task.WhenAny(loginConfirmed.Task, Task.Delay(TimeSpan.FromSeconds(10)));
             Assert.True(loginConfirmed.Task.IsCompletedSuccessfully, "Did not observe the player enter the active tick loop before the combat window started.");
 
             // 4. Send the real gameplay command (ChangeActivity = 55 -> Forest Rat)
@@ -266,8 +314,28 @@ namespace FolkIdle.Server.Tests
             MemoryMarshal.Write(new Span<byte>(cmdBuffer), cmd);
             await clientSocket.SendAsync(new ArraySegment<byte>(cmdBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
 
-            // 5. Let combat resolve (69 HP Rat, 15 dmg / 1.5s = 5 hits = 7.5s).
-            await Task.Delay(TimeSpan.FromSeconds(9));
+            // 5. Let combat resolve. Poll the actually-received packets for
+            // the real completion condition (a level-up on the expected
+            // activity) instead of assuming a fixed number of real-world
+            // seconds always covers a fixed amount of simulated combat -
+            // under CI CPU/IO pressure the 10Hz tick loop itself can fall
+            // behind real time, so a rigid delay either wastes time on fast
+            // runs or flakes outright on slow ones. The starting XP seed
+            // above means exactly one real kill crosses the Level 1
+            // threshold - measured directly against this exact harness at
+            // well under the 90s safety-net timeout below even under this
+            // sandboxed environment's own scheduling overhead, so this
+            // leaves real headroom for a slower CI runner without making
+            // every normal-case run pay for a multi-minute worst case.
+            // CurrentXp > 0 is not part of the wait condition (the seed
+            // starts it non-zero, so it would be trivially true
+            // immediately) but is still verified separately below via
+            // lastState, matching this test's original assertion.
+            bool leveledUp = await WaitForConditionAsync(
+                () => receivedPackets.Any(p => p.ActiveActivityId == 55 && p.CurrentLevel >= 1),
+                timeoutMs: 90000);
+            Assert.True(leveledUp, "Player never leveled up within the timeout - combat loop did not resolve.");
+
             cts.Cancel();
             await receiveTask;
 
@@ -326,10 +394,13 @@ namespace FolkIdle.Server.Tests
             await Task.WhenAll(floodTasks);
 
             // GetMetrics().ThrottledPacketsDropped is only refreshed from the
-            // live counter once per broadcast cycle (every 10 ticks / ~1s, see
-            // EngineLoop's _ticksSinceLastBroadcast gate) - wait a full cycle
-            // so that refresh actually lands before reading it below.
-            await Task.Delay(1500);
+            // live counter once per broadcast cycle (every 10 ticks / ~1s,
+            // see EngineLoop's _ticksSinceLastBroadcast gate) - poll for the
+            // real refresh instead of assuming one fixed real-world delay
+            // always covers it, for the same reason the combat-resolve wait
+            // above was converted (a starved tick loop can fall behind real
+            // time under CI scheduling pressure).
+            await WaitForConditionAsync(() => simulationEngine.GetMetrics().ThrottledPacketsDropped >= 5, timeoutMs: 5000);
 
             simulationEngine.Stop();
             networkSystem.Stop();
