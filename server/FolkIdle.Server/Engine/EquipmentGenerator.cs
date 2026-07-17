@@ -2,6 +2,11 @@ using System;
 using FolkIdle.Server.Models;
 using System.Text.Json;
 using System.Collections.Generic;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Engine
 {

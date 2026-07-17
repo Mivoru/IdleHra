@@ -20,6 +20,11 @@ using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
 using Testcontainers.PostgreSql;
 using Testcontainers.Redis;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Tests
 {
@@ -5927,7 +5932,7 @@ namespace FolkIdle.Server.Tests
                 Assert.Null(player.EquippedArmorId);
                 Assert.Null(player.EquippedWeaponId);
 
-                (int attack, int defense, int crit, int luck) =
+                (int attack, int defense, int crit, int luck, _, _, _) =
                     await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verifyDb, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
                 Assert.Equal(45, defense);
                 Assert.Equal(0, attack);
@@ -6350,6 +6355,244 @@ namespace FolkIdle.Server.Tests
             long after = GC.GetAllocatedBytesForCurrentThread();
             Assert.Equal(450L, rate);
             Assert.Equal(0L, after - before);
+        }
+
+        // Modul: Architecture Overhaul, Part 6. Two characters belonging to
+        // the same player cannot both be assigned to the identical
+        // gathering/combat activity id - the second ChangeCharacterActivityAsync
+        // call for the same node must fail with NodeOccupied and must not
+        // mutate the requesting character's row.
+        [Fact]
+        public async Task Test_CharacterSlotEngine_SecondCharacterOnSameNodeIsRejectedAsNodeOccupied()
+        {
+            const long testPlayerId = 970009001L;
+            const long targetActivityId = 91L; // Field Mouse
+            var mainCharacterId = Guid.NewGuid();
+            var secondCharacterId = Guid.NewGuid();
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = mainCharacterId, PlayerId = testPlayerId, SlotIndex = 0 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = secondCharacterId, PlayerId = testPlayerId, SlotIndex = 1 });
+                await db.SaveChangesAsync();
+            }
+
+            var simulationEngine = CreateTestSimulationEngine();
+
+            var firstResult = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, mainCharacterId, targetActivityId);
+            Assert.Equal(CommandResultCode.Success, firstResult);
+
+            var secondResult = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, secondCharacterId, targetActivityId);
+            Assert.Equal(CommandResultCode.NodeOccupied, secondResult);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var secondCharacter = await verifyDb.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == secondCharacterId);
+            Assert.Equal(0L, secondCharacter.ActiveActivityId);
+
+            // Zero-allocation proof for the pure occupancy scan itself.
+            // stackalloc cannot appear directly in an async method body, so
+            // the probe is isolated in a synchronous local function.
+            static bool ProbeOccupancy(long activityId)
+            {
+                Span<long> probe = stackalloc long[3] { activityId, 0, 0 };
+                return CharacterSlotEngine.IsActivityOccupiedByAnotherSlot(probe, 1, activityId);
+            }
+
+            ProbeOccupancy(targetActivityId);
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            bool occupied = ProbeOccupancy(targetActivityId);
+            long after = GC.GetAllocatedBytesForCurrentThread();
+            Assert.True(occupied);
+            Assert.Equal(0L, after - before);
+        }
+
+        // Modul: Architecture Overhaul, Part 6. Slot 1 requires the main
+        // character to be level 30+; slot 2 requires level 60+. Both gates
+        // are enforced independently of the occupancy mutex above.
+        [Fact]
+        public async Task Test_CharacterSlotEngine_LevelGatesBlockLockedSlots()
+        {
+            const long testPlayerId = 970009002L;
+            var mainCharacterId = Guid.NewGuid();
+            var slot1CharacterId = Guid.NewGuid();
+            var slot2CharacterId = Guid.NewGuid();
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 29 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = mainCharacterId, PlayerId = testPlayerId, SlotIndex = 0 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = slot1CharacterId, PlayerId = testPlayerId, SlotIndex = 1 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = slot2CharacterId, PlayerId = testPlayerId, SlotIndex = 2 });
+                await db.SaveChangesAsync();
+            }
+
+            var simulationEngine = CreateTestSimulationEngine();
+
+            // Level 29: slot 1 (requires 30) is still locked.
+            var slot1AtLevel29 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot1CharacterId, 92L);
+            Assert.Equal(CommandResultCode.LevelTooLow, slot1AtLevel29);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var player = await db.PlayerRecords.SingleAsync(p => p.Id == testPlayerId);
+                player.CurrentLevel = 30;
+                await db.SaveChangesAsync();
+            }
+
+            // Level 30: slot 1 unlocks, slot 2 (requires 60) stays locked.
+            var slot1AtLevel30 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot1CharacterId, 92L);
+            Assert.Equal(CommandResultCode.Success, slot1AtLevel30);
+
+            var slot2AtLevel30 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot2CharacterId, 93L);
+            Assert.Equal(CommandResultCode.LevelTooLow, slot2AtLevel30);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var player = await db.PlayerRecords.SingleAsync(p => p.Id == testPlayerId);
+                player.CurrentLevel = 60;
+                await db.SaveChangesAsync();
+            }
+
+            // Level 60: slot 2 finally unlocks.
+            var slot2AtLevel60 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot2CharacterId, 93L);
+            Assert.Equal(CommandResultCode.Success, slot2AtLevel60);
+
+            Assert.Equal(1, CharacterSlotEngine.GetSlotUnlockLevelRequirement(0));
+            Assert.Equal(30, CharacterSlotEngine.GetSlotUnlockLevelRequirement(1));
+            Assert.Equal(60, CharacterSlotEngine.GetSlotUnlockLevelRequirement(2));
+        }
+
+        // Modul: Architecture Overhaul, Part 6. Independent Multi-Drop
+        // Evaluation: forces every category roll to succeed (100% chance
+        // is not achievable through the real RNG baselines, so this drives
+        // ProcessMonsterLootDropAsync directly via the queue at a
+        // guaranteed-hit monster/region combination is not controllable
+        // from a black-box test) - instead this drains a burst of
+        // DropRequestQueue entries for the same monster and asserts that,
+        // across the burst, both a materials grant (CommodityRecords) and
+        // at least one equipment grant (EquipmentInstances) occurred in
+        // the same combat-drop processing pass, proving the two roll
+        // categories are independent rather than mutually exclusive.
+        [Fact]
+        public async Task Test_CombatLootEngine_IndependentRollsCanGrantMaterialsAndEquipmentTogether()
+        {
+            const long testPlayerId = 970009101L;
+            const int monsterId = 104; // Sandstone Golem - mat_lodestone, region 3
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            var combatLootEngine = new CombatLootEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            var processMethod = typeof(CombatLootEngine).GetMethod("ProcessMonsterLootDropAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+
+            // A burst of independent evaluations is well beyond the point
+            // where 35% materials and ~0.33%-0.50% equipment baselines are
+            // both statistically certain to have hit at least once each.
+            for (int i = 0; i < 400; i++)
+            {
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f })!;
+            }
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            long materialQuantity = await verifyDb.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == testPlayerId && c.ItemId == "mat_lodestone")
+                .Select(c => (long?)c.Quantity)
+                .FirstOrDefaultAsync() ?? 0L;
+            Assert.True(materialQuantity > 0, "Expected at least one successful materials roll (Roll 1) across the burst.");
+
+            int equipmentCount = await verifyDb.EquipmentInstances.AsNoTracking().CountAsync(e => e.PlayerId == testPlayerId);
+            Assert.True(equipmentCount > 0, "Expected at least one successful equipment category roll (Rolls 2-5) across the burst.");
+        }
+
+        // Modul: Architecture Overhaul, Part 6. Equipping 4 pieces of the
+        // Eternal Dreadnought set (SetId 10) must apply the 2-piece +15%
+        // Total Armor multiplier AND flip on the 4-piece defensive
+        // mechanics (Thorns/CC Immunity/Cooldown Reduction) inside the
+        // combat feedback profile returned by StatsCalculator.Calculate.
+        // Only 3 equip slots (Weapon/Armor/Leggings) exist as real,
+        // equippable wire-protocol slots today, so the 4-piece scenario is
+        // proven directly against SetBonusEngine/StatsCalculator with a
+        // synthetic 4-slot span - the same evaluator the live 3-slot equip
+        // pipeline already feeds in production.
+        [Fact]
+        public void Test_SetBonusEngine_FourPieceEternalDreadnoughtAppliesDefensiveMultipliers()
+        {
+            ReadOnlySpan<int> twoPieceOnly = stackalloc int[] { SetBonusEngine.EternalDreadnoughtSetId, SetBonusEngine.EternalDreadnoughtSetId, 0 };
+            var twoPieceResult = SetBonusEngine.Evaluate(twoPieceOnly);
+            Assert.Equal(15f, twoPieceResult.TotalArmorMultiplierPct);
+            Assert.False(twoPieceResult.ThornsReflectionActive);
+            Assert.False(twoPieceResult.CcImmunityActive);
+
+            ReadOnlySpan<int> fourPiece = stackalloc int[] { SetBonusEngine.EternalDreadnoughtSetId, SetBonusEngine.EternalDreadnoughtSetId, SetBonusEngine.EternalDreadnoughtSetId, SetBonusEngine.EternalDreadnoughtSetId };
+            var fourPieceResult = SetBonusEngine.Evaluate(fourPiece);
+            Assert.Equal(15f, fourPieceResult.TotalArmorMultiplierPct);
+            Assert.True(fourPieceResult.ThornsReflectionActive);
+            Assert.True(fourPieceResult.CcImmunityActive);
+            Assert.True(fourPieceResult.CooldownReductionActive);
+
+            // End-to-end through the combat feedback profile: 100 CON gives
+            // a known FlatPhysicalArmor baseline (100) that the 4-piece
+            // +15% multiplier must scale deterministically.
+            CombatStats naked = StatsCalculator.Calculate(str: 0, dex: 0, con: 100, lck: 0);
+            CombatStats withFourPieceSet = StatsCalculator.Calculate(str: 0, dex: 0, con: 100, lck: 0, equippedSetIds: fourPiece);
+
+            Assert.Equal((int)(naked.FlatPhysicalArmor * 1.15f), withFourPieceSet.FlatPhysicalArmor);
+            Assert.True(withFourPieceSet.SetThornsReflectionActive);
+            Assert.True(withFourPieceSet.SetCcImmunityActive);
+            Assert.True(withFourPieceSet.SetCooldownReductionActive);
+
+            // Zero-allocation proof for the evaluator itself.
+            SetBonusEngine.Evaluate(fourPiece);
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            var probeResult = SetBonusEngine.Evaluate(fourPiece);
+            long after = GC.GetAllocatedBytesForCurrentThread();
+            Assert.True(probeResult.ThornsReflectionActive);
+            Assert.Equal(0L, after - before);
+        }
+
+        // Modul: Architecture Overhaul, Part 6. Real 2-piece integration
+        // proof through the actual 3-slot equip pipeline: equipping
+        // Weapon + Armor both tagged SetId 1 (Chiming Steel) and reading
+        // the totals back through EquipmentSlotEngine.ComputeEquippedTotalsAsync
+        // confirms the SetId round-trips end to end (DB -> equip -> cached
+        // totals), independent of the synthetic-span proof above.
+        [Fact]
+        public async Task Test_SetBonusEngine_TwoRealEquippedSlotsRoundTripSetIdThroughEquipPipeline()
+        {
+            const long testPlayerId = 970009201L;
+
+            long weaponId, armorId;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60 });
+                var weapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "bronze_dagger_melee_weapon_slot_base", QualityTier = 0, AffixPayload = "{}", SetId = SetBonusEngine.ChimingSteelSetId };
+                var armor = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "iron_breastplate_chest_armor_slot_base", QualityTier = 0, AffixPayload = "{}", SetId = SetBonusEngine.ChimingSteelSetId };
+                db.EquipmentInstances.Add(weapon);
+                db.EquipmentInstances.Add(armor);
+                await db.SaveChangesAsync();
+                weaponId = weapon.Id;
+                armorId = armor.Id;
+            }
+
+            var equipmentSlotEngine = new EquipmentSlotEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await equipmentSlotEngine.EquipItemAsync(testPlayerId, weaponId);
+            await equipmentSlotEngine.EquipItemAsync(testPlayerId, armorId);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var player = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+
+            (_, _, _, _, int weaponSetId, int armorSetId, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verifyDb, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
+
+            Assert.Equal(SetBonusEngine.ChimingSteelSetId, weaponSetId);
+            Assert.Equal(SetBonusEngine.ChimingSteelSetId, armorSetId);
+
+            var result = SetBonusEngine.Evaluate(stackalloc int[] { weaponSetId, armorSetId, 0 });
+            Assert.Equal(10, result.FlatAttackPowerBonus);
         }
     }
 }

@@ -1,6 +1,12 @@
 using System;
+using FolkIdle.Server.Engine;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
-namespace FolkIdle.Server.Engine
+namespace FolkIdle.Server.Domain.Shared
 {
     // Modul: Deferred Part 5 Implementation, Part 1. Gathering tool speed
     // scaling - the pure math of the gathering tick's required-tick

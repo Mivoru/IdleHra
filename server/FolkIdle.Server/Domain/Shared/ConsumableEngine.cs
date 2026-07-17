@@ -1,6 +1,12 @@
 using System;
+using FolkIdle.Server.Engine;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
-namespace FolkIdle.Server.Engine
+namespace FolkIdle.Server.Domain.Shared
 {
     // Modul: Deferred Part 5 Implementation, Part 2. Foods, potions, and
     // the Death Ward Elixir. Consumable identity stays in the existing

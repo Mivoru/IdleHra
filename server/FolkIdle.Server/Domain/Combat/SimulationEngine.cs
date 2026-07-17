@@ -4,8 +4,14 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using FolkIdle.Server.Network;
 using FolkIdle.Server.Models;
+using FolkIdle.Server.Engine;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
-namespace FolkIdle.Server.Engine
+namespace FolkIdle.Server.Domain.Combat
 {
     public struct EngineMetricsPayload
     {
@@ -688,6 +694,9 @@ namespace FolkIdle.Server.Engine
                         currentPayload.CachedEquippedFlatDefense = equipUpdate.EquippedFlatDefense;
                         currentPayload.CachedEquippedCritBonus = equipUpdate.EquippedCritBonus;
                         currentPayload.CachedEquippedLuckBonus = equipUpdate.EquippedLuckBonus;
+                        currentPayload.CachedWeaponSetId = equipUpdate.EquippedWeaponSetId;
+                        currentPayload.CachedArmorSetId = equipUpdate.EquippedArmorSetId;
+                        currentPayload.CachedLeggingsSetId = equipUpdate.EquippedLeggingsSetId;
                         currentPayload.IsDirty = true;
                     }
                 }
@@ -1345,12 +1354,38 @@ namespace FolkIdle.Server.Engine
                             continue;
                         }
 
-                        currentPayload.ActiveActivityId = cmd.TargetId;
-                        currentPayload.CurrentProgressTicks = 0;
-                        currentPayload.CurrentMonsterId = 0;
-                        currentPayload.CurrentMonsterHp = 0;
-                        currentPayload.CombatTargetTickAccumulator = 0;
-                        currentPayload.GatheringProgressTicks = 0;
+                        // Modul: Architecture Overhaul, Part 2. A non-empty
+                        // TargetGuid selects which of the player's up to 3
+                        // characters is changing activity; the slot-level
+                        // gate and cross-character occupancy mutex are only
+                        // meaningful once a specific character is named, so
+                        // legacy/single-character requests (TargetGuid ==
+                        // Guid.Empty) keep applying straight to the live
+                        // session payload exactly as before.
+                        if (cmd.TargetGuid != Guid.Empty)
+                        {
+                            long pId = currentPayload.PlayerId;
+                            Guid characterId = cmd.TargetGuid;
+                            long targetActivityId = cmd.TargetId;
+
+                            SafeDispatchAsync("Character.ChangeActivity", pId, async () => {
+                                var resultCode = await ChangeCharacterActivityAsync(pId, characterId, targetActivityId);
+                                _playerRegistry?.EnqueueCommandResult(pId, (byte)resultCode);
+                                if (resultCode == Network.CommandResultCode.Success)
+                                {
+                                    _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+                                }
+                            });
+                        }
+                        else
+                        {
+                            currentPayload.ActiveActivityId = cmd.TargetId;
+                            currentPayload.CurrentProgressTicks = 0;
+                            currentPayload.CurrentMonsterId = 0;
+                            currentPayload.CurrentMonsterHp = 0;
+                            currentPayload.CombatTargetTickAccumulator = 0;
+                            currentPayload.GatheringProgressTicks = 0;
+                        }
                     }
                     else if (cmd.Command == CommandType.ContributeToGuild)
                     {
@@ -2393,7 +2428,7 @@ namespace FolkIdle.Server.Engine
                                 broadcastActiveAgePhase = currentPayload.Slot1_AgePhase;
                                 broadcastActiveRaceId = (int)(currentPayload.Slot1_GeneticVector & 0xFF);
                             }
-                            var broadcastCombatStats = StatsCalculator.Calculate(currentPayload.STR, currentPayload.DEX, currentPayload.CON, currentPayload.LCK, currentPayload.ActiveOffensivePotionId, currentPayload.ActiveDefensivePotionId, broadcastActiveAgePhase, currentPayload.CompletedAreaFlags, broadcastActiveRaceId, currentPayload.HumanMasteryLevel, currentPayload.VilaMasteryLevel, currentPayload.DraugrMasteryLevel, currentPayload.CachedEquippedFlatAttack, currentPayload.CachedEquippedFlatDefense, currentPayload.CachedEquippedCritBonus, currentPayload.CachedEquippedLuckBonus, currentPayload.IsEpicMutation, currentPayload.LocusSpeed, currentPayload.LocusCrit);
+                            var broadcastCombatStats = StatsCalculator.Calculate(currentPayload.STR, currentPayload.DEX, currentPayload.CON, currentPayload.LCK, currentPayload.ActiveOffensivePotionId, currentPayload.ActiveDefensivePotionId, broadcastActiveAgePhase, currentPayload.CompletedAreaFlags, broadcastActiveRaceId, currentPayload.HumanMasteryLevel, currentPayload.VilaMasteryLevel, currentPayload.DraugrMasteryLevel, currentPayload.CachedEquippedFlatAttack, currentPayload.CachedEquippedFlatDefense, currentPayload.CachedEquippedCritBonus, currentPayload.CachedEquippedLuckBonus, currentPayload.IsEpicMutation, currentPayload.LocusSpeed, currentPayload.LocusCrit, stackalloc int[3] { currentPayload.CachedWeaponSetId, currentPayload.CachedArmorSetId, currentPayload.CachedLeggingsSetId });
 
                             // Modul: onboarding signal - true only while the
                             // account's first character exists but has never
@@ -2609,6 +2644,71 @@ namespace FolkIdle.Server.Engine
             }
         }
 
+        // Modul: Architecture Overhaul, Part 2. Multi-character position
+        // mutex. Authoritative against the "characters" table (not the
+        // in-memory tick payload, which only ever tracks one live session
+        // per player) so the occupancy check and the slot-level gate both
+        // survive across logins and stay correct under concurrent
+        // ChangeActivity commands from the same account. Row-locks every
+        // character belonging to the player for the duration of the check
+        // so two simultaneous requests targeting the same node cannot both
+        // observe it as free.
+        internal async Task<Network.CommandResultCode> ChangeCharacterActivityAsync(long playerId, Guid characterId, long targetActivityId)
+        {
+            await using var db = await _contextFactory.CreateDbContextAsync();
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try
+            {
+                var characters = await db.CharacterRecords
+                    .FromSqlInterpolated($"SELECT * FROM \"characters\" WHERE \"PlayerId\" = {playerId} FOR UPDATE")
+                    .ToListAsync();
+
+                var requesting = characters.Find(c => c.Id == characterId);
+                if (requesting == null)
+                {
+                    await transaction.RollbackAsync();
+                    return Network.CommandResultCode.TargetNotFound;
+                }
+
+                int mainCharacterLevel = await db.PlayerRecords.AsNoTracking()
+                    .Where(p => p.Id == playerId)
+                    .Select(p => p.CurrentLevel)
+                    .FirstOrDefaultAsync();
+
+                if (!CharacterSlotEngine.IsSlotUnlocked(requesting.SlotIndex, mainCharacterLevel))
+                {
+                    await transaction.RollbackAsync();
+                    return Network.CommandResultCode.LevelTooLow;
+                }
+
+                long[] activeActivityIds = new long[CharacterSlotEngine.MaxCharacterSlots];
+                for (int i = 0; i < characters.Count; i++)
+                {
+                    int slot = characters[i].SlotIndex;
+                    if (slot >= 0 && slot < CharacterSlotEngine.MaxCharacterSlots)
+                    {
+                        activeActivityIds[slot] = characters[i].ActiveActivityId;
+                    }
+                }
+
+                if (CharacterSlotEngine.IsActivityOccupiedByAnotherSlot(activeActivityIds, requesting.SlotIndex, targetActivityId))
+                {
+                    await transaction.RollbackAsync();
+                    return Network.CommandResultCode.NodeOccupied;
+                }
+
+                requesting.ActiveActivityId = targetActivityId;
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return Network.CommandResultCode.Success;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
         private static void ActivateChronoAcceleration(ref TickStatePayload payload, int multiplier)
         {
             if (multiplier != 2 && multiplier != 4)
@@ -2730,7 +2830,7 @@ namespace FolkIdle.Server.Engine
 
             int warpActiveRaceId = payload.Slot1_CharacterId != System.Guid.Empty ? (int)(payload.Slot1_GeneticVector & 0xFF) : 0;
             int warpActiveAgePhase = payload.Slot1_CharacterId != System.Guid.Empty ? payload.Slot1_AgePhase : 1;
-            var warpCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, warpActiveAgePhase, payload.CompletedAreaFlags, warpActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit);
+            var warpCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, warpActiveAgePhase, payload.CompletedAreaFlags, warpActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, stackalloc int[3] { payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId });
 
             // Modul: expected incoming damage over this warp period, mirroring
             // the live tick's monster crit formula (5% base + 0.5% per region
@@ -2904,7 +3004,7 @@ namespace FolkIdle.Server.Engine
                 warpGatherActiveAgePhase = payload.Slot1_AgePhase;
                 warpGatherActiveRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
             }
-            var warpGatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, warpGatherActiveAgePhase, payload.CompletedAreaFlags, warpGatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit);
+            var warpGatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, warpGatherActiveAgePhase, payload.CompletedAreaFlags, warpGatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, stackalloc int[3] { payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId });
 
             int monolithLevel = professionType == 0 ? payload.CachedWoodcuttingMonolithLevel : payload.CachedMiningMonolithLevel;
             double yieldBonusPct = System.Math.Min(monolithLevel, 50);
@@ -3696,7 +3796,7 @@ namespace FolkIdle.Server.Engine
                             gatherActiveAgePhase = payload.Slot1_AgePhase;
                             gatherActiveRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
                         }
-                        var gatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherActiveAgePhase, payload.CompletedAreaFlags, gatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit);
+                        var gatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherActiveAgePhase, payload.CompletedAreaFlags, gatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, stackalloc int[3] { payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId });
 
                         int monolithLevel = gatheringNode.ProfessionType == 0 ? payload.CachedWoodcuttingMonolithLevel : payload.CachedMiningMonolithLevel;
                         float yieldBonusPct = Math.Min(monolithLevel * 1.0f, 50.0f);
@@ -3819,7 +3919,7 @@ namespace FolkIdle.Server.Engine
                 activeRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
             }
 
-            var combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit);
+            var combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, stackalloc int[3] { payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId });
             
             long baseMilliHp = 100000L;
             long effectiveMilliHp = baseMilliHp + (baseMilliHp * lineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.MaxHp * 1000L);

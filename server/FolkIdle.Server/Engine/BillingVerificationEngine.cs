@@ -2,6 +2,11 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using FolkIdle.Server.Models;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Engine
 {

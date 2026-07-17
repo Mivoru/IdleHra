@@ -2,8 +2,14 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using FolkIdle.Server.Models;
+using FolkIdle.Server.Engine;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
-namespace FolkIdle.Server.Engine
+namespace FolkIdle.Server.Domain.Economy
 {
     // Modul: Full-Stack Expansion, Parts 1/3. Unified read-write interface
     // over the two material storage tiers: the active Backpack

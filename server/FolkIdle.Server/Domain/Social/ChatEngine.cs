@@ -4,8 +4,14 @@ using System.Threading.Tasks;
 using FolkIdle.Server.Network;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
+using FolkIdle.Server.Engine;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
-namespace FolkIdle.Server.Engine
+namespace FolkIdle.Server.Domain.Social
 {
     // Modul: global chat, scaled across pods via Redis Pub/Sub - mirrors
     // NetworkBroadcastSystem.SubscribeToSessionEviction's exact shape (one

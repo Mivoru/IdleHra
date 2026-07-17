@@ -2,6 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Engine
 {
@@ -167,6 +172,14 @@ namespace FolkIdle.Server.Engine
     {
         public int ItemId;
         public int Weight;
+
+        // Modul: Architecture Overhaul, Part 3. Independent multi-drop
+        // roller quantity bounds. Zero-valued on every entry authored
+        // before this pass - consumers must treat MaxQuantity <= 0 as the
+        // legacy "one unit per successful roll" behavior rather than
+        // rolling an empty [0,0] range.
+        public int MinQuantity;
+        public int MaxQuantity;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -337,7 +350,7 @@ namespace FolkIdle.Server.Engine
             // entries). Quantity ranges (1-3 etc.) are not representable
             // in this weight-only entry struct - each roll yields one
             // unit, the same semantics every gathering table above has.
-            new LootTableEntry { ItemId = 250, Weight = 25 },  // index 22: mat_mouse_fur
+            new LootTableEntry { ItemId = 250, Weight = 25, MinQuantity = 1, MaxQuantity = 3 },  // index 22: mat_mouse_fur (Field Mouse, LootTableId 501)
             new LootTableEntry { ItemId = 253, Weight = 20 },  // index 23: mat_rabbit_foot
             new LootTableEntry { ItemId = 256, Weight = 15 },  // index 24: mat_viper_venom
             new LootTableEntry { ItemId = 259, Weight = 20 },  // index 25: mat_boar_tusk
@@ -350,7 +363,7 @@ namespace FolkIdle.Server.Engine
             new LootTableEntry { ItemId = 298, Weight = 20 },  // index 32: mat_chitin_shell
             new LootTableEntry { ItemId = 301, Weight = 15 },  // index 33: mat_basilisk_scale
             new LootTableEntry { ItemId = 304, Weight = 20 },  // index 34: mat_flame_core
-            new LootTableEntry { ItemId = 307, Weight = 15 },  // index 35: mat_lodestone
+            new LootTableEntry { ItemId = 307, Weight = 15, MinQuantity = 2, MaxQuantity = 3 },  // index 35: mat_lodestone (Sandstone Golem, LootTableId 514)
             new LootTableEntry { ItemId = 310, Weight = 100 }, // index 36: mat_lava_heart
             new LootTableEntry { ItemId = 323, Weight = 20 },  // index 37: mat_frozen_wing
             new LootTableEntry { ItemId = 326, Weight = 15 },  // index 38: mat_yeti_pelt

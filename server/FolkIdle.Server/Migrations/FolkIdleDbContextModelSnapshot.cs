@@ -174,6 +174,9 @@ namespace FolkIdle.Server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<long>("ActiveActivityId")
+                        .HasColumnType("bigint");
+
                     b.Property<int>("AgePhase")
                         .HasColumnType("integer");
 
@@ -194,6 +197,9 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<long>("PlayerId")
                         .HasColumnType("bigint");
+
+                    b.Property<int>("SlotIndex")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -329,6 +335,9 @@ namespace FolkIdle.Server.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<int>("QualityTier")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SetId")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");

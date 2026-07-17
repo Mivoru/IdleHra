@@ -5,8 +5,14 @@ using System.Threading.Tasks;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using FolkIdle.Server.Engine;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
-namespace FolkIdle.Server.Engine
+namespace FolkIdle.Server.Domain.Combat
 {
     // Modul 16/21: equip/unequip for owned gear. Operates on EquipmentInstances -
     // the table CraftingEngine/loot/mail actually deposit owned gear into. Items
@@ -178,7 +184,7 @@ namespace FolkIdle.Server.Engine
         // of which single slot just changed.
         private static async Task<EquipmentSlotUpdateNotification> BuildNotificationAsync(FolkIdleDbContext db, PlayerRecord player)
         {
-            (int attack, int defense, int crit, int luck) = await ComputeEquippedTotalsAsync(db, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
+            (int attack, int defense, int crit, int luck, int weaponSetId, int armorSetId, int leggingsSetId) = await ComputeEquippedTotalsAsync(db, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
 
             return new EquipmentSlotUpdateNotification
             {
@@ -189,7 +195,10 @@ namespace FolkIdle.Server.Engine
                 EquippedFlatAttack = attack,
                 EquippedFlatDefense = defense,
                 EquippedCritBonus = crit,
-                EquippedLuckBonus = luck
+                EquippedLuckBonus = luck,
+                EquippedWeaponSetId = weaponSetId,
+                EquippedArmorSetId = armorSetId,
+                EquippedLeggingsSetId = leggingsSetId
             };
         }
 
@@ -198,9 +207,10 @@ namespace FolkIdle.Server.Engine
         // are hydrated from PlayerRecords, but the derived stat totals are not
         // themselves persisted - they must be recomputed once here rather than
         // reading stale/zeroed values until the player's next equip action).
-        public static async Task<(int Attack, int Defense, int Crit, int Luck)> ComputeEquippedTotalsAsync(FolkIdleDbContext db, long? weaponId, long? armorId, long? leggingsId = null)
+        public static async Task<(int Attack, int Defense, int Crit, int Luck, int WeaponSetId, int ArmorSetId, int LeggingsSetId)> ComputeEquippedTotalsAsync(FolkIdleDbContext db, long? weaponId, long? armorId, long? leggingsId = null)
         {
             int totalAttack = 0, totalDefense = 0, totalCrit = 0, totalLuck = 0;
+            int weaponSetId = 0, armorSetId = 0, leggingsSetId = 0;
 
             if (weaponId.HasValue)
             {
@@ -208,6 +218,7 @@ namespace FolkIdle.Server.Engine
                 if (weapon != null)
                 {
                     AddAffixTotals(weapon.AffixPayload, ref totalAttack, ref totalDefense, ref totalCrit, ref totalLuck);
+                    weaponSetId = weapon.SetId;
                 }
             }
 
@@ -217,6 +228,7 @@ namespace FolkIdle.Server.Engine
                 if (armor != null)
                 {
                     AddAffixTotals(armor.AffixPayload, ref totalAttack, ref totalDefense, ref totalCrit, ref totalLuck);
+                    armorSetId = armor.SetId;
                 }
             }
 
@@ -230,10 +242,11 @@ namespace FolkIdle.Server.Engine
                 if (leggings != null)
                 {
                     AddAffixTotals(leggings.AffixPayload, ref totalAttack, ref totalDefense, ref totalCrit, ref totalLuck);
+                    leggingsSetId = leggings.SetId;
                 }
             }
 
-            return (totalAttack, totalDefense, totalCrit, totalLuck);
+            return (totalAttack, totalDefense, totalCrit, totalLuck, weaponSetId, armorSetId, leggingsSetId);
         }
 
         // Affix keys are the plain numeric slot ids EquipmentGenerator writes

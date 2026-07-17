@@ -256,6 +256,15 @@ namespace FolkIdle.Server.Engine
         public int CachedEquippedCritBonus;
         public int CachedEquippedLuckBonus;
 
+        // Modul: Architecture Overhaul, Part 4. Per-slot equipment SetId
+        // (0 = no set), refreshed alongside the flat totals above on every
+        // equip/unequip and at login - fed into SetBonusEngine.Evaluate at
+        // stat-recalculation time via a stack-allocated span, never a
+        // heap array.
+        public int CachedWeaponSetId;
+        public int CachedArmorSetId;
+        public int CachedLeggingsSetId;
+
         // Cached passive Codex multipliers. Recomputed only on login or Codex
         // level-up (see CodexEngine.RecalculateAndSyncMultipliersAsync); read as
         // plain O(1) field access from the 10 Hz tick, never recalculated there.

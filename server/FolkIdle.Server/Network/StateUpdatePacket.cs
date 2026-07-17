@@ -1,4 +1,9 @@
 using System.Runtime.InteropServices;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Network
 {
@@ -52,7 +57,14 @@ namespace FolkIdle.Server.Network
         // player's CurrentLevel is below an item's derived RequiredLevel -
         // blocks both market purchase and equipping of over-leveled gear
         // (see EquipmentLevelGate).
-        LevelTooLow = 13
+        LevelTooLow = 13,
+
+        // Modul: Architecture Overhaul, Part 2. Returned by
+        // SimulationEngine.ChangeCharacterActivityAsync when another
+        // character belonging to the same player already occupies the
+        // requested gathering or combat activity id - see
+        // CharacterSlotEngine.IsActivityOccupiedByAnotherSlot.
+        NodeOccupied = 14
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

@@ -7,8 +7,14 @@ using System.Threading.Tasks;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using FolkIdle.Server.Engine;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
-namespace FolkIdle.Server.Engine
+namespace FolkIdle.Server.Domain.Shared
 {
     public class StateCheckpointManager
     {
@@ -384,7 +390,7 @@ namespace FolkIdle.Server.Engine
             // derived stat totals StatsCalculator reads every tick are not - they
             // must be recomputed once at login rather than starting zeroed until
             // the player's next equip action.
-            (int equippedAttack, int equippedDefense, int equippedCrit, int equippedLuck) =
+            (int equippedAttack, int equippedDefense, int equippedCrit, int equippedLuck, int equippedWeaponSetId, int equippedArmorSetId, int equippedLeggingsSetId) =
                 await EquipmentSlotEngine.ComputeEquippedTotalsAsync(dbContext, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
 
             var mentorCount = await dbContext.MentorshipAcademyAssignments
@@ -564,6 +570,9 @@ namespace FolkIdle.Server.Engine
                 CachedEquippedFlatDefense = equippedDefense,
                 CachedEquippedCritBonus = equippedCrit,
                 CachedEquippedLuckBonus = equippedLuck,
+                CachedWeaponSetId = equippedWeaponSetId,
+                CachedArmorSetId = equippedArmorSetId,
+                CachedLeggingsSetId = equippedLeggingsSetId,
                 LogicEpochCounter = player.LogicEpochCounter,
                 BankedChronoSeconds = accountChrono.BankedChronoSeconds,
                 IsChronoAccelerating = chronoAccelerationActive,

@@ -3,8 +3,14 @@ using System.Data;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using FolkIdle.Server.Models;
+using FolkIdle.Server.Engine;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
-namespace FolkIdle.Server.Engine
+namespace FolkIdle.Server.Domain.Progression
 {
     // Modul: 7-day escalating daily login reward. Keyed off
     // PlayerRecord.LastLoginTimestamp/LoginStreakDays rather than any

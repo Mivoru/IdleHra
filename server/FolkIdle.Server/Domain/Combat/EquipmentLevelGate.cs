@@ -1,4 +1,6 @@
-namespace FolkIdle.Server.Engine
+using FolkIdle.Server.Engine;
+
+namespace FolkIdle.Server.Domain.Combat
 {
     // Modul: Advanced Economy Refactoring, Part 2.2. Single authoritative
     // derivation of an equipment item's RequiredLevel from its structural

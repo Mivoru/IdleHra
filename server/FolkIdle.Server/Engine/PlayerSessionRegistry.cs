@@ -1,5 +1,10 @@
 using System.Collections.Concurrent;
 using System.Linq;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Engine
 {
@@ -42,6 +47,13 @@ namespace FolkIdle.Server.Engine
         public int EquippedFlatDefense;
         public int EquippedCritBonus;
         public int EquippedLuckBonus;
+
+        // Modul: Architecture Overhaul, Part 4. Per-slot SetId, so the
+        // tick thread can cache them onto TickStatePayload for
+        // SetBonusEngine.Evaluate at recalculation time.
+        public int EquippedWeaponSetId;
+        public int EquippedArmorSetId;
+        public int EquippedLeggingsSetId;
     }
 
     // Modul: GuildManagementEngine's create/join/leave/kick handlers run on

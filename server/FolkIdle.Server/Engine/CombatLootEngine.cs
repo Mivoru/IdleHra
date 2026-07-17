@@ -7,6 +7,11 @@ using System.Threading.Tasks;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Engine
 {
@@ -152,6 +157,29 @@ namespace FolkIdle.Server.Engine
             }
         }
 
+        // Modul: Architecture Overhaul, Part 3. Independent Multi-Drop
+        // Evaluation. A single kill previously guaranteed exactly one
+        // equipment roll (100% base chance, only rarity was randomized).
+        // Every category below now rolls independently, so a kill can
+        // award materials and several equipment pieces in the same event,
+        // or none at all. Baselines sit in the GDD's stated 0.33%-0.50%
+        // band; materials roll far more often since they are the common
+        // case the crafting economy depends on.
+        private const double MaterialDropChance = 0.35;
+        private const double MeleeWeaponDropChance = 0.0050;
+        private const double RangedWeaponDropChance = 0.0040;
+        private const double MagicWeaponDropChance = 0.0040;
+        private const double HelperDropChance = 0.0033;
+
+        // Modul: approximate backpack capacity used purely to decide
+        // whether an equipment drop must be redirected to overflow
+        // handling - mirrors StateCheckpointManager's default 20-slot
+        // Backpack (see InventorySpaceRemaining's default initializer);
+        // the Human race's variable bonus slots are intentionally not
+        // modeled here since this check only needs to be conservative,
+        // never exact.
+        private const int BaseBackpackCapacity = 20;
+
         private async Task ProcessMonsterLootDropAsync(long playerId, int monsterId, float lootLuckPct)
         {
             int monsterRegion = ContentRegistry.GetMonsterRegionTier(monsterId);
@@ -163,31 +191,43 @@ namespace FolkIdle.Server.Engine
             // % 6 == 0), so "regional boss" means the same thing everywhere.
             bool isRegionalBoss = monsterId % 6 == 0;
 
-            int chosenItemId = SelectRegionalEquipmentItemId(monsterRegion);
-            if (chosenItemId == 0) return;
-
-            int tier = RarityTier.RollTier(lootLuckPct);
-            string baseItemId = ContentRegistry.GetItemBaseId(chosenItemId);
-            bool isWeapon = baseItemId.Contains("_weapon_slot_");
-
-            string affixPayload = BuildAffixPayload(tier, monsterRegion, isWeapon);
-
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
             using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
             try
             {
-                var item = new EquipmentInstance
-                {
-                    BaseItemId = baseItemId,
-                    PlayerId = playerId,
-                    QualityTier = tier,
-                    AffixPayload = affixPayload,
-                    IsAffixLocked = false
-                };
+                int backpackCount = await dbContext.EquipmentInstances.CountAsync(e => e.PlayerId == playerId);
+                bool backpackFull = backpackCount >= BaseBackpackCapacity;
 
-                dbContext.EquipmentInstances.Add(item);
+                // Roll 1: Crafting Materials, quantity bounded by the loot
+                // table entry's authored [MinQuantity, MaxQuantity] range.
+                if (Random.Shared.NextDouble() < MaterialDropChance)
+                {
+                    int monsterLootTableId = GetMonsterLootTableId(monsterId);
+                    LootTableEntry[] lootTable = ContentRegistry.GetLootTable(monsterLootTableId).ToArray();
+                    if (lootTable.Length > 0)
+                    {
+                        await GrantMaterialDropAsync(dbContext, playerId, lootTable);
+                    }
+                }
+
+                // Rolls 2-5: Melee, Ranged, Magic, Helper - each fully
+                // independent of the others and of the materials roll
+                // above.
+                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, backpackFull, "_melee_weapon_slot_", MeleeWeaponDropChance);
+                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, backpackFull, "_ranged_weapon_slot_", RangedWeaponDropChance);
+                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, backpackFull, "_magic_weapon_slot_", MagicWeaponDropChance);
+                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, backpackFull, "_helper_offhand_", HelperDropChance);
+
+                // Regional Bosses always guarantee at least one extra armor
+                // piece on top of whatever the independent rolls produced,
+                // preserving the previous "boss kills feel rewarding" floor.
+                if (isRegionalBoss)
+                {
+                    await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, backpackFull, "_armor_slot_", 1.0);
+                }
+
                 await dbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
 
@@ -204,6 +244,105 @@ namespace FolkIdle.Server.Engine
             }
         }
 
+        // Modul: no direct MonsterId -> LootTableId lookup existed on
+        // ContentRegistry outside of the full MonsterDefinition record -
+        // this mirrors the exact lookup SimulationEngine's own combat tick
+        // already performs (index by Id - 1 into the Monsters span).
+        private static int GetMonsterLootTableId(int monsterId)
+        {
+            var monsters = ContentRegistry.Monsters;
+            if (monsterId < 1 || monsterId > monsters.Length)
+            {
+                return 0;
+            }
+            return monsters[monsterId - 1].LootTableId;
+        }
+
+        // Modul: Architecture Overhaul, Part 3. Grants a single weighted
+        // material entry from the monster's loot table at a quantity drawn
+        // from its authored range; MaxQuantity <= 0 (every entry authored
+        // before this pass) preserves the legacy one-unit-per-success
+        // behavior instead of rolling an empty range.
+        private static async Task GrantMaterialDropAsync(FolkIdleDbContext dbContext, long playerId, LootTableEntry[] lootTable)
+        {
+            int totalWeight = 0;
+            for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight;
+            if (totalWeight <= 0) return;
+
+            int roll = Random.Shared.Next(totalWeight);
+            int cumulative = 0;
+            for (int i = 0; i < lootTable.Length; i++)
+            {
+                cumulative += lootTable[i].Weight;
+                if (roll >= cumulative) continue;
+
+                var entry = lootTable[i];
+                int quantity = entry.MaxQuantity > 0
+                    ? Random.Shared.Next(Math.Max(1, entry.MinQuantity), entry.MaxQuantity + 1)
+                    : 1;
+
+                // Modul: GetMaterialString only covers the original 6
+                // hardcoded gathering materials (ids 1-6) and falls back
+                // to "unknown" for everything else - the 501-525 monster
+                // loot range (ids 250+) needs GetItemBaseId, the same
+                // full-catalog lookup equipment drops already use.
+                string materialItemId = ContentRegistry.GetItemBaseId(entry.ItemId);
+                var existing = await dbContext.CommodityRecords
+                    .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {materialItemId} FOR UPDATE")
+                    .SingleOrDefaultAsync();
+
+                if (existing == null)
+                {
+                    dbContext.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = materialItemId, Quantity = quantity });
+                }
+                else
+                {
+                    existing.Quantity += quantity;
+                }
+                return;
+            }
+        }
+
+        // Modul: Architecture Overhaul, Part 3. One independent
+        // category roll. On success, picks a random matching-category
+        // regional item, rolls its rarity tier, and either creates the
+        // EquipmentInstance directly (Backpack has room) or scraps it into
+        // the monster's own regional raw material deposited straight into
+        // the infinite Village Stash (Backpack is full) - the drop is
+        // never silently discarded during an offline catch-up burst.
+        private async Task TryRollEquipmentCategoryAsync(FolkIdleDbContext dbContext, long playerId, int monsterId, int monsterRegion, float lootLuckPct, bool backpackFull, string categorySubstring, double dropChance)
+        {
+            if (Random.Shared.NextDouble() >= dropChance) return;
+
+            int chosenItemId = SelectRegionalEquipmentItemId(monsterRegion, categorySubstring);
+            if (chosenItemId == 0) return;
+
+            int tier = RarityTier.RollTier(lootLuckPct);
+            string baseItemId = ContentRegistry.GetItemBaseId(chosenItemId);
+            bool isWeapon = baseItemId.Contains("_weapon_slot_");
+
+            if (backpackFull)
+            {
+                LootTableEntry[] monsterLootTable = ContentRegistry.GetLootTable(GetMonsterLootTableId(monsterId)).ToArray();
+                string scrapMaterialId = monsterLootTable.Length > 0
+                    ? ContentRegistry.GetItemBaseId(monsterLootTable[0].ItemId)
+                    : "iron_ore";
+                int scrapValue = Math.Max(1, tier * monsterRegion);
+                await Domain.Economy.InventoryAndStashSystem.DepositToStashAsync(dbContext, playerId, scrapMaterialId, scrapValue);
+                return;
+            }
+
+            string affixPayload = BuildAffixPayload(tier, monsterRegion, isWeapon);
+            dbContext.EquipmentInstances.Add(new EquipmentInstance
+            {
+                BaseItemId = baseItemId,
+                PlayerId = playerId,
+                QualityTier = tier,
+                AffixPayload = affixPayload,
+                IsAffixLocked = false
+            });
+        }
+
         // Modul 10/11/12: there is no hand-authored per-monster equipment drop
         // table anywhere in this codebase. This derives one deterministically
         // from ContentRegistry.ItemDefinitions' existing RegionTier field
@@ -211,7 +350,7 @@ namespace FolkIdle.Server.Engine
         // RegionTier matches the killed monster's region is a valid candidate.
         // Reservoir sampling of 1 keeps this a single allocation-free pass
         // over the bounded static item table.
-        private static int SelectRegionalEquipmentItemId(int monsterRegion)
+        private static int SelectRegionalEquipmentItemId(int monsterRegion, string categorySubstring)
         {
             ReadOnlySpan<ItemDefinition> items = ContentRegistry.ItemDefinitions;
             int matchCount = 0;
@@ -222,7 +361,7 @@ namespace FolkIdle.Server.Engine
                 if (items[i].RegionTier != monsterRegion) continue;
 
                 string baseItemId = ContentRegistry.GetItemBaseId(items[i].Id);
-                if (!baseItemId.Contains("_weapon_slot_") && !baseItemId.Contains("_armor_slot_")) continue;
+                if (!baseItemId.Contains(categorySubstring)) continue;
 
                 matchCount++;
                 if (Random.Shared.Next(matchCount) == 0)

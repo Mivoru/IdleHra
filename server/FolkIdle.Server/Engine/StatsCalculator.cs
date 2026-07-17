@@ -1,4 +1,9 @@
 using System.Runtime.InteropServices;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
+using FolkIdle.Server.Domain.Social;
+using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Engine
 {
@@ -46,11 +51,22 @@ namespace FolkIdle.Server.Engine
         public float MiningOreDuplicationBonusPct { get; set; }
         public float WoodcuttingYieldBonusPct { get; set; }
         public float CritMitigationPct { get; set; }
+
+        // Modul: Architecture Overhaul, Part 4. Equipment set bonuses -
+        // see SetBonusEngine. FireDamageMultiplierPct/ThornsReflection/
+        // CooldownReduction/BurnApplication/CcImmunity are 4-piece
+        // mechanics computed here but not yet consumed by the live combat
+        // tick, matching CritMitigationPct's own precedent above.
+        public float SetFireDamageMultiplierPct { get; set; }
+        public bool SetThornsReflectionActive { get; set; }
+        public bool SetCooldownReductionActive { get; set; }
+        public bool SetBurnApplicationActive { get; set; }
+        public bool SetCcImmunityActive { get; set; }
     }
 
     public static class StatsCalculator
     {
-        public static CombatStats Calculate(int str, int dex, int con, int lck, int activeOffensivePotionId = 0, int activeDefensivePotionId = 0, int activeAgePhase = 1, int completedAreaFlags = 0, int activeRaceId = 0, int humanMastery = 0, int vilaMastery = 0, int draugrMastery = 0, int equippedFlatAttack = 0, int equippedFlatDefense = 0, int equippedCritBonus = 0, int equippedLuckBonus = 0, bool isEpicMutation = false, int locusSpeed = 0, int locusCrit = 0)
+        public static CombatStats Calculate(int str, int dex, int con, int lck, int activeOffensivePotionId = 0, int activeDefensivePotionId = 0, int activeAgePhase = 1, int completedAreaFlags = 0, int activeRaceId = 0, int humanMastery = 0, int vilaMastery = 0, int draugrMastery = 0, int equippedFlatAttack = 0, int equippedFlatDefense = 0, int equippedCritBonus = 0, int equippedLuckBonus = 0, bool isEpicMutation = false, int locusSpeed = 0, int locusCrit = 0, System.ReadOnlySpan<int> equippedSetIds = default)
         {
             var stats = new CombatStats();
 
@@ -214,6 +230,24 @@ namespace FolkIdle.Server.Engine
             // the age-phase falloff below.
             stats.CritChancePct += locusCrit * 0.05f;
             stats.AttackSpeedPct += locusSpeed * 0.05f;
+
+            // Modul: Architecture Overhaul, Part 4. Equipment set bonuses -
+            // applied after individual-item affix totals (equippedFlatAttack
+            // etc. above) but before the age-phase falloff below, so set
+            // bonuses are subject to the same age scaling as every other
+            // external stat source, matching equipped gear's own placement.
+            SetBonusEngine.SetBonusResult setBonus = SetBonusEngine.Evaluate(equippedSetIds);
+            stats.FlatMeleeDamage += setBonus.FlatAttackPowerBonus;
+            stats.FlatRangedDamage += setBonus.FlatAttackPowerBonus;
+            if (setBonus.TotalArmorMultiplierPct > 0f)
+            {
+                stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * (1f + setBonus.TotalArmorMultiplierPct / 100f));
+            }
+            stats.SetFireDamageMultiplierPct = setBonus.FireDamageMultiplierPct;
+            stats.SetThornsReflectionActive = setBonus.ThornsReflectionActive;
+            stats.SetCooldownReductionActive = setBonus.CooldownReductionActive;
+            stats.SetBurnApplicationActive = setBonus.BurnApplicationActive;
+            stats.SetCcImmunityActive = setBonus.CcImmunityActive;
 
             // Age penalties: 0=Child, 1=Adult, 2=Senior, 3=Old
             if (activeAgePhase == 2)
