@@ -339,7 +339,7 @@ namespace FolkIdle.Client.Engine
 
         private void Awake()
         {
-            _obfuscationPrngState = unchecked((uint)System.DateTime.UtcNow.Ticks) ^ unchecked((uint)GetInstanceID());
+            _obfuscationPrngState = unchecked((uint)System.DateTime.UtcNow.Ticks) ^ unchecked((uint)GetEntityId().GetRawData());
             if (_obfuscationPrngState == 0u) _obfuscationPrngState = 0x6D2B79F5u;
 
             _playerHpCell = new ObfuscatedValue<float>(0f, RollObfuscationKey());
