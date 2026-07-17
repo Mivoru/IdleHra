@@ -12,7 +12,7 @@ namespace FolkIdle.Server.Models
         public GuildRecord? Guild { get; set; }
         
         [Required]
-        [MaxLength(100)]
+        [MaxLength(255)]
         public string CommodityId { get; set; } = string.Empty;
         
         public long TotalAmountContributed { get; set; }

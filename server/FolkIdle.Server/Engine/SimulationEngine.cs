@@ -1144,6 +1144,19 @@ namespace FolkIdle.Server.Engine
                                     TerminateSessionForSecurity(pId);
                                     continue;
                                 }
+
+                                // Modul: Deferred Part 5 Implementation,
+                                // Part 2. Food/potion/Death Ward item ids
+                                // apply their buff slots directly on the
+                                // tick-thread payload here (command-time
+                                // string classification, per-tick effects
+                                // stay pure int); non-consumable ids fall
+                                // through to the legacy status-effect
+                                // dispatch below unchanged.
+                                if (ConsumableEngine.TryApplyConsumable(ref payload, (int)itemId))
+                                {
+                                    continue;
+                                }
                             }
 
                             SafeDispatchAsync("ConsumeConsumable", pId, async () => {
@@ -3469,6 +3482,28 @@ namespace FolkIdle.Server.Engine
                 payload.AccumulatedIron += (float)(ironRate * deltaTimeSeconds);
             }
 
+            // Modul: Economy Polish, Part 2. Town Hall passive gold on the
+            // live tick: the accumulator gains the hourly rate once per
+            // tick, so 36000 accumulated units (36000 ticks = one hour)
+            // pay out exactly one hour's rate - pure integer arithmetic,
+            // no floats, no drift, zero allocation. Gold flows through the
+            // same AddGold/RedisPendingGoldDelta channel combat gold uses,
+            // landing in the CommodityRecords gold row at flush.
+            long townHallRate = VillageManagementEngine.GetTownHallGoldRatePerHour(payload.TownHallLevel);
+            if (townHallRate > 0L)
+            {
+                payload.TownHallGoldAccumulator += townHallRate;
+                long wholeGold = payload.TownHallGoldAccumulator / 36000L;
+                if (wholeGold > 0L)
+                {
+                    payload.TownHallGoldAccumulator -= wholeGold * 36000L;
+                    payload.AddGold(wholeGold);
+                    payload.RedisPendingGoldDelta += wholeGold;
+                    payload.RequiresRedisFlush = true;
+                    payload.IsDirty = true;
+                }
+            }
+
             while (payload.AccumulatedWood >= 1.0f - ProductionAccumulatorEpsilon)
             {
                 payload.AccumulatedWood -= 1.0f;
@@ -3584,25 +3619,12 @@ namespace FolkIdle.Server.Engine
                 if (payload.CurrentMana > maxMana) payload.CurrentMana = maxMana;
             }
 
-            if (payload.OffensivePotionDurationMs > 0)
-            {
-                payload.OffensivePotionDurationMs -= 100;
-                if (payload.OffensivePotionDurationMs <= 0)
-                {
-                    payload.OffensivePotionDurationMs = 0;
-                    payload.ActiveOffensivePotionId = 0;
-                }
-            }
-
-            if (payload.DefensivePotionDurationMs > 0)
-            {
-                payload.DefensivePotionDurationMs -= 100;
-                if (payload.DefensivePotionDurationMs <= 0)
-                {
-                    payload.DefensivePotionDurationMs = 0;
-                    payload.ActiveDefensivePotionId = 0;
-                }
-            }
+            // Modul: Deferred Part 5 Implementation, Part 2. The inline
+            // offensive/defensive countdown moved into
+            // ConsumableEngine.TickBuffCountdowns (unchanged semantics)
+            // and gained the food-buff slot - one unit-testable,
+            // zero-allocation method for all three expirations.
+            ConsumableEngine.TickBuffCountdowns(ref payload);
 
             // Child Maturation Sub-tick (Breeding Loop)
             if (payload.ActiveChildMaturationMs > 0)
@@ -3618,8 +3640,17 @@ namespace FolkIdle.Server.Engine
             if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out var gatheringNode))
             {
                 int masteryLevel = gatheringNode.ProfessionType == 0 ? payload.WoodcuttingMasteryLevel : payload.MiningMasteryLevel;
-                int requiredTicks = gatheringNode.BaseTickThreshold - (masteryLevel * 2) - payload.CachedCurrentToolTier;
-                if (requiredTicks < 2) requiredTicks = 2;
+
+                // Modul: Deferred Part 5 Implementation, Parts 1/3. The
+                // required-tick math (legacy flat reductions + the tool
+                // family's percentage speed bonus + the village production
+                // building's +5 percent per level) lives in
+                // GatheringToolEngine.ComputeRequiredTicks - pure integer
+                // arithmetic over unmanaged payload ids, zero allocation on
+                // this 10Hz path. Lumberjack accelerates Woodcutting, Mine
+                // accelerates Mining.
+                int villageProductionLevel = gatheringNode.ProfessionType == 0 ? payload.LumberjackLevel : payload.MineLevel;
+                int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, payload.CachedCurrentToolTier, villageProductionLevel);
                 payload.RequiredProgressTicks = requiredTicks;
                 payload.GatheringProgressTicks++;
 
@@ -3793,6 +3824,19 @@ namespace FolkIdle.Server.Engine
             long baseMilliHp = 100000L;
             long effectiveMilliHp = baseMilliHp + (baseMilliHp * lineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.MaxHp * 1000L);
             int effectiveMaxHp = (int)effectiveMilliHp;
+
+            // Modul: Deferred Part 5 Implementation, Part 2. Active food
+            // buff: flat HP regeneration while in combat - 2 percent of
+            // effective max HP per second (effectiveMaxHp / 500 per 10Hz
+            // tick, minimum 1 milli-HP). Pure integer arithmetic on
+            // unmanaged payload fields - zero allocation.
+            if (payload.ActiveFoodBuffId > 0 && payload.PlayerHp > 0 && payload.PlayerHp < effectiveMaxHp)
+            {
+                int regenPerTick = effectiveMaxHp / ConsumableEngine.FoodRegenDivisor;
+                if (regenPerTick < 1) regenPerTick = 1;
+                payload.PlayerHp += regenPerTick;
+                if (payload.PlayerHp > effectiveMaxHp) payload.PlayerHp = effectiveMaxHp;
+            }
 
             if (payload.PlayerHp <= 0)
             {
@@ -3971,12 +4015,21 @@ namespace FolkIdle.Server.Engine
 
             if (payload.PlayerHp <= 0)
             {
-                payload.PlayerHp = effectiveMaxHp;
-                payload.CurrentMonsterId = 0;
-                payload.CurrentMonsterHp = 0;
-                payload.CombatTargetTickAccumulator = 0;
-                payload.ActiveActivityId = 0;
-                return;
+                // Modul: Deferred Part 5 Implementation, Part 2. Death
+                // Ward Elixir - intercepts the lethal blow BEFORE the
+                // respawn reset: the player revives in place at 20 percent
+                // max HP, keeps their activity, and the ward consumes
+                // itself. Pure int compare against a cached item id - zero
+                // allocation on this combat path.
+                if (!ConsumableEngine.TryInterceptLethalDamage(ref payload, effectiveMaxHp))
+                {
+                    payload.PlayerHp = effectiveMaxHp;
+                    payload.CurrentMonsterId = 0;
+                    payload.CurrentMonsterHp = 0;
+                    payload.CombatTargetTickAccumulator = 0;
+                    payload.ActiveActivityId = 0;
+                    return;
+                }
             }
 
             if (payload.CurrentMonsterHp <= 0 && payload.ActiveActivityId > 0)

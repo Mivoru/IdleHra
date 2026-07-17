@@ -24,7 +24,7 @@ namespace FolkIdle.Server.Models
         public string OrderType { get; set; } = "SELL";
 
         [Required]
-        [MaxLength(100)]
+        [MaxLength(255)]
         public string BaseItemId { get; set; } = string.Empty;
 
         public int QualityTier { get; set; }

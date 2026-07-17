@@ -193,6 +193,13 @@ namespace FolkIdle.Server.Engine
                         player.EquippedWeaponId = state.EquippedWeaponId == 0L ? null : state.EquippedWeaponId;
                         player.EquippedArmorId = state.EquippedArmorId == 0L ? null : state.EquippedArmorId;
                         player.EquippedLeggingsId = state.EquippedLeggingsId == 0L ? null : state.EquippedLeggingsId;
+                        long consumableFlushEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                        player.ActiveOffensivePotionId = state.ActiveOffensivePotionId;
+                        player.ActiveOffensivePotionExpiresEpoch = state.OffensivePotionDurationMs > 0 ? consumableFlushEpoch + state.OffensivePotionDurationMs / 1000L : 0L;
+                        player.ActiveDefensivePotionId = state.ActiveDefensivePotionId;
+                        player.ActiveDefensivePotionExpiresEpoch = state.DefensivePotionDurationMs > 0 ? consumableFlushEpoch + state.DefensivePotionDurationMs / 1000L : 0L;
+                        player.ActiveFoodId = state.ActiveFoodBuffId;
+                        player.ActiveFoodExpiresEpoch = state.FoodBuffDurationMs > 0 ? consumableFlushEpoch + state.FoodBuffDurationMs / 1000L : 0L;
                         player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
                         player.PremiumDiamonds = state.PremiumCurrency;
                         player.AvailableSkillPoints = state.AvailableSkillPoints;
@@ -406,6 +413,7 @@ namespace FolkIdle.Server.Engine
             int quarryLevel = 0;
             int mineLevel = 0;
             int warehouseLevel = 0;
+            int townHallLevel = 0;
             byte pendingUpgradeBuildingId = 0;
             long pendingUpgradeCompletesAtEpoch = 0;
             for (int i = 0; i < villageRows.Count; i++)
@@ -418,6 +426,7 @@ namespace FolkIdle.Server.Engine
                 else if (villageRows[i].BuildingId == VillageManagementEngine.QuarryBuildingId) quarryLevel = villageRows[i].CurrentLevel;
                 else if (villageRows[i].BuildingId == VillageManagementEngine.MineBuildingId) mineLevel = villageRows[i].CurrentLevel;
                 else if (villageRows[i].BuildingId == VillageManagementEngine.WarehouseBuildingId) warehouseLevel = villageRows[i].CurrentLevel;
+                else if (villageRows[i].BuildingId == VillageManagementEngine.TownHallBuildingId) townHallLevel = villageRows[i].CurrentLevel;
 
                 if (villageRows[i].UpgradeTargetLevel > 0)
                 {
@@ -491,6 +500,11 @@ namespace FolkIdle.Server.Engine
             var dailyQuests = await QuestEngine.EnsureAndLoadDailyQuestsAsync(dbContext, playerId, questLoadEpochSeconds);
             await dbContext.SaveChangesAsync();
 
+            // Modul: Deferred Part 5 Implementation, Part 2 - consumable
+            // expiry hydration reference clock (see the ActiveOffensive/
+            // Defensive/Food assignments in the payload build below).
+            long nowEpochSeconds = questLoadEpochSeconds;
+
             var payload = new TickStatePayload
             {
                 CachedCodexYieldMultiplier = codexYieldMultiplier,
@@ -516,10 +530,6 @@ namespace FolkIdle.Server.Engine
                 GlobalNodeRemainingHp = globalNodeRemainingHp,
                 CachedMiningMonolithLevel = miningMonolith,
                 CachedWoodcuttingMonolithLevel = woodMonolith,
-                ActiveOffensivePotionId = player.ActiveOffensivePotionId,
-                OffensivePotionDurationMs = player.OffensivePotionDurationMs,
-                ActiveDefensivePotionId = player.ActiveDefensivePotionId,
-                DefensivePotionDurationMs = player.DefensivePotionDurationMs,
                 CachedMentorCount = mentorCount,
                 ClaimedAchievementFlags = achievementFlags,
                 TotalAchievementsClaimedCount = (uint)totalAchievements,
@@ -538,6 +548,18 @@ namespace FolkIdle.Server.Engine
                 EquippedArmorId = player.EquippedArmorId ?? 0L,
                 EquippedLeggingsId = player.EquippedLeggingsId ?? 0L,
                 XpPenaltyExpiresEpoch = player.XpPenaltyExpiresEpoch,
+
+                // Modul: Deferred Part 5 Implementation, Part 2. Durable
+                // consumable hydration - the persisted absolute expiry
+                // epochs convert back to live millisecond countdowns
+                // against the server clock; an already-expired buff loads
+                // as inactive (id 0, countdown 0).
+                ActiveOffensivePotionId = player.ActiveOffensivePotionExpiresEpoch > nowEpochSeconds ? player.ActiveOffensivePotionId : 0,
+                OffensivePotionDurationMs = player.ActiveOffensivePotionExpiresEpoch > nowEpochSeconds ? (int)Math.Min(int.MaxValue, (player.ActiveOffensivePotionExpiresEpoch - nowEpochSeconds) * 1000L) : 0,
+                ActiveDefensivePotionId = player.ActiveDefensivePotionExpiresEpoch > nowEpochSeconds ? player.ActiveDefensivePotionId : 0,
+                DefensivePotionDurationMs = player.ActiveDefensivePotionExpiresEpoch > nowEpochSeconds ? (int)Math.Min(int.MaxValue, (player.ActiveDefensivePotionExpiresEpoch - nowEpochSeconds) * 1000L) : 0,
+                ActiveFoodBuffId = player.ActiveFoodExpiresEpoch > nowEpochSeconds ? player.ActiveFoodId : 0,
+                FoodBuffDurationMs = player.ActiveFoodExpiresEpoch > nowEpochSeconds ? (int)Math.Min(int.MaxValue, (player.ActiveFoodExpiresEpoch - nowEpochSeconds) * 1000L) : 0,
                 CachedEquippedFlatAttack = equippedAttack,
                 CachedEquippedFlatDefense = equippedDefense,
                 CachedEquippedCritBonus = equippedCrit,
@@ -566,6 +588,7 @@ namespace FolkIdle.Server.Engine
                 QuarryLevel = ClampByte(quarryLevel),
                 MineLevel = ClampByte(mineLevel),
                 WarehouseLevel = ClampByte(warehouseLevel),
+                TownHallLevel = townHallLevel,
                 PendingUpgradeBuildingId = pendingUpgradeBuildingId,
                 PendingUpgradeCompletesAtEpoch = pendingUpgradeCompletesAtEpoch,
                 CachedWoodStock = woodStock,
@@ -904,6 +927,13 @@ namespace FolkIdle.Server.Engine
                         player.EquippedWeaponId = state.EquippedWeaponId == 0L ? null : state.EquippedWeaponId;
                         player.EquippedArmorId = state.EquippedArmorId == 0L ? null : state.EquippedArmorId;
                         player.EquippedLeggingsId = state.EquippedLeggingsId == 0L ? null : state.EquippedLeggingsId;
+                        long consumableFlushEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                        player.ActiveOffensivePotionId = state.ActiveOffensivePotionId;
+                        player.ActiveOffensivePotionExpiresEpoch = state.OffensivePotionDurationMs > 0 ? consumableFlushEpoch + state.OffensivePotionDurationMs / 1000L : 0L;
+                        player.ActiveDefensivePotionId = state.ActiveDefensivePotionId;
+                        player.ActiveDefensivePotionExpiresEpoch = state.DefensivePotionDurationMs > 0 ? consumableFlushEpoch + state.DefensivePotionDurationMs / 1000L : 0L;
+                        player.ActiveFoodId = state.ActiveFoodBuffId;
+                        player.ActiveFoodExpiresEpoch = state.FoodBuffDurationMs > 0 ? consumableFlushEpoch + state.FoodBuffDurationMs / 1000L : 0L;
                         player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
                         player.PremiumDiamonds = state.PremiumCurrency;
                         await UpsertAccountChronoRegistryAsync(dbContext, state);

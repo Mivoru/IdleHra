@@ -3,6 +3,7 @@ using System;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FolkIdle.Server.Migrations
 {
     [DbContext(typeof(FolkIdleDbContext))]
-    partial class FolkIdleDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260717120615_AddConsumableExpiryAndFoodBuff")]
+    partial class AddConsumableExpiryAndFoodBuff
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -123,8 +126,8 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<string>("BaseItemId")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<bool>("IsAffixLocked")
                         .HasColumnType("boolean");
@@ -210,8 +213,8 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<string>("ItemId")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<long>("PlayerId")
                         .HasColumnType("bigint");
@@ -319,8 +322,8 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<string>("BaseItemId")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<bool>("IsAffixLocked")
                         .HasColumnType("boolean");
@@ -523,8 +526,8 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<string>("CommodityId")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<long>("GuildId")
                         .HasColumnType("bigint");
@@ -782,8 +785,8 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<string>("BaseItemId")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<long>("BuyerId")
                         .HasColumnType("bigint");
@@ -902,8 +905,8 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<string>("BaseItemId")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<bool>("IsAffixLocked")
                         .HasColumnType("boolean");
@@ -935,8 +938,8 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<string>("BaseItemId")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<long?>("CommodityId")
                         .HasColumnType("bigint");
@@ -1589,8 +1592,8 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<string>("ItemId")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
 
                     b.Property<long>("PlayerId")
                         .HasColumnType("bigint");

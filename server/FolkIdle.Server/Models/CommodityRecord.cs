@@ -8,7 +8,7 @@ namespace FolkIdle.Server.Models
         public long Id { get; set; }
         
         [Required]
-        [MaxLength(100)]
+        [MaxLength(255)]
         public string ItemId { get; set; } = string.Empty;
         
         public long PlayerId { get; set; }

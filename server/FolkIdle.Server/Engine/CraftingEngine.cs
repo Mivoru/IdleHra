@@ -263,9 +263,14 @@ namespace FolkIdle.Server.Engine
                 // structural gear-band forge cap, so a low-band recipe can
                 // never roll past the same ceiling ForgeSplicingEngine
                 // enforces on fusion.
+                // Modul: Deferred Part 5 Implementation, Part 3. The
+                // rarity-shifting workshop is the dedicated Crafting
+                // Workshop structural building (max level 5, +0.05
+                // probability weight per level inside RollCraftedRarity),
+                // no longer the Forge.
                 int workshopLevel = await context.VillageInfrastructures
                     .AsNoTracking()
-                    .Where(v => v.PlayerId == playerId && v.BuildingId == VillageManagementEngine.ForgeBuildingId)
+                    .Where(v => v.PlayerId == playerId && v.BuildingId == VillageManagementEngine.CraftingWorkshopBuildingId)
                     .Select(v => (int?)v.CurrentLevel)
                     .SingleOrDefaultAsync() ?? 0;
 

@@ -6085,5 +6085,271 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(10, CraftingEngine.GetMaxForgeTierForRegion(3));
             Assert.Equal(ForgeSplicingEngine.MaxQualityTier, CraftingEngine.GetMaxForgeTierForRegion(9));
         }
+
+        // Modul: Deferred Part 5 Implementation, Part 1/4. Gathering tool
+        // speed scaling - the pure required-tick computation: every named
+        // tool family's percentage bonus strictly reduces the tick
+        // requirement relative to the tier below, the village production
+        // building adds its +5 percent per level on top, the floor of 2
+        // ticks always holds, and a warm call allocates zero heap bytes.
+        [Fact]
+        public void Test_GatheringToolEngine_ToolTiersAccelerateTicksWithZeroAllocation()
+        {
+            const int baseThreshold = 200;
+
+            int noTool = GatheringToolEngine.ComputeRequiredTicks(baseThreshold, 0, 0, 0);
+            Assert.Equal(baseThreshold, noTool);
+
+            // Each successive tool family must be at least as fast as the
+            // previous, and the top family strictly faster than none.
+            int previous = noTool;
+            for (int tier = 1; tier <= 10; tier++)
+            {
+                int ticks = GatheringToolEngine.ComputeRequiredTicks(baseThreshold, 0, tier, 0);
+                Assert.True(ticks <= previous, $"Tool tier {tier} must not be slower than tier {tier - 1}.");
+                previous = ticks;
+            }
+            Assert.True(previous < noTool, "The best tool family must strictly accelerate gathering.");
+
+            // Void Bark (+200 percent) roughly triples throughput:
+            // (200 - 10) * 100 / 300 = 63.
+            Assert.Equal(63, GatheringToolEngine.ComputeRequiredTicks(baseThreshold, 0, 10, 0));
+
+            // Village production building stacks its +5 percent per level.
+            int withoutMill = GatheringToolEngine.ComputeRequiredTicks(baseThreshold, 0, 1, 0);
+            int withMill = GatheringToolEngine.ComputeRequiredTicks(baseThreshold, 0, 1, 10);
+            Assert.True(withMill < withoutMill, "Ten Lumber Mill levels must accelerate gathering further.");
+
+            Assert.Equal(GatheringToolEngine.MinRequiredTicks, GatheringToolEngine.ComputeRequiredTicks(5, 50, 10, 10));
+
+            GatheringToolEngine.ComputeRequiredTicks(baseThreshold, 10, 5, 3);
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            GatheringToolEngine.ComputeRequiredTicks(baseThreshold, 10, 5, 3);
+            long after = GC.GetAllocatedBytesForCurrentThread();
+            Assert.Equal(0L, after - before);
+        }
+
+        // Modul: Deferred Part 5 Implementation, Part 2/4. Consumable
+        // lifecycle: applying a potion by item id populates the correct
+        // unmanaged buff slot, the countdown expires it deterministically
+        // after exactly its duration in ticks, and the Death Ward Elixir
+        // intercepts a lethal blow, revives at exactly 20 percent max HP,
+        // and clears its own slot (one charge).
+        [Fact]
+        public void Test_ConsumableEngine_PotionLifecycleAndDeathWardIntercept()
+        {
+            Assert.True(ContentRegistry.TryGetItemDefinitionByBaseId("searing_tonic_offensive_potion_consumable", out var tonicDef));
+            Assert.True(ContentRegistry.TryGetItemDefinitionByBaseId("roasted_perch_food_consumable", out var perchDef));
+            Assert.True(ConsumableEngine.DeathWardItemId > 0, "The Death Ward Elixir item must resolve from content.");
+
+            var payload = new TickStatePayload { PlayerId = 970007001L };
+
+            Assert.True(ConsumableEngine.TryApplyConsumable(ref payload, tonicDef.Id));
+            Assert.Equal(tonicDef.Id, payload.ActiveOffensivePotionId);
+            Assert.Equal(ConsumableEngine.PotionDurationMs, payload.OffensivePotionDurationMs);
+
+            Assert.True(ConsumableEngine.TryApplyConsumable(ref payload, perchDef.Id));
+            Assert.Equal(perchDef.Id, payload.ActiveFoodBuffId);
+
+            // A non-consumable item id must be left to the legacy path.
+            Assert.False(ConsumableEngine.TryApplyConsumable(ref payload, 1));
+
+            // Deterministic expiry: exactly duration / 100 ticks clears the
+            // slot without any string work.
+            int expectedTicks = ConsumableEngine.PotionDurationMs / 100;
+            for (int i = 0; i < expectedTicks - 1; i++)
+            {
+                ConsumableEngine.TickBuffCountdowns(ref payload);
+            }
+            Assert.Equal(tonicDef.Id, payload.ActiveOffensivePotionId);
+            ConsumableEngine.TickBuffCountdowns(ref payload);
+            Assert.Equal(0, payload.ActiveOffensivePotionId);
+            Assert.Equal(0, payload.OffensivePotionDurationMs);
+
+            // Death Ward: occupies the defensive slot, intercepts the
+            // lethal blow at exactly 20 percent max HP, consumes itself,
+            // and cannot fire twice.
+            Assert.True(ConsumableEngine.TryApplyConsumable(ref payload, ConsumableEngine.DeathWardItemId));
+            Assert.Equal(ConsumableEngine.DeathWardItemId, payload.ActiveDefensivePotionId);
+
+            payload.PlayerHp = 0;
+            const int maxHp = 500000;
+            Assert.True(ConsumableEngine.TryInterceptLethalDamage(ref payload, maxHp));
+            Assert.Equal(maxHp / 5, payload.PlayerHp);
+            Assert.Equal(0, payload.ActiveDefensivePotionId);
+
+            payload.PlayerHp = 0;
+            Assert.False(ConsumableEngine.TryInterceptLethalDamage(ref payload, maxHp),
+                "A consumed ward must not intercept a second lethal blow.");
+
+            // Zero-allocation proof for the per-tick paths.
+            ConsumableEngine.TickBuffCountdowns(ref payload);
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            ConsumableEngine.TickBuffCountdowns(ref payload);
+            ConsumableEngine.TryInterceptLethalDamage(ref payload, maxHp);
+            long after = GC.GetAllocatedBytesForCurrentThread();
+            Assert.Equal(0L, after - before);
+        }
+
+        // Modul: Deferred Part 5 Implementation, Part 3/4. Structural
+        // village progression: upgrading the Crafting Workshop consumes
+        // Logs + Ores + rare Logs through the unified Backpack+Stash path
+        // (stash covers what the backpack lacks), the Town Hall ceiling
+        // blocks other buildings from out-leveling it, and the workshop
+        // level measurably shifts the stackalloc rarity roll.
+        [Fact]
+        public async Task Test_Village_StructuralUpgradesConsumeUnifiedMaterialsAndGateCeilings()
+        {
+            const long testPlayerId = 970007101L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                // Workshop level 0 -> 1 costs 100 raw_log + 100 copper_ore
+                // + 10 golden_birch_log. Backpack holds only part; the
+                // stash covers the remainder.
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "raw_log", Quantity = 60L });
+                db.VillageStashInstances.Add(new VillageStashInstance { PlayerId = testPlayerId, ItemId = "raw_log", Quantity = 60L });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = 100L });
+                db.VillageStashInstances.Add(new VillageStashInstance { PlayerId = testPlayerId, ItemId = "golden_birch_log", Quantity = 10L });
+                // A production building already at the level-0 Town Hall
+                // ceiling (2) - its next upgrade must be rejected.
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = testPlayerId, BuildingId = VillageManagementEngine.LumberjackBuildingId, CurrentLevel = 2 });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "wood", Quantity = 100000L });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "stone", Quantity = 100000L });
+                await db.SaveChangesAsync();
+            }
+
+            var villageEngine = new VillageManagementEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            await villageEngine.ExecuteUpgradeBuildingAsync(testPlayerId, VillageManagementEngine.CraftingWorkshopBuildingId);
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var workshop = await verifyDb.VillageInfrastructures.AsNoTracking()
+                    .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.CraftingWorkshopBuildingId);
+                Assert.Equal(1, workshop.UpgradeTargetLevel);
+
+                var backpackLogs = await verifyDb.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "raw_log");
+                Assert.Equal(0L, backpackLogs.Quantity);
+                Assert.Equal(20L, (await verifyDb.VillageStashInstances.AsNoTracking().SingleAsync(s => s.PlayerId == testPlayerId && s.ItemId == "raw_log")).Quantity);
+
+                Assert.False(await verifyDb.VillageStashInstances.AsNoTracking().AnyAsync(s => s.PlayerId == testPlayerId && s.ItemId == "golden_birch_log"),
+                    "The fully-consumed rare log stash stack must be removed.");
+            }
+
+            // The Town Hall ceiling: Lumberjack at level 2 with Town Hall 0
+            // must be rejected (ceiling = 2), leaving no pending upgrade
+            // on that building.
+            await villageEngine.ExecuteUpgradeBuildingAsync(testPlayerId, VillageManagementEngine.LumberjackBuildingId);
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var lumberjack = await verifyDb.VillageInfrastructures.AsNoTracking()
+                    .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.LumberjackBuildingId);
+                Assert.Equal(0, lumberjack.UpgradeTargetLevel);
+            }
+
+            // Workshop level shifts the rarity roll: at least one probe
+            // seed lands strictly higher with workshop level 5 than 0.
+            bool shifted = false;
+            double[] probes = { 0.55, 0.70, 0.85, 0.95 };
+            foreach (double probe in probes)
+            {
+                if (CraftingEngine.RollCraftedRarity(0, 5, probe) > CraftingEngine.RollCraftedRarity(0, 0, probe))
+                {
+                    shifted = true;
+                    break;
+                }
+            }
+            Assert.True(shifted, "Workshop level 5 must shift the rarity roll toward higher tiers.");
+        }
+
+        // Modul: Economy Polish, Part 1/3. The varchar(255) expansion: a
+        // base item id longer than the old 100-character limit (the real
+        // 113-character region-10 development weapon string that
+        // previously threw a data-truncation error on insert) round-trips
+        // through "EquipmentInstances" intact.
+        [Fact]
+        public async Task Test_VarcharExpansion_LongBaseItemIdRoundTripsThroughEquipmentInstances()
+        {
+            const long testPlayerId = 970008001L;
+            const string longBaseId = "peruns_stormcaller_structural_weapon_slot_base___adapts_to_matching_high_weapon_skill_archetype_upon_compilation";
+            Assert.True(longBaseId.Length > 100, "The probe id must exceed the old varchar(100) limit to prove anything.");
+
+            long instanceId;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                var instance = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = longBaseId, QualityTier = 5, AffixPayload = "{}" };
+                db.EquipmentInstances.Add(instance);
+                await db.SaveChangesAsync();
+                instanceId = instance.Id;
+            }
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var readBack = await verifyDb.EquipmentInstances.AsNoTracking().SingleAsync(e => e.Id == instanceId);
+                Assert.Equal(longBaseId, readBack.BaseItemId);
+            }
+        }
+
+        // Modul: Economy Polish, Part 2/3. Town Hall passive gold: an
+        // 8-hour offline jump at Town Hall level 3 (450 gold/hour) awards
+        // exactly 3600 gold into the central "CommodityRecords" gold row -
+        // the same row every spender (crafting, forge, market, village
+        // upgrades) reads, so the accrued gold is immediately available
+        // liquidity. The hourly rate table itself is pinned alongside.
+        [Fact]
+        public async Task Test_TownHallPassiveGold_OfflineJumpAwardsRateIntoGoldCommodityRow()
+        {
+            Assert.Equal(50L, VillageManagementEngine.GetTownHallGoldRatePerHour(0));
+            Assert.Equal(50L, VillageManagementEngine.GetTownHallGoldRatePerHour(1));
+            Assert.Equal(150L, VillageManagementEngine.GetTownHallGoldRatePerHour(2));
+            Assert.Equal(450L, VillageManagementEngine.GetTownHallGoldRatePerHour(3));
+            Assert.Equal(1200L, VillageManagementEngine.GetTownHallGoldRatePerHour(4));
+            Assert.Equal(3000L, VillageManagementEngine.GetTownHallGoldRatePerHour(5));
+
+            const long testPlayerId = 970008101L;
+            const long initialGold = 1000L;
+            long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long eightHoursSeconds = 8L * 3600L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = initialGold });
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = testPlayerId, BuildingId = VillageManagementEngine.TownHallBuildingId, CurrentLevel = 3 });
+                await db.SaveChangesAsync();
+            }
+
+            var payload = new TickStatePayload
+            {
+                PlayerId = testPlayerId,
+                LastLogoutTimestamp = nowEpoch - eightHoursSeconds,
+                TownHallLevel = 3
+            };
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await OfflineSimulationEngine.ExtrapolateOfflineProgressAsync(db, payload, nowEpoch);
+            }
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var goldRow = await verifyDb.CommodityRecords.AsNoTracking()
+                    .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "gold");
+
+                // 8 hours * 450/hour = 3600 on top of the seeded balance.
+                Assert.Equal(initialGold + 3600L, goldRow.Quantity);
+            }
+
+            // Zero-allocation proof for the live-tick accrual rate lookup.
+            VillageManagementEngine.GetTownHallGoldRatePerHour(3);
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            long rate = VillageManagementEngine.GetTownHallGoldRatePerHour(3);
+            long after = GC.GetAllocatedBytesForCurrentThread();
+            Assert.Equal(450L, rate);
+            Assert.Equal(0L, after - before);
+        }
     }
 }

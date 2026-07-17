@@ -21,7 +21,7 @@ namespace FolkIdle.Server.Models
         public long PlayerId { get; set; }
 
         [Required]
-        [MaxLength(100)]
+        [MaxLength(255)]
         public string ItemId { get; set; } = string.Empty;
 
         public long Quantity { get; set; }

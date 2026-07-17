@@ -138,6 +138,20 @@ namespace FolkIdle.Server.Engine
         public int ActiveDefensivePotionId;
         public int DefensivePotionDurationMs;
 
+        // Modul: Deferred Part 5 Implementation, Part 2. Active food buff
+        // (HP regeneration over time) - same unmanaged int id + ms
+        // countdown idiom as the potion pair above; see ConsumableEngine.
+        public int ActiveFoodBuffId;
+        public int FoodBuffDurationMs;
+
+        // Modul: Economy Polish, Part 2. Town Hall passive gold. The
+        // accumulator adds the hourly rate once per 10Hz tick; every
+        // 36000 accumulated units (36000 ticks = one hour) equal exactly
+        // one hour's rate in whole gold - pure integer arithmetic, no
+        // floats, no drift, zero allocation on the tick.
+        public int TownHallLevel;
+        public long TownHallGoldAccumulator;
+
         public long WorldBossMaxHp;
         public long WorldBossCurrentHp;
         public int ActiveGlobalEventId;

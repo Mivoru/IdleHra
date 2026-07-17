@@ -78,6 +78,20 @@ namespace FolkIdle.Server.Models
         // database constraint an asymmetric FK here would fight.
         public long? EquippedLeggingsId { get; set; }
 
+        // Modul: Deferred Part 5 Implementation, Part 2. Absolute
+        // server-epoch expiry timestamps for the potion columns that
+        // already exist above (ActiveOffensivePotionId etc.) plus the new
+        // food buff pair. The legacy ms-countdown columns persisted a
+        // buff frozen in place across logout; these epochs make buffs
+        // expire in real server time instead - StateCheckpointManager
+        // writes both on flush and hydrates from the epochs on load. Item
+        // ids stay int (the payload's unmanaged id space, not varchar -
+        // see ConsumableEngine's own doc comment).
+        public long ActiveOffensivePotionExpiresEpoch { get; set; }
+        public long ActiveDefensivePotionExpiresEpoch { get; set; }
+        public int ActiveFoodId { get; set; }
+        public long ActiveFoodExpiresEpoch { get; set; }
+
         // Modul 13.4.3: set by MentorshipEngine when a mentee's contract is
         // terminated before its maturation threshold - while this is in the
         // future, character XP generation is reduced (see StatsCalculator

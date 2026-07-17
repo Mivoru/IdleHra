@@ -23,6 +23,47 @@ namespace FolkIdle.Server.Engine
         public const int MineBuildingId = 7;
         public const int WarehouseBuildingId = 8;
 
+        // Modul: Deferred Part 5 Implementation, Part 3. Two structural
+        // progression buildings, both hard-capped at level 5. Town Hall
+        // gates every other building's level ceiling (see
+        // GetMaxBuildingLevelCeiling); the Crafting Workshop's level feeds
+        // CraftingEngine.RollCraftedRarity's workshop multiplier (+0.05
+        // probability weight per level - the exact parameter that method
+        // already exposes). Their upgrades consume Logs and Ores through
+        // the unified InventoryAndStashSystem path (Backpack first, then
+        // Village Stash) instead of gold or the wood/stone commodity pair.
+        public const int TownHallBuildingId = 9;
+        public const int CraftingWorkshopBuildingId = 10;
+        public const int MaxStructuralBuildingLevel = 5;
+
+        // Town Hall's structural gate: other buildings may not upgrade
+        // beyond 2 + (TownHallLevel * 2) - level 0 Town Hall permits
+        // levels up to 2, a maxed (5) Town Hall permits 12, keeping the
+        // Town Hall on the critical path of village progression.
+        public static int GetMaxBuildingLevelCeiling(int townHallLevel)
+        {
+            return 2 + townHallLevel * 2;
+        }
+
+        // Modul: Economy Polish, Part 2. Town Hall passive gold generation
+        // rate in whole gold per hour, by building level. Pure integer
+        // switch - zero allocation, callable from the 10Hz tick and the
+        // offline extrapolation path alike. Levels 0 and 1 share the base
+        // 50/h rate (an unbuilt Town Hall still trickles the village
+        // baseline); each level thereafter triples the throughput up to
+        // the hard level-5 structural cap.
+        public static long GetTownHallGoldRatePerHour(int townHallLevel)
+        {
+            return townHallLevel switch
+            {
+                <= 1 => 50L,
+                2 => 150L,
+                3 => 450L,
+                4 => 1200L,
+                _ => 3000L
+            };
+        }
+
         public const string WoodCommodityId = "wood";
         public const string StoneCommodityId = "stone";
         public const string IronOreCommodityId = "iron_ore";
@@ -96,6 +137,34 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
+                // Modul: Deferred Part 5 Implementation, Part 3. Town Hall
+                // structural gates: (a) the two structural buildings hard-cap
+                // at level 5; (b) every OTHER building's next level must stay
+                // within the Town Hall's ceiling (2 + TownHallLevel * 2), so
+                // the Town Hall stays on the village's critical path.
+                bool isStructuralBuilding = targetBuildingId == TownHallBuildingId || targetBuildingId == CraftingWorkshopBuildingId;
+                if (isStructuralBuilding && infrastructure.CurrentLevel >= MaxStructuralBuildingLevel)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                if (!isStructuralBuilding && targetBuildingId != TownHallBuildingId)
+                {
+                    int townHallLevel = await db.VillageInfrastructures
+                        .AsNoTracking()
+                        .Where(v => v.PlayerId == playerId && v.BuildingId == TownHallBuildingId)
+                        .Select(v => (int?)v.CurrentLevel)
+                        .SingleOrDefaultAsync() ?? 0;
+
+                    if (infrastructure.CurrentLevel + 1 > GetMaxBuildingLevelCeiling(townHallLevel))
+                    {
+                        await transaction.RollbackAsync();
+                        Console.WriteLine($"Village upgrade rejected: building {targetBuildingId} at level {infrastructure.CurrentLevel} exceeds the Town Hall ceiling.");
+                        return;
+                    }
+                }
+
                 // Modul 16: the four passive-production buildings (Lumberjack/
                 // Quarry/Mine/Warehouse) are raw-material sinks - upgrading them
                 // costs Wood and Stone rather than the Gold the original four
@@ -103,7 +172,34 @@ namespace FolkIdle.Server.Engine
                 bool isProductionBuilding = targetBuildingId >= LumberjackBuildingId && targetBuildingId <= WarehouseBuildingId;
                 long cost;
 
-                if (isProductionBuilding)
+                if (isStructuralBuilding)
+                {
+                    // Modul: Deferred Part 5 Implementation, Part 3.
+                    // Structural upgrades are permanent resource sinks fed
+                    // through the unified Backpack+Stash consumption path:
+                    // Logs + Ores (raw_log + copper_ore), and the Crafting
+                    // Workshop additionally consumes a rare log
+                    // (golden_birch_log) per upgrade.
+                    cost = CalculateProductionUpgradeCost(infrastructure.CurrentLevel);
+
+                    if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, "raw_log", cost) ||
+                        !await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, "copper_ore", cost))
+                    {
+                        await transaction.RollbackAsync();
+                        return;
+                    }
+
+                    if (targetBuildingId == CraftingWorkshopBuildingId)
+                    {
+                        long rareLogCost = Math.Max(1L, cost / 10L);
+                        if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, "golden_birch_log", rareLogCost))
+                        {
+                            await transaction.RollbackAsync();
+                            return;
+                        }
+                    }
+                }
+                else if (isProductionBuilding)
                 {
                     cost = CalculateProductionUpgradeCost(infrastructure.CurrentLevel);
 
@@ -241,7 +337,9 @@ namespace FolkIdle.Server.Engine
         public static bool IsValidBuildingId(uint buildingId)
         {
             return (buildingId >= ForgeBuildingId && buildingId <= MentorshipAcademyBuildingId)
-                || (buildingId >= LumberjackBuildingId && buildingId <= WarehouseBuildingId);
+                || (buildingId >= LumberjackBuildingId && buildingId <= WarehouseBuildingId)
+                || buildingId == TownHallBuildingId
+                || buildingId == CraftingWorkshopBuildingId;
         }
 
         public static long CalculateUpgradeCost(int currentLevel)
