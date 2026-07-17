@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Concurrent;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using FolkIdle.Server.Network;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,38 +53,119 @@ namespace FolkIdle.Server.Domain.Social
         public const byte GlobalChannelType = 0;
         public const byte GuildChannelType = 1;
 
+        // Modul: Full-Stack Social Layer, Part 3. Private Whisper channel -
+        // a direct-message counterpart to Global/Guild, routed to exactly
+        // one online recipient rather than broadcast/guild-filtered.
+        public const byte WhisperChannelType = 2;
+
+        // Modul: mirrors GuildChatChannel's own rationale - its own Redis
+        // channel rather than a shared payload discriminator, so a pod's
+        // subscription set stays independently manageable. Payload format
+        // is "senderPlayerId:targetPlayerId:timestamp:message", the same
+        // 4-part shape GuildChatChannel already uses (guildId's slot is
+        // simply targetPlayerId here).
+        public const string WhisperChatChannel = "chat:whisper";
+
         public const double ChatBucketCapacity = 5.0;
         public const double ChatBucketRefillRatePerSecond = 0.5;
 
+        // Modul: Full-Stack Social Layer, Part 1. Asynchronous chat
+        // offloading. Every inbound Redis Pub/Sub message (global, guild,
+        // or whisper) is turned into a ChatDispatchItem and pushed here
+        // rather than having its network fan-out awaited directly inside
+        // the Redis subscription callback - ChannelMessageQueue.OnMessage
+        // only guarantees THIS pod's messages for one channel are handled
+        // one at a time, so awaiting a potentially-slow multi-socket
+        // fan-out there would stall delivery of the next queued message
+        // behind however long that fan-out takes. A single dedicated
+        // background worker (StartDispatchWorker) drains this queue and
+        // performs the actual per-connection network I/O, decoupled from
+        // the Redis message pump entirely. ConcurrentQueue<T> is the same
+        // lock-free ring-buffer-style primitive this codebase already uses
+        // for CombatLootEngine.DropRequestQueue and the various
+        // notification queues on PlayerSessionRegistry.
+        public readonly struct ChatDispatchItem
+        {
+            public readonly ResponseChatMessagePacket Packet;
+            public readonly byte DispatchMode;
+            public readonly long GuildId;
+            public readonly long TargetPlayerId;
+
+            public ChatDispatchItem(ResponseChatMessagePacket packet, byte dispatchMode, long guildId, long targetPlayerId)
+            {
+                Packet = packet;
+                DispatchMode = dispatchMode;
+                GuildId = guildId;
+                TargetPlayerId = targetPlayerId;
+            }
+        }
+
+        public const byte DispatchModeGlobal = 0;
+        public const byte DispatchModeGuild = 1;
+        public const byte DispatchModeWhisper = 2;
+
+        public readonly ConcurrentQueue<ChatDispatchItem> OutboundDispatchQueue = new();
+
+        // Modul: the network layer (NetworkBroadcastSystem) owns the
+        // WebSocket connections ChatEngine never touches directly - this
+        // event is how the dispatch worker below hands a queued item back
+        // to whoever can actually perform the send.
+        public event Func<ChatDispatchItem, Task>? OnDispatchReady;
+
+        private int _dispatchWorkerStarted;
+
+        // Modul: idempotent - Start() calling this every time it runs is
+        // safe, only the first call actually spins up the worker thread.
+        public void StartDispatchWorker()
+        {
+            if (Interlocked.Exchange(ref _dispatchWorkerStarted, 1) != 0)
+            {
+                return;
+            }
+
+            Task.Run(DispatchWorkerLoopAsync);
+        }
+
+        private async Task DispatchWorkerLoopAsync()
+        {
+            while (true)
+            {
+                if (OutboundDispatchQueue.TryDequeue(out ChatDispatchItem item))
+                {
+                    if (OnDispatchReady != null)
+                    {
+                        try
+                        {
+                            await OnDispatchReady.Invoke(item);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Chat dispatch failed: {ex.Message}");
+                        }
+                    }
+                }
+                else
+                {
+                    await Task.Delay(10);
+                }
+            }
+        }
+
         private readonly IServiceProvider _serviceProvider;
 
-        // Modul: a Func<T, Task>, not a plain Action, and dispatched through
-        // ChannelMessageQueue.OnMessage below (not the sync Subscribe
-        // overload) - StackExchange.Redis can invoke a plain Action handler
-        // for a burst of near-simultaneous published messages concurrently,
-        // which previously raced multiple NetworkBroadcastSystem.
-        // BroadcastChatMessage calls against the same _connectedClients
-        // sockets ("There is already one outstanding SendAsync call for
-        // this WebSocket instance") - a fire-and-forget failure that
-        // silently dropped messages under any real burst (a rate-limited
-        // client sending several messages back to back was enough to
-        // reproduce it). ChannelMessageQueue.OnMessage guarantees this
-        // channel's messages are delivered to the handler strictly one at a
-        // time, awaiting each call before dispatching the next, which is
-        // exactly the ordering guarantee needed to make sequential SendAsync
-        // calls per connection safe again.
-        public event Func<ResponseChatMessagePacket, Task>? OnMessageReceived;
-
-        // Modul: guildId is a separate delegate parameter, not embedded in
-        // ResponseChatMessagePacket - the outgoing wire packet only needs
-        // ChannelType (so the client's chat UI can route it) since
-        // NetworkBroadcastSystem.BroadcastGuildChatMessage already performs
-        // guild-membership filtering server-side before any send occurs;
-        // by the time a client receives this, it is implicitly for their
-        // own guild, so a GuildId field on the packet would be pure dead
-        // weight over the wire.
-        public event Func<ResponseChatMessagePacket, long, Task>? OnGuildMessageReceived;
-
+        // Modul: ChannelMessageQueue.OnMessage (used below, not the sync
+        // Subscribe overload) guarantees each Redis channel's messages
+        // reach these handlers strictly one at a time, never concurrently
+        // for a burst of near-simultaneous publishes - previously load-
+        // bearing because the handler awaited the full network fan-out
+        // inline (a fire-and-forget failure there silently dropped
+        // messages under any real burst, "There is already one
+        // outstanding SendAsync call for this WebSocket instance"). Now
+        // that the handlers below only enqueue a ChatDispatchItem and
+        // return immediately (see OutboundDispatchQueue/StartDispatchWorker
+        // above), that ordering guarantee no longer needs to hold across a
+        // slow send - it just keeps enqueue order matching publish order,
+        // which is still exactly what is wanted.
         public ChatEngine(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
@@ -146,53 +229,73 @@ namespace FolkIdle.Server.Domain.Social
 
             ChannelMessageQueue guildQueue = subscriber.Subscribe(RedisChannel.Literal(GuildChatChannel));
             guildQueue.OnMessage(HandleGuildRedisMessageAsync);
+
+            ChannelMessageQueue whisperQueue = subscriber.Subscribe(RedisChannel.Literal(WhisperChatChannel));
+            whisperQueue.OnMessage(HandleWhisperRedisMessageAsync);
+
+            StartDispatchWorker();
         }
 
-        private async Task HandleRedisMessageAsync(ChannelMessage message)
+        private Task HandleRedisMessageAsync(ChannelMessage message)
         {
             string payload = message.Message.ToString();
             string[] parts = payload.Split(':', 3);
             if (parts.Length != 3)
             {
-                return;
+                return Task.CompletedTask;
             }
 
             if (!long.TryParse(parts[0], out long senderPlayerId) || !long.TryParse(parts[1], out long timestampEpochMs))
             {
-                return;
+                return Task.CompletedTask;
             }
 
             ResponseChatMessagePacket packet = BuildResponsePacket(senderPlayerId, timestampEpochMs, parts[2], GlobalChannelType);
-
-            if (OnMessageReceived != null)
-            {
-                await OnMessageReceived.Invoke(packet);
-            }
+            OutboundDispatchQueue.Enqueue(new ChatDispatchItem(packet, DispatchModeGlobal, guildId: 0, targetPlayerId: 0));
+            return Task.CompletedTask;
         }
 
         // Modul: payload format "playerId:guildId:timestamp:message" - one
         // more colon-delimited part than the global channel's format (see
         // GuildChatChannel's own comment).
-        private async Task HandleGuildRedisMessageAsync(ChannelMessage message)
+        private Task HandleGuildRedisMessageAsync(ChannelMessage message)
         {
             string payload = message.Message.ToString();
             string[] parts = payload.Split(':', 4);
             if (parts.Length != 4)
             {
-                return;
+                return Task.CompletedTask;
             }
 
             if (!long.TryParse(parts[0], out long senderPlayerId) || !long.TryParse(parts[1], out long guildId) || !long.TryParse(parts[2], out long timestampEpochMs))
             {
-                return;
+                return Task.CompletedTask;
             }
 
             ResponseChatMessagePacket packet = BuildResponsePacket(senderPlayerId, timestampEpochMs, parts[3], GuildChannelType);
+            OutboundDispatchQueue.Enqueue(new ChatDispatchItem(packet, DispatchModeGuild, guildId, targetPlayerId: 0));
+            return Task.CompletedTask;
+        }
 
-            if (OnGuildMessageReceived != null)
+        // Modul: payload format "senderPlayerId:targetPlayerId:timestamp:
+        // message" - see WhisperChatChannel's own comment.
+        private Task HandleWhisperRedisMessageAsync(ChannelMessage message)
+        {
+            string payload = message.Message.ToString();
+            string[] parts = payload.Split(':', 4);
+            if (parts.Length != 4)
             {
-                await OnGuildMessageReceived.Invoke(packet, guildId);
+                return Task.CompletedTask;
             }
+
+            if (!long.TryParse(parts[0], out long senderPlayerId) || !long.TryParse(parts[1], out long targetPlayerId) || !long.TryParse(parts[2], out long timestampEpochMs))
+            {
+                return Task.CompletedTask;
+            }
+
+            ResponseChatMessagePacket packet = BuildResponsePacket(senderPlayerId, timestampEpochMs, parts[3], WhisperChannelType);
+            OutboundDispatchQueue.Enqueue(new ChatDispatchItem(packet, DispatchModeWhisper, guildId: 0, targetPlayerId));
+            return Task.CompletedTask;
         }
 
         private static unsafe ResponseChatMessagePacket BuildResponsePacket(long senderPlayerId, long timestampEpochMs, string messageText, byte channelType)
@@ -306,6 +409,51 @@ namespace FolkIdle.Server.Domain.Social
             catch (Exception ex)
             {
                 Console.WriteLine($"Guild chat publish failed for player {playerId}: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Modul: Full-Stack Social Layer, Part 3. Whisper counterpart to
+        // PublishGuildMessageAsync above - same validation, publishes to
+        // WhisperChatChannel with the recipient embedded in the payload so
+        // whichever pod the recipient happens to be connected to can
+        // deliver it. Block-status is enforced at dispatch time (see
+        // NetworkBroadcastSystem's dispatch handler), not here - by the
+        // time a message reaches Redis it is already validated content
+        // from a real sender, and the one authoritative block check
+        // should live in exactly one place.
+        public async Task<bool> PublishWhisperMessageAsync(long playerId, long targetPlayerId, string messageText)
+        {
+            string trimmed = messageText.Trim();
+            if (trimmed.Length == 0 || targetPlayerId <= 0 || targetPlayerId == playerId)
+            {
+                return false;
+            }
+
+            byte[] textBytes = Encoding.UTF8.GetBytes(trimmed);
+            if (textBytes.Length > RequestChatMessagePacket.MessageCapacity)
+            {
+                return false;
+            }
+
+            var redis = _serviceProvider.GetService<IConnectionMultiplexer>();
+            if (redis == null || !redis.IsConnected)
+            {
+                return false;
+            }
+
+            long timestampEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            string payload = $"{playerId}:{targetPlayerId}:{timestampEpochMs}:{trimmed}";
+
+            try
+            {
+                var subscriber = redis.GetSubscriber();
+                await subscriber.PublishAsync(RedisChannel.Literal(WhisperChatChannel), payload);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Whisper chat publish failed for player {playerId}: {ex.Message}");
                 return false;
             }
         }

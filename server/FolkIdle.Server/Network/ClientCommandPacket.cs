@@ -70,7 +70,17 @@ namespace FolkIdle.Server.Network
         // Chronicle Pass premium track by spending PremiumDiamonds
         // server-side (see ChroniclePassEconomy.PremiumPassPriceDiamonds) -
         // no direct cash IAP hook involved.
-        PurchaseBattlePass = 59
+        PurchaseBattlePass = 59,
+
+        // Modul: Full-Stack Social Layer, Part 2. Relationship matrix
+        // commands - all four resolve their target via the existing
+        // TargetPlayerId field (never a new wire field) and run through
+        // RelationshipEngine inside an isolation-guaranteed Serializable
+        // transaction.
+        AddFriend = 60,
+        RemoveFriend = 61,
+        BlockPlayer = 62,
+        UnblockPlayer = 63
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

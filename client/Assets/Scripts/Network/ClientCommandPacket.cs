@@ -64,7 +64,15 @@ namespace FolkIdle.Client.Network
         // Modul: mirrors server ClientCommandPacket.cs exactly - unlocks
         // the Chronicle Pass premium track by spending the player's
         // server-side PremiumDiamonds balance, not a cash IAP hook.
-        PurchaseBattlePass = 59
+        PurchaseBattlePass = 59,
+
+        // Modul: Full-Stack Social Layer, Part 2. Mirrors server
+        // ClientCommandPacket.cs exactly - relationship matrix commands,
+        // target resolved via the existing TargetPlayerId field.
+        AddFriend = 60,
+        RemoveFriend = 61,
+        BlockPlayer = 62,
+        UnblockPlayer = 63
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

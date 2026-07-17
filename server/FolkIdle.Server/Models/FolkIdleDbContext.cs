@@ -65,6 +65,7 @@ namespace FolkIdle.Server.Models
         public DbSet<AccountAnalyticsLog> AccountAnalyticsLogs { get; set; }
         public DbSet<AccountSecurityQuota> AccountSecurityQuotas { get; set; }
         public DbSet<PlayerSkillUnlock> PlayerSkillUnlocks { get; set; }
+        public DbSet<PlayerRelationship> PlayerRelationships { get; set; }
 
         public FolkIdleDbContext(DbContextOptions<FolkIdleDbContext> options) : base(options)
         {
@@ -286,6 +287,29 @@ namespace FolkIdle.Server.Models
                 .HasIndex(s => new { s.PlayerId, s.ItemId })
                 .IsUnique();
 
+            // Modul: Full-Stack Social Layer, Part 2. At most one
+            // relationship row per directed (PlayerId, TargetPlayerId)
+            // pair - AddFriend/BlockPlayer's transactions rely on this to
+            // detect an existing row (update RelationType) versus a fresh
+            // insert, and a duplicate insert attempt against an existing
+            // pair fails at the database level as the documented safe
+            // roll-back condition.
+            modelBuilder.Entity<PlayerRelationship>()
+                .HasIndex(r => new { r.PlayerId, r.TargetPlayerId })
+                .IsUnique();
+
+            // Modul: Full-Stack Social Layer, Part 4. B-Tree indices on the
+            // text columns market search and village production updates
+            // filter by most heavily, preventing sequential scans across
+            // these tables as their row counts grow.
+            modelBuilder.Entity<EquipmentInstance>()
+                .HasIndex(e => e.BaseItemId);
+
+            modelBuilder.Entity<MarketOrderRecord>()
+                .HasIndex(m => m.BaseItemId);
+
+            modelBuilder.Entity<CommodityRecord>()
+                .HasIndex(c => c.ItemId);
         }
     }
 }

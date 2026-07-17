@@ -266,6 +266,37 @@ namespace FolkIdle.Client.Network
             _ = _webSocket.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
         }
 
+        // Modul: Full-Stack Social Layer, Part 3/5. Private Whisper send -
+        // click-to-action entry point from the chat UI's player context
+        // window (see UiChatWindow.ExecutePlayerContextAction). Server-side
+        // block status is checked at dispatch, not here - a blocked
+        // whisper is silently dropped, matching every other rejected-chat
+        // path.
+        public unsafe void SendWhisperMessageZeroAlloc(long targetPlayerId, string messageText)
+        {
+            if (_webSocket == null || _webSocket.State != WebSocketState.Open || string.IsNullOrEmpty(messageText) || targetPlayerId <= 0) return;
+
+            byte[] textBytes = System.Text.Encoding.UTF8.GetBytes(messageText);
+            int length = textBytes.Length > RequestChatMessagePacket.MessageCapacity ? RequestChatMessagePacket.MessageCapacity : textBytes.Length;
+
+            RequestChatMessagePacket packet = new RequestChatMessagePacket
+            {
+                MessageLength = (ushort)length,
+                ChannelType = (byte)ChatChannelType.Whisper,
+                TargetPlayerId = targetPlayerId
+            };
+
+            byte* target = packet.MessageText;
+            for (int i = 0; i < RequestChatMessagePacket.MessageCapacity; i++)
+            {
+                target[i] = i < length ? textBytes[i] : (byte)0;
+            }
+
+            System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref _chatSendBuffer[0], packet);
+            var segment = new ArraySegment<byte>(_chatSendBuffer);
+            _ = _webSocket.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
+        }
+
         private readonly byte[] _outboundBuffer = new byte[Marshal.SizeOf<ClientCommandPacket>()];
 
         private void SendPacket(ref ClientCommandPacket packet, bool useChronoTimestamp = false)
@@ -823,6 +854,67 @@ namespace FolkIdle.Client.Network
                     LimitPrice = 0,
                     IsBuy = isArmorSlot ? (byte)1 : (byte)0,
                     QualityTier = 0
+                };
+
+                SendPacket(ref packet);
+            }
+        }
+
+        // Modul: Full-Stack Social Layer, Part 2/5. Relationship matrix
+        // click-to-action entry points - all four resolve their target
+        // through the existing TargetPlayerId field (no new wire field),
+        // called from UiChatWindow.ExecutePlayerContextAction when a
+        // player clicks a name in the chat log.
+        public void SendAddFriendCommandZeroAlloc(long targetPlayerId)
+        {
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                ClientCommandPacket packet = new ClientCommandPacket
+                {
+                    Command = CommandType.AddFriend,
+                    TargetPlayerId = (uint)targetPlayerId
+                };
+
+                SendPacket(ref packet);
+            }
+        }
+
+        public void SendRemoveFriendCommandZeroAlloc(long targetPlayerId)
+        {
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                ClientCommandPacket packet = new ClientCommandPacket
+                {
+                    Command = CommandType.RemoveFriend,
+                    TargetPlayerId = (uint)targetPlayerId
+                };
+
+                SendPacket(ref packet);
+            }
+        }
+
+        public void SendBlockPlayerCommandZeroAlloc(long targetPlayerId)
+        {
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                ClientCommandPacket packet = new ClientCommandPacket
+                {
+                    Command = CommandType.BlockPlayer,
+                    TargetPlayerId = (uint)targetPlayerId
+                };
+
+                SendPacket(ref packet);
+            }
+        }
+
+        public void SendUnblockPlayerCommandZeroAlloc(long targetPlayerId)
+        {
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                ClientCommandPacket packet = new ClientCommandPacket
+                {
+                    Command = CommandType.UnblockPlayer,
+                    TargetPlayerId = (uint)targetPlayerId
                 };
 
                 SendPacket(ref packet);

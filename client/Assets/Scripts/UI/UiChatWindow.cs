@@ -144,6 +144,13 @@ namespace FolkIdle.Client.UI
                         rect.sizeDelta = new Vector2(rect.sizeDelta.x, RowHeight);
                     }
                     row.Clear();
+
+                    // Modul: Full-Stack Social Layer, Part 5. Subscribed
+                    // once per fixed row slot (not per bind) - the row
+                    // itself reports whichever SenderPlayerId is currently
+                    // bound to it at click time (see
+                    // UiChatMessageRow.HandleNameClicked).
+                    row.OnNameClicked += HandlePlayerNameClicked;
                 }
             }
 
@@ -311,6 +318,67 @@ namespace FolkIdle.Client.UI
             NetworkClient.SendChatMessageZeroAlloc(text);
             MessageInputField.text = string.Empty;
             MessageInputField.ActivateInputField();
+        }
+
+        // Modul: Full-Stack Social Layer, Part 5. Click-to-action protocol.
+        // The three actions a click on a player's name in the chat log can
+        // trigger - InspectProfile has no server round-trip of its own (it
+        // opens a local UI panel; see OnProfileInspectionRequested), while
+        // AddFriend/BlockUser map directly onto the existing
+        // WebSocketClient.SendAddFriendCommandZeroAlloc/
+        // SendBlockPlayerCommandZeroAlloc hooks, which in turn ride the
+        // pre-existing TargetPlayerId field on ClientCommandPacket - no new
+        // wire field required, matching this part's "backward-compatible
+        // unmanaged packet stream target variables" requirement.
+        public enum ChatPlayerContextAction
+        {
+            InspectProfile,
+            AddFriend,
+            BlockUser
+        }
+
+        // Modul: fired instead of a direct network call for
+        // InspectProfile - opening a profile panel is a local UI concern
+        // this window does not own; whichever component displays player
+        // profiles subscribes here rather than UiChatWindow reaching into
+        // it directly.
+        public event System.Action<long>? OnProfileInspectionRequested;
+
+        // Modul: which row slot most recently reported a name click - the
+        // pending target for whichever ChatPlayerContextAction the
+        // player's context-menu selection resolves to. Set by
+        // HandlePlayerNameClicked, read by ExecutePlayerContextAction.
+        private long _pendingContextTargetPlayerId;
+        public long PendingContextTargetPlayerId => _pendingContextTargetPlayerId;
+
+        private void HandlePlayerNameClicked(long senderPlayerId)
+        {
+            _pendingContextTargetPlayerId = senderPlayerId;
+        }
+
+        // Modul: called by whatever context-menu UI presents the
+        // InspectProfile/AddFriend/BlockUser choices after
+        // HandlePlayerNameClicked has recorded which player was clicked -
+        // this method is the single mapping point from that choice onto
+        // the actual network/UI hook, so the context-menu UI itself only
+        // ever needs to know the three ChatPlayerContextAction values, not
+        // which WebSocketClient method backs each one.
+        public void ExecutePlayerContextAction(long targetPlayerId, ChatPlayerContextAction action)
+        {
+            if (targetPlayerId == 0) return;
+
+            switch (action)
+            {
+                case ChatPlayerContextAction.InspectProfile:
+                    OnProfileInspectionRequested?.Invoke(targetPlayerId);
+                    break;
+                case ChatPlayerContextAction.AddFriend:
+                    NetworkClient?.SendAddFriendCommandZeroAlloc(targetPlayerId);
+                    break;
+                case ChatPlayerContextAction.BlockUser:
+                    NetworkClient?.SendBlockPlayerCommandZeroAlloc(targetPlayerId);
+                    break;
+            }
         }
     }
 }

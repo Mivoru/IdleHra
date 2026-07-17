@@ -17,8 +17,30 @@ namespace FolkIdle.Client.UI
 
         private readonly char[] _rowUiBuffer = new char[200];
 
+        // Modul: Full-Stack Social Layer, Part 5. Click-to-action hook -
+        // the sender id currently bound to this row, and an event
+        // UiChatWindow subscribes to once at row-creation time so a click
+        // on the row (wired to HandleNameClicked via a Button component in
+        // the row prefab's Inspector, standard Unity practice) can open
+        // the player context window (Profile Inspection / Add Friend /
+        // Block User) for whoever is actually displayed in this slot right
+        // now, not whoever it was bound to when the click handler was
+        // wired up.
+        private long _boundSenderPlayerId;
+        public long BoundSenderPlayerId => _boundSenderPlayerId;
+        public event System.Action<long>? OnNameClicked;
+
+        public void HandleNameClicked()
+        {
+            if (_boundSenderPlayerId != 0)
+            {
+                OnNameClicked?.Invoke(_boundSenderPlayerId);
+            }
+        }
+
         public void Bind(long senderPlayerId, long timestampEpochMs, string messageText)
         {
+            _boundSenderPlayerId = senderPlayerId;
             if (RowText == null) return;
 
             int offset = WriteTextToBuffer(_rowUiBuffer, 0, "Player #");
@@ -42,6 +64,7 @@ namespace FolkIdle.Client.UI
 
         public void Clear()
         {
+            _boundSenderPlayerId = 0;
             if (RowText == null) return;
             RowText.SetCharArray(_rowUiBuffer, 0, 0);
         }

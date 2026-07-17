@@ -199,6 +199,7 @@ var guildLogisticsDepotEngine = new GuildLogisticsDepotEngine(serviceProvider, p
 var guildCombatSimulationEngine = new GuildCombatSimulationEngine(serviceProvider, playerRegistry);
 var guildRaidEngine = new GuildRaidEngine(serviceProvider, playerRegistry);
 var equipmentSlotEngine = new EquipmentSlotEngine(serviceProvider, playerRegistry);
+var relationshipEngine = new RelationshipEngine(serviceProvider, playerRegistry);
 var combatLootEngine = new CombatLootEngine(serviceProvider, playerRegistry);
 var redisWriteBehindEngine = new RedisWriteBehindEngine(serviceProvider, redisMultiplexer);
 var pushNotificationTriggerEngine = new PushNotificationTriggerEngine(serviceProvider, redisMultiplexer);
@@ -227,7 +228,7 @@ networkSystem.RegisterBillingVerificationEngine(billingVerificationEngine);
 
 networkSystem.RegisterAntiCheatTelemetryEngine(antiCheatTelemetryEngine);
 
-var engine = new SimulationEngine(lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine, escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine, villageBuildingEngine, villageManagementEngine, mentorshipEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine, guildLogisticsDepotEngine, guildCombatSimulationEngine, antiCheatTelemetryEngine, pushNotificationTriggerEngine, compliancePurgeEngine, billingVerificationEngine, redisMultiplexer, serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), guildRaidEngine, equipmentSlotEngine);
+var engine = new SimulationEngine(lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine, escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine, villageBuildingEngine, villageManagementEngine, mentorshipEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine, guildLogisticsDepotEngine, guildCombatSimulationEngine, antiCheatTelemetryEngine, pushNotificationTriggerEngine, compliancePurgeEngine, billingVerificationEngine, redisMultiplexer, serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), guildRaidEngine, equipmentSlotEngine, relationshipEngine);
 networkSystem.RegisterSimulationEngine(engine);
 var timeBankService = new TimeBankService(engine, checkpointManager);
 

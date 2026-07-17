@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
 using System.Runtime.InteropServices;
@@ -120,18 +121,18 @@ namespace FolkIdle.Server.Network
         private SimulationEngine? _simulationEngine;
         private BillingVerificationEngine? _billingVerificationEngine;
         private readonly ChatEngine _chatEngine;
-        private readonly byte[] _chatBroadcastBuffer = new byte[Marshal.SizeOf<ResponseChatMessagePacket>()];
 
-        // Modul: a separate buffer from _chatBroadcastBuffer - the global
-        // and guild Redis Pub/Sub channels are two independent
-        // ChannelMessageQueue subscriptions (see ChatEngine.Subscribe), so
-        // their handlers (BroadcastChatMessage / BroadcastGuildChatMessage)
-        // can run concurrently with each other even though each
-        // individually guarantees only one in-flight invocation for its
-        // own channel. Sharing one buffer between the two would let a
-        // guild broadcast overwrite a global broadcast's bytes mid-send (or
-        // vice versa) - a real data race, not just a style preference.
-        private readonly byte[] _guildChatBroadcastBuffer = new byte[Marshal.SizeOf<ResponseChatMessagePacket>()];
+        // Modul: Full-Stack Social Layer, Part 1. A single buffer is now
+        // sufficient - ChatEngine's dispatch worker drains
+        // OutboundDispatchQueue with exactly one background task, so at
+        // most one HandleChatDispatchAsync invocation (and therefore one
+        // buffer copy-then-send sequence) is ever in flight at a time,
+        // regardless of which channel (global/guild/whisper) an item came
+        // from. Previously two buffers were required because the global
+        // and guild Redis subscriptions could invoke their handlers
+        // concurrently with each other; that is no longer true once
+        // delivery is centralized behind one dispatch worker.
+        private readonly byte[] _chatDispatchBuffer = new byte[Marshal.SizeOf<ResponseChatMessagePacket>()];
 
         public NetworkBroadcastSystem(IServiceProvider serviceProvider, string jwtSecretKey, string uriPrefix = "http://localhost:8080/")
         {
@@ -142,8 +143,7 @@ namespace FolkIdle.Server.Network
             _httpListener = new HttpListener();
             _httpListener.Prefixes.Add(uriPrefix);
             _chatEngine = new ChatEngine(serviceProvider);
-            _chatEngine.OnMessageReceived += BroadcastChatMessage;
-            _chatEngine.OnGuildMessageReceived += BroadcastGuildChatMessage;
+            _chatEngine.OnDispatchReady += HandleChatDispatchAsync;
         }
 
         // Modul: called from SimulationEngine.AddActivePlayer (initial
@@ -200,78 +200,64 @@ namespace FolkIdle.Server.Network
             _chatEngine.Subscribe();
         }
 
-        // Modul: fired by ChatEngine.OnMessageReceived whenever this pod's
-        // Redis Pub/Sub subscription delivers a chat message - published by
-        // any pod's PublishMessageAsync, including this one's own, so a
-        // player sees their own message arrive back through the exact same
-        // path as everyone else's rather than being echoed locally as a
-        // special case. Sends to every currently connected local socket,
-        // mirroring Broadcast(ref StateUpdatePacket)'s fanout pattern but
-        // with its own buffer sized for ResponseChatMessagePacket - and,
-        // unlike that method, fully awaited rather than fire-and-forget.
-        // ChatEngine.Subscribe uses ChannelMessageQueue.OnMessage, which
-        // guarantees this handler is only ever invoked for one message at a
-        // time (never concurrently for a burst of near-simultaneous
-        // publishes), so awaiting every SendAsync here in turn is both safe
-        // and required: a fire-and-forget send here would let the next
-        // queued message's broadcast start before this one's SendAsync
-        // calls finished, racing multiple concurrent sends against the same
-        // WebSocket instance - which .NET does not allow (an unawaited
-        // second SendAsync on a socket with one already in flight throws,
-        // and since nothing observed that faulted task, the message was
-        // simply lost with no error surfaced anywhere).
-        private async Task BroadcastChatMessage(ResponseChatMessagePacket packet)
+        // Modul: fired by ChatEngine.OnDispatchReady whenever the dispatch
+        // worker dequeues an item - published by any pod's PublishMessageAsync/
+        // PublishGuildMessageAsync/PublishWhisperMessageAsync, including this
+        // one's own, so a player sees their own message arrive back through
+        // the exact same path as everyone else's rather than being echoed
+        // locally as a special case. Runs entirely off ChatEngine's own
+        // background dispatch worker, never on the Redis message pump and
+        // never on the 10Hz simulation tick - see ChatEngine's own doc
+        // comment on OutboundDispatchQueue for why. ChatEngine guarantees
+        // only one dispatch item is ever being processed at a time, so
+        // awaiting every SendAsync here in turn (and reusing one shared
+        // buffer) is both safe and required, matching the exact same
+        // constraint the old two-buffer/two-handler split existed to
+        // satisfy.
+        //
+        // Modul: Full-Stack Social Layer, Part 2.2. Block filtering. One
+        // query per dispatched message (not per recipient) fetches every
+        // PlayerId who has blocked the sender; filtering _connectedClients
+        // against that set is then an O(1) HashSet lookup per candidate
+        // recipient, executed here on the async dispatch path - never on
+        // the 10Hz tick - satisfying the "asynchronous or zero-allocation"
+        // constraint by construction.
+        private async Task HandleChatDispatchAsync(ChatEngine.ChatDispatchItem item)
         {
-            // Modul: the ref-based span copy is factored into its own
-            // synchronous method - ref locals/ref-returning APIs like
-            // MemoryMarshal.CreateReadOnlySpan cannot be used directly in an
-            // async method body (they cannot safely span an await),
-            // matching the exact same restriction and fix already applied
-            // to ContentRegistry's JSON export helper earlier in this
-            // session.
-            CopyChatPacketToBroadcastBuffer(packet);
-            var segment = new ArraySegment<byte>(_chatBroadcastBuffer);
+            System.Collections.Generic.HashSet<long> blockedByRecipients = await GetPlayersWhoBlockedAsync(item.Packet.SenderPlayerId);
 
-            foreach (var kvp in _connectedClients)
+            CopyChatPacketToDispatchBuffer(item.Packet);
+            var segment = new ArraySegment<byte>(_chatDispatchBuffer);
+
+            if (item.DispatchMode == ChatEngine.DispatchModeWhisper)
             {
-                if (kvp.Value.Socket.State == WebSocketState.Open)
+                if (!_connectedClients.TryGetValue(item.TargetPlayerId, out var targetSession) || blockedByRecipients.Contains(item.TargetPlayerId))
+                {
+                    return;
+                }
+
+                if (targetSession.Socket.State == WebSocketState.Open)
                 {
                     try
                     {
-                        await kvp.Value.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
+                        await targetSession.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Chat broadcast send failed for player {kvp.Key}: {ex.Message}");
+                        Console.WriteLine($"Whisper send failed for player {item.TargetPlayerId}: {ex.Message}");
                     }
                 }
+                return;
             }
-        }
-
-        private void CopyChatPacketToBroadcastBuffer(ResponseChatMessagePacket packet)
-        {
-            ReadOnlySpan<ResponseChatMessagePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
-            ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(span);
-            bytes.CopyTo(_chatBroadcastBuffer);
-        }
-
-        // Modul: fired by ChatEngine.OnGuildMessageReceived - the guild-
-        // channel counterpart to BroadcastChatMessage above. Routes
-        // strictly to connected players sharing the identical GuildId
-        // (compared via each session's cached GuildId field, never a
-        // database read on this hot path), executing with zero managed
-        // heap allocations: a plain foreach over the existing
-        // _connectedClients dictionary with an int comparison filter, the
-        // same pattern the unfiltered global broadcast already uses, no
-        // LINQ, no intermediate collection.
-        private async Task BroadcastGuildChatMessage(ResponseChatMessagePacket packet, long guildId)
-        {
-            CopyGuildChatPacketToBroadcastBuffer(packet);
-            var segment = new ArraySegment<byte>(_guildChatBroadcastBuffer);
 
             foreach (var kvp in _connectedClients)
             {
-                if (kvp.Value.GuildId != guildId)
+                if (item.DispatchMode == ChatEngine.DispatchModeGuild && kvp.Value.GuildId != item.GuildId)
+                {
+                    continue;
+                }
+
+                if (blockedByRecipients.Contains(kvp.Key))
                 {
                     continue;
                 }
@@ -284,17 +270,34 @@ namespace FolkIdle.Server.Network
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Guild chat broadcast send failed for player {kvp.Key}: {ex.Message}");
+                        Console.WriteLine($"Chat dispatch send failed for player {kvp.Key}: {ex.Message}");
                     }
                 }
             }
         }
 
-        private void CopyGuildChatPacketToBroadcastBuffer(ResponseChatMessagePacket packet)
+        // Modul: escaped double-quoted identifiers per this codebase's
+        // Postgres case-sensitivity safeguard. Returns the empty set (never
+        // null) so callers can unconditionally call .Contains without a
+        // null check.
+        private async Task<System.Collections.Generic.HashSet<long>> GetPlayersWhoBlockedAsync(long senderPlayerId)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+            var blockerIds = await db.PlayerRelationships.AsNoTracking()
+                .Where(r => r.TargetPlayerId == senderPlayerId && r.RelationType == Models.RelationType.Blocked)
+                .Select(r => r.PlayerId)
+                .ToListAsync();
+
+            return new System.Collections.Generic.HashSet<long>(blockerIds);
+        }
+
+        private void CopyChatPacketToDispatchBuffer(ResponseChatMessagePacket packet)
         {
             ReadOnlySpan<ResponseChatMessagePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
             ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(span);
-            bytes.CopyTo(_guildChatBroadcastBuffer);
+            bytes.CopyTo(_chatDispatchBuffer);
         }
 
         // Modul: one persistent pod-wide subscription (not one per
@@ -2987,6 +2990,16 @@ namespace FolkIdle.Server.Network
                                 {
                                     _ = _chatEngine.PublishGuildMessageAsync(playerId, session.GuildId, chatText);
                                 }
+                            }
+                            else if (chatRequest.ChannelType == ChatEngine.WhisperChannelType)
+                            {
+                                // Modul: Full-Stack Social Layer, Part 3.
+                                // Client-supplied recipient, same treatment
+                                // as every other rejected-chat-message path -
+                                // an invalid target (0, self) is silently
+                                // dropped by PublishWhisperMessageAsync's own
+                                // guard rather than disconnecting.
+                                _ = _chatEngine.PublishWhisperMessageAsync(playerId, chatRequest.TargetPlayerId, chatText);
                             }
                             else
                             {

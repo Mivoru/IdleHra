@@ -64,7 +64,14 @@ namespace FolkIdle.Server.Network
         // character belonging to the same player already occupies the
         // requested gathering or combat activity id - see
         // CharacterSlotEngine.IsActivityOccupiedByAnotherSlot.
-        NodeOccupied = 14
+        NodeOccupied = 14,
+
+        // Modul: Full-Stack Social Layer, Part 2. Returned by
+        // RelationshipEngine.AddFriendAsync/BlockPlayerAsync when a
+        // relationship row for the exact same (PlayerId, TargetPlayerId)
+        // pair and RelationType already exists - the safe roll-back
+        // condition the unique index on PlayerRelationships enforces.
+        RelationshipAlreadyExists = 15
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

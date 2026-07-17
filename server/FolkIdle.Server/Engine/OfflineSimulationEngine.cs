@@ -268,7 +268,7 @@ namespace FolkIdle.Server.Engine
                 gatherProjectionAgePhase = payload.Slot1_AgePhase;
                 gatherProjectionRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
             }
-            CombatStats gatherProjectionStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherProjectionAgePhase, payload.CompletedAreaFlags, gatherProjectionRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, stackalloc int[3] { payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId });
+            CombatStats gatherProjectionStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherProjectionAgePhase, payload.CompletedAreaFlags, gatherProjectionRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId);
             double locusYieldFactor = 1.0 + (payload.LocusYield * 0.04);
 
             int lootRolls = (int)(allowedActions * payload.CachedCodexYieldMultiplier * locusYieldFactor);
@@ -297,7 +297,7 @@ namespace FolkIdle.Server.Engine
                 activeRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
             }
 
-            CombatStats combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, stackalloc int[3] { payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId });
+            CombatStats combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId);
 
             int playerAttackSpeedMs = (int)(1500 * (1.0f - combatStats.AttackSpeedPct));
             if (playerAttackSpeedMs < 200) playerAttackSpeedMs = 200;

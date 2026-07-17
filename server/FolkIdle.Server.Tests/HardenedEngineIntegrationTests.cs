@@ -3299,6 +3299,329 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        // Modul: Full-Stack Social Layer, Part 6. Three connections on one
+        // pod: a sender, a listener who has blocked the sender
+        // beforehand, and a bystander listener who has not. The blocked
+        // listener's world chat delivery must be silently dropped
+        // (NetworkBroadcastSystem.HandleChatDispatchAsync's block filter)
+        // while the bystander receives the exact same broadcast normally -
+        // proves the block check is per-recipient, not a global mute.
+        [Fact]
+        public async Task Test_ChatEngine_BlockedListener_DoesNotReceiveWorldChat_WhileBystanderDoes()
+        {
+            const long senderId = 970009301L;
+            const long blockedListenerId = 970009302L;
+            const long bystanderId = 970009303L;
+            Guid senderAccountId = Guid.NewGuid();
+            Guid blockedAccountId = Guid.NewGuid();
+            Guid bystanderAccountId = Guid.NewGuid();
+            const string messageText = "block filter test message";
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = senderId, PlayerGuid = senderAccountId, AuthenticatorToken = Guid.NewGuid() });
+                db.PlayerRecords.Add(new PlayerRecord { Id = blockedListenerId, PlayerGuid = blockedAccountId, AuthenticatorToken = Guid.NewGuid() });
+                db.PlayerRecords.Add(new PlayerRecord { Id = bystanderId, PlayerGuid = bystanderAccountId, AuthenticatorToken = Guid.NewGuid() });
+                db.PlayerRelationships.Add(new PlayerRelationship { PlayerId = blockedListenerId, TargetPlayerId = senderId, RelationType = RelationType.Blocked });
+                await db.SaveChangesAsync();
+            }
+
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8098/");
+            networkSystem.Start();
+
+            try
+            {
+                using var senderSocket = new ClientWebSocket();
+                await senderSocket.ConnectAsync(new Uri("ws://localhost:8098/"), CancellationToken.None);
+                await senderSocket.SendAsync(new ArraySegment<byte>(BuildAuthHandshakeBuffer(MintTestJwt(senderAccountId))), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                using var blockedSocket = new ClientWebSocket();
+                await blockedSocket.ConnectAsync(new Uri("ws://localhost:8098/"), CancellationToken.None);
+                await blockedSocket.SendAsync(new ArraySegment<byte>(BuildAuthHandshakeBuffer(MintTestJwt(blockedAccountId))), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                using var bystanderSocket = new ClientWebSocket();
+                await bystanderSocket.ConnectAsync(new Uri("ws://localhost:8098/"), CancellationToken.None);
+                await bystanderSocket.SendAsync(new ArraySegment<byte>(BuildAuthHandshakeBuffer(MintTestJwt(bystanderAccountId))), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                await Task.Delay(500);
+                Assert.Equal(WebSocketState.Open, senderSocket.State);
+                Assert.Equal(WebSocketState.Open, blockedSocket.State);
+                Assert.Equal(WebSocketState.Open, bystanderSocket.State);
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+
+                var blockedReceivedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var blockedReceiveTask = Task.Run(async () =>
+                {
+                    var recvBuffer = new byte[1024];
+                    while (!cts.Token.IsCancellationRequested)
+                    {
+                        WebSocketReceiveResult result;
+                        try { result = await blockedSocket.ReceiveAsync(new ArraySegment<byte>(recvBuffer), cts.Token); }
+                        catch { break; }
+                        if (result.MessageType == WebSocketMessageType.Close) break;
+                        if (result.Count != Marshal.SizeOf<ResponseChatMessagePacket>()) continue;
+
+                        var chatPacket = MemoryMarshal.Read<ResponseChatMessagePacket>(new ReadOnlySpan<byte>(recvBuffer, 0, result.Count));
+                        if (chatPacket.SenderPlayerId != senderId) continue;
+
+                        string received;
+                        unsafe { received = System.Text.Encoding.UTF8.GetString(chatPacket.MessageText, chatPacket.MessageLength); }
+                        if (received == messageText) blockedReceivedTcs.TrySetResult();
+                    }
+                });
+
+                var bystanderReceivedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var bystanderReceiveTask = Task.Run(async () =>
+                {
+                    var recvBuffer = new byte[1024];
+                    while (!cts.Token.IsCancellationRequested)
+                    {
+                        WebSocketReceiveResult result;
+                        try { result = await bystanderSocket.ReceiveAsync(new ArraySegment<byte>(recvBuffer), cts.Token); }
+                        catch { break; }
+                        if (result.MessageType == WebSocketMessageType.Close) break;
+                        if (result.Count != Marshal.SizeOf<ResponseChatMessagePacket>()) continue;
+
+                        var chatPacket = MemoryMarshal.Read<ResponseChatMessagePacket>(new ReadOnlySpan<byte>(recvBuffer, 0, result.Count));
+                        if (chatPacket.SenderPlayerId != senderId) continue;
+
+                        string received;
+                        unsafe { received = System.Text.Encoding.UTF8.GetString(chatPacket.MessageText, chatPacket.MessageLength); }
+                        if (received == messageText) bystanderReceivedTcs.TrySetResult();
+                    }
+                });
+
+                byte[] chatBuffer = BuildChatMessageBuffer(messageText);
+                await senderSocket.SendAsync(new ArraySegment<byte>(chatBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                var bystanderCompleted = await Task.WhenAny(bystanderReceivedTcs.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+                Assert.True(bystanderCompleted == bystanderReceivedTcs.Task, "Bystander (no block relationship) never received the world chat message.");
+
+                // The blocked listener must never observe it - give the
+                // dispatch pipeline a fair window past the bystander's
+                // already-confirmed delivery, then confirm silence.
+                var blockedCompleted = await Task.WhenAny(blockedReceivedTcs.Task, Task.Delay(TimeSpan.FromSeconds(3)));
+                Assert.False(blockedCompleted == blockedReceivedTcs.Task, "Blocked listener received a world chat message from a player they blocked.");
+
+                cts.Cancel();
+                try { await blockedReceiveTask; } catch { }
+                try { await bystanderReceiveTask; } catch { }
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
+        // Modul: Full-Stack Social Layer, Part 6. Two members of the same
+        // guild and one outsider on one pod. GuildId is pushed onto each
+        // session directly via NetworkBroadcastSystem.UpdateSessionGuildId -
+        // the same public entry point SimulationEngine's own login/guild-
+        // change path uses - deliberately skipping a live SimulationEngine
+        // instance, matching Test_ChatEngine_RedisPubSub_ForwardsMessagesAcrossPods's
+        // documented rationale for why chat tests avoid the extra engine.
+        [Fact]
+        public async Task Test_ChatEngine_GuildChat_RoutesToMembersOnly_InvisibleToOutsider()
+        {
+            const long memberAId = 970009311L;
+            const long memberBId = 970009312L;
+            const long outsiderId = 970009313L;
+            const long sharedGuildId = 660001L;
+            Guid memberAAccountId = Guid.NewGuid();
+            Guid memberBAccountId = Guid.NewGuid();
+            Guid outsiderAccountId = Guid.NewGuid();
+            const string messageText = "guild-only routing test message";
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = memberAId, PlayerGuid = memberAAccountId, AuthenticatorToken = Guid.NewGuid() });
+                db.PlayerRecords.Add(new PlayerRecord { Id = memberBId, PlayerGuid = memberBAccountId, AuthenticatorToken = Guid.NewGuid() });
+                db.PlayerRecords.Add(new PlayerRecord { Id = outsiderId, PlayerGuid = outsiderAccountId, AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8099/");
+            networkSystem.Start();
+
+            try
+            {
+                using var memberASocket = new ClientWebSocket();
+                await memberASocket.ConnectAsync(new Uri("ws://localhost:8099/"), CancellationToken.None);
+                await memberASocket.SendAsync(new ArraySegment<byte>(BuildAuthHandshakeBuffer(MintTestJwt(memberAAccountId))), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                using var memberBSocket = new ClientWebSocket();
+                await memberBSocket.ConnectAsync(new Uri("ws://localhost:8099/"), CancellationToken.None);
+                await memberBSocket.SendAsync(new ArraySegment<byte>(BuildAuthHandshakeBuffer(MintTestJwt(memberBAccountId))), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                using var outsiderSocket = new ClientWebSocket();
+                await outsiderSocket.ConnectAsync(new Uri("ws://localhost:8099/"), CancellationToken.None);
+                await outsiderSocket.SendAsync(new ArraySegment<byte>(BuildAuthHandshakeBuffer(MintTestJwt(outsiderAccountId))), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                await Task.Delay(500);
+                Assert.Equal(WebSocketState.Open, memberASocket.State);
+                Assert.Equal(WebSocketState.Open, memberBSocket.State);
+                Assert.Equal(WebSocketState.Open, outsiderSocket.State);
+
+                networkSystem.UpdateSessionGuildId(memberAId, sharedGuildId);
+                networkSystem.UpdateSessionGuildId(memberBId, sharedGuildId);
+                // outsiderId's session GuildId stays 0 (not in a guild).
+
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+
+                var memberBReceivedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var memberBReceiveTask = Task.Run(async () =>
+                {
+                    var recvBuffer = new byte[1024];
+                    while (!cts.Token.IsCancellationRequested)
+                    {
+                        WebSocketReceiveResult result;
+                        try { result = await memberBSocket.ReceiveAsync(new ArraySegment<byte>(recvBuffer), cts.Token); }
+                        catch { break; }
+                        if (result.MessageType == WebSocketMessageType.Close) break;
+                        if (result.Count != Marshal.SizeOf<ResponseChatMessagePacket>()) continue;
+
+                        var chatPacket = MemoryMarshal.Read<ResponseChatMessagePacket>(new ReadOnlySpan<byte>(recvBuffer, 0, result.Count));
+                        if (chatPacket.SenderPlayerId != memberAId || chatPacket.ChannelType != ChatEngine.GuildChannelType) continue;
+
+                        string received;
+                        unsafe { received = System.Text.Encoding.UTF8.GetString(chatPacket.MessageText, chatPacket.MessageLength); }
+                        if (received == messageText) memberBReceivedTcs.TrySetResult();
+                    }
+                });
+
+                var outsiderReceivedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var outsiderReceiveTask = Task.Run(async () =>
+                {
+                    var recvBuffer = new byte[1024];
+                    while (!cts.Token.IsCancellationRequested)
+                    {
+                        WebSocketReceiveResult result;
+                        try { result = await outsiderSocket.ReceiveAsync(new ArraySegment<byte>(recvBuffer), cts.Token); }
+                        catch { break; }
+                        if (result.MessageType == WebSocketMessageType.Close) break;
+                        if (result.Count != Marshal.SizeOf<ResponseChatMessagePacket>()) continue;
+
+                        var chatPacket = MemoryMarshal.Read<ResponseChatMessagePacket>(new ReadOnlySpan<byte>(recvBuffer, 0, result.Count));
+                        if (chatPacket.SenderPlayerId != memberAId) continue;
+
+                        string received;
+                        unsafe { received = System.Text.Encoding.UTF8.GetString(chatPacket.MessageText, chatPacket.MessageLength); }
+                        if (received == messageText) outsiderReceivedTcs.TrySetResult();
+                    }
+                });
+
+                byte[] guildChatBuffer = BuildChatMessageBuffer(messageText, ChatEngine.GuildChannelType);
+                await memberASocket.SendAsync(new ArraySegment<byte>(guildChatBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                var memberBCompleted = await Task.WhenAny(memberBReceivedTcs.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+                Assert.True(memberBCompleted == memberBReceivedTcs.Task, "Fellow guild member never received the guild-channel chat message.");
+
+                var outsiderCompleted = await Task.WhenAny(outsiderReceivedTcs.Task, Task.Delay(TimeSpan.FromSeconds(3)));
+                Assert.False(outsiderCompleted == outsiderReceivedTcs.Task, "Non-member received a guild-channel chat message.");
+
+                cts.Cancel();
+                try { await memberBReceiveTask; } catch { }
+                try { await outsiderReceiveTask; } catch { }
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
+        // Modul: Full-Stack Social Layer, Part 6. Pure DB-level proof of
+        // RelationshipEngine.AddFriendAsync's own transaction, no live
+        // sockets needed - inserts once, then attempts the exact same
+        // (PlayerId, TargetPlayerId) pair again and asserts the row count
+        // never exceeds 1, matching the unique-index-backed safe roll-back
+        // condition documented on the engine itself.
+        [Fact]
+        public async Task Test_RelationshipEngine_AddFriend_InsertsRow_DuplicateRollsBackSafely()
+        {
+            const long playerId = 970009321L;
+            const long targetPlayerId = 970009322L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.PlayerRecords.Add(new PlayerRecord { Id = targetPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            var relationshipEngine = new RelationshipEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            await relationshipEngine.AddFriendAsync(playerId, targetPlayerId);
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var rows = await verifyDb.PlayerRelationships.AsNoTracking()
+                    .Where(r => r.PlayerId == playerId && r.TargetPlayerId == targetPlayerId)
+                    .ToListAsync();
+                Assert.Single(rows);
+                Assert.Equal(RelationType.Friend, rows[0].RelationType);
+            }
+
+            Assert.Equal((byte)CommandResultCode.Success, DequeueResultForPlayer(playerId));
+
+            // Duplicate attempt - must not insert a second row.
+            await relationshipEngine.AddFriendAsync(playerId, targetPlayerId);
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var rows = await verifyDb.PlayerRelationships.AsNoTracking()
+                    .Where(r => r.PlayerId == playerId && r.TargetPlayerId == targetPlayerId)
+                    .ToListAsync();
+                Assert.Single(rows);
+            }
+
+            Assert.Equal((byte)CommandResultCode.RelationshipAlreadyExists, DequeueResultForPlayer(playerId));
+        }
+
+        // Modul: CommandResultQueue is a single shared queue on the
+        // fixture-level PlayerSessionRegistry, so unrelated tests running
+        // earlier in this class may leave stale entries for other player
+        // ids sitting ahead of this test's own result - a blind TryDequeue
+        // would read whichever leaked notification happens to be at the
+        // front rather than this test's own. This drains (and discards)
+        // any entries for other players until it finds one for the
+        // requested playerId, bounded so a genuine missing-result bug
+        // still fails the test instead of hanging.
+        private byte DequeueResultForPlayer(long playerId)
+        {
+            for (int attempts = 0; attempts < 64; attempts++)
+            {
+                Assert.True(_fixture.PlayerRegistry.CommandResultQueue.TryDequeue(out var notification), "CommandResultQueue was empty before a result for the expected player was found.");
+                if (notification.PlayerId == playerId)
+                {
+                    return notification.ResultCode;
+                }
+            }
+
+            throw new Xunit.Sdk.XunitException($"No CommandResultQueue entry for player {playerId} found within the search bound.");
+        }
+
+        private static unsafe byte[] BuildChatMessageBuffer(string messageText, byte channelType, long targetPlayerId = 0)
+        {
+            byte[] textBytes = System.Text.Encoding.UTF8.GetBytes(messageText);
+            int length = textBytes.Length > RequestChatMessagePacket.MessageCapacity ? RequestChatMessagePacket.MessageCapacity : textBytes.Length;
+
+            var packet = new RequestChatMessagePacket { MessageLength = (ushort)length, ChannelType = channelType, TargetPlayerId = targetPlayerId };
+            byte* target = packet.MessageText;
+            for (int i = 0; i < RequestChatMessagePacket.MessageCapacity; i++)
+            {
+                target[i] = i < length ? textBytes[i] : (byte)0;
+            }
+
+            byte[] buffer = new byte[Marshal.SizeOf<RequestChatMessagePacket>()];
+            MemoryMarshal.Write(new Span<byte>(buffer), packet);
+            return buffer;
+        }
+
         private static unsafe byte[] BuildChatMessageBuffer(string messageText)
         {
             byte[] textBytes = System.Text.Encoding.UTF8.GetBytes(messageText);
@@ -6536,15 +6859,19 @@ namespace FolkIdle.Server.Tests
             Assert.True(fourPieceResult.CooldownReductionActive);
 
             // End-to-end through the combat feedback profile: 100 CON gives
-            // a known FlatPhysicalArmor baseline (100) that the 4-piece
-            // +15% multiplier must scale deterministically.
+            // a known FlatPhysicalArmor baseline (100) that the 2-piece
+            // +15% multiplier must scale deterministically. Calculate only
+            // exposes the 3 real equip slots that exist in production
+            // today (Weapon/Armor/Leggings), so the 2-piece tier is what
+            // is provable end to end here - the 4-piece proof above already
+            // covers the evaluator directly.
             CombatStats naked = StatsCalculator.Calculate(str: 0, dex: 0, con: 100, lck: 0);
-            CombatStats withFourPieceSet = StatsCalculator.Calculate(str: 0, dex: 0, con: 100, lck: 0, equippedSetIds: fourPiece);
+            CombatStats withTwoPieceSet = StatsCalculator.Calculate(str: 0, dex: 0, con: 100, lck: 0, equippedWeaponSetId: SetBonusEngine.EternalDreadnoughtSetId, equippedArmorSetId: SetBonusEngine.EternalDreadnoughtSetId);
 
-            Assert.Equal((int)(naked.FlatPhysicalArmor * 1.15f), withFourPieceSet.FlatPhysicalArmor);
-            Assert.True(withFourPieceSet.SetThornsReflectionActive);
-            Assert.True(withFourPieceSet.SetCcImmunityActive);
-            Assert.True(withFourPieceSet.SetCooldownReductionActive);
+            Assert.Equal((int)(naked.FlatPhysicalArmor * 1.15f), withTwoPieceSet.FlatPhysicalArmor);
+            Assert.False(withTwoPieceSet.SetThornsReflectionActive);
+            Assert.False(withTwoPieceSet.SetCcImmunityActive);
+            Assert.False(withTwoPieceSet.SetCooldownReductionActive);
 
             // Zero-allocation proof for the evaluator itself.
             SetBonusEngine.Evaluate(fourPiece);

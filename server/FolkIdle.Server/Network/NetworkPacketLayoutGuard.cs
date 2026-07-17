@@ -26,7 +26,10 @@ namespace FolkIdle.Server.Network
         // 700-byte structural ceiling the tests pin.
         public const int ExpectedStateUpdateSize = 689;
         public const int ExpectedAuthHandshakeSize = 530;
-        public const int ExpectedRequestChatMessageSize = 131;
+
+        // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper
+        // channel routing added TargetPlayerId (8 bytes, long).
+        public const int ExpectedRequestChatMessageSize = 139;
         public const int ExpectedResponseChatMessageSize = 147;
 
         public static void Validate()
