@@ -326,6 +326,42 @@ namespace FolkIdle.Server.Engine
             new LootTableEntry { ItemId = 60, Weight = 100 },  // index 19: frost_moonflower_herbalism_material
             new LootTableEntry { ItemId = 69, Weight = 100 },  // index 20: berserker_blood_essence_rare_alchemy_ingredient
             new LootTableEntry { ItemId = 129, Weight = 100 }, // index 21: coal_node_crafting_material - see Mining node 201 below
+
+            // Modul: Full-Stack Expansion, Part 2. Monster material drop
+            // tables for the 25 new regional monsters (monster/loot-table
+            // ids 91-115) - the first populated MONSTER loot tables in the
+            // codebase (ids 1-90 remain intentionally empty, see the
+            // documented scope boundary above). One authored material per
+            // monster; Weight carries the design drop rate in percent
+            // (meaningful relative weight if these tables ever gain more
+            // entries). Quantity ranges (1-3 etc.) are not representable
+            // in this weight-only entry struct - each roll yields one
+            // unit, the same semantics every gathering table above has.
+            new LootTableEntry { ItemId = 250, Weight = 25 },  // index 22: mat_mouse_fur
+            new LootTableEntry { ItemId = 253, Weight = 20 },  // index 23: mat_rabbit_foot
+            new LootTableEntry { ItemId = 256, Weight = 15 },  // index 24: mat_viper_venom
+            new LootTableEntry { ItemId = 259, Weight = 20 },  // index 25: mat_boar_tusk
+            new LootTableEntry { ItemId = 262, Weight = 100 }, // index 26: mat_wolf_essence
+            new LootTableEntry { ItemId = 274, Weight = 25 },  // index 27: mat_sharp_thorn
+            new LootTableEntry { ItemId = 277, Weight = 20 },  // index 28: mat_wolf_hide
+            new LootTableEntry { ItemId = 280, Weight = 15 },  // index 29: mat_magic_bark
+            new LootTableEntry { ItemId = 283, Weight = 20 },  // index 30: mat_bear_claw
+            new LootTableEntry { ItemId = 286, Weight = 100 }, // index 31: mat_lynx_eye
+            new LootTableEntry { ItemId = 298, Weight = 20 },  // index 32: mat_chitin_shell
+            new LootTableEntry { ItemId = 301, Weight = 15 },  // index 33: mat_basilisk_scale
+            new LootTableEntry { ItemId = 304, Weight = 20 },  // index 34: mat_flame_core
+            new LootTableEntry { ItemId = 307, Weight = 15 },  // index 35: mat_lodestone
+            new LootTableEntry { ItemId = 310, Weight = 100 }, // index 36: mat_lava_heart
+            new LootTableEntry { ItemId = 323, Weight = 20 },  // index 37: mat_frozen_wing
+            new LootTableEntry { ItemId = 326, Weight = 15 },  // index 38: mat_yeti_pelt
+            new LootTableEntry { ItemId = 329, Weight = 15 },  // index 39: mat_spectral_ice
+            new LootTableEntry { ItemId = 332, Weight = 20 },  // index 40: mat_rime_crystal
+            new LootTableEntry { ItemId = 335, Weight = 100 }, // index 41: mat_eternal_ice
+            new LootTableEntry { ItemId = 347, Weight = 20 },  // index 42: mat_plague_flesh
+            new LootTableEntry { ItemId = 350, Weight = 15 },  // index 43: mat_gargoyle_stone
+            new LootTableEntry { ItemId = 353, Weight = 15 },  // index 44: mat_necrotic_core
+            new LootTableEntry { ItemId = 356, Weight = 20 },  // index 45: mat_broken_blade
+            new LootTableEntry { ItemId = 359, Weight = 100 }, // index 46: mat_demon_heart
         };
 
         // Modul: LootTableId -> (Start, Count) into _lootEntries, keyed by
@@ -375,6 +411,48 @@ namespace FolkIdle.Server.Engine
             { 410, (18, 1) },
             { 411, (19, 1) },
             { 412, (20, 1) },
+
+            // Modul: Full-Stack Expansion, Part 2 - monster loot tables
+            // for the 25 new regional monsters (monster ids 91-115). The
+            // LootTableId keys live in a dedicated 501-525 range rather
+            // than reusing the monster ids: this dictionary's key space is
+            // shared between monster LootTableIds and gathering
+            // ActivityIds, and gathering nodes already occupy 101-105 and
+            // 201-205 - keying the crab/basilisk/ember/golem/wyrm tables
+            // by their monster ids (101-105) would have made every
+            // Woodcutting node at those SAME activity ids start rolling
+            // monster materials. Known remaining limitation, documented,
+            // not fixed here: ChangeActivity routes 101-105 to the
+            // gathering nodes first (TryGetGatheringNode wins), so
+            // monsters 101-105 cannot currently be ENTERED via a plain
+            // activity id - untangling the shared activity/monster id
+            // space is an activity-routing redesign beyond this content
+            // pass.
+            { 501, (22, 1) },
+            { 502, (23, 1) },
+            { 503, (24, 1) },
+            { 504, (25, 1) },
+            { 505, (26, 1) },
+            { 506, (27, 1) },
+            { 507, (28, 1) },
+            { 508, (29, 1) },
+            { 509, (30, 1) },
+            { 510, (31, 1) },
+            { 511, (32, 1) },
+            { 512, (33, 1) },
+            { 513, (34, 1) },
+            { 514, (35, 1) },
+            { 515, (36, 1) },
+            { 516, (37, 1) },
+            { 517, (38, 1) },
+            { 518, (39, 1) },
+            { 519, (40, 1) },
+            { 520, (41, 1) },
+            { 521, (42, 1) },
+            { 522, (43, 1) },
+            { 523, (44, 1) },
+            { 524, (45, 1) },
+            { 525, (46, 1) },
         };
 
         private static ItemDefinition[] _itemDefinitions = Array.Empty<ItemDefinition>();

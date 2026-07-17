@@ -19,6 +19,7 @@ namespace FolkIdle.Server.Models
         public DbSet<GuildRaidState> GuildRaidStates { get; set; }
         public DbSet<GuildMember> GuildMembers { get; set; }
         public DbSet<GuildApplication> GuildApplications { get; set; }
+        public DbSet<VillageStashInstance> VillageStashInstances { get; set; }
         public DbSet<PlayerRecord> PlayerRecords { get; set; }
         public DbSet<CharacterRecord> CharacterRecords { get; set; }
         public DbSet<CharacterLineageRegistry> CharacterLineages { get; set; }
@@ -272,6 +273,13 @@ namespace FolkIdle.Server.Models
                 .HasKey(s => new { s.PlayerId, s.SkillId });
             modelBuilder.Entity<PlayerSkillUnlock>()
                 .HasIndex(s => s.PlayerId);
+
+            // Modul: Full-Stack Expansion, Part 1. One stash stack per
+            // (player, item) - the deposit path relies on this for its
+            // upsert semantics.
+            modelBuilder.Entity<VillageStashInstance>()
+                .HasIndex(s => new { s.PlayerId, s.ItemId })
+                .IsUnique();
 
         }
     }

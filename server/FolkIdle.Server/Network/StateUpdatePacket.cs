@@ -109,9 +109,15 @@ namespace FolkIdle.Server.Network
 
         public long EquippedWeaponId;
         public byte EquippedWeaponAffixLocked;
-        
+
         public long EquippedArmorId;
         public byte EquippedArmorAffixLocked;
+
+        // Modul: Full-Stack Expansion, Part 1. Third equipment slot -
+        // Leggings, mirroring the weapon/armor field pairs above (+9
+        // bytes; see NetworkPacketLayoutGuard's updated pin).
+        public long EquippedLeggingsId;
+        public byte EquippedLeggingsAffixLocked;
 
         public int CachedMiningMonolithLevel;
         public int CachedWoodcuttingMonolithLevel;

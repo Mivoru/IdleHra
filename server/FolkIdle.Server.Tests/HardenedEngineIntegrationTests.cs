@@ -1622,7 +1622,10 @@ namespace FolkIdle.Server.Tests
             var equipment = await verifyDb.EquipmentInstances.AsNoTracking()
                 .SingleAsync(e => e.PlayerId == testPlayerId);
             Assert.Equal("copper_greatsword_melee_weapon_slot_base", equipment.BaseItemId);
-            Assert.Equal(1, equipment.QualityTier);
+            // Full-Stack Expansion, Part 4: the recipe's TierIndex (1) is
+            // the guaranteed floor; the crafted rarity roll can upgrade
+            // the outcome up to the item's gear-band forge cap.
+            Assert.InRange(equipment.QualityTier, 1, ForgeSplicingEngine.MaxQualityTier);
             Assert.False(equipment.IsAffixLocked);
         }
 
@@ -5885,6 +5888,202 @@ namespace FolkIdle.Server.Tests
 
             Assert.False(await managementEngine.SetGuildTaxRateAsync(midLevelJoinerId, 10),
                 "A non-leader member must not be able to change the guild tax rate.");
+        }
+
+        // Modul: Full-Stack Expansion, Part 1/7. Leggings slot end to end
+        // at the engine level: a "_leggings_armor_slot_base" item routes to
+        // the dedicated leggings slot (never the chest slot, despite also
+        // carrying the generic armor marker), its affix defense joins the
+        // combined equipped totals that feed the combat tick's defensive
+        // profile, and the 3-way unequip clears exactly that slot.
+        [Fact]
+        public async Task Test_EquipmentSlots_LeggingsRouteToOwnSlotAndContributeDefensiveTotals()
+        {
+            const long testPlayerId = 970006001L;
+            long leggingsId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
+                var leggings = new EquipmentInstance
+                {
+                    PlayerId = testPlayerId,
+                    BaseItemId = "eq_steel_greaves_leggings_armor_slot_base",
+                    QualityTier = 0,
+                    AffixPayload = "{\"1\":0,\"2\":45,\"3\":0,\"4\":0}"
+                };
+                db.EquipmentInstances.Add(leggings);
+                await db.SaveChangesAsync();
+                leggingsId = leggings.Id;
+            }
+
+            var slotEngine = new EquipmentSlotEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await slotEngine.EquipItemAsync(testPlayerId, leggingsId);
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var player = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+                Assert.Equal(leggingsId, player.EquippedLeggingsId);
+                Assert.Null(player.EquippedArmorId);
+                Assert.Null(player.EquippedWeaponId);
+
+                (int attack, int defense, int crit, int luck) =
+                    await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verifyDb, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
+                Assert.Equal(45, defense);
+                Assert.Equal(0, attack);
+            }
+
+            await slotEngine.UnequipItemAsync(testPlayerId, EquipmentSlotEngine.SlotLeggings);
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var player = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+                Assert.Null(player.EquippedLeggingsId);
+            }
+        }
+
+        // Modul: Full-Stack Expansion, Part 3/7. Unified consumption
+        // across the Backpack/Stash boundary: a craft whose cost exceeds
+        // the Backpack balance alone succeeds by draining the Backpack
+        // first and the remainder from the Village Stash, and the stash
+        // deposit path enforces the 9999 per-stack cap by returning the
+        // overflow instead of storing it.
+        [Fact]
+        public async Task Test_UnifiedStash_CraftingDrainsBackpackFirstThenStashAndStackCapHolds()
+        {
+            const long testPlayerId = 970006101L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = 4L });
+                db.VillageStashInstances.Add(new VillageStashInstance { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = 100L });
+                await db.SaveChangesAsync();
+            }
+
+            // Recipe 1 costs 10 copper_ore - backpack holds only 4, so the
+            // craft must pull 6 from the stash.
+            var craftingEngine = new CraftingEngine(_fixture.DbContextFactory, _fixture.PlayerRegistry, _fixture.RetryingOptions);
+            await craftingEngine.ExecuteEquipmentCraftingAsync(testPlayerId, 1, slotIndex: 0, tickToken: 777);
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.True(await verifyDb.EquipmentInstances.AsNoTracking().AnyAsync(e => e.PlayerId == testPlayerId),
+                    "The craft must succeed from the combined Backpack+Stash balance.");
+
+                var backpack = await verifyDb.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
+                Assert.Equal(0L, backpack.Quantity);
+
+                var stash = await verifyDb.VillageStashInstances.AsNoTracking().SingleAsync(s => s.PlayerId == testPlayerId && s.ItemId == "copper_ore");
+                Assert.Equal(94L, stash.Quantity);
+            }
+
+            // Stack cap: deposit far beyond 9999 - the stack tops out at
+            // exactly the cap and the overflow comes back to the caller.
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                long overflow = await InventoryAndStashSystem.DepositToStashAsync(db, testPlayerId, "copper_ore", 20000L);
+                await db.SaveChangesAsync();
+                await tx.CommitAsync();
+                Assert.Equal(20000L - (VillageStashInstance.MaxStackQuantity - 94L), overflow);
+            }
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var stash = await verifyDb.VillageStashInstances.AsNoTracking().SingleAsync(s => s.PlayerId == testPlayerId && s.ItemId == "copper_ore");
+                Assert.Equal(VillageStashInstance.MaxStackQuantity, stash.Quantity);
+            }
+        }
+
+        // Modul: Full-Stack Expansion, Part 4/7. The 14-tier stackalloc
+        // crafting roll: deterministic for a given seed (pure function),
+        // monotone in its inputs (a higher workshop level never lowers the
+        // rolled tier for the same seed), never out of range, and a warm
+        // steady-state call allocates exactly zero managed heap bytes.
+        [Fact]
+        public void Test_CraftingEngine_RarityRoll_StackallocDeterministicMonotoneAndAllocationFree()
+        {
+            Assert.Equal(0, CraftingEngine.RollCraftedRarity(0, 0, 0.0));
+            Assert.Equal(CraftingEngine.RarityTierCount - 1, CraftingEngine.RollCraftedRarity(0, 0, 0.9999999999));
+
+            // Same seed, increasing workshop level - the rolled tier must
+            // never decrease (weight only ever shifts toward higher tiers).
+            double[] probes = { 0.30, 0.55, 0.70, 0.85, 0.95, 0.999 };
+            foreach (double probe in probes)
+            {
+                int previousTier = CraftingEngine.RollCraftedRarity(0, 0, probe);
+                for (int workshop = 1; workshop <= 10; workshop++)
+                {
+                    int tier = CraftingEngine.RollCraftedRarity(0, workshop, probe);
+                    Assert.InRange(tier, previousTier, CraftingEngine.RarityTierCount - 1);
+                    previousTier = tier;
+                }
+            }
+
+            // A high workshop level must visibly shift at least one probe
+            // seed to a strictly higher tier than the unassisted roll.
+            bool shifted = false;
+            foreach (double probe in probes)
+            {
+                if (CraftingEngine.RollCraftedRarity(0, 10, probe) > CraftingEngine.RollCraftedRarity(0, 0, probe))
+                {
+                    shifted = true;
+                    break;
+                }
+            }
+            Assert.True(shifted, "Workshop level 10 must shift probability weight toward higher tiers.");
+
+            // Zero-allocation proof on a warm call, matching this suite's
+            // established warm-up-then-measure pattern.
+            CraftingEngine.RollCraftedRarity(25, 5, 0.5);
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            int rolled = CraftingEngine.RollCraftedRarity(25, 5, 0.5);
+            long after = GC.GetAllocatedBytesForCurrentThread();
+            Assert.InRange(rolled, 0, CraftingEngine.RarityTierCount - 1);
+            Assert.Equal(0L, after - before);
+        }
+
+        // Modul: Full-Stack Expansion, Part 2/7. The 25 new regional
+        // monsters and their material loot tables are live content: the
+        // registry resolves the new monsters, every new monster id has a
+        // populated loot table (the first populated MONSTER tables in the
+        // codebase), and the gear-band forge caps derived from region
+        // tiers hold their documented values.
+        [Fact]
+        public void Test_Content_NewRegionalMonstersAndLootTablesResolve()
+        {
+            Assert.True(ContentRegistry.Monsters.Length >= 115, "The 25 new regional monsters must be loaded.");
+
+            var alphaWolf = ContentRegistry.Monsters[95 - 1];
+            Assert.Equal(95, alphaWolf.Id);
+            Assert.Equal(12000, alphaWolf.MaxHp);
+            Assert.Equal(1, alphaWolf.RegionTier);
+
+            var malakor = ContentRegistry.Monsters[115 - 1];
+            Assert.Equal(15000000, malakor.MaxHp);
+            Assert.Equal(5, malakor.RegionTier);
+
+            // Tables live at 501-525 (not the monster ids) - see the
+            // ContentRegistry segment block's own comment on the shared
+            // LootTableId/ActivityId key space.
+            for (int lootTableId = 501; lootTableId <= 525; lootTableId++)
+            {
+                Assert.False(ContentRegistry.GetLootTable(lootTableId).IsEmpty,
+                    $"Monster loot table {lootTableId} must be populated.");
+            }
+
+            // The remapped table ids must be exactly what the monster rows
+            // reference, and the previously-empty woodcutting node ids the
+            // monster ids shadow (101-105) must have stayed empty.
+            Assert.Equal(505, ContentRegistry.Monsters[95 - 1].LootTableId);
+            Assert.True(ContentRegistry.GetLootTable(101).IsEmpty,
+                "Gathering node 101's loot table must remain empty - monster tables must not leak into the node id space.");
+
+            Assert.Equal(5, CraftingEngine.GetMaxForgeTierForRegion(1));
+            Assert.Equal(5, CraftingEngine.GetMaxForgeTierForRegion(2));
+            Assert.Equal(10, CraftingEngine.GetMaxForgeTierForRegion(3));
+            Assert.Equal(ForgeSplicingEngine.MaxQualityTier, CraftingEngine.GetMaxForgeTierForRegion(9));
         }
     }
 }

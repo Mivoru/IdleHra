@@ -683,6 +683,7 @@ namespace FolkIdle.Server.Engine
                     {
                         currentPayload.EquippedWeaponId = equipUpdate.EquippedWeaponId;
                         currentPayload.EquippedArmorId = equipUpdate.EquippedArmorId;
+                        currentPayload.EquippedLeggingsId = equipUpdate.EquippedLeggingsId;
                         currentPayload.CachedEquippedFlatAttack = equipUpdate.EquippedFlatAttack;
                         currentPayload.CachedEquippedFlatDefense = equipUpdate.EquippedFlatDefense;
                         currentPayload.CachedEquippedCritBonus = equipUpdate.EquippedCritBonus;
@@ -1893,11 +1894,19 @@ namespace FolkIdle.Server.Engine
                     else if (cmd.Command == CommandType.UnequipItem)
                     {
                         long unequipPlayerId = currentPayload.PlayerId;
-                        bool isArmorSlot = cmd.IsBuy != 0;
+                        // Modul: Full-Stack Expansion, Part 1. Wire mapping
+                        // for the 3-slot unequip: TargetId 2 selects the
+                        // Leggings slot; otherwise the legacy IsBuy flag
+                        // keeps its original weapon(0)/armor(1) meaning, so
+                        // every pre-leggings client packet behaves exactly
+                        // as before.
+                        int unequipSlot = cmd.TargetId == 2L
+                            ? EquipmentSlotEngine.SlotLeggings
+                            : (cmd.IsBuy != 0 ? EquipmentSlotEngine.SlotArmor : EquipmentSlotEngine.SlotWeapon);
                         if (_equipmentSlotEngine != null)
                         {
                             SafeDispatchAsync("Equipment.Unequip", unequipPlayerId, async () => {
-                                await _equipmentSlotEngine.UnequipItemAsync(unequipPlayerId, isArmorSlot);
+                                await _equipmentSlotEngine.UnequipItemAsync(unequipPlayerId, unequipSlot);
                             });
                         }
                     }
@@ -2428,6 +2437,8 @@ namespace FolkIdle.Server.Engine
                                 EquippedWeaponAffixLocked = currentPayload.EquippedWeaponAffixLocked ? (byte)1 : (byte)0,
                                 EquippedArmorId = currentPayload.EquippedArmorId,
                                 EquippedArmorAffixLocked = currentPayload.EquippedArmorAffixLocked ? (byte)1 : (byte)0,
+                                EquippedLeggingsId = currentPayload.EquippedLeggingsId,
+                                EquippedLeggingsAffixLocked = currentPayload.EquippedLeggingsAffixLocked ? (byte)1 : (byte)0,
                                 CachedMiningMonolithLevel = currentPayload.CachedMiningMonolithLevel,
                                 CachedWoodcuttingMonolithLevel = currentPayload.CachedWoodcuttingMonolithLevel,
                                 ActiveOffensivePotionId = currentPayload.ActiveOffensivePotionId,

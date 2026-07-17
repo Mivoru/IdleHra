@@ -64,7 +64,7 @@ namespace FolkIdle.Server.Engine
                 // Modul 04/40: an item currently equipped on the character
                 // cannot be migrated into escrow out from under it - abort
                 // before any row mutation happens.
-                if (player.EquippedWeaponId == equip.Id || player.EquippedArmorId == equip.Id)
+                if (player.EquippedWeaponId == equip.Id || player.EquippedArmorId == equip.Id || player.EquippedLeggingsId == equip.Id)
                 {
                     await transaction.RollbackAsync();
                     Console.WriteLine("MarketListItem failed: Item is currently equipped.");

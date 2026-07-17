@@ -37,6 +37,7 @@ namespace FolkIdle.Server.Engine
         public long PlayerId;
         public long EquippedWeaponId;
         public long EquippedArmorId;
+        public long EquippedLeggingsId;
         public int EquippedFlatAttack;
         public int EquippedFlatDefense;
         public int EquippedCritBonus;

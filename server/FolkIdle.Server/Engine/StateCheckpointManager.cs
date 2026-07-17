@@ -192,6 +192,7 @@ namespace FolkIdle.Server.Engine
                         player.BaseLuck = state.LCK;
                         player.EquippedWeaponId = state.EquippedWeaponId == 0L ? null : state.EquippedWeaponId;
                         player.EquippedArmorId = state.EquippedArmorId == 0L ? null : state.EquippedArmorId;
+                        player.EquippedLeggingsId = state.EquippedLeggingsId == 0L ? null : state.EquippedLeggingsId;
                         player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
                         player.PremiumDiamonds = state.PremiumCurrency;
                         player.AvailableSkillPoints = state.AvailableSkillPoints;
@@ -377,7 +378,7 @@ namespace FolkIdle.Server.Engine
             // must be recomputed once at login rather than starting zeroed until
             // the player's next equip action.
             (int equippedAttack, int equippedDefense, int equippedCrit, int equippedLuck) =
-                await EquipmentSlotEngine.ComputeEquippedTotalsAsync(dbContext, player.EquippedWeaponId, player.EquippedArmorId);
+                await EquipmentSlotEngine.ComputeEquippedTotalsAsync(dbContext, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
 
             var mentorCount = await dbContext.MentorshipAcademyAssignments
                 .CountAsync(m => m.PlayerId == playerId);
@@ -535,6 +536,7 @@ namespace FolkIdle.Server.Engine
                 LCK = player.BaseLuck,
                 EquippedWeaponId = player.EquippedWeaponId ?? 0L,
                 EquippedArmorId = player.EquippedArmorId ?? 0L,
+                EquippedLeggingsId = player.EquippedLeggingsId ?? 0L,
                 XpPenaltyExpiresEpoch = player.XpPenaltyExpiresEpoch,
                 CachedEquippedFlatAttack = equippedAttack,
                 CachedEquippedFlatDefense = equippedDefense,
@@ -901,6 +903,7 @@ namespace FolkIdle.Server.Engine
                         player.BaseLuck = state.LCK;
                         player.EquippedWeaponId = state.EquippedWeaponId == 0L ? null : state.EquippedWeaponId;
                         player.EquippedArmorId = state.EquippedArmorId == 0L ? null : state.EquippedArmorId;
+                        player.EquippedLeggingsId = state.EquippedLeggingsId == 0L ? null : state.EquippedLeggingsId;
                         player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
                         player.PremiumDiamonds = state.PremiumCurrency;
                         await UpsertAccountChronoRegistryAsync(dbContext, state);

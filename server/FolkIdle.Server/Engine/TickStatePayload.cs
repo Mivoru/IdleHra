@@ -108,9 +108,14 @@ namespace FolkIdle.Server.Engine
 
         public long EquippedWeaponId;
         public bool EquippedWeaponAffixLocked;
-        
+
         public long EquippedArmorId;
         public bool EquippedArmorAffixLocked;
+
+        // Modul: Full-Stack Expansion, Part 1. Third equipment slot -
+        // Leggings, mirroring the weapon/armor pair above exactly.
+        public long EquippedLeggingsId;
+        public bool EquippedLeggingsAffixLocked;
 
         public int CachedMiningMonolithLevel;
         public int CachedWoodcuttingMonolithLevel;

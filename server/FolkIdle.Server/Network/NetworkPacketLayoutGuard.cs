@@ -14,7 +14,12 @@ namespace FolkIdle.Server.Network
         // Part 5 command-result ring buffer added replacing a 2-byte
         // scalar with 4 explicit byte+uint slot pairs).
         public const int ExpectedClientCommandSize = 352;
-        public const int ExpectedStateUpdateSize = 680;
+
+        // Modul: Full-Stack Expansion, Part 1. 680 -> 689: the Leggings
+        // equipment slot added EquippedLeggingsId (8 bytes) +
+        // EquippedLeggingsAffixLocked (1 byte). Still strictly under the
+        // 700-byte structural ceiling the tests pin.
+        public const int ExpectedStateUpdateSize = 689;
         public const int ExpectedAuthHandshakeSize = 530;
         public const int ExpectedRequestChatMessageSize = 131;
         public const int ExpectedResponseChatMessageSize = 147;

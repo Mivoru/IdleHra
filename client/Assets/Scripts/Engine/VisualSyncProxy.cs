@@ -70,6 +70,8 @@ namespace FolkIdle.Client.Engine
         public ulong VisualLogicalEpochFrameIndex;
         public bool VisualWeaponAffixLocked;
         public bool VisualArmorAffixLocked;
+        public bool VisualLeggingsAffixLocked;
+        public long VisualEquippedLeggingsId;
         public int VisualMiningMonolithLevel;
         public int VisualWoodcuttingMonolithLevel;
         public float VisualWorldBossHp;
@@ -448,6 +450,8 @@ namespace FolkIdle.Client.Engine
                     VisualLogicalEpochFrameIndex = packet.LogicalEpochFrameIndex;
                     VisualWeaponAffixLocked = packet.EquippedWeaponAffixLocked != 0;
                     VisualArmorAffixLocked = packet.EquippedArmorAffixLocked != 0;
+                    VisualLeggingsAffixLocked = packet.EquippedLeggingsAffixLocked != 0;
+                    VisualEquippedLeggingsId = packet.EquippedLeggingsId;
                     VisualMiningMonolithLevel = packet.CachedMiningMonolithLevel;
                     VisualWoodcuttingMonolithLevel = packet.CachedWoodcuttingMonolithLevel;
                     VisualWorldBossHp = packet.WorldBossCurrentHp;
@@ -580,6 +584,8 @@ namespace FolkIdle.Client.Engine
 
             VisualWeaponAffixLocked = _snapshotB.Packet.EquippedWeaponAffixLocked != 0;
             VisualArmorAffixLocked = _snapshotB.Packet.EquippedArmorAffixLocked != 0;
+            VisualLeggingsAffixLocked = _snapshotB.Packet.EquippedLeggingsAffixLocked != 0;
+            VisualEquippedLeggingsId = _snapshotB.Packet.EquippedLeggingsId;
             VisualMiningMonolithLevel = _snapshotB.Packet.CachedMiningMonolithLevel;
             VisualWoodcuttingMonolithLevel = _snapshotB.Packet.CachedWoodcuttingMonolithLevel;
 

@@ -84,7 +84,8 @@ namespace FolkIdle.Server.Engine
 
                 if (player != null && (
                     (player.EquippedWeaponId.HasValue && (player.EquippedWeaponId == targetItemGuid || player.EquippedWeaponId == sacrificialItem1Guid || player.EquippedWeaponId == sacrificialItem2Guid)) ||
-                    (player.EquippedArmorId.HasValue && (player.EquippedArmorId == targetItemGuid || player.EquippedArmorId == sacrificialItem1Guid || player.EquippedArmorId == sacrificialItem2Guid))))
+                    (player.EquippedArmorId.HasValue && (player.EquippedArmorId == targetItemGuid || player.EquippedArmorId == sacrificialItem1Guid || player.EquippedArmorId == sacrificialItem2Guid)) ||
+                    (player.EquippedLeggingsId.HasValue && (player.EquippedLeggingsId == targetItemGuid || player.EquippedLeggingsId == sacrificialItem1Guid || player.EquippedLeggingsId == sacrificialItem2Guid))))
                 {
                     await transaction.RollbackAsync();
                     Console.WriteLine("Fusion failed: target or sacrifice item is currently equipped.");
@@ -141,7 +142,19 @@ namespace FolkIdle.Server.Engine
                 // this method (equipped-item guard, integrity gate). An
                 // item already at the Transcendent ceiling cannot be
                 // fused further regardless of gold or fodder quality.
-                if (currentTier >= MaxQualityTier)
+                //
+                // Modul: Full-Stack Expansion, Part 4. The global ceiling
+                // is additionally tightened per structural gear band -
+                // low-band gear (by the item's RegionTier via
+                // CraftingEngine.GetMaxForgeTierForRegion) caps below the
+                // Transcendent maximum, blocking affix-upgrading past the
+                // band limit server-side.
+                int effectiveTierCap = MaxQualityTier;
+                if (ContentRegistry.TryGetItemDefinitionByBaseId(targetItem.BaseItemId, out var targetDefinition))
+                {
+                    effectiveTierCap = Math.Min(MaxQualityTier, CraftingEngine.GetMaxForgeTierForRegion(targetDefinition.RegionTier));
+                }
+                if (currentTier >= effectiveTierCap)
                 {
                     await transaction.RollbackAsync();
                     Console.WriteLine("Fusion failed: target item has already reached MaxQualityTier.");

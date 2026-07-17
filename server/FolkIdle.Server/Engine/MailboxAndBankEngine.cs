@@ -266,7 +266,8 @@ namespace FolkIdle.Server.Engine
                     .SingleOrDefaultAsync();
                 if (playerRow != null && (
                     (playerRow.EquippedWeaponId.HasValue && playerRow.EquippedWeaponId.Value == eq.Id) ||
-                    (playerRow.EquippedArmorId.HasValue && playerRow.EquippedArmorId.Value == eq.Id)))
+                    (playerRow.EquippedArmorId.HasValue && playerRow.EquippedArmorId.Value == eq.Id) ||
+                    (playerRow.EquippedLeggingsId.HasValue && playerRow.EquippedLeggingsId.Value == eq.Id)))
                 {
                     await transaction.RollbackAsync();
                     Console.WriteLine("BankDeposit failed: Item is currently equipped.");

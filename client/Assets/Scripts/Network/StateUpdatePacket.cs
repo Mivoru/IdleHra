@@ -97,9 +97,14 @@ namespace FolkIdle.Client.Network
 
         public long EquippedWeaponId;
         public byte EquippedWeaponAffixLocked;
-        
+
         public long EquippedArmorId;
         public byte EquippedArmorAffixLocked;
+
+        // Modul: mirrors server StateUpdatePacket exactly - third
+        // equipment slot (Leggings).
+        public long EquippedLeggingsId;
+        public byte EquippedLeggingsAffixLocked;
 
         public int CachedMiningMonolithLevel;
         public int CachedWoodcuttingMonolithLevel;

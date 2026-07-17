@@ -68,6 +68,16 @@ namespace FolkIdle.Server.Models
         public long? EquippedWeaponId { get; set; }
         public long? EquippedArmorId { get; set; }
 
+        // Modul: Full-Stack Expansion, Part 1. Third equipment slot -
+        // Leggings. Nullable, no DB-level foreign key, deliberately
+        // matching EquippedWeaponId/EquippedArmorId's existing convention:
+        // forge fusion and bank deposit legitimately delete
+        // EquipmentInstances rows, and the equipped-item guards
+        // (MarketEscrowEngine/MailboxAndBankEngine/ForgeSplicingEngine)
+        // are the mechanism that prevents dangling references, not a
+        // database constraint an asymmetric FK here would fight.
+        public long? EquippedLeggingsId { get; set; }
+
         // Modul 13.4.3: set by MentorshipEngine when a mentee's contract is
         // terminated before its maturation threshold - while this is in the
         // future, character XP generation is reduced (see StatsCalculator

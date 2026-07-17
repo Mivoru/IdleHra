@@ -48,10 +48,18 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
-                bool isWeapon = item.BaseItemId.Contains("_weapon_slot_");
-                bool isArmor = item.BaseItemId.Contains("_armor_slot_");
+                // Modul: Full-Stack Expansion, Part 1. Leggings check
+                // FIRST - existing leggings base ids (e.g.
+                // "transcendent_platelegs_leggings_armor_slot_base")
+                // contain BOTH the "_leggings_" marker and the generic
+                // "_armor_slot_" marker, so the more specific slot must
+                // win before the armor fallback claims them for the chest
+                // slot (their pre-leggings-slot behavior).
+                bool isLeggings = item.BaseItemId.Contains("_leggings_");
+                bool isWeapon = !isLeggings && item.BaseItemId.Contains("_weapon_slot_");
+                bool isArmor = !isLeggings && item.BaseItemId.Contains("_armor_slot_");
 
-                if (!isWeapon && !isArmor)
+                if (!isWeapon && !isArmor && !isLeggings)
                 {
                     await transaction.RollbackAsync();
                     return;
@@ -86,6 +94,10 @@ namespace FolkIdle.Server.Engine
                 {
                     player.EquippedWeaponId = item.Id;
                 }
+                else if (isLeggings)
+                {
+                    player.EquippedLeggingsId = item.Id;
+                }
                 else
                 {
                     player.EquippedArmorId = item.Id;
@@ -106,7 +118,15 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        public async Task UnequipItemAsync(long playerId, bool isArmorSlot)
+        public const int SlotWeapon = 0;
+        public const int SlotArmor = 1;
+        public const int SlotLeggings = 2;
+
+        // Modul: Full-Stack Expansion, Part 1. Slot selector widened from
+        // the old bool isArmorSlot to a 3-way index for the Leggings slot;
+        // SimulationEngine's UnequipItem command maps the wire fields onto
+        // it (see that handler's own comment).
+        public async Task UnequipItemAsync(long playerId, int slotIndex)
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -124,9 +144,13 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
-                if (isArmorSlot)
+                if (slotIndex == SlotArmor)
                 {
                     player.EquippedArmorId = null;
+                }
+                else if (slotIndex == SlotLeggings)
+                {
+                    player.EquippedLeggingsId = null;
                 }
                 else
                 {
@@ -154,13 +178,14 @@ namespace FolkIdle.Server.Engine
         // of which single slot just changed.
         private static async Task<EquipmentSlotUpdateNotification> BuildNotificationAsync(FolkIdleDbContext db, PlayerRecord player)
         {
-            (int attack, int defense, int crit, int luck) = await ComputeEquippedTotalsAsync(db, player.EquippedWeaponId, player.EquippedArmorId);
+            (int attack, int defense, int crit, int luck) = await ComputeEquippedTotalsAsync(db, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
 
             return new EquipmentSlotUpdateNotification
             {
                 PlayerId = player.Id,
                 EquippedWeaponId = player.EquippedWeaponId ?? 0L,
                 EquippedArmorId = player.EquippedArmorId ?? 0L,
+                EquippedLeggingsId = player.EquippedLeggingsId ?? 0L,
                 EquippedFlatAttack = attack,
                 EquippedFlatDefense = defense,
                 EquippedCritBonus = crit,
@@ -173,7 +198,7 @@ namespace FolkIdle.Server.Engine
         // are hydrated from PlayerRecords, but the derived stat totals are not
         // themselves persisted - they must be recomputed once here rather than
         // reading stale/zeroed values until the player's next equip action).
-        public static async Task<(int Attack, int Defense, int Crit, int Luck)> ComputeEquippedTotalsAsync(FolkIdleDbContext db, long? weaponId, long? armorId)
+        public static async Task<(int Attack, int Defense, int Crit, int Luck)> ComputeEquippedTotalsAsync(FolkIdleDbContext db, long? weaponId, long? armorId, long? leggingsId = null)
         {
             int totalAttack = 0, totalDefense = 0, totalCrit = 0, totalLuck = 0;
 
@@ -192,6 +217,19 @@ namespace FolkIdle.Server.Engine
                 if (armor != null)
                 {
                     AddAffixTotals(armor.AffixPayload, ref totalAttack, ref totalDefense, ref totalCrit, ref totalLuck);
+                }
+            }
+
+            // Modul: Full-Stack Expansion, Part 1. Leggings contribute to
+            // the same combined totals - the affix payload carries the
+            // slot's defensive weighting from generation time, so no
+            // slot-specific stat scaling belongs here.
+            if (leggingsId.HasValue)
+            {
+                var leggings = await db.EquipmentInstances.AsNoTracking().FirstOrDefaultAsync(e => e.Id == leggingsId.Value);
+                if (leggings != null)
+                {
+                    AddAffixTotals(leggings.AffixPayload, ref totalAttack, ref totalDefense, ref totalCrit, ref totalLuck);
                 }
             }
 
