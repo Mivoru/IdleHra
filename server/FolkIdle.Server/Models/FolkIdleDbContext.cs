@@ -95,6 +95,21 @@ namespace FolkIdle.Server.Models
                 .HasIndex(p => new { p.ProviderType, p.ExternalProviderId })
                 .IsUnique();
 
+            // Modul: Email/Password Auth - see PlayerRecord.Email/Username.
+            // Same NULL-is-distinct reasoning as DeviceId above: rows never
+            // registered with email+password (device-only/OAuth-only
+            // accounts) leave both columns null and never collide with each
+            // other. AuthenticationEngine always normalizes Email to
+            // lowercase before writing/querying, so this index is
+            // effectively case-insensitive in practice.
+            modelBuilder.Entity<PlayerRecord>()
+                .HasIndex(p => p.Email)
+                .IsUnique();
+
+            modelBuilder.Entity<PlayerRecord>()
+                .HasIndex(p => p.Username)
+                .IsUnique();
+
             modelBuilder.Entity<GuildWarDefensiveSnapshot>()
                 .Property(g => g.RosterPayloadJson)
                 .HasColumnType("jsonb");

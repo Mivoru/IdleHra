@@ -2586,6 +2586,126 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task Test_AuthenticationEngine_RegisterWithEmail_CreatesAccountAndAllowsEmailLogin()
+        {
+            string email = "register_success_970000801@example.com";
+
+            var registerOutcome = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, email, "RegisterSuccessUser", "correct password", "device_970000801");
+            Assert.Equal(EmailRegisterOutcome.Success, registerOutcome.Outcome);
+            Assert.NotEqual(0L, registerOutcome.PlayerId);
+
+            // Correct credentials succeed.
+            var loginOutcome = await AuthenticationEngine.LoginWithEmailAsync(_fixture.RetryingOptions, email, "correct password", null);
+            Assert.Equal(EmailLoginOutcome.Success, loginOutcome.Outcome);
+            Assert.Equal(registerOutcome.PlayerId, loginOutcome.PlayerId);
+            Assert.Equal(registerOutcome.AccountId, loginOutcome.AccountId);
+
+            // Wrong password, and an entirely unregistered email, both
+            // collapse to the same InvalidCredentials outcome - see
+            // EmailLoginOutcome's own header comment on why the two are not
+            // distinguished (avoids account enumeration).
+            var wrongPassword = await AuthenticationEngine.LoginWithEmailAsync(_fixture.RetryingOptions, email, "wrong password", null);
+            Assert.Equal(EmailLoginOutcome.InvalidCredentials, wrongPassword.Outcome);
+
+            var unknownEmail = await AuthenticationEngine.LoginWithEmailAsync(_fixture.RetryingOptions, "nobody_970000801@example.com", "correct password", null);
+            Assert.Equal(EmailLoginOutcome.InvalidCredentials, unknownEmail.Outcome);
+        }
+
+        [Fact]
+        public async Task Test_AuthenticationEngine_RegisterWithEmail_RejectsDuplicateEmailAndUsername()
+        {
+            string email = "register_duplicate_970000802@example.com";
+
+            var first = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, email, "DuplicateEmailUserA", "password one", null);
+            Assert.Equal(EmailRegisterOutcome.Success, first.Outcome);
+
+            // Same email (case-insensitive - normalized to lowercase),
+            // different username - rejected on the Email index.
+            var duplicateEmail = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, email.ToUpperInvariant(), "DuplicateEmailUserB", "password two", null);
+            Assert.Equal(EmailRegisterOutcome.EmailInUse, duplicateEmail.Outcome);
+
+            // Different email, same username - rejected on the Username index.
+            var duplicateUsername = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, "register_duplicate_other_970000802@example.com", "DuplicateEmailUserA", "password three", null);
+            Assert.Equal(EmailRegisterOutcome.UsernameInUse, duplicateUsername.Outcome);
+        }
+
+        [Fact]
+        public async Task Test_AuthenticationEngine_RegisterWithEmail_RejectsInvalidInputShapes()
+        {
+            var badEmail = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, "not-an-email", "ValidUser803", "valid password", null);
+            Assert.Equal(EmailRegisterOutcome.InvalidEmail, badEmail.Outcome);
+
+            var shortUsername = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, "invalid_shapes_970000803@example.com", "ab", "valid password", null);
+            Assert.Equal(EmailRegisterOutcome.InvalidUsername, shortUsername.Outcome);
+
+            var shortPassword = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, "invalid_shapes2_970000803@example.com", "ValidUserB803", "abc", null);
+            Assert.Equal(EmailRegisterOutcome.InvalidPassword, shortPassword.Outcome);
+        }
+
+        [Fact]
+        public async Task Test_AuthenticationEngine_TryLoginByDeviceId_NeverAutoProvisions()
+        {
+            string unseenDeviceId = "device_never_bound_970000804";
+
+            var result = await AuthenticationEngine.TryLoginByDeviceIdAsync(_fixture.RetryingOptions, unseenDeviceId);
+            Assert.False(result.Found);
+
+            // The defining difference from LoginOrProvisionAsync: a lookup
+            // miss must never leave a new row behind.
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            bool rowExists = await verifyDb.PlayerRecords.AsNoTracking().AnyAsync(p => p.DeviceId == unseenDeviceId);
+            Assert.False(rowExists);
+        }
+
+        [Fact]
+        public async Task Test_AuthenticationEngine_LoginWithEmail_RebindsDeviceIdForRememberMe()
+        {
+            string email = "rebind_970000805@example.com";
+            string originalDeviceId = "device_rebind_original_970000805";
+            string newDeviceId = "device_rebind_new_970000805";
+
+            var registerResult = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, email, "RebindUser970000805", "correct password", originalDeviceId);
+            Assert.Equal(EmailRegisterOutcome.Success, registerResult.Outcome);
+
+            // The device that registered can silently resume via the
+            // remember-me lookup.
+            var beforeLogin = await AuthenticationEngine.TryLoginByDeviceIdAsync(_fixture.RetryingOptions, originalDeviceId);
+            Assert.True(beforeLogin.Found);
+            Assert.Equal(registerResult.PlayerId, beforeLogin.PlayerId);
+
+            // Logging in with the same credentials from a DIFFERENT device
+            // rebinds the remember-me anchor to that new device.
+            var loginResult = await AuthenticationEngine.LoginWithEmailAsync(_fixture.RetryingOptions, email, "correct password", newDeviceId);
+            Assert.Equal(EmailLoginOutcome.Success, loginResult.Outcome);
+            Assert.Equal(registerResult.PlayerId, loginResult.PlayerId);
+
+            var afterLoginNewDevice = await AuthenticationEngine.TryLoginByDeviceIdAsync(_fixture.RetryingOptions, newDeviceId);
+            Assert.True(afterLoginNewDevice.Found);
+            Assert.Equal(registerResult.PlayerId, afterLoginNewDevice.PlayerId);
+
+            var afterLoginOldDevice = await AuthenticationEngine.TryLoginByDeviceIdAsync(_fixture.RetryingOptions, originalDeviceId);
+            Assert.False(afterLoginOldDevice.Found);
+        }
+
+        [Fact]
+        public async Task Test_AuthenticationEngine_IsEmailAvailable_ReturnsFalseOnceRegistered()
+        {
+            string email = "availability_970000806@example.com";
+
+            Assert.True(await AuthenticationEngine.IsEmailAvailableAsync(_fixture.RetryingOptions, email));
+
+            var registerResult = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, email, "AvailabilityUser806", "correct password", null);
+            Assert.Equal(EmailRegisterOutcome.Success, registerResult.Outcome);
+
+            Assert.False(await AuthenticationEngine.IsEmailAvailableAsync(_fixture.RetryingOptions, email));
+            // Case-insensitive - the same address with different casing is
+            // also reported unavailable.
+            Assert.False(await AuthenticationEngine.IsEmailAvailableAsync(_fixture.RetryingOptions, email.ToUpperInvariant()));
+
+            Assert.False(await AuthenticationEngine.IsEmailAvailableAsync(_fixture.RetryingOptions, "not-an-email"));
+        }
+
+        [Fact]
         public async Task Test_OfflineSimulationEngine_SevenDayOfflinePeriod_GrantsExactAnalyticalYieldInO1Time()
         {
             const long testPlayerId = 970000203L;

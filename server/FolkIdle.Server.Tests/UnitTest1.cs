@@ -59,3 +59,42 @@ public class ChronoBufferEngineTests
         Assert.False(ChronoBufferEngine.IsValidSpeedMultiplier(3.0));
     }
 }
+
+public class PasswordHasherTests
+{
+    [Fact]
+    public void Verify_AcceptsTheExactPasswordThatWasHashed()
+    {
+        string hash = PasswordHasher.Hash("correct horse battery staple");
+
+        Assert.True(PasswordHasher.Verify("correct horse battery staple", hash));
+    }
+
+    [Fact]
+    public void Verify_RejectsAWrongPassword()
+    {
+        string hash = PasswordHasher.Hash("correct horse battery staple");
+
+        Assert.False(PasswordHasher.Verify("wrong password", hash));
+    }
+
+    [Fact]
+    public void Hash_ProducesADifferentSaltEveryCall_SoTwoHashesOfTheSamePasswordDiffer()
+    {
+        string first = PasswordHasher.Hash("same password");
+        string second = PasswordHasher.Hash("same password");
+
+        Assert.NotEqual(first, second);
+        Assert.True(PasswordHasher.Verify("same password", first));
+        Assert.True(PasswordHasher.Verify("same password", second));
+    }
+
+    [Fact]
+    public void Verify_RejectsNullOrMalformedStoredHash()
+    {
+        Assert.False(PasswordHasher.Verify("anything", null));
+        Assert.False(PasswordHasher.Verify("anything", string.Empty));
+        Assert.False(PasswordHasher.Verify("anything", "not.a.valid.hash.shape"));
+        Assert.False(PasswordHasher.Verify("anything", "notanumber.c2FsdA==.aGFzaA=="));
+    }
+}

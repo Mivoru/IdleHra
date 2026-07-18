@@ -468,6 +468,18 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/auth/check-email" && context.Request.HttpMethod == "POST")
+                    {
+                        _ = HandleCheckEmail(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/auth/register" && context.Request.HttpMethod == "POST")
+                    {
+                        _ = HandleAuthRegister(context);
+                        continue;
+                    }
+
                     if (requestPath == "/admin/liveops" && context.Request.HttpMethod == "POST")
                     {
                         string secretKey = context.Request.Headers["X-Admin-Secret-Key"] ?? string.Empty;
@@ -2551,6 +2563,16 @@ namespace FolkIdle.Server.Network
             public long ExpiresAtEpoch { get; set; }
         }
 
+        private sealed class CheckEmailResponse
+        {
+            public bool Available { get; set; }
+        }
+
+        private sealed class RegisterErrorResponse
+        {
+            public string Reason { get; set; } = string.Empty;
+        }
+
         // Modul: hand-rolled Prometheus text-exposition-format metrics
         // endpoint (no prometheus-net or other external dependency, per this
         // task's explicit constraint). Unauthenticated, matching the
@@ -2668,6 +2690,9 @@ namespace FolkIdle.Server.Network
 
                 string deviceId = string.Empty;
                 string oauthProviderToken = string.Empty;
+                string rememberedDeviceId = string.Empty;
+                string email = string.Empty;
+                string password = string.Empty;
                 try
                 {
                     using var document = System.Text.Json.JsonDocument.Parse(body);
@@ -2678,6 +2703,26 @@ namespace FolkIdle.Server.Network
                     if (document.RootElement.TryGetProperty("deviceId", out var deviceIdElement))
                     {
                         deviceId = deviceIdElement.GetString() ?? string.Empty;
+                    }
+                    // Modul: Email/Password Auth. A separate field from
+                    // deviceId (not a rename) - deviceId still means "log in
+                    // or auto-provision a fresh anonymous account" (the
+                    // pre-existing behavior, unchanged), while
+                    // rememberedDeviceId means "silently resume ONLY if this
+                    // device already completed a real Register/email login,
+                    // otherwise tell the caller to show the login/register
+                    // choice screen" (see UiLoginWindow).
+                    if (document.RootElement.TryGetProperty("rememberedDeviceId", out var rememberedElement))
+                    {
+                        rememberedDeviceId = rememberedElement.GetString() ?? string.Empty;
+                    }
+                    if (document.RootElement.TryGetProperty("email", out var emailElement))
+                    {
+                        email = emailElement.GetString() ?? string.Empty;
+                    }
+                    if (document.RootElement.TryGetProperty("password", out var passwordElement))
+                    {
+                        password = passwordElement.GetString() ?? string.Empty;
                     }
                 }
                 catch (System.Text.Json.JsonException)
@@ -2701,6 +2746,28 @@ namespace FolkIdle.Server.Network
                         return;
                     }
                     accountId = oauthResult.AccountId;
+                }
+                else if (!string.IsNullOrWhiteSpace(email) && !string.IsNullOrEmpty(password))
+                {
+                    var emailResult = await AuthenticationEngine.LoginWithEmailAsync(authOptions, email, password, string.IsNullOrWhiteSpace(deviceId) ? null : deviceId);
+                    if (emailResult.Outcome != EmailLoginOutcome.Success)
+                    {
+                        context.Response.StatusCode = 401;
+                        context.Response.Close();
+                        return;
+                    }
+                    accountId = emailResult.AccountId;
+                }
+                else if (!string.IsNullOrWhiteSpace(rememberedDeviceId) && rememberedDeviceId.Length <= 128)
+                {
+                    var rememberedResult = await AuthenticationEngine.TryLoginByDeviceIdAsync(authOptions, rememberedDeviceId);
+                    if (!rememberedResult.Found)
+                    {
+                        context.Response.StatusCode = 404;
+                        context.Response.Close();
+                        return;
+                    }
+                    accountId = rememberedResult.AccountId;
                 }
                 else if (!string.IsNullOrWhiteSpace(deviceId) && deviceId.Length <= 128)
                 {
@@ -2735,6 +2802,155 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Auth login error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: Email/Password Auth. Availability check the register
+        // screen calls before it reveals the username/password fields -
+        // see AuthenticationEngine.IsEmailAvailableAsync for why an
+        // invalid-format email also reports unavailable rather than a
+        // separate error (this endpoint only ever answers yes/no, never
+        // distinguishes the reason).
+        private async Task HandleCheckEmail(HttpListenerContext context)
+        {
+            try
+            {
+                if (!context.Request.HasEntityBody)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                string body = await reader.ReadToEndAsync();
+
+                string email = string.Empty;
+                try
+                {
+                    using var document = System.Text.Json.JsonDocument.Parse(body);
+                    if (document.RootElement.TryGetProperty("email", out var emailElement))
+                    {
+                        email = emailElement.GetString() ?? string.Empty;
+                    }
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (string.IsNullOrWhiteSpace(email))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+                bool available = await AuthenticationEngine.IsEmailAvailableAsync(authOptions, email);
+
+                var response = new CheckEmailResponse { Available = available };
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Check-email error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: Email/Password Auth. Creates a new account (see
+        // AuthenticationEngine.RegisterWithEmailAsync) and, on success,
+        // immediately issues a JWT exactly like HandleAuthLogin does - a
+        // successful registration logs the player straight into the game,
+        // it does not require a separate follow-up login call.
+        private async Task HandleAuthRegister(HttpListenerContext context)
+        {
+            try
+            {
+                if (!context.Request.HasEntityBody)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                string body = await reader.ReadToEndAsync();
+
+                string email = string.Empty;
+                string username = string.Empty;
+                string password = string.Empty;
+                string deviceId = string.Empty;
+                try
+                {
+                    using var document = System.Text.Json.JsonDocument.Parse(body);
+                    if (document.RootElement.TryGetProperty("email", out var emailElement))
+                    {
+                        email = emailElement.GetString() ?? string.Empty;
+                    }
+                    if (document.RootElement.TryGetProperty("username", out var usernameElement))
+                    {
+                        username = usernameElement.GetString() ?? string.Empty;
+                    }
+                    if (document.RootElement.TryGetProperty("password", out var passwordElement))
+                    {
+                        password = passwordElement.GetString() ?? string.Empty;
+                    }
+                    if (document.RootElement.TryGetProperty("deviceId", out var deviceIdElement))
+                    {
+                        deviceId = deviceIdElement.GetString() ?? string.Empty;
+                    }
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+                var result = await AuthenticationEngine.RegisterWithEmailAsync(authOptions, email, username, password, string.IsNullOrWhiteSpace(deviceId) ? null : deviceId);
+
+                if (result.Outcome != EmailRegisterOutcome.Success)
+                {
+                    context.Response.StatusCode = result.Outcome switch
+                    {
+                        EmailRegisterOutcome.EmailInUse => 409,
+                        EmailRegisterOutcome.UsernameInUse => 409,
+                        EmailRegisterOutcome.InvalidEmail => 400,
+                        EmailRegisterOutcome.InvalidUsername => 400,
+                        EmailRegisterOutcome.InvalidPassword => 400,
+                        _ => 500
+                    };
+                    context.Response.ContentType = "application/json";
+                    await JsonSerializer.SerializeAsync(context.Response.OutputStream, new RegisterErrorResponse { Reason = result.Outcome.ToString() });
+                    context.Response.Close();
+                    return;
+                }
+
+                await DailyLoginRewardEngine.TryGrantLoginRewardAsync(authOptions, result.AccountId);
+
+                string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
+                string token = AuthenticationEngine.GenerateJwt(result.AccountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);
+
+                var response = new AuthLoginResponse { Token = token, ExpiresAtEpoch = expiresAtEpoch };
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Auth register error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

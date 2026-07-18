@@ -15,7 +15,37 @@ namespace FolkIdle.Server.Models
         // Nothing reads this outside the login flow itself - PlayerGuid
         // remains the AccountId used everywhere else (AccountSecurityQuotas,
         // JWT claims, purchase/refund webhooks).
+        //
+        // Modul: Email/Password Auth. Also doubles as the "remember this
+        // device" anchor for the email-authenticated flow below - Register/
+        // LoginWithEmailAsync both bind the caller's current DeviceId onto
+        // the row they resolve, so a later app launch from the same device
+        // can silently re-authenticate via TryLoginByDeviceIdAsync (a
+        // read-only lookup, unlike LoginOrProvisionAsync which still
+        // auto-provisions a brand new anonymous account for any unseen
+        // device - that legacy anonymous-play path is left untouched for
+        // its existing callers).
         public string? DeviceId { get; set; }
+
+        // Modul: Email/Password Auth. The real login identity for accounts
+        // created through Register - unique (case-insensitive, normalized
+        // to lowercase before every write/lookup so "A@b.com" and "a@b.com"
+        // collide as the same account). Null for device-only/OAuth-only
+        // accounts that never registered with email+password.
+        public string? Email { get; set; }
+
+        // Modul: Email/Password Auth. Player-chosen display handle, unique,
+        // set once at registration. Distinct from DeviceId/Email (neither
+        // of which is fit to show other players) - not yet wired into
+        // chat/leaderboard display (those still show PlayerId-derived
+        // names), left for a follow-up pass.
+        public string? Username { get; set; }
+
+        // Modul: Email/Password Auth. PBKDF2-HMACSHA256 password hash in
+        // "{iterations}.{saltBase64}.{hashBase64}" form (see
+        // PasswordHasher) - never a plaintext or reversibly-encrypted
+        // password. Null for device-only/OAuth-only accounts.
+        public string? PasswordHash { get; set; }
 
         // Modul: OAuth account binding. ProviderType 0 means "not linked to
         // any external provider" - ExternalProviderId is null in that case,

@@ -1228,5 +1228,27 @@ namespace FolkIdle.Client.Network
             _cts?.Dispose();
             FlightRecorder.Shutdown();
         }
+
+        // Modul: Email/Password Auth - Log Off. Closes the current session
+        // so a later Connect() (after a fresh login/register) starts clean
+        // - mirrors OnDestroy's own cleanup but without
+        // FlightRecorder.Shutdown() (a full application-exit concern, not
+        // relevant to logging off within a still-running session) and
+        // leaves _webSocket/_cts null rather than merely disposed so
+        // Connect() does not touch a disposed instance on the next login.
+        public void Disconnect()
+        {
+            _cts?.Cancel();
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None).Wait();
+            }
+            _webSocket?.Dispose();
+            _webSocket = null;
+            _cts?.Dispose();
+            _cts = null;
+            _isConnecting = false;
+            IsAuthenticated = false;
+        }
     }
 }

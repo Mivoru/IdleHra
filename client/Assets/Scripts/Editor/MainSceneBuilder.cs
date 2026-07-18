@@ -112,14 +112,17 @@ namespace FolkIdle.Client.Editor
             GameObject storeWindowObject = BuildStoreWindow(canvas.transform, syncProxy, networkClient);
             GameObject seasonPassWindowObject = BuildSeasonPassWindow(canvas.transform, syncProxy, networkClient);
 
-            // Modul: Map Hub, Part 2. Honest static placeholders - Settings,
-            // Friends, Statistics, and Login Bonus have no corresponding
+            // Modul: Map Hub, Part 2. Honest static placeholders - Friends,
+            // Statistics, and Login Bonus have no corresponding
             // engine/network code anywhere server-side (confirmed via
             // project-wide search), so unlike every other screen in this
             // file they are not wired to any real cache; they are plain
             // shells reachable from the hamburger menu, ready for real
-            // content once that server-side support exists.
-            GameObject settingsPanelObject = BuildPlaceholderWindow(canvas.transform, "SettingsPanel", "Settings", "Settings are not implemented yet.");
+            // content once that server-side support exists. Settings gets
+            // a real (if minimal) Profile section - see BuildSettingsWindow
+            // - since it hosts the one real, load-bearing action this pass
+            // adds: Log Off.
+            (GameObject settingsPanelObject, Button logOffButton) = BuildSettingsWindow(canvas.transform);
             GameObject friendsPanelObject = BuildPlaceholderWindow(canvas.transform, "FriendsPanel", "Friends", "Friends list is not implemented yet.");
             GameObject statisticsPanelObject = BuildPlaceholderWindow(canvas.transform, "StatisticsPanel", "Statistics", "Statistics are not implemented yet.");
             GameObject loginBonusPanelObject = BuildPlaceholderWindow(canvas.transform, "LoginBonusPanel", "Login Bonus", "Login bonus is not implemented yet.");
@@ -246,6 +249,15 @@ namespace FolkIdle.Client.Editor
             UiLoginWindow loginWindow = BuildLoginWindow(canvas.transform, networkClient);
             loginWindow.TutorialController = tutorialController;
 
+            // Modul: Email/Password Auth. Settings/Profile's Log Off button
+            // was built long before UiLoginWindow existed (LoginWindow is
+            // deliberately built last for z-order - see its own comment
+            // above), so it can only be wired now, as a post-pass
+            // persistent listener onto the now-real LogOff() method -
+            // exactly the same pattern already used for homeButton/
+            // battlePassBannerButton above.
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(logOffButton.onClick, loginWindow.LogOff);
+
             EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
             AssetDatabase.SaveAssets();
 
@@ -293,6 +305,13 @@ namespace FolkIdle.Client.Editor
         // ------------------------------------------------------------
         // Login window
         // ------------------------------------------------------------
+        // Modul: Email/Password Auth. Choice (Login vs Register) / Login /
+        // Register-Step1 (email) / Register-Step2 (username+password)
+        // screens, all centered in the same BlockingPanel and shown/hidden
+        // exclusively by UiLoginWindow's own logic at runtime (Start()
+        // hides all four before deciding which one, if any, to reveal - a
+        // remembered-device hit skips them entirely). StatusText is shared
+        // across every screen, pinned above them.
         private static UiLoginWindow BuildLoginWindow(Transform canvasTransform, WebSocketClient networkClient)
         {
             GameObject windowObject = new GameObject("LoginWindow", typeof(RectTransform));
@@ -307,33 +326,111 @@ namespace FolkIdle.Client.Editor
             StretchFull((RectTransform)blockingPanel.transform);
             blockingPanel.AddComponent<Image>().color = new Color(0.05f, 0.05f, 0.08f, 0.96f);
 
-            TMP_Text statusText = CreateText(blockingPanel.transform, "StatusText", "", 22f, TextAlignmentOptions.Center);
+            TMP_Text statusText = CreateText(blockingPanel.transform, "StatusText", string.Empty, 18f, TextAlignmentOptions.Center);
             RectTransform statusRect = (RectTransform)statusText.transform;
-            statusRect.anchorMin = new Vector2(0.5f, 0.55f);
-            statusRect.anchorMax = new Vector2(0.5f, 0.55f);
-            statusRect.sizeDelta = new Vector2(600f, 60f);
+            statusRect.anchorMin = new Vector2(0.5f, 0.68f);
+            statusRect.anchorMax = new Vector2(0.5f, 0.68f);
+            statusRect.sizeDelta = new Vector2(600f, 50f);
             statusRect.anchoredPosition = Vector2.zero;
 
-            TMP_InputField deviceIdField = CreateInputField(blockingPanel.transform, "DeviceIdInputField", "Device ID");
-            RectTransform deviceIdRect = (RectTransform)deviceIdField.transform;
-            deviceIdRect.anchorMin = new Vector2(0.5f, 0.45f);
-            deviceIdRect.anchorMax = new Vector2(0.5f, 0.45f);
-            deviceIdRect.sizeDelta = new Vector2(500f, 50f);
-            deviceIdRect.anchoredPosition = Vector2.zero;
+            GameObject choiceRoot = BuildAuthScreenRoot(blockingPanel.transform, "ChoiceRoot", 140f);
+            Button showLoginButton = BuildAuthButton(choiceRoot.transform, "ShowLoginButton", "Login");
+            Button showRegisterButton = BuildAuthButton(choiceRoot.transform, "ShowRegisterButton", "Register");
 
-            Button loginButton = CreateButton(blockingPanel.transform, "LoginButton", "Log In", out TextMeshProUGUI _);
-            RectTransform loginButtonRect = (RectTransform)loginButton.transform;
-            loginButtonRect.anchorMin = new Vector2(0.5f, 0.35f);
-            loginButtonRect.anchorMax = new Vector2(0.5f, 0.35f);
-            loginButtonRect.sizeDelta = new Vector2(220f, 54f);
-            loginButtonRect.anchoredPosition = Vector2.zero;
+            GameObject loginRoot = BuildAuthScreenRoot(blockingPanel.transform, "LoginRoot", 250f);
+            TMP_InputField loginEmailField = BuildAuthInputField(loginRoot.transform, "LoginEmailField", "Email", false);
+            TMP_InputField loginPasswordField = BuildAuthInputField(loginRoot.transform, "LoginPasswordField", "Password", true);
+            Button loginSubmitButton = BuildAuthButton(loginRoot.transform, "LoginSubmitButton", "Log In");
+            Button loginBackButton = BuildAuthButton(loginRoot.transform, "LoginBackButton", "Back");
+
+            GameObject registerStep1Root = BuildAuthScreenRoot(blockingPanel.transform, "RegisterStep1Root", 195f);
+            TMP_InputField registerEmailField = BuildAuthInputField(registerStep1Root.transform, "RegisterEmailField", "Email", false);
+            Button registerNextButton = BuildAuthButton(registerStep1Root.transform, "RegisterNextButton", "Next");
+            Button registerStep1BackButton = BuildAuthButton(registerStep1Root.transform, "RegisterStep1BackButton", "Back");
+
+            GameObject registerStep2Root = BuildAuthScreenRoot(blockingPanel.transform, "RegisterStep2Root", 400f);
+            TMP_Text registerStep2EmailLabel = CreateText(registerStep2Root.transform, "RegisterStep2EmailLabel", string.Empty, 16f, TextAlignmentOptions.Center);
+            LayoutElement registerStep2EmailLabelLayout = registerStep2EmailLabel.gameObject.AddComponent<LayoutElement>();
+            registerStep2EmailLabelLayout.preferredHeight = 26f;
+            TMP_InputField registerUsernameField = BuildAuthInputField(registerStep2Root.transform, "RegisterUsernameField", "Username", false);
+            TMP_InputField registerPasswordField = BuildAuthInputField(registerStep2Root.transform, "RegisterPasswordField", "Password", true);
+            TMP_InputField registerConfirmPasswordField = BuildAuthInputField(registerStep2Root.transform, "RegisterConfirmPasswordField", "Confirm Password", true);
+            Button registerSubmitButton = BuildAuthButton(registerStep2Root.transform, "RegisterSubmitButton", "Create Account");
+            Button registerStep2BackButton = BuildAuthButton(registerStep2Root.transform, "RegisterStep2BackButton", "Back");
 
             loginWindow.BlockingPanelRoot = blockingPanel;
-            loginWindow.DeviceIdInputField = deviceIdField;
-            loginWindow.LoginButton = loginButton;
             loginWindow.StatusText = statusText;
 
+            loginWindow.ChoiceRoot = choiceRoot;
+            loginWindow.ShowLoginButton = showLoginButton;
+            loginWindow.ShowRegisterButton = showRegisterButton;
+
+            loginWindow.LoginRoot = loginRoot;
+            loginWindow.LoginEmailField = loginEmailField;
+            loginWindow.LoginPasswordField = loginPasswordField;
+            loginWindow.LoginSubmitButton = loginSubmitButton;
+            loginWindow.LoginBackButton = loginBackButton;
+
+            loginWindow.RegisterStep1Root = registerStep1Root;
+            loginWindow.RegisterEmailField = registerEmailField;
+            loginWindow.RegisterNextButton = registerNextButton;
+            loginWindow.RegisterStep1BackButton = registerStep1BackButton;
+
+            loginWindow.RegisterStep2Root = registerStep2Root;
+            loginWindow.RegisterStep2EmailLabel = registerStep2EmailLabel;
+            loginWindow.RegisterUsernameField = registerUsernameField;
+            loginWindow.RegisterPasswordField = registerPasswordField;
+            loginWindow.RegisterConfirmPasswordField = registerConfirmPasswordField;
+            loginWindow.RegisterSubmitButton = registerSubmitButton;
+            loginWindow.RegisterStep2BackButton = registerStep2BackButton;
+
             return loginWindow;
+        }
+
+        // A centered, fixed-width, vertically-stacking container shared by
+        // every auth screen (Choice/Login/Register step 1/Register step 2)
+        // - UiLoginWindow.HideAllScreens()/Start() decide which one (if
+        // any) is actually active at runtime.
+        private static GameObject BuildAuthScreenRoot(Transform parent, string name, float height)
+        {
+            GameObject root = new GameObject(name, typeof(RectTransform));
+            root.transform.SetParent(parent, false);
+            RectTransform rect = (RectTransform)root.transform;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(520f, height);
+            rect.anchoredPosition = new Vector2(0f, -20f);
+
+            VerticalLayoutGroup layout = root.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = 14f;
+            layout.childAlignment = TextAnchor.UpperCenter;
+            layout.childControlWidth = true;
+            layout.childForceExpandWidth = true;
+            layout.childControlHeight = false;
+            layout.childForceExpandHeight = false;
+
+            return root;
+        }
+
+        private static TMP_InputField BuildAuthInputField(Transform parent, string name, string placeholder, bool isPassword)
+        {
+            TMP_InputField field = CreateInputField(parent, name, placeholder);
+            LayoutElement layoutElement = field.gameObject.AddComponent<LayoutElement>();
+            layoutElement.preferredHeight = 50f;
+            if (isPassword)
+            {
+                field.contentType = TMP_InputField.ContentType.Password;
+            }
+            return field;
+        }
+
+        private static Button BuildAuthButton(Transform parent, string name, string label)
+        {
+            Button button = CreateButton(parent, name, label, out TextMeshProUGUI _);
+            LayoutElement layoutElement = button.gameObject.AddComponent<LayoutElement>();
+            layoutElement.preferredHeight = 54f;
+            return button;
         }
 
         // ------------------------------------------------------------
@@ -3738,12 +3835,45 @@ namespace FolkIdle.Client.Editor
         }
 
         // ------------------------------------------------------------
-        // Honest static placeholders - Settings, Friends, Statistics, and
-        // Login Bonus have no corresponding engine/network code anywhere
-        // server-side (confirmed via project-wide search), so unlike every
-        // other screen in this file they are not wired to any real cache;
-        // they are plain shells reachable from the hamburger menu, ready
-        // for real content once that server-side support exists.
+        // Settings - currently just a Profile section with the one real,
+        // load-bearing action this pass adds: Log Off (see
+        // UiLoginWindow.LogOff - forgets the remembered device and returns
+        // to the Login/Register Choice screen without restarting the app).
+        // The returned Button is wired to LogOff itself as a post-pass
+        // persistent listener back in BuildMainScene, once UiLoginWindow
+        // actually exists (it is deliberately built last - see its own
+        // comment there).
+        // ------------------------------------------------------------
+        private static (GameObject panel, Button logOffButton) BuildSettingsWindow(Transform canvasTransform)
+        {
+            GameObject windowObject = BuildSimpleListWindowShell("SettingsPanel", canvasTransform, "Settings", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+
+            TextMeshProUGUI profileHeaderText = CreateText(contentAreaRect, "ProfileHeaderText", "Profile", 18f, TextAlignmentOptions.MidlineLeft);
+            RectTransform profileHeaderRect = (RectTransform)profileHeaderText.transform;
+            profileHeaderRect.anchorMin = new Vector2(0f, 1f);
+            profileHeaderRect.anchorMax = new Vector2(1f, 1f);
+            profileHeaderRect.pivot = new Vector2(0.5f, 1f);
+            profileHeaderRect.sizeDelta = new Vector2(0f, 30f);
+            profileHeaderRect.anchoredPosition = Vector2.zero;
+
+            Button logOffButton = CreateButton(contentAreaRect, "LogOffButton", "Log Off", out TextMeshProUGUI _);
+            RectTransform logOffRect = (RectTransform)logOffButton.transform;
+            logOffRect.anchorMin = new Vector2(0f, 1f);
+            logOffRect.anchorMax = new Vector2(1f, 1f);
+            logOffRect.pivot = new Vector2(0.5f, 1f);
+            logOffRect.sizeDelta = new Vector2(0f, 50f);
+            logOffRect.anchoredPosition = new Vector2(0f, -44f);
+
+            return (windowObject, logOffButton);
+        }
+
+        // ------------------------------------------------------------
+        // Honest static placeholders - Friends, Statistics, and Login Bonus
+        // have no corresponding engine/network code anywhere server-side
+        // (confirmed via project-wide search), so unlike every other
+        // screen in this file they are not wired to any real cache; they
+        // are plain shells reachable from the hamburger menu, ready for
+        // real content once that server-side support exists.
         // ------------------------------------------------------------
         private static GameObject BuildPlaceholderWindow(Transform canvasTransform, string windowName, string title, string message)
         {

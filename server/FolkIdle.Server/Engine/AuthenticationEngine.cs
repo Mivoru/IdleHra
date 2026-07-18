@@ -40,6 +40,26 @@ namespace FolkIdle.Server.Engine
         Failed
     }
 
+    public enum EmailRegisterOutcome
+    {
+        Success,
+        InvalidEmail,
+        InvalidUsername,
+        InvalidPassword,
+        EmailInUse,
+        UsernameInUse,
+        Failed
+    }
+
+    // Modul: Email/Password Auth. Deliberately a single outcome for "no
+    // such email" and "wrong password" - distinguishing them in the
+    // response would let a caller enumerate which emails are registered.
+    public enum EmailLoginOutcome
+    {
+        Success,
+        InvalidCredentials
+    }
+
     // Modul: hand-rolled minimal JWT (RFC 7519 shape: base64url(header).
     // base64url(payload).base64url(HMACSHA256 signature)) - no external JWT
     // library dependency, matching this codebase's established preference
@@ -383,6 +403,218 @@ namespace FolkIdle.Server.Engine
             }
 
             return (true, existing.Id, existing.PlayerGuid);
+        }
+
+        // Modul: Email/Password Auth. Read-only "remember this device"
+        // lookup - unlike LoginOrProvisionAsync, this NEVER auto-provisions
+        // a new account for an unseen device. It is what the client's
+        // silent relaunch check calls (see UiLoginWindow): a hit means the
+        // device previously completed a real Register/LoginWithEmailAsync
+        // and can skip straight past the login/register screen; a miss
+        // means a login/register choice must be shown, not a fresh
+        // anonymous account.
+        public static async Task<(bool Found, long PlayerId, Guid AccountId)> TryLoginByDeviceIdAsync(RetryingDbContextOptions authOptions, string deviceId)
+        {
+            await using var db = new FolkIdleDbContext(authOptions.Options);
+            var existing = await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.DeviceId == deviceId);
+            if (existing == null)
+            {
+                return (false, 0L, Guid.Empty);
+            }
+
+            return (true, existing.Id, existing.PlayerGuid);
+        }
+
+        // Modul: Email/Password Auth. Used by the register screen's
+        // email-availability check before it reveals the username/password
+        // fields - a normalized, invalid, or already-registered email all
+        // report "unavailable" so the caller cannot distinguish "malformed"
+        // from "taken" through this endpoint (Register itself returns the
+        // more specific EmailRegisterOutcome for the caller's own submit
+        // attempt).
+        public static async Task<bool> IsEmailAvailableAsync(RetryingDbContextOptions authOptions, string email)
+        {
+            string normalizedEmail = NormalizeEmail(email);
+            if (!IsValidEmailFormat(normalizedEmail))
+            {
+                return false;
+            }
+
+            await using var db = new FolkIdleDbContext(authOptions.Options);
+            bool exists = await db.PlayerRecords.AsNoTracking().AnyAsync(p => p.Email == normalizedEmail);
+            return !exists;
+        }
+
+        // Modul: Email/Password Auth. Creates a brand new account bound to
+        // (Email, PasswordHash, Username) - mirrors LoginOrProvisionAsync's
+        // starting-state shape (same initial level/lineage/resources)
+        // exactly, but keyed by a real credential instead of an implicit
+        // device ID. deviceId (optional) is bound onto the new row so the
+        // registering device can silently re-authenticate on its next
+        // launch via TryLoginByDeviceIdAsync, without the client needing to
+        // resubmit the password.
+        public static async Task<(EmailRegisterOutcome Outcome, long PlayerId, Guid AccountId)> RegisterWithEmailAsync(RetryingDbContextOptions authOptions, string email, string username, string password, string? deviceId)
+        {
+            string normalizedEmail = NormalizeEmail(email);
+            if (!IsValidEmailFormat(normalizedEmail))
+            {
+                return (EmailRegisterOutcome.InvalidEmail, 0L, Guid.Empty);
+            }
+
+            string trimmedUsername = (username ?? string.Empty).Trim();
+            if (trimmedUsername.Length < 3 || trimmedUsername.Length > 20)
+            {
+                return (EmailRegisterOutcome.InvalidUsername, 0L, Guid.Empty);
+            }
+
+            if (string.IsNullOrEmpty(password) || password.Length < 6)
+            {
+                return (EmailRegisterOutcome.InvalidPassword, 0L, Guid.Empty);
+            }
+
+            string passwordHash = PasswordHasher.Hash(password);
+
+            await using var db = new FolkIdleDbContext(authOptions.Options);
+            var executionStrategy = db.Database.CreateExecutionStrategy();
+            return await executionStrategy.ExecuteAsync(async () =>
+            {
+                db.ChangeTracker.Clear();
+                using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                try
+                {
+                    Guid characterId = Guid.NewGuid();
+
+                    var player = new PlayerRecord
+                    {
+                        CurrentLevel = 1,
+                        CurrentXp = 0L,
+                        SelectedLineageId = 1,
+                        PlayerGuid = characterId,
+                        DeviceId = string.IsNullOrWhiteSpace(deviceId) ? null : deviceId,
+                        Email = normalizedEmail,
+                        Username = trimmedUsername,
+                        PasswordHash = passwordHash,
+                        LastLogoutTimestamp = 0L,
+                        PremiumDiamonds = 0
+                    };
+                    db.PlayerRecords.Add(player);
+                    await db.SaveChangesAsync();
+
+                    db.CharacterRecords.Add(new CharacterRecord
+                    {
+                        Id = characterId,
+                        PlayerId = player.Id,
+                        Level = 1,
+                        AgePhase = 1,
+                        AgeTicks = 0L
+                    });
+
+                    db.CharacterLineages.Add(new CharacterLineageRegistry
+                    {
+                        CharacterId = characterId,
+                        GenerationIndex = 0,
+                        GeneticVector = RaceIds.Human
+                    });
+
+                    db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = "gold", Quantity = 1000L });
+                    db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = ContentRegistry.GetMaterialString(1), Quantity = 25L });
+
+                    await db.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    Console.WriteLine($"Registered new player {player.Id} via email.");
+                    return (EmailRegisterOutcome.Success, player.Id, characterId);
+                }
+                catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation)
+                {
+                    // Modul: a concurrent registration won the race on
+                    // whichever unique index this attempt also targeted -
+                    // not retryable (an insert violating a unique
+                    // constraint fails identically every time), so this is
+                    // handled directly rather than left for the execution
+                    // strategy to replay. The Postgres constraint name
+                    // tells the caller which field actually collided so the
+                    // register screen can show an accurate error.
+                    await transaction.RollbackAsync();
+
+                    string constraintName = pgEx.ConstraintName ?? string.Empty;
+                    if (constraintName.Contains("Email", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return (EmailRegisterOutcome.EmailInUse, 0L, Guid.Empty);
+                    }
+                    if (constraintName.Contains("Username", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return (EmailRegisterOutcome.UsernameInUse, 0L, Guid.Empty);
+                    }
+
+                    Console.WriteLine($"Email registration failed: {ex.Message}");
+                    return (EmailRegisterOutcome.Failed, 0L, Guid.Empty);
+                }
+            });
+        }
+
+        // Modul: Email/Password Auth. Verifies (Email, Password) against
+        // the stored PBKDF2 hash and, on success, rebinds the caller's
+        // current deviceId onto the resolved account as the new "remember
+        // me" anchor - logging in from a different device than the one
+        // that registered is expected (a player switching phones),
+        // DeviceId is a convenience shortcut here, not a security boundary
+        // (the password check is). A failed rebind (the deviceId already
+        // belongs to a different, unrelated row - e.g. an anonymous
+        // LoginOrProvisionAsync account from before this player ever
+        // registered) does not fail the login itself.
+        public static async Task<(EmailLoginOutcome Outcome, long PlayerId, Guid AccountId)> LoginWithEmailAsync(RetryingDbContextOptions authOptions, string email, string password, string? deviceId)
+        {
+            string normalizedEmail = NormalizeEmail(email);
+
+            await using var db = new FolkIdleDbContext(authOptions.Options);
+            var player = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Email == normalizedEmail);
+
+            if (player == null || !PasswordHasher.Verify(password, player.PasswordHash))
+            {
+                return (EmailLoginOutcome.InvalidCredentials, 0L, Guid.Empty);
+            }
+
+            if (!string.IsNullOrWhiteSpace(deviceId) && player.DeviceId != deviceId)
+            {
+                player.DeviceId = deviceId;
+                try
+                {
+                    await db.SaveChangesAsync();
+                }
+                catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation)
+                {
+                    Console.WriteLine($"DeviceId rebind skipped for player {player.Id}: {ex.Message}");
+                }
+            }
+
+            return (EmailLoginOutcome.Success, player.Id, player.PlayerGuid);
+        }
+
+        private static string NormalizeEmail(string? email)
+        {
+            return (email ?? string.Empty).Trim().ToLowerInvariant();
+        }
+
+        // Modul: deliberately not a full RFC 5322 validator (that grammar
+        // is notoriously over-engineered for real-world use) - just enough
+        // shape-checking to reject obvious garbage before it reaches the
+        // database: exactly one '@', not at either end, at least one '.'
+        // somewhere after it.
+        private static bool IsValidEmailFormat(string normalizedEmail)
+        {
+            if (string.IsNullOrEmpty(normalizedEmail) || normalizedEmail.Length > 254)
+            {
+                return false;
+            }
+
+            int atIndex = normalizedEmail.IndexOf('@');
+            if (atIndex <= 0 || atIndex != normalizedEmail.LastIndexOf('@') || atIndex >= normalizedEmail.Length - 1)
+            {
+                return false;
+            }
+
+            return normalizedEmail.IndexOf('.', atIndex + 1) > atIndex + 1;
         }
     }
 }
