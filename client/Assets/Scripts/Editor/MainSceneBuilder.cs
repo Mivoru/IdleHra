@@ -54,6 +54,26 @@ namespace FolkIdle.Client.Editor
             // something this builder owns.
             ClearPreviousGeneratedHierarchy();
 
+            // Modul: UI audit follow-up. UiCodex3DViewer's PreviewCamera
+            // culling mask (and the model instance's own layer) has always
+            // depended on a "UI_3D_Preview" Layer existing in this project's
+            // Tags & Layers settings - referenced only by name in code,
+            // which cannot itself create the engine-level Layer slot.
+            // Without it LayerMask.NameToLayer returns -1, the camera's
+            // cullingMask becomes 0, and the viewer renders nothing even
+            // once a monster prefab is assigned - a structural gap, not an
+            // art one. Ensured here (idempotent) rather than requiring a
+            // manual one-time Project Settings edit. The two Forge item
+            // preview viewports get their own distinct layers rather than
+            // sharing this one: both viewers' rigs live under Managers (see
+            // BuildManagers), which - like CodexPreviewRig - keeps
+            // rendering even while its own screen/tab is inactive, so a
+            // shared culling mask would let one viewer's leftover model
+            // bleed into the other's render texture.
+            EnsureLayerExists("UI_3D_Preview");
+            EnsureLayerExists("UI_3D_Preview_ForgeCraft");
+            EnsureLayerExists("UI_3D_Preview_ForgeReroll");
+
             ChatSceneBuilder.EnsureEventSystem();
             Canvas canvas = ChatSceneBuilder.BuildCanvas();
 
@@ -98,7 +118,7 @@ namespace FolkIdle.Client.Editor
             // Modul: Full-Game UI Architecture, Part 5. Forge (Craft/Reroll
             // sub-tabs), Skill Tree, and Village windows - the last batch of
             // previously-orphaned network-wired scripts from the UI survey.
-            GameObject forgeWindowObject = BuildForgeWindow(canvas.transform, inventoryCache, networkClient, syncProxy, assetRegistry);
+            GameObject forgeWindowObject = BuildForgeWindow(canvas.transform, inventoryCache, networkClient, syncProxy, assetRegistry, assetCoordinator, managers.transform);
             GameObject skillTreeWindowObject = BuildSkillTreeWindow(canvas.transform, networkClient, syncProxy);
             GameObject villageWindowObject = BuildVillageWindow(canvas.transform, syncProxy, networkClient);
             GameObject codexWindowObject = BuildCodexWindow(canvas.transform, assetRegistry, assetCoordinator, managers.transform);
@@ -205,6 +225,7 @@ namespace FolkIdle.Client.Editor
 
             combatPanelComponent.ScreenTabGroup = screenTabGroup;
             combatPanelComponent.CharacterScreenIndex = HudGroupScreenIndex;
+            combatPanelComponent.NetworkClient = networkClient;
 
             UnityEditor.Events.UnityEventTools.AddIntPersistentListener(homeButton.onClick, screenTabGroup.ShowIndex, 0);
             UnityEditor.Events.UnityEventTools.AddIntPersistentListener(battlePassBannerButton.onClick, screenTabGroup.ShowIndex, SeasonPassScreenIndex);
@@ -287,6 +308,42 @@ namespace FolkIdle.Client.Editor
             {
                 Object.DestroyImmediate(existing);
             }
+        }
+
+        // Modul: UI audit follow-up. Layers can only be registered by
+        // editing ProjectSettings/TagManager.asset (no runtime API exists to
+        // create one) - user layers occupy slots 8-31. Idempotent: a no-op
+        // if the name is already registered anywhere in the table.
+        private static void EnsureLayerExists(string layerName)
+        {
+            Object[] tagManagerAssets = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset");
+            if (tagManagerAssets == null || tagManagerAssets.Length == 0)
+            {
+                Debug.LogWarning("MainSceneBuilder: could not load ProjectSettings/TagManager.asset to register layer '" + layerName + "'.");
+                return;
+            }
+
+            SerializedObject tagManager = new SerializedObject(tagManagerAssets[0]);
+            SerializedProperty layersProp = tagManager.FindProperty("layers");
+            if (layersProp == null) return;
+
+            for (int i = 0; i < layersProp.arraySize; i++)
+            {
+                if (layersProp.GetArrayElementAtIndex(i).stringValue == layerName) return;
+            }
+
+            for (int i = 8; i < layersProp.arraySize; i++)
+            {
+                SerializedProperty slot = layersProp.GetArrayElementAtIndex(i);
+                if (string.IsNullOrEmpty(slot.stringValue))
+                {
+                    slot.stringValue = layerName;
+                    tagManager.ApplyModifiedProperties();
+                    return;
+                }
+            }
+
+            Debug.LogWarning("MainSceneBuilder: no free user layer slot (8-31) available to register '" + layerName + "'.");
         }
 
         // Modul: one root GameObject holding every singleton-style
@@ -948,9 +1005,19 @@ namespace FolkIdle.Client.Editor
             createPanel.CreateGuildNameInputField = createInput;
             createPanel.CreateGuildButton = createButton;
 
-            (TMP_InputField inviteInput, Button inviteButton) = BuildLabeledInputRow(actionsAreaObject.transform, "InvitePlayerRow", "Player Name", "Invite Player");
+            // Modul: UI audit follow-up. Renamed from "Invite Player" -
+            // JoinGuildAsync is a self-service join-by-name (no player-to-
+            // player invite mechanism exists server-side), so this field
+            // takes a guild name, not a player name. See UiGuildCreatePanel's
+            // header comment.
+            (TMP_InputField inviteInput, Button inviteButton) = BuildLabeledInputRow(actionsAreaObject.transform, "JoinGuildRow", "Guild Name", "Join Guild");
             createPanel.InvitePlayerInputField = inviteInput;
             createPanel.InvitePlayerButton = inviteButton;
+
+            TextMeshProUGUI guildActionsStatusText = CreateText(actionsAreaObject.transform, "GuildActionsStatusText", string.Empty, 14f, TextAlignmentOptions.Center);
+            LayoutElement guildActionsStatusLayoutElement = guildActionsStatusText.gameObject.AddComponent<LayoutElement>();
+            guildActionsStatusLayoutElement.preferredHeight = 24f;
+            createPanel.StatusText = guildActionsStatusText;
 
             return rosterAreaObject;
         }
@@ -1978,7 +2045,7 @@ namespace FolkIdle.Client.Editor
             }
         }
 
-        private static GameObject BuildForgeWindow(Transform canvasTransform, EquipmentInventoryCache inventoryCache, WebSocketClient networkClient, VisualSyncProxy syncProxy, AssetRegistry assetRegistry)
+        private static GameObject BuildForgeWindow(Transform canvasTransform, EquipmentInventoryCache inventoryCache, WebSocketClient networkClient, VisualSyncProxy syncProxy, AssetRegistry assetRegistry, AssetLifecycleCoordinator assetCoordinator, Transform riggingParent)
         {
             GameObject windowObject = new GameObject("ForgeWindow", typeof(RectTransform));
             windowObject.transform.SetParent(canvasTransform, false);
@@ -2018,8 +2085,8 @@ namespace FolkIdle.Client.Editor
             contentAreaRect.offsetMin = new Vector2(20f, 20f);
             contentAreaRect.offsetMax = new Vector2(-20f, -64f);
 
-            GameObject craftingGroup = BuildForgeCraftingGroup(contentAreaRect, inventoryCache, networkClient, assetRegistry);
-            GameObject rerollGroup = BuildEquipmentRerollGroup(contentAreaRect, inventoryCache, networkClient, syncProxy, assetRegistry);
+            GameObject craftingGroup = BuildForgeCraftingGroup(contentAreaRect, inventoryCache, networkClient, assetRegistry, assetCoordinator, riggingParent);
+            GameObject rerollGroup = BuildEquipmentRerollGroup(contentAreaRect, inventoryCache, networkClient, syncProxy, assetRegistry, assetCoordinator, riggingParent);
 
             rerollGroup.SetActive(false);
 
@@ -2031,8 +2098,9 @@ namespace FolkIdle.Client.Editor
         }
 
         // Top 58% recipe list (real UiForgeCraftingPanel), bottom 42%
-        // detail panel with name/material text plus a Craft button.
-        private static GameObject BuildForgeCraftingGroup(Transform parent, EquipmentInventoryCache inventoryCache, WebSocketClient networkClient, AssetRegistry assetRegistry)
+        // detail panel - a compact 3D item preview (UiForgeItemViewer) to
+        // the left, name/material text plus a Craft button to the right.
+        private static GameObject BuildForgeCraftingGroup(Transform parent, EquipmentInventoryCache inventoryCache, WebSocketClient networkClient, AssetRegistry assetRegistry, AssetLifecycleCoordinator assetCoordinator, Transform riggingParent)
         {
             GameObject groupObject = new GameObject("CraftingGroup", typeof(RectTransform));
             groupObject.transform.SetParent(parent, false);
@@ -2058,17 +2126,32 @@ namespace FolkIdle.Client.Editor
             detailAreaRect.offsetMin = Vector2.zero;
             detailAreaRect.offsetMax = new Vector2(0f, -12f);
 
-            VerticalLayoutGroup detailLayout = detailAreaObject.AddComponent<VerticalLayoutGroup>();
+            HorizontalLayoutGroup detailRowLayout = detailAreaObject.AddComponent<HorizontalLayoutGroup>();
+            detailRowLayout.spacing = 10f;
+            detailRowLayout.childControlWidth = true;
+            detailRowLayout.childForceExpandWidth = false;
+            detailRowLayout.childControlHeight = true;
+            detailRowLayout.childForceExpandHeight = false;
+
+            UiForgeItemViewer craftItemViewer = BuildForgeItemViewer(detailAreaObject.transform, riggingParent, assetCoordinator, "UI_3D_Preview_ForgeCraft", "ForgeCraftPreviewRig");
+
+            GameObject textStackObject = new GameObject("DetailTextStack", typeof(RectTransform));
+            textStackObject.transform.SetParent(detailAreaObject.transform, false);
+            LayoutElement textStackLayout = textStackObject.AddComponent<LayoutElement>();
+            textStackLayout.flexibleWidth = 1f;
+            textStackLayout.flexibleHeight = 1f;
+
+            VerticalLayoutGroup detailLayout = textStackObject.AddComponent<VerticalLayoutGroup>();
             detailLayout.spacing = 8f;
             detailLayout.childControlWidth = true;
             detailLayout.childForceExpandWidth = true;
             detailLayout.childControlHeight = false;
             detailLayout.childForceExpandHeight = false;
 
-            TextMeshProUGUI selectedNameText = CreateStatRow(detailAreaObject.transform, "No Recipe Selected");
-            TextMeshProUGUI requiredMaterialText = CreateStatRow(detailAreaObject.transform, "Materials: -");
+            TextMeshProUGUI selectedNameText = CreateStatRow(textStackObject.transform, "No Recipe Selected");
+            TextMeshProUGUI requiredMaterialText = CreateStatRow(textStackObject.transform, "Materials: -");
 
-            Button craftButton = CreateButton(detailAreaObject.transform, "CraftButton", "Craft", out TextMeshProUGUI _);
+            Button craftButton = CreateButton(textStackObject.transform, "CraftButton", "Craft", out TextMeshProUGUI _);
             LayoutElement craftButtonLayout = craftButton.gameObject.AddComponent<LayoutElement>();
             craftButtonLayout.preferredHeight = 44f;
 
@@ -2080,6 +2163,7 @@ namespace FolkIdle.Client.Editor
             craftingPanel.SelectedRecipeNameText = selectedNameText;
             craftingPanel.RequiredMaterialText = requiredMaterialText;
             craftingPanel.CraftButton = craftButton;
+            craftingPanel.ItemViewer = craftItemViewer;
             craftingPanel.SufficientStockColor = Color.white;
             craftingPanel.InsufficientStockColor = new Color(1f, 0.35f, 0.35f, 1f);
 
@@ -2088,12 +2172,56 @@ namespace FolkIdle.Client.Editor
             return groupObject;
         }
 
+        // Shared by BuildForgeCraftingGroup/BuildEquipmentRerollGroup - a
+        // compact (90x90) render-texture item preview, mirroring
+        // UiCodex3DViewer's approach at Forge detail-panel scale. Each
+        // caller passes its own distinct layerName/rigName (see
+        // EnsureLayerExists's call site comment for why Craft and Reroll
+        // cannot share one).
+        private static UiForgeItemViewer BuildForgeItemViewer(Transform parent, Transform riggingParent, AssetLifecycleCoordinator assetCoordinator, string layerName, string rigName)
+        {
+            GameObject viewerPanelObject = new GameObject("ItemViewerPanel", typeof(RectTransform));
+            viewerPanelObject.transform.SetParent(parent, false);
+            LayoutElement viewerLayout = viewerPanelObject.AddComponent<LayoutElement>();
+            viewerLayout.preferredWidth = 90f;
+            viewerLayout.preferredHeight = 90f;
+            viewerPanelObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.5f);
+
+            GameObject previewImageObject = new GameObject("PreviewImage", typeof(RectTransform));
+            previewImageObject.transform.SetParent(viewerPanelObject.transform, false);
+            StretchFull((RectTransform)previewImageObject.transform);
+            RawImage previewImage = previewImageObject.AddComponent<RawImage>();
+            previewImage.color = Color.white;
+
+            GameObject rigObject = new GameObject(rigName);
+            rigObject.transform.SetParent(riggingParent, false);
+
+            GameObject cameraObject = new GameObject(rigName + "Camera", typeof(Camera));
+            cameraObject.transform.SetParent(rigObject.transform, false);
+            cameraObject.transform.localPosition = new Vector3(0f, 0f, -5f);
+            Camera previewCamera = cameraObject.GetComponent<Camera>();
+
+            GameObject modelAnchorObject = new GameObject("ModelAnchor");
+            modelAnchorObject.transform.SetParent(rigObject.transform, false);
+
+            UiForgeItemViewer viewer = viewerPanelObject.AddComponent<UiForgeItemViewer>();
+            viewer.AssetCoordinator = assetCoordinator;
+            viewer.PreviewLayerName = layerName;
+            viewer.PreviewCamera = previewCamera;
+            viewer.PreviewImage = previewImage;
+            viewer.ModelAnchor = modelAnchorObject.transform;
+
+            return viewer;
+        }
+
         // Top 50% equipment list (real UiForgeEquipmentRow instances),
-        // bottom 50% detail panel - selected item name, 4 fixed affix
-        // slot rows (each: highlight bar + label + Select button), reroll
-        // cost text, Reroll button. Real, network-wired UiEquipmentRerollPanel
-        // (CommandType via SendRerollCommandZeroAlloc/SendEquipItemCommandZeroAlloc).
-        private static GameObject BuildEquipmentRerollGroup(Transform parent, EquipmentInventoryCache inventoryCache, WebSocketClient networkClient, VisualSyncProxy syncProxy, AssetRegistry assetRegistry)
+        // bottom 50% detail panel - a compact 3D item preview
+        // (UiForgeItemViewer) to the left; selected item name, 4 fixed
+        // affix slot rows (each: highlight bar + label + Select button),
+        // reroll cost text, Reroll button to the right. Real,
+        // network-wired UiEquipmentRerollPanel (CommandType via
+        // SendRerollCommandZeroAlloc/SendEquipItemCommandZeroAlloc).
+        private static GameObject BuildEquipmentRerollGroup(Transform parent, EquipmentInventoryCache inventoryCache, WebSocketClient networkClient, VisualSyncProxy syncProxy, AssetRegistry assetRegistry, AssetLifecycleCoordinator assetCoordinator, Transform riggingParent)
         {
             GameObject groupObject = new GameObject("RerollGroup", typeof(RectTransform));
             groupObject.transform.SetParent(parent, false);
@@ -2119,14 +2247,29 @@ namespace FolkIdle.Client.Editor
             detailAreaRect.offsetMin = Vector2.zero;
             detailAreaRect.offsetMax = new Vector2(0f, -12f);
 
-            VerticalLayoutGroup detailLayout = detailAreaObject.AddComponent<VerticalLayoutGroup>();
+            HorizontalLayoutGroup detailRowLayout = detailAreaObject.AddComponent<HorizontalLayoutGroup>();
+            detailRowLayout.spacing = 10f;
+            detailRowLayout.childControlWidth = true;
+            detailRowLayout.childForceExpandWidth = false;
+            detailRowLayout.childControlHeight = true;
+            detailRowLayout.childForceExpandHeight = false;
+
+            UiForgeItemViewer rerollItemViewer = BuildForgeItemViewer(detailAreaObject.transform, riggingParent, assetCoordinator, "UI_3D_Preview_ForgeReroll", "ForgeRerollPreviewRig");
+
+            GameObject textStackObject = new GameObject("DetailTextStack", typeof(RectTransform));
+            textStackObject.transform.SetParent(detailAreaObject.transform, false);
+            LayoutElement textStackLayout = textStackObject.AddComponent<LayoutElement>();
+            textStackLayout.flexibleWidth = 1f;
+            textStackLayout.flexibleHeight = 1f;
+
+            VerticalLayoutGroup detailLayout = textStackObject.AddComponent<VerticalLayoutGroup>();
             detailLayout.spacing = 6f;
             detailLayout.childControlWidth = true;
             detailLayout.childForceExpandWidth = true;
             detailLayout.childControlHeight = false;
             detailLayout.childForceExpandHeight = false;
 
-            TextMeshProUGUI selectedItemNameText = CreateStatRow(detailAreaObject.transform, "No Item Selected");
+            TextMeshProUGUI selectedItemNameText = CreateStatRow(textStackObject.transform, "No Item Selected");
 
             TextMeshProUGUI[] affixTexts = new TextMeshProUGUI[4];
             Button[] affixButtons = new Button[4];
@@ -2134,7 +2277,7 @@ namespace FolkIdle.Client.Editor
             for (int i = 0; i < 4; i++)
             {
                 GameObject affixRowObject = new GameObject("AffixSlotRow" + i, typeof(RectTransform));
-                affixRowObject.transform.SetParent(detailAreaObject.transform, false);
+                affixRowObject.transform.SetParent(textStackObject.transform, false);
                 LayoutElement affixRowLayout = affixRowObject.AddComponent<LayoutElement>();
                 affixRowLayout.preferredHeight = 30f;
 
@@ -2165,9 +2308,9 @@ namespace FolkIdle.Client.Editor
                 affixHighlights[i] = highlightObject;
             }
 
-            TextMeshProUGUI rerollCostText = CreateStatRow(detailAreaObject.transform, "Cost: -");
+            TextMeshProUGUI rerollCostText = CreateStatRow(textStackObject.transform, "Cost: -");
 
-            Button rerollButton = CreateButton(detailAreaObject.transform, "RerollButton", "Reroll", out TextMeshProUGUI _);
+            Button rerollButton = CreateButton(textStackObject.transform, "RerollButton", "Reroll", out TextMeshProUGUI _);
             LayoutElement rerollButtonLayout = rerollButton.gameObject.AddComponent<LayoutElement>();
             rerollButtonLayout.preferredHeight = 44f;
 
@@ -2183,6 +2326,7 @@ namespace FolkIdle.Client.Editor
             rerollPanel.AffixSlotSelectedHighlights = affixHighlights;
             rerollPanel.RerollCostText = rerollCostText;
             rerollPanel.RerollButton = rerollButton;
+            rerollPanel.ItemViewer = rerollItemViewer;
             rerollPanel.AffordableCostColor = Color.white;
             rerollPanel.UnaffordableCostColor = new Color(1f, 0.35f, 0.35f, 1f);
 
@@ -3824,11 +3968,19 @@ namespace FolkIdle.Client.Editor
             titleRect.sizeDelta = new Vector2(0f, 50f);
             titleRect.anchoredPosition = Vector2.zero;
 
-            Button villageZone = BuildMapZone(mapFieldRect, "VillageZone", "Village", new Vector2(0.06f, 0.62f), new Vector2(0.48f, 0.80f), new Color(0.42f, 0.32f, 0.16f, 1f));
-            Button guildZone = BuildMapZone(mapFieldRect, "GuildZone", "Guild Hall", new Vector2(0.52f, 0.62f), new Vector2(0.94f, 0.80f), new Color(0.30f, 0.24f, 0.42f, 1f));
-            Button marketZone = BuildMapZone(mapFieldRect, "MarketZone", "Market", new Vector2(0.06f, 0.40f), new Vector2(0.48f, 0.58f), new Color(0.44f, 0.36f, 0.10f, 1f));
-            Button bossZone = BuildMapZone(mapFieldRect, "BossZone", "World Boss", new Vector2(0.52f, 0.40f), new Vector2(0.94f, 0.58f), new Color(0.46f, 0.12f, 0.12f, 1f));
-            Button combatZone = BuildMapZone(mapFieldRect, "CombatZone", "Combat", new Vector2(0.06f, 0.06f), new Vector2(0.94f, 0.36f), new Color(0.18f, 0.34f, 0.18f, 1f));
+            // Modul: UI audit follow-up. Zone rows previously spanned only
+            // 0.06-0.80 of MapFieldArea, leaving a ~280px dead gap between
+            // the title (top 50px) and the first row - the title's own
+            // fixed-pixel height was never accounted for in the fractional
+            // layout. Re-anchored to start just below the title (0.95) and
+            // reach the bottom margin (0.06), with each row's height grown
+            // proportionally to fill the reclaimed space rather than just
+            // closing the gap.
+            Button villageZone = BuildMapZone(mapFieldRect, "VillageZone", "Village", new Vector2(0.06f, 0.72f), new Vector2(0.48f, 0.95f), new Color(0.42f, 0.32f, 0.16f, 1f));
+            Button guildZone = BuildMapZone(mapFieldRect, "GuildZone", "Guild Hall", new Vector2(0.52f, 0.72f), new Vector2(0.94f, 0.95f), new Color(0.30f, 0.24f, 0.42f, 1f));
+            Button marketZone = BuildMapZone(mapFieldRect, "MarketZone", "Market", new Vector2(0.06f, 0.47f), new Vector2(0.48f, 0.69f), new Color(0.44f, 0.36f, 0.10f, 1f));
+            Button bossZone = BuildMapZone(mapFieldRect, "BossZone", "World Boss", new Vector2(0.52f, 0.47f), new Vector2(0.94f, 0.69f), new Color(0.46f, 0.12f, 0.12f, 1f));
+            Button combatZone = BuildMapZone(mapFieldRect, "CombatZone", "Combat", new Vector2(0.06f, 0.06f), new Vector2(0.94f, 0.44f), new Color(0.18f, 0.34f, 0.18f, 1f));
 
             return (hubObject, combatZone, villageZone, guildZone, marketZone, bossZone);
         }
@@ -4093,13 +4245,24 @@ namespace FolkIdle.Client.Editor
         {
             GameObject windowObject = BuildSimpleListWindowShell("BossWorldPanel", canvasTransform, "World Boss", out RectTransform contentAreaRect, out TextMeshProUGUI _);
 
+            // Modul: UI audit follow-up. Previously reserved 38% of the
+            // window's height (anchorMin.y = 0.62) but only ever populated
+            // its top ~74px (HP bar + text) and bottom ~50px (Runs text +
+            // Attack button, bottom-anchored) - leaving a large blank gap
+            // in the middle on any real portrait canvas. Fixed-pixel height
+            // sized to what the content actually needs (matches
+            // BuildSimpleListWindowShell's own fixed-pixel-inset
+            // convention), with Runs/Attack moved to sit directly below the
+            // HP text instead of anchored to the bottom of an oversized
+            // section.
             GameObject hpSectionObject = new GameObject("BossHpSection", typeof(RectTransform));
             hpSectionObject.transform.SetParent(contentAreaRect, false);
             RectTransform hpSectionRect = (RectTransform)hpSectionObject.transform;
-            hpSectionRect.anchorMin = new Vector2(0f, 0.62f);
+            hpSectionRect.anchorMin = new Vector2(0f, 1f);
             hpSectionRect.anchorMax = new Vector2(1f, 1f);
-            hpSectionRect.offsetMin = Vector2.zero;
-            hpSectionRect.offsetMax = Vector2.zero;
+            hpSectionRect.pivot = new Vector2(0.5f, 1f);
+            hpSectionRect.sizeDelta = new Vector2(0f, 150f);
+            hpSectionRect.anchoredPosition = Vector2.zero;
             hpSectionObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.4f);
 
             (GameObject hpBackground, RectTransform hpFill) = BuildAnchoredProgressBar(hpSectionRect, new Color(0.8f, 0.1f, 0.1f, 1f));
@@ -4120,19 +4283,19 @@ namespace FolkIdle.Client.Editor
 
             TextMeshProUGUI runsText = CreateText(hpSectionRect, "WorldBossRunsText", "Runs: 0", 14f, TextAlignmentOptions.MidlineLeft);
             RectTransform runsTextRect = (RectTransform)runsText.transform;
-            runsTextRect.anchorMin = new Vector2(0f, 0f);
-            runsTextRect.anchorMax = new Vector2(0.5f, 0f);
-            runsTextRect.pivot = new Vector2(0f, 0f);
-            runsTextRect.sizeDelta = new Vector2(0f, 30f);
-            runsTextRect.anchoredPosition = new Vector2(14f, 10f);
+            runsTextRect.anchorMin = new Vector2(0f, 1f);
+            runsTextRect.anchorMax = new Vector2(0.5f, 1f);
+            runsTextRect.pivot = new Vector2(0f, 1f);
+            runsTextRect.sizeDelta = new Vector2(0f, 40f);
+            runsTextRect.anchoredPosition = new Vector2(14f, -84f);
 
             Button attackButton = CreateButton(hpSectionRect, "WorldBossAttackButton", "Attack", out TextMeshProUGUI _);
             RectTransform attackRect = (RectTransform)attackButton.transform;
-            attackRect.anchorMin = new Vector2(0.5f, 0f);
-            attackRect.anchorMax = new Vector2(1f, 0f);
-            attackRect.pivot = new Vector2(1f, 0f);
+            attackRect.anchorMin = new Vector2(0.5f, 1f);
+            attackRect.anchorMax = new Vector2(1f, 1f);
+            attackRect.pivot = new Vector2(1f, 1f);
             attackRect.sizeDelta = new Vector2(-14f, 40f);
-            attackRect.anchoredPosition = new Vector2(-14f, 10f);
+            attackRect.anchoredPosition = new Vector2(-14f, -84f);
 
             UiCommandDispatcher dispatcher = hpSectionObject.AddComponent<UiCommandDispatcher>();
             dispatcher.NetworkClient = networkClient;
@@ -4147,13 +4310,18 @@ namespace FolkIdle.Client.Editor
             binder.WorldBossAttackButton = attackButton;
             binder.SoundEngine = sfxEngine;
 
+            // Modul: UI audit follow-up. Previously capped at anchorMax.y =
+            // 0.6, leaving everything between it and the (also oversized)
+            // HP section above empty. Now fills all remaining space below
+            // the HP section's fixed 150px, rather than an arbitrary
+            // fraction of the window.
             GameObject leaderboardSectionObject = new GameObject("TopPlayersSection", typeof(RectTransform));
             leaderboardSectionObject.transform.SetParent(contentAreaRect, false);
             RectTransform leaderboardSectionRect = (RectTransform)leaderboardSectionObject.transform;
             leaderboardSectionRect.anchorMin = Vector2.zero;
-            leaderboardSectionRect.anchorMax = new Vector2(1f, 0.6f);
+            leaderboardSectionRect.anchorMax = Vector2.one;
             leaderboardSectionRect.offsetMin = Vector2.zero;
-            leaderboardSectionRect.offsetMax = Vector2.zero;
+            leaderboardSectionRect.offsetMax = new Vector2(0f, -150f);
 
             TextMeshProUGUI leaderboardTitleText = CreateText(leaderboardSectionRect, "TopPlayersTitleText", "Top Players", 16f, TextAlignmentOptions.MidlineLeft);
             RectTransform leaderboardTitleRect = (RectTransform)leaderboardTitleText.transform;

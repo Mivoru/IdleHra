@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using FolkIdle.Client.Engine;
+using FolkIdle.Client.Network;
 
 namespace FolkIdle.Client.UI
 {
@@ -18,11 +19,16 @@ namespace FolkIdle.Client.UI
     // "small fixed slot count for a small real roster" convention (see
     // UiVillageBuildingRow/UiSkillTreeWindow).
     //
-    // There is no server command yet for "start combat against monster X
-    // in region Y" - Deploy is therefore navigation-only: it switches the
-    // active screen to the existing Character/Arena tab via ScreenTabGroup.
-    // When a real "begin encounter" command exists server-side, this is the
-    // place to dispatch it before switching screens.
+    // Modul: UI audit follow-up. Deploy previously only switched screens,
+    // silently discarding both selections - ClientCommandValidator.
+    // ValidateChangeActivityRequest (server) already accepts any monster id
+    // within ContentRegistry.Monsters' range as a valid ActiveActivityId, so
+    // "start combat against monster X" already IS "ChangeActivity(monsterId)"
+    // - no new command was needed, only a real dispatch call (see
+    // WebSocketClient.SendChangeActivityCommandZeroAlloc, added alongside
+    // this) using the dropdown's selected MonsterId and the selected
+    // character slot's Guid (TargetGuid - previously never set by anything,
+    // so the server's per-character-slot branch was unreachable).
     public class UiCombatSelectionPanel : MonoBehaviour
     {
         private const int RegionRowCount = 5;
@@ -30,6 +36,7 @@ namespace FolkIdle.Client.UI
 
         public UiTabGroup ScreenTabGroup;
         public int CharacterScreenIndex;
+        public WebSocketClient NetworkClient;
 
         [Header("Region Rows - fixed 5, real CodexRegionsCache data")]
         public TMP_Text[] RegionLabelTexts = new TMP_Text[RegionRowCount];
@@ -48,9 +55,10 @@ namespace FolkIdle.Client.UI
         {
             for (int i = 0; i < DeployButtons.Length; i++)
             {
+                int rowIndex = i;
                 if (DeployButtons[i] != null)
                 {
-                    DeployButtons[i].onClick.AddListener(HandleDeployClicked);
+                    DeployButtons[i].onClick.AddListener(() => HandleDeployClicked(rowIndex));
                 }
             }
 
@@ -163,12 +171,55 @@ namespace FolkIdle.Client.UI
             RefreshCharacterSlots();
         }
 
-        private void HandleDeployClicked()
+        private void HandleDeployClicked(int rowIndex)
         {
+            if (TryResolveSelectedMonsterId(rowIndex, out long monsterId) &&
+                TryResolveSelectedCharacterGuid(out System.Guid characterGuid) &&
+                NetworkClient != null)
+            {
+                NetworkClient.SendChangeActivityCommandZeroAlloc(monsterId, characterGuid);
+            }
+
             if (ScreenTabGroup != null)
             {
                 ScreenTabGroup.ShowIndex(CharacterScreenIndex);
             }
+        }
+
+        private bool TryResolveSelectedMonsterId(int rowIndex, out long monsterId)
+        {
+            monsterId = 0;
+
+            if (rowIndex < 0 || rowIndex >= MonsterDropdowns.Length || MonsterDropdowns[rowIndex] == null)
+            {
+                return false;
+            }
+
+            IReadOnlyList<CodexSnapshotEntryData> entries = CodexInventoryCache.Entries;
+            int selectedIndex = MonsterDropdowns[rowIndex].value;
+            if (selectedIndex < 0 || selectedIndex >= entries.Count)
+            {
+                // Either nothing discovered yet (placeholder option) or a
+                // stale index from before the last refresh - either way
+                // there is no real monster to deploy against.
+                return false;
+            }
+
+            monsterId = entries[selectedIndex].MonsterId;
+            return true;
+        }
+
+        private bool TryResolveSelectedCharacterGuid(out System.Guid characterGuid)
+        {
+            characterGuid = System.Guid.Empty;
+
+            IReadOnlyList<BreedingRosterEntryData> entries = BreedingRosterCache.Entries;
+            if (_selectedCharacterSlotIndex < 0 || _selectedCharacterSlotIndex >= entries.Count)
+            {
+                return false;
+            }
+
+            return System.Guid.TryParse(entries[_selectedCharacterSlotIndex].CharacterId, out characterGuid);
         }
     }
 }

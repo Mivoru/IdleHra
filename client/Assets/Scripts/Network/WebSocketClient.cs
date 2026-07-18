@@ -327,6 +327,28 @@ namespace FolkIdle.Client.Network
                 SendPacket(ref packet);
             }
         }
+        // Modul: UI audit follow-up. The pre-existing generic
+        // SendCommandZeroAlloc(byte, int) never set TargetGuid (always
+        // Guid.Empty), so SimulationEngine's ChangeActivity handler always
+        // took its legacy single-character branch - there was no way to
+        // target one of a player's multiple character slots. Needed once
+        // UiCombatSelectionPanel's Deploy button actually had a character
+        // slot selection to send (see its own comment).
+        public void SendChangeActivityCommandZeroAlloc(long targetActivityId, System.Guid characterGuid)
+        {
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                ClientCommandPacket packet = new ClientCommandPacket
+                {
+                    Command = CommandType.ChangeActivity,
+                    TargetId = targetActivityId,
+                    TargetGuid = characterGuid
+                };
+
+                SendPacket(ref packet);
+            }
+        }
+
         public void SendPingCommandZeroAlloc(uint token)
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)

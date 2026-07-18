@@ -38,25 +38,6 @@ namespace FolkIdle.Client.UI
         private readonly char[] _worldBossUiBuffer = new char[128];
         private byte _lastEventState = EventStateUnknown;
 
-        private void Awake()
-        {
-            // No Layout Group components may remain on the World Boss HUD panel: they trigger
-            // CPU layout traversal on every refresh. Explicit anchor offsets replace them.
-            if (WorldBossPanelRect != null)
-            {
-                LayoutGroup layoutGroup = WorldBossPanelRect.GetComponent<LayoutGroup>();
-                if (layoutGroup != null)
-                {
-                    Destroy(layoutGroup);
-                }
-
-                WorldBossPanelRect.anchorMin = new Vector2(0.5f, 1f);
-                WorldBossPanelRect.anchorMax = new Vector2(0.5f, 1f);
-                WorldBossPanelRect.pivot = new Vector2(0.5f, 1f);
-                WorldBossPanelRect.anchoredPosition = new Vector2(0f, -20f);
-            }
-        }
-
         private void Update()
         {
             if (SyncProxy == null) return;

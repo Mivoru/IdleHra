@@ -12,18 +12,18 @@ namespace FolkIdle.Client.UI
     // selected-recipe detail are rebuilt from EquipmentInventoryCache.OnSnapshotUpdated
     // or a row click, never from an Update() loop.
     //
-    // AssetRegistry note: there is no 3D preview viewport for Forge items yet (unlike
-    // UiCodex3DViewer for monsters - no render-texture viewport or icon slot exists on
-    // UiForgeRecipeRow/this panel). SelectedRecipeAssetReference below resolves and
-    // exposes the AssetReference for whichever future viewer consumes it; it is
-    // deliberately not used for rendering here since building that viewport was not
-    // part of this task.
+    // AssetRegistry note: SelectedRecipeAssetReference resolves the recipe's mapped
+    // AssetReference (a prefab, matching AssetRegistry.ItemMapping's shape) and feeds
+    // it to ItemViewer (see UiForgeItemViewer) - a compact 3D preview mirroring
+    // UiCodex3DViewer's approach, added once the recipe/equipment rows and this
+    // panel actually had somewhere to show one.
     public class UiForgeCraftingPanel : MonoBehaviour
     {
         public EquipmentInventoryCache InventoryCache;
         public WebSocketClient NetworkClient;
         public uint CraftingSlotIndex = 0;
         [SerializeField] private AssetRegistry assetRegistry;
+        public UiForgeItemViewer ItemViewer;
 
         public AssetReference SelectedRecipeAssetReference { get; private set; }
 
@@ -128,6 +128,7 @@ namespace FolkIdle.Client.UI
                 if (RequiredMaterialText != null) RequiredMaterialText.SetCharArray(System.Array.Empty<char>(), 0, 0);
                 if (CraftButton != null) CraftButton.interactable = false;
                 SelectedRecipeAssetReference = null;
+                if (ItemViewer != null) ItemViewer.Clear();
                 return;
             }
 
@@ -140,6 +141,11 @@ namespace FolkIdle.Client.UI
             SelectedRecipeAssetReference = (assetRegistry != null && assetRegistry.TryGetItemAsset(selected.ResultBaseItemId, out AssetReference recipeAssetRef))
                 ? recipeAssetRef
                 : null;
+
+            if (ItemViewer != null)
+            {
+                ItemViewer.ShowItem(SelectedRecipeAssetReference != null ? SelectedRecipeAssetReference.AssetGUID : null);
+            }
 
             bool hasEnoughMaterial = selected.CurrentMaterialStock >= selected.MaterialCost;
 

@@ -624,6 +624,45 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: UI audit follow-up. GuildManagementEngine.
+                    // CreateGuildAsync/JoinGuildAsync already existed
+                    // (server/FolkIdle.Server/Domain/Social/GuildManagementEngine.cs)
+                    // but had no HTTP route or CommandType exposing them -
+                    // UiGuildCreatePanel's buttons were wired client-side to
+                    // a clearly-labeled no-op rather than guessing at an
+                    // unofficial packet shape. POST (not a WS CommandType)
+                    // because a guild name is a variable-length string,
+                    // which ClientCommandPacket's fixed-size binary layout
+                    // has no field for - matches how Email/Password auth
+                    // (also string-carrying) already uses HTTP, not the WS
+                    // command loop. Called directly rather than routed
+                    // through SimulationEngine's tick thread, matching
+                    // GuildManagementEngine's own header comment that it
+                    // "never touches SimulationEngine state directly."
+                    if (requestPath == "/api/v1/guilds/create" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleGuildCreate(context);
+                        continue;
+                    }
+
+                    // "Join" here means self-service join-by-name against
+                    // JoinGuildAsync(playerId, guildId) - the only guild-
+                    // joining capability that actually exists server-side.
+                    // There is no player-to-player invite/notification
+                    // mechanism anywhere in this codebase (no pending-invite
+                    // table, no accept/decline flow) - building one would be
+                    // a materially larger, separate feature, not a wiring
+                    // gap. The name->id resolution happens inline in the
+                    // same request rather than as a separate GET+POST round
+                    // trip (unlike Friends' username resolve), since there
+                    // is no existing "browse guilds" UI that would want the
+                    // id on its own.
+                    if (requestPath == "/api/v1/guilds/join" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleGuildJoin(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/achievements/snapshot" && context.Request.HttpMethod == "GET")
                     {
                         await HandleAchievementsSnapshot(context);
@@ -850,6 +889,16 @@ namespace FolkIdle.Server.Network
             public int CharacterCount { get; set; }
             public int AvailableSkillPoints { get; set; }
             public string GuildName { get; set; } = string.Empty;
+        }
+
+        private sealed class GuildCreateResponse
+        {
+            public long GuildId { get; set; }
+        }
+
+        private sealed class GuildJoinResponse
+        {
+            public bool Joined { get; set; }
         }
 
         private sealed class LeaderboardEntryResponse
@@ -2442,6 +2491,127 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Player statistics error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: UI audit follow-up - see this route's registration comment
+        // for why this is HTTP rather than a WS CommandType. Delegates
+        // entirely to GuildManagementEngine.CreateGuildAsync, which already
+        // handles the level-20 gate, blank/oversized name rejection, and the
+        // Serializable-isolation name-uniqueness guard - this handler only
+        // translates its long? result into an HTTP response.
+        private async Task HandleGuildCreate(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var body = await reader.ReadToEndAsync();
+                var payload = JsonSerializer.Deserialize<JsonElement>(body);
+
+                if (!payload.TryGetProperty("guildName", out var guildNameElement))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                string guildName = guildNameElement.GetString() ?? string.Empty;
+
+                var guildManagementEngine = new GuildManagementEngine(
+                    _serviceProvider.GetRequiredService<RetryingDbContextOptions>(),
+                    _serviceProvider.GetRequiredService<PlayerSessionRegistry>());
+
+                long guildId = await guildManagementEngine.CreateGuildAsync(playerId, guildName);
+                if (guildId <= 0)
+                {
+                    context.Response.StatusCode = 409;
+                    context.Response.Close();
+                    return;
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new GuildCreateResponse { GuildId = guildId });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild create error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: UI audit follow-up - see this route's registration comment
+        // for the "join = self-service join-by-name" semantics. Guild name
+        // -> id resolution happens inline (no separate lookup endpoint
+        // exists for guilds, unlike Friends' username resolve) since there
+        // is no "browse guilds" UI that would want the id on its own yet.
+        private async Task HandleGuildJoin(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var body = await reader.ReadToEndAsync();
+                var payload = JsonSerializer.Deserialize<JsonElement>(body);
+
+                if (!payload.TryGetProperty("guildName", out var guildNameElement))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                string guildName = guildNameElement.GetString() ?? string.Empty;
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                long guildId = await db.GuildRecords
+                    .AsNoTracking()
+                    .Where(g => g.Name == guildName)
+                    .Select(g => g.Id)
+                    .FirstOrDefaultAsync();
+
+                if (guildId <= 0)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                var guildManagementEngine = new GuildManagementEngine(
+                    _serviceProvider.GetRequiredService<RetryingDbContextOptions>(),
+                    _serviceProvider.GetRequiredService<PlayerSessionRegistry>());
+
+                bool joined = await guildManagementEngine.JoinGuildAsync(playerId, guildId);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new GuildJoinResponse { Joined = joined });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild join error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

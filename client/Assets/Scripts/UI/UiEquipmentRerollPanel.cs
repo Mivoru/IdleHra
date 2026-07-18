@@ -14,16 +14,17 @@ namespace FolkIdle.Client.UI
     // EquipmentInventoryCache.OnSnapshotUpdated or a selection click, never from
     // an Update() loop.
     //
-    // AssetRegistry note: there is no 3D preview viewport for equipment yet (no
-    // render-texture viewport or icon slot exists on UiForgeEquipmentRow/this
-    // panel, mirroring the same gap in UiForgeCraftingPanel). SelectedItemAssetReference
-    // resolves and exposes the AssetReference for whichever future viewer consumes it.
+    // AssetRegistry note: SelectedItemAssetReference resolves the item's mapped
+    // AssetReference and feeds it to ItemViewer (see UiForgeItemViewer) - a compact
+    // 3D preview mirroring UiCodex3DViewer's approach, added once
+    // UiForgeEquipmentRow/this panel actually had somewhere to show one.
     public class UiEquipmentRerollPanel : MonoBehaviour
     {
         public EquipmentInventoryCache InventoryCache;
         public WebSocketClient NetworkClient;
         public VisualSyncProxy SyncProxy;
         [SerializeField] private AssetRegistry assetRegistry;
+        public UiForgeItemViewer ItemViewer;
 
         public AssetReference SelectedItemAssetReference { get; private set; }
 
@@ -176,6 +177,7 @@ namespace FolkIdle.Client.UI
                 if (RerollCostText != null) RerollCostText.SetCharArray(Array.Empty<char>(), 0, 0);
                 if (RerollButton != null) RerollButton.interactable = false;
                 SelectedItemAssetReference = null;
+                if (ItemViewer != null) ItemViewer.Clear();
                 return;
             }
 
@@ -191,6 +193,11 @@ namespace FolkIdle.Client.UI
             SelectedItemAssetReference = (assetRegistry != null && assetRegistry.TryGetItemAsset(selected.BaseItemId, out AssetReference itemAssetRef))
                 ? itemAssetRef
                 : null;
+
+            if (ItemViewer != null)
+            {
+                ItemViewer.ShowItem(SelectedItemAssetReference != null ? SelectedItemAssetReference.AssetGUID : null);
+            }
 
             BindAffixSlots(selected);
 
