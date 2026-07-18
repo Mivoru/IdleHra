@@ -76,7 +76,8 @@ namespace FolkIdle.Server.Engine
                             int diamondsToAward = 0;
 
                             // Treasury: CurrentGold >= 100000
-                            var goldRecord = await dbContext.CommodityRecords.FindAsync(new object[] { player.Id, 0 }, stoppingToken);
+                            var goldRecord = await dbContext.CommodityRecords
+                                .FirstOrDefaultAsync(c => c.PlayerId == player.Id && c.ItemId == "gold", stoppingToken);
                             long currentGold = goldRecord?.Quantity ?? 0;
                             if ((currentFlags & (1 << 0)) == 0 && currentGold >= 100000)
                             {
@@ -182,13 +183,15 @@ namespace FolkIdle.Server.Engine
 
                                 // Depending on achievementId, check if requirements met. For example:
                                 // Achievement 1: Kill 10,000 monsters
-                                if (req.AchievementId == 1 && (achievement.CurrentProgress + volatileKillCount) >= 10000)
+                                if (req.AchievementId == AchievementMilestones.MonsterKillAchievementId
+                                    && (achievement.CurrentProgress + volatileKillCount) >= AchievementMilestones.MonsterKillThreshold)
                                 {
                                     achievement.IsClaimed = true;
+                                    achievement.CompletedTier = 1;
                                     var playerRecord = await dbContext.PlayerRecords.FindAsync(new object[] { req.PlayerId }, stoppingToken);
                                     if (playerRecord != null)
                                     {
-                                        playerRecord.PremiumDiamonds += 500;
+                                        playerRecord.PremiumDiamonds += AchievementMilestones.MonsterKillReward;
                                     }
                                 }
                                 // Other achievements mapped here in future...

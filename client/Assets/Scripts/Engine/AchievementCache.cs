@@ -15,6 +15,7 @@ namespace FolkIdle.Client.Engine
         public int CompletedTier { get; set; }
         public long NextTierTarget { get; set; }
         public int NextTierReward { get; set; }
+        public bool IsClaimed { get; set; }
     }
 
     // Modul 13: on-demand snapshot cache for the player's real lifetime
@@ -38,6 +39,24 @@ namespace FolkIdle.Client.Engine
         {
             if (_requestInFlight) return;
             _ = FetchAchievementsSnapshotAsync();
+        }
+
+        // Mirrors MailboxCache.RemoveEntryLocally's optimistic-update pattern:
+        // the claim command is fire-and-forget over the WebSocket, so the row
+        // is marked claimed immediately rather than waiting on a re-fetch. If
+        // the claim wasn't actually eligible server-side, the next snapshot
+        // refresh (panel re-open) silently corrects it back.
+        public static void MarkClaimedLocally(int achievementId)
+        {
+            for (int i = 0; i < _entries.Count; i++)
+            {
+                if (_entries[i].AchievementId == achievementId)
+                {
+                    _entries[i].IsClaimed = true;
+                    OnAchievementsUpdated?.Invoke();
+                    return;
+                }
+            }
         }
 
         public static async Task FetchAchievementsSnapshotAsync()

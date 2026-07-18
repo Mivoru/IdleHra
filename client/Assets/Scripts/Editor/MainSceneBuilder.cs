@@ -106,7 +106,7 @@ namespace FolkIdle.Client.Editor
             // Modul: Full-Game UI Architecture, Part 4. Simple list-style
             // screens - Achievements, Leaderboard, Mailbox, Store, Season
             // Pass. All real, network-wired scripts.
-            GameObject achievementsWindowObject = BuildAchievementsWindow(canvas.transform);
+            GameObject achievementsWindowObject = BuildAchievementsWindow(canvas.transform, networkClient);
             GameObject leaderboardWindowObject = BuildLeaderboardWindow(canvas.transform);
             GameObject mailboxWindowObject = BuildMailboxWindow(canvas.transform, syncProxy, networkClient);
             GameObject storeWindowObject = BuildStoreWindow(canvas.transform, syncProxy, networkClient);
@@ -3087,7 +3087,7 @@ namespace FolkIdle.Client.Editor
             return windowObject;
         }
 
-        private static GameObject BuildAchievementsWindow(Transform canvasTransform)
+        private static GameObject BuildAchievementsWindow(Transform canvasTransform, WebSocketClient networkClient)
         {
             GameObject windowObject = BuildSimpleListWindowShell("AchievementsWindow", canvasTransform, "Achievements", out RectTransform contentAreaRect, out TextMeshProUGUI _);
 
@@ -3098,6 +3098,7 @@ namespace FolkIdle.Client.Editor
             UiAchievementsPanel panel = windowObject.AddComponent<UiAchievementsPanel>();
             panel.RowContainer = content;
             panel.RowPrefab = rowPrefabAsset.GetComponent<UiAchievementRow>();
+            panel.NetworkClient = networkClient;
 
             return windowObject;
         }
@@ -3257,7 +3258,7 @@ namespace FolkIdle.Client.Editor
             EnsureFolder(PrefabDirectory);
 
             GameObject root = new GameObject("UiAchievementRow", typeof(RectTransform));
-            ((RectTransform)root.transform).sizeDelta = new Vector2(0f, 54f);
+            ((RectTransform)root.transform).sizeDelta = new Vector2(0f, 78f);
             root.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.05f);
 
             VerticalLayoutGroup layout = root.AddComponent<VerticalLayoutGroup>();
@@ -3296,11 +3297,25 @@ namespace FolkIdle.Client.Editor
             LayoutElement progressTextLayout = progressText.gameObject.AddComponent<LayoutElement>();
             progressTextLayout.preferredWidth = 90f;
 
+            GameObject claimRow = new GameObject("ClaimRow", typeof(RectTransform));
+            claimRow.transform.SetParent(root.transform, false);
+            LayoutElement claimRowLayout = claimRow.AddComponent<LayoutElement>();
+            claimRowLayout.preferredHeight = 22f;
+
+            Button claimButton = CreateButton(claimRow.transform, "ClaimButton", "Claim", out TextMeshProUGUI _);
+            RectTransform claimButtonRect = (RectTransform)claimButton.transform;
+            claimButtonRect.anchorMin = new Vector2(1f, 0f);
+            claimButtonRect.anchorMax = new Vector2(1f, 1f);
+            claimButtonRect.pivot = new Vector2(1f, 0.5f);
+            claimButtonRect.sizeDelta = new Vector2(80f, 0f);
+            claimButtonRect.anchoredPosition = Vector2.zero;
+
             UiAchievementRow rowComponent = root.AddComponent<UiAchievementRow>();
             rowComponent.AchievementIdText = idText;
             rowComponent.TierText = tierText;
             rowComponent.ProgressText = progressText;
             rowComponent.ProgressBarFill = barFill;
+            rowComponent.ClaimButton = claimButton;
 
             GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(root, AchievementRowPrefabPath, out bool success);
             if (!success)

@@ -762,6 +762,7 @@ namespace FolkIdle.Server.Network
             public int CompletedTier { get; set; }
             public long NextTierTarget { get; set; }
             public int NextTierReward { get; set; }
+            public bool IsClaimed { get; set; }
         }
 
         private sealed class RaceMasterySnapshotEntryResponse
@@ -2107,7 +2108,27 @@ namespace FolkIdle.Server.Network
                         CurrentProgress = entry.CurrentProgress,
                         CompletedTier = entry.CompletedTier,
                         NextTierTarget = AchievementMilestones.GetNextTierTarget(entry.AchievementId, entry.CompletedTier),
-                        NextTierReward = AchievementMilestones.GetNextTierReward(entry.AchievementId, entry.CompletedTier)
+                        NextTierReward = AchievementMilestones.GetNextTierReward(entry.AchievementId, entry.CompletedTier),
+                        IsClaimed = entry.IsClaimed
+                    });
+                }
+
+                // Modul: Achievement claim button. AchievementEngine.ProcessClaimsQueueAsync
+                // only ever creates the monster-kill achievement's row the first time a
+                // claim is attempted - so without this, the claim button would have
+                // nothing to attach to until the player had already (impossibly, with no
+                // button) claimed once. Synthesize the unclaimed row here so it is always
+                // visible and claimable from a fresh account.
+                if (!response.Exists(r => r.AchievementId == AchievementMilestones.MonsterKillAchievementId))
+                {
+                    response.Add(new AchievementSnapshotEntryResponse
+                    {
+                        AchievementId = AchievementMilestones.MonsterKillAchievementId,
+                        CurrentProgress = 0,
+                        CompletedTier = 0,
+                        NextTierTarget = AchievementMilestones.GetNextTierTarget(AchievementMilestones.MonsterKillAchievementId, 0),
+                        NextTierReward = AchievementMilestones.GetNextTierReward(AchievementMilestones.MonsterKillAchievementId, 0),
+                        IsClaimed = false
                     });
                 }
 

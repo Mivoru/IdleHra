@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.UI;
 using TMPro;
 using FolkIdle.Client.Engine;
 
@@ -51,12 +50,6 @@ namespace FolkIdle.Client.UI
         {
             if (CodexPanelRect != null)
             {
-                LayoutGroup layoutGroup = CodexPanelRect.GetComponent<LayoutGroup>();
-                if (layoutGroup != null)
-                {
-                    Destroy(layoutGroup);
-                }
-
                 CodexPanelRect.anchorMin = new Vector2(1f, 1f);
                 CodexPanelRect.anchorMax = new Vector2(1f, 1f);
                 CodexPanelRect.pivot = new Vector2(1f, 1f);

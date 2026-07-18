@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using FolkIdle.Client.Engine;
+using FolkIdle.Client.Network;
 
 namespace FolkIdle.Client.UI
 {
@@ -12,6 +13,7 @@ namespace FolkIdle.Client.UI
         public Transform RowContainer;
         public UiAchievementRow RowPrefab;
         public int InitialRowPoolCapacity = 8;
+        public WebSocketClient NetworkClient;
 
         private UIComponentPool<UiAchievementRow> _rowPool;
         private readonly List<UiAchievementRow> _activeRows = new List<UiAchievementRow>();
@@ -50,9 +52,19 @@ namespace FolkIdle.Client.UI
             {
                 AchievementEntryData entry = entries[i];
                 UiAchievementRow row = _rowPool.Spawn();
-                row.Bind(entry.AchievementId, entry.CompletedTier, entry.CurrentProgress, entry.NextTierTarget);
+                row.Bind(entry.AchievementId, entry.CompletedTier, entry.CurrentProgress, entry.NextTierTarget, entry.IsClaimed, HandleClaimClicked);
                 _activeRows.Add(row);
             }
+        }
+
+        private void HandleClaimClicked(int achievementId)
+        {
+            if (NetworkClient != null)
+            {
+                NetworkClient.SendAchievementClaimCommandZeroAlloc((uint)achievementId);
+            }
+
+            AchievementCache.MarkClaimedLocally(achievementId);
         }
     }
 }

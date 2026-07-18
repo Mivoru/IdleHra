@@ -1,5 +1,7 @@
+using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace FolkIdle.Client.UI
 {
@@ -7,17 +9,45 @@ namespace FolkIdle.Client.UI
     // rebuilds its visible rows (snapshot refresh), never from Update().
     public class UiAchievementRow : MonoBehaviour
     {
+        // Modul: Achievement claim button. Only AchievementMilestones.
+        // MonsterKillAchievementId (1) is player-claimed - ids 2-4 are the
+        // tiered Treasury/Forging/Logistics family, auto-awarded by
+        // StateCheckpointManager.FlushState with no claim step. Duplicated
+        // here (rather than a shared reference) since the client has no
+        // existing link to that server-only static class.
+        private const int MonsterKillAchievementId = 1;
+
         public TextMeshProUGUI AchievementIdText;
         public TextMeshProUGUI TierText;
         public TextMeshProUGUI ProgressText;
         public RectTransform ProgressBarFill;
+        public Button ClaimButton;
 
         private readonly char[] _idBuffer = new char[32];
         private readonly char[] _tierBuffer = new char[16];
         private readonly char[] _progressBuffer = new char[64];
 
-        public void Bind(int achievementId, int completedTier, long currentProgress, long nextTierTarget)
+        private int _achievementId;
+        private Action<int> _onClaimClicked;
+
+        private void Awake()
         {
+            if (ClaimButton != null)
+            {
+                ClaimButton.onClick.AddListener(HandleClaimClicked);
+            }
+        }
+
+        public void Bind(int achievementId, int completedTier, long currentProgress, long nextTierTarget, bool isClaimed, Action<int> onClaimClicked)
+        {
+            _achievementId = achievementId;
+            _onClaimClicked = onClaimClicked;
+
+            if (ClaimButton != null)
+            {
+                ClaimButton.gameObject.SetActive(achievementId == MonsterKillAchievementId && !isClaimed);
+            }
+
             if (AchievementIdText != null)
             {
                 int offset = WriteTextToBuffer(_idBuffer, 0, "Achievement ");
@@ -49,6 +79,11 @@ namespace FolkIdle.Client.UI
                 anchorMax.x = ratio;
                 ProgressBarFill.anchorMax = anchorMax;
             }
+        }
+
+        private void HandleClaimClicked()
+        {
+            _onClaimClicked?.Invoke(_achievementId);
         }
 
         private static string ResolveTierNumeral(int completedTier)

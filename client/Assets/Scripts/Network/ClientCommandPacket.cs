@@ -39,7 +39,6 @@ namespace FolkIdle.Client.Network
         RegisterPushToken = 33,
         TriggerGdprPurge = 34,
         SwitchLanguage = 35,
-        RequestLeaderboardSlice = 38,
         SubmitPurchaseReceipt = 39,
         SyncBillingStatus = 40,
         ReportUiContextSwitch = 41,

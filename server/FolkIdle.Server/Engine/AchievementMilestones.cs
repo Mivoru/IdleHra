@@ -9,6 +9,19 @@ namespace FolkIdle.Server.Engine
     // three new achievements use 2-4 to avoid colliding with it.
     public static class AchievementMilestones
     {
+        // Modul: Achievement claim button. The pre-existing, player-claimed
+        // "kill 10000 monsters" achievement (id 1, see SimulationEngine's
+        // CommandType.ClaimAchievementReward handler / AchievementClaimQueue)
+        // predates this tiered I-IV family and isn't tiered itself - it's a
+        // single threshold/reward pair. Hoisted here (out of AchievementEngine's
+        // previous inline literals) so GetNextTierTarget/GetNextTierReward can
+        // report a real number instead of the 0 fallback every other
+        // achievementId hits, which the client was rendering as a nonsensical
+        // "0 / MAX".
+        public const int MonsterKillAchievementId = 1;
+        public const long MonsterKillThreshold = 10_000L;
+        public const int MonsterKillReward = 500;
+
         public const int TreasuryAchievementId = 2;
         public const int ForgingAchievementId = 3;
         public const int LogisticsAchievementId = 4;
@@ -118,6 +131,11 @@ namespace FolkIdle.Server.Engine
 
         public static long GetNextTierTarget(int achievementId, int completedTier)
         {
+            if (achievementId == MonsterKillAchievementId)
+            {
+                return completedTier == 0 ? MonsterKillThreshold : 0L;
+            }
+
             if (achievementId == ForgingAchievementId)
             {
                 // Forging's two metrics don't share a unit, so the "next target"
@@ -144,6 +162,11 @@ namespace FolkIdle.Server.Engine
 
         public static int GetNextTierReward(int achievementId, int completedTier)
         {
+            if (achievementId == MonsterKillAchievementId)
+            {
+                return completedTier == 0 ? MonsterKillReward : 0;
+            }
+
             int[] rewardTable = achievementId switch
             {
                 TreasuryAchievementId => TreasuryRewards,

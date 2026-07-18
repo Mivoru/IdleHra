@@ -418,19 +418,6 @@ namespace FolkIdle.Client.UI
             }
         }
 
-        [Header("Sprint 59 - Leaderboard Slice")]
-        public int LeaderboardSkipCount = 0;
-        public int LeaderboardTakeCount = 50;
-
-        public void DispatchRequestLeaderboardSlice()
-        {
-            if (NetworkClient != null)
-            {
-                // Dispatch Command 38 for telemetry or triggering HTTP fetch workflow on the client side
-                NetworkClient.SendCommandZeroAlloc(38, LeaderboardSkipCount);
-            }
-        }
-
         [Header("Sprint 60 - Premium Store")]
         public string NativeReceiptPayload;
         public uint NativeProductIdHash;
