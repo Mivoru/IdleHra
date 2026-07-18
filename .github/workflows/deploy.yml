@@ -15,7 +15,7 @@ env:
   DOTNET_NOLOGO: "true"
   DOTNET_CLI_TELEMETRY_OPTOUT: "true"
   TEST_PROJECT_PATH: server/FolkIdle.Server.Tests/FolkIdle.Server.Tests.csproj
-  DOCKERFILE_CONTEXT: server/FolkIdle.Server
+  DOCKERFILE_CONTEXT: server
   DOCKERFILE_PATH: server/FolkIdle.Server/Dockerfile
 
 jobs:
