@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 using TMPro;
 using FolkIdle.Client.Engine;
 using FolkIdle.Client.Network;
@@ -19,7 +20,14 @@ namespace FolkIdle.Client.UI
     // from the server's real balance values.
     public class UiActionBar : MonoBehaviour
     {
-        private static readonly KeyCode[] SkillHotkeys = { KeyCode.Alpha1, KeyCode.Alpha2, KeyCode.Alpha3, KeyCode.Alpha4 };
+        // Modul: Key, not KeyCode - ProjectSettings has activeInputHandler
+        // set to the new Input System exclusively (legacy Input Manager
+        // disabled), so UnityEngine.Input.GetKeyDown throws
+        // InvalidOperationException at runtime instead of silently reading
+        // stale state. Discovered via a live Play Mode run, not a compile
+        // error - the legacy API still compiles fine, it just cannot
+        // execute under this project's input configuration.
+        private static readonly Key[] SkillHotkeys = { Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4 };
 
         private const float CastFlashDurationSeconds = 0.25f;
 
@@ -101,9 +109,10 @@ namespace FolkIdle.Client.UI
 
         private void Update()
         {
+            Keyboard keyboard = Keyboard.current;
             for (int i = 0; i < 4; i++)
             {
-                if (Input.GetKeyDown(SkillHotkeys[i]))
+                if (keyboard != null && keyboard[SkillHotkeys[i]].wasPressedThisFrame)
                 {
                     TryCastSkill(i + 1);
                 }

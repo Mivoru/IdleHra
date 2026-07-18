@@ -6,7 +6,8 @@
         "Unity.ResourceManager",
         "UnityEngine.UI",
         "Unity.TextMeshPro",
-        "Unity.Collections"
+        "Unity.Collections",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

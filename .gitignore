@@ -26,3 +26,7 @@ Thumbs.db
 # Target: Local session artifacts
 chatHistory*.txt
 telemetry.bin
+
+# Target: Local AI tooling config (contains machine-local auth tokens/permissions)
+.mcp.json
+**/.claude/

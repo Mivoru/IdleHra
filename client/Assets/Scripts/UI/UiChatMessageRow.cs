@@ -28,7 +28,7 @@ namespace FolkIdle.Client.UI
         // wired up.
         private long _boundSenderPlayerId;
         public long BoundSenderPlayerId => _boundSenderPlayerId;
-        public event System.Action<long>? OnNameClicked;
+        public event System.Action<long> OnNameClicked;
 
         public void HandleNameClicked()
         {

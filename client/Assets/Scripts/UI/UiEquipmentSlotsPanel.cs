@@ -50,7 +50,18 @@ namespace FolkIdle.Client.UI
             if (InventoryCache != null)
             {
                 InventoryCache.OnSnapshotUpdated += HandleStateUpdated;
-                InventoryCache.RequestSnapshot();
+            }
+
+            // Modul: caught via a live Play Mode run - requesting the
+            // snapshot immediately on enable fired before UiLoginWindow's
+            // async login flow had set WebSocketClient.AuthenticatorToken,
+            // so the very first request went out with an empty Bearer
+            // token and 401'd. OnStateConfirmed only fires once auth has
+            // actually succeeded (see WebSocketClient), so wait for that
+            // instead - the same signal UiLoginWindow itself waits on.
+            if (NetworkClient != null)
+            {
+                NetworkClient.OnStateConfirmed += HandleAuthenticatedReady;
             }
 
             RefreshDisplay();
@@ -64,6 +75,16 @@ namespace FolkIdle.Client.UI
             {
                 InventoryCache.OnSnapshotUpdated -= HandleStateUpdated;
             }
+
+            if (NetworkClient != null)
+            {
+                NetworkClient.OnStateConfirmed -= HandleAuthenticatedReady;
+            }
+        }
+
+        private void HandleAuthenticatedReady()
+        {
+            InventoryCache?.RequestSnapshot();
         }
 
         private void HandleStateUpdated()

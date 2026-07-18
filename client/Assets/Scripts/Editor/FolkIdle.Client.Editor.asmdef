@@ -2,7 +2,11 @@
     "name": "FolkIdle.Client.Editor",
     "rootNamespace": "",
     "references": [
-        "Unity.Addressables.Editor"
+        "Unity.Addressables.Editor",
+        "FolkIdle.Client",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [
         "Editor"

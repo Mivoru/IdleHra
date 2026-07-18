@@ -342,7 +342,7 @@ namespace FolkIdle.Client.UI
         // this window does not own; whichever component displays player
         // profiles subscribes here rather than UiChatWindow reaching into
         // it directly.
-        public event System.Action<long>? OnProfileInspectionRequested;
+        public event System.Action<long> OnProfileInspectionRequested;
 
         // Modul: which row slot most recently reported a name click - the
         // pending target for whichever ChatPlayerContextAction the
