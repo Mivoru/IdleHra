@@ -4889,7 +4889,16 @@ namespace FolkIdle.Server.Tests
                 db.AccountChronoRegistries.Add(new AccountChronoRegistry
                 {
                     AccountId = accountId,
-                    LastClockSyncEpoch = System.Diagnostics.Stopwatch.GetTimestamp() - (elapsedSecondsToSimulate * System.Diagnostics.Stopwatch.Frequency)
+                    // Modul: LastClockSyncEpoch is a real Unix epoch second
+                    // value (see OfflineStateEngine.ReconcileOfflineStateAsync
+                    // and ChronoBufferEngine.ProcessLoginHandshake) - seeding
+                    // it with Stopwatch ticks made this test internally
+                    // consistent with the engine's old (buggy) Stopwatch-based
+                    // read but not with how the real system ever populates
+                    // this column, and was flaky in CI: a fresh container's
+                    // low monotonic clock value could make the subtraction
+                    // go non-positive, silently skipping reconciliation.
+                    LastClockSyncEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - elapsedSecondsToSimulate
                 });
 
                 for (int i = 0; i < preExistingEquipmentCount; i++)

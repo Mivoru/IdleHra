@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -49,9 +48,20 @@ namespace FolkIdle.Server.Engine
                 return;
             }
 
-            long currentTicks = Stopwatch.GetTimestamp();
+            // Modul: LastClockSyncEpoch is a real Unix epoch second value
+            // everywhere else it is written (ChronoBufferEngine.
+            // ProcessLoginHandshake, StateCheckpointManager's login/flush
+            // paths both pass DateTimeOffset.UtcNow.ToUnixTimeSeconds()) -
+            // this method must read and write the exact same time base.
+            // Stopwatch.GetTimestamp() measures monotonic ticks since an
+            // arbitrary reference (process/OS-dependent, resets across
+            // restarts), which is numerically incompatible with a stored
+            // Unix epoch second value - comparing the two here previously
+            // made elapsedTicks reliably negative in real usage, silently
+            // disabling offline reconciliation entirely.
+            long currentTicks = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             long lastSync = chronoReg.LastClockSyncEpoch;
-            
+
             if (lastSync <= 0)
             {
                 chronoReg.LastClockSyncEpoch = currentTicks;
@@ -66,7 +76,7 @@ namespace FolkIdle.Server.Engine
                 return; // Time didn't move or went backward
             }
 
-            double elapsedSeconds = (double)elapsedTicks / Stopwatch.Frequency;
+            double elapsedSeconds = elapsedTicks;
 
             // Modul: mirrors StateCheckpointManager.FlushState's own
             // InventorySpaceRemaining formula exactly (20 base slots plus
