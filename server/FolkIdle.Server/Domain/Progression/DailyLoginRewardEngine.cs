@@ -43,7 +43,11 @@ namespace FolkIdle.Server.Domain.Progression
             new long[] { 4000L, 3000L, 2500L, 2500L, 3500L, 4000L, 6000L },
             new long[] { 1000L, 2000L, 6000L, 2000L, 2500L, 4000L, 8000L }
         };
-        private const int PremiumDiamondsOnDay7Completion = 100;
+        // Modul: UI audit follow-up. internal (not private) so
+        // NetworkBroadcastSystem.HandleLoginBonusState can report the real
+        // day-7 bonus in its schedule preview instead of duplicating this
+        // number as a second magic constant.
+        internal const int PremiumDiamondsOnDay7Completion = 100;
 
         // Exposed for tests: which matrix is active for a given UTC date
         // key (epoch-seconds / 86400). Deterministic, server-clock-derived,

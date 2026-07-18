@@ -36,6 +36,7 @@ namespace FolkIdle.Client.Editor
         private const string CodexListRowPrefabPath = PrefabDirectory + "/UiCodexListRow.prefab";
         private const string CodexRegionRowPrefabPath = PrefabDirectory + "/UiCodexRegionRow.prefab";
         private const string BreedingRosterRowPrefabPath = PrefabDirectory + "/UiBreedingRosterRow.prefab";
+        private const string FriendRowPrefabPath = PrefabDirectory + "/UiFriendEntryRow.prefab";
 
         [MenuItem("FolkIdle/Build Main Scene (Login + HUD + Chat)")]
         public static void BuildMainScene()
@@ -112,6 +113,12 @@ namespace FolkIdle.Client.Editor
             GameObject storeWindowObject = BuildStoreWindow(canvas.transform, syncProxy, networkClient);
             GameObject seasonPassWindowObject = BuildSeasonPassWindow(canvas.transform, syncProxy, networkClient);
 
+            // Modul: UI audit follow-up. UiRaceMasteryPanel/RaceMasteryCache
+            // were a complete, real, network-wired feature with no
+            // GameObject anywhere in the scene - see BuildRaceMasteryWindow's
+            // own comment.
+            GameObject raceMasteryWindowObject = BuildRaceMasteryWindow(canvas.transform);
+
             // Modul: Map Hub, Part 2. Honest static placeholders - Friends,
             // Statistics, and Login Bonus have no corresponding
             // engine/network code anywhere server-side (confirmed via
@@ -121,11 +128,12 @@ namespace FolkIdle.Client.Editor
             // content once that server-side support exists. Settings gets
             // a real (if minimal) Profile section - see BuildSettingsWindow
             // - since it hosts the one real, load-bearing action this pass
-            // adds: Log Off.
+            // adds: Log Off. Friends is no longer a placeholder - see
+            // BuildFriendsWindow's own comment.
             (GameObject settingsPanelObject, Button logOffButton) = BuildSettingsWindow(canvas.transform);
-            GameObject friendsPanelObject = BuildPlaceholderWindow(canvas.transform, "FriendsPanel", "Friends", "Friends list is not implemented yet.");
-            GameObject statisticsPanelObject = BuildPlaceholderWindow(canvas.transform, "StatisticsPanel", "Statistics", "Statistics are not implemented yet.");
-            GameObject loginBonusPanelObject = BuildPlaceholderWindow(canvas.transform, "LoginBonusPanel", "Login Bonus", "Login bonus is not implemented yet.");
+            GameObject friendsPanelObject = BuildFriendsWindow(canvas.transform, networkClient);
+            GameObject statisticsPanelObject = BuildStatisticsWindow(canvas.transform);
+            GameObject loginBonusPanelObject = BuildLoginBonusWindow(canvas.transform);
 
             // Modul: Map Hub, Part 3. Combat Selection (real region/
             // monster/character data, see UiCombatSelectionPanel) and Boss
@@ -147,7 +155,8 @@ namespace FolkIdle.Client.Editor
             (GameObject hamburgerBlocker, UiHamburgerMenuPanel hamburgerComponent, Button[] hamburgerMenuButtons) = BuildHamburgerPanel(canvas.transform, new[]
             {
                 "Forge", "Skills", "Bestiary", "Breeding Lab", "Achievements", "Leaderboard",
-                "Mailbox", "Store", "Season Pass", "Settings", "Friends", "Statistics", "Login Bonus"
+                "Mailbox", "Store", "Season Pass", "Settings", "Friends", "Statistics", "Login Bonus",
+                "Race Mastery"
             });
 
             // Modul: Map Hub, Part 6. Persistent top-left (hamburger toggle
@@ -170,7 +179,7 @@ namespace FolkIdle.Client.Editor
                 marketBankWindowObject, bossWorldPanelObject, forgeWindowObject, skillTreeWindowObject,
                 codexWindowObject, breedingLabWindowObject, achievementsWindowObject, leaderboardWindowObject,
                 mailboxWindowObject, storeWindowObject, seasonPassWindowObject, settingsPanelObject,
-                friendsPanelObject, statisticsPanelObject, loginBonusPanelObject
+                friendsPanelObject, statisticsPanelObject, loginBonusPanelObject, raceMasteryWindowObject
             };
 
             Button[] screenButtons =
@@ -179,7 +188,7 @@ namespace FolkIdle.Client.Editor
                 marketZoneButton, bossZoneButton, hamburgerMenuButtons[0], hamburgerMenuButtons[1],
                 hamburgerMenuButtons[2], hamburgerMenuButtons[3], hamburgerMenuButtons[4], hamburgerMenuButtons[5],
                 hamburgerMenuButtons[6], hamburgerMenuButtons[7], hamburgerMenuButtons[8], hamburgerMenuButtons[9],
-                hamburgerMenuButtons[10], hamburgerMenuButtons[11], hamburgerMenuButtons[12]
+                hamburgerMenuButtons[10], hamburgerMenuButtons[11], hamburgerMenuButtons[12], hamburgerMenuButtons[13]
             };
 
             const int HudGroupScreenIndex = 1;
@@ -3103,6 +3112,223 @@ namespace FolkIdle.Client.Editor
             return windowObject;
         }
 
+        // Modul: UI audit follow-up. UiRaceMasteryPanel + RaceMasteryCache
+        // (backed by a real server endpoint, NetworkBroadcastSystem.
+        // HandleMasterySnapshot) existed complete and fully wired but were
+        // never instantiated anywhere - the exact "orphaned script, zero
+        // GameObjects" shape the whole Map Hub effort was meant to fix.
+        // Fixed 6-row layout (not a pooled ScrollView list) matches the
+        // panel's own design: RaceRows is a fixed array, not a
+        // dynamically-sized collection, since the race roster never
+        // changes at runtime.
+        private static readonly (int raceId, string displayName)[] RaceMasteryRoster =
+        {
+            (1, "Human"), (2, "Vila"), (3, "Draugr"), (4, "Kobold"), (5, "Vodnik"), (6, "Moosleute")
+        };
+
+        private static GameObject BuildRaceMasteryWindow(Transform canvasTransform)
+        {
+            GameObject windowObject = BuildSimpleListWindowShell("RaceMasteryWindow", canvasTransform, "Race Mastery", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+
+            VerticalLayoutGroup listLayout = contentAreaRect.gameObject.AddComponent<VerticalLayoutGroup>();
+            listLayout.spacing = 10f;
+            listLayout.childControlWidth = true;
+            listLayout.childForceExpandWidth = true;
+            listLayout.childControlHeight = false;
+            listLayout.childForceExpandHeight = false;
+
+            UiRaceMasteryPanel panel = windowObject.AddComponent<UiRaceMasteryPanel>();
+            panel.RaceRows = new RaceMasteryRowRefs[RaceMasteryRoster.Length];
+
+            for (int i = 0; i < RaceMasteryRoster.Length; i++)
+            {
+                (int raceId, string displayName) = RaceMasteryRoster[i];
+                panel.RaceRows[i] = BuildRaceMasteryRow(contentAreaRect, raceId, displayName);
+            }
+
+            return windowObject;
+        }
+
+        private static RaceMasteryRowRefs BuildRaceMasteryRow(Transform parent, int raceId, string displayName)
+        {
+            GameObject root = new GameObject(displayName + "Row", typeof(RectTransform));
+            root.transform.SetParent(parent, false);
+            LayoutElement rootLayout = root.AddComponent<LayoutElement>();
+            rootLayout.preferredHeight = 58f;
+            root.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.05f);
+
+            VerticalLayoutGroup layout = root.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(10, 10, 6, 6);
+            layout.spacing = 4f;
+            layout.childControlWidth = true;
+            layout.childForceExpandWidth = true;
+            layout.childControlHeight = false;
+            layout.childForceExpandHeight = false;
+
+            GameObject headerRow = new GameObject("HeaderRow", typeof(RectTransform));
+            headerRow.transform.SetParent(root.transform, false);
+            LayoutElement headerRowLayout = headerRow.AddComponent<LayoutElement>();
+            headerRowLayout.preferredHeight = 20f;
+
+            HorizontalLayoutGroup headerLayoutGroup = headerRow.AddComponent<HorizontalLayoutGroup>();
+            headerLayoutGroup.childControlWidth = true;
+            headerLayoutGroup.childForceExpandWidth = false;
+            headerLayoutGroup.childControlHeight = true;
+            headerLayoutGroup.childForceExpandHeight = true;
+
+            TextMeshProUGUI nameText = CreateText(headerRow.transform, "NameText", displayName, 15f, TextAlignmentOptions.MidlineLeft);
+            LayoutElement nameLayout = nameText.gameObject.AddComponent<LayoutElement>();
+            nameLayout.flexibleWidth = 1f;
+
+            TextMeshProUGUI levelText = CreateText(headerRow.transform, "LevelText", "Lv. 0", 15f, TextAlignmentOptions.MidlineRight);
+            LayoutElement levelLayout = levelText.gameObject.AddComponent<LayoutElement>();
+            levelLayout.preferredWidth = 90f;
+
+            GameObject progressRow = new GameObject("ProgressRow", typeof(RectTransform));
+            progressRow.transform.SetParent(root.transform, false);
+            LayoutElement progressRowLayout = progressRow.AddComponent<LayoutElement>();
+            progressRowLayout.preferredHeight = 16f;
+
+            HorizontalLayoutGroup progressRowLayoutGroup = progressRow.AddComponent<HorizontalLayoutGroup>();
+            progressRowLayoutGroup.spacing = 6f;
+            progressRowLayoutGroup.childControlWidth = true;
+            progressRowLayoutGroup.childForceExpandWidth = false;
+            progressRowLayoutGroup.childControlHeight = true;
+            progressRowLayoutGroup.childForceExpandHeight = true;
+
+            (GameObject barBackground, RectTransform barFill) = BuildAnchoredProgressBar(progressRow.transform, new Color(0.6f, 0.4f, 0.9f, 1f));
+            LayoutElement barLayout = barBackground.AddComponent<LayoutElement>();
+            barLayout.flexibleWidth = 1f;
+
+            TextMeshProUGUI experienceText = CreateText(progressRow.transform, "ExperienceText", "0 / 0", 12f, TextAlignmentOptions.MidlineRight);
+            LayoutElement experienceTextLayout = experienceText.gameObject.AddComponent<LayoutElement>();
+            experienceTextLayout.preferredWidth = 130f;
+
+            return new RaceMasteryRowRefs
+            {
+                RaceId = raceId,
+                LevelText = levelText,
+                ExperienceText = experienceText,
+                ProgressBarFill = barFill
+            };
+        }
+
+        // Modul: UI audit follow-up. DailyLoginRewardEngine already grants a
+        // real, server-authoritative streak reward on every login/register
+        // (see LoginBonusCache's own comment) - it just had no UI. Fixed
+        // 7-day layout (not a pooled list), matching BuildRaceMasteryWindow's
+        // same reasoning: a week is always 7 days.
+        private static GameObject BuildLoginBonusWindow(Transform canvasTransform)
+        {
+            GameObject windowObject = BuildSimpleListWindowShell("LoginBonusWindow", canvasTransform, "Login Bonus", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+
+            TextMeshProUGUI streakText = CreateText(contentAreaRect, "StreakText", "Day 0 of 7", 20f, TextAlignmentOptions.Center);
+            RectTransform streakRect = (RectTransform)streakText.transform;
+            streakRect.anchorMin = new Vector2(0f, 1f);
+            streakRect.anchorMax = new Vector2(1f, 1f);
+            streakRect.pivot = new Vector2(0.5f, 1f);
+            streakRect.sizeDelta = new Vector2(0f, 32f);
+            streakRect.anchoredPosition = Vector2.zero;
+
+            TextMeshProUGUI statusText = CreateText(contentAreaRect, "StatusText", string.Empty, 14f, TextAlignmentOptions.Center);
+            RectTransform statusRect = (RectTransform)statusText.transform;
+            statusRect.anchorMin = new Vector2(0f, 1f);
+            statusRect.anchorMax = new Vector2(1f, 1f);
+            statusRect.pivot = new Vector2(0.5f, 1f);
+            statusRect.sizeDelta = new Vector2(0f, 24f);
+            statusRect.anchoredPosition = new Vector2(0f, -36f);
+
+            GameObject boxRowObject = new GameObject("DayBoxRow", typeof(RectTransform));
+            boxRowObject.transform.SetParent(contentAreaRect, false);
+            RectTransform boxRowRect = (RectTransform)boxRowObject.transform;
+            boxRowRect.anchorMin = new Vector2(0f, 1f);
+            boxRowRect.anchorMax = new Vector2(1f, 1f);
+            boxRowRect.pivot = new Vector2(0.5f, 1f);
+            boxRowRect.sizeDelta = new Vector2(0f, 120f);
+            boxRowRect.anchoredPosition = new Vector2(0f, -76f);
+
+            HorizontalLayoutGroup boxRowLayout = boxRowObject.AddComponent<HorizontalLayoutGroup>();
+            boxRowLayout.spacing = 8f;
+            boxRowLayout.childControlWidth = true;
+            boxRowLayout.childForceExpandWidth = true;
+            boxRowLayout.childControlHeight = true;
+            boxRowLayout.childForceExpandHeight = true;
+
+            UiLoginBonusPanel panel = windowObject.AddComponent<UiLoginBonusPanel>();
+            panel.StreakText = streakText;
+            panel.StatusText = statusText;
+            panel.DayBoxes = new LoginBonusDayBoxRefs[7];
+
+            for (int day = 1; day <= 7; day++)
+            {
+                panel.DayBoxes[day - 1] = BuildLoginBonusDayBox(boxRowObject.transform, day);
+            }
+
+            return windowObject;
+        }
+
+        private static LoginBonusDayBoxRefs BuildLoginBonusDayBox(Transform parent, int day)
+        {
+            GameObject boxObject = new GameObject("Day" + day + "Box", typeof(RectTransform));
+            boxObject.transform.SetParent(parent, false);
+            Image highlightBackground = boxObject.AddComponent<Image>();
+            highlightBackground.color = new Color(1f, 1f, 1f, 0.05f);
+
+            VerticalLayoutGroup layout = boxObject.AddComponent<VerticalLayoutGroup>();
+            layout.padding = new RectOffset(4, 4, 8, 8);
+            layout.spacing = 6f;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = true;
+            layout.childForceExpandWidth = true;
+            layout.childControlHeight = false;
+            layout.childForceExpandHeight = false;
+
+            TextMeshProUGUI dayLabel = CreateText(boxObject.transform, "DayLabel", "Day " + day, 13f, TextAlignmentOptions.Center);
+            LayoutElement dayLabelLayout = dayLabel.gameObject.AddComponent<LayoutElement>();
+            dayLabelLayout.preferredHeight = 18f;
+
+            TextMeshProUGUI rewardText = CreateText(boxObject.transform, "RewardText", "0g", 12f, TextAlignmentOptions.Center);
+            LayoutElement rewardTextLayout = rewardText.gameObject.AddComponent<LayoutElement>();
+            rewardTextLayout.preferredHeight = 32f;
+
+            return new LoginBonusDayBoxRefs
+            {
+                Day = day,
+                RewardText = rewardText,
+                HighlightBackground = highlightBackground
+            };
+        }
+
+        // Modul: UI audit follow-up. Statistics panel - see
+        // UiStatisticsPanel/PlayerStatisticsCache's own comments. Plain
+        // vertical stat-row list, mirroring BuildCharacterStatsPanel's
+        // CreateStatRow usage.
+        private static GameObject BuildStatisticsWindow(Transform canvasTransform)
+        {
+            GameObject windowObject = BuildSimpleListWindowShell("StatisticsWindow", canvasTransform, "Statistics", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+
+            VerticalLayoutGroup layout = contentAreaRect.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = 10f;
+            layout.childControlWidth = true;
+            layout.childForceExpandWidth = true;
+            layout.childControlHeight = false;
+            layout.childForceExpandHeight = false;
+
+            UiStatisticsPanel panel = windowObject.AddComponent<UiStatisticsPanel>();
+            panel.LevelText = CreateStatRow(contentAreaRect, "Level: 0");
+            panel.XpText = CreateStatRow(contentAreaRect, "Experience: 0");
+            panel.GoldText = CreateStatRow(contentAreaRect, "Gold: 0");
+            panel.DiamondsText = CreateStatRow(contentAreaRect, "Diamonds: 0");
+            panel.LoginStreakText = CreateStatRow(contentAreaRect, "Login Streak: 0");
+            panel.AchievementsClaimedText = CreateStatRow(contentAreaRect, "Achievements Claimed: 0");
+            panel.RegionsCompletedText = CreateStatRow(contentAreaRect, "Regions Completed: 0");
+            panel.CharacterCountText = CreateStatRow(contentAreaRect, "Characters: 0");
+            panel.SkillPointsText = CreateStatRow(contentAreaRect, "Unspent Skill Points: 0");
+            panel.GuildText = CreateStatRow(contentAreaRect, "Guild: None");
+
+            return windowObject;
+        }
+
         private static GameObject BuildLeaderboardWindow(Transform canvasTransform)
         {
             GameObject windowObject = BuildSimpleListWindowShell("LeaderboardWindow", canvasTransform, "Leaderboard", out RectTransform contentAreaRect, out TextMeshProUGUI _);
@@ -3186,6 +3412,107 @@ namespace FolkIdle.Client.Editor
             window.NetworkClient = networkClient;
 
             return windowObject;
+        }
+
+        // Modul: UI audit follow-up. Friends roster - AddFriend/RemoveFriend/
+        // BlockPlayer/UnblockPlayer (RelationshipEngine) already existed and
+        // worked over the WebSocket wire, but there was no UI to see the
+        // list or trigger them (see FriendsCache/UiFriendsWindow's own
+        // comments). Replaces the old BuildPlaceholderWindow static shell.
+        private static GameObject BuildFriendsWindow(Transform canvasTransform, WebSocketClient networkClient)
+        {
+            GameObject windowObject = BuildSimpleListWindowShell("FriendsWindow", canvasTransform, "Friends", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+
+            (TMP_InputField usernameInput, Button addButton) = BuildLabeledInputRow(contentAreaRect, "AddFriendRow", "Username", "Add Friend");
+            RectTransform addRowRect = (RectTransform)usernameInput.transform.parent;
+            addRowRect.anchorMin = new Vector2(0f, 1f);
+            addRowRect.anchorMax = new Vector2(1f, 1f);
+            addRowRect.pivot = new Vector2(0.5f, 1f);
+            addRowRect.sizeDelta = new Vector2(0f, 44f);
+            addRowRect.anchoredPosition = Vector2.zero;
+
+            TextMeshProUGUI statusText = CreateText(contentAreaRect, "StatusText", string.Empty, 13f, TextAlignmentOptions.MidlineLeft);
+            RectTransform statusRect = (RectTransform)statusText.transform;
+            statusRect.anchorMin = new Vector2(0f, 1f);
+            statusRect.anchorMax = new Vector2(1f, 1f);
+            statusRect.pivot = new Vector2(0.5f, 1f);
+            statusRect.sizeDelta = new Vector2(0f, 24f);
+            statusRect.anchoredPosition = new Vector2(0f, -50f);
+
+            GameObject scrollAreaObject = new GameObject("ScrollArea", typeof(RectTransform));
+            scrollAreaObject.transform.SetParent(contentAreaRect, false);
+            RectTransform scrollAreaRect = (RectTransform)scrollAreaObject.transform;
+            scrollAreaRect.anchorMin = Vector2.zero;
+            scrollAreaRect.anchorMax = Vector2.one;
+            scrollAreaRect.offsetMin = Vector2.zero;
+            scrollAreaRect.offsetMax = new Vector2(0f, -86f);
+
+            (ScrollRect _, RectTransform content) = ChatSceneBuilder.BuildScrollView(scrollAreaRect);
+
+            GameObject rowPrefabAsset = BuildAndSaveFriendRowPrefab();
+
+            UiFriendsWindow window = windowObject.AddComponent<UiFriendsWindow>();
+            window.NetworkClient = networkClient;
+            window.RowContainer = content;
+            window.RowPrefab = rowPrefabAsset.GetComponent<UiFriendEntryRow>();
+            window.AddFriendUsernameField = usernameInput;
+            window.AddFriendButton = addButton;
+            window.StatusText = statusText;
+
+            return windowObject;
+        }
+
+        private static GameObject BuildAndSaveFriendRowPrefab()
+        {
+            EnsureFolder(PrefabDirectory);
+
+            GameObject root = new GameObject("UiFriendEntryRow", typeof(RectTransform));
+            ((RectTransform)root.transform).sizeDelta = new Vector2(0f, 34f);
+
+            TextMeshProUGUI nameText = CreateText(root.transform, "NameText", "Player", 14f, TextAlignmentOptions.MidlineLeft);
+            RectTransform nameTextRect = (RectTransform)nameText.transform;
+            nameTextRect.anchorMin = Vector2.zero;
+            nameTextRect.anchorMax = Vector2.one;
+            nameTextRect.offsetMin = new Vector2(6f, 0f);
+            nameTextRect.offsetMax = new Vector2(-180f, 0f);
+
+            Button removeButton = CreateButton(root.transform, "RemoveButton", "Remove", out TextMeshProUGUI _);
+            RectTransform removeRect = (RectTransform)removeButton.transform;
+            removeRect.anchorMin = new Vector2(1f, 0.1f);
+            removeRect.anchorMax = new Vector2(1f, 0.9f);
+            removeRect.pivot = new Vector2(1f, 0.5f);
+            removeRect.sizeDelta = new Vector2(80f, 0f);
+            removeRect.anchoredPosition = new Vector2(-4f, 0f);
+
+            Button blockButton = CreateButton(root.transform, "BlockButton", "Block", out TextMeshProUGUI _);
+            RectTransform blockRect = (RectTransform)blockButton.transform;
+            blockRect.anchorMin = new Vector2(1f, 0.1f);
+            blockRect.anchorMax = new Vector2(1f, 0.9f);
+            blockRect.pivot = new Vector2(1f, 0.5f);
+            blockRect.sizeDelta = new Vector2(70f, 0f);
+            blockRect.anchoredPosition = new Vector2(-88f, 0f);
+
+            Button unblockButton = CreateButton(root.transform, "UnblockButton", "Unblock", out TextMeshProUGUI _);
+            RectTransform unblockRect = (RectTransform)unblockButton.transform;
+            unblockRect.anchorMin = new Vector2(1f, 0.1f);
+            unblockRect.anchorMax = new Vector2(1f, 0.9f);
+            unblockRect.pivot = new Vector2(1f, 0.5f);
+            unblockRect.sizeDelta = new Vector2(90f, 0f);
+            unblockRect.anchoredPosition = new Vector2(-4f, 0f);
+
+            UiFriendEntryRow rowComponent = root.AddComponent<UiFriendEntryRow>();
+            rowComponent.NameText = nameText;
+            rowComponent.RemoveButton = removeButton;
+            rowComponent.BlockButton = blockButton;
+            rowComponent.UnblockButton = unblockButton;
+
+            GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(root, FriendRowPrefabPath, out bool success);
+            if (!success)
+            {
+                Debug.LogError("MainSceneBuilder: failed to save UiFriendEntryRow prefab asset.");
+            }
+            Object.DestroyImmediate(root);
+            return prefabAsset;
         }
 
         private static GameObject BuildStoreWindow(Transform canvasTransform, VisualSyncProxy syncProxy, WebSocketClient networkClient)
@@ -3880,24 +4207,6 @@ namespace FolkIdle.Client.Editor
             logOffRect.anchoredPosition = new Vector2(0f, -44f);
 
             return (windowObject, logOffButton);
-        }
-
-        // ------------------------------------------------------------
-        // Honest static placeholders - Friends, Statistics, and Login Bonus
-        // have no corresponding engine/network code anywhere server-side
-        // (confirmed via project-wide search), so unlike every other
-        // screen in this file they are not wired to any real cache; they
-        // are plain shells reachable from the hamburger menu, ready for
-        // real content once that server-side support exists.
-        // ------------------------------------------------------------
-        private static GameObject BuildPlaceholderWindow(Transform canvasTransform, string windowName, string title, string message)
-        {
-            GameObject windowObject = BuildSimpleListWindowShell(windowName, canvasTransform, title, out RectTransform contentAreaRect, out TextMeshProUGUI _);
-
-            TextMeshProUGUI messageText = CreateText(contentAreaRect, "PlaceholderMessageText", message, 16f, TextAlignmentOptions.Center);
-            StretchFull((RectTransform)messageText.transform);
-
-            return windowObject;
         }
 
         // ------------------------------------------------------------

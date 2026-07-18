@@ -580,6 +580,50 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: UI audit follow-up. Friends roster - AddFriend/
+                    // RemoveFriend/BlockPlayer/UnblockPlayer (RelationshipEngine)
+                    // already existed and worked over the WebSocket wire, but
+                    // there was no way for the client to list the current
+                    // relationship set or discover a target player's numeric
+                    // Id from their username. Mirrors HandleMasterySnapshot's
+                    // exact authenticated-GET shape.
+                    if (requestPath == "/api/v1/friends/list" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleFriendsList(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/players/resolve" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandlePlayerResolve(context);
+                        continue;
+                    }
+
+                    // Modul: UI audit follow-up. DailyLoginRewardEngine
+                    // already grants a real, server-authoritative streak
+                    // reward on every login/register, but the result was
+                    // discarded (awaited, never returned to the client) -
+                    // the player had no way to see their streak or today's
+                    // reward. Read-only snapshot, mirrors HandleMasterySnapshot.
+                    if (requestPath == "/api/v1/login-bonus/state" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleLoginBonusState(context);
+                        continue;
+                    }
+
+                    // Modul: UI audit follow-up. No player-statistics engine
+                    // existed anywhere server-side. Rather than invent new
+                    // tracking, this aggregates fields that are already
+                    // persisted for other systems (level/xp/diamonds on
+                    // PlayerRecord, gold via CommodityRecords, claimed
+                    // achievements, region completions, character count,
+                    // guild membership) into one read-only snapshot.
+                    if (requestPath == "/api/v1/player/statistics" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandlePlayerStatistics(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/achievements/snapshot" && context.Request.HttpMethod == "GET")
                     {
                         await HandleAchievementsSnapshot(context);
@@ -771,6 +815,41 @@ namespace FolkIdle.Server.Network
             public int Level { get; set; }
             public long Experience { get; set; }
             public long NextLevelExperience { get; set; }
+        }
+
+        private sealed class FriendEntryResponse
+        {
+            public long PlayerId { get; set; }
+            public string Username { get; set; } = string.Empty;
+            public int Level { get; set; }
+            public bool IsBlocked { get; set; }
+        }
+
+        private sealed class PlayerResolveResponse
+        {
+            public long PlayerId { get; set; }
+        }
+
+        private sealed class LoginBonusStateResponse
+        {
+            public int CurrentStreakDay { get; set; }
+            public bool CreditedToday { get; set; }
+            public long[] WeeklyGoldSchedule { get; set; } = Array.Empty<long>();
+            public int Day7DiamondBonus { get; set; }
+        }
+
+        private sealed class PlayerStatisticsResponse
+        {
+            public int Level { get; set; }
+            public long Xp { get; set; }
+            public long Gold { get; set; }
+            public int PremiumDiamonds { get; set; }
+            public int LoginStreakDays { get; set; }
+            public int AchievementsClaimedCount { get; set; }
+            public int RegionsCompletedCount { get; set; }
+            public int CharacterCount { get; set; }
+            public int AvailableSkillPoints { get; set; }
+            public string GuildName { get; set; } = string.Empty;
         }
 
         private sealed class LeaderboardEntryResponse
@@ -2064,6 +2143,305 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Race mastery snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: UI audit follow-up. Lists both relationship kinds (Friend
+        // and Blocked - RelationType) the caller has with other players,
+        // joined against PlayerRecords for a real Username/Level to show
+        // rather than a bare numeric Id. Read-only, matching every other
+        // snapshot handler's transaction shape.
+        private async Task HandleFriendsList(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                var relationships = await db.PlayerRelationships
+                    .AsNoTracking()
+                    .Where(r => r.PlayerId == playerId)
+                    .ToListAsync();
+
+                var targetIds = relationships.Select(r => r.TargetPlayerId).ToList();
+                var targets = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => targetIds.Contains(p.Id))
+                    .ToDictionaryAsync(p => p.Id, p => p);
+
+                await transaction.CommitAsync();
+
+                var response = new System.Collections.Generic.List<FriendEntryResponse>(relationships.Count);
+                foreach (var rel in relationships)
+                {
+                    targets.TryGetValue(rel.TargetPlayerId, out var target);
+                    response.Add(new FriendEntryResponse
+                    {
+                        PlayerId = rel.TargetPlayerId,
+                        Username = target?.Username ?? "(unknown player)",
+                        Level = target?.CurrentLevel ?? 0,
+                        IsBlocked = rel.RelationType == RelationType.Blocked
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Friends list error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: UI audit follow-up. AddFriend/BlockPlayer (RelationshipEngine,
+        // WebSocketClient.SendAddFriendCommandZeroAlloc/SendBlockPlayerCommandZeroAlloc)
+        // only ever took a raw numeric TargetPlayerId with no client-side way
+        // to discover it - this resolves the one piece of public information
+        // a player would actually type, their username, to that Id. Exact,
+        // case-sensitive match - Username's uniqueness index (unlike Email's)
+        // is case-sensitive, so a case-insensitive lookup here could resolve
+        // ambiguously against two differently-cased usernames.
+        private async Task HandlePlayerResolve(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                string username = (query["username"] ?? string.Empty).Trim();
+                if (string.IsNullOrEmpty(username))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                long targetPlayerId = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => p.Username == username)
+                    .Select(p => p.Id)
+                    .FirstOrDefaultAsync();
+
+                await transaction.CommitAsync();
+
+                if (targetPlayerId <= 0)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new PlayerResolveResponse { PlayerId = targetPlayerId });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Player resolve error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: UI audit follow-up. DailyLoginRewardEngine.TryGrantLoginRewardAsync
+        // already runs on every /api/v1/auth/login and /api/v1/auth/register
+        // call - this only reads back the state it already persisted
+        // (PlayerRecord.LastLoginTimestamp/LoginStreakDays), plus previews
+        // the current week's reward schedule via the same GetGoldReward
+        // table the grant itself used, so the client can show "day 3 of 7,
+        // here's what the rest of the week pays" without duplicating the
+        // reward matrices.
+        private async Task HandleLoginBonusState(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                var player = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => p.Id == playerId)
+                    .Select(p => new { p.LastLoginTimestamp, p.LoginStreakDays })
+                    .SingleOrDefaultAsync();
+
+                await transaction.CommitAsync();
+
+                if (player == null)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long todayDateKey = nowEpoch / 86400L;
+                long lastLoginDateKey = player.LastLoginTimestamp / 86400L;
+                bool creditedToday = player.LastLoginTimestamp > 0 && lastLoginDateKey == todayDateKey;
+
+                long[] schedule = new long[7];
+                for (int day = 1; day <= 7; day++)
+                {
+                    schedule[day - 1] = DailyLoginRewardEngine.GetGoldReward(todayDateKey, day);
+                }
+
+                var response = new LoginBonusStateResponse
+                {
+                    CurrentStreakDay = player.LoginStreakDays,
+                    CreditedToday = creditedToday,
+                    WeeklyGoldSchedule = schedule,
+                    Day7DiamondBonus = DailyLoginRewardEngine.PremiumDiamondsOnDay7Completion
+                };
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Login bonus state error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: UI audit follow-up. Player Statistics - see this route's
+        // registration comment. Read-only aggregate over data every field
+        // already persisted for another system's own purposes; nothing new
+        // is tracked to build this.
+        private async Task HandlePlayerStatistics(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                var player = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => p.Id == playerId)
+                    .Select(p => new
+                    {
+                        p.CurrentLevel,
+                        p.CurrentXp,
+                        p.PremiumDiamonds,
+                        p.LoginStreakDays,
+                        p.GuildId,
+                        p.AvailableSkillPoints
+                    })
+                    .SingleOrDefaultAsync();
+
+                if (player == null)
+                {
+                    await transaction.CommitAsync();
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                long gold = await db.CommodityRecords
+                    .AsNoTracking()
+                    .Where(c => c.PlayerId == playerId && c.ItemId == "gold")
+                    .Select(c => c.Quantity)
+                    .FirstOrDefaultAsync();
+
+                int achievementsClaimedCount = await db.PlayerLifetimeAchievements
+                    .AsNoTracking()
+                    .CountAsync(a => a.PlayerId == playerId && a.IsClaimed);
+
+                int regionsCompletedCount = await db.PlayerRegionCompletions
+                    .AsNoTracking()
+                    .CountAsync(r => r.PlayerId == playerId);
+
+                int characterCount = await db.CharacterRecords
+                    .AsNoTracking()
+                    .CountAsync(c => c.PlayerId == playerId);
+
+                string guildName = string.Empty;
+                if (player.GuildId > 0)
+                {
+                    guildName = await db.GuildRecords
+                        .AsNoTracking()
+                        .Where(g => g.Id == player.GuildId)
+                        .Select(g => g.Name)
+                        .FirstOrDefaultAsync() ?? string.Empty;
+                }
+
+                await transaction.CommitAsync();
+
+                var response = new PlayerStatisticsResponse
+                {
+                    Level = player.CurrentLevel,
+                    Xp = player.CurrentXp,
+                    Gold = gold,
+                    PremiumDiamonds = player.PremiumDiamonds,
+                    LoginStreakDays = player.LoginStreakDays,
+                    AchievementsClaimedCount = achievementsClaimedCount,
+                    RegionsCompletedCount = regionsCompletedCount,
+                    CharacterCount = characterCount,
+                    AvailableSkillPoints = player.AvailableSkillPoints,
+                    GuildName = guildName
+                };
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Player statistics error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

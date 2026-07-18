@@ -187,8 +187,8 @@ namespace FolkIdle.Client.Engine
         // public fields now, set directly by PlayerMetadataCache/
         // AchievementsStateCache's update callbacks instead of this
         // class's own packet-driven Apply* methods. UI code that already
-        // reads these properties (UiDataBinder, UiSeasonPassWindow) needs
-        // no changes - only where the value comes from changed.
+        // reads these properties (UiSeasonPassWindow) needs no changes -
+        // only where the value comes from changed.
         public uint VisualEventHorizonTransactionCount;
         public uint VisualTotalAchievementsClaimedCount;
         public uint VisualActiveChroniclePassLevel;
