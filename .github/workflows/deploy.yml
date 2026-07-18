@@ -80,7 +80,12 @@ jobs:
           if [ -n "${{ secrets.REGISTRY_URL }}" ]; then
             echo "url=${{ secrets.REGISTRY_URL }}" >> "$GITHUB_OUTPUT"
           else
-            echo "url=ghcr.io/${{ github.repository }}" >> "$GITHUB_OUTPUT"
+            # Modul: ghcr.io (and Docker registries generally) require an
+            # all-lowercase repository path - github.repository preserves
+            # the repository's actual case (e.g. "Mivoru/IdleHra"), which
+            # docker/build-push-action rejects outright ("repository name
+            # must be lowercase") before ever attempting the push.
+            echo "url=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Log in to container registry
@@ -136,7 +141,12 @@ jobs:
           if [ -n "${{ secrets.REGISTRY_URL }}" ]; then
             echo "url=${{ secrets.REGISTRY_URL }}" >> "$GITHUB_OUTPUT"
           else
-            echo "url=ghcr.io/${{ github.repository }}" >> "$GITHUB_OUTPUT"
+            # Modul: ghcr.io (and Docker registries generally) require an
+            # all-lowercase repository path - github.repository preserves
+            # the repository's actual case (e.g. "Mivoru/IdleHra"), which
+            # docker/build-push-action rejects outright ("repository name
+            # must be lowercase") before ever attempting the push.
+            echo "url=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
           fi
 
       # Substitute the SHA-tagged image into the Job manifest, apply it,
@@ -180,7 +190,12 @@ jobs:
           if [ -n "${{ secrets.REGISTRY_URL }}" ]; then
             echo "url=${{ secrets.REGISTRY_URL }}" >> "$GITHUB_OUTPUT"
           else
-            echo "url=ghcr.io/${{ github.repository }}" >> "$GITHUB_OUTPUT"
+            # Modul: ghcr.io (and Docker registries generally) require an
+            # all-lowercase repository path - github.repository preserves
+            # the repository's actual case (e.g. "Mivoru/IdleHra"), which
+            # docker/build-push-action rejects outright ("repository name
+            # must be lowercase") before ever attempting the push.
+            echo "url=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
           fi
 
       # Substitutes the SHA-tagged image into deployment.yaml (mirroring the
