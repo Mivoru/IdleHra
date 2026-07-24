@@ -1,0 +1,910 @@
+fileFormatVersion: 2
+guid: 22f4cbdaeacb18f4989f548b2123314b
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 2131460478071290242
+    second: Vodnik_Male_0
+  - first:
+      213: -7542735989200211883
+    second: Vodnik_Male_1
+  - first:
+      213: 8829859340461554558
+    second: Vodnik_Male_2
+  - first:
+      213: 8395368791718330400
+    second: Vodnik_Male_3
+  - first:
+      213: -1755764860808219825
+    second: Vodnik_Male_4
+  - first:
+      213: 833639316148186958
+    second: Vodnik_Male_5
+  - first:
+      213: 1938124268373643977
+    second: Vodnik_Male_6
+  - first:
+      213: -2650873291654873130
+    second: Vodnik_Male_7
+  - first:
+      213: -7684269370672128647
+    second: Vodnik_Male_8
+  - first:
+      213: 2226080866643327153
+    second: Vodnik_Male_9
+  - first:
+      213: -6353973021280891581
+    second: Vodnik_Male_10
+  - first:
+      213: 608420025282161007
+    second: Vodnik_Male_11
+  - first:
+      213: 981282059119169553
+    second: Vodnik_Male_12
+  - first:
+      213: 1991453485078565107
+    second: Vodnik_Male_13
+  - first:
+      213: 9110416159348331139
+    second: Vodnik_Male_14
+  - first:
+      213: -9173096558610679669
+    second: Vodnik_Male_15
+  - first:
+      213: 29542107279550154
+    second: Vodnik_Male_16
+  - first:
+      213: 6110145540085466047
+    second: Vodnik_Male_17
+  - first:
+      213: 3081813510131158424
+    second: Vodnik_Male_18
+  - first:
+      213: 4837909814961669191
+    second: Vodnik_Male_19
+  - first:
+      213: -3646558449887839171
+    second: Vodnik_Male_20
+  - first:
+      213: 6208963910797206043
+    second: Vodnik_Male_21
+  - first:
+      213: -7582266207196546428
+    second: Vodnik_Male_22
+  - first:
+      213: -7991181323675006555
+    second: Vodnik_Male_23
+  - first:
+      213: 2508908449212117089
+    second: Vodnik_Male_24
+  - first:
+      213: -4859570063082482598
+    second: Vodnik_Male_25
+  - first:
+      213: 2194618740136103032
+    second: Vodnik_Male_26
+  - first:
+      213: -183343240916631318
+    second: Vodnik_Male_27
+  - first:
+      213: -4081257869156334131
+    second: Vodnik_Male_28
+  - first:
+      213: 8913231737651742101
+    second: Vodnik_Male_29
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Vodnik_Male_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1402
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28939380308749d10800000000000000
+      internalID: 2131460478071290242
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_1
+      rect:
+        serializedVersion: 2
+        x: 1365
+        y: 1531
+        width: 6
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 550ba29b491d25790800000000000000
+      internalID: -7542735989200211883
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_2
+      rect:
+        serializedVersion: 2
+        x: 539
+        y: 1516
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7b30ec9946f98a70800000000000000
+      internalID: 8829859340461554558
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_3
+      rect:
+        serializedVersion: 2
+        x: 1015
+        y: 1516
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 02085cc7f67528470800000000000000
+      internalID: 8395368791718330400
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_4
+      rect:
+        serializedVersion: 2
+        x: 1363
+        y: 1501
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f43b96a592542a7e0800000000000000
+      internalID: -1755764860808219825
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_5
+      rect:
+        serializedVersion: 2
+        x: 1087
+        y: 1487
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e4fefcd8a8ea19b00800000000000000
+      internalID: 833639316148186958
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_6
+      rect:
+        serializedVersion: 2
+        x: 514
+        y: 1459
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9c299f2e0c995ea10800000000000000
+      internalID: 1938124268373643977
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_7
+      rect:
+        serializedVersion: 2
+        x: 682
+        y: 1442
+        width: 6
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6df375249c4363bd0800000000000000
+      internalID: -2650873291654873130
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_8
+      rect:
+        serializedVersion: 2
+        x: 38
+        y: 1333
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 97d5caa68bdfb5590800000000000000
+      internalID: -7684269370672128647
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_9
+      rect:
+        serializedVersion: 2
+        x: 133
+        y: 1187
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b8b19101c0a4ee10800000000000000
+      internalID: 2226080866643327153
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_10
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 1163
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 34d0322b33722d7a0800000000000000
+      internalID: -6353973021280891581
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_11
+      rect:
+        serializedVersion: 2
+        x: 35
+        y: 1107
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f696d291aca817800800000000000000
+      internalID: 608420025282161007
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_12
+      rect:
+        serializedVersion: 2
+        x: 144
+        y: 1030
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 110134e65d63e9d00800000000000000
+      internalID: 981282059119169553
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_13
+      rect:
+        serializedVersion: 2
+        x: 213
+        y: 973
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f052dcb46013ab10800000000000000
+      internalID: 1991453485078565107
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_14
+      rect:
+        serializedVersion: 2
+        x: 43
+        y: 945
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3829fe55a33be6e70800000000000000
+      internalID: 9110416159348331139
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_15
+      rect:
+        serializedVersion: 2
+        x: 83
+        y: 876
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b88f6a5f74d92b080800000000000000
+      internalID: -9173096558610679669
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_16
+      rect:
+        serializedVersion: 2
+        x: 97
+        y: 785
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac6605ad364f86000800000000000000
+      internalID: 29542107279550154
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_17
+      rect:
+        serializedVersion: 2
+        x: 187
+        y: 597
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb34bbaeef89bc450800000000000000
+      internalID: 6110145540085466047
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_18
+      rect:
+        serializedVersion: 2
+        x: 182
+        y: 569
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 89d0e5f2f0dc4ca20800000000000000
+      internalID: 3081813510131158424
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_19
+      rect:
+        serializedVersion: 2
+        x: 126
+        y: 539
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7448a282855b32340800000000000000
+      internalID: 4837909814961669191
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_20
+      rect:
+        serializedVersion: 2
+        x: 131
+        y: 434
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d3c7cbdf862d46dc0800000000000000
+      internalID: -3646558449887839171
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_21
+      rect:
+        serializedVersion: 2
+        x: 83
+        y: 393
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b12a946c7cbaa2650800000000000000
+      internalID: 6208963910797206043
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_22
+      rect:
+        serializedVersion: 2
+        x: 130
+        y: 392
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48af99f9e0166c690800000000000000
+      internalID: -7582266207196546428
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_23
+      rect:
+        serializedVersion: 2
+        x: 214
+        y: 365
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5a98d9adcee991190800000000000000
+      internalID: -7991181323675006555
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_24
+      rect:
+        serializedVersion: 2
+        x: 215
+        y: 269
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 160b34911fe61d220800000000000000
+      internalID: 2508908449212117089
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_25
+      rect:
+        serializedVersion: 2
+        x: 10
+        y: 175
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a5498d456c65f8cb0800000000000000
+      internalID: -4859570063082482598
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_26
+      rect:
+        serializedVersion: 2
+        x: 387
+        y: 26
+        width: 9
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 87c4a37dd1ad47e10800000000000000
+      internalID: 2194618740136103032
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_27
+      rect:
+        serializedVersion: 2
+        x: 608
+        y: 25
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ae002353b42a47df0800000000000000
+      internalID: -183343240916631318
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_28
+      rect:
+        serializedVersion: 2
+        x: 388
+        y: 10
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc54b2867957c57c0800000000000000
+      internalID: -4081257869156334131
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Male_29
+      rect:
+        serializedVersion: 2
+        x: 1165
+        y: 10
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 59548738a0922bb70800000000000000
+      internalID: 8913231737651742101
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Vodnik_Male_0: 2131460478071290242
+      Vodnik_Male_1: -7542735989200211883
+      Vodnik_Male_10: -6353973021280891581
+      Vodnik_Male_11: 608420025282161007
+      Vodnik_Male_12: 981282059119169553
+      Vodnik_Male_13: 1991453485078565107
+      Vodnik_Male_14: 9110416159348331139
+      Vodnik_Male_15: -9173096558610679669
+      Vodnik_Male_16: 29542107279550154
+      Vodnik_Male_17: 6110145540085466047
+      Vodnik_Male_18: 3081813510131158424
+      Vodnik_Male_19: 4837909814961669191
+      Vodnik_Male_2: 8829859340461554558
+      Vodnik_Male_20: -3646558449887839171
+      Vodnik_Male_21: 6208963910797206043
+      Vodnik_Male_22: -7582266207196546428
+      Vodnik_Male_23: -7991181323675006555
+      Vodnik_Male_24: 2508908449212117089
+      Vodnik_Male_25: -4859570063082482598
+      Vodnik_Male_26: 2194618740136103032
+      Vodnik_Male_27: -183343240916631318
+      Vodnik_Male_28: -4081257869156334131
+      Vodnik_Male_29: 8913231737651742101
+      Vodnik_Male_3: 8395368791718330400
+      Vodnik_Male_4: -1755764860808219825
+      Vodnik_Male_5: 833639316148186958
+      Vodnik_Male_6: 1938124268373643977
+      Vodnik_Male_7: -2650873291654873130
+      Vodnik_Male_8: -7684269370672128647
+      Vodnik_Male_9: 2226080866643327153
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

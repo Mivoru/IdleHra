@@ -1,0 +1,2496 @@
+fileFormatVersion: 2
+guid: b99e2e8c30bc35a4db8aa5b29c2f7da8
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 5590924467408970103
+    second: Draugr_Male_0
+  - first:
+      213: -4522979897845185424
+    second: Draugr_Male_1
+  - first:
+      213: -6762368171598739639
+    second: Draugr_Male_2
+  - first:
+      213: -3125279420572780780
+    second: Draugr_Male_3
+  - first:
+      213: 4004048386582743580
+    second: Draugr_Male_4
+  - first:
+      213: -6302498860440960649
+    second: Draugr_Male_5
+  - first:
+      213: 1850600921593976676
+    second: Draugr_Male_6
+  - first:
+      213: -8212709518755313743
+    second: Draugr_Male_7
+  - first:
+      213: 1963462357328541058
+    second: Draugr_Male_8
+  - first:
+      213: 2030584276650932451
+    second: Draugr_Male_9
+  - first:
+      213: 6185565308117244779
+    second: Draugr_Male_10
+  - first:
+      213: -7107365576722446043
+    second: Draugr_Male_11
+  - first:
+      213: 8730265218214530383
+    second: Draugr_Male_12
+  - first:
+      213: -7061008259821746640
+    second: Draugr_Male_13
+  - first:
+      213: 973438890585517074
+    second: Draugr_Male_14
+  - first:
+      213: -3368293120349753344
+    second: Draugr_Male_15
+  - first:
+      213: 8238528589628082557
+    second: Draugr_Male_16
+  - first:
+      213: -2430754194862975925
+    second: Draugr_Male_17
+  - first:
+      213: -5491266687310697868
+    second: Draugr_Male_18
+  - first:
+      213: 7345193871815516591
+    second: Draugr_Male_19
+  - first:
+      213: 104869939448401032
+    second: Draugr_Male_20
+  - first:
+      213: -6625791783242001766
+    second: Draugr_Male_21
+  - first:
+      213: 1375420223648369766
+    second: Draugr_Male_22
+  - first:
+      213: 6167119499372799075
+    second: Draugr_Male_23
+  - first:
+      213: 4239953821350875883
+    second: Draugr_Male_24
+  - first:
+      213: 6626606978758686598
+    second: Draugr_Male_25
+  - first:
+      213: 5582219640908740503
+    second: Draugr_Male_26
+  - first:
+      213: -8761009148352025948
+    second: Draugr_Male_27
+  - first:
+      213: 4923110896245729879
+    second: Draugr_Male_28
+  - first:
+      213: 4520220271279211134
+    second: Draugr_Male_29
+  - first:
+      213: 7452505233485724002
+    second: Draugr_Male_30
+  - first:
+      213: 503480503789290199
+    second: Draugr_Male_31
+  - first:
+      213: 6382198805293490121
+    second: Draugr_Male_32
+  - first:
+      213: -3441914457545921439
+    second: Draugr_Male_33
+  - first:
+      213: 7733014698888811539
+    second: Draugr_Male_34
+  - first:
+      213: -42825135382457025
+    second: Draugr_Male_35
+  - first:
+      213: 4972475210016614147
+    second: Draugr_Male_36
+  - first:
+      213: -3690900508171823507
+    second: Draugr_Male_37
+  - first:
+      213: -1039688325962689026
+    second: Draugr_Male_38
+  - first:
+      213: 6470612459623390358
+    second: Draugr_Male_39
+  - first:
+      213: -1600048487440759427
+    second: Draugr_Male_40
+  - first:
+      213: -6781805597529586794
+    second: Draugr_Male_41
+  - first:
+      213: -3136510108697282191
+    second: Draugr_Male_42
+  - first:
+      213: -8659921982269383286
+    second: Draugr_Male_43
+  - first:
+      213: -7218351772258170649
+    second: Draugr_Male_44
+  - first:
+      213: 7110826354712104901
+    second: Draugr_Male_45
+  - first:
+      213: 2411466385621543089
+    second: Draugr_Male_46
+  - first:
+      213: 2966014097227535442
+    second: Draugr_Male_47
+  - first:
+      213: 7883429571260864366
+    second: Draugr_Male_48
+  - first:
+      213: 571368899914811572
+    second: Draugr_Male_49
+  - first:
+      213: 3790166978364178165
+    second: Draugr_Male_50
+  - first:
+      213: 6213172331030016655
+    second: Draugr_Male_51
+  - first:
+      213: 7004494346197263579
+    second: Draugr_Male_52
+  - first:
+      213: 9008454744474864364
+    second: Draugr_Male_53
+  - first:
+      213: 6918959378618715638
+    second: Draugr_Male_54
+  - first:
+      213: 8833668539884312284
+    second: Draugr_Male_55
+  - first:
+      213: 2857265557177429137
+    second: Draugr_Male_56
+  - first:
+      213: 5210676574170289374
+    second: Draugr_Male_57
+  - first:
+      213: 8895381518898049014
+    second: Draugr_Male_58
+  - first:
+      213: -8549305827460282000
+    second: Draugr_Male_59
+  - first:
+      213: 5871406791685309155
+    second: Draugr_Male_60
+  - first:
+      213: -6956951287056562445
+    second: Draugr_Male_61
+  - first:
+      213: 4197864767856854456
+    second: Draugr_Male_62
+  - first:
+      213: 1490258496821594512
+    second: Draugr_Male_63
+  - first:
+      213: 7770563343056350598
+    second: Draugr_Male_64
+  - first:
+      213: 7486804790462477015
+    second: Draugr_Male_65
+  - first:
+      213: 6400030960793279347
+    second: Draugr_Male_66
+  - first:
+      213: -6184790956980268215
+    second: Draugr_Male_67
+  - first:
+      213: -4461435630300716141
+    second: Draugr_Male_68
+  - first:
+      213: -6068816674344025737
+    second: Draugr_Male_69
+  - first:
+      213: 1224924855887559292
+    second: Draugr_Male_70
+  - first:
+      213: -6786595587461986644
+    second: Draugr_Male_71
+  - first:
+      213: -7257177482645399475
+    second: Draugr_Male_72
+  - first:
+      213: 6776080212847136667
+    second: Draugr_Male_73
+  - first:
+      213: 2246527146365902424
+    second: Draugr_Male_74
+  - first:
+      213: -4034678680745000718
+    second: Draugr_Male_75
+  - first:
+      213: -6065919438580408181
+    second: Draugr_Male_76
+  - first:
+      213: 3801539934732812474
+    second: Draugr_Male_77
+  - first:
+      213: 2863741372981522296
+    second: Draugr_Male_78
+  - first:
+      213: 1547632376338241411
+    second: Draugr_Male_79
+  - first:
+      213: 4034180187210177669
+    second: Draugr_Male_80
+  - first:
+      213: 8207110900688153577
+    second: Draugr_Male_81
+  - first:
+      213: 2831804744778130962
+    second: Draugr_Male_82
+  - first:
+      213: -193547809694690252
+    second: Draugr_Male_83
+  - first:
+      213: 5437565526580871689
+    second: Draugr_Male_84
+  - first:
+      213: 3800012031318885184
+    second: Draugr_Male_85
+  - first:
+      213: -994507664455723720
+    second: Draugr_Male_86
+  - first:
+      213: 551111929616134143
+    second: Draugr_Male_87
+  - first:
+      213: -1933604404121537976
+    second: Draugr_Male_88
+  - first:
+      213: 4150050828696156156
+    second: Draugr_Male_89
+  - first:
+      213: -1342710671598439738
+    second: Draugr_Male_90
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Draugr_Male_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 230
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 771a3fd5e24f69d40800000000000000
+      internalID: 5590924467408970103
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_1
+      rect:
+        serializedVersion: 2
+        x: 188
+        y: 0
+        width: 1151
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07484b62fb52b31c0800000000000000
+      internalID: -4522979897845185424
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_2
+      rect:
+        serializedVersion: 2
+        x: 531
+        y: 1523
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 947037bf9fd3722a0800000000000000
+      internalID: -6762368171598739639
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_3
+      rect:
+        serializedVersion: 2
+        x: 897
+        y: 1522
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 417bbe8ece6c0a4d0800000000000000
+      internalID: -3125279420572780780
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_4
+      rect:
+        serializedVersion: 2
+        x: 250
+        y: 1418
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c1a8db11bcc319730800000000000000
+      internalID: 4004048386582743580
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_5
+      rect:
+        serializedVersion: 2
+        x: 17
+        y: 1291
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 771cc12bda60988a0800000000000000
+      internalID: -6302498860440960649
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_6
+      rect:
+        serializedVersion: 2
+        x: 86
+        y: 1291
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4679e98bbb7aea910800000000000000
+      internalID: 1850600921593976676
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_7
+      rect:
+        serializedVersion: 2
+        x: 174
+        y: 1274
+        width: 9
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b7ce1b9438960e80800000000000000
+      internalID: -8212709518755313743
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_8
+      rect:
+        serializedVersion: 2
+        x: 143
+        y: 1239
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2853b627c9e9f3b10800000000000000
+      internalID: 1963462357328541058
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_9
+      rect:
+        serializedVersion: 2
+        x: 86
+        y: 1164
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e8b54024a51e2c10800000000000000
+      internalID: 2030584276650932451
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_10
+      rect:
+        serializedVersion: 2
+        x: 82
+        y: 1134
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b6bde4d00ea87d550800000000000000
+      internalID: 6185565308117244779
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_11
+      rect:
+        serializedVersion: 2
+        x: 87
+        y: 1141
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5298e961aa09d5d90800000000000000
+      internalID: -7107365576722446043
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_12
+      rect:
+        serializedVersion: 2
+        x: 24
+        y: 1079
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f4d00a606f1282970800000000000000
+      internalID: 8730265218214530383
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_13
+      rect:
+        serializedVersion: 2
+        x: 83
+        y: 1067
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 036c9350662420e90800000000000000
+      internalID: -7061008259821746640
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_14
+      rect:
+        serializedVersion: 2
+        x: 207
+        y: 1061
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 21c66e37389528d00800000000000000
+      internalID: 973438890585517074
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_15
+      rect:
+        serializedVersion: 2
+        x: 139
+        y: 1056
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0003926c04b6141d0800000000000000
+      internalID: -3368293120349753344
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_16
+      rect:
+        serializedVersion: 2
+        x: 178
+        y: 987
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d798ea84a12255270800000000000000
+      internalID: 8238528589628082557
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_17
+      rect:
+        serializedVersion: 2
+        x: 207
+        y: 991
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b44d6ee30f9344ed0800000000000000
+      internalID: -2430754194862975925
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_18
+      rect:
+        serializedVersion: 2
+        x: 18
+        y: 977
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 47ae8e7ba0a1bc3b0800000000000000
+      internalID: -5491266687310697868
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_19
+      rect:
+        serializedVersion: 2
+        x: 178
+        y: 982
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fa1a0ffe8ee5fe560800000000000000
+      internalID: 7345193871815516591
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_20
+      rect:
+        serializedVersion: 2
+        x: 173
+        y: 908
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 88c407087a2947100800000000000000
+      internalID: 104869939448401032
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_21
+      rect:
+        serializedVersion: 2
+        x: 113
+        y: 872
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9298246a757c04a0800000000000000
+      internalID: -6625791783242001766
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_22
+      rect:
+        serializedVersion: 2
+        x: 211
+        y: 863
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 66c0377f769761310800000000000000
+      internalID: 1375420223648369766
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_23
+      rect:
+        serializedVersion: 2
+        x: 208
+        y: 839
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36420878282069550800000000000000
+      internalID: 6167119499372799075
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_24
+      rect:
+        serializedVersion: 2
+        x: 30
+        y: 826
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be2dda9498757da30800000000000000
+      internalID: 4239953821350875883
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_25
+      rect:
+        serializedVersion: 2
+        x: 295
+        y: 798
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 687390b10ff66fb50800000000000000
+      internalID: 6626606978758686598
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_26
+      rect:
+        serializedVersion: 2
+        x: 211
+        y: 778
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 797f2920037087d40800000000000000
+      internalID: 5582219640908740503
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_27
+      rect:
+        serializedVersion: 2
+        x: 193
+        y: 758
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4aaa78ee894aa6680800000000000000
+      internalID: -8761009148352025948
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_28
+      rect:
+        serializedVersion: 2
+        x: 155
+        y: 733
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 75ae490c647625440800000000000000
+      internalID: 4923110896245729879
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_29
+      rect:
+        serializedVersion: 2
+        x: 38
+        y: 697
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e720e18336c0bbe30800000000000000
+      internalID: 4520220271279211134
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_30
+      rect:
+        serializedVersion: 2
+        x: 66
+        y: 696
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 269f7a8560e9c6760800000000000000
+      internalID: 7452505233485724002
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_31
+      rect:
+        serializedVersion: 2
+        x: 193
+        y: 695
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d202b3c9d8bcf600800000000000000
+      internalID: 503480503789290199
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_32
+      rect:
+        serializedVersion: 2
+        x: 290
+        y: 702
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9cfd073cfff129850800000000000000
+      internalID: 6382198805293490121
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_33
+      rect:
+        serializedVersion: 2
+        x: 18
+        y: 685
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 16ca1b2790ddb30d0800000000000000
+      internalID: -3441914457545921439
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_34
+      rect:
+        serializedVersion: 2
+        x: 82
+        y: 685
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 314542ab5ef215b60800000000000000
+      internalID: 7733014698888811539
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_35
+      rect:
+        serializedVersion: 2
+        x: 259
+        y: 685
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f35121a24cad76ff0800000000000000
+      internalID: -42825135382457025
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_36
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 621
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 307e973bbd7c10540800000000000000
+      internalID: 4972475210016614147
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_37
+      rect:
+        serializedVersion: 2
+        x: 171
+        y: 590
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d661c150b8947ccc0800000000000000
+      internalID: -3690900508171823507
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_38
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 562
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ef59fddd9f84291f0800000000000000
+      internalID: -1039688325962689026
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_39
+      rect:
+        serializedVersion: 2
+        x: 214
+        y: 536
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 69c911fcfbb3cc950800000000000000
+      internalID: 6470612459623390358
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_40
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 523
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d7541bac06c7bc9e0800000000000000
+      internalID: -1600048487440759427
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_41
+      rect:
+        serializedVersion: 2
+        x: 179
+        y: 512
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6934e779dbf22e1a0800000000000000
+      internalID: -6781805597529586794
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_42
+      rect:
+        serializedVersion: 2
+        x: 241
+        y: 477
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1793da09ca0e874d0800000000000000
+      internalID: -3136510108697282191
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_43
+      rect:
+        serializedVersion: 2
+        x: 33
+        y: 461
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a8d9c30e6d6c1d780800000000000000
+      internalID: -8659921982269383286
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_44
+      rect:
+        serializedVersion: 2
+        x: 171
+        y: 461
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7e88dbebe4343db90800000000000000
+      internalID: -7218351772258170649
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_45
+      rect:
+        serializedVersion: 2
+        x: 273
+        y: 462
+        width: 11
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5cfc91415eabea260800000000000000
+      internalID: 7110826354712104901
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_46
+      rect:
+        serializedVersion: 2
+        x: 219
+        y: 441
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b864c6b6ef377120800000000000000
+      internalID: 2411466385621543089
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_47
+      rect:
+        serializedVersion: 2
+        x: 38
+        y: 424
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2545c085b16692920800000000000000
+      internalID: 2966014097227535442
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_48
+      rect:
+        serializedVersion: 2
+        x: 251
+        y: 427
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e6750d64d61976d60800000000000000
+      internalID: 7883429571260864366
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_49
+      rect:
+        serializedVersion: 2
+        x: 152
+        y: 411
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4b8c02bbcf8ede700800000000000000
+      internalID: 571368899914811572
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_50
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 387
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5feffc029c0699430800000000000000
+      internalID: 3790166978364178165
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_51
+      rect:
+        serializedVersion: 2
+        x: 273
+        y: 387
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f827457f05f993650800000000000000
+      internalID: 6213172331030016655
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_52
+      rect:
+        serializedVersion: 2
+        x: 296
+        y: 392
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd4e1581f76f43160800000000000000
+      internalID: 7004494346197263579
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_53
+      rect:
+        serializedVersion: 2
+        x: 18
+        y: 343
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cea4b9b7cd5740d70800000000000000
+      internalID: 9008454744474864364
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_54
+      rect:
+        serializedVersion: 2
+        x: 234
+        y: 340
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6fd0de985e4150060800000000000000
+      internalID: 6918959378618715638
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_55
+      rect:
+        serializedVersion: 2
+        x: 160
+        y: 334
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cd61957fbbe779a70800000000000000
+      internalID: 8833668539884312284
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_56
+      rect:
+        serializedVersion: 2
+        x: 212
+        y: 326
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 19ce484c2eb07a720800000000000000
+      internalID: 2857265557177429137
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_57
+      rect:
+        serializedVersion: 2
+        x: 250
+        y: 329
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed49ed2acba005840800000000000000
+      internalID: 5210676574170289374
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_58
+      rect:
+        serializedVersion: 2
+        x: 14
+        y: 310
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ff2e779c5eb27b70800000000000000
+      internalID: 8895381518898049014
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_59
+      rect:
+        serializedVersion: 2
+        x: 169
+        y: 319
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0798d0665a3ca5980800000000000000
+      internalID: -8549305827460282000
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_60
+      rect:
+        serializedVersion: 2
+        x: 225
+        y: 313
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e208367e5d6b7150800000000000000
+      internalID: 5871406791685309155
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_61
+      rect:
+        serializedVersion: 2
+        x: 215
+        y: 301
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f60c47f9a1f37f90800000000000000
+      internalID: -6956951287056562445
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_62
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 284
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b54c3fd3cfc14a30800000000000000
+      internalID: 4197864767856854456
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_63
+      rect:
+        serializedVersion: 2
+        x: 80
+        y: 264
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0990f8605367ea410800000000000000
+      internalID: 1490258496821594512
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_64
+      rect:
+        serializedVersion: 2
+        x: 151
+        y: 263
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 68dab87b03696db60800000000000000
+      internalID: 7770563343056350598
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_65
+      rect:
+        serializedVersion: 2
+        x: 67
+        y: 218
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d275364a4976e760800000000000000
+      internalID: 7486804790462477015
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_66
+      rect:
+        serializedVersion: 2
+        x: 239
+        y: 222
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 37bd591004a71d850800000000000000
+      internalID: 6400030960793279347
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_67
+      rect:
+        serializedVersion: 2
+        x: 250
+        y: 213
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 943942f94653b2aa0800000000000000
+      internalID: -6184790956980268215
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_68
+      rect:
+        serializedVersion: 2
+        x: 43
+        y: 193
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 393a7a39eebc512c0800000000000000
+      internalID: -4461435630300716141
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_69
+      rect:
+        serializedVersion: 2
+        x: 147
+        y: 161
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 771c1ce736b37cba0800000000000000
+      internalID: -6068816674344025737
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_70
+      rect:
+        serializedVersion: 2
+        x: 251
+        y: 116
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c7a79bf9aaecff010800000000000000
+      internalID: 1224924855887559292
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_71
+      rect:
+        serializedVersion: 2
+        x: 273
+        y: 110
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca64817254b21d1a0800000000000000
+      internalID: -6786595587461986644
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_72
+      rect:
+        serializedVersion: 2
+        x: 241
+        y: 100
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4815fa9783594b90800000000000000
+      internalID: -7257177482645399475
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_73
+      rect:
+        serializedVersion: 2
+        x: 81
+        y: 86
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9f8e486d09790e50800000000000000
+      internalID: 6776080212847136667
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_74
+      rect:
+        serializedVersion: 2
+        x: 291
+        y: 74
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85e596979844d2f10800000000000000
+      internalID: 2246527146365902424
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_75
+      rect:
+        serializedVersion: 2
+        x: 82
+        y: 64
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f04a53dd11f108c0800000000000000
+      internalID: -4034678680745000718
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_76
+      rect:
+        serializedVersion: 2
+        x: 179
+        y: 58
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b802743c86681dba0800000000000000
+      internalID: -6065919438580408181
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_77
+      rect:
+        serializedVersion: 2
+        x: 38
+        y: 40
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab00631ed68c1c430800000000000000
+      internalID: 3801539934732812474
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_78
+      rect:
+        serializedVersion: 2
+        x: 55
+        y: 39
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 87f27212b9d0eb720800000000000000
+      internalID: 2863741372981522296
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_79
+      rect:
+        serializedVersion: 2
+        x: 231
+        y: 43
+        width: 12
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 387d882527b4a7510800000000000000
+      internalID: 1547632376338241411
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_80
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 36
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58cd49a91894cf730800000000000000
+      internalID: 4034180187210177669
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_81
+      rect:
+        serializedVersion: 2
+        x: 57
+        y: 26
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9ebe0cb81e385e170800000000000000
+      internalID: 8207110900688153577
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_82
+      rect:
+        serializedVersion: 2
+        x: 151
+        y: 33
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 21624cd69679c4720800000000000000
+      internalID: 2831804744778130962
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_83
+      rect:
+        serializedVersion: 2
+        x: 85
+        y: 28
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 434d714ea41605df0800000000000000
+      internalID: -193547809694690252
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_84
+      rect:
+        serializedVersion: 2
+        x: 291
+        y: 21
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 90243c6790d167b40800000000000000
+      internalID: 5437565526580871689
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_85
+      rect:
+        serializedVersion: 2
+        x: 1179
+        y: 18
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 04309f42fca5cb430800000000000000
+      internalID: 3800012031318885184
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_86
+      rect:
+        serializedVersion: 2
+        x: 98
+        y: 19
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83596bd5c8cc232f0800000000000000
+      internalID: -994507664455723720
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_87
+      rect:
+        serializedVersion: 2
+        x: 167
+        y: 18
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fffef3c4161f5a700800000000000000
+      internalID: 551111929616134143
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_88
+      rect:
+        serializedVersion: 2
+        x: 1199
+        y: 17
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84274340a057a25e0800000000000000
+      internalID: -1933604404121537976
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_89
+      rect:
+        serializedVersion: 2
+        x: 43
+        y: 10
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cf7ff34ad31f79930800000000000000
+      internalID: 4150050828696156156
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Male_90
+      rect:
+        serializedVersion: 2
+        x: 1267
+        y: 10
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6c2bf3712cbbd5de0800000000000000
+      internalID: -1342710671598439738
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Draugr_Male_0: 5590924467408970103
+      Draugr_Male_1: -4522979897845185424
+      Draugr_Male_10: 6185565308117244779
+      Draugr_Male_11: -7107365576722446043
+      Draugr_Male_12: 8730265218214530383
+      Draugr_Male_13: -7061008259821746640
+      Draugr_Male_14: 973438890585517074
+      Draugr_Male_15: -3368293120349753344
+      Draugr_Male_16: 8238528589628082557
+      Draugr_Male_17: -2430754194862975925
+      Draugr_Male_18: -5491266687310697868
+      Draugr_Male_19: 7345193871815516591
+      Draugr_Male_2: -6762368171598739639
+      Draugr_Male_20: 104869939448401032
+      Draugr_Male_21: -6625791783242001766
+      Draugr_Male_22: 1375420223648369766
+      Draugr_Male_23: 6167119499372799075
+      Draugr_Male_24: 4239953821350875883
+      Draugr_Male_25: 6626606978758686598
+      Draugr_Male_26: 5582219640908740503
+      Draugr_Male_27: -8761009148352025948
+      Draugr_Male_28: 4923110896245729879
+      Draugr_Male_29: 4520220271279211134
+      Draugr_Male_3: -3125279420572780780
+      Draugr_Male_30: 7452505233485724002
+      Draugr_Male_31: 503480503789290199
+      Draugr_Male_32: 6382198805293490121
+      Draugr_Male_33: -3441914457545921439
+      Draugr_Male_34: 7733014698888811539
+      Draugr_Male_35: -42825135382457025
+      Draugr_Male_36: 4972475210016614147
+      Draugr_Male_37: -3690900508171823507
+      Draugr_Male_38: -1039688325962689026
+      Draugr_Male_39: 6470612459623390358
+      Draugr_Male_4: 4004048386582743580
+      Draugr_Male_40: -1600048487440759427
+      Draugr_Male_41: -6781805597529586794
+      Draugr_Male_42: -3136510108697282191
+      Draugr_Male_43: -8659921982269383286
+      Draugr_Male_44: -7218351772258170649
+      Draugr_Male_45: 7110826354712104901
+      Draugr_Male_46: 2411466385621543089
+      Draugr_Male_47: 2966014097227535442
+      Draugr_Male_48: 7883429571260864366
+      Draugr_Male_49: 571368899914811572
+      Draugr_Male_5: -6302498860440960649
+      Draugr_Male_50: 3790166978364178165
+      Draugr_Male_51: 6213172331030016655
+      Draugr_Male_52: 7004494346197263579
+      Draugr_Male_53: 9008454744474864364
+      Draugr_Male_54: 6918959378618715638
+      Draugr_Male_55: 8833668539884312284
+      Draugr_Male_56: 2857265557177429137
+      Draugr_Male_57: 5210676574170289374
+      Draugr_Male_58: 8895381518898049014
+      Draugr_Male_59: -8549305827460282000
+      Draugr_Male_6: 1850600921593976676
+      Draugr_Male_60: 5871406791685309155
+      Draugr_Male_61: -6956951287056562445
+      Draugr_Male_62: 4197864767856854456
+      Draugr_Male_63: 1490258496821594512
+      Draugr_Male_64: 7770563343056350598
+      Draugr_Male_65: 7486804790462477015
+      Draugr_Male_66: 6400030960793279347
+      Draugr_Male_67: -6184790956980268215
+      Draugr_Male_68: -4461435630300716141
+      Draugr_Male_69: -6068816674344025737
+      Draugr_Male_7: -8212709518755313743
+      Draugr_Male_70: 1224924855887559292
+      Draugr_Male_71: -6786595587461986644
+      Draugr_Male_72: -7257177482645399475
+      Draugr_Male_73: 6776080212847136667
+      Draugr_Male_74: 2246527146365902424
+      Draugr_Male_75: -4034678680745000718
+      Draugr_Male_76: -6065919438580408181
+      Draugr_Male_77: 3801539934732812474
+      Draugr_Male_78: 2863741372981522296
+      Draugr_Male_79: 1547632376338241411
+      Draugr_Male_8: 1963462357328541058
+      Draugr_Male_80: 4034180187210177669
+      Draugr_Male_81: 8207110900688153577
+      Draugr_Male_82: 2831804744778130962
+      Draugr_Male_83: -193547809694690252
+      Draugr_Male_84: 5437565526580871689
+      Draugr_Male_85: 3800012031318885184
+      Draugr_Male_86: -994507664455723720
+      Draugr_Male_87: 551111929616134143
+      Draugr_Male_88: -1933604404121537976
+      Draugr_Male_89: 4150050828696156156
+      Draugr_Male_9: 2030584276650932451
+      Draugr_Male_90: -1342710671598439738
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

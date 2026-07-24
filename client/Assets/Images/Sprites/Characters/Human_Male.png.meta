@@ -1,0 +1,1924 @@
+fileFormatVersion: 2
+guid: 10ebc40fd14d57d4b944100cb41f7efd
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 4673794119421101526
+    second: Human_Male_0
+  - first:
+      213: -5693260681870525372
+    second: Human_Male_1
+  - first:
+      213: -1500233596913364930
+    second: Human_Male_2
+  - first:
+      213: 4399664782450564404
+    second: Human_Male_3
+  - first:
+      213: -3285861267442663711
+    second: Human_Male_4
+  - first:
+      213: 6478581696613055553
+    second: Human_Male_5
+  - first:
+      213: -2053525759232771351
+    second: Human_Male_6
+  - first:
+      213: 1139970723203214282
+    second: Human_Male_7
+  - first:
+      213: -2010005627992466249
+    second: Human_Male_8
+  - first:
+      213: -6570155366948016332
+    second: Human_Male_9
+  - first:
+      213: -8823333166931586981
+    second: Human_Male_10
+  - first:
+      213: -4113612503183464130
+    second: Human_Male_11
+  - first:
+      213: 3209334320954230667
+    second: Human_Male_12
+  - first:
+      213: 5320110453171081937
+    second: Human_Male_13
+  - first:
+      213: 5323772639590579660
+    second: Human_Male_14
+  - first:
+      213: 8647448021041667019
+    second: Human_Male_15
+  - first:
+      213: 1265459831283003119
+    second: Human_Male_16
+  - first:
+      213: -6219791919602474810
+    second: Human_Male_17
+  - first:
+      213: -8279565322082605634
+    second: Human_Male_18
+  - first:
+      213: 8806001238495391450
+    second: Human_Male_19
+  - first:
+      213: 8144533401898426215
+    second: Human_Male_20
+  - first:
+      213: -8487150363073663610
+    second: Human_Male_21
+  - first:
+      213: 6685551936349124581
+    second: Human_Male_22
+  - first:
+      213: -3436726034530023744
+    second: Human_Male_23
+  - first:
+      213: 3587520363177455270
+    second: Human_Male_24
+  - first:
+      213: -5135442305010187108
+    second: Human_Male_25
+  - first:
+      213: -7972077736314630858
+    second: Human_Male_26
+  - first:
+      213: 6786309404456848524
+    second: Human_Male_27
+  - first:
+      213: -8899309956075615336
+    second: Human_Male_28
+  - first:
+      213: 1914100722215595753
+    second: Human_Male_29
+  - first:
+      213: 3783415473102496540
+    second: Human_Male_30
+  - first:
+      213: -8616718132225129345
+    second: Human_Male_31
+  - first:
+      213: -6226863258272090415
+    second: Human_Male_32
+  - first:
+      213: 3715705369685683563
+    second: Human_Male_33
+  - first:
+      213: 8134445495324814920
+    second: Human_Male_34
+  - first:
+      213: -4845243853847562484
+    second: Human_Male_35
+  - first:
+      213: -1355563980181651391
+    second: Human_Male_36
+  - first:
+      213: -3989654389342770419
+    second: Human_Male_37
+  - first:
+      213: 1872526555637146495
+    second: Human_Male_38
+  - first:
+      213: -3103248324767863937
+    second: Human_Male_39
+  - first:
+      213: 1502807570219070504
+    second: Human_Male_40
+  - first:
+      213: -6620352119773076319
+    second: Human_Male_41
+  - first:
+      213: 4400757363469000672
+    second: Human_Male_42
+  - first:
+      213: 684119381427079128
+    second: Human_Male_43
+  - first:
+      213: 5482646873436170807
+    second: Human_Male_44
+  - first:
+      213: -121276391832483645
+    second: Human_Male_45
+  - first:
+      213: 454745498452716606
+    second: Human_Male_46
+  - first:
+      213: -5785685218256637300
+    second: Human_Male_47
+  - first:
+      213: -3842373701692621355
+    second: Human_Male_48
+  - first:
+      213: -2276258482384991008
+    second: Human_Male_49
+  - first:
+      213: -5260843042389171436
+    second: Human_Male_50
+  - first:
+      213: -4606518359763788852
+    second: Human_Male_51
+  - first:
+      213: 8164011711060345536
+    second: Human_Male_52
+  - first:
+      213: -4110197072938168660
+    second: Human_Male_53
+  - first:
+      213: 8258879243711035854
+    second: Human_Male_54
+  - first:
+      213: -7085382351231152359
+    second: Human_Male_55
+  - first:
+      213: 4792069125629883632
+    second: Human_Male_56
+  - first:
+      213: -2280180142869307292
+    second: Human_Male_57
+  - first:
+      213: 4480046264425214432
+    second: Human_Male_58
+  - first:
+      213: -2964457448473932789
+    second: Human_Male_59
+  - first:
+      213: 394340733596607434
+    second: Human_Male_60
+  - first:
+      213: -7957700085760307842
+    second: Human_Male_61
+  - first:
+      213: -9051496150197155272
+    second: Human_Male_62
+  - first:
+      213: -6723143642232092240
+    second: Human_Male_63
+  - first:
+      213: 5701254412965640273
+    second: Human_Male_64
+  - first:
+      213: -5264380195813223407
+    second: Human_Male_65
+  - first:
+      213: -1829975047314424736
+    second: Human_Male_66
+  - first:
+      213: 7514415299832974438
+    second: Human_Male_67
+  - first:
+      213: -1853200613920025345
+    second: Human_Male_68
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Human_Male_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1352
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d587612df6acd040800000000000000
+      internalID: 4673794119421101526
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_1
+      rect:
+        serializedVersion: 2
+        x: 786
+        y: 1506
+        width: 7
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 44cb863f2997df0b0800000000000000
+      internalID: -5693260681870525372
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_2
+      rect:
+        serializedVersion: 2
+        x: 835
+        y: 1514
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e305fdffd791e2be0800000000000000
+      internalID: -1500233596913364930
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_3
+      rect:
+        serializedVersion: 2
+        x: 803
+        y: 1504
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 43d13c82fcfbe0d30800000000000000
+      internalID: 4399664782450564404
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_4
+      rect:
+        serializedVersion: 2
+        x: 848
+        y: 1500
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ee7dd426964662d0800000000000000
+      internalID: -3285861267442663711
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_5
+      rect:
+        serializedVersion: 2
+        x: 938
+        y: 1499
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 14cf7f26abb88e950800000000000000
+      internalID: 6478581696613055553
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_6
+      rect:
+        serializedVersion: 2
+        x: 595
+        y: 1497
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9eaf0d7b3396083e0800000000000000
+      internalID: -2053525759232771351
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_7
+      rect:
+        serializedVersion: 2
+        x: 976
+        y: 1490
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: acb6fda355df1df00800000000000000
+      internalID: 1139970723203214282
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_8
+      rect:
+        serializedVersion: 2
+        x: 258
+        y: 1457
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7bc19f2e7860b14e0800000000000000
+      internalID: -2010005627992466249
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_9
+      rect:
+        serializedVersion: 2
+        x: 191
+        y: 1439
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 43fefe1018e12d4a0800000000000000
+      internalID: -6570155366948016332
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_10
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 1429
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b50de129b393d8580800000000000000
+      internalID: -8823333166931586981
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_11
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 1338
+        width: 11
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e39e424293389e6c0800000000000000
+      internalID: -4113612503183464130
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_12
+      rect:
+        serializedVersion: 2
+        x: 99
+        y: 1300
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b8742f5af88d98c20800000000000000
+      internalID: 3209334320954230667
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_13
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 1243
+        width: 10
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1d2da1f1544d4d940800000000000000
+      internalID: 5320110453171081937
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_14
+      rect:
+        serializedVersion: 2
+        x: 183
+        y: 1171
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ccd7db75207d1e940800000000000000
+      internalID: 5323772639590579660
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_15
+      rect:
+        serializedVersion: 2
+        x: 231
+        y: 1107
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bcbd7d3b828e10870800000000000000
+      internalID: 8647448021041667019
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_16
+      rect:
+        serializedVersion: 2
+        x: 167
+        y: 1067
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fee26290301df8110800000000000000
+      internalID: 1265459831283003119
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_17
+      rect:
+        serializedVersion: 2
+        x: 202
+        y: 1055
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6c0ef37f33cdea9a0800000000000000
+      internalID: -6219791919602474810
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_18
+      rect:
+        serializedVersion: 2
+        x: 175
+        y: 1032
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb5af92e433191d80800000000000000
+      internalID: -8279565322082605634
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_19
+      rect:
+        serializedVersion: 2
+        x: 34
+        y: 1014
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: adeea206873353a70800000000000000
+      internalID: 8806001238495391450
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_20
+      rect:
+        serializedVersion: 2
+        x: 216
+        y: 989
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76f95793af1370170800000000000000
+      internalID: 8144533401898426215
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_21
+      rect:
+        serializedVersion: 2
+        x: 173
+        y: 945
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 68daaad26b5973a80800000000000000
+      internalID: -8487150363073663610
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_22
+      rect:
+        serializedVersion: 2
+        x: 30
+        y: 914
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5e7b385801ad7cc50800000000000000
+      internalID: 6685551936349124581
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_23
+      rect:
+        serializedVersion: 2
+        x: 140
+        y: 917
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c6408151eb4e40d0800000000000000
+      internalID: -3436726034530023744
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_24
+      rect:
+        serializedVersion: 2
+        x: 254
+        y: 845
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ae2ca743ce69c130800000000000000
+      internalID: 3587520363177455270
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_25
+      rect:
+        serializedVersion: 2
+        x: 117
+        y: 831
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c94ca5dae6e3bb8b0800000000000000
+      internalID: -5135442305010187108
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_26
+      rect:
+        serializedVersion: 2
+        x: 243
+        y: 831
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 63d8a25698d7d5190800000000000000
+      internalID: -7972077736314630858
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_27
+      rect:
+        serializedVersion: 2
+        x: 39
+        y: 811
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c8c0b8ca270dd2e50800000000000000
+      internalID: 6786309404456848524
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_28
+      rect:
+        serializedVersion: 2
+        x: 267
+        y: 810
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 89b040adebc4f7480800000000000000
+      internalID: -8899309956075615336
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_29
+      rect:
+        serializedVersion: 2
+        x: 103
+        y: 785
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9eeaafb2770409a10800000000000000
+      internalID: 1914100722215595753
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_30
+      rect:
+        serializedVersion: 2
+        x: 241
+        y: 767
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c13adffc354618430800000000000000
+      internalID: 3783415473102496540
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_31
+      rect:
+        serializedVersion: 2
+        x: 312
+        y: 775
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f74cd0713844b6880800000000000000
+      internalID: -8616718132225129345
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_32
+      rect:
+        serializedVersion: 2
+        x: 51
+        y: 695
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1d6b2c1abdcb599a0800000000000000
+      internalID: -6226863258272090415
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_33
+      rect:
+        serializedVersion: 2
+        x: 109
+        y: 694
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b6d602ad856d09330800000000000000
+      internalID: 3715705369685683563
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_34
+      rect:
+        serializedVersion: 2
+        x: 18
+        y: 683
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84eac91741b53e070800000000000000
+      internalID: 8134445495324814920
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_35
+      rect:
+        serializedVersion: 2
+        x: 237
+        y: 655
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c077549d26c32ccb0800000000000000
+      internalID: -4845243853847562484
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_36
+      rect:
+        serializedVersion: 2
+        x: 310
+        y: 619
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 14045fafdb1103de0800000000000000
+      internalID: -1355563980181651391
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_37
+      rect:
+        serializedVersion: 2
+        x: 217
+        y: 522
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d0b65a29876e1a8c0800000000000000
+      internalID: -3989654389342770419
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_38
+      rect:
+        serializedVersion: 2
+        x: 319
+        y: 509
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f73ec353bfc8cf910800000000000000
+      internalID: 1872526555637146495
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_39
+      rect:
+        serializedVersion: 2
+        x: 240
+        y: 441
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f7ba260271c0fe4d0800000000000000
+      internalID: -3103248324767863937
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_40
+      rect:
+        serializedVersion: 2
+        x: 226
+        y: 363
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 824fcacd58b0bd410800000000000000
+      internalID: 1502807570219070504
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_41
+      rect:
+        serializedVersion: 2
+        x: 257
+        y: 363
+        width: 11
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1a4ebecb2d8cf14a0800000000000000
+      internalID: -6620352119773076319
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_42
+      rect:
+        serializedVersion: 2
+        x: 57
+        y: 349
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ef11408181a21d30800000000000000
+      internalID: 4400757363469000672
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_43
+      rect:
+        serializedVersion: 2
+        x: 227
+        y: 280
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d7cbe9e3fa7e7900800000000000000
+      internalID: 684119381427079128
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_44
+      rect:
+        serializedVersion: 2
+        x: 74
+        y: 273
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 73aa1187846461c40800000000000000
+      internalID: 5482646873436170807
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_45
+      rect:
+        serializedVersion: 2
+        x: 275
+        y: 273
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c80f21a3c3215ef0800000000000000
+      internalID: -121276391832483645
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_46
+      rect:
+        serializedVersion: 2
+        x: 318
+        y: 270
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e3c6b7a1f949f4600800000000000000
+      internalID: 454745498452716606
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_47
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 189
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c82b597a2fd15bfa0800000000000000
+      internalID: -5785685218256637300
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_48
+      rect:
+        serializedVersion: 2
+        x: 311
+        y: 179
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5ddfe40e9752daac0800000000000000
+      internalID: -3842373701692621355
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_49
+      rect:
+        serializedVersion: 2
+        x: 155
+        y: 170
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ec097c68fa1960e0800000000000000
+      internalID: -2276258482384991008
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_50
+      rect:
+        serializedVersion: 2
+        x: 198
+        y: 121
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 413ee47402bbdf6b0800000000000000
+      internalID: -5260843042389171436
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_51
+      rect:
+        serializedVersion: 2
+        x: 19
+        y: 69
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ccbd6fa45fb5210c0800000000000000
+      internalID: -4606518359763788852
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_52
+      rect:
+        serializedVersion: 2
+        x: 79
+        y: 59
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c281eb75656c4170800000000000000
+      internalID: 8164011711060345536
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_53
+      rect:
+        serializedVersion: 2
+        x: 85
+        y: 55
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cae8ba6f985a5f6c0800000000000000
+      internalID: -4110197072938168660
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_54
+      rect:
+        serializedVersion: 2
+        x: 240
+        y: 59
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ec93e3c2aee6d9270800000000000000
+      internalID: 8258879243711035854
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_55
+      rect:
+        serializedVersion: 2
+        x: 89
+        y: 37
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 91f8b01aa4aabad90800000000000000
+      internalID: -7085382351231152359
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_56
+      rect:
+        serializedVersion: 2
+        x: 91
+        y: 31
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f43944fa79d08240800000000000000
+      internalID: 4792069125629883632
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_57
+      rect:
+        serializedVersion: 2
+        x: 327
+        y: 32
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4602060bd3c2b50e0800000000000000
+      internalID: -2280180142869307292
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_58
+      rect:
+        serializedVersion: 2
+        x: 335
+        y: 31
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0e1716857525c2e30800000000000000
+      internalID: 4480046264425214432
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_59
+      rect:
+        serializedVersion: 2
+        x: 1234
+        y: 29
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b0c43ff28a12cd6d0800000000000000
+      internalID: -2964457448473932789
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_60
+      rect:
+        serializedVersion: 2
+        x: 18
+        y: 25
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac32e72decaf87500800000000000000
+      internalID: 394340733596607434
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_61
+      rect:
+        serializedVersion: 2
+        x: 216
+        y: 26
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7d49270fe1909190800000000000000
+      internalID: -7957700085760307842
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_62
+      rect:
+        serializedVersion: 2
+        x: 416
+        y: 25
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83acea15530a26280800000000000000
+      internalID: -9051496150197155272
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_63
+      rect:
+        serializedVersion: 2
+        x: 522
+        y: 24
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0b984d66a7892b2a0800000000000000
+      internalID: -6723143642232092240
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_64
+      rect:
+        serializedVersion: 2
+        x: 619
+        y: 18
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 158f1fa9eacee1f40800000000000000
+      internalID: 5701254412965640273
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_65
+      rect:
+        serializedVersion: 2
+        x: 755
+        y: 23
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 11493f19a1a21f6b0800000000000000
+      internalID: -5264380195813223407
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_66
+      rect:
+        serializedVersion: 2
+        x: 563
+        y: 9
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 06cbefcd36f9a96e0800000000000000
+      internalID: -1829975047314424736
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_67
+      rect:
+        serializedVersion: 2
+        x: 647
+        y: 19
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 66c0e41f6e0984860800000000000000
+      internalID: 7514415299832974438
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Human_Male_68
+      rect:
+        serializedVersion: 2
+        x: 607
+        y: 8
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff4d2cd3cdb1846e0800000000000000
+      internalID: -1853200613920025345
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Human_Male_0: 4673794119421101526
+      Human_Male_1: -5693260681870525372
+      Human_Male_10: -8823333166931586981
+      Human_Male_11: -4113612503183464130
+      Human_Male_12: 3209334320954230667
+      Human_Male_13: 5320110453171081937
+      Human_Male_14: 5323772639590579660
+      Human_Male_15: 8647448021041667019
+      Human_Male_16: 1265459831283003119
+      Human_Male_17: -6219791919602474810
+      Human_Male_18: -8279565322082605634
+      Human_Male_19: 8806001238495391450
+      Human_Male_2: -1500233596913364930
+      Human_Male_20: 8144533401898426215
+      Human_Male_21: -8487150363073663610
+      Human_Male_22: 6685551936349124581
+      Human_Male_23: -3436726034530023744
+      Human_Male_24: 3587520363177455270
+      Human_Male_25: -5135442305010187108
+      Human_Male_26: -7972077736314630858
+      Human_Male_27: 6786309404456848524
+      Human_Male_28: -8899309956075615336
+      Human_Male_29: 1914100722215595753
+      Human_Male_3: 4399664782450564404
+      Human_Male_30: 3783415473102496540
+      Human_Male_31: -8616718132225129345
+      Human_Male_32: -6226863258272090415
+      Human_Male_33: 3715705369685683563
+      Human_Male_34: 8134445495324814920
+      Human_Male_35: -4845243853847562484
+      Human_Male_36: -1355563980181651391
+      Human_Male_37: -3989654389342770419
+      Human_Male_38: 1872526555637146495
+      Human_Male_39: -3103248324767863937
+      Human_Male_4: -3285861267442663711
+      Human_Male_40: 1502807570219070504
+      Human_Male_41: -6620352119773076319
+      Human_Male_42: 4400757363469000672
+      Human_Male_43: 684119381427079128
+      Human_Male_44: 5482646873436170807
+      Human_Male_45: -121276391832483645
+      Human_Male_46: 454745498452716606
+      Human_Male_47: -5785685218256637300
+      Human_Male_48: -3842373701692621355
+      Human_Male_49: -2276258482384991008
+      Human_Male_5: 6478581696613055553
+      Human_Male_50: -5260843042389171436
+      Human_Male_51: -4606518359763788852
+      Human_Male_52: 8164011711060345536
+      Human_Male_53: -4110197072938168660
+      Human_Male_54: 8258879243711035854
+      Human_Male_55: -7085382351231152359
+      Human_Male_56: 4792069125629883632
+      Human_Male_57: -2280180142869307292
+      Human_Male_58: 4480046264425214432
+      Human_Male_59: -2964457448473932789
+      Human_Male_6: -2053525759232771351
+      Human_Male_60: 394340733596607434
+      Human_Male_61: -7957700085760307842
+      Human_Male_62: -9051496150197155272
+      Human_Male_63: -6723143642232092240
+      Human_Male_64: 5701254412965640273
+      Human_Male_65: -5264380195813223407
+      Human_Male_66: -1829975047314424736
+      Human_Male_67: 7514415299832974438
+      Human_Male_68: -1853200613920025345
+      Human_Male_7: 1139970723203214282
+      Human_Male_8: -2010005627992466249
+      Human_Male_9: -6570155366948016332
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

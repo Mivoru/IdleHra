@@ -1,0 +1,1742 @@
+fileFormatVersion: 2
+guid: 7855c64b532e32746b4dfef5433d9b74
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -6646833113322986874
+    second: Leshy_Male_0
+  - first:
+      213: 995941922250021696
+    second: Leshy_Male_1
+  - first:
+      213: -8493791304865676271
+    second: Leshy_Male_2
+  - first:
+      213: 8661676407303810807
+    second: Leshy_Male_3
+  - first:
+      213: -7595592654168283800
+    second: Leshy_Male_4
+  - first:
+      213: 221919937897304943
+    second: Leshy_Male_5
+  - first:
+      213: 7752231883984365594
+    second: Leshy_Male_6
+  - first:
+      213: 7999705791772010374
+    second: Leshy_Male_7
+  - first:
+      213: 1883318950358756667
+    second: Leshy_Male_8
+  - first:
+      213: -8108100644769880976
+    second: Leshy_Male_9
+  - first:
+      213: -4876320207428989070
+    second: Leshy_Male_10
+  - first:
+      213: -5601452332263903377
+    second: Leshy_Male_11
+  - first:
+      213: -5695966727462739299
+    second: Leshy_Male_12
+  - first:
+      213: 6522680343309364154
+    second: Leshy_Male_13
+  - first:
+      213: -2916172136998339703
+    second: Leshy_Male_14
+  - first:
+      213: 6685434749914821007
+    second: Leshy_Male_15
+  - first:
+      213: 6576800988785263420
+    second: Leshy_Male_16
+  - first:
+      213: 7939892612232423060
+    second: Leshy_Male_17
+  - first:
+      213: 7182423364253873203
+    second: Leshy_Male_18
+  - first:
+      213: -5511707298063120522
+    second: Leshy_Male_19
+  - first:
+      213: 8769783356968663747
+    second: Leshy_Male_20
+  - first:
+      213: -4566999995838560746
+    second: Leshy_Male_21
+  - first:
+      213: -1772365185312292622
+    second: Leshy_Male_22
+  - first:
+      213: -3841343110528026028
+    second: Leshy_Male_23
+  - first:
+      213: 1715302470814961419
+    second: Leshy_Male_24
+  - first:
+      213: 8328529666719136307
+    second: Leshy_Male_25
+  - first:
+      213: 1695854162805561929
+    second: Leshy_Male_26
+  - first:
+      213: 3013317008565238223
+    second: Leshy_Male_27
+  - first:
+      213: -3954336792741673591
+    second: Leshy_Male_28
+  - first:
+      213: -3041871533017267707
+    second: Leshy_Male_29
+  - first:
+      213: 9174801139861864695
+    second: Leshy_Male_30
+  - first:
+      213: -5985834878789709130
+    second: Leshy_Male_31
+  - first:
+      213: -1479960697584109321
+    second: Leshy_Male_32
+  - first:
+      213: 36391801152834062
+    second: Leshy_Male_33
+  - first:
+      213: 7442519426118275237
+    second: Leshy_Male_34
+  - first:
+      213: -8989097007739654468
+    second: Leshy_Male_35
+  - first:
+      213: 3496125995712049123
+    second: Leshy_Male_36
+  - first:
+      213: 6413306186013586742
+    second: Leshy_Male_37
+  - first:
+      213: 7225053948066760377
+    second: Leshy_Male_38
+  - first:
+      213: 5384248163973272129
+    second: Leshy_Male_39
+  - first:
+      213: -3238844778735256112
+    second: Leshy_Male_40
+  - first:
+      213: 4430401457369509280
+    second: Leshy_Male_41
+  - first:
+      213: -1000540075914333246
+    second: Leshy_Male_42
+  - first:
+      213: 2365164294703161733
+    second: Leshy_Male_43
+  - first:
+      213: -8190426133421282533
+    second: Leshy_Male_44
+  - first:
+      213: -3868388573924332223
+    second: Leshy_Male_45
+  - first:
+      213: 4003164876927405539
+    second: Leshy_Male_46
+  - first:
+      213: -6222120289033372486
+    second: Leshy_Male_47
+  - first:
+      213: 4930940228875744520
+    second: Leshy_Male_48
+  - first:
+      213: 5846729058464243179
+    second: Leshy_Male_49
+  - first:
+      213: 4528877525532695770
+    second: Leshy_Male_50
+  - first:
+      213: -4113824108748683571
+    second: Leshy_Male_51
+  - first:
+      213: 8267787499859691145
+    second: Leshy_Male_52
+  - first:
+      213: -7676088149991774064
+    second: Leshy_Male_53
+  - first:
+      213: 1979967091015090068
+    second: Leshy_Male_54
+  - first:
+      213: -485028449643126738
+    second: Leshy_Male_55
+  - first:
+      213: 6194896075887678104
+    second: Leshy_Male_56
+  - first:
+      213: -2434087484997746378
+    second: Leshy_Male_57
+  - first:
+      213: 7564844971133533140
+    second: Leshy_Male_58
+  - first:
+      213: -1213835402356505833
+    second: Leshy_Male_59
+  - first:
+      213: 7375467407950848236
+    second: Leshy_Male_60
+  - first:
+      213: -4774004485144247740
+    second: Leshy_Male_61
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Leshy_Male_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 126
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6826417ff74b1c3a0800000000000000
+      internalID: -6646833113322986874
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_1
+      rect:
+        serializedVersion: 2
+        x: 65
+        y: 0
+        width: 1300
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 04bd1acc6eb42dd00800000000000000
+      internalID: 995941922250021696
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_2
+      rect:
+        serializedVersion: 2
+        x: 362
+        y: 1511
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1140e2d6fcdff1a80800000000000000
+      internalID: -8493791304865676271
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_3
+      rect:
+        serializedVersion: 2
+        x: 737
+        y: 1511
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7fea9b80dc4743870800000000000000
+      internalID: 8661676407303810807
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_4
+      rect:
+        serializedVersion: 2
+        x: 802
+        y: 1506
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 865abb569b8079690800000000000000
+      internalID: -7595592654168283800
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_5
+      rect:
+        serializedVersion: 2
+        x: 948
+        y: 1508
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6312faf10b641300800000000000000
+      internalID: 221919937897304943
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_6
+      rect:
+        serializedVersion: 2
+        x: 576
+        y: 1493
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a18685d43d5759b60800000000000000
+      internalID: 7752231883984365594
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_7
+      rect:
+        serializedVersion: 2
+        x: 1285
+        y: 1487
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 687a43a880aa40f60800000000000000
+      internalID: 7999705791772010374
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_8
+      rect:
+        serializedVersion: 2
+        x: 1029
+        y: 1483
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b3d25ea6b94e22a10800000000000000
+      internalID: 1883318950358756667
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_9
+      rect:
+        serializedVersion: 2
+        x: 303
+        y: 1417
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07420611c6d3a7f80800000000000000
+      internalID: -8108100644769880976
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_10
+      rect:
+        serializedVersion: 2
+        x: 315
+        y: 1420
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 27fc2217b94d35cb0800000000000000
+      internalID: -4876320207428989070
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_11
+      rect:
+        serializedVersion: 2
+        x: 277
+        y: 1356
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6f602518c4a342b0800000000000000
+      internalID: -5601452332263903377
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_12
+      rect:
+        serializedVersion: 2
+        x: 87
+        y: 1345
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d92a32d907cd3f0b0800000000000000
+      internalID: -5695966727462739299
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_13
+      rect:
+        serializedVersion: 2
+        x: 371
+        y: 1338
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: abba06ea637358a50800000000000000
+      internalID: 6522680343309364154
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_14
+      rect:
+        serializedVersion: 2
+        x: 215
+        y: 1300
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 98b725654eca787d0800000000000000
+      internalID: -2916172136998339703
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_15
+      rect:
+        serializedVersion: 2
+        x: 129
+        y: 1279
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f81b9bdeb7f67cc50800000000000000
+      internalID: 6685434749914821007
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_16
+      rect:
+        serializedVersion: 2
+        x: 167
+        y: 1277
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c33cbf667ad754b50800000000000000
+      internalID: 6576800988785263420
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_17
+      rect:
+        serializedVersion: 2
+        x: 198
+        y: 1178
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 496acd2734a203e60800000000000000
+      internalID: 7939892612232423060
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_18
+      rect:
+        serializedVersion: 2
+        x: 49
+        y: 1129
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 33471d4eef71da360800000000000000
+      internalID: 7182423364253873203
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_19
+      rect:
+        serializedVersion: 2
+        x: 121
+        y: 1123
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 67705092a6b7283b0800000000000000
+      internalID: -5511707298063120522
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_20
+      rect:
+        serializedVersion: 2
+        x: 198
+        y: 1114
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3caff35bf7784b970800000000000000
+      internalID: 8769783356968663747
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_21
+      rect:
+        serializedVersion: 2
+        x: 146
+        y: 1073
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61605d663b1ce90c0800000000000000
+      internalID: -4566999995838560746
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_22
+      rect:
+        serializedVersion: 2
+        x: 108
+        y: 987
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f0013d114b4767e0800000000000000
+      internalID: -1772365185312292622
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_23
+      rect:
+        serializedVersion: 2
+        x: 227
+        y: 981
+        width: 6
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45a35941bcec0bac0800000000000000
+      internalID: -3841343110528026028
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_24
+      rect:
+        serializedVersion: 2
+        x: 175
+        y: 970
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b0f8647528afdc710800000000000000
+      internalID: 1715302470814961419
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_25
+      rect:
+        serializedVersion: 2
+        x: 218
+        y: 970
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 33ab81efa91e49370800000000000000
+      internalID: 8328529666719136307
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_26
+      rect:
+        serializedVersion: 2
+        x: 363
+        y: 937
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 94a94e44062e88710800000000000000
+      internalID: 1695854162805561929
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_27
+      rect:
+        serializedVersion: 2
+        x: 179
+        y: 909
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fc97c23aad371d920800000000000000
+      internalID: 3013317008565238223
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_28
+      rect:
+        serializedVersion: 2
+        x: 363
+        y: 915
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 985006253af5f19c0800000000000000
+      internalID: -3954336792741673591
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_29
+      rect:
+        serializedVersion: 2
+        x: 54
+        y: 891
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 502022e05f919c5d0800000000000000
+      internalID: -3041871533017267707
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_30
+      rect:
+        serializedVersion: 2
+        x: 240
+        y: 879
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f0c05ac601735f70800000000000000
+      internalID: 9174801139861864695
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_31
+      rect:
+        serializedVersion: 2
+        x: 259
+        y: 881
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6b2989d54ea0eeca0800000000000000
+      internalID: -5985834878789709130
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_32
+      rect:
+        serializedVersion: 2
+        x: 198
+        y: 865
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f8b5f2369f167be0800000000000000
+      internalID: -1479960697584109321
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_33
+      rect:
+        serializedVersion: 2
+        x: 346
+        y: 850
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e0a837c762a418000800000000000000
+      internalID: 36391801152834062
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_34
+      rect:
+        serializedVersion: 2
+        x: 370
+        y: 823
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5a059b36cf3294760800000000000000
+      internalID: 7442519426118275237
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_35
+      rect:
+        serializedVersion: 2
+        x: 310
+        y: 806
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cbea622d5ef404380800000000000000
+      internalID: -8989097007739654468
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_36
+      rect:
+        serializedVersion: 2
+        x: 258
+        y: 775
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3efec60e11cb48030800000000000000
+      internalID: 3496125995712049123
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_37
+      rect:
+        serializedVersion: 2
+        x: 369
+        y: 740
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 635b72d3ff3a00950800000000000000
+      internalID: 6413306186013586742
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_38
+      rect:
+        serializedVersion: 2
+        x: 127
+        y: 677
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9b68d89294c844460800000000000000
+      internalID: 7225053948066760377
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_39
+      rect:
+        serializedVersion: 2
+        x: 246
+        y: 678
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1421d2c9d21b8ba40800000000000000
+      internalID: 5384248163973272129
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_40
+      rect:
+        serializedVersion: 2
+        x: 372
+        y: 678
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0dd3bd875df4d03d0800000000000000
+      internalID: -3238844778735256112
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_41
+      rect:
+        serializedVersion: 2
+        x: 355
+        y: 575
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ade1e6f6a2fb7d30800000000000000
+      internalID: 4430401457369509280
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_42
+      rect:
+        serializedVersion: 2
+        x: 257
+        y: 495
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c3759f1a1e5d12f0800000000000000
+      internalID: -1000540075914333246
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_43
+      rect:
+        serializedVersion: 2
+        x: 118
+        y: 353
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58128351560c2d020800000000000000
+      internalID: 2365164294703161733
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_44
+      rect:
+        serializedVersion: 2
+        x: 177
+        y: 278
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b1b295e83d2c55e80800000000000000
+      internalID: -8190426133421282533
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_45
+      rect:
+        serializedVersion: 2
+        x: 345
+        y: 241
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 14d6f0e6619b05ac0800000000000000
+      internalID: -3868388573924332223
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_46
+      rect:
+        serializedVersion: 2
+        x: 197
+        y: 212
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3ed0492fe391e8730800000000000000
+      internalID: 4003164876927405539
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_47
+      rect:
+        serializedVersion: 2
+        x: 131
+        y: 162
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: abc3a66309696a9a0800000000000000
+      internalID: -6222120289033372486
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_48
+      rect:
+        serializedVersion: 2
+        x: 246
+        y: 123
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 80572de43083e6440800000000000000
+      internalID: 4930940228875744520
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_49
+      rect:
+        serializedVersion: 2
+        x: 55
+        y: 103
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bed17b3f911c32150800000000000000
+      internalID: 5846729058464243179
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_50
+      rect:
+        serializedVersion: 2
+        x: 223
+        y: 108
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: adc50ac4d1ec9de30800000000000000
+      internalID: 4528877525532695770
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_51
+      rect:
+        serializedVersion: 2
+        x: 24
+        y: 84
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc6c891e4c2c8e6c0800000000000000
+      internalID: -4113824108748683571
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_52
+      rect:
+        serializedVersion: 2
+        x: 198
+        y: 48
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9864d8f2de41db270800000000000000
+      internalID: 8267787499859691145
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_53
+      rect:
+        serializedVersion: 2
+        x: 78
+        y: 35
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 098a72b4f7e097590800000000000000
+      internalID: -7676088149991774064
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_54
+      rect:
+        serializedVersion: 2
+        x: 123
+        y: 31
+        width: 8
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 49ffae634914a7b10800000000000000
+      internalID: 1979967091015090068
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_55
+      rect:
+        serializedVersion: 2
+        x: 75
+        y: 26
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e202011e135d449f0800000000000000
+      internalID: -485028449643126738
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_56
+      rect:
+        serializedVersion: 2
+        x: 107
+        y: 26
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8921fb7b821b8f550800000000000000
+      internalID: 6194896075887678104
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_57
+      rect:
+        serializedVersion: 2
+        x: 134
+        y: 20
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6314c782452683ed0800000000000000
+      internalID: -2434087484997746378
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_58
+      rect:
+        serializedVersion: 2
+        x: 162
+        y: 23
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4db7055cb6abbf860800000000000000
+      internalID: 7564844971133533140
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_59
+      rect:
+        serializedVersion: 2
+        x: 262
+        y: 26
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7134fbaf127972fe0800000000000000
+      internalID: -1213835402356505833
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_60
+      rect:
+        serializedVersion: 2
+        x: 179
+        y: 10
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce0a167d78cea5660800000000000000
+      internalID: 7375467407950848236
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Male_61
+      rect:
+        serializedVersion: 2
+        x: 1319
+        y: 10
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4420bdae6345fbdb0800000000000000
+      internalID: -4774004485144247740
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Leshy_Male_0: -6646833113322986874
+      Leshy_Male_1: 995941922250021696
+      Leshy_Male_10: -4876320207428989070
+      Leshy_Male_11: -5601452332263903377
+      Leshy_Male_12: -5695966727462739299
+      Leshy_Male_13: 6522680343309364154
+      Leshy_Male_14: -2916172136998339703
+      Leshy_Male_15: 6685434749914821007
+      Leshy_Male_16: 6576800988785263420
+      Leshy_Male_17: 7939892612232423060
+      Leshy_Male_18: 7182423364253873203
+      Leshy_Male_19: -5511707298063120522
+      Leshy_Male_2: -8493791304865676271
+      Leshy_Male_20: 8769783356968663747
+      Leshy_Male_21: -4566999995838560746
+      Leshy_Male_22: -1772365185312292622
+      Leshy_Male_23: -3841343110528026028
+      Leshy_Male_24: 1715302470814961419
+      Leshy_Male_25: 8328529666719136307
+      Leshy_Male_26: 1695854162805561929
+      Leshy_Male_27: 3013317008565238223
+      Leshy_Male_28: -3954336792741673591
+      Leshy_Male_29: -3041871533017267707
+      Leshy_Male_3: 8661676407303810807
+      Leshy_Male_30: 9174801139861864695
+      Leshy_Male_31: -5985834878789709130
+      Leshy_Male_32: -1479960697584109321
+      Leshy_Male_33: 36391801152834062
+      Leshy_Male_34: 7442519426118275237
+      Leshy_Male_35: -8989097007739654468
+      Leshy_Male_36: 3496125995712049123
+      Leshy_Male_37: 6413306186013586742
+      Leshy_Male_38: 7225053948066760377
+      Leshy_Male_39: 5384248163973272129
+      Leshy_Male_4: -7595592654168283800
+      Leshy_Male_40: -3238844778735256112
+      Leshy_Male_41: 4430401457369509280
+      Leshy_Male_42: -1000540075914333246
+      Leshy_Male_43: 2365164294703161733
+      Leshy_Male_44: -8190426133421282533
+      Leshy_Male_45: -3868388573924332223
+      Leshy_Male_46: 4003164876927405539
+      Leshy_Male_47: -6222120289033372486
+      Leshy_Male_48: 4930940228875744520
+      Leshy_Male_49: 5846729058464243179
+      Leshy_Male_5: 221919937897304943
+      Leshy_Male_50: 4528877525532695770
+      Leshy_Male_51: -4113824108748683571
+      Leshy_Male_52: 8267787499859691145
+      Leshy_Male_53: -7676088149991774064
+      Leshy_Male_54: 1979967091015090068
+      Leshy_Male_55: -485028449643126738
+      Leshy_Male_56: 6194896075887678104
+      Leshy_Male_57: -2434087484997746378
+      Leshy_Male_58: 7564844971133533140
+      Leshy_Male_59: -1213835402356505833
+      Leshy_Male_6: 7752231883984365594
+      Leshy_Male_60: 7375467407950848236
+      Leshy_Male_61: -4774004485144247740
+      Leshy_Male_7: 7999705791772010374
+      Leshy_Male_8: 1883318950358756667
+      Leshy_Male_9: -8108100644769880976
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

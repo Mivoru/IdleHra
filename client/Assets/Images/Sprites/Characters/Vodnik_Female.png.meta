@@ -1,0 +1,1846 @@
+fileFormatVersion: 2
+guid: 64e7ad38862e9b84abd5805fe0b02910
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 4184543672015397357
+    second: Vodnik_Female_0
+  - first:
+      213: 6916423173075810009
+    second: Vodnik_Female_1
+  - first:
+      213: -9074880632451371988
+    second: Vodnik_Female_2
+  - first:
+      213: -7643870485576668239
+    second: Vodnik_Female_3
+  - first:
+      213: -1662494383840729528
+    second: Vodnik_Female_4
+  - first:
+      213: 1221577667533592749
+    second: Vodnik_Female_5
+  - first:
+      213: 5804317143973318653
+    second: Vodnik_Female_6
+  - first:
+      213: -434171570030537469
+    second: Vodnik_Female_7
+  - first:
+      213: -3632351679377312855
+    second: Vodnik_Female_8
+  - first:
+      213: 7819643398684702326
+    second: Vodnik_Female_9
+  - first:
+      213: -1459690051632955097
+    second: Vodnik_Female_10
+  - first:
+      213: 489408779576342571
+    second: Vodnik_Female_11
+  - first:
+      213: -3504678694583147887
+    second: Vodnik_Female_12
+  - first:
+      213: -3125479095966952988
+    second: Vodnik_Female_13
+  - first:
+      213: 4139714692100242584
+    second: Vodnik_Female_14
+  - first:
+      213: -5440890550028074689
+    second: Vodnik_Female_15
+  - first:
+      213: 3055599723442193042
+    second: Vodnik_Female_16
+  - first:
+      213: -3136761007783357122
+    second: Vodnik_Female_17
+  - first:
+      213: 1034650503407549525
+    second: Vodnik_Female_18
+  - first:
+      213: -7561378634904285319
+    second: Vodnik_Female_19
+  - first:
+      213: -5791313951272688592
+    second: Vodnik_Female_20
+  - first:
+      213: -292808707338844571
+    second: Vodnik_Female_21
+  - first:
+      213: 7851133674938765477
+    second: Vodnik_Female_22
+  - first:
+      213: -8056434525281652040
+    second: Vodnik_Female_23
+  - first:
+      213: 8093453300381371142
+    second: Vodnik_Female_24
+  - first:
+      213: 1765998960783767156
+    second: Vodnik_Female_25
+  - first:
+      213: 8531780083330760548
+    second: Vodnik_Female_26
+  - first:
+      213: 984848408538458887
+    second: Vodnik_Female_27
+  - first:
+      213: 5022419376423974615
+    second: Vodnik_Female_28
+  - first:
+      213: -2144383355620240380
+    second: Vodnik_Female_29
+  - first:
+      213: -5767403576193430984
+    second: Vodnik_Female_30
+  - first:
+      213: -1236967190950640103
+    second: Vodnik_Female_31
+  - first:
+      213: -3953654605215561142
+    second: Vodnik_Female_32
+  - first:
+      213: 8103446270920921221
+    second: Vodnik_Female_33
+  - first:
+      213: 7195392117407234080
+    second: Vodnik_Female_34
+  - first:
+      213: -6215084074680334118
+    second: Vodnik_Female_35
+  - first:
+      213: 3615758739698849951
+    second: Vodnik_Female_36
+  - first:
+      213: -2326942633916223738
+    second: Vodnik_Female_37
+  - first:
+      213: 6395720747006807234
+    second: Vodnik_Female_38
+  - first:
+      213: 6684643606381971730
+    second: Vodnik_Female_39
+  - first:
+      213: -4969426271751837823
+    second: Vodnik_Female_40
+  - first:
+      213: 9058840934738211042
+    second: Vodnik_Female_41
+  - first:
+      213: 1314562074831900770
+    second: Vodnik_Female_42
+  - first:
+      213: -6897567360496591208
+    second: Vodnik_Female_43
+  - first:
+      213: -611867324782405983
+    second: Vodnik_Female_44
+  - first:
+      213: 2768574093501916164
+    second: Vodnik_Female_45
+  - first:
+      213: 5400272477139097503
+    second: Vodnik_Female_46
+  - first:
+      213: -7439429567281592248
+    second: Vodnik_Female_47
+  - first:
+      213: 5517023662697630377
+    second: Vodnik_Female_48
+  - first:
+      213: 8946207765244286494
+    second: Vodnik_Female_49
+  - first:
+      213: 8659206966004759317
+    second: Vodnik_Female_50
+  - first:
+      213: 3846506559643372167
+    second: Vodnik_Female_51
+  - first:
+      213: 474397088312263460
+    second: Vodnik_Female_52
+  - first:
+      213: -2793656857742524308
+    second: Vodnik_Female_53
+  - first:
+      213: -2657597512737782797
+    second: Vodnik_Female_54
+  - first:
+      213: 2734133617082354399
+    second: Vodnik_Female_55
+  - first:
+      213: 5674335262613861586
+    second: Vodnik_Female_56
+  - first:
+      213: 6631432545709605388
+    second: Vodnik_Female_57
+  - first:
+      213: -3856404760388658780
+    second: Vodnik_Female_58
+  - first:
+      213: 6962730859489249775
+    second: Vodnik_Female_59
+  - first:
+      213: -3716589765505967462
+    second: Vodnik_Female_60
+  - first:
+      213: -3923624060836419296
+    second: Vodnik_Female_61
+  - first:
+      213: 8669694876178847722
+    second: Vodnik_Female_62
+  - first:
+      213: -2087704804016856540
+    second: Vodnik_Female_63
+  - first:
+      213: 6833319354508755894
+    second: Vodnik_Female_64
+  - first:
+      213: -359188966486422834
+    second: Vodnik_Female_65
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Vodnik_Female_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1137
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: de1269d8c4c721a30800000000000000
+      internalID: 4184543672015397357
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_1
+      rect:
+        serializedVersion: 2
+        x: 254
+        y: 1515
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9d6b67b2b321cff50800000000000000
+      internalID: 6916423173075810009
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_2
+      rect:
+        serializedVersion: 2
+        x: 550
+        y: 1513
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c2ce9a3452c8f0280800000000000000
+      internalID: -9074880632451371988
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_3
+      rect:
+        serializedVersion: 2
+        x: 642
+        y: 1521
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1bb2c16da448be590800000000000000
+      internalID: -7643870485576668239
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_4
+      rect:
+        serializedVersion: 2
+        x: 1117
+        y: 0
+        width: 233
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 846671a8a22ade8e0800000000000000
+      internalID: -1662494383840729528
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_5
+      rect:
+        serializedVersion: 2
+        x: 566
+        y: 1501
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da8d3ea9a6ae3f010800000000000000
+      internalID: 1221577667533592749
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_6
+      rect:
+        serializedVersion: 2
+        x: 306
+        y: 1491
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dff4d3a90b31d8050800000000000000
+      internalID: 5804317143973318653
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_7
+      rect:
+        serializedVersion: 2
+        x: 461
+        y: 1479
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 30591c4e14389f9f0800000000000000
+      internalID: -434171570030537469
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_8
+      rect:
+        serializedVersion: 2
+        x: 1104
+        y: 1319
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9a3fb63846b479dc0800000000000000
+      internalID: -3632351679377312855
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_9
+      rect:
+        serializedVersion: 2
+        x: 137
+        y: 1286
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 67674d8ad34f48c60800000000000000
+      internalID: 7819643398684702326
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_10
+      rect:
+        serializedVersion: 2
+        x: 43
+        y: 1228
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7210f3eb1a32ebbe0800000000000000
+      internalID: -1459690051632955097
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_11
+      rect:
+        serializedVersion: 2
+        x: 1105
+        y: 1217
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b28fa9821babac600800000000000000
+      internalID: 489408779576342571
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_12
+      rect:
+        serializedVersion: 2
+        x: 1254
+        y: 1192
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 192ed7dbb41ec5fc0800000000000000
+      internalID: -3504678694583147887
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_13
+      rect:
+        serializedVersion: 2
+        x: 1099
+        y: 1166
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4e11bfb525110a4d0800000000000000
+      internalID: -3125479095966952988
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_14
+      rect:
+        serializedVersion: 2
+        x: 1149
+        y: 1085
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 89cb91e4498337930800000000000000
+      internalID: 4139714692100242584
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_15
+      rect:
+        serializedVersion: 2
+        x: 13
+        y: 1048
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f310ccf2fd21e74b0800000000000000
+      internalID: -5440890550028074689
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_16
+      rect:
+        serializedVersion: 2
+        x: 109
+        y: 1029
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 292cd8b52cba76a20800000000000000
+      internalID: 3055599723442193042
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_17
+      rect:
+        serializedVersion: 2
+        x: 135
+        y: 940
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e35d6c19b7cf774d0800000000000000
+      internalID: -3136761007783357122
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_18
+      rect:
+        serializedVersion: 2
+        x: 43
+        y: 895
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55c394aa621db5e00800000000000000
+      internalID: 1034650503407549525
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_19
+      rect:
+        serializedVersion: 2
+        x: 1103
+        y: 886
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 97f4d468136901790800000000000000
+      internalID: -7561378634904285319
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_20
+      rect:
+        serializedVersion: 2
+        x: 1102
+        y: 848
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 034a0af15ae11afa0800000000000000
+      internalID: -5791313951272688592
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_21
+      rect:
+        serializedVersion: 2
+        x: 1294
+        y: 839
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5664de3380cbfebf0800000000000000
+      internalID: -292808707338844571
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_22
+      rect:
+        serializedVersion: 2
+        x: 1118
+        y: 832
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5a015d2fa74d4fc60800000000000000
+      internalID: 7851133674938765477
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_23
+      rect:
+        serializedVersion: 2
+        x: 1208
+        y: 791
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b2f46ceb7bc13090800000000000000
+      internalID: -8056434525281652040
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_24
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 747
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 60bc17f45e8b15070800000000000000
+      internalID: 8093453300381371142
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_25
+      rect:
+        serializedVersion: 2
+        x: 1103
+        y: 750
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 476b93bb2b6128810800000000000000
+      internalID: 1765998960783767156
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_26
+      rect:
+        serializedVersion: 2
+        x: 1209
+        y: 729
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 46fbea058c8f66670800000000000000
+      internalID: 8531780083330760548
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_27
+      rect:
+        serializedVersion: 2
+        x: 93
+        y: 646
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 70b2b8cd862eaad00800000000000000
+      internalID: 984848408538458887
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_28
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 649
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d63acc10d733b540800000000000000
+      internalID: 5022419376423974615
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_29
+      rect:
+        serializedVersion: 2
+        x: 1334
+        y: 648
+        width: 11
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 404def113be9d32e0800000000000000
+      internalID: -2144383355620240380
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_30
+      rect:
+        serializedVersion: 2
+        x: 1149
+        y: 616
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83a4ca4210116ffa0800000000000000
+      internalID: -5767403576193430984
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_31
+      rect:
+        serializedVersion: 2
+        x: 72
+        y: 598
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9160390c4e865dee0800000000000000
+      internalID: -1236967190950640103
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_32
+      rect:
+        serializedVersion: 2
+        x: 136
+        y: 571
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a4a0a8b751cc129c0800000000000000
+      internalID: -3953654605215561142
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_33
+      rect:
+        serializedVersion: 2
+        x: 1322
+        y: 560
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58094b21379357070800000000000000
+      internalID: 8103446270920921221
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_34
+      rect:
+        serializedVersion: 2
+        x: 1133
+        y: 492
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 02834b9020b2bd360800000000000000
+      internalID: 7195392117407234080
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_35
+      rect:
+        serializedVersion: 2
+        x: 1177
+        y: 489
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ad8cd7786f59fb9a0800000000000000
+      internalID: -6215084074680334118
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_36
+      rect:
+        serializedVersion: 2
+        x: 142
+        y: 395
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f989349aa61cd2230800000000000000
+      internalID: 3615758739698849951
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_37
+      rect:
+        serializedVersion: 2
+        x: 30
+        y: 377
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 60f26bcc00a05bfd0800000000000000
+      internalID: -2326942633916223738
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_38
+      rect:
+        serializedVersion: 2
+        x: 28
+        y: 360
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2cccfe7222a22c850800000000000000
+      internalID: 6395720747006807234
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_39
+      rect:
+        serializedVersion: 2
+        x: 161
+        y: 315
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 219cb7871ff94cc50800000000000000
+      internalID: 6684643606381971730
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_40
+      rect:
+        serializedVersion: 2
+        x: 1116
+        y: 262
+        width: 10
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 187ecbe822d090bb0800000000000000
+      internalID: -4969426271751837823
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_41
+      rect:
+        serializedVersion: 2
+        x: 62
+        y: 250
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e0b6d795d777bd70800000000000000
+      internalID: 9058840934738211042
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_42
+      rect:
+        serializedVersion: 2
+        x: 1130
+        y: 247
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2605e810e334e3210800000000000000
+      internalID: 1314562074831900770
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_43
+      rect:
+        serializedVersion: 2
+        x: 110
+        y: 243
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 89e954fc70be640a0800000000000000
+      internalID: -6897567360496591208
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_44
+      rect:
+        serializedVersion: 2
+        x: 1214
+        y: 243
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1a61da0f8e53287f0800000000000000
+      internalID: -611867324782405983
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_45
+      rect:
+        serializedVersion: 2
+        x: 1154
+        y: 235
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 404e7813873fb6620800000000000000
+      internalID: 2768574093501916164
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_46
+      rect:
+        serializedVersion: 2
+        x: 1130
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f97d132c43f91fa40800000000000000
+      internalID: 5400272477139097503
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_47
+      rect:
+        serializedVersion: 2
+        x: 1287
+        y: 226
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84884ae6936d1c890800000000000000
+      internalID: -7439429567281592248
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_48
+      rect:
+        serializedVersion: 2
+        x: 13
+        y: 216
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9aa44807ac7609c40800000000000000
+      internalID: 5517023662697630377
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_49
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 209
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e161a3e3090572c70800000000000000
+      internalID: 8946207765244286494
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_50
+      rect:
+        serializedVersion: 2
+        x: 1118
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51b3d4d6bdeab2870800000000000000
+      internalID: 8659206966004759317
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_51
+      rect:
+        serializedVersion: 2
+        x: 1099
+        y: 197
+        width: 8
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 78ac0c91659816530800000000000000
+      internalID: 3846506559643372167
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_52
+      rect:
+        serializedVersion: 2
+        x: 74
+        y: 151
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 423055b63a5659600800000000000000
+      internalID: 474397088312263460
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_53
+      rect:
+        serializedVersion: 2
+        x: 9
+        y: 127
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c604ce9a3efea39d0800000000000000
+      internalID: -2793656857742524308
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_54
+      rect:
+        serializedVersion: 2
+        x: 176
+        y: 106
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f38d4984215e1bd0800000000000000
+      internalID: -2657597512737782797
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_55
+      rect:
+        serializedVersion: 2
+        x: 1195
+        y: 106
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fdac5a6e90891f520800000000000000
+      internalID: 2734133617082354399
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_56
+      rect:
+        serializedVersion: 2
+        x: 1100
+        y: 67
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2d472908bd94fbe40800000000000000
+      internalID: 5674335262613861586
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_57
+      rect:
+        serializedVersion: 2
+        x: 1319
+        y: 67
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c024cf6f3c4970c50800000000000000
+      internalID: 6631432545709605388
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_58
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 45
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a998e27d4c4b7ac0800000000000000
+      internalID: -3856404760388658780
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_59
+      rect:
+        serializedVersion: 2
+        x: 1117
+        y: 44
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe9c18a93d690a060800000000000000
+      internalID: 6962730859489249775
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_60
+      rect:
+        serializedVersion: 2
+        x: 109
+        y: 36
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9a1a23bc450c6cc0800000000000000
+      internalID: -3716589765505967462
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_61
+      rect:
+        serializedVersion: 2
+        x: 237
+        y: 29
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0296ba574bc7c89c0800000000000000
+      internalID: -3923624060836419296
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_62
+      rect:
+        serializedVersion: 2
+        x: 669
+        y: 29
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ae71aad4e81f05870800000000000000
+      internalID: 8669694876178847722
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_63
+      rect:
+        serializedVersion: 2
+        x: 1322
+        y: 29
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 422e2b8ba8bf603e0800000000000000
+      internalID: -2087704804016856540
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_64
+      rect:
+        serializedVersion: 2
+        x: 84
+        y: 23
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6b3cb4a9fb3d4de50800000000000000
+      internalID: 6833319354508755894
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vodnik_Female_65
+      rect:
+        serializedVersion: 2
+        x: 233
+        y: 15
+        width: 11
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eca465db987e30bf0800000000000000
+      internalID: -359188966486422834
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Vodnik_Female_0: 4184543672015397357
+      Vodnik_Female_1: 6916423173075810009
+      Vodnik_Female_10: -1459690051632955097
+      Vodnik_Female_11: 489408779576342571
+      Vodnik_Female_12: -3504678694583147887
+      Vodnik_Female_13: -3125479095966952988
+      Vodnik_Female_14: 4139714692100242584
+      Vodnik_Female_15: -5440890550028074689
+      Vodnik_Female_16: 3055599723442193042
+      Vodnik_Female_17: -3136761007783357122
+      Vodnik_Female_18: 1034650503407549525
+      Vodnik_Female_19: -7561378634904285319
+      Vodnik_Female_2: -9074880632451371988
+      Vodnik_Female_20: -5791313951272688592
+      Vodnik_Female_21: -292808707338844571
+      Vodnik_Female_22: 7851133674938765477
+      Vodnik_Female_23: -8056434525281652040
+      Vodnik_Female_24: 8093453300381371142
+      Vodnik_Female_25: 1765998960783767156
+      Vodnik_Female_26: 8531780083330760548
+      Vodnik_Female_27: 984848408538458887
+      Vodnik_Female_28: 5022419376423974615
+      Vodnik_Female_29: -2144383355620240380
+      Vodnik_Female_3: -7643870485576668239
+      Vodnik_Female_30: -5767403576193430984
+      Vodnik_Female_31: -1236967190950640103
+      Vodnik_Female_32: -3953654605215561142
+      Vodnik_Female_33: 8103446270920921221
+      Vodnik_Female_34: 7195392117407234080
+      Vodnik_Female_35: -6215084074680334118
+      Vodnik_Female_36: 3615758739698849951
+      Vodnik_Female_37: -2326942633916223738
+      Vodnik_Female_38: 6395720747006807234
+      Vodnik_Female_39: 6684643606381971730
+      Vodnik_Female_4: -1662494383840729528
+      Vodnik_Female_40: -4969426271751837823
+      Vodnik_Female_41: 9058840934738211042
+      Vodnik_Female_42: 1314562074831900770
+      Vodnik_Female_43: -6897567360496591208
+      Vodnik_Female_44: -611867324782405983
+      Vodnik_Female_45: 2768574093501916164
+      Vodnik_Female_46: 5400272477139097503
+      Vodnik_Female_47: -7439429567281592248
+      Vodnik_Female_48: 5517023662697630377
+      Vodnik_Female_49: 8946207765244286494
+      Vodnik_Female_5: 1221577667533592749
+      Vodnik_Female_50: 8659206966004759317
+      Vodnik_Female_51: 3846506559643372167
+      Vodnik_Female_52: 474397088312263460
+      Vodnik_Female_53: -2793656857742524308
+      Vodnik_Female_54: -2657597512737782797
+      Vodnik_Female_55: 2734133617082354399
+      Vodnik_Female_56: 5674335262613861586
+      Vodnik_Female_57: 6631432545709605388
+      Vodnik_Female_58: -3856404760388658780
+      Vodnik_Female_59: 6962730859489249775
+      Vodnik_Female_6: 5804317143973318653
+      Vodnik_Female_60: -3716589765505967462
+      Vodnik_Female_61: -3923624060836419296
+      Vodnik_Female_62: 8669694876178847722
+      Vodnik_Female_63: -2087704804016856540
+      Vodnik_Female_64: 6833319354508755894
+      Vodnik_Female_65: -359188966486422834
+      Vodnik_Female_7: -434171570030537469
+      Vodnik_Female_8: -3632351679377312855
+      Vodnik_Female_9: 7819643398684702326
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

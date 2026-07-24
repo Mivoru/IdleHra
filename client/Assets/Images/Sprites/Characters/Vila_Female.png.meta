@@ -1,0 +1,1300 @@
+fileFormatVersion: 2
+guid: 5c16d81e6bafb934bafcd16396f406db
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -3908178587323573982
+    second: Vila_Female_0
+  - first:
+      213: -1891128293053133113
+    second: Vila_Female_1
+  - first:
+      213: 1622053127009886094
+    second: Vila_Female_2
+  - first:
+      213: -6995276640307256303
+    second: Vila_Female_3
+  - first:
+      213: -7462879878368436863
+    second: Vila_Female_4
+  - first:
+      213: 6581169359353385228
+    second: Vila_Female_5
+  - first:
+      213: 1100013972133364100
+    second: Vila_Female_6
+  - first:
+      213: 6940370564459906128
+    second: Vila_Female_7
+  - first:
+      213: 1973618293394775087
+    second: Vila_Female_8
+  - first:
+      213: 3756193497543391146
+    second: Vila_Female_9
+  - first:
+      213: -3980081057429027654
+    second: Vila_Female_10
+  - first:
+      213: 3603279343333672174
+    second: Vila_Female_11
+  - first:
+      213: -5968976371042861417
+    second: Vila_Female_12
+  - first:
+      213: -4042158954145142340
+    second: Vila_Female_13
+  - first:
+      213: -8309869249669118279
+    second: Vila_Female_14
+  - first:
+      213: -3485594129747049255
+    second: Vila_Female_15
+  - first:
+      213: -334192581880730572
+    second: Vila_Female_16
+  - first:
+      213: -4128949302534135963
+    second: Vila_Female_17
+  - first:
+      213: 8456596179081777349
+    second: Vila_Female_18
+  - first:
+      213: 8443340761751745258
+    second: Vila_Female_19
+  - first:
+      213: -128322144108023833
+    second: Vila_Female_20
+  - first:
+      213: -5339140064746747458
+    second: Vila_Female_21
+  - first:
+      213: 841989591365922526
+    second: Vila_Female_22
+  - first:
+      213: 8396885350145529385
+    second: Vila_Female_23
+  - first:
+      213: -2270794706229366955
+    second: Vila_Female_24
+  - first:
+      213: 6834159591888541566
+    second: Vila_Female_25
+  - first:
+      213: 7479558788389327474
+    second: Vila_Female_26
+  - first:
+      213: 3222990471887202667
+    second: Vila_Female_27
+  - first:
+      213: 4790159847262393975
+    second: Vila_Female_28
+  - first:
+      213: -6468392951320426279
+    second: Vila_Female_29
+  - first:
+      213: 2843347097478450476
+    second: Vila_Female_30
+  - first:
+      213: 1867359234573195578
+    second: Vila_Female_31
+  - first:
+      213: -5576079068825594063
+    second: Vila_Female_32
+  - first:
+      213: 5386951224353202162
+    second: Vila_Female_33
+  - first:
+      213: 2443348454149280477
+    second: Vila_Female_34
+  - first:
+      213: -3382558769217362636
+    second: Vila_Female_35
+  - first:
+      213: 7261803743858076865
+    second: Vila_Female_36
+  - first:
+      213: 8272121471991535753
+    second: Vila_Female_37
+  - first:
+      213: 5479730319276426035
+    second: Vila_Female_38
+  - first:
+      213: 3331348056349107110
+    second: Vila_Female_39
+  - first:
+      213: -1470900293691727494
+    second: Vila_Female_40
+  - first:
+      213: -5793639533830133000
+    second: Vila_Female_41
+  - first:
+      213: -6437027790246412529
+    second: Vila_Female_42
+  - first:
+      213: -8240665039256682509
+    second: Vila_Female_43
+  - first:
+      213: 2156064287574720023
+    second: Vila_Female_44
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Vila_Female_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1258
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2295acff74c53c9c0800000000000000
+      internalID: -3908178587323573982
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_1
+      rect:
+        serializedVersion: 2
+        x: 366
+        y: 1522
+        width: 11
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7ce80eb46dc51c5e0800000000000000
+      internalID: -1891128293053133113
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_2
+      rect:
+        serializedVersion: 2
+        x: 1237
+        y: 0
+        width: 117
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e8f5c3a99b0b28610800000000000000
+      internalID: 1622053127009886094
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_3
+      rect:
+        serializedVersion: 2
+        x: 553
+        y: 1512
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 114e5ec45f8cbee90800000000000000
+      internalID: -6995276640307256303
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_4
+      rect:
+        serializedVersion: 2
+        x: 953
+        y: 1509
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 18d50786a468e6890800000000000000
+      internalID: -7462879878368436863
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_5
+      rect:
+        serializedVersion: 2
+        x: 1086
+        y: 1506
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0191fee9a2055b50800000000000000
+      internalID: 6581169359353385228
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_6
+      rect:
+        serializedVersion: 2
+        x: 401
+        y: 1490
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 481c9f821e8044f00800000000000000
+      internalID: 1100013972133364100
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_7
+      rect:
+        serializedVersion: 2
+        x: 704
+        y: 1495
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 054c538b146215060800000000000000
+      internalID: 6940370564459906128
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_8
+      rect:
+        serializedVersion: 2
+        x: 1006
+        y: 1496
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f2c12049163b36b10800000000000000
+      internalID: 1973618293394775087
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_9
+      rect:
+        serializedVersion: 2
+        x: 1069
+        y: 1490
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa7b4b8b51ea02430800000000000000
+      internalID: 3756193497543391146
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_10
+      rect:
+        serializedVersion: 2
+        x: 507
+        y: 1482
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab48eaa9d59e3c8c0800000000000000
+      internalID: -3980081057429027654
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_11
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 1418
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ee408e5c87b610230800000000000000
+      internalID: 3603279343333672174
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_12
+      rect:
+        serializedVersion: 2
+        x: 1253
+        y: 1341
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79e3a439d9fe92da0800000000000000
+      internalID: -5968976371042861417
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_13
+      rect:
+        serializedVersion: 2
+        x: 1248
+        y: 1021
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cb9a384f8dd57e7c0800000000000000
+      internalID: -4042158954145142340
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_14
+      rect:
+        serializedVersion: 2
+        x: 1213
+        y: 996
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9b6c78be1f96dac80800000000000000
+      internalID: -8309869249669118279
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_15
+      rect:
+        serializedVersion: 2
+        x: 1294
+        y: 888
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9d48d314b9ea0afc0800000000000000
+      internalID: -3485594129747049255
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_16
+      rect:
+        serializedVersion: 2
+        x: 1207
+        y: 841
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 43cad6e0e95bc5bf0800000000000000
+      internalID: -334192581880730572
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_17
+      rect:
+        serializedVersion: 2
+        x: 1274
+        y: 835
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 56f1bd64c7603b6c0800000000000000
+      internalID: -4128949302534135963
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_18
+      rect:
+        serializedVersion: 2
+        x: 1312
+        y: 608
+        width: 11
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c0581f7b6ddb5570800000000000000
+      internalID: 8456596179081777349
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_19
+      rect:
+        serializedVersion: 2
+        x: 1207
+        y: 554
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ae2f9c520b5cc2570800000000000000
+      internalID: 8443340761751745258
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_20
+      rect:
+        serializedVersion: 2
+        x: 1265
+        y: 552
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7efef9790bb183ef0800000000000000
+      internalID: -128322144108023833
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_21
+      rect:
+        serializedVersion: 2
+        x: 1268
+        y: 418
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb9c6ba266097e5b0800000000000000
+      internalID: -5339140064746747458
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_22
+      rect:
+        serializedVersion: 2
+        x: 1321
+        y: 275
+        width: 12
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ede21f182195fab00800000000000000
+      internalID: 841989591365922526
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_23
+      rect:
+        serializedVersion: 2
+        x: 1276
+        y: 164
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9261b13ccbab78470800000000000000
+      internalID: 8396885350145529385
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_24
+      rect:
+        serializedVersion: 2
+        x: 1262
+        y: 96
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55f6c51fe348c70e0800000000000000
+      internalID: -2270794706229366955
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_25
+      rect:
+        serializedVersion: 2
+        x: 1321
+        y: 96
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7758dc90ffc7de50800000000000000
+      internalID: 6834159591888541566
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_26
+      rect:
+        serializedVersion: 2
+        x: 1297
+        y: 71
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 272d892f61bbcc760800000000000000
+      internalID: 7479558788389327474
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_27
+      rect:
+        serializedVersion: 2
+        x: 1313
+        y: 64
+        width: 12
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b692e4f02cc5abc20800000000000000
+      internalID: 3222990471887202667
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_28
+      rect:
+        serializedVersion: 2
+        x: 1296
+        y: 58
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7761a6170011a7240800000000000000
+      internalID: 4790159847262393975
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_29
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 38
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9d8c7ecb1e6ab36a0800000000000000
+      internalID: -6468392951320426279
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_30
+      rect:
+        serializedVersion: 2
+        x: 973
+        y: 31
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c2d4756de19957720800000000000000
+      internalID: 2843347097478450476
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_31
+      rect:
+        serializedVersion: 2
+        x: 1296
+        y: 41
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a39d7c484513ae910800000000000000
+      internalID: 1867359234573195578
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_32
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 26
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 137d82751a9cd92b0800000000000000
+      internalID: -5576079068825594063
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_33
+      rect:
+        serializedVersion: 2
+        x: 141
+        y: 23
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ff9de5e89b42ca40800000000000000
+      internalID: 5386951224353202162
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_34
+      rect:
+        serializedVersion: 2
+        x: 217
+        y: 31
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dd25110497488e120800000000000000
+      internalID: 2443348454149280477
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_35
+      rect:
+        serializedVersion: 2
+        x: 262
+        y: 23
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 435aae098bcbe01d0800000000000000
+      internalID: -3382558769217362636
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_36
+      rect:
+        serializedVersion: 2
+        x: 455
+        y: 25
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1cc2345c70c17c460800000000000000
+      internalID: 7261803743858076865
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_37
+      rect:
+        serializedVersion: 2
+        x: 491
+        y: 29
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 988dfe4b6aa7cc270800000000000000
+      internalID: 8272121471991535753
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_38
+      rect:
+        serializedVersion: 2
+        x: 717
+        y: 23
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 333c86941b9eb0c40800000000000000
+      internalID: 5479730319276426035
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_39
+      rect:
+        serializedVersion: 2
+        x: 961
+        y: 26
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6a360e138635b3e20800000000000000
+      internalID: 3331348056349107110
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_40
+      rect:
+        serializedVersion: 2
+        x: 1002
+        y: 22
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a71ac7ed9ff469be0800000000000000
+      internalID: -1470900293691727494
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_41
+      rect:
+        serializedVersion: 2
+        x: 1248
+        y: 26
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8fa256d3a8bd89fa0800000000000000
+      internalID: -5793639533830133000
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_42
+      rect:
+        serializedVersion: 2
+        x: 402
+        y: 15
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0f7b0164551ba6a0800000000000000
+      internalID: -6437027790246412529
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_43
+      rect:
+        serializedVersion: 2
+        x: 1334
+        y: 22
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3ffff16cec643ad80800000000000000
+      internalID: -8240665039256682509
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Vila_Female_44
+      rect:
+        serializedVersion: 2
+        x: 1318
+        y: 15
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 71efbc5db01ebed10800000000000000
+      internalID: 2156064287574720023
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Vila_Female_0: -3908178587323573982
+      Vila_Female_1: -1891128293053133113
+      Vila_Female_10: -3980081057429027654
+      Vila_Female_11: 3603279343333672174
+      Vila_Female_12: -5968976371042861417
+      Vila_Female_13: -4042158954145142340
+      Vila_Female_14: -8309869249669118279
+      Vila_Female_15: -3485594129747049255
+      Vila_Female_16: -334192581880730572
+      Vila_Female_17: -4128949302534135963
+      Vila_Female_18: 8456596179081777349
+      Vila_Female_19: 8443340761751745258
+      Vila_Female_2: 1622053127009886094
+      Vila_Female_20: -128322144108023833
+      Vila_Female_21: -5339140064746747458
+      Vila_Female_22: 841989591365922526
+      Vila_Female_23: 8396885350145529385
+      Vila_Female_24: -2270794706229366955
+      Vila_Female_25: 6834159591888541566
+      Vila_Female_26: 7479558788389327474
+      Vila_Female_27: 3222990471887202667
+      Vila_Female_28: 4790159847262393975
+      Vila_Female_29: -6468392951320426279
+      Vila_Female_3: -6995276640307256303
+      Vila_Female_30: 2843347097478450476
+      Vila_Female_31: 1867359234573195578
+      Vila_Female_32: -5576079068825594063
+      Vila_Female_33: 5386951224353202162
+      Vila_Female_34: 2443348454149280477
+      Vila_Female_35: -3382558769217362636
+      Vila_Female_36: 7261803743858076865
+      Vila_Female_37: 8272121471991535753
+      Vila_Female_38: 5479730319276426035
+      Vila_Female_39: 3331348056349107110
+      Vila_Female_4: -7462879878368436863
+      Vila_Female_40: -1470900293691727494
+      Vila_Female_41: -5793639533830133000
+      Vila_Female_42: -6437027790246412529
+      Vila_Female_43: -8240665039256682509
+      Vila_Female_44: 2156064287574720023
+      Vila_Female_5: 6581169359353385228
+      Vila_Female_6: 1100013972133364100
+      Vila_Female_7: 6940370564459906128
+      Vila_Female_8: 1973618293394775087
+      Vila_Female_9: 3756193497543391146
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

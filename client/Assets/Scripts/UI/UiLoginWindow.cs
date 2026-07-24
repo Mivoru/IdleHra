@@ -508,8 +508,22 @@ namespace FolkIdle.Client.UI
 
             if (NetworkClient != null)
             {
+                NetworkClient.ServerUrl = DeriveWebSocketUrl(ServerBaseUrl);
                 NetworkClient.Connect();
             }
+        }
+
+        // Derives ws(s):// from ServerBaseUrl's http(s):// so the two never
+        // drift apart when ServerBaseUrl is reconfigured (e.g. away from
+        // localhost) - see WebSocketClient.ServerUrl.
+        private static string DeriveWebSocketUrl(string httpBaseUrl)
+        {
+            string wsUrl = httpBaseUrl.StartsWith("https://")
+                ? "wss://" + httpBaseUrl.Substring("https://".Length)
+                : httpBaseUrl.StartsWith("http://")
+                    ? "ws://" + httpBaseUrl.Substring("http://".Length)
+                    : httpBaseUrl;
+            return wsUrl.EndsWith("/") ? wsUrl : wsUrl + "/";
         }
 
         private void HandleStateConfirmed()

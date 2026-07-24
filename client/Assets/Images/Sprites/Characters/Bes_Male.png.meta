@@ -1,0 +1,1846 @@
+fileFormatVersion: 2
+guid: 88e558512bea57d47bd25969a538886f
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -3999032446998343879
+    second: Bes_Male_0
+  - first:
+      213: 7897525130089585540
+    second: Bes_Male_1
+  - first:
+      213: -1198256619212394566
+    second: Bes_Male_2
+  - first:
+      213: -357955640719443773
+    second: Bes_Male_3
+  - first:
+      213: -3892625872679455884
+    second: Bes_Male_4
+  - first:
+      213: -218908404700328263
+    second: Bes_Male_5
+  - first:
+      213: -2210608295225044710
+    second: Bes_Male_6
+  - first:
+      213: -8521804333300268633
+    second: Bes_Male_7
+  - first:
+      213: -5027649274743389043
+    second: Bes_Male_8
+  - first:
+      213: -5484334595758750215
+    second: Bes_Male_9
+  - first:
+      213: -1185832838566301964
+    second: Bes_Male_10
+  - first:
+      213: -6020799813646937535
+    second: Bes_Male_11
+  - first:
+      213: 9183881728463857012
+    second: Bes_Male_12
+  - first:
+      213: -6540470439584105044
+    second: Bes_Male_13
+  - first:
+      213: 1887371061930394637
+    second: Bes_Male_14
+  - first:
+      213: -851832214510973767
+    second: Bes_Male_15
+  - first:
+      213: -488870984948285496
+    second: Bes_Male_16
+  - first:
+      213: -472761177319248537
+    second: Bes_Male_17
+  - first:
+      213: -3139878369132139544
+    second: Bes_Male_18
+  - first:
+      213: 487997257079652576
+    second: Bes_Male_19
+  - first:
+      213: 8799006525626344497
+    second: Bes_Male_20
+  - first:
+      213: 3513824349176496405
+    second: Bes_Male_21
+  - first:
+      213: -116638045243928241
+    second: Bes_Male_22
+  - first:
+      213: -5213271247393036406
+    second: Bes_Male_23
+  - first:
+      213: 2951935691756521635
+    second: Bes_Male_24
+  - first:
+      213: -4712071010264239287
+    second: Bes_Male_25
+  - first:
+      213: 6451290832196368486
+    second: Bes_Male_26
+  - first:
+      213: 5235583130514945056
+    second: Bes_Male_27
+  - first:
+      213: -4845462957924017271
+    second: Bes_Male_28
+  - first:
+      213: -4540956255579218479
+    second: Bes_Male_29
+  - first:
+      213: -5622249091057564513
+    second: Bes_Male_30
+  - first:
+      213: 288330122694522809
+    second: Bes_Male_31
+  - first:
+      213: 721663865716849670
+    second: Bes_Male_32
+  - first:
+      213: -2188703116355351330
+    second: Bes_Male_33
+  - first:
+      213: 6315087595309998890
+    second: Bes_Male_34
+  - first:
+      213: -4278914560779915645
+    second: Bes_Male_35
+  - first:
+      213: 4737226832424356941
+    second: Bes_Male_36
+  - first:
+      213: -7335329773793569385
+    second: Bes_Male_37
+  - first:
+      213: -3991495156339580001
+    second: Bes_Male_38
+  - first:
+      213: 7384262834019512467
+    second: Bes_Male_39
+  - first:
+      213: -6433541853761714973
+    second: Bes_Male_40
+  - first:
+      213: 7309870343081775599
+    second: Bes_Male_41
+  - first:
+      213: 4996999433090347137
+    second: Bes_Male_42
+  - first:
+      213: -4956234366809863821
+    second: Bes_Male_43
+  - first:
+      213: 3052025333027617963
+    second: Bes_Male_44
+  - first:
+      213: 3534509149571039029
+    second: Bes_Male_45
+  - first:
+      213: 7480757313546306525
+    second: Bes_Male_46
+  - first:
+      213: 4549509504775308069
+    second: Bes_Male_47
+  - first:
+      213: -1041197656962456269
+    second: Bes_Male_48
+  - first:
+      213: -2931448478120839054
+    second: Bes_Male_49
+  - first:
+      213: 1679451985460509025
+    second: Bes_Male_50
+  - first:
+      213: -7897036486882509093
+    second: Bes_Male_51
+  - first:
+      213: -4227100315143130650
+    second: Bes_Male_52
+  - first:
+      213: 7894283350996640748
+    second: Bes_Male_53
+  - first:
+      213: -7458167741247557228
+    second: Bes_Male_54
+  - first:
+      213: 9181473101170638437
+    second: Bes_Male_55
+  - first:
+      213: -5046236804325148982
+    second: Bes_Male_56
+  - first:
+      213: 3472406342856947340
+    second: Bes_Male_57
+  - first:
+      213: 1035639487324530646
+    second: Bes_Male_58
+  - first:
+      213: 8633105762112577913
+    second: Bes_Male_59
+  - first:
+      213: -1590037378382570803
+    second: Bes_Male_60
+  - first:
+      213: -6431626079103079173
+    second: Bes_Male_61
+  - first:
+      213: 8728731826839835779
+    second: Bes_Male_62
+  - first:
+      213: 4920473106303169102
+    second: Bes_Male_63
+  - first:
+      213: -791726477790197558
+    second: Bes_Male_64
+  - first:
+      213: 2024127065673426210
+    second: Bes_Male_65
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Bes_Male_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1327
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 93f076f5d259088c0800000000000000
+      internalID: -3999032446998343879
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_1
+      rect:
+        serializedVersion: 2
+        x: 736
+        y: 1526
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48bd5bf4345a99d60800000000000000
+      internalID: 7897525130089585540
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_2
+      rect:
+        serializedVersion: 2
+        x: 756
+        y: 1511
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: abfa51614ffee5fe0800000000000000
+      internalID: -1198256619212394566
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_3
+      rect:
+        serializedVersion: 2
+        x: 854
+        y: 1515
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c8f195cd39480bf0800000000000000
+      internalID: -357955640719443773
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_4
+      rect:
+        serializedVersion: 2
+        x: 824
+        y: 1493
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 473327f846d9af9c0800000000000000
+      internalID: -3892625872679455884
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_5
+      rect:
+        serializedVersion: 2
+        x: 954
+        y: 1500
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9be4d7b37f746fcf0800000000000000
+      internalID: -218908404700328263
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_6
+      rect:
+        serializedVersion: 2
+        x: 966
+        y: 1500
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a115491c7775251e0800000000000000
+      internalID: -2210608295225044710
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_7
+      rect:
+        serializedVersion: 2
+        x: 1075
+        y: 1489
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7a1c04cfb187cb980800000000000000
+      internalID: -8521804333300268633
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_8
+      rect:
+        serializedVersion: 2
+        x: 540
+        y: 1481
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d848bab4f933a3ab0800000000000000
+      internalID: -5027649274743389043
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_9
+      rect:
+        serializedVersion: 2
+        x: 837
+        y: 1473
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9f50a6e0ebab3e3b0800000000000000
+      internalID: -5484334595758750215
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_10
+      rect:
+        serializedVersion: 2
+        x: 705
+        y: 1457
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4fe234ee0531b8fe0800000000000000
+      internalID: -1185832838566301964
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_11
+      rect:
+        serializedVersion: 2
+        x: 823
+        y: 1457
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 14216d31872d17ca0800000000000000
+      internalID: -6020799813646937535
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_12
+      rect:
+        serializedVersion: 2
+        x: 849
+        y: 1463
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 475e94416c3b37f70800000000000000
+      internalID: 9183881728463857012
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_13
+      rect:
+        serializedVersion: 2
+        x: 1062
+        y: 1459
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cad75a0c9c49b35a0800000000000000
+      internalID: -6540470439584105044
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_14
+      rect:
+        serializedVersion: 2
+        x: 575
+        y: 1447
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d0486b92bf9413a10800000000000000
+      internalID: 1887371061930394637
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_15
+      rect:
+        serializedVersion: 2
+        x: 682
+        y: 1451
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9bcc6d53d1fad24f0800000000000000
+      internalID: -851832214510973767
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_16
+      rect:
+        serializedVersion: 2
+        x: 946
+        y: 1453
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8cf7929ed6e2739f0800000000000000
+      internalID: -488870984948285496
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_17
+      rect:
+        serializedVersion: 2
+        x: 700
+        y: 1445
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76d6a4ac63a6079f0800000000000000
+      internalID: -472761177319248537
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_18
+      rect:
+        serializedVersion: 2
+        x: 199
+        y: 1397
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8eb22f15249ec64d0800000000000000
+      internalID: -3139878369132139544
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_19
+      rect:
+        serializedVersion: 2
+        x: 93
+        y: 1345
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0e009977be6b5c600800000000000000
+      internalID: 487997257079652576
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_20
+      rect:
+        serializedVersion: 2
+        x: 157
+        y: 1224
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1346d40e0d95c1a70800000000000000
+      internalID: 8799006525626344497
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_21
+      rect:
+        serializedVersion: 2
+        x: 219
+        y: 1209
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51188c7e0ac93c030800000000000000
+      internalID: 3513824349176496405
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_22
+      rect:
+        serializedVersion: 2
+        x: 225
+        y: 1205
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f4190f9d05e916ef0800000000000000
+      internalID: -116638045243928241
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_23
+      rect:
+        serializedVersion: 2
+        x: 240
+        y: 1182
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a87616deb6db6a7b0800000000000000
+      internalID: -5213271247393036406
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_24
+      rect:
+        serializedVersion: 2
+        x: 193
+        y: 1135
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a8c1f22fd167f820800000000000000
+      internalID: 2951935691756521635
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_25
+      rect:
+        serializedVersion: 2
+        x: 242
+        y: 1102
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 943b8ccb16c5b9eb0800000000000000
+      internalID: -4712071010264239287
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_26
+      rect:
+        serializedVersion: 2
+        x: 133
+        y: 1011
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6687ccbd4d6978950800000000000000
+      internalID: 6451290832196368486
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_27
+      rect:
+        serializedVersion: 2
+        x: 167
+        y: 965
+        width: 6
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 024fe5e2e1788a840800000000000000
+      internalID: 5235583130514945056
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_28
+      rect:
+        serializedVersion: 2
+        x: 194
+        y: 929
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 98b10a4bc1571ccb0800000000000000
+      internalID: -4845462957924017271
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_29
+      rect:
+        serializedVersion: 2
+        x: 122
+        y: 913
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1dddc9538584bf0c0800000000000000
+      internalID: -4540956255579218479
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_30
+      rect:
+        serializedVersion: 2
+        x: 130
+        y: 855
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f9440c85d32c9f1b0800000000000000
+      internalID: -5622249091057564513
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_31
+      rect:
+        serializedVersion: 2
+        x: 166
+        y: 850
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9b7704d08ba500400800000000000000
+      internalID: 288330122694522809
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_32
+      rect:
+        serializedVersion: 2
+        x: 166
+        y: 811
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 60cb94b567dd30a00800000000000000
+      internalID: 721663865716849670
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_33
+      rect:
+        serializedVersion: 2
+        x: 232
+        y: 798
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: edc49d6ac1a20a1e0800000000000000
+      internalID: -2188703116355351330
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_34
+      rect:
+        serializedVersion: 2
+        x: 153
+        y: 578
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a23adeb85b2b3a750800000000000000
+      internalID: 6315087595309998890
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_35
+      rect:
+        serializedVersion: 2
+        x: 112
+        y: 381
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 38e677ca0ed3e94c0800000000000000
+      internalID: -4278914560779915645
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_36
+      rect:
+        serializedVersion: 2
+        x: 232
+        y: 379
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4c4a1784b20eb140800000000000000
+      internalID: 4737226832424356941
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_37
+      rect:
+        serializedVersion: 2
+        x: 228
+        y: 365
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79510ba5f6ca33a90800000000000000
+      internalID: -7335329773793569385
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_38
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 282
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f93efab9d4c5b98c0800000000000000
+      internalID: -3991495156339580001
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_39
+      rect:
+        serializedVersion: 2
+        x: 216
+        y: 245
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3903add8ceb2a7660800000000000000
+      internalID: 7384262834019512467
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_40
+      rect:
+        serializedVersion: 2
+        x: 242
+        y: 219
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e4cce635c777b6a0800000000000000
+      internalID: -6433541853761714973
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_41
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 151
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe15d810950e17560800000000000000
+      internalID: 7309870343081775599
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_42
+      rect:
+        serializedVersion: 2
+        x: 233
+        y: 139
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 180bd285288e85540800000000000000
+      internalID: 4996999433090347137
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_43
+      rect:
+        serializedVersion: 2
+        x: 241
+        y: 135
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 37907b64a1be73bb0800000000000000
+      internalID: -4956234366809863821
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_44
+      rect:
+        serializedVersion: 2
+        x: 241
+        y: 95
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bacba9cbed8fa5a20800000000000000
+      internalID: 3052025333027617963
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_45
+      rect:
+        serializedVersion: 2
+        x: 107
+        y: 45
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 53fbc8b48591d0130800000000000000
+      internalID: 3534509149571039029
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_46
+      rect:
+        serializedVersion: 2
+        x: 186
+        y: 36
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dd345d4542df0d760800000000000000
+      internalID: 7480757313546306525
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_47
+      rect:
+        serializedVersion: 2
+        x: 79
+        y: 29
+        width: 10
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 523456e4aca132f30800000000000000
+      internalID: 4549509504775308069
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_48
+      rect:
+        serializedVersion: 2
+        x: 127
+        y: 32
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 335a8cb5f3cec81f0800000000000000
+      internalID: -1041197656962456269
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_49
+      rect:
+        serializedVersion: 2
+        x: 214
+        y: 29
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2787f3004276157d0800000000000000
+      internalID: -2931448478120839054
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_50
+      rect:
+        serializedVersion: 2
+        x: 288
+        y: 25
+        width: 7
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 169b2b2ceac9e4710800000000000000
+      internalID: 1679451985460509025
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_51
+      rect:
+        serializedVersion: 2
+        x: 399
+        y: 32
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bdeb11dc727186290800000000000000
+      internalID: -7897036486882509093
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_52
+      rect:
+        serializedVersion: 2
+        x: 419
+        y: 31
+        width: 13
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6e1b3f5d8a25655c0800000000000000
+      internalID: -4227100315143130650
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_53
+      rect:
+        serializedVersion: 2
+        x: 503
+        y: 34
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce36f6cc1e02e8d60800000000000000
+      internalID: 7894283350996640748
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_54
+      rect:
+        serializedVersion: 2
+        x: 539
+        y: 29
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 49179a354f34f7890800000000000000
+      internalID: -7458167741247557228
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_55
+      rect:
+        serializedVersion: 2
+        x: 614
+        y: 34
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 56e7416d3252b6f70800000000000000
+      internalID: 9181473101170638437
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_56
+      rect:
+        serializedVersion: 2
+        x: 954
+        y: 34
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac672b1dc5a28f9b0800000000000000
+      internalID: -5046236804325148982
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_57
+      rect:
+        serializedVersion: 2
+        x: 1219
+        y: 35
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c863dc5db27703030800000000000000
+      internalID: 3472406342856947340
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_58
+      rect:
+        serializedVersion: 2
+        x: 465
+        y: 19
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d7a85d60a45f5e00800000000000000
+      internalID: 1035639487324530646
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_59
+      rect:
+        serializedVersion: 2
+        x: 819
+        y: 19
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 971291353f3fec770800000000000000
+      internalID: 8633105762112577913
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_60
+      rect:
+        serializedVersion: 2
+        x: 1270
+        y: 22
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dcad9e1cd6d0fe9e0800000000000000
+      internalID: -1590037378382570803
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_61
+      rect:
+        serializedVersion: 2
+        x: 267
+        y: 13
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bfc2ce248264eb6a0800000000000000
+      internalID: -6431626079103079173
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_62
+      rect:
+        serializedVersion: 2
+        x: 435
+        y: 14
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3845f66895fa22970800000000000000
+      internalID: 8728731826839835779
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_63
+      rect:
+        serializedVersion: 2
+        x: 543
+        y: 10
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e42301c6838094440800000000000000
+      internalID: 4920473106303169102
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_64
+      rect:
+        serializedVersion: 2
+        x: 837
+        y: 10
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac84b0496f83305f0800000000000000
+      internalID: -791726477790197558
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Male_65
+      rect:
+        serializedVersion: 2
+        x: 874
+        y: 10
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 225e7b987d4271c10800000000000000
+      internalID: 2024127065673426210
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Bes_Male_0: -3999032446998343879
+      Bes_Male_1: 7897525130089585540
+      Bes_Male_10: -1185832838566301964
+      Bes_Male_11: -6020799813646937535
+      Bes_Male_12: 9183881728463857012
+      Bes_Male_13: -6540470439584105044
+      Bes_Male_14: 1887371061930394637
+      Bes_Male_15: -851832214510973767
+      Bes_Male_16: -488870984948285496
+      Bes_Male_17: -472761177319248537
+      Bes_Male_18: -3139878369132139544
+      Bes_Male_19: 487997257079652576
+      Bes_Male_2: -1198256619212394566
+      Bes_Male_20: 8799006525626344497
+      Bes_Male_21: 3513824349176496405
+      Bes_Male_22: -116638045243928241
+      Bes_Male_23: -5213271247393036406
+      Bes_Male_24: 2951935691756521635
+      Bes_Male_25: -4712071010264239287
+      Bes_Male_26: 6451290832196368486
+      Bes_Male_27: 5235583130514945056
+      Bes_Male_28: -4845462957924017271
+      Bes_Male_29: -4540956255579218479
+      Bes_Male_3: -357955640719443773
+      Bes_Male_30: -5622249091057564513
+      Bes_Male_31: 288330122694522809
+      Bes_Male_32: 721663865716849670
+      Bes_Male_33: -2188703116355351330
+      Bes_Male_34: 6315087595309998890
+      Bes_Male_35: -4278914560779915645
+      Bes_Male_36: 4737226832424356941
+      Bes_Male_37: -7335329773793569385
+      Bes_Male_38: -3991495156339580001
+      Bes_Male_39: 7384262834019512467
+      Bes_Male_4: -3892625872679455884
+      Bes_Male_40: -6433541853761714973
+      Bes_Male_41: 7309870343081775599
+      Bes_Male_42: 4996999433090347137
+      Bes_Male_43: -4956234366809863821
+      Bes_Male_44: 3052025333027617963
+      Bes_Male_45: 3534509149571039029
+      Bes_Male_46: 7480757313546306525
+      Bes_Male_47: 4549509504775308069
+      Bes_Male_48: -1041197656962456269
+      Bes_Male_49: -2931448478120839054
+      Bes_Male_5: -218908404700328263
+      Bes_Male_50: 1679451985460509025
+      Bes_Male_51: -7897036486882509093
+      Bes_Male_52: -4227100315143130650
+      Bes_Male_53: 7894283350996640748
+      Bes_Male_54: -7458167741247557228
+      Bes_Male_55: 9181473101170638437
+      Bes_Male_56: -5046236804325148982
+      Bes_Male_57: 3472406342856947340
+      Bes_Male_58: 1035639487324530646
+      Bes_Male_59: 8633105762112577913
+      Bes_Male_6: -2210608295225044710
+      Bes_Male_60: -1590037378382570803
+      Bes_Male_61: -6431626079103079173
+      Bes_Male_62: 8728731826839835779
+      Bes_Male_63: 4920473106303169102
+      Bes_Male_64: -791726477790197558
+      Bes_Male_65: 2024127065673426210
+      Bes_Male_7: -8521804333300268633
+      Bes_Male_8: -5027649274743389043
+      Bes_Male_9: -5484334595758750215
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

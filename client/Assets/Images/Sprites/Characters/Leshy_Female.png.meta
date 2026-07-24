@@ -1,0 +1,2392 @@
+fileFormatVersion: 2
+guid: 0ac3a417f9feeff4590ff8df2a27452c
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -129344848634317491
+    second: Leshy_Female_0
+  - first:
+      213: 5726466647493815986
+    second: Leshy_Female_1
+  - first:
+      213: -4335827744130475882
+    second: Leshy_Female_2
+  - first:
+      213: 6481292963701813342
+    second: Leshy_Female_3
+  - first:
+      213: 3796673298945672613
+    second: Leshy_Female_4
+  - first:
+      213: -6267965952727506218
+    second: Leshy_Female_5
+  - first:
+      213: 2191046856669111696
+    second: Leshy_Female_6
+  - first:
+      213: 5028194149808060219
+    second: Leshy_Female_7
+  - first:
+      213: 5402299011857407832
+    second: Leshy_Female_8
+  - first:
+      213: 6362934728840334632
+    second: Leshy_Female_9
+  - first:
+      213: 5403426044945322613
+    second: Leshy_Female_10
+  - first:
+      213: 9081930327068226506
+    second: Leshy_Female_11
+  - first:
+      213: 571676495148634714
+    second: Leshy_Female_12
+  - first:
+      213: 155475017972477423
+    second: Leshy_Female_13
+  - first:
+      213: -5228763337473980910
+    second: Leshy_Female_14
+  - first:
+      213: 2910876322250423552
+    second: Leshy_Female_15
+  - first:
+      213: -6234723784740064009
+    second: Leshy_Female_16
+  - first:
+      213: 5638234105649320759
+    second: Leshy_Female_17
+  - first:
+      213: -6262352155536398457
+    second: Leshy_Female_18
+  - first:
+      213: 7220569936564978574
+    second: Leshy_Female_19
+  - first:
+      213: -489091779003924651
+    second: Leshy_Female_20
+  - first:
+      213: 7167360654460909109
+    second: Leshy_Female_21
+  - first:
+      213: 8491951983114030840
+    second: Leshy_Female_22
+  - first:
+      213: -8822701995744053330
+    second: Leshy_Female_23
+  - first:
+      213: -1253043952364930933
+    second: Leshy_Female_24
+  - first:
+      213: 2739399486617284319
+    second: Leshy_Female_25
+  - first:
+      213: 1655886399106298396
+    second: Leshy_Female_26
+  - first:
+      213: 6299585958364099908
+    second: Leshy_Female_27
+  - first:
+      213: -7586549451286392821
+    second: Leshy_Female_28
+  - first:
+      213: 1733217380526708131
+    second: Leshy_Female_29
+  - first:
+      213: -534398439857985379
+    second: Leshy_Female_30
+  - first:
+      213: -8299994953385291499
+    second: Leshy_Female_31
+  - first:
+      213: -8858791198846854775
+    second: Leshy_Female_32
+  - first:
+      213: -2684568270990463602
+    second: Leshy_Female_33
+  - first:
+      213: -9145098263603797425
+    second: Leshy_Female_34
+  - first:
+      213: 220485735904781429
+    second: Leshy_Female_35
+  - first:
+      213: 1469020212742562263
+    second: Leshy_Female_36
+  - first:
+      213: -138081161059103004
+    second: Leshy_Female_37
+  - first:
+      213: -4247377971180228928
+    second: Leshy_Female_38
+  - first:
+      213: -6754545143121306297
+    second: Leshy_Female_39
+  - first:
+      213: 6649241330267941544
+    second: Leshy_Female_40
+  - first:
+      213: -2457618798103269633
+    second: Leshy_Female_41
+  - first:
+      213: 6327532429402211316
+    second: Leshy_Female_42
+  - first:
+      213: 5948562564640393066
+    second: Leshy_Female_43
+  - first:
+      213: -3573562657539747905
+    second: Leshy_Female_44
+  - first:
+      213: -2396537966497161211
+    second: Leshy_Female_45
+  - first:
+      213: -4590435721405255409
+    second: Leshy_Female_46
+  - first:
+      213: -4977791664609906486
+    second: Leshy_Female_47
+  - first:
+      213: 3480838856307483863
+    second: Leshy_Female_48
+  - first:
+      213: -2405577191988283725
+    second: Leshy_Female_49
+  - first:
+      213: 3726709411959752855
+    second: Leshy_Female_50
+  - first:
+      213: -8693864467015979162
+    second: Leshy_Female_51
+  - first:
+      213: 2493216200960297806
+    second: Leshy_Female_52
+  - first:
+      213: -1520974818226515211
+    second: Leshy_Female_53
+  - first:
+      213: 8745526124137115187
+    second: Leshy_Female_54
+  - first:
+      213: -4835974427561094966
+    second: Leshy_Female_55
+  - first:
+      213: -2380057130472096208
+    second: Leshy_Female_56
+  - first:
+      213: 8607725511503405616
+    second: Leshy_Female_57
+  - first:
+      213: 5211365623723849780
+    second: Leshy_Female_58
+  - first:
+      213: -6593873451914890237
+    second: Leshy_Female_59
+  - first:
+      213: -5272138508449111032
+    second: Leshy_Female_60
+  - first:
+      213: 7480260959951172865
+    second: Leshy_Female_61
+  - first:
+      213: -5587486499817302274
+    second: Leshy_Female_62
+  - first:
+      213: 4555939643742253740
+    second: Leshy_Female_63
+  - first:
+      213: -1157852689529084930
+    second: Leshy_Female_64
+  - first:
+      213: 1735657149262541765
+    second: Leshy_Female_65
+  - first:
+      213: -2355799153474583022
+    second: Leshy_Female_66
+  - first:
+      213: 4463526857264794297
+    second: Leshy_Female_67
+  - first:
+      213: 6520899921961283654
+    second: Leshy_Female_68
+  - first:
+      213: -42623691785078632
+    second: Leshy_Female_69
+  - first:
+      213: 162493964366762285
+    second: Leshy_Female_70
+  - first:
+      213: -6662215174810696498
+    second: Leshy_Female_71
+  - first:
+      213: 911393845866195142
+    second: Leshy_Female_72
+  - first:
+      213: -7269826918519702627
+    second: Leshy_Female_73
+  - first:
+      213: 1299235241231021630
+    second: Leshy_Female_74
+  - first:
+      213: 2696531362897776323
+    second: Leshy_Female_75
+  - first:
+      213: -5575445129949738880
+    second: Leshy_Female_76
+  - first:
+      213: -7684403103274563186
+    second: Leshy_Female_77
+  - first:
+      213: 5472677128923278754
+    second: Leshy_Female_78
+  - first:
+      213: 5157946542827593734
+    second: Leshy_Female_79
+  - first:
+      213: 2564954919318311993
+    second: Leshy_Female_80
+  - first:
+      213: -3952734904023641034
+    second: Leshy_Female_81
+  - first:
+      213: 7009361919292096752
+    second: Leshy_Female_82
+  - first:
+      213: 4691315597499950887
+    second: Leshy_Female_83
+  - first:
+      213: 8284481416119824994
+    second: Leshy_Female_84
+  - first:
+      213: 3649852422563556200
+    second: Leshy_Female_85
+  - first:
+      213: 6174501887732166922
+    second: Leshy_Female_86
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Leshy_Female_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1274
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d45ff93ab89743ef0800000000000000
+      internalID: -129344848634317491
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_1
+      rect:
+        serializedVersion: 2
+        x: 702
+        y: 1515
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2beadf5631f787f40800000000000000
+      internalID: 5726466647493815986
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_2
+      rect:
+        serializedVersion: 2
+        x: 861
+        y: 1521
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 698d1df83ab04d3c0800000000000000
+      internalID: -4335827744130475882
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_3
+      rect:
+        serializedVersion: 2
+        x: 1197
+        y: 737
+        width: 110
+        height: 799
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e507fa27c9d22f950800000000000000
+      internalID: 6481292963701813342
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_4
+      rect:
+        serializedVersion: 2
+        x: 1265
+        y: 0
+        width: 122
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5a50edfef3e70b430800000000000000
+      internalID: 3796673298945672613
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_5
+      rect:
+        serializedVersion: 2
+        x: 708
+        y: 1506
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d22f63dc26b309a0800000000000000
+      internalID: -6267965952727506218
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_6
+      rect:
+        serializedVersion: 2
+        x: 318
+        y: 1495
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 095aff9e189286e10800000000000000
+      internalID: 2191046856669111696
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_7
+      rect:
+        serializedVersion: 2
+        x: 321
+        y: 1483
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b37b10150fbb7c540800000000000000
+      internalID: 5028194149808060219
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_8
+      rect:
+        serializedVersion: 2
+        x: 398
+        y: 1481
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85f54342452d8fa40800000000000000
+      internalID: 5402299011857407832
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_9
+      rect:
+        serializedVersion: 2
+        x: 459
+        y: 1479
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82d46817c6fad4850800000000000000
+      internalID: 6362934728840334632
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_10
+      rect:
+        serializedVersion: 2
+        x: 686
+        y: 1477
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5725f0bfb53dcfa40800000000000000
+      internalID: 5403426044945322613
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_11
+      rect:
+        serializedVersion: 2
+        x: 17
+        y: 1411
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac3bfbba38f790e70800000000000000
+      internalID: 9081930327068226506
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_12
+      rect:
+        serializedVersion: 2
+        x: 29
+        y: 1397
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a5256c35eb00fe700800000000000000
+      internalID: 571676495148634714
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_13
+      rect:
+        serializedVersion: 2
+        x: 110
+        y: 1391
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fed62b184bb582200800000000000000
+      internalID: 155475017972477423
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_14
+      rect:
+        serializedVersion: 2
+        x: 1317
+        y: 1391
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 216074f9273bf67b0800000000000000
+      internalID: -5228763337473980910
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_15
+      rect:
+        serializedVersion: 2
+        x: 82
+        y: 1388
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00df4d4b792856820800000000000000
+      internalID: 2910876322250423552
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_16
+      rect:
+        serializedVersion: 2
+        x: 35
+        y: 1347
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f4b3e130cfc979a0800000000000000
+      internalID: -6234723784740064009
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_17
+      rect:
+        serializedVersion: 2
+        x: 10
+        y: 1337
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 73358b3eb080f3e40800000000000000
+      internalID: 5638234105649320759
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_18
+      rect:
+        serializedVersion: 2
+        x: 74
+        y: 1328
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 787e9d6d4e7a719a0800000000000000
+      internalID: -6262352155536398457
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_19
+      rect:
+        serializedVersion: 2
+        x: 21
+        y: 1302
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e8302d0e91e943460800000000000000
+      internalID: 7220569936564978574
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_20
+      rect:
+        serializedVersion: 2
+        x: 75
+        y: 1243
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55f38e94e956639f0800000000000000
+      internalID: -489091779003924651
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_21
+      rect:
+        serializedVersion: 2
+        x: 12
+        y: 1209
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 536f04a7a84977360800000000000000
+      internalID: 7167360654460909109
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_22
+      rect:
+        serializedVersion: 2
+        x: 15
+        y: 1178
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8fe8f2b165979d570800000000000000
+      internalID: 8491951983114030840
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_23
+      rect:
+        serializedVersion: 2
+        x: 26
+        y: 1176
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ea7bb8097477f8580800000000000000
+      internalID: -8822701995744053330
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_24
+      rect:
+        serializedVersion: 2
+        x: 1234
+        y: 1169
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b88365b0a2b4c9ee0800000000000000
+      internalID: -1253043952364930933
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_25
+      rect:
+        serializedVersion: 2
+        x: 45
+        y: 1143
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fdee5b1b15d440620800000000000000
+      internalID: 2739399486617284319
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_26
+      rect:
+        serializedVersion: 2
+        x: 1274
+        y: 1146
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c12b12f18e3eaf610800000000000000
+      internalID: 1655886399106298396
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_27
+      rect:
+        serializedVersion: 2
+        x: 1266
+        y: 1098
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 445b4507d00ac6750800000000000000
+      internalID: 6299585958364099908
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_28
+      rect:
+        serializedVersion: 2
+        x: 1194
+        y: 1091
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b00d325287927b690800000000000000
+      internalID: -7586549451286392821
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_29
+      rect:
+        serializedVersion: 2
+        x: 1338
+        y: 1085
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a5d3dc4600ad0810800000000000000
+      internalID: 1733217380526708131
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_30
+      rect:
+        serializedVersion: 2
+        x: 19
+        y: 1082
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d98edb7437f6598f0800000000000000
+      internalID: -534398439857985379
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_31
+      rect:
+        serializedVersion: 2
+        x: 1353
+        y: 1068
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5115feda09e70dc80800000000000000
+      internalID: -8299994953385291499
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_32
+      rect:
+        serializedVersion: 2
+        x: 1204
+        y: 987
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 989506d27504f0580800000000000000
+      internalID: -8858791198846854775
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_33
+      rect:
+        serializedVersion: 2
+        x: 1204
+        y: 970
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e8d2458816f7ebad0800000000000000
+      internalID: -2684568270990463602
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_34
+      rect:
+        serializedVersion: 2
+        x: 84
+        y: 931
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f42aad10595161180800000000000000
+      internalID: -9145098263603797425
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_35
+      rect:
+        serializedVersion: 2
+        x: 1200
+        y: 929
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 57425aecb925f0300800000000000000
+      internalID: 220485735904781429
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_36
+      rect:
+        serializedVersion: 2
+        x: 1325
+        y: 926
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d1a36ca912036410800000000000000
+      internalID: 1469020212742562263
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_37
+      rect:
+        serializedVersion: 2
+        x: 1340
+        y: 929
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4ee06e46aef651ef0800000000000000
+      internalID: -138081161059103004
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_38
+      rect:
+        serializedVersion: 2
+        x: 4
+        y: 895
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ceabf02d384e05c0800000000000000
+      internalID: -4247377971180228928
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_39
+      rect:
+        serializedVersion: 2
+        x: 180
+        y: 895
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 74d1aecbaf80342a0800000000000000
+      internalID: -6754545143121306297
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_40
+      rect:
+        serializedVersion: 2
+        x: 17
+        y: 868
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8aa677cb2c9d64c50800000000000000
+      internalID: 6649241330267941544
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_41
+      rect:
+        serializedVersion: 2
+        x: 13
+        y: 853
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ffe6bb169b8c4edd0800000000000000
+      internalID: -2457618798103269633
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_42
+      rect:
+        serializedVersion: 2
+        x: 134
+        y: 859
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4f388474839efc750800000000000000
+      internalID: 6327532429402211316
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_43
+      rect:
+        serializedVersion: 2
+        x: 180
+        y: 858
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a67c39db22a8d8250800000000000000
+      internalID: 5948562564640393066
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_44
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 843
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fbf0ebe42b7286ec0800000000000000
+      internalID: -3573562657539747905
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_45
+      rect:
+        serializedVersion: 2
+        x: 78
+        y: 841
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5002338ba69cdbed0800000000000000
+      internalID: -2396537966497161211
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_46
+      rect:
+        serializedVersion: 2
+        x: 1226
+        y: 843
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f013065580f7b40c0800000000000000
+      internalID: -4590435721405255409
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_47
+      rect:
+        serializedVersion: 2
+        x: 1291
+        y: 815
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac0b601cad45beab0800000000000000
+      internalID: -4977791664609906486
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_48
+      rect:
+        serializedVersion: 2
+        x: 1326
+        y: 825
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d4a59e5f7c6e4030800000000000000
+      internalID: 3480838856307483863
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_49
+      rect:
+        serializedVersion: 2
+        x: 1342
+        y: 776
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3b6b1c70a4cad9ed0800000000000000
+      internalID: -2405577191988283725
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_50
+      rect:
+        serializedVersion: 2
+        x: 1350
+        y: 689
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79847f8177ee7b330800000000000000
+      internalID: 3726709411959752855
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_51
+      rect:
+        serializedVersion: 2
+        x: 1294
+        y: 667
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 66f2f1e4450395780800000000000000
+      internalID: -8693864467015979162
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_52
+      rect:
+        serializedVersion: 2
+        x: 1373
+        y: 642
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e4bcc76dceea99220800000000000000
+      internalID: 2493216200960297806
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_53
+      rect:
+        serializedVersion: 2
+        x: 150
+        y: 605
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f25b47167964eae0800000000000000
+      internalID: -1520974818226515211
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_54
+      rect:
+        serializedVersion: 2
+        x: 153
+        y: 584
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 33e67139ca95e5970800000000000000
+      internalID: 8745526124137115187
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_55
+      rect:
+        serializedVersion: 2
+        x: 50
+        y: 542
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac0195651ea23ecb0800000000000000
+      internalID: -4835974427561094966
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_56
+      rect:
+        serializedVersion: 2
+        x: 1250
+        y: 534
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 03e331166a658fed0800000000000000
+      internalID: -2380057130472096208
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_57
+      rect:
+        serializedVersion: 2
+        x: 1352
+        y: 524
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0326a3d3fb8c47770800000000000000
+      internalID: 8607725511503405616
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_58
+      rect:
+        serializedVersion: 2
+        x: 78
+        y: 471
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 438fdbc7c6d725840800000000000000
+      internalID: 5211365623723849780
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_59
+      rect:
+        serializedVersion: 2
+        x: 1310
+        y: 458
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 304fbb4080bdd74a0800000000000000
+      internalID: -6593873451914890237
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_60
+      rect:
+        serializedVersion: 2
+        x: 1355
+        y: 452
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 804ab35a5f995d6b0800000000000000
+      internalID: -5272138508449111032
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_61
+      rect:
+        serializedVersion: 2
+        x: 66
+        y: 441
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 105bc1106b93fc760800000000000000
+      internalID: 7480260959951172865
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_62
+      rect:
+        serializedVersion: 2
+        x: 1296
+        y: 392
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ef65917d1a24572b0800000000000000
+      internalID: -5587486499817302274
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_63
+      rect:
+        serializedVersion: 2
+        x: 155
+        y: 375
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca27063b7f2f93f30800000000000000
+      internalID: 4555939643742253740
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_64
+      rect:
+        serializedVersion: 2
+        x: 1342
+        y: 319
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ef3636a0d1b7eefe0800000000000000
+      internalID: -1157852689529084930
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_65
+      rect:
+        serializedVersion: 2
+        x: 1357
+        y: 319
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c339a93bfa461810800000000000000
+      internalID: 1735657149262541765
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_66
+      rect:
+        serializedVersion: 2
+        x: 1319
+        y: 302
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2164bf6c6258e4fd0800000000000000
+      internalID: -2355799153474583022
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_67
+      rect:
+        serializedVersion: 2
+        x: 1366
+        y: 303
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9ba0fa42702a1fd30800000000000000
+      internalID: 4463526857264794297
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_68
+      rect:
+        serializedVersion: 2
+        x: 157
+        y: 273
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 640ff580ee3ee7a50800000000000000
+      internalID: 6520899921961283654
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_69
+      rect:
+        serializedVersion: 2
+        x: 114
+        y: 239
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 89872286af1986ff0800000000000000
+      internalID: -42623691785078632
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_70
+      rect:
+        serializedVersion: 2
+        x: 1183
+        y: 241
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d21d930566b414200800000000000000
+      internalID: 162493964366762285
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_71
+      rect:
+        serializedVersion: 2
+        x: 1206
+        y: 240
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ec40130b89e0b83a0800000000000000
+      internalID: -6662215174810696498
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_72
+      rect:
+        serializedVersion: 2
+        x: 92
+        y: 218
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6c8e451cfdbe5ac00800000000000000
+      internalID: 911393845866195142
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_73
+      rect:
+        serializedVersion: 2
+        x: 1341
+        y: 218
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d9b7f0f4fe26c1b90800000000000000
+      internalID: -7269826918519702627
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_74
+      rect:
+        serializedVersion: 2
+        x: 60
+        y: 207
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e367e39719fc70210800000000000000
+      internalID: 1299235241231021630
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_75
+      rect:
+        serializedVersion: 2
+        x: 121
+        y: 95
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3cec83bdcf00c6520800000000000000
+      internalID: 2696531362897776323
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_76
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 97
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0880aacb13a00a2b0800000000000000
+      internalID: -5575445129949738880
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_77
+      rect:
+        serializedVersion: 2
+        x: 1189
+        y: 85
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e89096e57148b5590800000000000000
+      internalID: -7684403103274563186
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_78
+      rect:
+        serializedVersion: 2
+        x: 84
+        y: 53
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ad60ef6adad2fb40800000000000000
+      internalID: 5472677128923278754
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_79
+      rect:
+        serializedVersion: 2
+        x: 1339
+        y: 53
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 60061bf7d05b49740800000000000000
+      internalID: 5157946542827593734
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_80
+      rect:
+        serializedVersion: 2
+        x: 1325
+        y: 35
+        width: 6
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 934dbdec8ec889320800000000000000
+      internalID: 2564954919318311993
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_81
+      rect:
+        serializedVersion: 2
+        x: 1342
+        y: 35
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 634126a1c801529c0800000000000000
+      internalID: -3952734904023641034
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_82
+      rect:
+        serializedVersion: 2
+        x: 133
+        y: 26
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f04e854781464160800000000000000
+      internalID: 7009361919292096752
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_83
+      rect:
+        serializedVersion: 2
+        x: 170
+        y: 25
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 727eb362ea6ea1140800000000000000
+      internalID: 4691315597499950887
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_84
+      rect:
+        serializedVersion: 2
+        x: 1238
+        y: 20
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 262b52474f368f270800000000000000
+      internalID: 8284481416119824994
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_85
+      rect:
+        serializedVersion: 2
+        x: 73
+        y: 16
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 86bef79c071e6a230800000000000000
+      internalID: 3649852422563556200
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Leshy_Female_86
+      rect:
+        serializedVersion: 2
+        x: 1217
+        y: 11
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a013143c0cc30b550800000000000000
+      internalID: 6174501887732166922
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Leshy_Female_0: -129344848634317491
+      Leshy_Female_1: 5726466647493815986
+      Leshy_Female_10: 5403426044945322613
+      Leshy_Female_11: 9081930327068226506
+      Leshy_Female_12: 571676495148634714
+      Leshy_Female_13: 155475017972477423
+      Leshy_Female_14: -5228763337473980910
+      Leshy_Female_15: 2910876322250423552
+      Leshy_Female_16: -6234723784740064009
+      Leshy_Female_17: 5638234105649320759
+      Leshy_Female_18: -6262352155536398457
+      Leshy_Female_19: 7220569936564978574
+      Leshy_Female_2: -4335827744130475882
+      Leshy_Female_20: -489091779003924651
+      Leshy_Female_21: 7167360654460909109
+      Leshy_Female_22: 8491951983114030840
+      Leshy_Female_23: -8822701995744053330
+      Leshy_Female_24: -1253043952364930933
+      Leshy_Female_25: 2739399486617284319
+      Leshy_Female_26: 1655886399106298396
+      Leshy_Female_27: 6299585958364099908
+      Leshy_Female_28: -7586549451286392821
+      Leshy_Female_29: 1733217380526708131
+      Leshy_Female_3: 6481292963701813342
+      Leshy_Female_30: -534398439857985379
+      Leshy_Female_31: -8299994953385291499
+      Leshy_Female_32: -8858791198846854775
+      Leshy_Female_33: -2684568270990463602
+      Leshy_Female_34: -9145098263603797425
+      Leshy_Female_35: 220485735904781429
+      Leshy_Female_36: 1469020212742562263
+      Leshy_Female_37: -138081161059103004
+      Leshy_Female_38: -4247377971180228928
+      Leshy_Female_39: -6754545143121306297
+      Leshy_Female_4: 3796673298945672613
+      Leshy_Female_40: 6649241330267941544
+      Leshy_Female_41: -2457618798103269633
+      Leshy_Female_42: 6327532429402211316
+      Leshy_Female_43: 5948562564640393066
+      Leshy_Female_44: -3573562657539747905
+      Leshy_Female_45: -2396537966497161211
+      Leshy_Female_46: -4590435721405255409
+      Leshy_Female_47: -4977791664609906486
+      Leshy_Female_48: 3480838856307483863
+      Leshy_Female_49: -2405577191988283725
+      Leshy_Female_5: -6267965952727506218
+      Leshy_Female_50: 3726709411959752855
+      Leshy_Female_51: -8693864467015979162
+      Leshy_Female_52: 2493216200960297806
+      Leshy_Female_53: -1520974818226515211
+      Leshy_Female_54: 8745526124137115187
+      Leshy_Female_55: -4835974427561094966
+      Leshy_Female_56: -2380057130472096208
+      Leshy_Female_57: 8607725511503405616
+      Leshy_Female_58: 5211365623723849780
+      Leshy_Female_59: -6593873451914890237
+      Leshy_Female_6: 2191046856669111696
+      Leshy_Female_60: -5272138508449111032
+      Leshy_Female_61: 7480260959951172865
+      Leshy_Female_62: -5587486499817302274
+      Leshy_Female_63: 4555939643742253740
+      Leshy_Female_64: -1157852689529084930
+      Leshy_Female_65: 1735657149262541765
+      Leshy_Female_66: -2355799153474583022
+      Leshy_Female_67: 4463526857264794297
+      Leshy_Female_68: 6520899921961283654
+      Leshy_Female_69: -42623691785078632
+      Leshy_Female_7: 5028194149808060219
+      Leshy_Female_70: 162493964366762285
+      Leshy_Female_71: -6662215174810696498
+      Leshy_Female_72: 911393845866195142
+      Leshy_Female_73: -7269826918519702627
+      Leshy_Female_74: 1299235241231021630
+      Leshy_Female_75: 2696531362897776323
+      Leshy_Female_76: -5575445129949738880
+      Leshy_Female_77: -7684403103274563186
+      Leshy_Female_78: 5472677128923278754
+      Leshy_Female_79: 5157946542827593734
+      Leshy_Female_8: 5402299011857407832
+      Leshy_Female_80: 2564954919318311993
+      Leshy_Female_81: -3952734904023641034
+      Leshy_Female_82: 7009361919292096752
+      Leshy_Female_83: 4691315597499950887
+      Leshy_Female_84: 8284481416119824994
+      Leshy_Female_85: 3649852422563556200
+      Leshy_Female_86: 6174501887732166922
+      Leshy_Female_9: 6362934728840334632
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

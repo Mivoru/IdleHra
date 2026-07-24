@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.9'
 
 services:
   folk-idle-db:
@@ -47,6 +47,27 @@ services:
       - folk-idle-db
     restart: unless-stopped
 
+  folk-idle-migrate:
+    # One-shot EF Core migration step, mirroring ops/jobs/apply-migrations.yaml's
+    # K8s Job - without this, folk-idle-server boots against a schema-less
+    # Postgres (Program.cs's normal boot path deliberately never auto-migrates,
+    # see its --migrate branch) and the first real query (e.g. login) throws.
+    # Talks directly to folk-idle-db, not through pgbouncer's transaction-mode
+    # pooler, since EF's migrator can issue multi-statement DDL that a pooled
+    # transaction-scoped connection isn't guaranteed to preserve session state
+    # across.
+    build:
+      context: ./server
+      dockerfile: FolkIdle.Server/Dockerfile
+    container_name: folk-idle-migrate
+    command: ["dotnet", "FolkIdle.Server.dll", "--migrate"]
+    environment:
+      - DOTNET_ENVIRONMENT=Production
+      - FOLKIDLE_DB_CONN=Host=folk-idle-db;Port=5432;Database=folkidle_prod;Username=postgres;Password=postgres
+    depends_on:
+      - folk-idle-db
+    restart: "no"
+
   folk-idle-server:
     build:
       # Context is server/ (not server/FolkIdle.Server/) so the build can see
@@ -84,8 +105,12 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - folk-idle-db
-      - folk-idle-pgbouncer
+      folk-idle-db:
+        condition: service_started
+      folk-idle-pgbouncer:
+        condition: service_started
+      folk-idle-migrate:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 volumes:

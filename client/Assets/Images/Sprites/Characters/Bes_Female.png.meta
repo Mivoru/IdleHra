@@ -1,0 +1,2808 @@
+fileFormatVersion: 2
+guid: e441974f48bfe514b84282ffac38ecae
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 183617381589208393
+    second: Bes_Female_0
+  - first:
+      213: 4611078799175624669
+    second: Bes_Female_1
+  - first:
+      213: 6693911724067023236
+    second: Bes_Female_2
+  - first:
+      213: 1358023355038891138
+    second: Bes_Female_3
+  - first:
+      213: 4428255249678822077
+    second: Bes_Female_4
+  - first:
+      213: 363117575827965649
+    second: Bes_Female_5
+  - first:
+      213: 5807397259797386715
+    second: Bes_Female_6
+  - first:
+      213: -6484219479575342166
+    second: Bes_Female_7
+  - first:
+      213: 7798307496756436634
+    second: Bes_Female_8
+  - first:
+      213: -3452551890327197713
+    second: Bes_Female_9
+  - first:
+      213: -6089314250588193357
+    second: Bes_Female_10
+  - first:
+      213: -7878104702167373090
+    second: Bes_Female_11
+  - first:
+      213: -1265471328208247126
+    second: Bes_Female_12
+  - first:
+      213: 6175597902112071461
+    second: Bes_Female_13
+  - first:
+      213: -123063870736825087
+    second: Bes_Female_14
+  - first:
+      213: -2766987273785248622
+    second: Bes_Female_15
+  - first:
+      213: 3682822084281569643
+    second: Bes_Female_16
+  - first:
+      213: -7981560305069040826
+    second: Bes_Female_17
+  - first:
+      213: -8054521725721494208
+    second: Bes_Female_18
+  - first:
+      213: 7940310165534882695
+    second: Bes_Female_19
+  - first:
+      213: 2208106005640537705
+    second: Bes_Female_20
+  - first:
+      213: -6729304809812294569
+    second: Bes_Female_21
+  - first:
+      213: 7143965582659167293
+    second: Bes_Female_22
+  - first:
+      213: 7093647427501936375
+    second: Bes_Female_23
+  - first:
+      213: 3852090485886289351
+    second: Bes_Female_24
+  - first:
+      213: 263531707213038295
+    second: Bes_Female_25
+  - first:
+      213: -3366719899990137749
+    second: Bes_Female_26
+  - first:
+      213: -5321782004242752310
+    second: Bes_Female_27
+  - first:
+      213: -2868600273464055982
+    second: Bes_Female_28
+  - first:
+      213: 3986640949248033001
+    second: Bes_Female_29
+  - first:
+      213: -2936200061696104981
+    second: Bes_Female_30
+  - first:
+      213: -6785784554597829147
+    second: Bes_Female_31
+  - first:
+      213: 1975569194709666938
+    second: Bes_Female_32
+  - first:
+      213: -3926110539991164073
+    second: Bes_Female_33
+  - first:
+      213: -4599122677759782432
+    second: Bes_Female_34
+  - first:
+      213: 5996806535180969779
+    second: Bes_Female_35
+  - first:
+      213: -679411310005701043
+    second: Bes_Female_36
+  - first:
+      213: -4145309159671364066
+    second: Bes_Female_37
+  - first:
+      213: 5229590433321694526
+    second: Bes_Female_38
+  - first:
+      213: 5936254527347836300
+    second: Bes_Female_39
+  - first:
+      213: 6667407642565989847
+    second: Bes_Female_40
+  - first:
+      213: 2959445859713534486
+    second: Bes_Female_41
+  - first:
+      213: 7042108843227782057
+    second: Bes_Female_42
+  - first:
+      213: -1039865115318140791
+    second: Bes_Female_43
+  - first:
+      213: 2591264119416927945
+    second: Bes_Female_44
+  - first:
+      213: 2798342496757570944
+    second: Bes_Female_45
+  - first:
+      213: 7331669464040882333
+    second: Bes_Female_46
+  - first:
+      213: 8358066373457784961
+    second: Bes_Female_47
+  - first:
+      213: -2807241685478649589
+    second: Bes_Female_48
+  - first:
+      213: -6087185830317622674
+    second: Bes_Female_49
+  - first:
+      213: -3079725462704729514
+    second: Bes_Female_50
+  - first:
+      213: 587903389931305627
+    second: Bes_Female_51
+  - first:
+      213: 3548917641682212191
+    second: Bes_Female_52
+  - first:
+      213: 1337441935643953679
+    second: Bes_Female_53
+  - first:
+      213: -2569664150731815931
+    second: Bes_Female_54
+  - first:
+      213: -2251379616716415011
+    second: Bes_Female_55
+  - first:
+      213: 5673167432076979584
+    second: Bes_Female_56
+  - first:
+      213: -7975633297853987807
+    second: Bes_Female_57
+  - first:
+      213: 1019099135817063695
+    second: Bes_Female_58
+  - first:
+      213: 1512252342380838438
+    second: Bes_Female_59
+  - first:
+      213: -4133628569381740010
+    second: Bes_Female_60
+  - first:
+      213: -6777332823480347134
+    second: Bes_Female_61
+  - first:
+      213: 9073875734523159132
+    second: Bes_Female_62
+  - first:
+      213: 1262908344889271372
+    second: Bes_Female_63
+  - first:
+      213: 2185506190563063455
+    second: Bes_Female_64
+  - first:
+      213: -8011941716223191046
+    second: Bes_Female_65
+  - first:
+      213: 2244927878855044380
+    second: Bes_Female_66
+  - first:
+      213: -1640526355204259045
+    second: Bes_Female_67
+  - first:
+      213: -1461590110076326871
+    second: Bes_Female_68
+  - first:
+      213: -5526009292831313097
+    second: Bes_Female_69
+  - first:
+      213: 301921548461272870
+    second: Bes_Female_70
+  - first:
+      213: -6972183586218803654
+    second: Bes_Female_71
+  - first:
+      213: -1629000974049956226
+    second: Bes_Female_72
+  - first:
+      213: 8773145971826535896
+    second: Bes_Female_73
+  - first:
+      213: 8033544998379181579
+    second: Bes_Female_74
+  - first:
+      213: 6817329638675274432
+    second: Bes_Female_75
+  - first:
+      213: -5866435089773884377
+    second: Bes_Female_76
+  - first:
+      213: 7961455446239061879
+    second: Bes_Female_77
+  - first:
+      213: 4863953555427408411
+    second: Bes_Female_78
+  - first:
+      213: -5810853264830597213
+    second: Bes_Female_79
+  - first:
+      213: -1429441707105374596
+    second: Bes_Female_80
+  - first:
+      213: -3463519186486011082
+    second: Bes_Female_81
+  - first:
+      213: 2646280817584593028
+    second: Bes_Female_82
+  - first:
+      213: -5879010981900370735
+    second: Bes_Female_83
+  - first:
+      213: 1158751842515481585
+    second: Bes_Female_84
+  - first:
+      213: -2961033849536507364
+    second: Bes_Female_85
+  - first:
+      213: -3566405719872415094
+    second: Bes_Female_86
+  - first:
+      213: 6220112591907532592
+    second: Bes_Female_87
+  - first:
+      213: 2466467285442245147
+    second: Bes_Female_88
+  - first:
+      213: 8097199978035698006
+    second: Bes_Female_89
+  - first:
+      213: 3358714854416635086
+    second: Bes_Female_90
+  - first:
+      213: -1801646781329967406
+    second: Bes_Female_91
+  - first:
+      213: 4172250682911045200
+    second: Bes_Female_92
+  - first:
+      213: 3793880455641741073
+    second: Bes_Female_93
+  - first:
+      213: 7202973348345217801
+    second: Bes_Female_94
+  - first:
+      213: -2889894499605519477
+    second: Bes_Female_95
+  - first:
+      213: 4008165612589993679
+    second: Bes_Female_96
+  - first:
+      213: -7769383866976639267
+    second: Bes_Female_97
+  - first:
+      213: 5169651219013794525
+    second: Bes_Female_98
+  - first:
+      213: -572030569892389398
+    second: Bes_Female_99
+  - first:
+      213: -6147367737376441926
+    second: Bes_Female_100
+  - first:
+      213: -8604193352994602381
+    second: Bes_Female_101
+  - first:
+      213: -1239726664416766228
+    second: Bes_Female_102
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Bes_Female_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1365
+        width: 380
+        height: 171
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 94d463429075c8200800000000000000
+      internalID: 183617381589208393
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_1
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1233
+        height: 1432
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dd7a230ccb7ddff30800000000000000
+      internalID: 4611078799175624669
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_2
+      rect:
+        serializedVersion: 2
+        x: 381
+        y: 1432
+        width: 82
+        height: 101
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48966d64f3d85ec50800000000000000
+      internalID: 6693911724067023236
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_3
+      rect:
+        serializedVersion: 2
+        x: 464
+        y: 1432
+        width: 153
+        height: 104
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28cf6c9db0ba8d210800000000000000
+      internalID: 1358023355038891138
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_4
+      rect:
+        serializedVersion: 2
+        x: 619
+        y: 1429
+        width: 122
+        height: 107
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dba6ddb00b2547d30800000000000000
+      internalID: 4428255249678822077
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_5
+      rect:
+        serializedVersion: 2
+        x: 740
+        y: 1429
+        width: 397
+        height: 107
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1d64de6e28d0a0500800000000000000
+      internalID: 363117575827965649
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_6
+      rect:
+        serializedVersion: 2
+        x: 1136
+        y: 0
+        width: 174
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd5dcc3f905089050800000000000000
+      internalID: 5807397259797386715
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_7
+      rect:
+        serializedVersion: 2
+        x: 1268
+        y: 0
+        width: 157
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa35e3afcbc6306a0800000000000000
+      internalID: -6484219479575342166
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_8
+      rect:
+        serializedVersion: 2
+        x: 1253
+        y: 1393
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9ede61e957293c60800000000000000
+      internalID: 7798307496756436634
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_9
+      rect:
+        serializedVersion: 2
+        x: 1266
+        y: 1399
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe7a17029521610d0800000000000000
+      internalID: -3452551890327197713
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_10
+      rect:
+        serializedVersion: 2
+        x: 1206
+        y: 1385
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3bd77ff93f86e7ba0800000000000000
+      internalID: -6089314250588193357
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_11
+      rect:
+        serializedVersion: 2
+        x: 1380
+        y: 1383
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: edaaafb63895ba290800000000000000
+      internalID: -7878104702167373090
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_12
+      rect:
+        serializedVersion: 2
+        x: 1401
+        y: 1370
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa6a4b02884207ee0800000000000000
+      internalID: -1265471328208247126
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_13
+      rect:
+        serializedVersion: 2
+        x: 1383
+        y: 1335
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 52f990f729124b550800000000000000
+      internalID: 6175597902112071461
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_14
+      rect:
+        serializedVersion: 2
+        x: 1326
+        y: 1273
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1050c04cf0aca4ef0800000000000000
+      internalID: -123063870736825087
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_15
+      rect:
+        serializedVersion: 2
+        x: 1392
+        y: 1239
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 294f0001cbfa999d0800000000000000
+      internalID: -2766987273785248622
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_16
+      rect:
+        serializedVersion: 2
+        x: 1274
+        y: 1221
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b6111985c230c1330800000000000000
+      internalID: 3682822084281569643
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_17
+      rect:
+        serializedVersion: 2
+        x: 1282
+        y: 1227
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 64b500fc03dcb3190800000000000000
+      internalID: -7981560305069040826
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_18
+      rect:
+        serializedVersion: 2
+        x: 1392
+        y: 1225
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 04d34b64a27983090800000000000000
+      internalID: -8054521725721494208
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_19
+      rect:
+        serializedVersion: 2
+        x: 1379
+        y: 1178
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 78b3127a606a13e60800000000000000
+      internalID: 7940310165534882695
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_20
+      rect:
+        serializedVersion: 2
+        x: 1185
+        y: 1164
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9666c9c86b4c4ae10800000000000000
+      internalID: 2208106005640537705
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_21
+      rect:
+        serializedVersion: 2
+        x: 1396
+        y: 1121
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7548fc9cde4bc92a0800000000000000
+      internalID: -6729304809812294569
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_22
+      rect:
+        serializedVersion: 2
+        x: 20
+        y: 1111
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d34240ad8d6742360800000000000000
+      internalID: 7143965582659167293
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_23
+      rect:
+        serializedVersion: 2
+        x: 10
+        y: 1092
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7fecd1660c2b17260800000000000000
+      internalID: 7093647427501936375
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_24
+      rect:
+        serializedVersion: 2
+        x: 1380
+        y: 1077
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7c50aed33ef557530800000000000000
+      internalID: 3852090485886289351
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_25
+      rect:
+        serializedVersion: 2
+        x: 1175
+        y: 1018
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d24c7301b048a300800000000000000
+      internalID: 263531707213038295
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_26
+      rect:
+        serializedVersion: 2
+        x: 1376
+        y: 1004
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b6469dea6120741d0800000000000000
+      internalID: -3366719899990137749
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_27
+      rect:
+        serializedVersion: 2
+        x: 1186
+        y: 981
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: acc5b01967b3526b0800000000000000
+      internalID: -5321782004242752310
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_28
+      rect:
+        serializedVersion: 2
+        x: 1349
+        y: 966
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2572691ff3fa038d0800000000000000
+      internalID: -2868600273464055982
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_29
+      rect:
+        serializedVersion: 2
+        x: 1355
+        y: 963
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9e084fa32d4635730800000000000000
+      internalID: 3986640949248033001
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_30
+      rect:
+        serializedVersion: 2
+        x: 1192
+        y: 935
+        width: 8
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be5af1db9958047d0800000000000000
+      internalID: -2936200061696104981
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_31
+      rect:
+        serializedVersion: 2
+        x: 1248
+        y: 921
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5e53dd476ec04d1a0800000000000000
+      internalID: -6785784554597829147
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_32
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 895
+        width: 12
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a7ccfdf27b1aa6b10800000000000000
+      internalID: 1975569194709666938
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_33
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 913
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 75bd8eae347a389c0800000000000000
+      internalID: -3926110539991164073
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_34
+      rect:
+        serializedVersion: 2
+        x: 1376
+        y: 901
+        width: 15
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0e15fa1ba42ac20c0800000000000000
+      internalID: -4599122677759782432
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_35
+      rect:
+        serializedVersion: 2
+        x: 1400
+        y: 910
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 337e33475cfe83350800000000000000
+      internalID: 5996806535180969779
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_36
+      rect:
+        serializedVersion: 2
+        x: 1253
+        y: 877
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d463ab2630f3296f0800000000000000
+      internalID: -679411310005701043
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_37
+      rect:
+        serializedVersion: 2
+        x: 1204
+        y: 854
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e168d953847e876c0800000000000000
+      internalID: -4145309159671364066
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_38
+      rect:
+        serializedVersion: 2
+        x: 1231
+        y: 862
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e35bbe2aacc339840800000000000000
+      internalID: 5229590433321694526
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_39
+      rect:
+        serializedVersion: 2
+        x: 1379
+        y: 857
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c854fde7a00d16250800000000000000
+      internalID: 5936254527347836300
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_40
+      rect:
+        serializedVersion: 2
+        x: 17
+        y: 852
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d5dedbece3678c50800000000000000
+      internalID: 6667407642565989847
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_41
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 798
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61ac9306450121920800000000000000
+      internalID: 2959445859713534486
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_42
+      rect:
+        serializedVersion: 2
+        x: 1264
+        y: 793
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9ab9a36aea89ab160800000000000000
+      internalID: 7042108843227782057
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_43
+      rect:
+        serializedVersion: 2
+        x: 1305
+        y: 771
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9804423ef28a191f0800000000000000
+      internalID: -1039865115318140791
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_44
+      rect:
+        serializedVersion: 2
+        x: 1380
+        y: 772
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9c6bf0dccf406f320800000000000000
+      internalID: 2591264119416927945
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_45
+      rect:
+        serializedVersion: 2
+        x: 1193
+        y: 756
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 08d5d1faca5b5d620800000000000000
+      internalID: 2798342496757570944
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_46
+      rect:
+        serializedVersion: 2
+        x: 1171
+        y: 722
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d904cbe58825fb560800000000000000
+      internalID: 7331669464040882333
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_47
+      rect:
+        serializedVersion: 2
+        x: 1354
+        y: 687
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 180b61f6511ddf370800000000000000
+      internalID: 8358066373457784961
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_48
+      rect:
+        serializedVersion: 2
+        x: 1388
+        y: 687
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b01506a7f8caa09d0800000000000000
+      internalID: -2807241685478649589
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_49
+      rect:
+        serializedVersion: 2
+        x: 1379
+        y: 660
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e6a70261db8f58ba0800000000000000
+      internalID: -6087185830317622674
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_50
+      rect:
+        serializedVersion: 2
+        x: 1186
+        y: 633
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 65252cd320e9245d0800000000000000
+      internalID: -3079725462704729514
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_51
+      rect:
+        serializedVersion: 2
+        x: 1403
+        y: 630
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9a7a1fa407a82800800000000000000
+      internalID: 587903389931305627
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_52
+      rect:
+        serializedVersion: 2
+        x: 1386
+        y: 624
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f55d599cac9404130800000000000000
+      internalID: 3548917641682212191
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_53
+      rect:
+        serializedVersion: 2
+        x: 1400
+        y: 592
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0ac4c9ba5c8f8210800000000000000
+      internalID: 1337441935643953679
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_54
+      rect:
+        serializedVersion: 2
+        x: 1376
+        y: 570
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 504039fc118b65cd0800000000000000
+      internalID: -2569664150731815931
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_55
+      rect:
+        serializedVersion: 2
+        x: 1185
+        y: 494
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ddf101bba2e71c0e0800000000000000
+      internalID: -2251379616716415011
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_56
+      rect:
+        serializedVersion: 2
+        x: 1385
+        y: 481
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 08d6344c8b32bbe40800000000000000
+      internalID: 5673167432076979584
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_57
+      rect:
+        serializedVersion: 2
+        x: 1384
+        y: 467
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 124c2a6b5cbd05190800000000000000
+      internalID: -7975633297853987807
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_58
+      rect:
+        serializedVersion: 2
+        x: 1383
+        y: 423
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0d984db341942e00800000000000000
+      internalID: 1019099135817063695
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_59
+      rect:
+        serializedVersion: 2
+        x: 1186
+        y: 390
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 62ebc5e3e799cf410800000000000000
+      internalID: 1512252342380838438
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_60
+      rect:
+        serializedVersion: 2
+        x: 1220
+        y: 387
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 612689097b662a6c0800000000000000
+      internalID: -4133628569381740010
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_61
+      rect:
+        serializedVersion: 2
+        x: 1290
+        y: 393
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 206dbd374b312f1a0800000000000000
+      internalID: -6777332823480347134
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_62
+      rect:
+        serializedVersion: 2
+        x: 1177
+        y: 381
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c522a44b7e1eced70800000000000000
+      internalID: 9073875734523159132
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_63
+      rect:
+        serializedVersion: 2
+        x: 1291
+        y: 364
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c446001d270c68110800000000000000
+      internalID: 1262908344889271372
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_64
+      rect:
+        serializedVersion: 2
+        x: 1187
+        y: 351
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f96bdee0d4a745e10800000000000000
+      internalID: 2185506190563063455
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_65
+      rect:
+        serializedVersion: 2
+        x: 1252
+        y: 335
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: af7126b457ddfc090800000000000000
+      internalID: -8011941716223191046
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_66
+      rect:
+        serializedVersion: 2
+        x: 1319
+        y: 335
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c1da68df206972f10800000000000000
+      internalID: 2244927878855044380
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_67
+      rect:
+        serializedVersion: 2
+        x: 1184
+        y: 281
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b134269c8fdab39e0800000000000000
+      internalID: -1640526355204259045
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_68
+      rect:
+        serializedVersion: 2
+        x: 1191
+        y: 262
+        width: 10
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92c2da9e98367bbe0800000000000000
+      internalID: -1461590110076326871
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_69
+      rect:
+        serializedVersion: 2
+        x: 1167
+        y: 260
+        width: 13
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 733384383dbaf43b0800000000000000
+      internalID: -5526009292831313097
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_70
+      rect:
+        serializedVersion: 2
+        x: 1205
+        y: 248
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 62fe1167c04a03400800000000000000
+      internalID: 301921548461272870
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_71
+      rect:
+        serializedVersion: 2
+        x: 11
+        y: 225
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a3e7e92f7f3dd3f90800000000000000
+      internalID: -6972183586218803654
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_72
+      rect:
+        serializedVersion: 2
+        x: 1205
+        y: 222
+        width: 12
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7eacf2be30a469e0800000000000000
+      internalID: -1629000974049956226
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_73
+      rect:
+        serializedVersion: 2
+        x: 1167
+        y: 208
+        width: 10
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8ddae5d77c970c970800000000000000
+      internalID: 8773145971826535896
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_74
+      rect:
+        serializedVersion: 2
+        x: 1174
+        y: 196
+        width: 8
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b06d18bcc92ec7f60800000000000000
+      internalID: 8033544998379181579
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_75
+      rect:
+        serializedVersion: 2
+        x: 1193
+        y: 208
+        width: 10
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ca5bf5cf250c9e50800000000000000
+      internalID: 6817329638675274432
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_76
+      rect:
+        serializedVersion: 2
+        x: 1179
+        y: 191
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 72c04281e5c369ea0800000000000000
+      internalID: -5866435089773884377
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_77
+      rect:
+        serializedVersion: 2
+        x: 1362
+        y: 180
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 777ad28fb85cc7e60800000000000000
+      internalID: 7961455446239061879
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_78
+      rect:
+        serializedVersion: 2
+        x: 1192
+        y: 149
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b1abf330dfb308340800000000000000
+      internalID: 4863953555427408411
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_79
+      rect:
+        serializedVersion: 2
+        x: 1190
+        y: 130
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a77adb2eb3bb5fa0800000000000000
+      internalID: -5810853264830597213
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_80
+      rect:
+        serializedVersion: 2
+        x: 1355
+        y: 138
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c7e2bd4475a992ce0800000000000000
+      internalID: -1429441707105374596
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_81
+      rect:
+        serializedVersion: 2
+        x: 1398
+        y: 114
+        width: 10
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 63b50c086ab1fefc0800000000000000
+      internalID: -3463519186486011082
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_82
+      rect:
+        serializedVersion: 2
+        x: 1252
+        y: 94
+        width: 21
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4885f0c026a79b420800000000000000
+      internalID: 2646280817584593028
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_83
+      rect:
+        serializedVersion: 2
+        x: 1269
+        y: 50
+        width: 13
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1dc353909ae896ea0800000000000000
+      internalID: -5879010981900370735
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_84
+      rect:
+        serializedVersion: 2
+        x: 1363
+        y: 60
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1f3f6f359a6b41010800000000000000
+      internalID: 1158751842515481585
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_85
+      rect:
+        serializedVersion: 2
+        x: 54
+        y: 36
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c12187ee66b48e6d0800000000000000
+      internalID: -2961033849536507364
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_86
+      rect:
+        serializedVersion: 2
+        x: 94
+        y: 36
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a8a5516b4e4918ec0800000000000000
+      internalID: -3566405719872415094
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_87
+      rect:
+        serializedVersion: 2
+        x: 336
+        y: 36
+        width: 9
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 03f259f5277425650800000000000000
+      internalID: 6220112591907532592
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_88
+      rect:
+        serializedVersion: 2
+        x: 492
+        y: 36
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b1238ee9de6aa3220800000000000000
+      internalID: 2466467285442245147
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_89
+      rect:
+        serializedVersion: 2
+        x: 564
+        y: 34
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6595e1eaa780f5070800000000000000
+      internalID: 8097199978035698006
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_90
+      rect:
+        serializedVersion: 2
+        x: 1171
+        y: 36
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ec4d4576d5d8c9e20800000000000000
+      internalID: 3358714854416635086
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_91
+      rect:
+        serializedVersion: 2
+        x: 1190
+        y: 41
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2d6f9144cc34ff6e0800000000000000
+      internalID: -1801646781329967406
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_92
+      rect:
+        serializedVersion: 2
+        x: 1378
+        y: 36
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0563bccf3efc6e930800000000000000
+      internalID: 4172250682911045200
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_93
+      rect:
+        serializedVersion: 2
+        x: 122
+        y: 32
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 117b2de6c2296a430800000000000000
+      internalID: 3793880455641741073
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_94
+      rect:
+        serializedVersion: 2
+        x: 599
+        y: 28
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 90309bae81a16f360800000000000000
+      internalID: 7202973348345217801
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_95
+      rect:
+        serializedVersion: 2
+        x: 768
+        y: 28
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b8368a0934805e7d0800000000000000
+      internalID: -2889894499605519477
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_96
+      rect:
+        serializedVersion: 2
+        x: 872
+        y: 31
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fcecc53736ddf9730800000000000000
+      internalID: 4008165612589993679
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_97
+      rect:
+        serializedVersion: 2
+        x: 334
+        y: 22
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dd6e435798a9d2490800000000000000
+      internalID: -7769383866976639267
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_98
+      rect:
+        serializedVersion: 2
+        x: 529
+        y: 20
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dda7bf9c46a4eb740800000000000000
+      internalID: 5169651219013794525
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_99
+      rect:
+        serializedVersion: 2
+        x: 786
+        y: 13
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aed56e83a3dbf08f0800000000000000
+      internalID: -572030569892389398
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_100
+      rect:
+        serializedVersion: 2
+        x: 449
+        y: 13
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab9fafdec9920baa0800000000000000
+      internalID: -6147367737376441926
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_101
+      rect:
+        serializedVersion: 2
+        x: 899
+        y: 7
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 372caff7bb3c79880800000000000000
+      internalID: -8604193352994602381
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Bes_Female_102
+      rect:
+        serializedVersion: 2
+        x: 1371
+        y: 8
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce6dbd4ca2b9bcee0800000000000000
+      internalID: -1239726664416766228
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Bes_Female_0: 183617381589208393
+      Bes_Female_1: 4611078799175624669
+      Bes_Female_10: -6089314250588193357
+      Bes_Female_100: -6147367737376441926
+      Bes_Female_101: -8604193352994602381
+      Bes_Female_102: -1239726664416766228
+      Bes_Female_11: -7878104702167373090
+      Bes_Female_12: -1265471328208247126
+      Bes_Female_13: 6175597902112071461
+      Bes_Female_14: -123063870736825087
+      Bes_Female_15: -2766987273785248622
+      Bes_Female_16: 3682822084281569643
+      Bes_Female_17: -7981560305069040826
+      Bes_Female_18: -8054521725721494208
+      Bes_Female_19: 7940310165534882695
+      Bes_Female_2: 6693911724067023236
+      Bes_Female_20: 2208106005640537705
+      Bes_Female_21: -6729304809812294569
+      Bes_Female_22: 7143965582659167293
+      Bes_Female_23: 7093647427501936375
+      Bes_Female_24: 3852090485886289351
+      Bes_Female_25: 263531707213038295
+      Bes_Female_26: -3366719899990137749
+      Bes_Female_27: -5321782004242752310
+      Bes_Female_28: -2868600273464055982
+      Bes_Female_29: 3986640949248033001
+      Bes_Female_3: 1358023355038891138
+      Bes_Female_30: -2936200061696104981
+      Bes_Female_31: -6785784554597829147
+      Bes_Female_32: 1975569194709666938
+      Bes_Female_33: -3926110539991164073
+      Bes_Female_34: -4599122677759782432
+      Bes_Female_35: 5996806535180969779
+      Bes_Female_36: -679411310005701043
+      Bes_Female_37: -4145309159671364066
+      Bes_Female_38: 5229590433321694526
+      Bes_Female_39: 5936254527347836300
+      Bes_Female_4: 4428255249678822077
+      Bes_Female_40: 6667407642565989847
+      Bes_Female_41: 2959445859713534486
+      Bes_Female_42: 7042108843227782057
+      Bes_Female_43: -1039865115318140791
+      Bes_Female_44: 2591264119416927945
+      Bes_Female_45: 2798342496757570944
+      Bes_Female_46: 7331669464040882333
+      Bes_Female_47: 8358066373457784961
+      Bes_Female_48: -2807241685478649589
+      Bes_Female_49: -6087185830317622674
+      Bes_Female_5: 363117575827965649
+      Bes_Female_50: -3079725462704729514
+      Bes_Female_51: 587903389931305627
+      Bes_Female_52: 3548917641682212191
+      Bes_Female_53: 1337441935643953679
+      Bes_Female_54: -2569664150731815931
+      Bes_Female_55: -2251379616716415011
+      Bes_Female_56: 5673167432076979584
+      Bes_Female_57: -7975633297853987807
+      Bes_Female_58: 1019099135817063695
+      Bes_Female_59: 1512252342380838438
+      Bes_Female_6: 5807397259797386715
+      Bes_Female_60: -4133628569381740010
+      Bes_Female_61: -6777332823480347134
+      Bes_Female_62: 9073875734523159132
+      Bes_Female_63: 1262908344889271372
+      Bes_Female_64: 2185506190563063455
+      Bes_Female_65: -8011941716223191046
+      Bes_Female_66: 2244927878855044380
+      Bes_Female_67: -1640526355204259045
+      Bes_Female_68: -1461590110076326871
+      Bes_Female_69: -5526009292831313097
+      Bes_Female_7: -6484219479575342166
+      Bes_Female_70: 301921548461272870
+      Bes_Female_71: -6972183586218803654
+      Bes_Female_72: -1629000974049956226
+      Bes_Female_73: 8773145971826535896
+      Bes_Female_74: 8033544998379181579
+      Bes_Female_75: 6817329638675274432
+      Bes_Female_76: -5866435089773884377
+      Bes_Female_77: 7961455446239061879
+      Bes_Female_78: 4863953555427408411
+      Bes_Female_79: -5810853264830597213
+      Bes_Female_8: 7798307496756436634
+      Bes_Female_80: -1429441707105374596
+      Bes_Female_81: -3463519186486011082
+      Bes_Female_82: 2646280817584593028
+      Bes_Female_83: -5879010981900370735
+      Bes_Female_84: 1158751842515481585
+      Bes_Female_85: -2961033849536507364
+      Bes_Female_86: -3566405719872415094
+      Bes_Female_87: 6220112591907532592
+      Bes_Female_88: 2466467285442245147
+      Bes_Female_89: 8097199978035698006
+      Bes_Female_9: -3452551890327197713
+      Bes_Female_90: 3358714854416635086
+      Bes_Female_91: -1801646781329967406
+      Bes_Female_92: 4172250682911045200
+      Bes_Female_93: 3793880455641741073
+      Bes_Female_94: 7202973348345217801
+      Bes_Female_95: -2889894499605519477
+      Bes_Female_96: 4008165612589993679
+      Bes_Female_97: -7769383866976639267
+      Bes_Female_98: 5169651219013794525
+      Bes_Female_99: -572030569892389398
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

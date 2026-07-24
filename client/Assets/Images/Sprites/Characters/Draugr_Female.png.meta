@@ -1,0 +1,4394 @@
+fileFormatVersion: 2
+guid: c7b217dbe0722654fb7588fc48568d89
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 2470570565502882816
+    second: Draugr_Female_0
+  - first:
+      213: 8564504125994923773
+    second: Draugr_Female_1
+  - first:
+      213: 6678801579233498596
+    second: Draugr_Female_2
+  - first:
+      213: -2470616504089775612
+    second: Draugr_Female_3
+  - first:
+      213: -641752171585596613
+    second: Draugr_Female_4
+  - first:
+      213: 8234344246148696873
+    second: Draugr_Female_5
+  - first:
+      213: -1096378050964448850
+    second: Draugr_Female_6
+  - first:
+      213: -8630514865400470858
+    second: Draugr_Female_7
+  - first:
+      213: 1596104636647996197
+    second: Draugr_Female_8
+  - first:
+      213: -7949099037083478341
+    second: Draugr_Female_9
+  - first:
+      213: 2539433593971804650
+    second: Draugr_Female_10
+  - first:
+      213: -7577136882507491267
+    second: Draugr_Female_11
+  - first:
+      213: -6194270918675059713
+    second: Draugr_Female_12
+  - first:
+      213: 9169764691888334148
+    second: Draugr_Female_13
+  - first:
+      213: 5074766189977575806
+    second: Draugr_Female_14
+  - first:
+      213: -7846053507646919438
+    second: Draugr_Female_15
+  - first:
+      213: 6391346464070946875
+    second: Draugr_Female_16
+  - first:
+      213: 8611460095255234255
+    second: Draugr_Female_17
+  - first:
+      213: 2929370030960331290
+    second: Draugr_Female_18
+  - first:
+      213: 2980817944263521337
+    second: Draugr_Female_19
+  - first:
+      213: -1586327852634577586
+    second: Draugr_Female_20
+  - first:
+      213: 76660400007112732
+    second: Draugr_Female_21
+  - first:
+      213: 6042093568705441665
+    second: Draugr_Female_22
+  - first:
+      213: 8209007891553100665
+    second: Draugr_Female_23
+  - first:
+      213: -2979015092278177311
+    second: Draugr_Female_24
+  - first:
+      213: -2956250798175060250
+    second: Draugr_Female_25
+  - first:
+      213: -1360849446383365643
+    second: Draugr_Female_26
+  - first:
+      213: 2255937116473260342
+    second: Draugr_Female_27
+  - first:
+      213: 6772379274065283624
+    second: Draugr_Female_28
+  - first:
+      213: 4492447942359479059
+    second: Draugr_Female_29
+  - first:
+      213: -3626863603072205829
+    second: Draugr_Female_30
+  - first:
+      213: -1730269476413557646
+    second: Draugr_Female_31
+  - first:
+      213: 1005192258851377880
+    second: Draugr_Female_32
+  - first:
+      213: 122624843544795838
+    second: Draugr_Female_33
+  - first:
+      213: -5277836973173700707
+    second: Draugr_Female_34
+  - first:
+      213: 7838973151767312623
+    second: Draugr_Female_35
+  - first:
+      213: -6352151171567402986
+    second: Draugr_Female_36
+  - first:
+      213: 7669704755706408965
+    second: Draugr_Female_37
+  - first:
+      213: -2722593402395795992
+    second: Draugr_Female_38
+  - first:
+      213: 3405963239048227875
+    second: Draugr_Female_39
+  - first:
+      213: 3214611619411765081
+    second: Draugr_Female_40
+  - first:
+      213: 1023154523873486521
+    second: Draugr_Female_41
+  - first:
+      213: 6029729356450302210
+    second: Draugr_Female_42
+  - first:
+      213: -1228362231457161552
+    second: Draugr_Female_43
+  - first:
+      213: -6458558976609831107
+    second: Draugr_Female_44
+  - first:
+      213: 8630433064114673558
+    second: Draugr_Female_45
+  - first:
+      213: 6662110045080210955
+    second: Draugr_Female_46
+  - first:
+      213: -1117874120183380140
+    second: Draugr_Female_47
+  - first:
+      213: 2706993822371856494
+    second: Draugr_Female_48
+  - first:
+      213: 5882638642464610438
+    second: Draugr_Female_49
+  - first:
+      213: 4470195329671378533
+    second: Draugr_Female_50
+  - first:
+      213: -6492931155277067039
+    second: Draugr_Female_51
+  - first:
+      213: 2579172893514416169
+    second: Draugr_Female_52
+  - first:
+      213: -5129755515510103948
+    second: Draugr_Female_53
+  - first:
+      213: -7288624306513305160
+    second: Draugr_Female_54
+  - first:
+      213: 7205131056917526535
+    second: Draugr_Female_55
+  - first:
+      213: -3306789311563313226
+    second: Draugr_Female_56
+  - first:
+      213: -6982686230032473427
+    second: Draugr_Female_57
+  - first:
+      213: 7710408675611868439
+    second: Draugr_Female_58
+  - first:
+      213: -8300578219558822186
+    second: Draugr_Female_59
+  - first:
+      213: 6160531367528281486
+    second: Draugr_Female_60
+  - first:
+      213: -5189983795692887664
+    second: Draugr_Female_61
+  - first:
+      213: -4204662498656972506
+    second: Draugr_Female_62
+  - first:
+      213: -2707664939549144194
+    second: Draugr_Female_63
+  - first:
+      213: 7028741179045735832
+    second: Draugr_Female_64
+  - first:
+      213: 276294542576505328
+    second: Draugr_Female_65
+  - first:
+      213: 157150183776240572
+    second: Draugr_Female_66
+  - first:
+      213: 5362452573016681115
+    second: Draugr_Female_67
+  - first:
+      213: -8094946697022043996
+    second: Draugr_Female_68
+  - first:
+      213: -5848280239141017558
+    second: Draugr_Female_69
+  - first:
+      213: -3571115663980894272
+    second: Draugr_Female_70
+  - first:
+      213: 1041908525449274987
+    second: Draugr_Female_71
+  - first:
+      213: -2007201239010466228
+    second: Draugr_Female_72
+  - first:
+      213: -3503426145368320981
+    second: Draugr_Female_73
+  - first:
+      213: -7805544528169814247
+    second: Draugr_Female_74
+  - first:
+      213: 1174148037153374565
+    second: Draugr_Female_75
+  - first:
+      213: 5757923739387153855
+    second: Draugr_Female_76
+  - first:
+      213: -7614334575635763666
+    second: Draugr_Female_77
+  - first:
+      213: 8792630582563072838
+    second: Draugr_Female_78
+  - first:
+      213: -1227328269649083963
+    second: Draugr_Female_79
+  - first:
+      213: -1553703726495464811
+    second: Draugr_Female_80
+  - first:
+      213: 6240053126489549096
+    second: Draugr_Female_81
+  - first:
+      213: -5285529814425052744
+    second: Draugr_Female_82
+  - first:
+      213: 397763959232465137
+    second: Draugr_Female_83
+  - first:
+      213: 3841524338414505978
+    second: Draugr_Female_84
+  - first:
+      213: 4568622596367660268
+    second: Draugr_Female_85
+  - first:
+      213: -3044285554588625668
+    second: Draugr_Female_86
+  - first:
+      213: 843145885518881444
+    second: Draugr_Female_87
+  - first:
+      213: -6077624047883943719
+    second: Draugr_Female_88
+  - first:
+      213: -1623609363231153014
+    second: Draugr_Female_89
+  - first:
+      213: -2197373159898847062
+    second: Draugr_Female_90
+  - first:
+      213: -1640827187356349808
+    second: Draugr_Female_91
+  - first:
+      213: 4019390049751268564
+    second: Draugr_Female_92
+  - first:
+      213: 8494217958312799526
+    second: Draugr_Female_93
+  - first:
+      213: -7544066347581011317
+    second: Draugr_Female_94
+  - first:
+      213: -2607089381589769634
+    second: Draugr_Female_95
+  - first:
+      213: -4846031620685999370
+    second: Draugr_Female_96
+  - first:
+      213: -5063190716408393901
+    second: Draugr_Female_97
+  - first:
+      213: 6056616893936930762
+    second: Draugr_Female_98
+  - first:
+      213: -1577751648021332807
+    second: Draugr_Female_99
+  - first:
+      213: -5207945065313708322
+    second: Draugr_Female_100
+  - first:
+      213: -4132427544909238360
+    second: Draugr_Female_101
+  - first:
+      213: 4815133254813434661
+    second: Draugr_Female_102
+  - first:
+      213: -3272858136176519300
+    second: Draugr_Female_103
+  - first:
+      213: 3659246048828699139
+    second: Draugr_Female_104
+  - first:
+      213: 368051538799443270
+    second: Draugr_Female_105
+  - first:
+      213: 2329239964361557582
+    second: Draugr_Female_106
+  - first:
+      213: -3011858594240213047
+    second: Draugr_Female_107
+  - first:
+      213: -5011122698798617742
+    second: Draugr_Female_108
+  - first:
+      213: 706575207507158621
+    second: Draugr_Female_109
+  - first:
+      213: 7391959506845653246
+    second: Draugr_Female_110
+  - first:
+      213: 5250771116780205866
+    second: Draugr_Female_111
+  - first:
+      213: -6523328783002446869
+    second: Draugr_Female_112
+  - first:
+      213: -2524843234789443183
+    second: Draugr_Female_113
+  - first:
+      213: 7129144345649070572
+    second: Draugr_Female_114
+  - first:
+      213: 2327579762956279777
+    second: Draugr_Female_115
+  - first:
+      213: 6476945487672094179
+    second: Draugr_Female_116
+  - first:
+      213: -9076595592976881347
+    second: Draugr_Female_117
+  - first:
+      213: 8809343936735502066
+    second: Draugr_Female_118
+  - first:
+      213: -6841397094040837809
+    second: Draugr_Female_119
+  - first:
+      213: -9102235603256152745
+    second: Draugr_Female_120
+  - first:
+      213: -9036529078980508978
+    second: Draugr_Female_121
+  - first:
+      213: 4468402665579538781
+    second: Draugr_Female_122
+  - first:
+      213: 2548424202538340715
+    second: Draugr_Female_123
+  - first:
+      213: -8971382946092458657
+    second: Draugr_Female_124
+  - first:
+      213: 4024783316818267607
+    second: Draugr_Female_125
+  - first:
+      213: -8340466905883564981
+    second: Draugr_Female_126
+  - first:
+      213: 7023494562070486211
+    second: Draugr_Female_127
+  - first:
+      213: -3982602061459927317
+    second: Draugr_Female_128
+  - first:
+      213: 8225674329295999988
+    second: Draugr_Female_129
+  - first:
+      213: -1708098274153172477
+    second: Draugr_Female_130
+  - first:
+      213: 2356460163091805458
+    second: Draugr_Female_131
+  - first:
+      213: 6844735699193600799
+    second: Draugr_Female_132
+  - first:
+      213: -1209605136339649931
+    second: Draugr_Female_133
+  - first:
+      213: -7512885866991814155
+    second: Draugr_Female_134
+  - first:
+      213: -3027419078935156713
+    second: Draugr_Female_135
+  - first:
+      213: 3903032292907366715
+    second: Draugr_Female_136
+  - first:
+      213: 1666896308182206322
+    second: Draugr_Female_137
+  - first:
+      213: 8947568024386343673
+    second: Draugr_Female_138
+  - first:
+      213: -3208007121078303458
+    second: Draugr_Female_139
+  - first:
+      213: 2151958342436780854
+    second: Draugr_Female_140
+  - first:
+      213: 7683327227905529456
+    second: Draugr_Female_141
+  - first:
+      213: -2355944839048378690
+    second: Draugr_Female_142
+  - first:
+      213: -8197767426545053525
+    second: Draugr_Female_143
+  - first:
+      213: -982322566285268520
+    second: Draugr_Female_144
+  - first:
+      213: -8121918488821560737
+    second: Draugr_Female_145
+  - first:
+      213: -421276029333188948
+    second: Draugr_Female_146
+  - first:
+      213: -8988769182189483766
+    second: Draugr_Female_147
+  - first:
+      213: -7113240049869778368
+    second: Draugr_Female_148
+  - first:
+      213: 5787719228255777833
+    second: Draugr_Female_149
+  - first:
+      213: -8299209576276168112
+    second: Draugr_Female_150
+  - first:
+      213: -1176866846129962832
+    second: Draugr_Female_151
+  - first:
+      213: 6522157125248293978
+    second: Draugr_Female_152
+  - first:
+      213: 518391939638480773
+    second: Draugr_Female_153
+  - first:
+      213: -1505092126700388541
+    second: Draugr_Female_154
+  - first:
+      213: -704065547650918932
+    second: Draugr_Female_155
+  - first:
+      213: 7326382745841201970
+    second: Draugr_Female_156
+  - first:
+      213: -3913235590320749876
+    second: Draugr_Female_157
+  - first:
+      213: -2464522331198446679
+    second: Draugr_Female_158
+  - first:
+      213: 942751799684925938
+    second: Draugr_Female_159
+  - first:
+      213: 1064380875982985261
+    second: Draugr_Female_160
+  - first:
+      213: -5766445081003139649
+    second: Draugr_Female_161
+  - first:
+      213: 5104587167929774481
+    second: Draugr_Female_162
+  - first:
+      213: -875479263602083577
+    second: Draugr_Female_163
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 1
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Draugr_Female_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 117
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 004d555f6da394220800000000000000
+      internalID: 2470570565502882816
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_1
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 0
+        width: 1085
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: df67b4b302b3bd670800000000000000
+      internalID: 8564504125994923773
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_2
+      rect:
+        serializedVersion: 2
+        x: 534
+        y: 1518
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4e5d78786aedfac50800000000000000
+      internalID: 6678801579233498596
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_3
+      rect:
+        serializedVersion: 2
+        x: 1082
+        y: 1470
+        width: 14
+        height: 66
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 402f281216b96bdd0800000000000000
+      internalID: -2470616504089775612
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_4
+      rect:
+        serializedVersion: 2
+        x: 1105
+        y: 0
+        width: 130
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b331ec2dcc90817f0800000000000000
+      internalID: -641752171585596613
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_5
+      rect:
+        serializedVersion: 2
+        x: 1190
+        y: 427
+        width: 127
+        height: 1109
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92b89f5e674464270800000000000000
+      internalID: 8234344246148696873
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_6
+      rect:
+        serializedVersion: 2
+        x: 1219
+        y: 0
+        width: 194
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ea99ab4b8f1e8c0f0800000000000000
+      internalID: -1096378050964448850
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_7
+      rect:
+        serializedVersion: 2
+        x: 1231
+        y: 1471
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6b2a313d4704a3880800000000000000
+      internalID: -8630514865400470858
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_8
+      rect:
+        serializedVersion: 2
+        x: 920
+        y: 1447
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 52bf1c3e5b0862610800000000000000
+      internalID: 1596104636647996197
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_9
+      rect:
+        serializedVersion: 2
+        x: 280
+        y: 1427
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bb65d3aba802fa190800000000000000
+      internalID: -7949099037083478341
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_10
+      rect:
+        serializedVersion: 2
+        x: 44
+        y: 1413
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ae902633661ed3320800000000000000
+      internalID: 2539433593971804650
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_11
+      rect:
+        serializedVersion: 2
+        x: 216
+        y: 1416
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d3851a7962a98d690800000000000000
+      internalID: -7577136882507491267
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_12
+      rect:
+        serializedVersion: 2
+        x: 210
+        y: 1397
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ffb27d90b67890aa0800000000000000
+      internalID: -6194270918675059713
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_13
+      rect:
+        serializedVersion: 2
+        x: 1363
+        y: 1378
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4456ced576c814f70800000000000000
+      internalID: 9169764691888334148
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_14
+      rect:
+        serializedVersion: 2
+        x: 179
+        y: 1360
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e71a6c766f03d6640800000000000000
+      internalID: 5074766189977575806
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_15
+      rect:
+        serializedVersion: 2
+        x: 1320
+        y: 1363
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2fc6ffba7e73d1390800000000000000
+      internalID: -7846053507646919438
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_16
+      rect:
+        serializedVersion: 2
+        x: 1257
+        y: 1330
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b30d56b0fbf92b850800000000000000
+      internalID: 6391346464070946875
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_17
+      rect:
+        serializedVersion: 2
+        x: 1361
+        y: 1326
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fc6c327c45d028770800000000000000
+      internalID: 8611460095255234255
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_18
+      rect:
+        serializedVersion: 2
+        x: 70
+        y: 1322
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1ac01fc58637a820800000000000000
+      internalID: 2929370030960331290
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_19
+      rect:
+        serializedVersion: 2
+        x: 216
+        y: 1320
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 934ffe3902efd5920800000000000000
+      internalID: 2980817944263521337
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_20
+      rect:
+        serializedVersion: 2
+        x: 44
+        y: 1301
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e456866093b3cf9e0800000000000000
+      internalID: -1586327852634577586
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_21
+      rect:
+        serializedVersion: 2
+        x: 1332
+        y: 1282
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c1863c64a3a501100800000000000000
+      internalID: 76660400007112732
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_22
+      rect:
+        serializedVersion: 2
+        x: 1364
+        y: 1283
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 18f2c5e9614d9d350800000000000000
+      internalID: 6042093568705441665
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_23
+      rect:
+        serializedVersion: 2
+        x: 166
+        y: 1160
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 973a6662f214ce170800000000000000
+      internalID: 8209007891553100665
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_24
+      rect:
+        serializedVersion: 2
+        x: 215
+        y: 1161
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1e15b3c9e8968a6d0800000000000000
+      internalID: -2979015092278177311
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_25
+      rect:
+        serializedVersion: 2
+        x: 197
+        y: 1150
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ee7fcbdf8949f6d0800000000000000
+      internalID: -2956250798175060250
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_26
+      rect:
+        serializedVersion: 2
+        x: 151
+        y: 1133
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f1588b73aa4d1de0800000000000000
+      internalID: -1360849446383365643
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_27
+      rect:
+        serializedVersion: 2
+        x: 1284
+        y: 1137
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 639f10fdad2be4f10800000000000000
+      internalID: 2255937116473260342
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_28
+      rect:
+        serializedVersion: 2
+        x: 1340
+        y: 1130
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82a01e271135cfd50800000000000000
+      internalID: 6772379274065283624
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_29
+      rect:
+        serializedVersion: 2
+        x: 174
+        y: 1112
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 31375400a91685e30800000000000000
+      internalID: 4492447942359479059
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_30
+      rect:
+        serializedVersion: 2
+        x: 216
+        y: 1090
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bfb761ad4cacaadc0800000000000000
+      internalID: -3626863603072205829
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_31
+      rect:
+        serializedVersion: 2
+        x: 1283
+        y: 1096
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2743bac1419dcf7e0800000000000000
+      internalID: -1730269476413557646
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_32
+      rect:
+        serializedVersion: 2
+        x: 191
+        y: 1069
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d21fcf980923fd00800000000000000
+      internalID: 1005192258851377880
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_33
+      rect:
+        serializedVersion: 2
+        x: 1337
+        y: 1059
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eba102045a6a3b100800000000000000
+      internalID: 122624843544795838
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_34
+      rect:
+        serializedVersion: 2
+        x: 1331
+        y: 1049
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d970f8f6c3b51c6b0800000000000000
+      internalID: -5277836973173700707
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_35
+      rect:
+        serializedVersion: 2
+        x: 1256
+        y: 1035
+        width: 6
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe83ae28c80a9cc60800000000000000
+      internalID: 7838973151767312623
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_36
+      rect:
+        serializedVersion: 2
+        x: 193
+        y: 1002
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 610c4232a20a8d7a0800000000000000
+      internalID: -6352151171567402986
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_37
+      rect:
+        serializedVersion: 2
+        x: 1364
+        y: 1004
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5003108e6d3407a60800000000000000
+      internalID: 7669704755706408965
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_38
+      rect:
+        serializedVersion: 2
+        x: 29
+        y: 994
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8ed5066b9b7673ad0800000000000000
+      internalID: -2722593402395795992
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_39
+      rect:
+        serializedVersion: 2
+        x: 1195
+        y: 987
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 32c22853589644f20800000000000000
+      internalID: 3405963239048227875
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_40
+      rect:
+        serializedVersion: 2
+        x: 1284
+        y: 985
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 957a1e17c389c9c20800000000000000
+      internalID: 3214611619411765081
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_41
+      rect:
+        serializedVersion: 2
+        x: 5
+        y: 976
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9b620d95e99f23e00800000000000000
+      internalID: 1023154523873486521
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_42
+      rect:
+        serializedVersion: 2
+        x: 49
+        y: 977
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 20907fe17e6eda350800000000000000
+      internalID: 6029729356450302210
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_43
+      rect:
+        serializedVersion: 2
+        x: 1272
+        y: 976
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0be5d720f0bf3fee0800000000000000
+      internalID: -1228362231457161552
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_44
+      rect:
+        serializedVersion: 2
+        x: 202
+        y: 963
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d37b24664d69e56a0800000000000000
+      internalID: -6458558976609831107
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_45
+      rect:
+        serializedVersion: 2
+        x: 1340
+        y: 963
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6975754552575c770800000000000000
+      internalID: 8630433064114673558
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_46
+      rect:
+        serializedVersion: 2
+        x: 4
+        y: 949
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b0e4193e9c1947c50800000000000000
+      internalID: 6662110045080210955
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_47
+      rect:
+        serializedVersion: 2
+        x: 141
+        y: 955
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4570ed219638c70f0800000000000000
+      internalID: -1117874120183380140
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_48
+      rect:
+        serializedVersion: 2
+        x: 36
+        y: 936
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e60c6a70a8c219520800000000000000
+      internalID: 2706993822371856494
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_49
+      rect:
+        serializedVersion: 2
+        x: 1160
+        y: 939
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 688d6128da453a150800000000000000
+      internalID: 5882638642464610438
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_50
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 800
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5663cadd7f2590e30800000000000000
+      internalID: 4470195329671378533
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_51
+      rect:
+        serializedVersion: 2
+        x: 1164
+        y: 786
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ecc4aae38974e5a0800000000000000
+      internalID: -6492931155277067039
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_52
+      rect:
+        serializedVersion: 2
+        x: 1244
+        y: 783
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9204e34e4101bc320800000000000000
+      internalID: 2579172893514416169
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_53
+      rect:
+        serializedVersion: 2
+        x: 150
+        y: 776
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4706b6989827fc8b0800000000000000
+      internalID: -5129755515510103948
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_54
+      rect:
+        serializedVersion: 2
+        x: 1106
+        y: 778
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b12ffc5fca99da90800000000000000
+      internalID: -7288624306513305160
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_55
+      rect:
+        serializedVersion: 2
+        x: 1374
+        y: 778
+        width: 11
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 70834b79584cdf360800000000000000
+      internalID: 7205131056917526535
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_56
+      rect:
+        serializedVersion: 2
+        x: 1161
+        y: 766
+        width: 11
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6bfc53924aceb12d0800000000000000
+      internalID: -3306789311563313226
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_57
+      rect:
+        serializedVersion: 2
+        x: 1207
+        y: 719
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da227e0aed3881f90800000000000000
+      internalID: -6982686230032473427
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_58
+      rect:
+        serializedVersion: 2
+        x: 20
+        y: 693
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 71d7fe6c6dfd00b60800000000000000
+      internalID: 7710408675611868439
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_59
+      rect:
+        serializedVersion: 2
+        x: 52
+        y: 703
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6de1ad0761c6ecc80800000000000000
+      internalID: -8300578219558822186
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_60
+      rect:
+        serializedVersion: 2
+        x: 214
+        y: 701
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e85bc2d83aa9e7550800000000000000
+      internalID: 6160531367528281486
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_61
+      rect:
+        serializedVersion: 2
+        x: 49
+        y: 683
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 09121bb4c3979f7b0800000000000000
+      internalID: -5189983795692887664
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_62
+      rect:
+        serializedVersion: 2
+        x: 1284
+        y: 683
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 62115271cb906a5c0800000000000000
+      internalID: -4204662498656972506
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_63
+      rect:
+        serializedVersion: 2
+        x: 112
+        y: 673
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7bc46355117c6ad0800000000000000
+      internalID: -2707664939549144194
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_64
+      rect:
+        serializedVersion: 2
+        x: 203
+        y: 654
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 89d6e2bccda1b8160800000000000000
+      internalID: 7028741179045735832
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_65
+      rect:
+        serializedVersion: 2
+        x: 1193
+        y: 662
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f1d6af2c6895d300800000000000000
+      internalID: 276294542576505328
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_66
+      rect:
+        serializedVersion: 2
+        x: 1104
+        y: 637
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cb3ce50724f4e2200800000000000000
+      internalID: 157150183776240572
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_67
+      rect:
+        serializedVersion: 2
+        x: 1366
+        y: 642
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9ae98324324b6a40800000000000000
+      internalID: 5362452573016681115
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_68
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 617
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a887403ed8f8af80800000000000000
+      internalID: -8094946697022043996
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_69
+      rect:
+        serializedVersion: 2
+        x: 56
+        y: 620
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a282017ab1cb6dea0800000000000000
+      internalID: -5848280239141017558
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_70
+      rect:
+        serializedVersion: 2
+        x: 120
+        y: 626
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c7e5946939d07ec0800000000000000
+      internalID: -3571115663980894272
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_71
+      rect:
+        serializedVersion: 2
+        x: 1325
+        y: 620
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b66eadb984a957e00800000000000000
+      internalID: 1041908525449274987
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_72
+      rect:
+        serializedVersion: 2
+        x: 120
+        y: 619
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c46ae049b1df424e0800000000000000
+      internalID: -2007201239010466228
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_73
+      rect:
+        serializedVersion: 2
+        x: 122
+        y: 602
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b2451849b74516fc0800000000000000
+      internalID: -3503426145368320981
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_74
+      rect:
+        serializedVersion: 2
+        x: 44
+        y: 569
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 917b1ff6b922da390800000000000000
+      internalID: -7805544528169814247
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_75
+      rect:
+        serializedVersion: 2
+        x: 1364
+        y: 570
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 561cf3c3b696b4010800000000000000
+      internalID: 1174148037153374565
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_76
+      rect:
+        serializedVersion: 2
+        x: 1259
+        y: 545
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fbdc5f9522148ef40800000000000000
+      internalID: 5757923739387153855
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_77
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 529
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e2e6142cb03745690800000000000000
+      internalID: -7614334575635763666
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_78
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 533
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 64b68e2fde2b50a70800000000000000
+      internalID: 8792630582563072838
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_79
+      rect:
+        serializedVersion: 2
+        x: 65
+        y: 529
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c185c00177a7fee0800000000000000
+      internalID: -1227328269649083963
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_80
+      rect:
+        serializedVersion: 2
+        x: 1200
+        y: 528
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 592890051b2207ae0800000000000000
+      internalID: -1553703726495464811
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_81
+      rect:
+        serializedVersion: 2
+        x: 175
+        y: 517
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 829a9ffd14f199650800000000000000
+      internalID: 6240053126489549096
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_82
+      rect:
+        serializedVersion: 2
+        x: 1366
+        y: 522
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b9557143a606a6b0800000000000000
+      internalID: -5285529814425052744
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_83
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 511
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1f80186a634258500800000000000000
+      internalID: 397763959232465137
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_84
+      rect:
+        serializedVersion: 2
+        x: 1143
+        y: 492
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: affc6335806df4530800000000000000
+      internalID: 3841524338414505978
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_85
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 458
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce43159bb02076f30800000000000000
+      internalID: 4568622596367660268
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_86
+      rect:
+        serializedVersion: 2
+        x: 200
+        y: 461
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cf454ebda6680c5d0800000000000000
+      internalID: -3044285554588625668
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_87
+      rect:
+        serializedVersion: 2
+        x: 1165
+        y: 468
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a26f2837b473bb00800000000000000
+      internalID: 843145885518881444
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_88
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 442
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9d0818b0121f7aba0800000000000000
+      internalID: -6077624047883943719
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_89
+      rect:
+        serializedVersion: 2
+        x: 123
+        y: 427
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a84eb9ae2e7c779e0800000000000000
+      internalID: -1623609363231153014
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_90
+      rect:
+        serializedVersion: 2
+        x: 141
+        y: 424
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa86045d0cc5181e0800000000000000
+      internalID: -2197373159898847062
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_91
+      rect:
+        serializedVersion: 2
+        x: 1334
+        y: 427
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 09a42d7dd5c9a39e0800000000000000
+      internalID: -1640827187356349808
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_92
+      rect:
+        serializedVersion: 2
+        x: 1284
+        y: 387
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4dcf92164fdb7c730800000000000000
+      internalID: 4019390049751268564
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_93
+      rect:
+        serializedVersion: 2
+        x: 136
+        y: 368
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 62d6af19a3681e570800000000000000
+      internalID: 8494217958312799526
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_94
+      rect:
+        serializedVersion: 2
+        x: 201
+        y: 369
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b8a847680a71e4790800000000000000
+      internalID: -7544066347581011317
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_95
+      rect:
+        serializedVersion: 2
+        x: 60
+        y: 351
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e5226a83502c1dbd0800000000000000
+      internalID: -2607089381589769634
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_96
+      rect:
+        serializedVersion: 2
+        x: 1127
+        y: 344
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6f253b69aef6fbcb0800000000000000
+      internalID: -4846031620685999370
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_97
+      rect:
+        serializedVersion: 2
+        x: 122
+        y: 342
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 35f0c6e8edeebb9b0800000000000000
+      internalID: -5063190716408393901
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_98
+      rect:
+        serializedVersion: 2
+        x: 1253
+        y: 337
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: acf8db7c9fc6d0450800000000000000
+      internalID: 6056616893936930762
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_99
+      rect:
+        serializedVersion: 2
+        x: 97
+        y: 329
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9bcb6e34c33ba1ae0800000000000000
+      internalID: -1577751648021332807
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_100
+      rect:
+        serializedVersion: 2
+        x: 1382
+        y: 335
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed65a345e89a9b7b0800000000000000
+      internalID: -5207945065313708322
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_101
+      rect:
+        serializedVersion: 2
+        x: 1180
+        y: 325
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8af25adda0ba6a6c0800000000000000
+      internalID: -4132427544909238360
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_102
+      rect:
+        serializedVersion: 2
+        x: 1283
+        y: 321
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 523435ffe2ac2d240800000000000000
+      internalID: 4815133254813434661
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_103
+      rect:
+        serializedVersion: 2
+        x: 1389
+        y: 302
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c7793f09dd87492d0800000000000000
+      internalID: -3272858136176519300
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_104
+      rect:
+        serializedVersion: 2
+        x: 25
+        y: 282
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 302bf26d4e048c230800000000000000
+      internalID: 3659246048828699139
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_105
+      rect:
+        serializedVersion: 2
+        x: 221
+        y: 285
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 64d3d2dace49b1500800000000000000
+      internalID: 368051538799443270
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_106
+      rect:
+        serializedVersion: 2
+        x: 1108
+        y: 284
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e460a60286f135020800000000000000
+      internalID: 2329239964361557582
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_107
+      rect:
+        serializedVersion: 2
+        x: 152
+        y: 268
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9cfca98e09ab336d0800000000000000
+      internalID: -3011858594240213047
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_108
+      rect:
+        serializedVersion: 2
+        x: 203
+        y: 273
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 27b263c947ae47ab0800000000000000
+      internalID: -5011122698798617742
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_109
+      rect:
+        serializedVersion: 2
+        x: 1163
+        y: 270
+        width: 7
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d56ef8a58624ec900800000000000000
+      internalID: 706575207507158621
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_110
+      rect:
+        serializedVersion: 2
+        x: 1176
+        y: 270
+        width: 9
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ef85b97d104859660800000000000000
+      internalID: 7391959506845653246
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_111
+      rect:
+        serializedVersion: 2
+        x: 1155
+        y: 260
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a27b09cc28c7ed840800000000000000
+      internalID: 5250771116780205866
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_112
+      rect:
+        serializedVersion: 2
+        x: 1181
+        y: 262
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be3de00b80b7875a0800000000000000
+      internalID: -6523328783002446869
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_113
+      rect:
+        serializedVersion: 2
+        x: 1129
+        y: 252
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 199b3d48474f5fcd0800000000000000
+      internalID: -2524843234789443183
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_114
+      rect:
+        serializedVersion: 2
+        x: 1136
+        y: 244
+        width: 17
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce1c5e2b20fcfe260800000000000000
+      internalID: 7129144345649070572
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_115
+      rect:
+        serializedVersion: 2
+        x: 1190
+        y: 249
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ef956d56793d4020800000000000000
+      internalID: 2327579762956279777
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_116
+      rect:
+        serializedVersion: 2
+        x: 1193
+        y: 246
+        width: 16
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3eda34eca9bb2e950800000000000000
+      internalID: 6476945487672094179
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_117
+      rect:
+        serializedVersion: 2
+        x: 5
+        y: 242
+        width: 10
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d39acb6e564790280800000000000000
+      internalID: -9076595592976881347
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_118
+      rect:
+        serializedVersion: 2
+        x: 1130
+        y: 243
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2fe5c55f2a3114a70800000000000000
+      internalID: 8809343936735502066
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_119
+      rect:
+        serializedVersion: 2
+        x: 1209
+        y: 243
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f416e4a17997e01a0800000000000000
+      internalID: -6841397094040837809
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_120
+      rect:
+        serializedVersion: 2
+        x: 1215
+        y: 235
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 75de00ec1fc5ea180800000000000000
+      internalID: -9102235603256152745
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_121
+      rect:
+        serializedVersion: 2
+        x: 1275
+        y: 244
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ec201e42eacc79280800000000000000
+      internalID: -9036529078980508978
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_122
+      rect:
+        serializedVersion: 2
+        x: 24
+        y: 236
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d59e64bbc84f20e30800000000000000
+      internalID: 4468402665579538781
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_123
+      rect:
+        serializedVersion: 2
+        x: 217
+        y: 233
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b615e416f42dd5320800000000000000
+      internalID: 2548424202538340715
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_124
+      rect:
+        serializedVersion: 2
+        x: 1142
+        y: 221
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f5d59223ebe3f7380800000000000000
+      internalID: -8971382946092458657
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_125
+      rect:
+        serializedVersion: 2
+        x: 1192
+        y: 220
+        width: 13
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7dd0fd83a17ead730800000000000000
+      internalID: 4024783316818267607
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_126
+      rect:
+        serializedVersion: 2
+        x: 1252
+        y: 227
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b44a8ede985b04c80800000000000000
+      internalID: -8340466905883564981
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_127
+      rect:
+        serializedVersion: 2
+        x: 118
+        y: 217
+        width: 11
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3cc59169717787160800000000000000
+      internalID: 7023494562070486211
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_128
+      rect:
+        serializedVersion: 2
+        x: 1140
+        y: 211
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bee41fc9684fab8c0800000000000000
+      internalID: -3982602061459927317
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_129
+      rect:
+        serializedVersion: 2
+        x: 1157
+        y: 208
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4f3dcb39837772270800000000000000
+      internalID: 8225674329295999988
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_130
+      rect:
+        serializedVersion: 2
+        x: 1180
+        y: 209
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 30274a76bad9b48e0800000000000000
+      internalID: -1708098274153172477
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_131
+      rect:
+        serializedVersion: 2
+        x: 221
+        y: 181
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 21532748804d3b020800000000000000
+      internalID: 2356460163091805458
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_132
+      rect:
+        serializedVersion: 2
+        x: 1163
+        y: 191
+        width: 10
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f1b9edb7ad26dfe50800000000000000
+      internalID: 6844735699193600799
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_133
+      rect:
+        serializedVersion: 2
+        x: 1173
+        y: 190
+        width: 8
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 57abcf9898e963fe0800000000000000
+      internalID: -1209605136339649931
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_134
+      rect:
+        serializedVersion: 2
+        x: 176
+        y: 171
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f976e3eb1edcb790800000000000000
+      internalID: -7512885866991814155
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_135
+      rect:
+        serializedVersion: 2
+        x: 1375
+        y: 175
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 71864dd33627cf5d0800000000000000
+      internalID: -3027419078935156713
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_136
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 148
+        width: 9
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b393f95f03b5a2630800000000000000
+      internalID: 3903032292907366715
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_137
+      rect:
+        serializedVersion: 2
+        x: 1174
+        y: 148
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2774c965c51022710800000000000000
+      internalID: 1666896308182206322
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_138
+      rect:
+        serializedVersion: 2
+        x: 59
+        y: 121
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9f2113146b52c2c70800000000000000
+      internalID: 8947568024386343673
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_139
+      rect:
+        serializedVersion: 2
+        x: 1366
+        y: 113
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e154437258eda73d0800000000000000
+      internalID: -3208007121078303458
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_140
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 84
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 63bf16cf5ba4ddd10800000000000000
+      internalID: 2151958342436780854
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_141
+      rect:
+        serializedVersion: 2
+        x: 3
+        y: 73
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0765560e769a0aa60800000000000000
+      internalID: 7683327227905529456
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_142
+      rect:
+        serializedVersion: 2
+        x: 1354
+        y: 74
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb64b16b6a00e4fd0800000000000000
+      internalID: -2355944839048378690
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_143
+      rect:
+        serializedVersion: 2
+        x: 1377
+        y: 69
+        width: 11
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ba0938d85fdab3e80800000000000000
+      internalID: -8197767426545053525
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_144
+      rect:
+        serializedVersion: 2
+        x: 8
+        y: 61
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d967bd94d61e52f0800000000000000
+      internalID: -982322566285268520
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_145
+      rect:
+        serializedVersion: 2
+        x: 1206
+        y: 62
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f5a0d1b8a26294f80800000000000000
+      internalID: -8121918488821560737
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_146
+      rect:
+        serializedVersion: 2
+        x: 1349
+        y: 67
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cae453feea3572af0800000000000000
+      internalID: -421276029333188948
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_147
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 54
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a090e97ad0a714380800000000000000
+      internalID: -8988769182189483766
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_148
+      rect:
+        serializedVersion: 2
+        x: 1118
+        y: 54
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0421e69bcd1b84d90800000000000000
+      internalID: -7113240049869778368
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_149
+      rect:
+        serializedVersion: 2
+        x: 1284
+        y: 54
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92432e339fb125050800000000000000
+      internalID: 5787719228255777833
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_150
+      rect:
+        serializedVersion: 2
+        x: 1366
+        y: 54
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 052f9898cd843dc80800000000000000
+      internalID: -8299209576276168112
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_151
+      rect:
+        serializedVersion: 2
+        x: 6
+        y: 39
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0b04d78b6ddeaafe0800000000000000
+      internalID: -1176866846129962832
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_152
+      rect:
+        serializedVersion: 2
+        x: 42
+        y: 32
+        width: 7
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a5c15bb795b538a50800000000000000
+      internalID: 6522157125248293978
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_153
+      rect:
+        serializedVersion: 2
+        x: 48
+        y: 43
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58fc398f8b2b13700800000000000000
+      internalID: 518391939638480773
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_154
+      rect:
+        serializedVersion: 2
+        x: 158
+        y: 45
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 34f39c16fa6dc1be0800000000000000
+      internalID: -1505092126700388541
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_155
+      rect:
+        serializedVersion: 2
+        x: 1269
+        y: 38
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce51dad5d18aa36f0800000000000000
+      internalID: -704065547650918932
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_156
+      rect:
+        serializedVersion: 2
+        x: 113
+        y: 31
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2337a6e5a4a8ca560800000000000000
+      internalID: 7326382745841201970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_157
+      rect:
+        serializedVersion: 2
+        x: 204
+        y: 33
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cc2048cb6f461b9c0800000000000000
+      internalID: -3913235590320749876
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_158
+      rect:
+        serializedVersion: 2
+        x: 1313
+        y: 34
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9a326e35ff14ccdd0800000000000000
+      internalID: -2464522331198446679
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_159
+      rect:
+        serializedVersion: 2
+        x: 1332
+        y: 29
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f9849354c3551d00800000000000000
+      internalID: 942751799684925938
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_160
+      rect:
+        serializedVersion: 2
+        x: 1345
+        y: 34
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d285fa274c075ce00800000000000000
+      internalID: 1064380875982985261
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_161
+      rect:
+        serializedVersion: 2
+        x: 1352
+        y: 30
+        width: 12
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fbd520230c879ffa0800000000000000
+      internalID: -5766445081003139649
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_162
+      rect:
+        serializedVersion: 2
+        x: 1375
+        y: 25
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 191b875ebf227d640800000000000000
+      internalID: 5104587167929774481
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Draugr_Female_163
+      rect:
+        serializedVersion: 2
+        x: 247
+        y: 10
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 709f6cc8f3ca9d3f0800000000000000
+      internalID: -875479263602083577
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Draugr_Female_0: 2470570565502882816
+      Draugr_Female_1: 8564504125994923773
+      Draugr_Female_10: 2539433593971804650
+      Draugr_Female_100: -5207945065313708322
+      Draugr_Female_101: -4132427544909238360
+      Draugr_Female_102: 4815133254813434661
+      Draugr_Female_103: -3272858136176519300
+      Draugr_Female_104: 3659246048828699139
+      Draugr_Female_105: 368051538799443270
+      Draugr_Female_106: 2329239964361557582
+      Draugr_Female_107: -3011858594240213047
+      Draugr_Female_108: -5011122698798617742
+      Draugr_Female_109: 706575207507158621
+      Draugr_Female_11: -7577136882507491267
+      Draugr_Female_110: 7391959506845653246
+      Draugr_Female_111: 5250771116780205866
+      Draugr_Female_112: -6523328783002446869
+      Draugr_Female_113: -2524843234789443183
+      Draugr_Female_114: 7129144345649070572
+      Draugr_Female_115: 2327579762956279777
+      Draugr_Female_116: 6476945487672094179
+      Draugr_Female_117: -9076595592976881347
+      Draugr_Female_118: 8809343936735502066
+      Draugr_Female_119: -6841397094040837809
+      Draugr_Female_12: -6194270918675059713
+      Draugr_Female_120: -9102235603256152745
+      Draugr_Female_121: -9036529078980508978
+      Draugr_Female_122: 4468402665579538781
+      Draugr_Female_123: 2548424202538340715
+      Draugr_Female_124: -8971382946092458657
+      Draugr_Female_125: 4024783316818267607
+      Draugr_Female_126: -8340466905883564981
+      Draugr_Female_127: 7023494562070486211
+      Draugr_Female_128: -3982602061459927317
+      Draugr_Female_129: 8225674329295999988
+      Draugr_Female_13: 9169764691888334148
+      Draugr_Female_130: -1708098274153172477
+      Draugr_Female_131: 2356460163091805458
+      Draugr_Female_132: 6844735699193600799
+      Draugr_Female_133: -1209605136339649931
+      Draugr_Female_134: -7512885866991814155
+      Draugr_Female_135: -3027419078935156713
+      Draugr_Female_136: 3903032292907366715
+      Draugr_Female_137: 1666896308182206322
+      Draugr_Female_138: 8947568024386343673
+      Draugr_Female_139: -3208007121078303458
+      Draugr_Female_14: 5074766189977575806
+      Draugr_Female_140: 2151958342436780854
+      Draugr_Female_141: 7683327227905529456
+      Draugr_Female_142: -2355944839048378690
+      Draugr_Female_143: -8197767426545053525
+      Draugr_Female_144: -982322566285268520
+      Draugr_Female_145: -8121918488821560737
+      Draugr_Female_146: -421276029333188948
+      Draugr_Female_147: -8988769182189483766
+      Draugr_Female_148: -7113240049869778368
+      Draugr_Female_149: 5787719228255777833
+      Draugr_Female_15: -7846053507646919438
+      Draugr_Female_150: -8299209576276168112
+      Draugr_Female_151: -1176866846129962832
+      Draugr_Female_152: 6522157125248293978
+      Draugr_Female_153: 518391939638480773
+      Draugr_Female_154: -1505092126700388541
+      Draugr_Female_155: -704065547650918932
+      Draugr_Female_156: 7326382745841201970
+      Draugr_Female_157: -3913235590320749876
+      Draugr_Female_158: -2464522331198446679
+      Draugr_Female_159: 942751799684925938
+      Draugr_Female_16: 6391346464070946875
+      Draugr_Female_160: 1064380875982985261
+      Draugr_Female_161: -5766445081003139649
+      Draugr_Female_162: 5104587167929774481
+      Draugr_Female_163: -875479263602083577
+      Draugr_Female_17: 8611460095255234255
+      Draugr_Female_18: 2929370030960331290
+      Draugr_Female_19: 2980817944263521337
+      Draugr_Female_2: 6678801579233498596
+      Draugr_Female_20: -1586327852634577586
+      Draugr_Female_21: 76660400007112732
+      Draugr_Female_22: 6042093568705441665
+      Draugr_Female_23: 8209007891553100665
+      Draugr_Female_24: -2979015092278177311
+      Draugr_Female_25: -2956250798175060250
+      Draugr_Female_26: -1360849446383365643
+      Draugr_Female_27: 2255937116473260342
+      Draugr_Female_28: 6772379274065283624
+      Draugr_Female_29: 4492447942359479059
+      Draugr_Female_3: -2470616504089775612
+      Draugr_Female_30: -3626863603072205829
+      Draugr_Female_31: -1730269476413557646
+      Draugr_Female_32: 1005192258851377880
+      Draugr_Female_33: 122624843544795838
+      Draugr_Female_34: -5277836973173700707
+      Draugr_Female_35: 7838973151767312623
+      Draugr_Female_36: -6352151171567402986
+      Draugr_Female_37: 7669704755706408965
+      Draugr_Female_38: -2722593402395795992
+      Draugr_Female_39: 3405963239048227875
+      Draugr_Female_4: -641752171585596613
+      Draugr_Female_40: 3214611619411765081
+      Draugr_Female_41: 1023154523873486521
+      Draugr_Female_42: 6029729356450302210
+      Draugr_Female_43: -1228362231457161552
+      Draugr_Female_44: -6458558976609831107
+      Draugr_Female_45: 8630433064114673558
+      Draugr_Female_46: 6662110045080210955
+      Draugr_Female_47: -1117874120183380140
+      Draugr_Female_48: 2706993822371856494
+      Draugr_Female_49: 5882638642464610438
+      Draugr_Female_5: 8234344246148696873
+      Draugr_Female_50: 4470195329671378533
+      Draugr_Female_51: -6492931155277067039
+      Draugr_Female_52: 2579172893514416169
+      Draugr_Female_53: -5129755515510103948
+      Draugr_Female_54: -7288624306513305160
+      Draugr_Female_55: 7205131056917526535
+      Draugr_Female_56: -3306789311563313226
+      Draugr_Female_57: -6982686230032473427
+      Draugr_Female_58: 7710408675611868439
+      Draugr_Female_59: -8300578219558822186
+      Draugr_Female_6: -1096378050964448850
+      Draugr_Female_60: 6160531367528281486
+      Draugr_Female_61: -5189983795692887664
+      Draugr_Female_62: -4204662498656972506
+      Draugr_Female_63: -2707664939549144194
+      Draugr_Female_64: 7028741179045735832
+      Draugr_Female_65: 276294542576505328
+      Draugr_Female_66: 157150183776240572
+      Draugr_Female_67: 5362452573016681115
+      Draugr_Female_68: -8094946697022043996
+      Draugr_Female_69: -5848280239141017558
+      Draugr_Female_7: -8630514865400470858
+      Draugr_Female_70: -3571115663980894272
+      Draugr_Female_71: 1041908525449274987
+      Draugr_Female_72: -2007201239010466228
+      Draugr_Female_73: -3503426145368320981
+      Draugr_Female_74: -7805544528169814247
+      Draugr_Female_75: 1174148037153374565
+      Draugr_Female_76: 5757923739387153855
+      Draugr_Female_77: -7614334575635763666
+      Draugr_Female_78: 8792630582563072838
+      Draugr_Female_79: -1227328269649083963
+      Draugr_Female_8: 1596104636647996197
+      Draugr_Female_80: -1553703726495464811
+      Draugr_Female_81: 6240053126489549096
+      Draugr_Female_82: -5285529814425052744
+      Draugr_Female_83: 397763959232465137
+      Draugr_Female_84: 3841524338414505978
+      Draugr_Female_85: 4568622596367660268
+      Draugr_Female_86: -3044285554588625668
+      Draugr_Female_87: 843145885518881444
+      Draugr_Female_88: -6077624047883943719
+      Draugr_Female_89: -1623609363231153014
+      Draugr_Female_9: -7949099037083478341
+      Draugr_Female_90: -2197373159898847062
+      Draugr_Female_91: -1640827187356349808
+      Draugr_Female_92: 4019390049751268564
+      Draugr_Female_93: 8494217958312799526
+      Draugr_Female_94: -7544066347581011317
+      Draugr_Female_95: -2607089381589769634
+      Draugr_Female_96: -4846031620685999370
+      Draugr_Female_97: -5063190716408393901
+      Draugr_Female_98: 6056616893936930762
+      Draugr_Female_99: -1577751648021332807
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

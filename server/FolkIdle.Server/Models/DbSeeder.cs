@@ -38,7 +38,14 @@ namespace FolkIdle.Server.Models
 
             if (!await db.PlayerRecords.AnyAsync())
             {
-                AddSeedPlayer(db, PlayerLowId, PlayerLowGold, 5);
+                // PlayerLowId is the only seed account with real Email/Username/
+                // PasswordHash set, so it's reachable through the actual
+                // LoginWithEmailAsync flow (POST /api/v1/auth/login with
+                // {email,password}) instead of only being visible to direct DB
+                // queries in xUnit tests - lets an MCP-driven Play Mode session
+                // log in against a freshly-seeded dev/compose database without
+                // first scripting a full registration flow.
+                AddSeedPlayer(db, PlayerLowId, PlayerLowGold, 5, "dev@folkidle.local", "dev", "FolkIdleDev123!");
                 AddSeedPlayer(db, PlayerMidId, PlayerMidGold, 15);
                 AddSeedPlayer(db, PlayerHighId, PlayerHighGold, 30);
             }
@@ -46,7 +53,8 @@ namespace FolkIdle.Server.Models
             await db.SaveChangesAsync();
         }
 
-        private static void AddSeedPlayer(FolkIdleDbContext db, long playerId, long gold, int masteryLevel)
+        private static void AddSeedPlayer(FolkIdleDbContext db, long playerId, long gold, int masteryLevel,
+            string? email = null, string? username = null, string? password = null)
         {
             db.PlayerRecords.Add(new PlayerRecord
             {
@@ -55,7 +63,10 @@ namespace FolkIdle.Server.Models
                 CurrentXp = 0,
                 SelectedLineageId = 1,
                 PlayerGuid = Guid.NewGuid(),
-                AuthenticatorToken = Guid.NewGuid()
+                AuthenticatorToken = Guid.NewGuid(),
+                Email = email,
+                Username = username,
+                PasswordHash = password != null ? PasswordHasher.Hash(password) : null
             });
 
             db.CommodityRecords.Add(new CommodityRecord

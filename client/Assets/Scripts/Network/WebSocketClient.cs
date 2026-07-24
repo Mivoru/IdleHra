@@ -17,6 +17,13 @@ namespace FolkIdle.Client.Network
         // refuses to open a socket while empty.
         public static string AuthenticatorToken = string.Empty;
 
+        // Same host UiLoginWindow.ServerBaseUrl points at, derived (http->ws)
+        // rather than independently hardcoded - previously this literal and
+        // ServerBaseUrl could silently point at two different hosts if only
+        // one was reconfigured. UiLoginWindow.ProceedWithToken sets this from
+        // ServerBaseUrl right before calling Connect().
+        public string ServerUrl = "ws://localhost:8080/";
+
         // Fires exactly once per connection, the first time a StateUpdatePacket
         // arrives after a successful handshake - this is the "state confirmation"
         // UiLoginWindow waits on before hiding its blocking panel, since it is
@@ -113,7 +120,7 @@ namespace FolkIdle.Client.Network
                     return;
                 }
 
-                await _webSocket.ConnectAsync(new Uri("ws://localhost:8080/"), _cts.Token);
+                await _webSocket.ConnectAsync(new Uri(ServerUrl), _cts.Token);
                 FlightRecorder.RecordNetworkState(1);
                 Debug.Log("WebSocket Connected.");
 
