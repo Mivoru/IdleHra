@@ -16,22 +16,6 @@ namespace FolkIdle.Server.Engine
             _managementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
         }
 
-        public Task ExecuteUpgradeBuildingAsync(long playerId, int buildingType)
-        {
-            uint mappedBuilding = buildingType switch
-            {
-                1 => VillageManagementEngine.ForgeBuildingId,
-                2 => VillageManagementEngine.InnBuildingId,
-                3 => VillageManagementEngine.BreedingGroundsBuildingId,
-                4 => VillageManagementEngine.MentorshipAcademyBuildingId,
-                _ => 0U
-            };
-
-            return mappedBuilding == 0U
-                ? Task.CompletedTask
-                : _managementEngine.ExecuteUpgradeBuildingAsync(playerId, mappedBuilding);
-        }
-
         public Task ExecuteUpgradeToolAsync(long playerId)
         {
             return Task.CompletedTask;

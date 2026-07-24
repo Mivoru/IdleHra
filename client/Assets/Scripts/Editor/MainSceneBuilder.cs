@@ -544,6 +544,18 @@ namespace FolkIdle.Client.Editor
             TextMeshProUGUI text = CreateText(parent, "Stat_" + placeholderText, placeholderText, 16f, TextAlignmentOptions.MidlineLeft);
             LayoutElement layoutElement = text.gameObject.AddComponent<LayoutElement>();
             layoutElement.preferredHeight = 22f;
+            // Every caller's VerticalLayoutGroup sets childControlHeight = false
+            // (so rows keep a fixed height instead of stretching to fill leftover
+            // space), which means preferredHeight above is only used for the
+            // layout group's spacing math - it is never applied to the actual
+            // RectTransform. Left alone, the row silently kept TextMeshProUGUI's
+            // own default RectTransform height (50) instead of 22, so every stat
+            // row rendered over twice as tall as its allocated slot and bled into
+            // whatever sat below it (confirmed live: CodexBonusPanel's third row
+            // rendering directly on top of CurrencyDisplay's Gold row). Set the
+            // real height explicitly so it always matches what layout assumes.
+            Vector2 sizeDelta = text.rectTransform.sizeDelta;
+            text.rectTransform.sizeDelta = new Vector2(sizeDelta.x, 22f);
             return text;
         }
 

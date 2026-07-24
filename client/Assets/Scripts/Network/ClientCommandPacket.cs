@@ -23,7 +23,11 @@ namespace FolkIdle.Client.Network
         UpdateAutoEatThreshold = 16,
         InitializeCrafting = 18,
         RegisterWorldBossDamage = 19,
-        LegacyUpgradeBuilding = 20,
+        // 20 intentionally unused - was LegacyUpgradeBuilding, a
+        // buildingType 1-4-only wrapper that the command dispatch loop never
+        // actually routed to (UpgradeBuilding = 29, below, is the real one,
+        // handling all building ids). Gap left rather than renumbered,
+        // matching this enum's existing convention (see 36/37).
         UpgradeTool = 21,
         AssignMentor = 22,
         ContributeToWarSupply = 23,
