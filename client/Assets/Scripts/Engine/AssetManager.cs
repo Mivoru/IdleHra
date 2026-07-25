@@ -46,6 +46,30 @@ namespace FolkIdle.Client.Engine
         private void Awake()
         {
             _instance = this;
+
+            // Addressables logs a key-resolution failure (InvalidKeyException
+            // for a key that was never registered in any resource locator -
+            // the common case throughout this project, since most keys are
+            // placeholders awaiting real art) via ResourceManager's own
+            // ExceptionHandler, independent of any try/catch around the
+            // LoadAssetAsync call site - it is not a synchronous throw the
+            // caller can catch, it is Addressables' own diagnostic logging
+            // of an operation that completed with a Failed status (which
+            // LoadAsync below already handles correctly by returning null).
+            // Without overriding this, every unregistered key logs a
+            // visible Error to the console even though nothing actually
+            // crashed. Anything other than InvalidKeyException still logs
+            // normally, since that represents a genuine unexpected failure.
+            UnityEngine.ResourceManagement.ResourceManager.ExceptionHandler = HandleAddressablesException;
+        }
+
+        private static void HandleAddressablesException(AsyncOperationHandle handle, Exception exception)
+        {
+            if (exception is InvalidKeyException)
+            {
+                return;
+            }
+            Debug.LogException(exception);
         }
 
         // Modul: OTA content catalog check - runs once at application
@@ -165,7 +189,28 @@ namespace FolkIdle.Client.Engine
                 return;
             }
 
-            AsyncOperationHandle<T> newHandle = Addressables.LoadAssetAsync<T>(addressableKey);
+            // Defensive: LoadAssetAsync itself does not throw for an
+            // unregistered key (that failure surfaces asynchronously as a
+            // Failed handle status, already handled by the Completed
+            // callback below, and its underlying exception is suppressed
+            // for InvalidKeyException by Awake()'s ResourceManager.ExceptionHandler
+            // override) - but a handful of other Addressables call shapes
+            // do throw synchronously (e.g. a malformed key), so this still
+            // guards this class's "null on failure, never an exception"
+            // promise to callers.
+            AsyncOperationHandle<T> newHandle;
+            try
+            {
+                newHandle = Addressables.LoadAssetAsync<T>(addressableKey);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("AssetManager: LoadAsync failed for key '" + addressableKey + "': " + ex.Message);
+                _refCounts.Remove(addressableKey);
+                onComplete?.Invoke(null);
+                return;
+            }
+
             _activeHandles[addressableKey] = newHandle;
             newHandle.Completed += handle =>
                 onComplete?.Invoke(handle.Status == AsyncOperationStatus.Succeeded ? handle.Result : null);

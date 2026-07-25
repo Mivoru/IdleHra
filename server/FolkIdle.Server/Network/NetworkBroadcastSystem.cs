@@ -1063,6 +1063,20 @@ namespace FolkIdle.Server.Network
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.OutputStream, entries);
             }
+            catch (StackExchange.Redis.RedisException ex)
+            {
+                // Redis is an optional dependency everywhere else in this
+                // server (Program.cs: "session locking, write-behind, and
+                // telemetry streaming simply no-op" without one) - the
+                // leaderboard ZSET is exactly that kind of write-behind
+                // cache, so an unreachable Redis should degrade to "no
+                // ranked data yet", not a 500 that looks like a real server
+                // bug to the client.
+                Console.WriteLine($"Leaderboard unavailable (Redis): {ex.Message}");
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new System.Collections.Generic.List<LeaderboardEntryResponse>());
+            }
             catch (Exception ex)
             {
                 Console.WriteLine($"Leaderboard error: {ex.Message}");
@@ -1135,6 +1149,17 @@ namespace FolkIdle.Server.Network
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.OutputStream, entries);
+            }
+            catch (StackExchange.Redis.RedisException ex)
+            {
+                // See HandleGlobalLeaderboard's matching catch - Redis is an
+                // optional write-behind cache everywhere else in this
+                // server, so being unreachable should degrade to "no ranked
+                // guild data yet", not a 500.
+                Console.WriteLine($"Guild leaderboard unavailable (Redis): {ex.Message}");
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new System.Collections.Generic.List<GuildLeaderboardEntryResponse>());
             }
             catch (Exception ex)
             {
