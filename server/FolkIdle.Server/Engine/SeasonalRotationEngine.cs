@@ -122,7 +122,11 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        private async Task ExecutePlayerRolloversAsync(int closedEraId, CancellationToken stoppingToken)
+        // Test-only observability (via InternalsVisibleTo) so
+        // FolkIdle.Server.Tests can directly exercise the era-close
+        // rollover without waiting on the real 90-day EraDurationSeconds
+        // clock or the 5-minute cron poll.
+        internal async Task ExecutePlayerRolloversAsync(int closedEraId, CancellationToken stoppingToken)
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -218,7 +222,21 @@ namespace FolkIdle.Server.Engine
                 }
 
                 // Bulk Updates & Truncations within the same transaction
-                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"CurrentLevel\" = 1, \"CurrentXp\" = 0, \"AccumulatedTimeBankSeconds\" = 0, \"ActiveOffensivePotionId\" = 0, \"OffensivePotionDurationMs\" = 0, \"ActiveDefensivePotionId\" = 0, \"DefensivePotionDurationMs\" = 0, \"BankedChronoSeconds\" = 0, \"IsChronoAccelerating\" = FALSE", stoppingToken);
+                // Modul: Play Mode audit fix. EquippedWeaponId/ArmorId/
+                // LeggingsId were never cleared here even though the
+                // TRUNCATE ... RESTART IDENTITY below wipes and recycles
+                // EquipmentInstances' ids from 1 - a genuinely severe bug,
+                // not cosmetic: EquipmentSlotEngine.ComputeEquippedTotalsAsync
+                // looks up equipped items by Id alone with no PlayerId
+                // ownership check, so once any post-reset player's newly
+                // crafted item happened to land on a stale EquippedWeaponId/
+                // ArmorId/LeggingsId value, every other player still holding
+                // that same stale id would silently start showing that
+                // stranger's item stats/set bonus as their own equipped
+                // gear. Must null these out in the same statement/
+                // transaction as the level/gold reset below, before the
+                // TRUNCATE recycles the id space.
+                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"CurrentLevel\" = 1, \"CurrentXp\" = 0, \"AccumulatedTimeBankSeconds\" = 0, \"ActiveOffensivePotionId\" = 0, \"OffensivePotionDurationMs\" = 0, \"ActiveDefensivePotionId\" = 0, \"DefensivePotionDurationMs\" = 0, \"BankedChronoSeconds\" = 0, \"IsChronoAccelerating\" = FALSE, \"EquippedWeaponId\" = NULL, \"EquippedArmorId\" = NULL, \"EquippedLeggingsId\" = NULL", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("UPDATE \"CommodityRecords\" SET \"Quantity\" = 0 WHERE \"ItemId\" = 'gold'", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"CommodityRecords\" WHERE \"ItemId\" <> 'gold'", stoppingToken);
 

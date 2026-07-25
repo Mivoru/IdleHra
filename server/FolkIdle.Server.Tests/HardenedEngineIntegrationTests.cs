@@ -2456,6 +2456,124 @@ namespace FolkIdle.Server.Tests
             Assert.Single(_fixture.PlayerRegistry.ChronoAccelerationQueue.Where(n => n.PlayerId == testPlayerId));
         }
 
+        // Modul: Play Mode audit fix. SeasonalRotationEngine had zero test
+        // coverage despite being the single highest-blast-radius operation
+        // in the codebase (a server-wide, all-players reset every 90 days).
+        // This test covers the specific bug found by reading it: the era
+        // rollover TRUNCATEs EquipmentInstances with RESTART IDENTITY (so a
+        // brand new item created after the reset can land on the exact same
+        // numeric id an old, wiped item used to have), but never cleared
+        // PlayerRecords.EquippedWeaponId/ArmorId/LeggingsId - and
+        // EquipmentSlotEngine.ComputeEquippedTotalsAsync resolves equipped
+        // items by id alone with no PlayerId ownership check. Left
+        // unfixed, a player's stale equipped-id would silently start
+        // resolving to a completely different player's post-reset item,
+        // leaking that stranger's stats/set bonus as the old player's own
+        // equipped gear.
+        //
+        // ExecutePlayerRolloversAsync also performs genuinely global,
+        // unconditional writes elsewhere (TRUNCATE BankEquipmentInstances, a
+        // blanket gold/commodity wipe across every row in the table) -
+        // running the real method against the shared "Postgres collection"
+        // fixture would corrupt DbSeeder's seeded players and any other
+        // test's data that happens to run in the same execution (confirmed
+        // live: it broke Test_ForgeSplicing_FodderPenaltyCalculation, an
+        // otherwise unrelated test, by zeroing out DbSeeder.PlayerHighId's
+        // gold). This test spins up its own dedicated, throwaway Postgres
+        // container instead of using _fixture, mirroring
+        // PostgresTestFixture's own setup but scoped to just this one test.
+        [Fact]
+        public async Task Test_SeasonalRotation_ClearsEquippedItemIds_BeforeIdentityRestartCanCauseCollision()
+        {
+            await using var container = new PostgreSqlBuilder("postgres:16")
+                .WithDatabase("folkidle_test_seasonal")
+                .WithUsername("postgres")
+                .WithPassword("postgres")
+                .Build();
+            await container.StartAsync();
+
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<FolkIdleDbContext>(options => options.UseNpgsql(container.GetConnectionString()));
+            var serviceProvider = services.BuildServiceProvider();
+            var dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+
+            await using (var migrateDb = await dbContextFactory.CreateDbContextAsync())
+            {
+                await migrateDb.Database.MigrateAsync();
+            }
+
+            const long testPlayerId = 1L;
+            const long otherPlayerId = 2L;
+
+            long originalWeaponId;
+            int closedEraId;
+            await using (var db = await dbContextFactory.CreateDbContextAsync())
+            {
+                // PlayerLegacyLedger.EraId has a real FK to SeasonalEraRecords -
+                // ExecutePlayerRolloversAsync inserts a ledger row for
+                // closedEraId, so a real era row must exist first.
+                var era = new SeasonalEraRecord { EndTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), IsActive = true };
+                db.SeasonalEraRecords.Add(era);
+                await db.SaveChangesAsync();
+                closedEraId = era.EraId;
+
+                var weapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "test_sword", QualityTier = 1, AffixPayload = "{\"1\": 50}" };
+                db.EquipmentInstances.Add(weapon);
+                await db.SaveChangesAsync();
+                originalWeaponId = weapon.Id;
+
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid(),
+                    EquippedWeaponId = originalWeaponId,
+                    CurrentLevel = 10,
+                    CurrentXp = 5000
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var seasonalEngine = new SeasonalRotationEngine(serviceProvider);
+            await seasonalEngine.ExecutePlayerRolloversAsync(closedEraId, CancellationToken.None);
+
+            await using (var verifyDb = await dbContextFactory.CreateDbContextAsync())
+            {
+                var playerAfter = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+                Assert.Null(playerAfter.EquippedWeaponId);
+                Assert.Null(playerAfter.EquippedArmorId);
+                Assert.Null(playerAfter.EquippedLeggingsId);
+                Assert.Equal(1, playerAfter.CurrentLevel);
+                Assert.Equal(0L, playerAfter.CurrentXp);
+
+                Assert.Equal(0, await verifyDb.EquipmentInstances.CountAsync());
+            }
+
+            // Confirm the identity-restart collision precondition is real -
+            // a brand new item for an unrelated player lands on the exact
+            // id the wiped weapon used to have.
+            await using (var db2 = await dbContextFactory.CreateDbContextAsync())
+            {
+                db2.PlayerRecords.Add(new PlayerRecord { Id = otherPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                var newWeapon = new EquipmentInstance { PlayerId = otherPlayerId, BaseItemId = "someone_elses_sword", QualityTier = 5, AffixPayload = "{\"1\": 9999}" };
+                db2.EquipmentInstances.Add(newWeapon);
+                await db2.SaveChangesAsync();
+                Assert.Equal(originalWeaponId, newWeapon.Id);
+            }
+        }
+
+        [Fact]
+        public void Test_SeasonalRotation_CalculateLegacyShards_MatchesExpectedFormula()
+        {
+            int shards = SeasonalRotationEngine.CalculateLegacyShards(totalGold: 999_999L, characterLevelSquareSum: 400L, inventoryScore: 30L);
+
+            double expected = Math.Floor(12.5 * Math.Log10(1_000_000.0) + 0.05 * 400.0 + 1.50 * 30.0);
+            Assert.Equal((int)expected, shards);
+
+            Assert.Equal(0, SeasonalRotationEngine.CalculateLegacyShards(0L, 0L, 0L));
+            Assert.Equal(0, SeasonalRotationEngine.CalculateLegacyShards(-500L, -10L, -5L));
+        }
+
         [Fact]
         public async Task Test_Billing_ConcurrentDuplicateIapReceipt_OnlyOneCreditApplied()
         {
