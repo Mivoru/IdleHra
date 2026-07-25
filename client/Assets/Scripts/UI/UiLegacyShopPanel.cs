@@ -34,6 +34,18 @@ namespace FolkIdle.Client.UI
         private const uint GoldDropRatePerkUnlockId = 3U;
         private const uint CombatSpeedPerkUnlockId = 4U;
 
+        // Modul: Play Mode audit follow-up. CitizenMultiSlotUnlockId (0)
+        // was already fully wired on the wire (StateUpdatePacket.
+        // CitizenMultiSlotsUnlocked, VisualSyncProxy.
+        // VisualCitizenMultiSlotsUnlocked) and server-side (LegacyStoreEngine.
+        // CalculateCitizenSlotCost), but had no purchasable row here -
+        // the last leftover from the original perk-only pass. Cost formula
+        // duplicated from LegacyStoreEngine.CalculateCitizenSlotCost
+        // (25 + slotIndex*10), same reasoning as the perk formulas above.
+        private const uint CitizenMultiSlotUnlockId = 1U;
+        private const uint MaxCitizenSlotIndex = 31U;
+        private const int MaxCitizenSlotCount = 32;
+
         public VisualSyncProxy SyncProxy;
         public WebSocketClient NetworkClient;
 
@@ -52,6 +64,10 @@ namespace FolkIdle.Client.UI
         public TextMeshProUGUI CombatSpeedRankText;
         public Button PurchaseCombatSpeedButton;
 
+        [Header("Citizen Slots")]
+        public TextMeshProUGUI CitizenSlotsText;
+        public Button PurchaseCitizenSlotButton;
+
         private readonly char[] _lineBuffer = new char[64];
         private float _refreshAccumulatorSeconds;
 
@@ -60,6 +76,7 @@ namespace FolkIdle.Client.UI
             if (PurchaseXpMultiplierButton != null) PurchaseXpMultiplierButton.onClick.AddListener(() => HandlePurchaseClicked(XpMultiplierPerkUnlockId));
             if (PurchaseGoldDropRateButton != null) PurchaseGoldDropRateButton.onClick.AddListener(() => HandlePurchaseClicked(GoldDropRatePerkUnlockId));
             if (PurchaseCombatSpeedButton != null) PurchaseCombatSpeedButton.onClick.AddListener(() => HandlePurchaseClicked(CombatSpeedPerkUnlockId));
+            if (PurchaseCitizenSlotButton != null) PurchaseCitizenSlotButton.onClick.AddListener(HandleCitizenSlotPurchaseClicked);
         }
 
         private void OnEnable()
@@ -93,6 +110,74 @@ namespace FolkIdle.Client.UI
             RefreshPerkRow(XpMultiplierRankText, PurchaseXpMultiplierButton, GetPerkRank(perks, XpMultiplierBitOffset), shardBalance);
             RefreshPerkRow(GoldDropRateRankText, PurchaseGoldDropRateButton, GetPerkRank(perks, GoldDropRateBitOffset), shardBalance);
             RefreshPerkRow(CombatSpeedRankText, PurchaseCombatSpeedButton, GetPerkRank(perks, CombatSpeedBitOffset), shardBalance);
+            RefreshCitizenSlotRow(shardBalance);
+        }
+
+        private void RefreshCitizenSlotRow(int shardBalance)
+        {
+            int unlockedMask = SyncProxy.VisualCitizenMultiSlotsUnlocked;
+            int unlockedCount = CountSetBits(unlockedMask);
+            bool isMaxed = unlockedCount >= MaxCitizenSlotCount;
+            uint nextSlotIndex = isMaxed ? MaxCitizenSlotIndex : (uint)FindLowestUnsetBit(unlockedMask);
+            int cost = isMaxed ? int.MaxValue : CalculateCitizenSlotCost(nextSlotIndex);
+
+            if (CitizenSlotsText != null)
+            {
+                int offset = WriteTextToBuffer(_lineBuffer, 0, "Slots: ");
+                offset = WriteIntToBuffer(_lineBuffer, offset, unlockedCount);
+                offset = WriteTextToBuffer(_lineBuffer, offset, "/");
+                offset = WriteIntToBuffer(_lineBuffer, offset, MaxCitizenSlotCount);
+                offset = WriteTextToBuffer(_lineBuffer, offset, "  ");
+                offset = isMaxed
+                    ? WriteTextToBuffer(_lineBuffer, offset, "MAX")
+                    : WriteTextToBuffer(_lineBuffer, offset, "Next: " + cost + "sh");
+                CitizenSlotsText.SetCharArray(_lineBuffer, 0, offset);
+            }
+
+            if (PurchaseCitizenSlotButton != null)
+            {
+                PurchaseCitizenSlotButton.interactable = !isMaxed && shardBalance >= cost;
+            }
+        }
+
+        private void HandleCitizenSlotPurchaseClicked()
+        {
+            if (NetworkClient == null || SyncProxy == null) return;
+
+            int unlockedMask = SyncProxy.VisualCitizenMultiSlotsUnlocked;
+            if (CountSetBits(unlockedMask) >= MaxCitizenSlotCount) return;
+
+            uint nextSlotIndex = (uint)FindLowestUnsetBit(unlockedMask);
+            NetworkClient.SendLegacyUnlockCommandZeroAlloc(CitizenMultiSlotUnlockId, nextSlotIndex);
+        }
+
+        private static int FindLowestUnsetBit(int mask)
+        {
+            for (int i = 0; i <= MaxCitizenSlotIndex; i++)
+            {
+                if ((mask & (1 << i)) == 0) return i;
+            }
+            return (int)MaxCitizenSlotIndex;
+        }
+
+        private static int CountSetBits(int mask)
+        {
+            int count = 0;
+            while (mask != 0)
+            {
+                count += mask & 1;
+                mask >>= 1;
+            }
+            return count;
+        }
+
+        private static int CalculateCitizenSlotCost(uint requestedSlotIndex)
+        {
+            if (requestedSlotIndex > MaxCitizenSlotIndex)
+            {
+                return int.MaxValue;
+            }
+            return 25 + ((int)requestedSlotIndex * 10);
         }
 
         private void RefreshPerkRow(TextMeshProUGUI text, Button purchaseButton, int rank, int shardBalance)

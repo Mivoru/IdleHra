@@ -4716,6 +4716,22 @@ namespace FolkIdle.Client.Editor
             purchaseCombatSpeedRect.sizeDelta = new Vector2(0f, 44f);
             purchaseCombatSpeedRect.anchoredPosition = new Vector2(0f, -232f);
 
+            TextMeshProUGUI citizenSlotsText = CreateText(contentAreaRect, "CitizenSlotsText", "Slots: 0/32", 16f, TextAlignmentOptions.MidlineLeft);
+            RectTransform citizenSlotsRect = (RectTransform)citizenSlotsText.transform;
+            citizenSlotsRect.anchorMin = new Vector2(0f, 1f);
+            citizenSlotsRect.anchorMax = new Vector2(1f, 1f);
+            citizenSlotsRect.pivot = new Vector2(0.5f, 1f);
+            citizenSlotsRect.sizeDelta = new Vector2(0f, 24f);
+            citizenSlotsRect.anchoredPosition = new Vector2(0f, -286f);
+
+            Button purchaseCitizenSlotButton = CreateButton(contentAreaRect, "PurchaseCitizenSlotButton", "Unlock Citizen Slot", out TextMeshProUGUI _);
+            RectTransform purchaseCitizenSlotRect = (RectTransform)purchaseCitizenSlotButton.transform;
+            purchaseCitizenSlotRect.anchorMin = new Vector2(0f, 1f);
+            purchaseCitizenSlotRect.anchorMax = new Vector2(1f, 1f);
+            purchaseCitizenSlotRect.pivot = new Vector2(0.5f, 1f);
+            purchaseCitizenSlotRect.sizeDelta = new Vector2(0f, 44f);
+            purchaseCitizenSlotRect.anchoredPosition = new Vector2(0f, -314f);
+
             UiLegacyShopPanel panel = windowObject.AddComponent<UiLegacyShopPanel>();
             panel.SyncProxy = syncProxy;
             panel.NetworkClient = networkClient;
@@ -4726,6 +4742,8 @@ namespace FolkIdle.Client.Editor
             panel.PurchaseGoldDropRateButton = purchaseGoldButton;
             panel.CombatSpeedRankText = combatSpeedRankText;
             panel.PurchaseCombatSpeedButton = purchaseCombatSpeedButton;
+            panel.CitizenSlotsText = citizenSlotsText;
+            panel.PurchaseCitizenSlotButton = purchaseCitizenSlotButton;
 
             return windowObject;
         }
