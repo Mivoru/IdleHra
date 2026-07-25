@@ -135,12 +135,38 @@ namespace FolkIdle.Client.UI
 
         private void OnEnable()
         {
-            if (NetworkClient != null) NetworkClient.OnStateConfirmed += HandleStateConfirmed;
+            if (NetworkClient != null)
+            {
+                NetworkClient.OnStateConfirmed += HandleStateConfirmed;
+                NetworkClient.OnUnexpectedDisconnect += HandleUnexpectedDisconnect;
+            }
         }
 
         private void OnDisable()
         {
-            if (NetworkClient != null) NetworkClient.OnStateConfirmed -= HandleStateConfirmed;
+            if (NetworkClient != null)
+            {
+                NetworkClient.OnStateConfirmed -= HandleStateConfirmed;
+                NetworkClient.OnUnexpectedDisconnect -= HandleUnexpectedDisconnect;
+            }
+        }
+
+        // Modul: Play Mode audit fix. Previously an unexpected WebSocket
+        // drop (server restart, dropped connection) left the player
+        // looking at a fully live-seeming HUD where every action silently
+        // did nothing forever - WebSocketClient's own SendXCommandZeroAlloc
+        // guards already no-op on a non-Open socket, but nothing told the
+        // player or attempted to recover. Re-shows the blocking panel and
+        // retries the exact same silent remembered-device login the game
+        // already runs at boot; on success this reaches ProceedWithToken ->
+        // Connect() -> a fresh WebSocket -> HandleStateConfirmed hides the
+        // panel again. On failure, AttemptRememberedLoginAsync's own
+        // fallback already shows the Choice screen.
+        private void HandleUnexpectedDisconnect()
+        {
+            if (BlockingPanelRoot != null) BlockingPanelRoot.SetActive(true);
+            SetStatus("Connection lost. Reconnecting...");
+            _ = AttemptRememberedLoginAsync();
         }
 
         private void Start()

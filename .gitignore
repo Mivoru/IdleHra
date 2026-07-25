@@ -16,6 +16,8 @@
 **/Builds/
 **/Build/
 **/.AssetsBin/
+**/Assets/_Recovery/
+**/Assets/_Recovery.meta
 
 # Target: OS & IDE files
 .DS_Store

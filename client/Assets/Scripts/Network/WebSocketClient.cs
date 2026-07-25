@@ -31,9 +31,24 @@ namespace FolkIdle.Client.Network
         public event Action OnStateConfirmed;
         public bool IsAuthenticated { get; private set; }
 
+        // Fires when the receive loop ends for any reason other than an
+        // explicit Disconnect() call (server restart, dropped connection,
+        // protocol error) while a session had actually been confirmed -
+        // found via a live Play Mode audit: every SendXCommandZeroAlloc
+        // method already silently no-ops once the socket is no longer
+        // Open, but nothing previously reset IsAuthenticated or told
+        // anyone the connection was gone, so gameplay actions kept
+        // silently doing nothing with zero feedback until a manual log
+        // off/on. UiLoginWindow subscribes to this to re-show the
+        // blocking panel and retry the remembered-device login.
+        public event Action OnUnexpectedDisconnect;
+
+        public bool IsConnected => _webSocket != null && _webSocket.State == WebSocketState.Open;
+
         private ClientWebSocket _webSocket;
         private CancellationTokenSource _cts;
         private bool _isConnecting;
+        private bool _intentionalDisconnect;
 
         // Single reusable buffer to prevent GC allocations in unity Update
         private byte[] _receiveBuffer = new byte[1024];
@@ -105,6 +120,7 @@ namespace FolkIdle.Client.Network
             if (_isConnecting) return;
             _isConnecting = true;
             IsAuthenticated = false;
+            _intentionalDisconnect = false;
             _webSocket = new ClientWebSocket();
             _cts = new CancellationTokenSource();
             _ = ConnectAndReceiveLoopAsync();
@@ -157,6 +173,16 @@ namespace FolkIdle.Client.Network
             finally
             {
                 _isConnecting = false;
+
+                if (!_intentionalDisconnect)
+                {
+                    bool wasAuthenticated = IsAuthenticated;
+                    IsAuthenticated = false;
+                    if (wasAuthenticated)
+                    {
+                        OnUnexpectedDisconnect?.Invoke();
+                    }
+                }
             }
         }
 
@@ -1267,6 +1293,7 @@ namespace FolkIdle.Client.Network
         // Connect() does not touch a disposed instance on the next login.
         public void Disconnect()
         {
+            _intentionalDisconnect = true;
             _cts?.Cancel();
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)
             {
