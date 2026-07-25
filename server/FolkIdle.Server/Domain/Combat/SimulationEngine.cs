@@ -1235,7 +1235,7 @@ namespace FolkIdle.Server.Domain.Combat
                         _playerRegistry.RegisterPlayer(tId);
                         SafeDispatchAsync("Login", tId, async () => {
                             var payload = await _checkpointManager.LoadPlayerState(tId);
-                            
+
                             long currentUnixTimestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                             if (!ClientCommandValidator.ValidateLoginTime(ref payload, currentUnixTimestamp))
                             {

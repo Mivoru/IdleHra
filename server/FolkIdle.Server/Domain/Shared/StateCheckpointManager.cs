@@ -508,6 +508,21 @@ namespace FolkIdle.Server.Domain.Shared
             var dailyQuests = await QuestEngine.EnsureAndLoadDailyQuestsAsync(dbContext, playerId, questLoadEpochSeconds);
             await dbContext.SaveChangesAsync();
 
+            // Modul: Play Mode audit fix. CurrentGold was previously hardcoded
+            // to 10000 on every hydration regardless of the real balance -
+            // AuthenticationEngine seeds CommodityRecords ItemId="gold" at
+            // registration (1000, not 10000) and every gold-earning/-spending
+            // path (RedisWriteBehindEngine's delta flush, MarketEscrowEngine,
+            // MarketOrderBookEngine) reads/writes that same row, so it is the
+            // one authoritative balance - a live Play Mode session confirmed
+            // this by comparing a player's real CommodityRecords balance
+            // against what every login/reconnect actually loaded.
+            long loadedGold = await dbContext.CommodityRecords
+                .AsNoTracking()
+                .Where(c => c.PlayerId == playerId && c.ItemId == "gold")
+                .Select(c => c.Quantity)
+                .FirstOrDefaultAsync();
+
             // Modul: Deferred Part 5 Implementation, Part 2 - consumable
             // expiry hydration reference clock (see the ActiveOffensive/
             // Defensive/Food assignments in the payload build below).
@@ -529,7 +544,7 @@ namespace FolkIdle.Server.Domain.Shared
                 RequiredProgressTicks = 50,
                 InventorySpaceRemaining = 20 + RaceMasteryResolver.GetHumanVaultBonusSlots(humanMastery),
                 PlayerHp = 100000,
-                CurrentGold = 10000,
+                CurrentGold = loadedGold,
                 PremiumCurrency = player.PremiumDiamonds,
                 SpeedMultiplier = chronoAccelerationActive ? (int)accountChrono.ActiveSpeedMultiplier : 1,
                 GuildId = player.GuildId,
