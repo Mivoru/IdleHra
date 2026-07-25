@@ -79,6 +79,7 @@ namespace FolkIdle.Client.Engine
         public int VisualGlobalEventId;
         public int VisualNotificationQueueStateLength;
         public byte VisualActiveLanguageState = 1;
+        public int VisualAutoEatThreshold;
 
         // Modul: Combat System Overhaul - the server-computed
         // Accuracy/Armor/BlockStrength values actually used in that tick's
@@ -477,6 +478,7 @@ namespace FolkIdle.Client.Engine
                     VisualGlobalEventId = packet.ActiveEventType;
                     VisualNotificationQueueStateLength = packet.NotificationQueueStateLength;
                     VisualActiveLanguageState = packet.ActiveLanguageState == 0 ? (byte)1 : packet.ActiveLanguageState;
+                    VisualAutoEatThreshold = packet.AutoEatThreshold;
                     VisualActiveConnectionThroughput = packet.VisualActiveConnectionThroughput;
                     VisualCurrentNodeMemoryLoadMetrics = packet.CurrentNodeMemoryLoadMetrics;
                     VisualPlayerAccuracyRating = packet.PlayerAccuracyRating;
@@ -613,6 +615,7 @@ namespace FolkIdle.Client.Engine
             VisualGlobalEventId = _snapshotB.Packet.ActiveEventType;
             VisualNotificationQueueStateLength = _snapshotB.Packet.NotificationQueueStateLength;
             VisualActiveLanguageState = _snapshotB.Packet.ActiveLanguageState == 0 ? (byte)1 : _snapshotB.Packet.ActiveLanguageState;
+            VisualAutoEatThreshold = _snapshotB.Packet.AutoEatThreshold;
             VisualActiveConnectionThroughput = _snapshotB.Packet.VisualActiveConnectionThroughput;
             VisualCurrentNodeMemoryLoadMetrics = _snapshotB.Packet.CurrentNodeMemoryLoadMetrics;
             VisualPlayerAccuracyRating = _snapshotB.Packet.PlayerAccuracyRating;

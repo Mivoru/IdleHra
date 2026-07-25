@@ -4562,6 +4562,45 @@ namespace FolkIdle.Client.Editor
             languagePicker.GermanActiveHighlight = germanHighlight;
             languagePicker.PolishActiveHighlight = polishHighlight;
 
+            TextMeshProUGUI autoEatHeaderText = CreateText(contentAreaRect, "AutoEatHeaderText", "Auto-Eat Threshold", 18f, TextAlignmentOptions.MidlineLeft);
+            RectTransform autoEatHeaderRect = (RectTransform)autoEatHeaderText.transform;
+            autoEatHeaderRect.anchorMin = new Vector2(0f, 1f);
+            autoEatHeaderRect.anchorMax = new Vector2(1f, 1f);
+            autoEatHeaderRect.pivot = new Vector2(0.5f, 1f);
+            autoEatHeaderRect.sizeDelta = new Vector2(0f, 30f);
+            autoEatHeaderRect.anchoredPosition = new Vector2(0f, -314f);
+
+            TextMeshProUGUI autoEatThresholdText = CreateText(contentAreaRect, "AutoEatThresholdText", "Auto-Eat: 0%", 16f, TextAlignmentOptions.MidlineLeft);
+            RectTransform autoEatThresholdRect = (RectTransform)autoEatThresholdText.transform;
+            autoEatThresholdRect.anchorMin = new Vector2(0f, 1f);
+            autoEatThresholdRect.anchorMax = new Vector2(0.6f, 1f);
+            autoEatThresholdRect.pivot = new Vector2(0.5f, 1f);
+            autoEatThresholdRect.sizeDelta = new Vector2(0f, 40f);
+            autoEatThresholdRect.anchoredPosition = new Vector2(0f, -348f);
+
+            Button autoEatDecreaseButton = CreateButton(contentAreaRect, "AutoEatDecreaseButton", "-10%", out TextMeshProUGUI _);
+            RectTransform autoEatDecreaseRect = (RectTransform)autoEatDecreaseButton.transform;
+            autoEatDecreaseRect.anchorMin = new Vector2(0.62f, 1f);
+            autoEatDecreaseRect.anchorMax = new Vector2(0.8f, 1f);
+            autoEatDecreaseRect.pivot = new Vector2(0.5f, 1f);
+            autoEatDecreaseRect.sizeDelta = new Vector2(0f, 40f);
+            autoEatDecreaseRect.anchoredPosition = new Vector2(0f, -348f);
+
+            Button autoEatIncreaseButton = CreateButton(contentAreaRect, "AutoEatIncreaseButton", "+10%", out TextMeshProUGUI _);
+            RectTransform autoEatIncreaseRect = (RectTransform)autoEatIncreaseButton.transform;
+            autoEatIncreaseRect.anchorMin = new Vector2(0.82f, 1f);
+            autoEatIncreaseRect.anchorMax = new Vector2(1f, 1f);
+            autoEatIncreaseRect.pivot = new Vector2(0.5f, 1f);
+            autoEatIncreaseRect.sizeDelta = new Vector2(0f, 40f);
+            autoEatIncreaseRect.anchoredPosition = new Vector2(0f, -348f);
+
+            UiAutoEatThresholdPanel autoEatPanel = windowObject.AddComponent<UiAutoEatThresholdPanel>();
+            autoEatPanel.SyncProxy = syncProxy;
+            autoEatPanel.NetworkClient = networkClient;
+            autoEatPanel.ThresholdText = autoEatThresholdText;
+            autoEatPanel.DecreaseButton = autoEatDecreaseButton;
+            autoEatPanel.IncreaseButton = autoEatIncreaseButton;
+
             return (windowObject, logOffButton);
         }
 
