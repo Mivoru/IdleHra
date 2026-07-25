@@ -5069,6 +5069,68 @@ namespace FolkIdle.Client.Editor
             terminateRect.sizeDelta = new Vector2(0f, 44f);
             terminateRect.anchoredPosition = new Vector2(0f, -156f);
 
+            // Modul: Play Mode audit fix. Academy character-mentor-slot
+            // assignment (AssignMentor/ExecuteAssignMentorAsync) - see
+            // UiMentorshipContractPanel's own header comment. 5 slot
+            // buttons match ValidateMentorshipAssignment's hard slotIndex
+            // < 5 bound; only the first AcademyLevel of them are ever
+            // interactable (gated live by RefreshDisplay).
+            TextMeshProUGUI academyHeaderText = CreateText(contentAreaRect, "AcademyHeaderText", "Academy Assignment", 18f, TextAlignmentOptions.MidlineLeft);
+            RectTransform academyHeaderRect = (RectTransform)academyHeaderText.transform;
+            academyHeaderRect.anchorMin = new Vector2(0f, 1f);
+            academyHeaderRect.anchorMax = new Vector2(1f, 1f);
+            academyHeaderRect.pivot = new Vector2(0.5f, 1f);
+            academyHeaderRect.sizeDelta = new Vector2(0f, 30f);
+            academyHeaderRect.anchoredPosition = new Vector2(0f, -208f);
+
+            GameObject slotRowObject = new GameObject("MentorSlotRow", typeof(RectTransform));
+            slotRowObject.transform.SetParent(contentAreaRect, false);
+            RectTransform slotRowRect = (RectTransform)slotRowObject.transform;
+            slotRowRect.anchorMin = new Vector2(0f, 1f);
+            slotRowRect.anchorMax = new Vector2(1f, 1f);
+            slotRowRect.pivot = new Vector2(0.5f, 1f);
+            slotRowRect.sizeDelta = new Vector2(0f, 40f);
+            slotRowRect.anchoredPosition = new Vector2(0f, -242f);
+
+            HorizontalLayoutGroup slotRowLayout = slotRowObject.AddComponent<HorizontalLayoutGroup>();
+            slotRowLayout.spacing = 4f;
+            slotRowLayout.childControlWidth = true;
+            slotRowLayout.childForceExpandWidth = true;
+            slotRowLayout.childControlHeight = true;
+            slotRowLayout.childForceExpandHeight = true;
+
+            const int mentorSlotCount = 5;
+            Button[] slotButtons = new Button[mentorSlotCount];
+            GameObject[] slotArmedIndicators = new GameObject[mentorSlotCount];
+            for (int i = 0; i < mentorSlotCount; i++)
+            {
+                Button slotButton = CreateButton(slotRowRect, "MentorSlotButton_" + i, "Slot " + i, out TextMeshProUGUI _);
+                slotButtons[i] = slotButton;
+
+                GameObject armedIndicator = new GameObject("ArmedIndicator", typeof(RectTransform), typeof(Image));
+                armedIndicator.transform.SetParent(slotButton.transform, false);
+                RectTransform armedRect = (RectTransform)armedIndicator.transform;
+                armedRect.anchorMin = Vector2.zero;
+                armedRect.anchorMax = new Vector2(1f, 0.1f);
+                armedRect.offsetMin = Vector2.zero;
+                armedRect.offsetMax = Vector2.zero;
+                armedIndicator.GetComponent<Image>().color = new Color(0.35f, 0.75f, 0.35f, 1f);
+                armedIndicator.SetActive(false);
+                slotArmedIndicators[i] = armedIndicator;
+            }
+
+            GameObject characterScrollAreaObject = new GameObject("CharacterScrollArea", typeof(RectTransform));
+            characterScrollAreaObject.transform.SetParent(contentAreaRect, false);
+            RectTransform characterScrollAreaRect = (RectTransform)characterScrollAreaObject.transform;
+            characterScrollAreaRect.anchorMin = Vector2.zero;
+            characterScrollAreaRect.anchorMax = Vector2.one;
+            characterScrollAreaRect.offsetMin = Vector2.zero;
+            characterScrollAreaRect.offsetMax = new Vector2(0f, -286f);
+
+            (ScrollRect _, RectTransform characterContent) = ChatSceneBuilder.BuildScrollView(characterScrollAreaRect);
+
+            GameObject characterRowPrefabAsset = BuildAndSaveBreedingRosterRowPrefab();
+
             UiMentorshipContractPanel panel = windowObject.AddComponent<UiMentorshipContractPanel>();
             panel.SyncProxy = syncProxy;
             panel.NetworkClient = networkClient;
@@ -5076,6 +5138,10 @@ namespace FolkIdle.Client.Editor
             panel.MentorUsernameField = mentorUsernameField;
             panel.EstablishButton = establishButton;
             panel.TerminateButton = terminateButton;
+            panel.SlotButtons = slotButtons;
+            panel.SlotArmedIndicators = slotArmedIndicators;
+            panel.CharacterRowContainer = characterContent;
+            panel.CharacterRowPrefab = characterRowPrefabAsset.GetComponent<UiBreedingRosterRow>();
 
             return windowObject;
         }

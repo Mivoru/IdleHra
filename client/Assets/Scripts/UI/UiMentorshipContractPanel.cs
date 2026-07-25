@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -40,6 +42,34 @@ namespace FolkIdle.Client.UI
         [Header("Terminate")]
         public Button TerminateButton;
 
+        // Modul: Play Mode audit fix. MentorshipEngine.ExecuteAssignMentorAsync
+        // (Academy character-mentor-slot assignment - a village-internal
+        // feature distinct from the player-to-player contract above; it
+        // drives CachedMentorCount, a real XP-multiplier bonus already
+        // applying server-side but with AssignMentor only ever called from
+        // the dead UiCommandDispatcher grab-bag) had a real, validated
+        // command (ValidateMentorshipAssignment) and a working sender
+        // (SendMentorshipCommandZeroAlloc) but no UI anywhere. Reuses
+        // BreedingRosterCache/UiBreedingRosterRow as-is (a generic "this
+        // player's characters" list with a Bind(entry, Action<string>)
+        // selection callback, not breeding-specific) rather than a new
+        // roster endpoint. "Arm a slot, then click a character row to fill
+        // it" mirrors UiForgeFusionPanel's own slot-select pattern. Current
+        // per-slot assignments are not displayed (no client-visible read of
+        // MentorshipAcademyAssignments exists) - deliberately out of scope
+        // for this pass; assigning still works without seeing prior state.
+        [Header("Academy Assignment")]
+        public Button[] SlotButtons = System.Array.Empty<Button>();
+        public GameObject[] SlotArmedIndicators = System.Array.Empty<GameObject>();
+        public Transform CharacterRowContainer;
+        public UiBreedingRosterRow CharacterRowPrefab;
+        public int InitialCharacterRowPoolCapacity = 10;
+
+        private UIComponentPool<UiBreedingRosterRow> _characterRowPool;
+        private readonly List<UiBreedingRosterRow> _activeCharacterRows = new List<UiBreedingRosterRow>();
+        private int _armedSlot = -1;
+        private bool _isCharacterListDirty;
+
         private readonly char[] _lineBuffer = new char[96];
         private float _refreshAccumulatorSeconds;
 
@@ -47,15 +77,83 @@ namespace FolkIdle.Client.UI
         {
             if (EstablishButton != null) EstablishButton.onClick.AddListener(HandleEstablishClicked);
             if (TerminateButton != null) TerminateButton.onClick.AddListener(HandleTerminateClicked);
+
+            for (int i = 0; i < SlotButtons.Length; i++)
+            {
+                int slotIndex = i;
+                if (SlotButtons[i] != null) SlotButtons[i].onClick.AddListener(() => HandleSlotButtonClicked(slotIndex));
+            }
+
+            if (CharacterRowPrefab != null && CharacterRowContainer != null)
+            {
+                _characterRowPool = new UIComponentPool<UiBreedingRosterRow>(CharacterRowPrefab, CharacterRowContainer, InitialCharacterRowPoolCapacity);
+            }
         }
 
         private void OnEnable()
         {
             _refreshAccumulatorSeconds = RefreshIntervalSeconds;
+
+            BreedingRosterCache.OnRosterCacheUpdated += HandleCharacterCacheUpdated;
+            BreedingRosterCache.RequestSnapshot();
+        }
+
+        private void OnDisable()
+        {
+            BreedingRosterCache.OnRosterCacheUpdated -= HandleCharacterCacheUpdated;
+        }
+
+        private void HandleCharacterCacheUpdated()
+        {
+            _isCharacterListDirty = true;
+        }
+
+        private void HandleSlotButtonClicked(int slotIndex)
+        {
+            _armedSlot = slotIndex;
+
+            for (int i = 0; i < SlotArmedIndicators.Length; i++)
+            {
+                if (SlotArmedIndicators[i] != null) SlotArmedIndicators[i].SetActive(i == slotIndex);
+            }
+        }
+
+        private void RefreshCharacterRows()
+        {
+            if (_characterRowPool == null) return;
+
+            for (int i = 0; i < _activeCharacterRows.Count; i++)
+            {
+                _characterRowPool.Despawn(_activeCharacterRows[i]);
+            }
+            _activeCharacterRows.Clear();
+
+            IReadOnlyList<BreedingRosterEntryData> entries = BreedingRosterCache.Entries;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                UiBreedingRosterRow row = _characterRowPool.Spawn();
+                row.Bind(entries[i], HandleCharacterSelected);
+                _activeCharacterRows.Add(row);
+            }
+        }
+
+        private void HandleCharacterSelected(string characterId)
+        {
+            if (NetworkClient == null || _armedSlot < 0) return;
+            if (!Guid.TryParse(characterId, out Guid characterGuid)) return;
+
+            NetworkClient.SendMentorshipCommandZeroAlloc(characterGuid, _armedSlot);
+            if (StatusText != null) StatusText.text = "Assigning mentor...";
         }
 
         private void Update()
         {
+            if (_isCharacterListDirty)
+            {
+                RefreshCharacterRows();
+                _isCharacterListDirty = false;
+            }
+
             _refreshAccumulatorSeconds += Time.unscaledDeltaTime;
             if (_refreshAccumulatorSeconds < RefreshIntervalSeconds) return;
             _refreshAccumulatorSeconds = 0f;
@@ -93,6 +191,12 @@ namespace FolkIdle.Client.UI
 
             if (EstablishButton != null) EstablishButton.interactable = !hasMentor && SyncProxy.VisualAcademyLevel > 0;
             if (TerminateButton != null) TerminateButton.interactable = hasMentor;
+
+            int academyLevel = SyncProxy.VisualAcademyLevel;
+            for (int i = 0; i < SlotButtons.Length; i++)
+            {
+                if (SlotButtons[i] != null) SlotButtons[i].interactable = i < academyLevel;
+            }
         }
 
         private void HandleEstablishClicked()
