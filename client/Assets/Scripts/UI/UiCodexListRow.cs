@@ -11,6 +11,7 @@ namespace FolkIdle.Client.UI
     {
         public TMP_Text RowLabelText;
         public Button RowButton;
+        public Image RowIcon;
 
         private readonly char[] _rowUiBuffer = new char[64];
         private string _assetKey;
@@ -24,7 +25,7 @@ namespace FolkIdle.Client.UI
             }
         }
 
-        public void Bind(int monsterId, string assetKey, int level, Action<string> onSelected)
+        public void Bind(int monsterId, string assetKey, int level, Sprite icon, Action<string> onSelected)
         {
             _assetKey = assetKey;
             _onSelected = onSelected;
@@ -36,6 +37,12 @@ namespace FolkIdle.Client.UI
                 offset = WriteTextToBuffer(_rowUiBuffer, offset, "  Lv. ");
                 offset = WriteIntToBuffer(_rowUiBuffer, offset, level);
                 RowLabelText.SetCharArray(_rowUiBuffer, 0, offset);
+            }
+
+            if (RowIcon != null)
+            {
+                RowIcon.sprite = icon;
+                RowIcon.enabled = icon != null;
             }
         }
 

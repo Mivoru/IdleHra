@@ -19,6 +19,34 @@ namespace FolkIdle.Client.Engine
         public AssetReference ItemPrefab;
     }
 
+    // Flat 2D icon lookups (Sprite, not Addressables) - separate from the
+    // MonsterMapping/ItemMapping pair above, which resolve to prefabs for the
+    // 3D preview viewers (UiCodex3DViewer/UiForgeItemViewer). Generated art
+    // dropped into Assets/Images/Sprites/ is plain 2D character/monster/
+    // material artwork with no corresponding prefab, so it is wired here
+    // instead and consumed directly by Image.sprite on UI rows.
+    [Serializable]
+    public class MonsterSpriteMapping
+    {
+        public int MonsterId;
+        public Sprite Icon;
+    }
+
+    [Serializable]
+    public class ItemSpriteMapping
+    {
+        public string ItemBaseId;
+        public Sprite Icon;
+    }
+
+    [Serializable]
+    public class RaceSpriteMapping
+    {
+        public int RaceId;
+        public Sprite MaleIcon;
+        public Sprite FemaleIcon;
+    }
+
     // Designer-facing, type-safe MonsterId/ItemId -> AssetReference lookup.
     // Serialized as flat Lists for Inspector drag-and-drop editing (Unity cannot
     // serialize Dictionaries directly); compiled into Dictionaries once so
@@ -29,8 +57,18 @@ namespace FolkIdle.Client.Engine
         public List<MonsterMapping> monsterMappings = new List<MonsterMapping>();
         public List<ItemMapping> itemMappings = new List<ItemMapping>();
 
+        public List<MonsterSpriteMapping> monsterSpriteMappings = new List<MonsterSpriteMapping>();
+        public List<ItemSpriteMapping> itemSpriteMappings = new List<ItemSpriteMapping>();
+        public List<RaceSpriteMapping> raceSpriteMappings = new List<RaceSpriteMapping>();
+        public Sprite GoldIcon;
+        public Sprite GemsIcon;
+
         private Dictionary<int, AssetReference> _monsterCache;
         private Dictionary<string, AssetReference> _itemCache;
+
+        private Dictionary<int, Sprite> _monsterIconCache;
+        private Dictionary<string, Sprite> _itemIconCache;
+        private Dictionary<int, RaceSpriteMapping> _raceIconCache;
 
         private void OnEnable()
         {
@@ -53,6 +91,30 @@ namespace FolkIdle.Client.Engine
                 ItemMapping mapping = itemMappings[i];
                 if (mapping == null || string.IsNullOrEmpty(mapping.ItemId)) continue;
                 _itemCache[mapping.ItemId] = mapping.ItemPrefab;
+            }
+
+            _monsterIconCache = new Dictionary<int, Sprite>(monsterSpriteMappings.Count);
+            for (int i = 0; i < monsterSpriteMappings.Count; i++)
+            {
+                MonsterSpriteMapping mapping = monsterSpriteMappings[i];
+                if (mapping == null || mapping.Icon == null) continue;
+                _monsterIconCache[mapping.MonsterId] = mapping.Icon;
+            }
+
+            _itemIconCache = new Dictionary<string, Sprite>(itemSpriteMappings.Count);
+            for (int i = 0; i < itemSpriteMappings.Count; i++)
+            {
+                ItemSpriteMapping mapping = itemSpriteMappings[i];
+                if (mapping == null || string.IsNullOrEmpty(mapping.ItemBaseId) || mapping.Icon == null) continue;
+                _itemIconCache[mapping.ItemBaseId] = mapping.Icon;
+            }
+
+            _raceIconCache = new Dictionary<int, RaceSpriteMapping>(raceSpriteMappings.Count);
+            for (int i = 0; i < raceSpriteMappings.Count; i++)
+            {
+                RaceSpriteMapping mapping = raceSpriteMappings[i];
+                if (mapping == null) continue;
+                _raceIconCache[mapping.RaceId] = mapping;
             }
         }
 
@@ -87,6 +149,49 @@ namespace FolkIdle.Client.Engine
 
             Debug.LogWarning("AssetRegistry: no valid ItemPrefab mapping for ItemId '" + itemId + "'");
             assetRef = null;
+            return false;
+        }
+
+        public bool TryGetMonsterSprite(int monsterId, out Sprite icon)
+        {
+            if (_monsterIconCache == null)
+            {
+                BuildCaches();
+            }
+
+            return _monsterIconCache.TryGetValue(monsterId, out icon);
+        }
+
+        public bool TryGetItemSprite(string itemBaseId, out Sprite icon)
+        {
+            if (_itemIconCache == null)
+            {
+                BuildCaches();
+            }
+
+            if (!string.IsNullOrEmpty(itemBaseId) && _itemIconCache.TryGetValue(itemBaseId, out icon))
+            {
+                return true;
+            }
+
+            icon = null;
+            return false;
+        }
+
+        public bool TryGetRaceSprite(int raceId, bool isFemale, out Sprite icon)
+        {
+            if (_raceIconCache == null)
+            {
+                BuildCaches();
+            }
+
+            if (_raceIconCache.TryGetValue(raceId, out RaceSpriteMapping mapping))
+            {
+                icon = isFemale ? mapping.FemaleIcon : mapping.MaleIcon;
+                return icon != null;
+            }
+
+            icon = null;
             return false;
         }
     }

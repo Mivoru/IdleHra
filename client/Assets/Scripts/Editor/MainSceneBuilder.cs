@@ -183,7 +183,7 @@ namespace FolkIdle.Client.Editor
             // + Home/Map button), top-right (real Gold/Gems currency), and
             // bottom (Season Pass banner) bars - stay visible across every
             // screen per the map-hub spec's UI persistence requirement.
-            (Button hamburgerToggleButton, Button homeButton, Button battlePassBannerButton) = BuildPersistentBars(canvas.transform, syncProxy);
+            (Button hamburgerToggleButton, Button homeButton, Button battlePassBannerButton) = BuildPersistentBars(canvas.transform, syncProxy, assetRegistry);
 
             // Modul: Map Hub, Part 7. One screen switcher for all 20
             // top-level screens - replaces the old flat scrollable nav-tab
@@ -2889,16 +2889,29 @@ namespace FolkIdle.Client.Editor
             Button rowButton = root.AddComponent<Button>();
             rowButton.targetGraphic = background;
 
+            GameObject rowIconObject = new GameObject("RowIcon", typeof(RectTransform));
+            rowIconObject.transform.SetParent(root.transform, false);
+            RectTransform rowIconRect = (RectTransform)rowIconObject.transform;
+            rowIconRect.anchorMin = new Vector2(0f, 0.5f);
+            rowIconRect.anchorMax = new Vector2(0f, 0.5f);
+            rowIconRect.pivot = new Vector2(0f, 0.5f);
+            rowIconRect.anchoredPosition = new Vector2(4f, 0f);
+            rowIconRect.sizeDelta = new Vector2(26f, 26f);
+            Image rowIcon = rowIconObject.AddComponent<Image>();
+            rowIcon.preserveAspect = true;
+            rowIcon.enabled = false;
+
             TextMeshProUGUI rowText = CreateText(root.transform, "RowLabelText", "Monster", 15f, TextAlignmentOptions.MidlineLeft);
             RectTransform rowTextRect = (RectTransform)rowText.transform;
             rowTextRect.anchorMin = Vector2.zero;
             rowTextRect.anchorMax = Vector2.one;
-            rowTextRect.offsetMin = new Vector2(8f, 0f);
+            rowTextRect.offsetMin = new Vector2(38f, 0f);
             rowTextRect.offsetMax = new Vector2(-8f, 0f);
 
             UiCodexListRow rowComponent = root.AddComponent<UiCodexListRow>();
             rowComponent.RowLabelText = rowText;
             rowComponent.RowButton = rowButton;
+            rowComponent.RowIcon = rowIcon;
 
             GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(root, CodexListRowPrefabPath, out bool success);
             if (!success)
@@ -4444,7 +4457,34 @@ namespace FolkIdle.Client.Editor
         // windows alike) per the map-hub spec's UI persistence
         // requirement.
         // ------------------------------------------------------------
-        private static (Button hamburgerToggleButton, Button homeButton, Button battlePassBannerButton) BuildPersistentBars(Transform canvasTransform, VisualSyncProxy syncProxy)
+        private static (Image icon, TextMeshProUGUI text) CreateCurrencyRow(Transform parent, string placeholderText)
+        {
+            GameObject rowObject = new GameObject("CurrencyRow_" + placeholderText, typeof(RectTransform));
+            rowObject.transform.SetParent(parent, false);
+            LayoutElement rowLayoutElement = rowObject.AddComponent<LayoutElement>();
+            rowLayoutElement.preferredHeight = 22f;
+
+            HorizontalLayoutGroup rowLayout = rowObject.AddComponent<HorizontalLayoutGroup>();
+            rowLayout.spacing = 4f;
+            rowLayout.childControlWidth = true;
+            rowLayout.childForceExpandWidth = false;
+            rowLayout.childControlHeight = true;
+            rowLayout.childForceExpandHeight = true;
+
+            GameObject iconObject = new GameObject("Icon", typeof(RectTransform));
+            iconObject.transform.SetParent(rowObject.transform, false);
+            Image icon = iconObject.AddComponent<Image>();
+            icon.preserveAspect = true;
+            icon.enabled = false;
+            LayoutElement iconLayoutElement = iconObject.AddComponent<LayoutElement>();
+            iconLayoutElement.preferredWidth = 20f;
+
+            TextMeshProUGUI text = CreateText(rowObject.transform, "Stat_" + placeholderText, placeholderText, 16f, TextAlignmentOptions.MidlineLeft);
+
+            return (icon, text);
+        }
+
+        private static (Button hamburgerToggleButton, Button homeButton, Button battlePassBannerButton) BuildPersistentBars(Transform canvasTransform, VisualSyncProxy syncProxy, AssetRegistry assetRegistry)
         {
             GameObject barRootObject = new GameObject("PersistentBars", typeof(RectTransform));
             barRootObject.transform.SetParent(canvasTransform, false);
@@ -4491,13 +4531,23 @@ namespace FolkIdle.Client.Editor
             currencyLayout.childControlHeight = false;
             currencyLayout.childForceExpandHeight = false;
 
-            TextMeshProUGUI goldText = CreateStatRow(currencyPanelObject.transform, "Gold: 0");
-            TextMeshProUGUI gemsText = CreateStatRow(currencyPanelObject.transform, "Gems: 0");
+            (Image goldIcon, TextMeshProUGUI goldText) = CreateCurrencyRow(currencyPanelObject.transform, "Gold: 0");
+            (Image gemsIcon, TextMeshProUGUI gemsText) = CreateCurrencyRow(currencyPanelObject.transform, "Gems: 0");
 
             UiCurrencyDisplay currencyDisplay = currencyPanelObject.AddComponent<UiCurrencyDisplay>();
             currencyDisplay.SyncProxy = syncProxy;
             currencyDisplay.GoldText = goldText;
             currencyDisplay.GemsText = gemsText;
+            currencyDisplay.GoldIcon = goldIcon;
+            currencyDisplay.GemsIcon = gemsIcon;
+
+            if (assetRegistry != null)
+            {
+                goldIcon.sprite = assetRegistry.GoldIcon;
+                goldIcon.enabled = assetRegistry.GoldIcon != null;
+                gemsIcon.sprite = assetRegistry.GemsIcon;
+                gemsIcon.enabled = assetRegistry.GemsIcon != null;
+            }
 
             Button battlePassBannerButton = CreateButton(barRootObject.transform, "BattlePassBanner", "Season Pass", out TextMeshProUGUI _);
             RectTransform bannerRect = (RectTransform)battlePassBannerButton.transform;

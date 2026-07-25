@@ -14,3 +14,88 @@ MonoBehaviour:
   m_EditorClassIdentifier: FolkIdle.Client::FolkIdle.Client.Engine.AssetRegistry
   monsterMappings: []
   itemMappings: []
+  monsterSpriteMappings:
+  - MonsterId: 95
+    Icon: {fileID: 21300000, guid: 95f296a995c09414b996114b5646580f, type: 3}
+  - MonsterId: 91
+    Icon: {fileID: 21300000, guid: e767d316fd53757488213dfe44a513df, type: 3}
+  - MonsterId: 92
+    Icon: {fileID: 21300000, guid: 2a5945933aea5f34cb830a3a5ab0d5bf, type: 3}
+  - MonsterId: 93
+    Icon: {fileID: 21300000, guid: 8d401dc745f0f464499832b662e403f9, type: 3}
+  - MonsterId: 94
+    Icon: {fileID: 21300000, guid: e73d5ebad6dc67b47b7849ad93ad19aa, type: 3}
+  - MonsterId: 98
+    Icon: {fileID: 21300000, guid: dd19688a7b9ac9c44b5f6ac0de60cab3, type: 3}
+  - MonsterId: 97
+    Icon: {fileID: 21300000, guid: 21dfcea15c7aa21459e7870c3140b4b3, type: 3}
+  - MonsterId: 99
+    Icon: {fileID: 21300000, guid: c1f6153ebe063024f8ebb8e2d72be111, type: 3}
+  - MonsterId: 100
+    Icon: {fileID: 21300000, guid: 4cf8e2dfbd71ecf40b179c5a0f200853, type: 3}
+  - MonsterId: 96
+    Icon: {fileID: 21300000, guid: 041921d7d43c0d7438f7bb30b42717b5, type: 3}
+  itemSpriteMappings:
+  - ItemBaseId: birch_log
+    Icon: {fileID: 21300000, guid: 38a3d9fdbc713514a93719fb031423a5, type: 3}
+  - ItemBaseId: birch_trees_woodcutting_material
+    Icon: {fileID: 21300000, guid: dcfd5eba755aa074f996fe4e2b706606, type: 3}
+  - ItemBaseId: birch_twig
+    Icon: {fileID: 21300000, guid: ae81f6b278b688d45bc5bca6dcb2b1ec, type: 3}
+  - ItemBaseId: copper_ore_crafting_material
+    Icon: {fileID: 21300000, guid: 73f873a21dbe3e941a22424a9f1a1d59, type: 3}
+  - ItemBaseId: golden_birch_log
+    Icon: {fileID: 21300000, guid: 00ae48ac75da5b6438bb9628e819a9df, type: 3}
+  - ItemBaseId: golden_birch_twig
+    Icon: {fileID: 21300000, guid: 4addfc1b4c9cd14408e1c4ddad95d465, type: 3}
+  - ItemBaseId: malachite_ore
+    Icon: {fileID: 21300000, guid: 74a789a3842f97846808c85e942cbb0b, type: 3}
+  - ItemBaseId: roasted_perch_food_consumable
+    Icon: {fileID: 21300000, guid: df17e6648d47c204691b1db1ae014899, type: 3}
+  - ItemBaseId: shimmering_trout
+    Icon: {fileID: 21300000, guid: 00bed0c2da4e8bf4bac13444cbc027be, type: 3}
+  - ItemBaseId: sunlit_perch
+    Icon: {fileID: 21300000, guid: 433139413848fd1419140b8e51c55834, type: 3}
+  - ItemBaseId: mat_viper_venom
+    Icon: {fileID: 21300000, guid: 2ced53fc3abc66f4dac6ee6a9fd030d9, type: 3}
+  - ItemBaseId: ancient_eel
+    Icon: {fileID: 21300000, guid: bc8ef20eae13c80458382db82b06febd, type: 3}
+  - ItemBaseId: whispering_willow_log
+    Icon: {fileID: 21300000, guid: 8efa4140b896a5a41a20486338313e75, type: 3}
+  - ItemBaseId: whispering_willow_twig
+    Icon: {fileID: 21300000, guid: 523c0bc8abe1d3f48b705933a52ab422, type: 3}
+  - ItemBaseId: hematite_ore
+    Icon: {fileID: 21300000, guid: 95fcb128446111846bf692f60b2739c4, type: 3}
+  - ItemBaseId: iron_bar_crafting_material
+    Icon: {fileID: 21300000, guid: 0da9924d262c88746901a14833c94e6a, type: 3}
+  - ItemBaseId: moss_bass
+    Icon: {fileID: 21300000, guid: cc596c3ff6999904ab0c790159b96f60, type: 3}
+  - ItemBaseId: viper_stew_food_consumable
+    Icon: {fileID: 21300000, guid: 4c4b25eb16742d84a94009d4f39aa7bb, type: 3}
+  - ItemBaseId: willow_log
+    Icon: {fileID: 21300000, guid: d9860c68960fa694589ff8e77dd8c5e9, type: 3}
+  - ItemBaseId: willow_logs_woodcutting_material
+    Icon: {fileID: 21300000, guid: bf6a8736b1c0ab74087489a5f5a08641, type: 3}
+  - ItemBaseId: willow_twig
+    Icon: {fileID: 21300000, guid: 83aa394d135071a45ac3ba4a5d7333ed, type: 3}
+  raceSpriteMappings:
+  - RaceId: 4
+    MaleIcon: {fileID: 21300000, guid: 88e558512bea57d47bd25969a538886f, type: 3}
+    FemaleIcon: {fileID: 21300000, guid: e441974f48bfe514b84282ffac38ecae, type: 3}
+  - RaceId: 3
+    MaleIcon: {fileID: 21300000, guid: b99e2e8c30bc35a4db8aa5b29c2f7da8, type: 3}
+    FemaleIcon: {fileID: 21300000, guid: c7b217dbe0722654fb7588fc48568d89, type: 3}
+  - RaceId: 1
+    MaleIcon: {fileID: 21300000, guid: 10ebc40fd14d57d4b944100cb41f7efd, type: 3}
+    FemaleIcon: {fileID: 21300000, guid: 126d242b69989e34487e0d5adec64368, type: 3}
+  - RaceId: 6
+    MaleIcon: {fileID: 21300000, guid: 7855c64b532e32746b4dfef5433d9b74, type: 3}
+    FemaleIcon: {fileID: 21300000, guid: 0ac3a417f9feeff4590ff8df2a27452c, type: 3}
+  - RaceId: 2
+    MaleIcon: {fileID: 21300000, guid: 864df866767bd7c449dc0249901fac21, type: 3}
+    FemaleIcon: {fileID: 21300000, guid: 5c16d81e6bafb934bafcd16396f406db, type: 3}
+  - RaceId: 5
+    MaleIcon: {fileID: 21300000, guid: 22f4cbdaeacb18f4989f548b2123314b, type: 3}
+    FemaleIcon: {fileID: 21300000, guid: 64e7ad38862e9b84abd5805fe0b02910, type: 3}
+  GoldIcon: {fileID: 21300000, guid: 69e278371a988894e995f7aeee7f0bd0, type: 3}
+  GemsIcon: {fileID: 21300000, guid: 67563e8202c60d44a91e890d7ecc1cc8, type: 3}

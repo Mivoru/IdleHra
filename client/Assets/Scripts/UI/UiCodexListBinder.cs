@@ -159,7 +159,12 @@ namespace FolkIdle.Client.UI
             {
                 MonsterCodexEntryView entry = _currentEntries[i];
                 UiCodexListRow row = _rowPool.Spawn();
-                row.Bind(entry.MonsterId, entry.AssetKey, entry.Level, HandleRowSelected);
+                Sprite icon = null;
+                if (assetRegistry != null)
+                {
+                    assetRegistry.TryGetMonsterSprite(entry.MonsterId, out icon);
+                }
+                row.Bind(entry.MonsterId, entry.AssetKey, entry.Level, icon, HandleRowSelected);
                 _activeRows.Add(row);
             }
         }
