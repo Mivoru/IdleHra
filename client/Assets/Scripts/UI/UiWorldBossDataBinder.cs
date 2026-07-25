@@ -84,8 +84,19 @@ namespace FolkIdle.Client.UI
 
             if (WorldBossAttackButton != null)
             {
-                // Core Input Safety: block outbound attack requests once attempts are exhausted.
-                WorldBossAttackButton.interactable = attemptCount < MaxAttempts;
+                // Modul: Play Mode audit fix. This only ever checked
+                // attemptCount, never eventState - the World Boss event is
+                // only actually active ~14 days a month (LiveOpsTickEngine's
+                // 1st-7th/15th-22nd windows), so for most of the month a
+                // fresh player (attemptCount 0) saw an interactable Attack
+                // button that, when clicked, hit
+                // ValidateWorldBossAttackRequest's `!eventActive` check
+                // server-side and got TerminateSessionForSecurity'd -
+                // confirmed live: the click force-disconnected the session,
+                // silently masked by the client's own remembered-device
+                // auto-reconnect a moment later, so it looked like nothing
+                // happened instead of the real kick it was.
+                WorldBossAttackButton.interactable = attemptCount < MaxAttempts && eventState == EventStateActive;
             }
         }
 
