@@ -206,6 +206,12 @@ namespace FolkIdle.Server.Engine
         public byte MineLevel;
         public byte WarehouseLevel;
 
+        // Modul: Play Mode audit fix - see StateUpdatePacket's own comment.
+        // TownHallLevel already existed above (int, used by
+        // GetTownHallGoldRatePerHour) - reused directly rather than adding
+        // a colliding duplicate. CraftingWorkshopLevel is genuinely new.
+        public byte CraftingWorkshopLevel;
+
         // Modul 16: timed upgrade queue - PendingUpgradeBuildingId == 0 means
         // no upgrade is currently in flight for this player's village.
         public byte PendingUpgradeBuildingId;

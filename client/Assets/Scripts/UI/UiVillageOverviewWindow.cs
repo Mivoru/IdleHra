@@ -27,6 +27,17 @@ namespace FolkIdle.Client.UI
         private const int MineBuildingId = 7;
         private const int WarehouseBuildingId = 8;
 
+        // Modul: Play Mode audit fix. Mirrors server
+        // VillageManagementEngine.TownHallBuildingId/CraftingWorkshopBuildingId
+        // exactly - these two structural buildings existed server-side
+        // (Town Hall gates every other building's max level at
+        // 2 + TownHallLevel*2 and boosts passive gold; the Workshop boosts
+        // crafting rarity odds) but had no client UI at all, so every
+        // other building was permanently stuck at the level-2 ceiling with
+        // no way to raise it.
+        private const int TownHallBuildingId = 9;
+        private const int CraftingWorkshopBuildingId = 10;
+
         private const long BaseUpgradeCost = 1000L;
         private const long BaseProductionUpgradeCost = 100L;
         private const long MinUpgradeDurationSeconds = 30L;
@@ -43,6 +54,8 @@ namespace FolkIdle.Client.UI
         public UiVillageBuildingRow QuarryRow;
         public UiVillageBuildingRow MineRow;
         public UiVillageBuildingRow WarehouseRow;
+        public UiVillageBuildingRow TownHallRow;
+        public UiVillageBuildingRow CraftingWorkshopRow;
 
         private UiVillageBuildingRow[] _rows;
         private int _lastPendingBuildingId = -1;
@@ -53,7 +66,8 @@ namespace FolkIdle.Client.UI
             _rows = new UiVillageBuildingRow[]
             {
                 ForgeRow, InnRow, BreedingGroundsRow, MentorshipAcademyRow,
-                LumberjackRow, QuarryRow, MineRow, WarehouseRow
+                LumberjackRow, QuarryRow, MineRow, WarehouseRow,
+                TownHallRow, CraftingWorkshopRow
             };
 
             for (int i = 0; i < _rows.Length; i++)
@@ -119,6 +133,8 @@ namespace FolkIdle.Client.UI
             SetRowLevel(QuarryRow, SyncProxy.QuarryLevel);
             SetRowLevel(MineRow, SyncProxy.MineLevel);
             SetRowLevel(WarehouseRow, SyncProxy.WarehouseLevel);
+            SetRowLevel(TownHallRow, SyncProxy.TownHallLevel);
+            SetRowLevel(CraftingWorkshopRow, SyncProxy.CraftingWorkshopLevel);
 
             int pendingBuildingId = SyncProxy.PendingUpgradeBuildingId;
             if (pendingBuildingId != _lastPendingBuildingId)
@@ -149,9 +165,17 @@ namespace FolkIdle.Client.UI
         private long EstimateUpgradeDurationSeconds(int buildingId)
         {
             int currentLevel = GetCurrentLevel(buildingId);
-            bool isProductionBuilding = buildingId >= LumberjackBuildingId && buildingId <= WarehouseBuildingId;
 
-            double cost = isProductionBuilding
+            // Modul: Play Mode audit fix. Mirrors VillageManagementEngine.
+            // ExecuteUpgradeBuildingAsync exactly - Town Hall/Crafting
+            // Workshop are "structural" buildings that use the same
+            // CalculateProductionUpgradeCost formula as the four passive-
+            // production buildings (just consuming different materials),
+            // not CalculateUpgradeCost.
+            bool usesProductionCostCurve = (buildingId >= LumberjackBuildingId && buildingId <= WarehouseBuildingId) ||
+                buildingId == TownHallBuildingId || buildingId == CraftingWorkshopBuildingId;
+
+            double cost = usesProductionCostCurve
                 ? BaseProductionUpgradeCost * Math.Pow(currentLevel + 1, 1.8)
                 : BaseUpgradeCost * Math.Pow(1.5, currentLevel);
 
@@ -171,6 +195,8 @@ namespace FolkIdle.Client.UI
                 case QuarryBuildingId: return SyncProxy.QuarryLevel;
                 case MineBuildingId: return SyncProxy.MineLevel;
                 case WarehouseBuildingId: return SyncProxy.WarehouseLevel;
+                case TownHallBuildingId: return SyncProxy.TownHallLevel;
+                case CraftingWorkshopBuildingId: return SyncProxy.CraftingWorkshopLevel;
                 default: return 0;
             }
         }

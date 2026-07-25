@@ -393,6 +393,8 @@ namespace FolkIdle.Server.Domain.Progression
             int quarryLevel = 0;
             int mineLevel = 0;
             int warehouseLevel = 0;
+            int townHallLevel = 0;
+            int craftingWorkshopLevel = 0;
             byte pendingUpgradeBuildingId = 0;
             long pendingUpgradeCompletesAtEpoch = 0;
 
@@ -406,6 +408,8 @@ namespace FolkIdle.Server.Domain.Progression
                 else if (levels[i].BuildingId == QuarryBuildingId) quarryLevel = levels[i].CurrentLevel;
                 else if (levels[i].BuildingId == MineBuildingId) mineLevel = levels[i].CurrentLevel;
                 else if (levels[i].BuildingId == WarehouseBuildingId) warehouseLevel = levels[i].CurrentLevel;
+                else if (levels[i].BuildingId == TownHallBuildingId) townHallLevel = levels[i].CurrentLevel;
+                else if (levels[i].BuildingId == CraftingWorkshopBuildingId) craftingWorkshopLevel = levels[i].CurrentLevel;
 
                 if (levels[i].UpgradeTargetLevel > 0)
                 {
@@ -433,6 +437,8 @@ namespace FolkIdle.Server.Domain.Progression
                 QuarryLevel = ClampByte(quarryLevel),
                 MineLevel = ClampByte(mineLevel),
                 WarehouseLevel = ClampByte(warehouseLevel),
+                TownHallLevel = ClampByte(townHallLevel),
+                CraftingWorkshopLevel = ClampByte(craftingWorkshopLevel),
                 PendingUpgradeBuildingId = pendingUpgradeBuildingId,
                 PendingUpgradeCompletesAtEpoch = pendingUpgradeCompletesAtEpoch
             };

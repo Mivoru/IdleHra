@@ -155,6 +155,10 @@ namespace FolkIdle.Server.Engine
         public byte MineLevel;
         public byte WarehouseLevel;
 
+        // Modul: Play Mode audit fix - see StateUpdatePacket's own comment.
+        public byte TownHallLevel;
+        public byte CraftingWorkshopLevel;
+
         // Modul 16: timed upgrade queue - PendingUpgradeBuildingId == 0 means
         // no upgrade is currently in flight for this player's village (only
         // one building may be queued at a time, see

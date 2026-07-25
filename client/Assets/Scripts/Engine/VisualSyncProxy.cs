@@ -216,6 +216,13 @@ namespace FolkIdle.Client.Engine
         public long StoneStock { get; private set; }
         public long IronOreStock { get; private set; }
 
+        // Modul: Play Mode audit fix - Town Hall/Crafting Workshop levels,
+        // previously tracked server-side (Town Hall's gold-rate bonus, the
+        // level-2 ceiling it lifts for every other building) but never
+        // exposed to the client at all.
+        public int TownHallLevel { get; private set; }
+        public int CraftingWorkshopLevel { get; private set; }
+
         // Modul 16: timed upgrade queue - PendingUpgradeBuildingId == 0 means
         // no upgrade is currently in flight for this player's village.
         public int PendingUpgradeBuildingId { get; private set; }
@@ -813,6 +820,8 @@ namespace FolkIdle.Client.Engine
             long ironOreStock = packet.CachedIronOreStock;
             int pendingUpgradeBuildingId = packet.PendingUpgradeBuildingId;
             long pendingUpgradeCompletesAtEpoch = packet.PendingUpgradeCompletesAtEpoch;
+            int townHallLevel = packet.TownHallLevel;
+            int craftingWorkshopLevel = packet.CraftingWorkshopLevel;
 
             bool changed = lumberjackLevel != LumberjackLevel
                 || quarryLevel != QuarryLevel
@@ -822,7 +831,9 @@ namespace FolkIdle.Client.Engine
                 || stoneStock != StoneStock
                 || ironOreStock != IronOreStock
                 || pendingUpgradeBuildingId != PendingUpgradeBuildingId
-                || pendingUpgradeCompletesAtEpoch != PendingUpgradeCompletesAtEpoch;
+                || pendingUpgradeCompletesAtEpoch != PendingUpgradeCompletesAtEpoch
+                || townHallLevel != TownHallLevel
+                || craftingWorkshopLevel != CraftingWorkshopLevel;
 
             if (!changed) return;
 
@@ -835,6 +846,8 @@ namespace FolkIdle.Client.Engine
             IronOreStock = ironOreStock;
             PendingUpgradeBuildingId = pendingUpgradeBuildingId;
             PendingUpgradeCompletesAtEpoch = pendingUpgradeCompletesAtEpoch;
+            TownHallLevel = townHallLevel;
+            CraftingWorkshopLevel = craftingWorkshopLevel;
 
             OnVillageStateUpdated?.Invoke();
         }

@@ -269,6 +269,17 @@ namespace FolkIdle.Server.Network
         public long CachedStoneStock;
         public long CachedIronOreStock;
 
+        // Modul: Play Mode audit fix. Town Hall/Crafting Workshop (see
+        // VillageManagementEngine's TownHallBuildingId/CraftingWorkshopBuildingId)
+        // existed server-side with real upgrade logic (gates every other
+        // building's max level, feeds crafting rarity odds) but had no
+        // client-visible level at all - discovered live when the client's
+        // Village window turned out to have no way to ever raise the
+        // level-2 ceiling every other building hits. 689 -> 691 bytes;
+        // see NetworkPacketLayoutGuard's updated pin.
+        public byte TownHallLevel;
+        public byte CraftingWorkshopLevel;
+
         // Modul 16: timed upgrade queue - PendingUpgradeBuildingId == 0 means
         // no upgrade is currently in flight for this player's village.
         public byte PendingUpgradeBuildingId;

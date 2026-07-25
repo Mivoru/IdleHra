@@ -24,7 +24,11 @@ namespace FolkIdle.Server.Network
         // equipment slot added EquippedLeggingsId (8 bytes) +
         // EquippedLeggingsAffixLocked (1 byte). Still strictly under the
         // 700-byte structural ceiling the tests pin.
-        public const int ExpectedStateUpdateSize = 689;
+        //
+        // Modul: Play Mode audit fix. 689 -> 691: TownHallLevel +
+        // CraftingWorkshopLevel (1 byte each) - see StateUpdatePacket's own
+        // comment. Still under the 700-byte ceiling.
+        public const int ExpectedStateUpdateSize = 691;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

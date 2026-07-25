@@ -9,7 +9,11 @@ namespace FolkIdle.Client.Network
         // server NetworkPacketLayoutGuard exactly - see that file's own
         // comment for the byte-count breakdown.
         public const int ExpectedClientCommandSize = 352;
-        public const int ExpectedStateUpdateSize = 689;
+
+        // Modul: Play Mode audit fix. 689 -> 691: TownHallLevel +
+        // CraftingWorkshopLevel (1 byte each) - mirrors server
+        // NetworkPacketLayoutGuard exactly.
+        public const int ExpectedStateUpdateSize = 691;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

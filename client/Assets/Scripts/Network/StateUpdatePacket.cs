@@ -226,6 +226,14 @@ namespace FolkIdle.Client.Network
         public long CachedStoneStock;
         public long CachedIronOreStock;
 
+        // Modul: mirrors server StateUpdatePacket exactly - Town Hall gates
+        // every other building's max level and boosts passive gold; the
+        // Crafting Workshop boosts crafting rarity odds. Both existed
+        // server-side with real upgrade logic but had no client-visible
+        // level at all until this fix. 689 -> 691 bytes.
+        public byte TownHallLevel;
+        public byte CraftingWorkshopLevel;
+
         // Modul 16: timed upgrade queue - PendingUpgradeBuildingId == 0 means
         // no upgrade is currently in flight for this player's village.
         public byte PendingUpgradeBuildingId;

@@ -880,6 +880,8 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.QuarryLevel = updateNotif.QuarryLevel;
                         currentPayload.MineLevel = updateNotif.MineLevel;
                         currentPayload.WarehouseLevel = updateNotif.WarehouseLevel;
+                        currentPayload.TownHallLevel = updateNotif.TownHallLevel;
+                        currentPayload.CraftingWorkshopLevel = updateNotif.CraftingWorkshopLevel;
                         currentPayload.PendingUpgradeBuildingId = updateNotif.PendingUpgradeBuildingId;
                         currentPayload.PendingUpgradeCompletesAtEpoch = updateNotif.PendingUpgradeCompletesAtEpoch;
                         currentPayload.IsDirty = true;
@@ -2590,6 +2592,8 @@ namespace FolkIdle.Server.Domain.Combat
                                 QuarryLevel = currentPayload.QuarryLevel,
                                 MineLevel = currentPayload.MineLevel,
                                 WarehouseLevel = currentPayload.WarehouseLevel,
+                                TownHallLevel = (byte)currentPayload.TownHallLevel,
+                                CraftingWorkshopLevel = currentPayload.CraftingWorkshopLevel,
                                 CachedWoodStock = currentPayload.CachedWoodStock,
                                 CachedStoneStock = currentPayload.CachedStoneStock,
                                 CachedIronOreStock = currentPayload.CachedIronOreStock,

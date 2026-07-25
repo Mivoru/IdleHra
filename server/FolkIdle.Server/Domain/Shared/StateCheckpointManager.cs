@@ -420,6 +420,7 @@ namespace FolkIdle.Server.Domain.Shared
             int mineLevel = 0;
             int warehouseLevel = 0;
             int townHallLevel = 0;
+            int craftingWorkshopLevel = 0;
             byte pendingUpgradeBuildingId = 0;
             long pendingUpgradeCompletesAtEpoch = 0;
             for (int i = 0; i < villageRows.Count; i++)
@@ -433,6 +434,7 @@ namespace FolkIdle.Server.Domain.Shared
                 else if (villageRows[i].BuildingId == VillageManagementEngine.MineBuildingId) mineLevel = villageRows[i].CurrentLevel;
                 else if (villageRows[i].BuildingId == VillageManagementEngine.WarehouseBuildingId) warehouseLevel = villageRows[i].CurrentLevel;
                 else if (villageRows[i].BuildingId == VillageManagementEngine.TownHallBuildingId) townHallLevel = villageRows[i].CurrentLevel;
+                else if (villageRows[i].BuildingId == VillageManagementEngine.CraftingWorkshopBuildingId) craftingWorkshopLevel = villageRows[i].CurrentLevel;
 
                 if (villageRows[i].UpgradeTargetLevel > 0)
                 {
@@ -598,6 +600,7 @@ namespace FolkIdle.Server.Domain.Shared
                 MineLevel = ClampByte(mineLevel),
                 WarehouseLevel = ClampByte(warehouseLevel),
                 TownHallLevel = townHallLevel,
+                CraftingWorkshopLevel = ClampByte(craftingWorkshopLevel),
                 PendingUpgradeBuildingId = pendingUpgradeBuildingId,
                 PendingUpgradeCompletesAtEpoch = pendingUpgradeCompletesAtEpoch,
                 CachedWoodStock = woodStock,

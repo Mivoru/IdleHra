@@ -2613,6 +2613,15 @@ namespace FolkIdle.Client.Editor
             UiVillageBuildingRow mineRow = BuildVillageBuildingRow(content, "MineRow", 7, "Mine");
             UiVillageBuildingRow warehouseRow = BuildVillageBuildingRow(content, "WarehouseRow", 8, "Warehouse");
 
+            // Modul: Play Mode audit fix. Town Hall/Crafting Workshop (ids
+            // 9/10) existed server-side with real upgrade logic (Town Hall
+            // gates every other building's max level, the Workshop boosts
+            // crafting rarity odds) but had no UI row at all, so every
+            // other building was permanently stuck at the level-2 ceiling
+            // with no way to raise it.
+            UiVillageBuildingRow townHallRow = BuildVillageBuildingRow(content, "TownHallRow", 9, "Town Hall");
+            UiVillageBuildingRow craftingWorkshopRow = BuildVillageBuildingRow(content, "CraftingWorkshopRow", 10, "Crafting Workshop");
+
             UiVillageOverviewWindow window = windowObject.AddComponent<UiVillageOverviewWindow>();
             window.SyncProxy = syncProxy;
             window.NetworkClient = networkClient;
@@ -2624,6 +2633,8 @@ namespace FolkIdle.Client.Editor
             window.QuarryRow = quarryRow;
             window.MineRow = mineRow;
             window.WarehouseRow = warehouseRow;
+            window.TownHallRow = townHallRow;
+            window.CraftingWorkshopRow = craftingWorkshopRow;
 
             return windowObject;
         }
