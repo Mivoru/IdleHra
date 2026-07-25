@@ -23,6 +23,7 @@ namespace FolkIdle.Client.Editor
         private const string GuildRosterRowPrefabPath = PrefabDirectory + "/UiGuildRosterEntryRow.prefab";
         private const string MarketListingRowPrefabPath = PrefabDirectory + "/UiMarketListingRow.prefab";
         private const string MarketSellRowPrefabPath = PrefabDirectory + "/UiMarketSellCandidateRow.prefab";
+        private const string ForgeFusionRowPrefabPath = PrefabDirectory + "/UiForgeFusionCandidateRow.prefab";
         private const string BankVaultRowPrefabPath = PrefabDirectory + "/UiBankVaultEntryRow.prefab";
         private const string BankDepositRowPrefabPath = PrefabDirectory + "/UiBankDepositCandidateRow.prefab";
         private const string AchievementRowPrefabPath = PrefabDirectory + "/UiAchievementRow.prefab";
@@ -1962,6 +1963,41 @@ namespace FolkIdle.Client.Editor
             return prefabAsset;
         }
 
+        private static GameObject BuildAndSaveForgeFusionRowPrefab()
+        {
+            EnsureFolder(PrefabDirectory);
+
+            GameObject root = new GameObject("UiForgeFusionCandidateRow", typeof(RectTransform));
+            ((RectTransform)root.transform).sizeDelta = new Vector2(0f, 34f);
+
+            TextMeshProUGUI rowText = CreateText(root.transform, "RowLabelText", "Item", 14f, TextAlignmentOptions.MidlineLeft);
+            RectTransform rowTextRect = (RectTransform)rowText.transform;
+            rowTextRect.anchorMin = Vector2.zero;
+            rowTextRect.anchorMax = Vector2.one;
+            rowTextRect.offsetMin = new Vector2(6f, 0f);
+            rowTextRect.offsetMax = new Vector2(-70f, 0f);
+
+            Button selectButton = CreateButton(root.transform, "SelectButton", "Select", out TextMeshProUGUI _);
+            RectTransform selectRect = (RectTransform)selectButton.transform;
+            selectRect.anchorMin = new Vector2(1f, 0.1f);
+            selectRect.anchorMax = new Vector2(1f, 0.9f);
+            selectRect.pivot = new Vector2(1f, 0.5f);
+            selectRect.sizeDelta = new Vector2(60f, 0f);
+            selectRect.anchoredPosition = new Vector2(-4f, 0f);
+
+            UiForgeFusionCandidateRow rowComponent = root.AddComponent<UiForgeFusionCandidateRow>();
+            rowComponent.RowLabelText = rowText;
+            rowComponent.SelectButton = selectButton;
+
+            GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(root, ForgeFusionRowPrefabPath, out bool success);
+            if (!success)
+            {
+                Debug.LogError("MainSceneBuilder: failed to save UiForgeFusionCandidateRow prefab asset.");
+            }
+            Object.DestroyImmediate(root);
+            return prefabAsset;
+        }
+
         private static GameObject BuildAndSaveBankVaultRowPrefab()
         {
             EnsureFolder(PrefabDirectory);
@@ -2097,7 +2133,7 @@ namespace FolkIdle.Client.Editor
             subTabHeaderRect.sizeDelta = new Vector2(0f, 44f);
             subTabHeaderRect.anchoredPosition = new Vector2(0f, -12f);
 
-            Button[] subTabButtons = BuildSubTabButtons(subTabHeaderRect, new[] { "Craft", "Reroll" });
+            Button[] subTabButtons = BuildSubTabButtons(subTabHeaderRect, new[] { "Craft", "Reroll", "Fusion" });
 
             GameObject contentAreaObject = new GameObject("ContentArea", typeof(RectTransform));
             contentAreaObject.transform.SetParent(windowRect, false);
@@ -2109,11 +2145,13 @@ namespace FolkIdle.Client.Editor
 
             GameObject craftingGroup = BuildForgeCraftingGroup(contentAreaRect, inventoryCache, networkClient, assetRegistry, assetCoordinator, riggingParent);
             GameObject rerollGroup = BuildEquipmentRerollGroup(contentAreaRect, inventoryCache, networkClient, syncProxy, assetRegistry, assetCoordinator, riggingParent);
+            GameObject fusionGroup = BuildForgeFusionGroup(contentAreaRect, inventoryCache, networkClient);
 
             rerollGroup.SetActive(false);
+            fusionGroup.SetActive(false);
 
             UiTabGroup tabGroup = windowObject.AddComponent<UiTabGroup>();
-            tabGroup.Groups = new[] { craftingGroup, rerollGroup };
+            tabGroup.Groups = new[] { craftingGroup, rerollGroup, fusionGroup };
             tabGroup.Buttons = subTabButtons;
 
             return windowObject;
@@ -2234,6 +2272,83 @@ namespace FolkIdle.Client.Editor
             viewer.ModelAnchor = modelAnchorObject.transform;
 
             return viewer;
+        }
+
+        // Modul: Play Mode audit fix. Top ~55% owned-equipment candidate
+        // list (real UiForgeFusionCandidateRow instances over
+        // EquipmentInventoryCache), bottom ~45% three slot selectors
+        // (Target + 2 Sacrifices) plus the Fuse button - see
+        // UiForgeFusionPanel's own header comment for why ForgeSplicingEngine.
+        // ExecuteFusionAsync had a working sender with no caller anywhere.
+        private static GameObject BuildForgeFusionGroup(Transform parent, EquipmentInventoryCache inventoryCache, WebSocketClient networkClient)
+        {
+            GameObject groupObject = new GameObject("FusionGroup", typeof(RectTransform));
+            groupObject.transform.SetParent(parent, false);
+            StretchFull((RectTransform)groupObject.transform);
+
+            GameObject listAreaObject = new GameObject("FusionCandidateListArea", typeof(RectTransform));
+            listAreaObject.transform.SetParent(groupObject.transform, false);
+            RectTransform listAreaRect = (RectTransform)listAreaObject.transform;
+            listAreaRect.anchorMin = new Vector2(0f, 0.45f);
+            listAreaRect.anchorMax = new Vector2(1f, 1f);
+            listAreaRect.offsetMin = Vector2.zero;
+            listAreaRect.offsetMax = Vector2.zero;
+
+            (ScrollRect _, RectTransform rowContent) = ChatSceneBuilder.BuildScrollView(listAreaRect);
+
+            GameObject rowPrefabAsset = BuildAndSaveForgeFusionRowPrefab();
+
+            GameObject detailAreaObject = new GameObject("FusionDetailPanel", typeof(RectTransform));
+            detailAreaObject.transform.SetParent(groupObject.transform, false);
+            RectTransform detailAreaRect = (RectTransform)detailAreaObject.transform;
+            detailAreaRect.anchorMin = new Vector2(0f, 0f);
+            detailAreaRect.anchorMax = new Vector2(1f, 0.45f);
+            detailAreaRect.offsetMin = Vector2.zero;
+            detailAreaRect.offsetMax = new Vector2(0f, -12f);
+
+            VerticalLayoutGroup detailLayout = detailAreaObject.AddComponent<VerticalLayoutGroup>();
+            detailLayout.spacing = 6f;
+            detailLayout.childControlWidth = true;
+            detailLayout.childForceExpandWidth = true;
+            detailLayout.childControlHeight = false;
+            detailLayout.childForceExpandHeight = false;
+
+            TextMeshProUGUI targetSlotText = CreateStatRow(detailAreaObject.transform, "Target: (none)");
+            Button selectTargetButton = CreateButton(detailAreaObject.transform, "SelectTargetButton", "Select Target", out TextMeshProUGUI _);
+            LayoutElement selectTargetLayout = selectTargetButton.gameObject.AddComponent<LayoutElement>();
+            selectTargetLayout.preferredHeight = 36f;
+
+            TextMeshProUGUI sac1SlotText = CreateStatRow(detailAreaObject.transform, "Sacrifice 1: (none)");
+            Button selectSac1Button = CreateButton(detailAreaObject.transform, "SelectSacrifice1Button", "Select Sacrifice 1", out TextMeshProUGUI _);
+            LayoutElement selectSac1Layout = selectSac1Button.gameObject.AddComponent<LayoutElement>();
+            selectSac1Layout.preferredHeight = 36f;
+
+            TextMeshProUGUI sac2SlotText = CreateStatRow(detailAreaObject.transform, "Sacrifice 2: (none)");
+            Button selectSac2Button = CreateButton(detailAreaObject.transform, "SelectSacrifice2Button", "Select Sacrifice 2", out TextMeshProUGUI _);
+            LayoutElement selectSac2Layout = selectSac2Button.gameObject.AddComponent<LayoutElement>();
+            selectSac2Layout.preferredHeight = 36f;
+
+            Button fuseButton = CreateButton(detailAreaObject.transform, "FuseButton", "Fuse", out TextMeshProUGUI _);
+            LayoutElement fuseButtonLayout = fuseButton.gameObject.AddComponent<LayoutElement>();
+            fuseButtonLayout.preferredHeight = 44f;
+
+            TextMeshProUGUI statusText = CreateStatRow(detailAreaObject.transform, string.Empty);
+
+            UiForgeFusionPanel fusionPanel = groupObject.AddComponent<UiForgeFusionPanel>();
+            fusionPanel.InventoryCache = inventoryCache;
+            fusionPanel.NetworkClient = networkClient;
+            fusionPanel.RowContainer = rowContent;
+            fusionPanel.RowPrefab = rowPrefabAsset.GetComponent<UiForgeFusionCandidateRow>();
+            fusionPanel.TargetSlotText = targetSlotText;
+            fusionPanel.Sacrifice1SlotText = sac1SlotText;
+            fusionPanel.Sacrifice2SlotText = sac2SlotText;
+            fusionPanel.SelectTargetButton = selectTargetButton;
+            fusionPanel.SelectSacrifice1Button = selectSac1Button;
+            fusionPanel.SelectSacrifice2Button = selectSac2Button;
+            fusionPanel.FuseButton = fuseButton;
+            fusionPanel.StatusText = statusText;
+
+            return groupObject;
         }
 
         // Top 50% equipment list (real UiForgeEquipmentRow instances),
