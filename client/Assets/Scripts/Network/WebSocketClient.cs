@@ -610,6 +610,25 @@ namespace FolkIdle.Client.Network
             }
         }
 
+        public void SendGuildTreasuryGoldContributionCommandZeroAlloc(int goldAmount)
+        {
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                ClientCommandPacket packet = new ClientCommandPacket
+                {
+                    Command = CommandType.ContributeGuildTreasury,
+                    TargetId = 0,
+                    SecondaryId = 0,
+                    TertiaryId = 0,
+                    LimitPrice = goldAmount,
+                    IsBuy = 0,
+                    QualityTier = 0
+                };
+
+                SendPacket(ref packet);
+            }
+        }
+
         public void SendWorldBossDamageCommandZeroAlloc(long damage)
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)

@@ -778,6 +778,40 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
+        // Modul: Play Mode audit fix. ContributeGuildTreasury had no
+        // validator at all before this (split out of the shadowed
+        // ContributeToGuild branch - see that command's own comment).
+        // TargetId == 0 means gold (cmd.LimitPrice carries the amount);
+        // nonzero means an owned equipment instance id.
+        public static bool ValidateGuildTreasuryContribution(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
+        {
+            if (packet.Command != FolkIdle.Server.Network.CommandType.ContributeGuildTreasury)
+            {
+                return true;
+            }
+
+            if (payload.GuildId <= 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 64, Value2 = 1, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            bool isGold = packet.TargetId == 0;
+            if (isGold && packet.LimitPrice <= 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 64, Value2 = 2, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            if (!isGold && packet.TargetId < 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 64, Value2 = 3, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            return true;
+        }
+
         public static bool ValidateWorldBossRegistration(ref TickStatePayload payload, long damage)
         {
             // Simple sanity check for one-shot damage injections

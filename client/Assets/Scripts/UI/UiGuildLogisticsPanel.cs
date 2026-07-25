@@ -37,14 +37,55 @@ namespace FolkIdle.Client.UI
         public RectTransform ProgressBarFill;
         public Button DonateButton;
 
+        // Modul: Play Mode audit fix. GuildLogisticsEngine.
+        // ExecuteGuildContributionAsync (a completely separate feature from
+        // the Depot deposit above - it drives GuildRecords' Mining/
+        // Woodcutting Monolith level via GuildDepotBalances, not
+        // GuildLogisticsDepots) shared CommandType.ContributeToGuild with a
+        // second, unrelated branch in an if/else chain server-side, which
+        // always won and made this one permanently unreachable dead code -
+        // Monolith levels have displayed correctly (VisualMiningMonolithLevel/
+        // VisualWoodcuttingMonolithLevel were already synced) but could
+        // never actually advance. MaterialId here is the same small 1-6
+        // material-id space UiGuildWarPanel's supply contribution uses.
+        [Header("Monolith Contribution")]
+        public TextMeshProUGUI MonolithLevelsText;
+        public TMP_InputField MonolithMaterialIdField;
+        public TMP_InputField MonolithQuantityField;
+        public Button ContributeMonolithButton;
+
+        // Modul: Play Mode audit fix. GuildContributionEngine.
+        // ContributeGoldAsync/ContributeEquipmentAsync used to share
+        // CommandType.ContributeToGuild too (a THIRD feature crammed onto
+        // the same wire command) - split into its own
+        // CommandType.ContributeGuildTreasury (see that enum's own
+        // comment). Drives real GuildRecords.CurrentTier progression and
+        // each member's GuildMembers.ContributionPoints roster ranking.
+        // Equipment contribution isn't wired here yet (needs an inventory
+        // picker, out of scope for this pass) - gold only.
+        [Header("Treasury Contribution")]
+        public TMP_InputField TreasuryGoldAmountField;
+        public Button DonateGoldButton;
+
         private readonly char[] _levelBuffer = new char[32];
         private readonly char[] _contributionBuffer = new char[64];
+        private readonly char[] _monolithBuffer = new char[64];
 
         private void Awake()
         {
             if (DonateButton != null)
             {
                 DonateButton.onClick.AddListener(HandleDonateClicked);
+            }
+
+            if (ContributeMonolithButton != null)
+            {
+                ContributeMonolithButton.onClick.AddListener(HandleContributeMonolithClicked);
+            }
+
+            if (DonateGoldButton != null)
+            {
+                DonateGoldButton.onClick.AddListener(HandleDonateGoldClicked);
             }
         }
 
@@ -98,6 +139,52 @@ namespace FolkIdle.Client.UI
             {
                 DonateButton.interactable = true;
             }
+        }
+
+        // Modul: Play Mode audit fix. Monolith levels have no dedicated
+        // change-detection event (OnGuildStateUpdated deliberately scopes
+        // to Logistics Depot + Raid boss fields only, see its own comment)
+        // - polled every frame instead, matching UiSeasonPassWindow's own
+        // approach for always-current scalar HUD data with no backing
+        // event.
+        private void Update()
+        {
+            if (SyncProxy == null || MonolithLevelsText == null) return;
+
+            int offset = WriteTextToBuffer(_monolithBuffer, 0, "Mining Lv ");
+            offset = WriteIntToBuffer(_monolithBuffer, offset, SyncProxy.VisualMiningMonolithLevel);
+            offset = WriteTextToBuffer(_monolithBuffer, offset, "  Woodcutting Lv ");
+            offset = WriteIntToBuffer(_monolithBuffer, offset, SyncProxy.VisualWoodcuttingMonolithLevel);
+            MonolithLevelsText.SetCharArray(_monolithBuffer, 0, offset);
+        }
+
+        private void HandleContributeMonolithClicked()
+        {
+            if (NetworkClient == null) return;
+
+            if (!int.TryParse(MonolithMaterialIdField != null ? MonolithMaterialIdField.text : string.Empty, out int materialId) || materialId <= 0)
+            {
+                return;
+            }
+
+            if (!int.TryParse(MonolithQuantityField != null ? MonolithQuantityField.text : string.Empty, out int quantity) || quantity <= 0)
+            {
+                return;
+            }
+
+            NetworkClient.SendGuildContributionCommandZeroAlloc(materialId, quantity);
+        }
+
+        private void HandleDonateGoldClicked()
+        {
+            if (NetworkClient == null) return;
+
+            if (!int.TryParse(TreasuryGoldAmountField != null ? TreasuryGoldAmountField.text : string.Empty, out int goldAmount) || goldAmount <= 0)
+            {
+                return;
+            }
+
+            NetworkClient.SendGuildTreasuryGoldContributionCommandZeroAlloc(goldAmount);
         }
 
         private void HandleDonateClicked()

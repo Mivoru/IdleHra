@@ -75,7 +75,13 @@ namespace FolkIdle.Client.Network
         AddFriend = 60,
         RemoveFriend = 61,
         BlockPlayer = 62,
-        UnblockPlayer = 63
+        UnblockPlayer = 63,
+
+        // Modul: Play Mode audit fix. Split out from ContributeToGuild (5),
+        // which shared its CommandType with the materials/Monolith
+        // contribution path in an if/else chain server-side - see the
+        // server-side enum's identical comment.
+        ContributeGuildTreasury = 64
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

@@ -1893,16 +1893,29 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.IsDirty = true;
                         continue;
                     }
-                    else if (cmd.Command == CommandType.ContributeToGuild)
+                    else if (cmd.Command == CommandType.ContributeGuildTreasury)
                     {
+                        if (!ClientCommandValidator.ValidateGuildTreasuryContribution(ref currentPayload, ref cmd))
+                        {
+                            TerminateSessionForSecurity(routingPlayerId);
+                            continue;
+                        }
+
                         currentPayload.IsSuspended = true;
                         _checkpointManager.FlushStateAndAdvance(ref currentPayload);
 
                         long pId = currentPayload.PlayerId;
-                        long guildId = cmd.SecondaryId; 
+                        // Modul: Play Mode audit fix. Previously trusted
+                        // cmd.SecondaryId as the target guild id directly -
+                        // a player could donate their own gold/equipment
+                        // toward ANY guild's tier, not just their own.
+                        // Derives from the player's own live GuildId instead,
+                        // matching how the materials/Monolith contribution
+                        // branch already resolves guild membership.
+                        long guildId = currentPayload.GuildId;
                         bool isGold = cmd.TargetId == 0;
                         long instanceId = cmd.TargetId;
-                        long goldAmount = cmd.LimitPrice; 
+                        long goldAmount = cmd.LimitPrice;
 
                         SafeDispatchAsync("Guild.ContributeGoldOrEquipment", pId, async () => {
                             if (isGold)

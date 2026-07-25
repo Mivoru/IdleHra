@@ -1066,6 +1066,59 @@ namespace FolkIdle.Client.Editor
             LayoutElement donateLayout = donateButton.gameObject.AddComponent<LayoutElement>();
             donateLayout.preferredHeight = 44f;
 
+            // Modul: Play Mode audit fix. Monolith contribution (drives
+            // GuildRecords Mining/Woodcutting Monolith levels) and Treasury
+            // gold contribution (drives GuildRecords.CurrentTier +
+            // GuildMembers.ContributionPoints) both used to share
+            // CommandType.ContributeToGuild with the Depot deposit above
+            // in a shadowed if/else chain server-side and had no UI at all
+            // - see UiGuildLogisticsPanel's own header comments.
+            TextMeshProUGUI monolithLevelsText = CreateStatRow(groupObject.transform, "Mining Lv 0  Woodcutting Lv 0");
+
+            GameObject monolithRowObject = new GameObject("MonolithContributionRow", typeof(RectTransform));
+            monolithRowObject.transform.SetParent(groupObject.transform, false);
+            LayoutElement monolithRowLayout = monolithRowObject.AddComponent<LayoutElement>();
+            monolithRowLayout.preferredHeight = 44f;
+
+            HorizontalLayoutGroup monolithRowLayoutGroup = monolithRowObject.AddComponent<HorizontalLayoutGroup>();
+            monolithRowLayoutGroup.spacing = 6f;
+            monolithRowLayoutGroup.childControlWidth = true;
+            monolithRowLayoutGroup.childForceExpandWidth = false;
+            monolithRowLayoutGroup.childControlHeight = true;
+            monolithRowLayoutGroup.childForceExpandHeight = true;
+
+            TMP_InputField monolithMaterialIdField = CreateInputField(monolithRowObject.transform, "MonolithMaterialIdField", "Item#");
+            LayoutElement monolithMaterialIdLayout = monolithMaterialIdField.gameObject.AddComponent<LayoutElement>();
+            monolithMaterialIdLayout.flexibleWidth = 1f;
+
+            TMP_InputField monolithQuantityField = CreateInputField(monolithRowObject.transform, "MonolithQuantityField", "Qty");
+            LayoutElement monolithQuantityLayout = monolithQuantityField.gameObject.AddComponent<LayoutElement>();
+            monolithQuantityLayout.flexibleWidth = 1f;
+
+            Button contributeMonolithButton = CreateButton(monolithRowObject.transform, "ContributeMonolithButton", "Contribute", out TextMeshProUGUI _);
+            LayoutElement contributeMonolithButtonLayout = contributeMonolithButton.gameObject.AddComponent<LayoutElement>();
+            contributeMonolithButtonLayout.preferredWidth = 140f;
+
+            GameObject treasuryRowObject = new GameObject("TreasuryContributionRow", typeof(RectTransform));
+            treasuryRowObject.transform.SetParent(groupObject.transform, false);
+            LayoutElement treasuryRowLayout = treasuryRowObject.AddComponent<LayoutElement>();
+            treasuryRowLayout.preferredHeight = 44f;
+
+            HorizontalLayoutGroup treasuryRowLayoutGroup = treasuryRowObject.AddComponent<HorizontalLayoutGroup>();
+            treasuryRowLayoutGroup.spacing = 6f;
+            treasuryRowLayoutGroup.childControlWidth = true;
+            treasuryRowLayoutGroup.childForceExpandWidth = false;
+            treasuryRowLayoutGroup.childControlHeight = true;
+            treasuryRowLayoutGroup.childForceExpandHeight = true;
+
+            TMP_InputField treasuryGoldAmountField = CreateInputField(treasuryRowObject.transform, "TreasuryGoldAmountField", "Gold");
+            LayoutElement treasuryGoldAmountLayout = treasuryGoldAmountField.gameObject.AddComponent<LayoutElement>();
+            treasuryGoldAmountLayout.flexibleWidth = 1f;
+
+            Button donateGoldButton = CreateButton(treasuryRowObject.transform, "DonateGoldButton", "Donate to Treasury", out TextMeshProUGUI _);
+            LayoutElement donateGoldButtonLayout = donateGoldButton.gameObject.AddComponent<LayoutElement>();
+            donateGoldButtonLayout.preferredWidth = 180f;
+
             UiGuildLogisticsPanel panel = groupObject.AddComponent<UiGuildLogisticsPanel>();
             panel.SyncProxy = syncProxy;
             panel.NetworkClient = networkClient;
@@ -1073,6 +1126,12 @@ namespace FolkIdle.Client.Editor
             panel.ContributionText = contributionText;
             panel.ProgressBarFill = barFill;
             panel.DonateButton = donateButton;
+            panel.MonolithLevelsText = monolithLevelsText;
+            panel.MonolithMaterialIdField = monolithMaterialIdField;
+            panel.MonolithQuantityField = monolithQuantityField;
+            panel.ContributeMonolithButton = contributeMonolithButton;
+            panel.TreasuryGoldAmountField = treasuryGoldAmountField;
+            panel.DonateGoldButton = donateGoldButton;
 
             return groupObject;
         }

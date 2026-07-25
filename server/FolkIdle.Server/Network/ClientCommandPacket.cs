@@ -84,7 +84,17 @@ namespace FolkIdle.Server.Network
         AddFriend = 60,
         RemoveFriend = 61,
         BlockPlayer = 62,
-        UnblockPlayer = 63
+        UnblockPlayer = 63,
+
+        // Modul: Play Mode audit fix. This used to share CommandType.
+        // ContributeToGuild (5) with the materials/Monolith contribution
+        // branch below in an if/else chain - the materials branch always
+        // won, so gold/equipment guild-treasury contribution (which drives
+        // real GuildRecords.CurrentTier progression and each member's
+        // GuildMembers.ContributionPoints roster ranking - see
+        // GuildContributionEngine) was permanently unreachable dead code.
+        // Split into its own command type.
+        ContributeGuildTreasury = 64
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
