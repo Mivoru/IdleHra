@@ -743,6 +743,25 @@ namespace FolkIdle.Client.Network
             }
         }
 
+        public void SendPlaceLimitOrderCommandZeroAlloc(bool isBuy, long targetIdOrInstanceId, int price, int qualityTier)
+        {
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                ClientCommandPacket packet = new ClientCommandPacket
+                {
+                    Command = CommandType.PlaceLimitOrder,
+                    TargetId = targetIdOrInstanceId,
+                    SecondaryId = 0,
+                    TertiaryId = 0,
+                    LimitPrice = price,
+                    IsBuy = (byte)(isBuy ? 1 : 0),
+                    QualityTier = qualityTier
+                };
+
+                SendPacket(ref packet);
+            }
+        }
+
         public void SendUpgradeCommandZeroAlloc(byte commandType, int targetId)
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)

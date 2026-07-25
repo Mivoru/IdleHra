@@ -1676,6 +1676,13 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                     else if (cmd.Command == CommandType.PlaceLimitOrder)
                     {
+                        if (!ClientCommandValidator.ValidatePlaceLimitOrderRequest(ref currentPayload, ref cmd))
+                        {
+                            RemoveActivePlayer(routingPlayerId);
+                            _networkSystem.ForceDisconnect(routingPlayerId);
+                            continue;
+                        }
+
                         currentPayload.IsSuspended = true;
                         _checkpointManager.FlushStateAndAdvance(ref currentPayload);
 
@@ -1684,7 +1691,17 @@ namespace FolkIdle.Server.Domain.Combat
                         long instanceId = cmd.TargetId;
                         long price = cmd.LimitPrice;
                         int qualityTier = cmd.QualityTier;
-                        string baseItemId = isBuy ? $"ItemType_{cmd.TargetId}" : ""; 
+                        // Modul: Play Mode audit fix. This used to synthesize a
+                        // bogus "ItemType_{TargetId}" string that never matched
+                        // any real MarketEquipmentInstance.BaseItemId - every BUY
+                        // limit order placed through the real wire protocol was
+                        // permanently unmatchable (only the direct-call unit test
+                        // passed a real baseItemId, bypassing this dispatcher
+                        // entirely). TargetId is the same numeric ContentRegistry
+                        // item id used by ConsumableEngine/CombatLootEngine -
+                        // resolving it here is the same GetItemBaseId lookup they
+                        // already use, not a new convention.
+                        string baseItemId = isBuy ? ContentRegistry.GetItemBaseId((int)cmd.TargetId) : "";
 
                         SafeDispatchAsync("Market.LimitOrder", pId, async () => {
                             await _marketEngine.PlaceLimitOrderAsync(pId, isBuy, instanceId, price, baseItemId, qualityTier);

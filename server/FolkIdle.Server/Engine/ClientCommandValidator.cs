@@ -710,6 +710,46 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
+        // Modul: Play Mode audit fix. PlaceLimitOrder had no validator at
+        // all before this - the dispatcher trusted packet.TargetId/LimitPrice/
+        // QualityTier completely. A BUY order's TargetId must be a real
+        // ContentRegistry item id (SimulationEngine resolves it to a real
+        // BaseItemId via ContentRegistry.GetItemBaseId, see that dispatch
+        // site's own comment on the ItemType_N placeholder bug this replaced);
+        // a SELL order's TargetId is an equipment instance id, structurally
+        // just "greater than zero" here (MarketOrderBookEngine itself checks
+        // real ownership/lock state, which is a normal gameplay soft-fail,
+        // not a cheat signal).
+        public static bool ValidatePlaceLimitOrderRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
+        {
+            if (packet.Command != FolkIdle.Server.Network.CommandType.PlaceLimitOrder)
+            {
+                return true;
+            }
+
+            if (packet.LimitPrice <= 0 || packet.QualityTier < 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 3, Value2 = 1, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            if (packet.IsBuy == 1)
+            {
+                if (packet.TargetId <= 0 || packet.TargetId > ContentRegistry.ItemDefinitions.Length)
+                {
+                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 3, Value2 = 2, Timestamp = Environment.TickCount64 });
+                    return false;
+                }
+            }
+            else if (packet.TargetId <= 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 3, Value2 = 3, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            return true;
+        }
+
         // Modul: structural validity only - is skillId even a real skill ID.
         // Soft-fail conditions (not yet unlocked, insufficient mana, still on
         // cooldown, insufficient skill points) are normal gameplay outcomes,

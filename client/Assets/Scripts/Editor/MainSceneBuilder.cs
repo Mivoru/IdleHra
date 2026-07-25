@@ -1411,13 +1411,60 @@ namespace FolkIdle.Client.Editor
             taxLegendRect.sizeDelta = new Vector2(0f, 16f);
             taxLegendRect.anchoredPosition = new Vector2(0f, -104f);
 
+            // Modul: Play Mode audit follow-up. PlaceLimitOrder's BUY side
+            // (a standing order, distinct from this browser's instant
+            // MarketBuyItem-against-an-existing-listing flow) had no UI -
+            // see UiMarketBuyOrderPanel's own header comment. Uses a raw
+            // numeric ContentRegistry item id, not the BaseItemIdInput
+            // string search field above (different identifier scheme,
+            // same seam PlaceLimitOrder's server-side fix addressed), so
+            // it gets its own compact row rather than sharing that field.
+            GameObject buyOrderRowObject = new GameObject("BuyOrderRow", typeof(RectTransform));
+            buyOrderRowObject.transform.SetParent(parent, false);
+            RectTransform buyOrderRowRect = (RectTransform)buyOrderRowObject.transform;
+            buyOrderRowRect.anchorMin = new Vector2(0f, 1f);
+            buyOrderRowRect.anchorMax = new Vector2(1f, 1f);
+            buyOrderRowRect.pivot = new Vector2(0.5f, 1f);
+            buyOrderRowRect.sizeDelta = new Vector2(0f, 34f);
+            buyOrderRowRect.anchoredPosition = new Vector2(0f, -122f);
+
+            HorizontalLayoutGroup buyOrderLayout = buyOrderRowObject.AddComponent<HorizontalLayoutGroup>();
+            buyOrderLayout.spacing = 4f;
+            buyOrderLayout.childControlWidth = true;
+            buyOrderLayout.childForceExpandWidth = false;
+            buyOrderLayout.childControlHeight = true;
+            buyOrderLayout.childForceExpandHeight = true;
+
+            TMP_InputField buyItemIdInput = CreateInputField(buyOrderRowRect, "BuyItemIdInputField", "Item#");
+            LayoutElement buyItemIdLayout = buyItemIdInput.gameObject.AddComponent<LayoutElement>();
+            buyItemIdLayout.preferredWidth = 60f;
+
+            TMP_InputField buyQualityTierInput = CreateInputField(buyOrderRowRect, "BuyQualityTierInputField", "Tier");
+            LayoutElement buyQualityTierLayout = buyQualityTierInput.gameObject.AddComponent<LayoutElement>();
+            buyQualityTierLayout.preferredWidth = 50f;
+
+            TMP_InputField buyPriceInput = CreateInputField(buyOrderRowRect, "BuyPriceInputField", "Price");
+            LayoutElement buyPriceLayout = buyPriceInput.gameObject.AddComponent<LayoutElement>();
+            buyPriceLayout.preferredWidth = 70f;
+
+            Button placeBuyOrderButton = CreateButton(buyOrderRowRect, "PlaceBuyOrderButton", "Buy Order", out TextMeshProUGUI _);
+            LayoutElement placeBuyOrderLayout = placeBuyOrderButton.gameObject.AddComponent<LayoutElement>();
+            placeBuyOrderLayout.flexibleWidth = 1f;
+
+            UiMarketBuyOrderPanel buyOrderPanel = buyOrderRowObject.AddComponent<UiMarketBuyOrderPanel>();
+            buyOrderPanel.NetworkClient = networkClient;
+            buyOrderPanel.ItemIdField = buyItemIdInput;
+            buyOrderPanel.QualityTierField = buyQualityTierInput;
+            buyOrderPanel.PriceField = buyPriceInput;
+            buyOrderPanel.PlaceBuyOrderButton = placeBuyOrderButton;
+
             GameObject listingAreaObject = new GameObject("ListingArea", typeof(RectTransform));
             listingAreaObject.transform.SetParent(parent, false);
             RectTransform listingAreaRect = (RectTransform)listingAreaObject.transform;
             listingAreaRect.anchorMin = new Vector2(0f, 0.54f);
             listingAreaRect.anchorMax = new Vector2(1f, 1f);
             listingAreaRect.offsetMin = new Vector2(0f, 26f);
-            listingAreaRect.offsetMax = new Vector2(0f, -122f);
+            listingAreaRect.offsetMax = new Vector2(0f, -160f);
 
             (ScrollRect listingScrollRect, RectTransform listingContent) = ChatSceneBuilder.BuildScrollView(listingAreaRect);
 
