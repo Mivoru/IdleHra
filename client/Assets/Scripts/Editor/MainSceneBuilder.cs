@@ -1144,7 +1144,7 @@ namespace FolkIdle.Client.Editor
             GameObject activeWarRoot = new GameObject("ActiveWarRoot", typeof(RectTransform));
             activeWarRoot.transform.SetParent(groupObject.transform, false);
             LayoutElement activeWarLayout = activeWarRoot.AddComponent<LayoutElement>();
-            activeWarLayout.preferredHeight = 366f;
+            activeWarLayout.preferredHeight = 416f;
 
             VerticalLayoutGroup activeWarLayoutGroup = activeWarRoot.AddComponent<VerticalLayoutGroup>();
             activeWarLayoutGroup.spacing = 4f;
@@ -1167,6 +1167,10 @@ namespace FolkIdle.Client.Editor
             Button defendButton = CreateButton(activeWarRoot.transform, "DefendButton", "Defend", out TextMeshProUGUI _);
             LayoutElement defendButtonLayout = defendButton.gameObject.AddComponent<LayoutElement>();
             defendButtonLayout.preferredHeight = 46f;
+
+            Button attackButton = CreateButton(activeWarRoot.transform, "AttackButton", "Attack", out TextMeshProUGUI _);
+            LayoutElement attackButtonLayout = attackButton.gameObject.AddComponent<LayoutElement>();
+            attackButtonLayout.preferredHeight = 46f;
 
             GameObject contributeRowObject = new GameObject("ContributeSupplyRow", typeof(RectTransform));
             contributeRowObject.transform.SetParent(activeWarRoot.transform, false);
@@ -1196,6 +1200,7 @@ namespace FolkIdle.Client.Editor
             panel.SyncProxy = syncProxy;
             panel.NetworkClient = networkClient;
             panel.DefendButton = defendButton;
+            panel.AttackButton = attackButton;
             panel.WarStatusText = statusText;
             panel.NoActiveWarRoot = noActiveWarRoot;
             panel.ActiveWarRoot = activeWarRoot;

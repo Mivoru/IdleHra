@@ -42,6 +42,18 @@ namespace FolkIdle.Client.UI
         [Header("Actions")]
         public Button DefendButton;
 
+        // Modul: Play Mode audit follow-up. ExecuteCombatTurn (the
+        // turn-based GuildWarActiveMatches attack, distinct from
+        // SubmitShardAttack's cross-shard tournament mesh system, which
+        // depends on an external _tournamentMeshService not present in
+        // this dev environment and is out of scope here) already had a
+        // working zero-alloc sender (SendCombatTurnCommandZeroAlloc, only
+        // ever called from the dead UiCommandDispatcher grab-bag) and its
+        // own damage/turn resolution is entirely server-computed from each
+        // guild's aggregate combat stats - the client only needs to echo
+        // back the live MatchId/TurnCounter this panel already displays.
+        public Button AttackButton;
+
         // Modul: Play Mode audit follow-up. ContributeToWarSupply already
         // had a working zero-alloc sender (SendWarSupplyCommandZeroAlloc)
         // burning a commodity toward the Supply Chain front - see
@@ -94,6 +106,11 @@ namespace FolkIdle.Client.UI
                 DefendButton.onClick.AddListener(HandleDefendClicked);
             }
 
+            if (AttackButton != null)
+            {
+                AttackButton.onClick.AddListener(HandleAttackClicked);
+            }
+
             if (ContributeSupplyButton != null)
             {
                 ContributeSupplyButton.onClick.AddListener(HandleContributeSupplyClicked);
@@ -123,6 +140,14 @@ namespace FolkIdle.Client.UI
             {
                 NetworkClient.SendRegisterGuildDefenseCommandZeroAlloc();
             }
+        }
+
+        private void HandleAttackClicked()
+        {
+            if (NetworkClient == null || SyncProxy == null) return;
+            if (SyncProxy.VisualCombatSimulationMatchId <= 0L) return;
+
+            NetworkClient.SendCombatTurnCommandZeroAlloc((uint)SyncProxy.VisualCombatSimulationMatchId, (uint)SyncProxy.VisualCombatSimulationTurnCounter);
         }
 
         private void HandleContributeSupplyClicked()
@@ -220,8 +245,11 @@ namespace FolkIdle.Client.UI
 
             if (!warActive)
             {
+                if (AttackButton != null) AttackButton.gameObject.SetActive(false);
                 return;
             }
+
+            if (AttackButton != null) AttackButton.gameObject.SetActive(SyncProxy.VisualCombatSimulationMatchId > 0L);
 
             if (ActiveMatchText != null)
             {
