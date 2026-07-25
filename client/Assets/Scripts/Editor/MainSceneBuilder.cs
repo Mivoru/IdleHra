@@ -38,6 +38,7 @@ namespace FolkIdle.Client.Editor
         private const string CodexRegionRowPrefabPath = PrefabDirectory + "/UiCodexRegionRow.prefab";
         private const string BreedingRosterRowPrefabPath = PrefabDirectory + "/UiBreedingRosterRow.prefab";
         private const string FriendRowPrefabPath = PrefabDirectory + "/UiFriendEntryRow.prefab";
+        private const string GuildApplicationRowPrefabPath = PrefabDirectory + "/UiGuildApplicationEntryRow.prefab";
 
         [MenuItem("FolkIdle/Build Main Scene (Login + HUD + Chat)")]
         public static void BuildMainScene()
@@ -933,7 +934,7 @@ namespace FolkIdle.Client.Editor
             subTabHeaderRect.sizeDelta = new Vector2(0f, 44f);
             subTabHeaderRect.anchoredPosition = new Vector2(0f, -12f);
 
-            Button[] subTabButtons = BuildSubTabButtons(subTabHeaderRect, new[] { "Roster", "Logistics", "Raid", "War" });
+            Button[] subTabButtons = BuildSubTabButtons(subTabHeaderRect, new[] { "Roster", "Logistics", "Raid", "War", "Applications" });
 
             GameObject contentAreaObject = new GameObject("ContentArea", typeof(RectTransform));
             contentAreaObject.transform.SetParent(windowRect, false);
@@ -947,16 +948,67 @@ namespace FolkIdle.Client.Editor
             GameObject logisticsGroup = BuildGuildLogisticsGroup(contentAreaRect, syncProxy, networkClient);
             GameObject raidGroup = BuildGuildRaidGroup(contentAreaRect, syncProxy, networkClient, sfxEngine);
             GameObject warGroup = BuildGuildWarGroup(contentAreaRect, syncProxy, networkClient);
+            GameObject applicationsGroup = BuildGuildApplicationsGroup(contentAreaRect);
 
             logisticsGroup.SetActive(false);
             raidGroup.SetActive(false);
             warGroup.SetActive(false);
+            applicationsGroup.SetActive(false);
 
             UiTabGroup tabGroup = windowObject.AddComponent<UiTabGroup>();
-            tabGroup.Groups = new[] { rosterGroup, logisticsGroup, raidGroup, warGroup };
+            tabGroup.Groups = new[] { rosterGroup, logisticsGroup, raidGroup, warGroup, applicationsGroup };
             tabGroup.Buttons = subTabButtons;
 
             return windowObject;
+        }
+
+        // Modul: Play Mode audit fix. JoinGuildAsync has always filed a
+        // GuildApplication row for Application-Required guilds, but
+        // nothing anywhere ever reviewed one - see
+        // UiGuildApplicationsPanel's own header comment. Leader-only in
+        // practice (the backing endpoint returns an empty list for
+        // non-Leaders), so this tab is harmlessly empty for most players.
+        private static GameObject BuildGuildApplicationsGroup(Transform parent)
+        {
+            GameObject groupObject = new GameObject("ApplicationsGroup", typeof(RectTransform));
+            groupObject.transform.SetParent(parent, false);
+            StretchFull((RectTransform)groupObject.transform);
+
+            TextMeshProUGUI headerText = CreateText(groupObject.transform, "HeaderText", "Pending Applications", 22f, TextAlignmentOptions.Center);
+            RectTransform headerRect = (RectTransform)headerText.transform;
+            headerRect.anchorMin = new Vector2(0f, 1f);
+            headerRect.anchorMax = new Vector2(1f, 1f);
+            headerRect.pivot = new Vector2(0.5f, 1f);
+            headerRect.sizeDelta = new Vector2(0f, 36f);
+            headerRect.anchoredPosition = Vector2.zero;
+
+            TextMeshProUGUI statusText = CreateText(groupObject.transform, "StatusText", string.Empty, 14f, TextAlignmentOptions.Center);
+            RectTransform statusRect = (RectTransform)statusText.transform;
+            statusRect.anchorMin = new Vector2(0f, 1f);
+            statusRect.anchorMax = new Vector2(1f, 1f);
+            statusRect.pivot = new Vector2(0.5f, 1f);
+            statusRect.sizeDelta = new Vector2(0f, 24f);
+            statusRect.anchoredPosition = new Vector2(0f, -36f);
+
+            GameObject scrollAreaObject = new GameObject("ScrollArea", typeof(RectTransform));
+            scrollAreaObject.transform.SetParent(groupObject.transform, false);
+            RectTransform scrollAreaRect = (RectTransform)scrollAreaObject.transform;
+            scrollAreaRect.anchorMin = Vector2.zero;
+            scrollAreaRect.anchorMax = Vector2.one;
+            scrollAreaRect.offsetMin = Vector2.zero;
+            scrollAreaRect.offsetMax = new Vector2(0f, -64f);
+
+            (ScrollRect _, RectTransform applicationsContent) = ChatSceneBuilder.BuildScrollView(scrollAreaRect);
+
+            GameObject applicationRowPrefabAsset = BuildAndSaveGuildApplicationRowPrefab();
+
+            UiGuildApplicationsPanel panel = groupObject.AddComponent<UiGuildApplicationsPanel>();
+            panel.RowContainer = applicationsContent;
+            panel.RowPrefab = applicationRowPrefabAsset.GetComponent<UiGuildApplicationEntryRow>();
+            panel.HeaderText = headerText;
+            panel.StatusText = statusText;
+
+            return groupObject;
         }
 
         // Roster list (real, network-backed UiGuildRosterPanel) plus
@@ -2021,6 +2073,47 @@ namespace FolkIdle.Client.Editor
             if (!success)
             {
                 Debug.LogError("MainSceneBuilder: failed to save UiGuildRosterEntryRow prefab asset.");
+            }
+            Object.DestroyImmediate(root);
+            return prefabAsset;
+        }
+
+        private static GameObject BuildAndSaveGuildApplicationRowPrefab()
+        {
+            EnsureFolder(PrefabDirectory);
+
+            GameObject root = new GameObject("UiGuildApplicationEntryRow", typeof(RectTransform));
+            ((RectTransform)root.transform).sizeDelta = new Vector2(0f, 40f);
+
+            HorizontalLayoutGroup rowLayout = root.AddComponent<HorizontalLayoutGroup>();
+            rowLayout.spacing = 6f;
+            rowLayout.padding = new RectOffset(6, 6, 4, 4);
+            rowLayout.childControlWidth = true;
+            rowLayout.childForceExpandWidth = false;
+            rowLayout.childControlHeight = true;
+            rowLayout.childForceExpandHeight = true;
+
+            TextMeshProUGUI rowText = CreateText(root.transform, "RowLabelText", "Player  Lv 0", 15f, TextAlignmentOptions.MidlineLeft);
+            LayoutElement rowTextLayout = rowText.gameObject.AddComponent<LayoutElement>();
+            rowTextLayout.flexibleWidth = 1f;
+
+            Button approveButton = CreateButton(root.transform, "ApproveButton", "Approve", out TextMeshProUGUI _);
+            LayoutElement approveLayout = approveButton.gameObject.AddComponent<LayoutElement>();
+            approveLayout.preferredWidth = 100f;
+
+            Button rejectButton = CreateButton(root.transform, "RejectButton", "Reject", out TextMeshProUGUI _);
+            LayoutElement rejectLayout = rejectButton.gameObject.AddComponent<LayoutElement>();
+            rejectLayout.preferredWidth = 100f;
+
+            UiGuildApplicationEntryRow rowComponent = root.AddComponent<UiGuildApplicationEntryRow>();
+            rowComponent.RowLabelText = rowText;
+            rowComponent.ApproveButton = approveButton;
+            rowComponent.RejectButton = rejectButton;
+
+            GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(root, GuildApplicationRowPrefabPath, out bool applicationRowSuccess);
+            if (!applicationRowSuccess)
+            {
+                Debug.LogError("MainSceneBuilder: failed to save UiGuildApplicationEntryRow prefab asset.");
             }
             Object.DestroyImmediate(root);
             return prefabAsset;

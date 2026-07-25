@@ -676,6 +676,32 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: Play Mode audit fix. JoinGuildAsync has always
+                    // filed a GuildApplication row for Application-Required
+                    // guilds, but nothing anywhere ever reviewed one - see
+                    // GuildManagementEngine.ListPendingApplicationsAsync/
+                    // ApproveApplicationAsync/RejectApplicationAsync's own
+                    // comment. GET is leader-only (returns an empty list
+                    // for anyone else, matching HandleGuildRoster's
+                    // no-guild convention rather than a 403).
+                    if (requestPath == "/api/v1/guild/applications/pending" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleGuildApplicationsPending(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/guild/applications/approve" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleGuildApplicationApprove(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/guild/applications/reject" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleGuildApplicationReject(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/achievements/snapshot" && context.Request.HttpMethod == "GET")
                     {
                         await HandleAchievementsSnapshot(context);
@@ -912,6 +938,20 @@ namespace FolkIdle.Server.Network
         private sealed class GuildJoinResponse
         {
             public bool Joined { get; set; }
+        }
+
+        private sealed class GuildApplicationEntryResponse
+        {
+            public long Id { get; set; }
+            public long PlayerId { get; set; }
+            public string Username { get; set; } = string.Empty;
+            public int ApplicantLevel { get; set; }
+            public long CreatedAtEpoch { get; set; }
+        }
+
+        private sealed class GuildApplicationActionResponse
+        {
+            public bool Success { get; set; }
         }
 
         private sealed class LeaderboardEntryResponse
@@ -2650,6 +2690,171 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Guild join error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: Play Mode audit fix. Leader-only list of this player's
+        // guild's pending GuildApplications, joined against PlayerRecords
+        // for a real Username (mirrors HandleFriendsList's exact reasoning
+        // for not surfacing a bare numeric Id). Anyone who isn't the
+        // guild's Leader (including players with no guild) gets an empty
+        // list rather than a 403, matching HandleGuildRoster's "no guild"
+        // convention.
+        private async Task HandleGuildApplicationsPending(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                var membership = await db.GuildMembers.AsNoTracking().FirstOrDefaultAsync(m => m.PlayerId == playerId);
+                if (membership == null || membership.Role != GuildManagementEngine.RoleLeader)
+                {
+                    await transaction.CommitAsync();
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
+                    await JsonSerializer.SerializeAsync(context.Response.OutputStream, new System.Collections.Generic.List<GuildApplicationEntryResponse>());
+                    context.Response.Close();
+                    return;
+                }
+
+                var applications = await db.GuildApplications
+                    .AsNoTracking()
+                    .Where(a => a.GuildId == membership.GuildId)
+                    .OrderBy(a => a.CreatedAtEpoch)
+                    .ToListAsync();
+
+                var applicantIds = applications.Select(a => a.PlayerId).ToList();
+                var applicants = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => applicantIds.Contains(p.Id))
+                    .ToDictionaryAsync(p => p.Id, p => p);
+
+                await transaction.CommitAsync();
+
+                var entries = new System.Collections.Generic.List<GuildApplicationEntryResponse>(applications.Count);
+                foreach (var application in applications)
+                {
+                    applicants.TryGetValue(application.PlayerId, out var applicantProfile);
+                    entries.Add(new GuildApplicationEntryResponse
+                    {
+                        Id = application.Id,
+                        PlayerId = application.PlayerId,
+                        Username = applicantProfile?.Username ?? "(unknown player)",
+                        ApplicantLevel = application.ApplicantLevel,
+                        CreatedAtEpoch = application.CreatedAtEpoch
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, entries);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild applications pending error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private async Task HandleGuildApplicationApprove(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var body = await reader.ReadToEndAsync();
+                var payload = JsonSerializer.Deserialize<JsonElement>(body);
+
+                if (!payload.TryGetProperty("applicationId", out var applicationIdElement))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                long applicationId = applicationIdElement.GetInt64();
+
+                var guildManagementEngine = new GuildManagementEngine(
+                    _serviceProvider.GetRequiredService<RetryingDbContextOptions>(),
+                    _playerSessionRegistry ?? throw new InvalidOperationException("NetworkBroadcastSystem: PlayerSessionRegistry not registered - call RegisterPlayerSessionRegistry before Start()."));
+
+                bool approved = await guildManagementEngine.ApproveApplicationAsync(playerId, applicationId);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new GuildApplicationActionResponse { Success = approved });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild application approve error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private async Task HandleGuildApplicationReject(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var body = await reader.ReadToEndAsync();
+                var payload = JsonSerializer.Deserialize<JsonElement>(body);
+
+                if (!payload.TryGetProperty("applicationId", out var applicationIdElement))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                long applicationId = applicationIdElement.GetInt64();
+
+                var guildManagementEngine = new GuildManagementEngine(
+                    _serviceProvider.GetRequiredService<RetryingDbContextOptions>(),
+                    _playerSessionRegistry ?? throw new InvalidOperationException("NetworkBroadcastSystem: PlayerSessionRegistry not registered - call RegisterPlayerSessionRegistry before Start()."));
+
+                bool rejected = await guildManagementEngine.RejectApplicationAsync(playerId, applicationId);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new GuildApplicationActionResponse { Success = rejected });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild application reject error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

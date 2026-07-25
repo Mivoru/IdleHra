@@ -461,6 +461,156 @@ namespace FolkIdle.Server.Domain.Social
             }
         }
 
+        // Modul: Play Mode audit fix. JoinGuildAsync has always filed a
+        // GuildApplication row for JoinType-Application-Required guilds
+        // (see that method's own comment), but nothing anywhere - server
+        // or client - ever read, approved, or rejected one. Any guild
+        // gated behind "application required" was a black hole for new
+        // members. Leader-only, matching KickMemberAsync's exact
+        // permission-check shape.
+        public async Task<System.Collections.Generic.List<GuildApplication>> ListPendingApplicationsAsync(long guildId)
+        {
+            await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
+            return await context.GuildApplications
+                .AsNoTracking()
+                .Where(a => a.GuildId == guildId)
+                .OrderBy(a => a.CreatedAtEpoch)
+                .ToListAsync();
+        }
+
+        public async Task<bool> ApproveApplicationAsync(long leaderPlayerId, long applicationId)
+        {
+            await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
+            var strategy = context.Database.CreateExecutionStrategy();
+
+            try
+            {
+                (bool Approved, long ApplicantPlayerId, long GuildId) result = await strategy.ExecuteAsync(async () =>
+                {
+                    context.ChangeTracker.Clear();
+                    using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+                    var leaderMembership = await context.GuildMembers
+                        .FirstOrDefaultAsync(m => m.PlayerId == leaderPlayerId);
+
+                    if (leaderMembership == null || leaderMembership.Role != RoleLeader)
+                    {
+                        await transaction.RollbackAsync();
+                        return (false, 0L, 0L);
+                    }
+
+                    long guildId = leaderMembership.GuildId;
+
+                    var application = await context.GuildApplications
+                        .FromSqlRaw("SELECT * FROM \"GuildApplications\" WHERE \"Id\" = {0} FOR UPDATE", applicationId)
+                        .SingleOrDefaultAsync();
+
+                    if (application == null || application.GuildId != guildId)
+                    {
+                        await transaction.RollbackAsync();
+                        return (false, 0L, 0L);
+                    }
+
+                    var guild = await context.GuildRecords
+                        .FromSqlRaw("SELECT * FROM \"GuildRecords\" WHERE \"Id\" = {0} FOR UPDATE", guildId)
+                        .SingleOrDefaultAsync();
+
+                    var applicantProfile = await context.PlayerRecords
+                        .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", application.PlayerId)
+                        .SingleOrDefaultAsync();
+
+                    // Modul: an applicant may have joined a different guild
+                    // (or this one, via another pending application) or the
+                    // guild may have filled up since the application was
+                    // filed - either way the stale application is consumed
+                    // here rather than left to be approved again later.
+                    if (guild == null || applicantProfile == null || applicantProfile.GuildId > 0 || guild.ActiveMembers >= guild.MaxMembers)
+                    {
+                        context.GuildApplications.Remove(application);
+                        await context.SaveChangesAsync();
+                        await transaction.CommitAsync();
+                        return (false, 0L, 0L);
+                    }
+
+                    context.GuildMembers.Add(new GuildMember
+                    {
+                        PlayerId = application.PlayerId,
+                        GuildId = guildId,
+                        ContributionPoints = 0,
+                        Role = RoleMember
+                    });
+                    applicantProfile.GuildId = guildId;
+                    guild.ActiveMembers++;
+                    context.GuildApplications.Remove(application);
+
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return (true, application.PlayerId, guildId);
+                });
+
+                if (result.Approved)
+                {
+                    _playerRegistry.GuildMembershipChangeQueue.Enqueue(new GuildMembershipChangeNotification
+                    {
+                        PlayerId = result.ApplicantPlayerId,
+                        OldGuildId = 0,
+                        NewGuildId = result.GuildId
+                    });
+                }
+
+                return result.Approved;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild application approve failed - Leader {leaderPlayerId}, Application {applicationId}: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> RejectApplicationAsync(long leaderPlayerId, long applicationId)
+        {
+            await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
+            var strategy = context.Database.CreateExecutionStrategy();
+
+            try
+            {
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    context.ChangeTracker.Clear();
+                    using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+                    var leaderMembership = await context.GuildMembers
+                        .FirstOrDefaultAsync(m => m.PlayerId == leaderPlayerId);
+
+                    if (leaderMembership == null || leaderMembership.Role != RoleLeader)
+                    {
+                        await transaction.RollbackAsync();
+                        return false;
+                    }
+
+                    var application = await context.GuildApplications
+                        .FromSqlRaw("SELECT * FROM \"GuildApplications\" WHERE \"Id\" = {0} FOR UPDATE", applicationId)
+                        .SingleOrDefaultAsync();
+
+                    if (application == null || application.GuildId != leaderMembership.GuildId)
+                    {
+                        await transaction.RollbackAsync();
+                        return false;
+                    }
+
+                    context.GuildApplications.Remove(application);
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return true;
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild application reject failed - Leader {leaderPlayerId}, Application {applicationId}: {ex.Message}");
+                return false;
+            }
+        }
+
         // Modul: Advanced Economy Refactoring, Part 2.4. Leader-only
         // setter for the guild sales tax rate, clamped strictly to
         // [GuildRecord.MinTaxRatePct, GuildRecord.MaxTaxRatePct] - an
