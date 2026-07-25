@@ -3937,13 +3937,21 @@ namespace FolkIdle.Client.Editor
             TextMeshProUGUI passLevelText = CreateText(statsRowRect, "PassLevelText", "Pass Level 0", 15f, TextAlignmentOptions.MidlineLeft);
             TextMeshProUGUI accumulatedXpText = CreateText(statsRowRect, "AccumulatedXpText", "0 XP", 15f, TextAlignmentOptions.MidlineRight);
 
+            Button purchasePremiumButton = CreateButton(contentAreaRect, "PurchasePremiumButton", "Purchase Premium (950 Diamonds)", out TextMeshProUGUI _);
+            RectTransform purchasePremiumRect = (RectTransform)purchasePremiumButton.transform;
+            purchasePremiumRect.anchorMin = new Vector2(0f, 1f);
+            purchasePremiumRect.anchorMax = new Vector2(1f, 1f);
+            purchasePremiumRect.pivot = new Vector2(0.5f, 1f);
+            purchasePremiumRect.sizeDelta = new Vector2(0f, 40f);
+            purchasePremiumRect.anchoredPosition = new Vector2(0f, -34f);
+
             GameObject scrollAreaObject = new GameObject("ScrollArea", typeof(RectTransform));
             scrollAreaObject.transform.SetParent(contentAreaRect, false);
             RectTransform scrollAreaRect = (RectTransform)scrollAreaObject.transform;
             scrollAreaRect.anchorMin = Vector2.zero;
             scrollAreaRect.anchorMax = Vector2.one;
             scrollAreaRect.offsetMin = Vector2.zero;
-            scrollAreaRect.offsetMax = new Vector2(0f, -36f);
+            scrollAreaRect.offsetMax = new Vector2(0f, -80f);
 
             (ScrollRect _, RectTransform content) = ChatSceneBuilder.BuildScrollView(scrollAreaRect);
 
@@ -3957,6 +3965,7 @@ namespace FolkIdle.Client.Editor
             window.PassLevelText = passLevelText;
             window.AccumulatedXpText = accumulatedXpText;
             window.HeaderText = headerText;
+            window.PurchasePremiumButton = purchasePremiumButton;
 
             return windowObject;
         }

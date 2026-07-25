@@ -3373,6 +3373,24 @@ namespace FolkIdle.Server.Domain.Combat
 
                 await context.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                // Modul: Play Mode audit fix. This transaction runs off the
+                // tick thread against its own DbContext - without this, the
+                // diamond deduction landed in Postgres but the live
+                // in-memory TickStatePayload.PremiumCurrency (and the
+                // packet built from it) never changed, so a player who
+                // just spent 950 diamonds would see their old balance
+                // until their next reconnect. BillingSyncNotification/
+                // BillingSyncQueue already exists for exactly this
+                // PlayerId+new-balance push (see the IAP billing path's
+                // own use of it) - reused directly rather than adding a
+                // near-duplicate notification type.
+                _playerRegistry.BillingSyncQueue.Enqueue(new BillingSyncNotification
+                {
+                    PlayerId = playerId,
+                    PremiumDiamondsBalance = player.PremiumDiamonds
+                });
+
                 return true;
             }
             catch (Exception ex)

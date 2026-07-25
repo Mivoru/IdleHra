@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using FolkIdle.Client.Engine;
 using FolkIdle.Client.Network;
 
@@ -40,6 +41,21 @@ namespace FolkIdle.Client.UI
         public TextMeshProUGUI AccumulatedXpText;
         public TextMeshProUGUI HeaderText;
 
+        // Modul: Play Mode audit follow-up. PurchaseBattlePass had a real
+        // server-side effect (unlocks the premium milestone track for
+        // 950 PremiumDiamonds - ChroniclePassEconomy.PremiumPassPriceDiamonds,
+        // the price is a static label in MainSceneBuilder rather than a
+        // duplicated constant here) but no button anywhere ever called it.
+        // Whether the pass is already purchased isn't on the wire
+        // (PlayerChroniclePass.PremiumUnlocked has no StateUpdatePacket
+        // field, and this project's 700-byte packet ceiling has ~1 byte of
+        // headroom left - not worth spending on a single already-purchased
+        // flag) - a repeat purchase attempt just silently no-ops
+        // server-side (ExecutePassPurchaseAsync's own early-return),
+        // matching this button's lack of client-side gating.
+        [Header("Premium Purchase")]
+        public Button PurchasePremiumButton;
+
         private UIComponentPool<UiSeasonPassMilestoneRow> _rowPool;
         private readonly UiSeasonPassMilestoneRow[] _activeRows = new UiSeasonPassMilestoneRow[MaxMilestones];
         private readonly char[] _headerBuffer = new char[32];
@@ -57,6 +73,19 @@ namespace FolkIdle.Client.UI
                 byte activeLanguage = SyncProxy == null || SyncProxy.VisualActiveLanguageState == 0 ? (byte)1 : SyncProxy.VisualActiveLanguageState;
                 int offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, LocalizationKey.HeaderSeasonPass, _titleBuffer, 0);
                 HeaderText.SetCharArray(_titleBuffer, 0, offset);
+            }
+
+            if (PurchasePremiumButton != null)
+            {
+                PurchasePremiumButton.onClick.AddListener(HandlePurchasePremiumClicked);
+            }
+        }
+
+        private void HandlePurchasePremiumClicked()
+        {
+            if (NetworkClient != null)
+            {
+                NetworkClient.SendBattlePassPurchaseCommandZeroAlloc();
             }
         }
 

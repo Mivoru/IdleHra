@@ -443,6 +443,19 @@ namespace FolkIdle.Client.Network
             }
         }
 
+        public void SendBattlePassPurchaseCommandZeroAlloc()
+        {
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                ClientCommandPacket packet = new ClientCommandPacket
+                {
+                    Command = CommandType.PurchaseBattlePass
+                };
+
+                SendPacket(ref packet);
+            }
+        }
+
         public void SendMarketCommandZeroAlloc(byte commandType, long instanceId, int price)
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)
