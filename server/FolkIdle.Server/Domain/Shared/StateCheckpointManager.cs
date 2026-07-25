@@ -648,6 +648,19 @@ namespace FolkIdle.Server.Domain.Shared
                 payload.Slot1_AgePhase = characters[0].AgePhase;
                 payload.Slot1_GeneticVector = characters[0].Lineage?.GeneticVector ?? 0;
 
+                // Modul: Play Mode audit fix. ActiveActivityId was hardcoded
+                // to 1 above regardless of what the character was actually
+                // doing - SimulationEngine.ChangeCharacterActivityAsync
+                // correctly persists a real activity onto characters[0] and
+                // then immediately triggers a ReloadState to pick it back up
+                // live, but LoadPlayerState never read it, so the reload
+                // instantly reverted the character to idle. Confirmed live:
+                // deploying a fresh character against a monster wrote
+                // ActiveActivityId=55 onto its characters row correctly, but
+                // every subsequent broadcast kept reporting activity 0/1 and
+                // combat never resolved (CurrentMonsterHp stayed 0 forever).
+                payload.ActiveActivityId = characters[0].ActiveActivityId;
+
                 // Modul 13.4.3: inherited genetic loci for the active (Slot1)
                 // character only - combat/growth are always evaluated against
                 // whichever character occupies Slot1, matching activeRaceId's
