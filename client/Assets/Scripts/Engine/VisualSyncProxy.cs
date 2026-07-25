@@ -399,7 +399,17 @@ namespace FolkIdle.Client.Engine
         {
             if (Time.time - _lastMetadataRefreshTime < MetadataRefreshIntervalSeconds) return;
 
+            // Both caches fire on this timer unconditionally, including
+            // during the pre-login window before AuthenticatorToken is set
+            // (this component exists and ticks before the player has
+            // necessarily finished the login/register flow) - every such
+            // call was a guaranteed 401 the server correctly rejected, just
+            // logged as a client-side warning for no reason. Skip until a
+            // token actually exists; _lastMetadataRefreshTime is still
+            // updated so this does not busy-retry every frame.
             _lastMetadataRefreshTime = Time.time;
+            if (string.IsNullOrEmpty(WebSocketClient.AuthenticatorToken)) return;
+
             PlayerMetadataCache.Refresh();
             AchievementsStateCache.Refresh();
         }

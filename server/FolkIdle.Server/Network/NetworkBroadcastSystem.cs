@@ -120,6 +120,7 @@ namespace FolkIdle.Server.Network
         private AntiCheatTelemetryEngine? _antiCheatTelemetryEngine;
         private SimulationEngine? _simulationEngine;
         private BillingVerificationEngine? _billingVerificationEngine;
+        private PlayerSessionRegistry? _playerSessionRegistry;
         private readonly ChatEngine _chatEngine;
 
         // Modul: Full-Stack Social Layer, Part 1. A single buffer is now
@@ -189,6 +190,18 @@ namespace FolkIdle.Server.Network
         public void RegisterBillingVerificationEngine(BillingVerificationEngine engine)
         {
             _billingVerificationEngine = engine;
+        }
+
+        // Modul: Play Mode audit fix. PlayerSessionRegistry is constructed
+        // in Program.cs after NetworkBroadcastSystem (same "no natural
+        // constructor-time reference" situation as RegisterSimulationEngine
+        // above) and was never registered in the DI container either -
+        // HandleGuildCreate/HandleGuildJoin's _serviceProvider.GetRequiredService<PlayerSessionRegistry>()
+        // therefore always threw InvalidOperationException and 500'd,
+        // found via a live Play Mode + direct HTTP guild-create test.
+        public void RegisterPlayerSessionRegistry(PlayerSessionRegistry registry)
+        {
+            _playerSessionRegistry = registry;
         }
 
         public void Start()
@@ -2555,7 +2568,7 @@ namespace FolkIdle.Server.Network
 
                 var guildManagementEngine = new GuildManagementEngine(
                     _serviceProvider.GetRequiredService<RetryingDbContextOptions>(),
-                    _serviceProvider.GetRequiredService<PlayerSessionRegistry>());
+                    _playerSessionRegistry ?? throw new InvalidOperationException("NetworkBroadcastSystem: PlayerSessionRegistry not registered - call RegisterPlayerSessionRegistry before Start()."));
 
                 long guildId = await guildManagementEngine.CreateGuildAsync(playerId, guildName);
                 if (guildId <= 0)
@@ -2626,7 +2639,7 @@ namespace FolkIdle.Server.Network
 
                 var guildManagementEngine = new GuildManagementEngine(
                     _serviceProvider.GetRequiredService<RetryingDbContextOptions>(),
-                    _serviceProvider.GetRequiredService<PlayerSessionRegistry>());
+                    _playerSessionRegistry ?? throw new InvalidOperationException("NetworkBroadcastSystem: PlayerSessionRegistry not registered - call RegisterPlayerSessionRegistry before Start()."));
 
                 bool joined = await guildManagementEngine.JoinGuildAsync(playerId, guildId);
 
@@ -2988,8 +3001,7 @@ namespace FolkIdle.Server.Network
                         player.Quarantine_Active = true;
                         player.IsQuarantined = true;
                         
-                        var playerRegistry = _serviceProvider.GetRequiredService<PlayerSessionRegistry>();
-                        playerRegistry.QuarantineNotificationQueue.Enqueue(new QuarantineNotification { PlayerId = player.Id });
+                        _playerSessionRegistry?.QuarantineNotificationQueue.Enqueue(new QuarantineNotification { PlayerId = player.Id });
                     }
                 }
 

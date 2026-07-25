@@ -175,6 +175,7 @@ var networkSystem = new NetworkBroadcastSystem(serviceProvider, jwtSecretKey, "h
 var lootEngine = new LootTableEngine();
 var checkpointManager = new StateCheckpointManager(serviceProvider);
 var playerRegistry = new PlayerSessionRegistry();
+networkSystem.RegisterPlayerSessionRegistry(playerRegistry);
 var forgeEngine = new ForgeSplicingEngine(serviceProvider, playerRegistry);
 var antiCheatTelemetryEngine = new AntiCheatTelemetryEngine(serviceProvider, redisMultiplexer, playerRegistry, networkSystem);
 var marketEngine = new MarketOrderBookEngine(serviceProvider, playerRegistry);
