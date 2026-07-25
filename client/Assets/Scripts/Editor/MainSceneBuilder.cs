@@ -154,7 +154,7 @@ namespace FolkIdle.Client.Editor
             // - since it hosts the one real, load-bearing action this pass
             // adds: Log Off. Friends is no longer a placeholder - see
             // BuildFriendsWindow's own comment.
-            (GameObject settingsPanelObject, Button logOffButton) = BuildSettingsWindow(canvas.transform);
+            (GameObject settingsPanelObject, Button logOffButton) = BuildSettingsWindow(canvas.transform, syncProxy, networkClient);
             GameObject friendsPanelObject = BuildFriendsWindow(canvas.transform, networkClient);
             GameObject statisticsPanelObject = BuildStatisticsWindow(canvas.transform);
             GameObject loginBonusPanelObject = BuildLoginBonusWindow(canvas.transform);
@@ -4517,7 +4517,7 @@ namespace FolkIdle.Client.Editor
         // actually exists (it is deliberately built last - see its own
         // comment there).
         // ------------------------------------------------------------
-        private static (GameObject panel, Button logOffButton) BuildSettingsWindow(Transform canvasTransform)
+        private static (GameObject panel, Button logOffButton) BuildSettingsWindow(Transform canvasTransform, VisualSyncProxy syncProxy, WebSocketClient networkClient)
         {
             GameObject windowObject = BuildSimpleListWindowShell("SettingsPanel", canvasTransform, "Settings", out RectTransform contentAreaRect, out TextMeshProUGUI _);
 
@@ -4537,7 +4537,56 @@ namespace FolkIdle.Client.Editor
             logOffRect.sizeDelta = new Vector2(0f, 50f);
             logOffRect.anchoredPosition = new Vector2(0f, -44f);
 
+            TextMeshProUGUI languageHeaderText = CreateText(contentAreaRect, "LanguageHeaderText", "Language", 18f, TextAlignmentOptions.MidlineLeft);
+            RectTransform languageHeaderRect = (RectTransform)languageHeaderText.transform;
+            languageHeaderRect.anchorMin = new Vector2(0f, 1f);
+            languageHeaderRect.anchorMax = new Vector2(1f, 1f);
+            languageHeaderRect.pivot = new Vector2(0.5f, 1f);
+            languageHeaderRect.sizeDelta = new Vector2(0f, 30f);
+            languageHeaderRect.anchoredPosition = new Vector2(0f, -104f);
+
+            (Button englishButton, GameObject englishHighlight) = BuildLanguageOptionRow(contentAreaRect, "English", -138f);
+            (Button czechButton, GameObject czechHighlight) = BuildLanguageOptionRow(contentAreaRect, "Czech", -182f);
+            (Button germanButton, GameObject germanHighlight) = BuildLanguageOptionRow(contentAreaRect, "German", -226f);
+            (Button polishButton, GameObject polishHighlight) = BuildLanguageOptionRow(contentAreaRect, "Polish", -270f);
+
+            UiLanguagePickerPanel languagePicker = windowObject.AddComponent<UiLanguagePickerPanel>();
+            languagePicker.SyncProxy = syncProxy;
+            languagePicker.NetworkClient = networkClient;
+            languagePicker.EnglishButton = englishButton;
+            languagePicker.CzechButton = czechButton;
+            languagePicker.GermanButton = germanButton;
+            languagePicker.PolishButton = polishButton;
+            languagePicker.EnglishActiveHighlight = englishHighlight;
+            languagePicker.CzechActiveHighlight = czechHighlight;
+            languagePicker.GermanActiveHighlight = germanHighlight;
+            languagePicker.PolishActiveHighlight = polishHighlight;
+
             return (windowObject, logOffButton);
+        }
+
+        private static (Button button, GameObject highlight) BuildLanguageOptionRow(RectTransform contentAreaRect, string label, float anchoredY)
+        {
+            Button button = CreateButton(contentAreaRect, label + "LanguageButton", label, out TextMeshProUGUI _);
+            RectTransform buttonRect = (RectTransform)button.transform;
+            buttonRect.anchorMin = new Vector2(0f, 1f);
+            buttonRect.anchorMax = new Vector2(1f, 1f);
+            buttonRect.pivot = new Vector2(0.5f, 1f);
+            buttonRect.sizeDelta = new Vector2(0f, 40f);
+            buttonRect.anchoredPosition = new Vector2(0f, anchoredY);
+
+            GameObject highlight = new GameObject(label + "ActiveHighlight", typeof(RectTransform), typeof(Image));
+            highlight.transform.SetParent(button.transform, false);
+            RectTransform highlightRect = (RectTransform)highlight.transform;
+            highlightRect.anchorMin = Vector2.zero;
+            highlightRect.anchorMax = new Vector2(0.05f, 1f);
+            highlightRect.offsetMin = Vector2.zero;
+            highlightRect.offsetMax = Vector2.zero;
+            Image highlightImage = highlight.GetComponent<Image>();
+            highlightImage.color = new Color(0.35f, 0.75f, 0.35f, 1f);
+            highlight.SetActive(false);
+
+            return (button, highlight);
         }
 
         // Modul: Play Mode audit fix. Banked Chrono Seconds (offline-time
