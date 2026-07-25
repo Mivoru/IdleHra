@@ -35,10 +35,20 @@ namespace FolkIdle.Server.Engine
         }
 
         // Hot-path epoch interception gate (allocation-free: long comparison on unmanaged registers).
-        // Returns false and emits EventType=5 if the client epoch diverges from the session register.
+        // Returns false and emits EventType=5 if the client epoch diverges from the session register
+        // by more than EpochDriftTolerance. A strict equality check here (the original
+        // implementation) rejected almost every real command: the client only learns the current
+        // epoch from the last StateUpdatePacket it received, and payload.LogicEpochCounter keeps
+        // advancing server-side the instant that snapshot goes out, so any command that takes even
+        // one broadcast interval of real network/UI latency to arrive back would already be stale by
+        // the time it's validated - live testing confirmed a live client at epoch 51 getting rejected
+        // against a session register that had already ticked to 52. ValidateTelemetryBurst below
+        // gates this exact same field with a tolerance instead of exact equality; this mirrors that.
+        private const long EpochDriftTolerance = 5L;
+
         public static bool ValidateEpochSynchronization(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
         {
-            if (packet.LogicEpochCounter != payload.LogicEpochCounter)
+            if (Math.Abs(packet.LogicEpochCounter - payload.LogicEpochCounter) > EpochDriftTolerance)
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent
                 {
