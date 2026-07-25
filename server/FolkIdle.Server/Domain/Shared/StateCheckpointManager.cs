@@ -313,6 +313,7 @@ namespace FolkIdle.Server.Domain.Shared
             Guid activeCrossShardMatchId = Guid.Empty;
             int activeMatchMmr = 0;
             long globalNodeRemainingHp = 0L;
+            long activeGuildWarId = 0L;
             if (player.GuildId > 0)
             {
                 var guild = await dbContext.GuildRecords.FindAsync(player.GuildId);
@@ -352,6 +353,27 @@ namespace FolkIdle.Server.Domain.Shared
                     activeCrossShardMatchId = crossShardMatch.MatchUuid;
                     activeMatchMmr = crossShardMatch.ActiveMatchMmr;
                     globalNodeRemainingHp = crossShardMatch.GlobalNodeRemainingHp;
+                }
+
+                // Modul: Play Mode audit fix. TickStatePayload.ActiveGuildWarId
+                // gates every live contribution to the weekly guild-war
+                // scoreboard (combat kills, tier-5 crafts, and
+                // ContributeToWarSupply all check "> 0" in SimulationEngine
+                // before enqueueing any points) and drives the client's
+                // entire UiGuildWarPanel active/inactive state - but nothing
+                // anywhere ever assigned it, so every session hydrated with
+                // it permanently 0 even during a real active war. This is
+                // the same GuildWarMatches row BuildGuildWarGroup's own
+                // scoreboard reads from once populated live, distinct from
+                // GuildWarActiveMatches (the turn-based combat sim match
+                // above) and GuildMatchmakingSnapshots (cross-shard).
+                var activeGuildWar = await dbContext.GuildWarMatches
+                    .AsNoTracking()
+                    .Where(m => m.IsActive && (m.GuildA_Id == player.GuildId || m.GuildB_Id == player.GuildId))
+                    .FirstOrDefaultAsync();
+                if (activeGuildWar != null)
+                {
+                    activeGuildWarId = activeGuildWar.MatchId;
                 }
             }
 
@@ -548,6 +570,7 @@ namespace FolkIdle.Server.Domain.Shared
                 PremiumCurrency = player.PremiumDiamonds,
                 SpeedMultiplier = chronoAccelerationActive ? (int)accountChrono.ActiveSpeedMultiplier : 1,
                 GuildId = player.GuildId,
+                ActiveGuildWarId = activeGuildWarId,
                 ActiveCrossShardMatchId = activeCrossShardMatchId,
                 ActiveMatchMmr = activeMatchMmr,
                 GlobalNodeRemainingHp = globalNodeRemainingHp,

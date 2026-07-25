@@ -2541,6 +2541,22 @@ namespace FolkIdle.Server.Domain.Combat
                                     ? 0U
                                     : (currentPayload.GlobalNodeRemainingHp > uint.MaxValue ? uint.MaxValue : (uint)currentPayload.GlobalNodeRemainingHp),
                                 ActiveMatchId = currentPayload.ActiveCrossShardMatchId,
+                                // Modul: Play Mode audit fix. Never assigned
+                                // here despite the field existing on the wire
+                                // and StateCheckpointManager now hydrating it
+                                // (see LoadPlayerState's own comment) - every
+                                // client always saw 0 regardless of a real
+                                // active war, permanently gating UiGuildWarPanel
+                                // into its "No Active War" state and blocking
+                                // ContributeToWarSupply's own gate. The 6
+                                // GuildCombatVanguardPoints/.../CachedWarMultiplier
+                                // scoreboard fields have the same "never
+                                // written to TickStatePayload at all" gap one
+                                // layer further back - a real follow-up, out
+                                // of scope here (needs a new periodic
+                                // GuildWarMatches->TickStatePayload sync loop,
+                                // not just a missing packet-copy line).
+                                ActiveGuildWarId = currentPayload.ActiveGuildWarId,
                                 AutoEatThreshold = currentPayload.AutoEatThreshold,
                                 STR = currentPayload.STR,
                                 DEX = currentPayload.DEX,

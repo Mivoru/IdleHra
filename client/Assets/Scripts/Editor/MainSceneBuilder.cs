@@ -1144,7 +1144,7 @@ namespace FolkIdle.Client.Editor
             GameObject activeWarRoot = new GameObject("ActiveWarRoot", typeof(RectTransform));
             activeWarRoot.transform.SetParent(groupObject.transform, false);
             LayoutElement activeWarLayout = activeWarRoot.AddComponent<LayoutElement>();
-            activeWarLayout.preferredHeight = 316f;
+            activeWarLayout.preferredHeight = 366f;
 
             VerticalLayoutGroup activeWarLayoutGroup = activeWarRoot.AddComponent<VerticalLayoutGroup>();
             activeWarLayoutGroup.spacing = 4f;
@@ -1168,6 +1168,30 @@ namespace FolkIdle.Client.Editor
             LayoutElement defendButtonLayout = defendButton.gameObject.AddComponent<LayoutElement>();
             defendButtonLayout.preferredHeight = 46f;
 
+            GameObject contributeRowObject = new GameObject("ContributeSupplyRow", typeof(RectTransform));
+            contributeRowObject.transform.SetParent(activeWarRoot.transform, false);
+            LayoutElement contributeRowLayout = contributeRowObject.AddComponent<LayoutElement>();
+            contributeRowLayout.preferredHeight = 44f;
+
+            HorizontalLayoutGroup contributeRowLayoutGroup = contributeRowObject.AddComponent<HorizontalLayoutGroup>();
+            contributeRowLayoutGroup.spacing = 6f;
+            contributeRowLayoutGroup.childControlWidth = true;
+            contributeRowLayoutGroup.childForceExpandWidth = false;
+            contributeRowLayoutGroup.childControlHeight = true;
+            contributeRowLayoutGroup.childForceExpandHeight = true;
+
+            TMP_InputField contributeCommodityIdField = CreateInputField(contributeRowObject.transform, "ContributeCommodityIdField", "Item#");
+            LayoutElement contributeCommodityIdLayout = contributeCommodityIdField.gameObject.AddComponent<LayoutElement>();
+            contributeCommodityIdLayout.flexibleWidth = 1f;
+
+            TMP_InputField contributeQuantityField = CreateInputField(contributeRowObject.transform, "ContributeQuantityField", "Qty");
+            LayoutElement contributeQuantityLayout = contributeQuantityField.gameObject.AddComponent<LayoutElement>();
+            contributeQuantityLayout.flexibleWidth = 1f;
+
+            Button contributeSupplyButton = CreateButton(contributeRowObject.transform, "ContributeSupplyButton", "Contribute Supply", out TextMeshProUGUI _);
+            LayoutElement contributeSupplyButtonLayout = contributeSupplyButton.gameObject.AddComponent<LayoutElement>();
+            contributeSupplyButtonLayout.preferredWidth = 160f;
+
             UiGuildWarPanel panel = groupObject.AddComponent<UiGuildWarPanel>();
             panel.SyncProxy = syncProxy;
             panel.NetworkClient = networkClient;
@@ -1186,6 +1210,9 @@ namespace FolkIdle.Client.Editor
             panel.EnemyGatheringSupplyChainPointsText = enemySupplyPointsText;
             panel.WarMultiplierText = multiplierText;
             panel.MatchmakingCountdownText = countdownText;
+            panel.ContributeCommodityIdField = contributeCommodityIdField;
+            panel.ContributeQuantityField = contributeQuantityField;
+            panel.ContributeSupplyButton = contributeSupplyButton;
 
             return groupObject;
         }

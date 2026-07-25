@@ -479,6 +479,7 @@ namespace FolkIdle.Client.Engine
                     VisualNotificationQueueStateLength = packet.NotificationQueueStateLength;
                     VisualActiveLanguageState = packet.ActiveLanguageState == 0 ? (byte)1 : packet.ActiveLanguageState;
                     VisualAutoEatThreshold = packet.AutoEatThreshold;
+                    VisualActiveGuildWarId = packet.ActiveGuildWarId;
                     VisualActiveConnectionThroughput = packet.VisualActiveConnectionThroughput;
                     VisualCurrentNodeMemoryLoadMetrics = packet.CurrentNodeMemoryLoadMetrics;
                     VisualPlayerAccuracyRating = packet.PlayerAccuracyRating;

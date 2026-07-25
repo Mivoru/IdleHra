@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Data;
-using System.Globalization;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -147,7 +146,19 @@ namespace FolkIdle.Server.Engine
                         if (player != null && player.GuildId > 0)
                         {
                             long guildId = player.GuildId;
-                            string commodityId = contribution.CommodityId.ToString(CultureInfo.InvariantCulture);
+                            // Modul: Play Mode audit fix. This used to
+                            // stringify the raw numeric CommodityId directly
+                            // (e.g. "2"), which could never match a real
+                            // CommodityRecords.ItemId - gathering materials
+                            // are stored under slug ids (ContentRegistry.
+                            // GetMaterialString/GetMaterialId's own small
+                            // 1-6 mapping, separate from GetItemBaseId's
+                            // 183-entry equipment/consumable catalog), so
+                            // every War Supply contribution was permanently
+                            // unmatchable. Resolving through GetMaterialString
+                            // is the same fix shape as SimulationEngine's
+                            // PlaceLimitOrder ItemType_N bug.
+                            string commodityId = ContentRegistry.GetMaterialString((int)contribution.CommodityId);
                             long quantityToBurn = contribution.QuantityToBurn;
 
                             var commodity = await dbContext.CommodityRecords

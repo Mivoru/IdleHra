@@ -42,6 +42,25 @@ namespace FolkIdle.Client.UI
         [Header("Actions")]
         public Button DefendButton;
 
+        // Modul: Play Mode audit follow-up. ContributeToWarSupply already
+        // had a working zero-alloc sender (SendWarSupplyCommandZeroAlloc)
+        // burning a commodity toward the Supply Chain front - see
+        // GuildWarEngine.RunSupplyChainLoopAsync - but no UI anywhere ever
+        // called it, so the entire Gathering/Supply front of guild war was
+        // unreachable despite its own points column above already
+        // rendering. This also surfaced a second real server bug while
+        // testing: RunSupplyChainLoopAsync used to stringify CommodityId
+        // directly instead of resolving it through the small 1-6
+        // ContentRegistry.GetMaterialString mapping (copper_ore/raw_log/
+        // iron_ore/oak_log/gold_ore/magic_log - a separate id space from
+        // GetItemBaseId's 183-entry equipment catalog), so it could never
+        // match a real CommodityRecords row. CommodityId here is that
+        // small 1-6 material id, not an equipment catalog id.
+        [Header("Supply Contribution")]
+        public TMP_InputField ContributeCommodityIdField;
+        public TMP_InputField ContributeQuantityField;
+        public Button ContributeSupplyButton;
+
         [Header("Active Target")]
         public TextMeshProUGUI ActiveMatchText;
         public TextMeshProUGUI TurnCounterText;
@@ -74,6 +93,11 @@ namespace FolkIdle.Client.UI
             {
                 DefendButton.onClick.AddListener(HandleDefendClicked);
             }
+
+            if (ContributeSupplyButton != null)
+            {
+                ContributeSupplyButton.onClick.AddListener(HandleContributeSupplyClicked);
+            }
         }
 
         private void OnEnable()
@@ -99,6 +123,23 @@ namespace FolkIdle.Client.UI
             {
                 NetworkClient.SendRegisterGuildDefenseCommandZeroAlloc();
             }
+        }
+
+        private void HandleContributeSupplyClicked()
+        {
+            if (NetworkClient == null) return;
+
+            if (!long.TryParse(ContributeCommodityIdField != null ? ContributeCommodityIdField.text : string.Empty, out long commodityId) || commodityId <= 0)
+            {
+                return;
+            }
+
+            if (!long.TryParse(ContributeQuantityField != null ? ContributeQuantityField.text : string.Empty, out long quantity) || quantity <= 0)
+            {
+                return;
+            }
+
+            NetworkClient.SendWarSupplyCommandZeroAlloc(0, commodityId, quantity);
         }
 
         // Modul: Part 3, Guild War Sunday matchmaking countdown. This is
@@ -165,6 +206,9 @@ namespace FolkIdle.Client.UI
             if (NoActiveWarRoot != null) NoActiveWarRoot.SetActive(!warActive);
             if (ActiveWarRoot != null) ActiveWarRoot.SetActive(warActive);
             if (DefendButton != null) DefendButton.gameObject.SetActive(warActive);
+            if (ContributeCommodityIdField != null) ContributeCommodityIdField.gameObject.SetActive(warActive);
+            if (ContributeQuantityField != null) ContributeQuantityField.gameObject.SetActive(warActive);
+            if (ContributeSupplyButton != null) ContributeSupplyButton.gameObject.SetActive(warActive);
 
             if (WarStatusText != null)
             {
