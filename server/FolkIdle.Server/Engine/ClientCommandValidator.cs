@@ -512,16 +512,28 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
-            if (payload.AcademyLevel == 0)
+            // Modul: Play Mode audit fix. Both the academy-built and
+            // under-capacity checks below only make sense for a NEW
+            // contract - applied unconditionally to TerminateMentorship too,
+            // they made ending a mentorship impossible in the single most
+            // common case (exactly one contract at an academy level of 1,
+            // i.e. ActiveMentorshipContractCount >= AcademyLevel is already
+            // true precisely because a contract to terminate exists).
+            // Confirmed live: establishing a contract then immediately
+            // trying to end it was rejected by this exact branch.
+            if (packet.Command == FolkIdle.Server.Network.CommandType.EstablishMentorship)
             {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 28, Value2 = 6, Timestamp = Environment.TickCount64 });
-                return false;
-            }
+                if (payload.AcademyLevel == 0)
+                {
+                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 28, Value2 = 6, Timestamp = Environment.TickCount64 });
+                    return false;
+                }
 
-            if (payload.ActiveMentorshipContractCount >= payload.AcademyLevel)
-            {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 28, Value2 = 7, Timestamp = Environment.TickCount64 });
-                return false;
+                if (payload.ActiveMentorshipContractCount >= payload.AcademyLevel)
+                {
+                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 28, Value2 = 7, Timestamp = Environment.TickCount64 });
+                    return false;
+                }
             }
 
             return true;

@@ -651,6 +651,7 @@ namespace FolkIdle.Client.Engine
             VisualCombatSimulationMatchId = _snapshotB.Packet.CombatSimulationMatchId;
             VisualCombatSimulationTurnCounter = _snapshotB.Packet.CombatSimulationTurnCounter;
             VisualCombatSimulationDamageDelta = _snapshotB.Packet.CombatSimulationDamageDelta;
+            VisualActiveMentorPlayerId = _snapshotB.Packet.ActiveMentorPlayerId;
             VisualMentorshipExpBonusMultiplier = _snapshotB.Packet.MentorshipExpBonusMultiplier;
             VisualPremiumCurrencyBalance = _snapshotB.Packet.PremiumCurrencyBalance;
             VisualTotalItemsCraftedCount = _snapshotB.Packet.TotalItemsCraftedCount;

@@ -141,6 +141,7 @@ namespace FolkIdle.Client.Editor
             GameObject raceMasteryWindowObject = BuildRaceMasteryWindow(canvas.transform);
             GameObject chronoBankWindowObject = BuildChronoBankWindow(canvas.transform, syncProxy, networkClient);
             GameObject legacyShopWindowObject = BuildLegacyShopWindow(canvas.transform, syncProxy, networkClient);
+            GameObject mentorshipContractWindowObject = BuildMentorshipContractWindow(canvas.transform, syncProxy, networkClient);
 
             // Modul: Map Hub, Part 2. Honest static placeholders - Friends,
             // Statistics, and Login Bonus have no corresponding
@@ -179,7 +180,7 @@ namespace FolkIdle.Client.Editor
             {
                 "Forge", "Skills", "Bestiary", "Breeding Lab", "Achievements", "Leaderboard",
                 "Mailbox", "Store", "Season Pass", "Settings", "Friends", "Statistics", "Login Bonus",
-                "Race Mastery", "Time Bank", "Legacy Shop"
+                "Race Mastery", "Time Bank", "Legacy Shop", "Mentorship"
             });
 
             // Modul: Map Hub, Part 6. Persistent top-left (hamburger toggle
@@ -203,7 +204,7 @@ namespace FolkIdle.Client.Editor
                 codexWindowObject, breedingLabWindowObject, achievementsWindowObject, leaderboardWindowObject,
                 mailboxWindowObject, storeWindowObject, seasonPassWindowObject, settingsPanelObject,
                 friendsPanelObject, statisticsPanelObject, loginBonusPanelObject, raceMasteryWindowObject,
-                chronoBankWindowObject, legacyShopWindowObject
+                chronoBankWindowObject, legacyShopWindowObject, mentorshipContractWindowObject
             };
 
             Button[] screenButtons =
@@ -213,7 +214,7 @@ namespace FolkIdle.Client.Editor
                 hamburgerMenuButtons[2], hamburgerMenuButtons[3], hamburgerMenuButtons[4], hamburgerMenuButtons[5],
                 hamburgerMenuButtons[6], hamburgerMenuButtons[7], hamburgerMenuButtons[8], hamburgerMenuButtons[9],
                 hamburgerMenuButtons[10], hamburgerMenuButtons[11], hamburgerMenuButtons[12], hamburgerMenuButtons[13],
-                hamburgerMenuButtons[14], hamburgerMenuButtons[15]
+                hamburgerMenuButtons[14], hamburgerMenuButtons[15], hamburgerMenuButtons[16]
             };
 
             const int HudGroupScreenIndex = 1;
@@ -4676,6 +4677,59 @@ namespace FolkIdle.Client.Editor
             panel.PurchaseGoldDropRateButton = purchaseGoldButton;
             panel.CombatSpeedRankText = combatSpeedRankText;
             panel.PurchaseCombatSpeedButton = purchaseCombatSpeedButton;
+
+            return windowObject;
+        }
+
+        // Modul: Play Mode audit fix. Mentorship contracts (real cross-
+        // player XP-bonus relationships) - see UiMentorshipContractPanel's
+        // own header comment for why EstablishMentorship/TerminateMentorship
+        // had working senders with no caller anywhere. Player lookup reuses
+        // the same username input + FriendsCache.RequestResolve pattern as
+        // BuildFriendsWindow.
+        private static GameObject BuildMentorshipContractWindow(Transform canvasTransform, VisualSyncProxy syncProxy, WebSocketClient networkClient)
+        {
+            GameObject windowObject = BuildSimpleListWindowShell("MentorshipContractWindow", canvasTransform, "Mentorship", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+
+            TextMeshProUGUI statusText = CreateText(contentAreaRect, "StatusText", "No Mentor", 18f, TextAlignmentOptions.MidlineLeft);
+            RectTransform statusRect = (RectTransform)statusText.transform;
+            statusRect.anchorMin = new Vector2(0f, 1f);
+            statusRect.anchorMax = new Vector2(1f, 1f);
+            statusRect.pivot = new Vector2(0.5f, 1f);
+            statusRect.sizeDelta = new Vector2(0f, 40f);
+            statusRect.anchoredPosition = Vector2.zero;
+
+            TMP_InputField mentorUsernameField = CreateInputField(contentAreaRect, "MentorUsernameField", "Mentor username");
+            RectTransform mentorUsernameRect = (RectTransform)mentorUsernameField.transform;
+            mentorUsernameRect.anchorMin = new Vector2(0f, 1f);
+            mentorUsernameRect.anchorMax = new Vector2(1f, 1f);
+            mentorUsernameRect.pivot = new Vector2(0.5f, 1f);
+            mentorUsernameRect.sizeDelta = new Vector2(0f, 44f);
+            mentorUsernameRect.anchoredPosition = new Vector2(0f, -52f);
+
+            Button establishButton = CreateButton(contentAreaRect, "EstablishButton", "Establish Mentorship", out TextMeshProUGUI _);
+            RectTransform establishRect = (RectTransform)establishButton.transform;
+            establishRect.anchorMin = new Vector2(0f, 1f);
+            establishRect.anchorMax = new Vector2(1f, 1f);
+            establishRect.pivot = new Vector2(0.5f, 1f);
+            establishRect.sizeDelta = new Vector2(0f, 44f);
+            establishRect.anchoredPosition = new Vector2(0f, -104f);
+
+            Button terminateButton = CreateButton(contentAreaRect, "TerminateButton", "End Mentorship", out TextMeshProUGUI _);
+            RectTransform terminateRect = (RectTransform)terminateButton.transform;
+            terminateRect.anchorMin = new Vector2(0f, 1f);
+            terminateRect.anchorMax = new Vector2(1f, 1f);
+            terminateRect.pivot = new Vector2(0.5f, 1f);
+            terminateRect.sizeDelta = new Vector2(0f, 44f);
+            terminateRect.anchoredPosition = new Vector2(0f, -156f);
+
+            UiMentorshipContractPanel panel = windowObject.AddComponent<UiMentorshipContractPanel>();
+            panel.SyncProxy = syncProxy;
+            panel.NetworkClient = networkClient;
+            panel.StatusText = statusText;
+            panel.MentorUsernameField = mentorUsernameField;
+            panel.EstablishButton = establishButton;
+            panel.TerminateButton = terminateButton;
 
             return windowObject;
         }
