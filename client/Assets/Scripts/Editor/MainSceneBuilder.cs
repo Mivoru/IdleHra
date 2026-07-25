@@ -138,6 +138,7 @@ namespace FolkIdle.Client.Editor
             // GameObject anywhere in the scene - see BuildRaceMasteryWindow's
             // own comment.
             GameObject raceMasteryWindowObject = BuildRaceMasteryWindow(canvas.transform);
+            GameObject chronoBankWindowObject = BuildChronoBankWindow(canvas.transform, syncProxy, networkClient);
 
             // Modul: Map Hub, Part 2. Honest static placeholders - Friends,
             // Statistics, and Login Bonus have no corresponding
@@ -176,7 +177,7 @@ namespace FolkIdle.Client.Editor
             {
                 "Forge", "Skills", "Bestiary", "Breeding Lab", "Achievements", "Leaderboard",
                 "Mailbox", "Store", "Season Pass", "Settings", "Friends", "Statistics", "Login Bonus",
-                "Race Mastery"
+                "Race Mastery", "Time Bank"
             });
 
             // Modul: Map Hub, Part 6. Persistent top-left (hamburger toggle
@@ -199,7 +200,8 @@ namespace FolkIdle.Client.Editor
                 marketBankWindowObject, bossWorldPanelObject, forgeWindowObject, skillTreeWindowObject,
                 codexWindowObject, breedingLabWindowObject, achievementsWindowObject, leaderboardWindowObject,
                 mailboxWindowObject, storeWindowObject, seasonPassWindowObject, settingsPanelObject,
-                friendsPanelObject, statisticsPanelObject, loginBonusPanelObject, raceMasteryWindowObject
+                friendsPanelObject, statisticsPanelObject, loginBonusPanelObject, raceMasteryWindowObject,
+                chronoBankWindowObject
             };
 
             Button[] screenButtons =
@@ -208,7 +210,8 @@ namespace FolkIdle.Client.Editor
                 marketZoneButton, bossZoneButton, hamburgerMenuButtons[0], hamburgerMenuButtons[1],
                 hamburgerMenuButtons[2], hamburgerMenuButtons[3], hamburgerMenuButtons[4], hamburgerMenuButtons[5],
                 hamburgerMenuButtons[6], hamburgerMenuButtons[7], hamburgerMenuButtons[8], hamburgerMenuButtons[9],
-                hamburgerMenuButtons[10], hamburgerMenuButtons[11], hamburgerMenuButtons[12], hamburgerMenuButtons[13]
+                hamburgerMenuButtons[10], hamburgerMenuButtons[11], hamburgerMenuButtons[12], hamburgerMenuButtons[13],
+                hamburgerMenuButtons[14]
             };
 
             const int HudGroupScreenIndex = 1;
@@ -940,7 +943,7 @@ namespace FolkIdle.Client.Editor
             GameObject rosterGroup = BuildGuildRosterGroup(contentAreaRect, syncProxy, networkClient);
             GameObject logisticsGroup = BuildGuildLogisticsGroup(contentAreaRect, syncProxy, networkClient);
             GameObject raidGroup = BuildGuildRaidGroup(contentAreaRect, syncProxy, networkClient, sfxEngine);
-            GameObject warGroup = BuildGuildWarGroup(contentAreaRect, syncProxy);
+            GameObject warGroup = BuildGuildWarGroup(contentAreaRect, syncProxy, networkClient);
 
             logisticsGroup.SetActive(false);
             raidGroup.SetActive(false);
@@ -1109,10 +1112,11 @@ namespace FolkIdle.Client.Editor
             return groupObject;
         }
 
-        // Guild War scoreboard - real, network-wired UiGuildWarPanel. No
-        // buttons of its own (read-only status display), so nothing here
-        // dispatches a command.
-        private static GameObject BuildGuildWarGroup(Transform parent, VisualSyncProxy syncProxy)
+        // Guild War scoreboard - real, network-wired UiGuildWarPanel. Was
+        // read-only until the Play Mode audit found RegisterGuildDefense
+        // had a working zero-alloc sender with no button anywhere ever
+        // calling it - see UiGuildWarPanel's DefendButton doc comment.
+        private static GameObject BuildGuildWarGroup(Transform parent, VisualSyncProxy syncProxy, WebSocketClient networkClient)
         {
             GameObject groupObject = new GameObject("WarGroup", typeof(RectTransform));
             groupObject.transform.SetParent(parent, false);
@@ -1137,7 +1141,7 @@ namespace FolkIdle.Client.Editor
             GameObject activeWarRoot = new GameObject("ActiveWarRoot", typeof(RectTransform));
             activeWarRoot.transform.SetParent(groupObject.transform, false);
             LayoutElement activeWarLayout = activeWarRoot.AddComponent<LayoutElement>();
-            activeWarLayout.preferredHeight = 260f;
+            activeWarLayout.preferredHeight = 316f;
 
             VerticalLayoutGroup activeWarLayoutGroup = activeWarRoot.AddComponent<VerticalLayoutGroup>();
             activeWarLayoutGroup.spacing = 4f;
@@ -1157,8 +1161,14 @@ namespace FolkIdle.Client.Editor
             TextMeshProUGUI enemySupplyPointsText = CreateStatRow(activeWarRoot.transform, "Enemy Supply: 0");
             TextMeshProUGUI multiplierText = CreateStatRow(activeWarRoot.transform, "x100");
 
+            Button defendButton = CreateButton(activeWarRoot.transform, "DefendButton", "Defend", out TextMeshProUGUI _);
+            LayoutElement defendButtonLayout = defendButton.gameObject.AddComponent<LayoutElement>();
+            defendButtonLayout.preferredHeight = 46f;
+
             UiGuildWarPanel panel = groupObject.AddComponent<UiGuildWarPanel>();
             panel.SyncProxy = syncProxy;
+            panel.NetworkClient = networkClient;
+            panel.DefendButton = defendButton;
             panel.WarStatusText = statusText;
             panel.NoActiveWarRoot = noActiveWarRoot;
             panel.ActiveWarRoot = activeWarRoot;
@@ -4411,6 +4421,68 @@ namespace FolkIdle.Client.Editor
             logOffRect.anchoredPosition = new Vector2(0f, -44f);
 
             return (windowObject, logOffButton);
+        }
+
+        // Modul: Play Mode audit fix. Banked Chrono Seconds (offline-time
+        // catch-up currency, see UiChronoBankPanel's own comment) had every
+        // sync field and both spend-command senders wired end to end with
+        // no panel anywhere ever calling them - the game's own core idle
+        // acceleration mechanic was completely unreachable. Same
+        // BuildSimpleListWindowShell shell as Settings/Achievements.
+        private static GameObject BuildChronoBankWindow(Transform canvasTransform, VisualSyncProxy syncProxy, WebSocketClient networkClient)
+        {
+            GameObject windowObject = BuildSimpleListWindowShell("ChronoBankWindow", canvasTransform, "Time Bank", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+
+            TextMeshProUGUI bankedText = CreateText(contentAreaRect, "BankedSecondsText", "Banked: 0h 0m", 20f, TextAlignmentOptions.MidlineLeft);
+            RectTransform bankedRect = (RectTransform)bankedText.transform;
+            bankedRect.anchorMin = new Vector2(0f, 1f);
+            bankedRect.anchorMax = new Vector2(1f, 1f);
+            bankedRect.pivot = new Vector2(0.5f, 1f);
+            bankedRect.sizeDelta = new Vector2(0f, 32f);
+            bankedRect.anchoredPosition = Vector2.zero;
+
+            TextMeshProUGUI statusText = CreateText(contentAreaRect, "StatusText", "Idle", 16f, TextAlignmentOptions.MidlineLeft);
+            RectTransform statusRect = (RectTransform)statusText.transform;
+            statusRect.anchorMin = new Vector2(0f, 1f);
+            statusRect.anchorMax = new Vector2(1f, 1f);
+            statusRect.pivot = new Vector2(0.5f, 1f);
+            statusRect.sizeDelta = new Vector2(0f, 26f);
+            statusRect.anchoredPosition = new Vector2(0f, -36f);
+
+            Button boost2xButton = CreateButton(contentAreaRect, "Boost2xButton", "Boost 2x", out TextMeshProUGUI _);
+            RectTransform boost2xRect = (RectTransform)boost2xButton.transform;
+            boost2xRect.anchorMin = new Vector2(0f, 1f);
+            boost2xRect.anchorMax = new Vector2(1f, 1f);
+            boost2xRect.pivot = new Vector2(0.5f, 1f);
+            boost2xRect.sizeDelta = new Vector2(0f, 50f);
+            boost2xRect.anchoredPosition = new Vector2(0f, -76f);
+
+            Button boost4xButton = CreateButton(contentAreaRect, "Boost4xButton", "Boost 4x", out TextMeshProUGUI _);
+            RectTransform boost4xRect = (RectTransform)boost4xButton.transform;
+            boost4xRect.anchorMin = new Vector2(0f, 1f);
+            boost4xRect.anchorMax = new Vector2(1f, 1f);
+            boost4xRect.pivot = new Vector2(0.5f, 1f);
+            boost4xRect.sizeDelta = new Vector2(0f, 50f);
+            boost4xRect.anchoredPosition = new Vector2(0f, -134f);
+
+            Button instantWarpButton = CreateButton(contentAreaRect, "InstantWarpButton", "Instant Warp (1 day)", out TextMeshProUGUI _);
+            RectTransform instantWarpRect = (RectTransform)instantWarpButton.transform;
+            instantWarpRect.anchorMin = new Vector2(0f, 1f);
+            instantWarpRect.anchorMax = new Vector2(1f, 1f);
+            instantWarpRect.pivot = new Vector2(0.5f, 1f);
+            instantWarpRect.sizeDelta = new Vector2(0f, 50f);
+            instantWarpRect.anchoredPosition = new Vector2(0f, -192f);
+
+            UiChronoBankPanel panel = windowObject.AddComponent<UiChronoBankPanel>();
+            panel.SyncProxy = syncProxy;
+            panel.NetworkClient = networkClient;
+            panel.BankedSecondsText = bankedText;
+            panel.StatusText = statusText;
+            panel.Boost2xButton = boost2xButton;
+            panel.Boost4xButton = boost4xButton;
+            panel.InstantWarpButton = instantWarpButton;
+
+            return windowObject;
         }
 
         // ------------------------------------------------------------

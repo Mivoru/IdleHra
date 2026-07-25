@@ -1,7 +1,9 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using FolkIdle.Client.Engine;
+using FolkIdle.Client.Network;
 
 namespace FolkIdle.Client.UI
 {
@@ -25,11 +27,20 @@ namespace FolkIdle.Client.UI
     public class UiGuildWarPanel : MonoBehaviour
     {
         public VisualSyncProxy SyncProxy;
+        public WebSocketClient NetworkClient;
 
         [Header("Matchmaking Status")]
         public TextMeshProUGUI WarStatusText;
         public GameObject NoActiveWarRoot;
         public GameObject ActiveWarRoot;
+
+        // Modul: Play Mode audit fix. RegisterGuildDefense had a working
+        // zero-alloc sender (WebSocketClient.SendRegisterGuildDefenseCommand
+        // ZeroAlloc, no parameters needed) but no button anywhere ever
+        // called it - Guild War combat participation was entirely
+        // unreachable despite the scoreboard above showing it live.
+        [Header("Actions")]
+        public Button DefendButton;
 
         [Header("Active Target")]
         public TextMeshProUGUI ActiveMatchText;
@@ -57,6 +68,14 @@ namespace FolkIdle.Client.UI
         private float _countdownRefreshAccumulatorSeconds;
         private const float CountdownRefreshIntervalSeconds = 1f;
 
+        private void Awake()
+        {
+            if (DefendButton != null)
+            {
+                DefendButton.onClick.AddListener(HandleDefendClicked);
+            }
+        }
+
         private void OnEnable()
         {
             _countdownRefreshAccumulatorSeconds = CountdownRefreshIntervalSeconds;
@@ -72,6 +91,14 @@ namespace FolkIdle.Client.UI
             if (SyncProxy == null) return;
 
             SyncProxy.OnGuildStateUpdated -= RefreshUI;
+        }
+
+        private void HandleDefendClicked()
+        {
+            if (NetworkClient != null)
+            {
+                NetworkClient.SendRegisterGuildDefenseCommandZeroAlloc();
+            }
         }
 
         // Modul: Part 3, Guild War Sunday matchmaking countdown. This is
@@ -137,6 +164,7 @@ namespace FolkIdle.Client.UI
 
             if (NoActiveWarRoot != null) NoActiveWarRoot.SetActive(!warActive);
             if (ActiveWarRoot != null) ActiveWarRoot.SetActive(warActive);
+            if (DefendButton != null) DefendButton.gameObject.SetActive(warActive);
 
             if (WarStatusText != null)
             {
