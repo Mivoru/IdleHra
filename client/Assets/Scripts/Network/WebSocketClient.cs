@@ -813,25 +813,6 @@ namespace FolkIdle.Client.Network
             }
         }
 
-        public void SendCombatConfigZeroAlloc(int thresholdValue)
-        {
-            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
-            {
-                ClientCommandPacket packet = new ClientCommandPacket
-                {
-                    Command = (CommandType)16,
-                    TargetId = 0,
-                    SecondaryId = 0,
-                    TertiaryId = 0,
-                    LimitPrice = thresholdValue,
-                    IsBuy = 0,
-                    QualityTier = 0
-                };
-
-                SendPacket(ref packet);
-            }
-        }
-
         public void SendMigrationCommandZeroAlloc(uint migrationToken)
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)
