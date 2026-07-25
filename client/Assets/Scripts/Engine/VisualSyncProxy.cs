@@ -660,6 +660,9 @@ namespace FolkIdle.Client.Engine
             VisualPremiumCurrencyBalance = _snapshotB.Packet.PremiumCurrencyBalance;
             VisualTotalItemsCraftedCount = _snapshotB.Packet.TotalItemsCraftedCount;
             VisualCraftingEngineStatus = _snapshotB.Packet.CraftingEngineStatus;
+            VisualActiveMasteryBitmask = _snapshotB.Packet.ActiveMasteryBitmask;
+            VisualActiveStatusEffectModifierBitmask = _snapshotB.Packet.ActiveStatusEffectModifierBitmask;
+            VisualRemainingBuffDurationTicks = _snapshotB.Packet.RemainingBuffDurationTicks;
             VisualActiveMatchMmr = _snapshotB.Packet.VisualActiveMatchMmr;
             VisualGlobalNodeRemainingHp = _snapshotB.Packet.GlobalNodeRemainingHp;
             VisualActiveMatchId = _snapshotB.Packet.ActiveMatchId;
@@ -682,6 +685,7 @@ namespace FolkIdle.Client.Engine
             VisualSkill2CooldownRemainingMs = Mathf.Lerp(_snapshotA.Packet.Skill2CooldownRemainingMs, _snapshotB.Packet.Skill2CooldownRemainingMs, t);
             VisualSkill3CooldownRemainingMs = Mathf.Lerp(_snapshotA.Packet.Skill3CooldownRemainingMs, _snapshotB.Packet.Skill3CooldownRemainingMs, t);
             VisualSkill4CooldownRemainingMs = Mathf.Lerp(_snapshotA.Packet.Skill4CooldownRemainingMs, _snapshotB.Packet.Skill4CooldownRemainingMs, t);
+            VisualTicksSinceLastFlush = _snapshotB.Packet.TicksSinceLastFlush;
 
             ApplyVillagePacketState(in _snapshotB.Packet);
             ApplyGuildPacketState(in _snapshotB.Packet);
