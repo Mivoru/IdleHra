@@ -374,17 +374,40 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
-            if (packet.TargetUnlockId != LegacyStoreEngine.CitizenMultiSlotUnlockId || packet.RequestedSlotIndex > LegacyStoreEngine.MaxCitizenSlotIndex)
+            // Modul: Play Mode audit fix. This gate only ever accepted
+            // TargetUnlockId == CitizenMultiSlotUnlockId (1) - the 3 prestige
+            // perk unlock ids (2/3/4) LegacyStoreEngine.PurchaseLegacyUnlockAsync
+            // has always fully supported were rejected here before ever
+            // reaching that method, making the entire perk half of the
+            // Legacy Shop unreachable regardless of client UI. Confirmed
+            // live: a purchase request for XpMultiplierPerkUnlockId (2)
+            // was rejected by this exact branch even with a real client
+            // panel correctly sending it.
+            bool isPerkUnlock = packet.TargetUnlockId == LegacyStoreEngine.XpMultiplierPerkUnlockId
+                || packet.TargetUnlockId == LegacyStoreEngine.GoldDropRatePerkUnlockId
+                || packet.TargetUnlockId == LegacyStoreEngine.CombatSpeedPerkUnlockId;
+            bool isCitizenSlotUnlock = packet.TargetUnlockId == LegacyStoreEngine.CitizenMultiSlotUnlockId;
+
+            if (!isPerkUnlock && !isCitizenSlotUnlock)
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 25, Value2 = 4, Timestamp = Environment.TickCount64 });
                 return false;
             }
 
-            int requestedMask = 1 << (int)packet.RequestedSlotIndex;
-            if ((payload.CitizenMultiSlotsUnlocked & requestedMask) != 0)
+            if (isCitizenSlotUnlock)
             {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 25, Value2 = 5, Timestamp = Environment.TickCount64 });
-                return false;
+                if (packet.RequestedSlotIndex > LegacyStoreEngine.MaxCitizenSlotIndex)
+                {
+                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 25, Value2 = 4, Timestamp = Environment.TickCount64 });
+                    return false;
+                }
+
+                int requestedMask = 1 << (int)packet.RequestedSlotIndex;
+                if ((payload.CitizenMultiSlotsUnlocked & requestedMask) != 0)
+                {
+                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 25, Value2 = 5, Timestamp = Environment.TickCount64 });
+                    return false;
+                }
             }
 
             return true;

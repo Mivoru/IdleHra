@@ -2594,6 +2594,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 WarehouseLevel = currentPayload.WarehouseLevel,
                                 TownHallLevel = (byte)currentPayload.TownHallLevel,
                                 CraftingWorkshopLevel = currentPayload.CraftingWorkshopLevel,
+                                LegacyPerksBitmask = currentPayload.CachedLegacyPerks,
                                 CachedWoodStock = currentPayload.CachedWoodStock,
                                 CachedStoneStock = currentPayload.CachedStoneStock,
                                 CachedIronOreStock = currentPayload.CachedIronOreStock,

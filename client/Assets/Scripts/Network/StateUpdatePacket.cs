@@ -234,6 +234,12 @@ namespace FolkIdle.Client.Network
         public byte TownHallLevel;
         public byte CraftingWorkshopLevel;
 
+        // Modul: Play Mode audit fix. LegacyPerks bitmask (3 prestige
+        // perks packed at byte offsets 0/8/16 - see LegacyPerkResolver on
+        // the server) mirrored onto the wire so the Legacy Shop can show
+        // current rank / next-rank cost. 691 -> 699 bytes.
+        public long LegacyPerksBitmask;
+
         // Modul 16: timed upgrade queue - PendingUpgradeBuildingId == 0 means
         // no upgrade is currently in flight for this player's village.
         public byte PendingUpgradeBuildingId;

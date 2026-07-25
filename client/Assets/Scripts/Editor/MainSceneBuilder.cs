@@ -140,6 +140,7 @@ namespace FolkIdle.Client.Editor
             // own comment.
             GameObject raceMasteryWindowObject = BuildRaceMasteryWindow(canvas.transform);
             GameObject chronoBankWindowObject = BuildChronoBankWindow(canvas.transform, syncProxy, networkClient);
+            GameObject legacyShopWindowObject = BuildLegacyShopWindow(canvas.transform, syncProxy, networkClient);
 
             // Modul: Map Hub, Part 2. Honest static placeholders - Friends,
             // Statistics, and Login Bonus have no corresponding
@@ -178,7 +179,7 @@ namespace FolkIdle.Client.Editor
             {
                 "Forge", "Skills", "Bestiary", "Breeding Lab", "Achievements", "Leaderboard",
                 "Mailbox", "Store", "Season Pass", "Settings", "Friends", "Statistics", "Login Bonus",
-                "Race Mastery", "Time Bank"
+                "Race Mastery", "Time Bank", "Legacy Shop"
             });
 
             // Modul: Map Hub, Part 6. Persistent top-left (hamburger toggle
@@ -202,7 +203,7 @@ namespace FolkIdle.Client.Editor
                 codexWindowObject, breedingLabWindowObject, achievementsWindowObject, leaderboardWindowObject,
                 mailboxWindowObject, storeWindowObject, seasonPassWindowObject, settingsPanelObject,
                 friendsPanelObject, statisticsPanelObject, loginBonusPanelObject, raceMasteryWindowObject,
-                chronoBankWindowObject
+                chronoBankWindowObject, legacyShopWindowObject
             };
 
             Button[] screenButtons =
@@ -212,7 +213,7 @@ namespace FolkIdle.Client.Editor
                 hamburgerMenuButtons[2], hamburgerMenuButtons[3], hamburgerMenuButtons[4], hamburgerMenuButtons[5],
                 hamburgerMenuButtons[6], hamburgerMenuButtons[7], hamburgerMenuButtons[8], hamburgerMenuButtons[9],
                 hamburgerMenuButtons[10], hamburgerMenuButtons[11], hamburgerMenuButtons[12], hamburgerMenuButtons[13],
-                hamburgerMenuButtons[14]
+                hamburgerMenuButtons[14], hamburgerMenuButtons[15]
             };
 
             const int HudGroupScreenIndex = 1;
@@ -4596,6 +4597,85 @@ namespace FolkIdle.Client.Editor
             panel.Boost2xButton = boost2xButton;
             panel.Boost4xButton = boost4xButton;
             panel.InstantWarpButton = instantWarpButton;
+
+            return windowObject;
+        }
+
+        // Modul: Play Mode audit fix. Legacy Shop's 3 prestige perks - see
+        // UiLegacyShopPanel's own header comment for why
+        // LegacyStoreEngine.PurchaseLegacyUnlockAsync had a working sender
+        // with no purchasable UI. Same BuildSimpleListWindowShell shell as
+        // Settings/Achievements/Time Bank.
+        private static GameObject BuildLegacyShopWindow(Transform canvasTransform, VisualSyncProxy syncProxy, WebSocketClient networkClient)
+        {
+            GameObject windowObject = BuildSimpleListWindowShell("LegacyShopWindow", canvasTransform, "Legacy Shop", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+
+            TextMeshProUGUI shardBalanceText = CreateText(contentAreaRect, "ShardBalanceText", "Legacy Shards: 0", 20f, TextAlignmentOptions.MidlineLeft);
+            RectTransform shardBalanceRect = (RectTransform)shardBalanceText.transform;
+            shardBalanceRect.anchorMin = new Vector2(0f, 1f);
+            shardBalanceRect.anchorMax = new Vector2(1f, 1f);
+            shardBalanceRect.pivot = new Vector2(0.5f, 1f);
+            shardBalanceRect.sizeDelta = new Vector2(0f, 32f);
+            shardBalanceRect.anchoredPosition = Vector2.zero;
+
+            TextMeshProUGUI xpRankText = CreateText(contentAreaRect, "XpMultiplierRankText", "Rank 0 (+0%)", 16f, TextAlignmentOptions.MidlineLeft);
+            RectTransform xpRankRect = (RectTransform)xpRankText.transform;
+            xpRankRect.anchorMin = new Vector2(0f, 1f);
+            xpRankRect.anchorMax = new Vector2(1f, 1f);
+            xpRankRect.pivot = new Vector2(0.5f, 1f);
+            xpRankRect.sizeDelta = new Vector2(0f, 24f);
+            xpRankRect.anchoredPosition = new Vector2(0f, -40f);
+
+            Button purchaseXpButton = CreateButton(contentAreaRect, "PurchaseXpMultiplierButton", "Purchase XP Multiplier", out TextMeshProUGUI _);
+            RectTransform purchaseXpRect = (RectTransform)purchaseXpButton.transform;
+            purchaseXpRect.anchorMin = new Vector2(0f, 1f);
+            purchaseXpRect.anchorMax = new Vector2(1f, 1f);
+            purchaseXpRect.pivot = new Vector2(0.5f, 1f);
+            purchaseXpRect.sizeDelta = new Vector2(0f, 44f);
+            purchaseXpRect.anchoredPosition = new Vector2(0f, -68f);
+
+            TextMeshProUGUI goldRankText = CreateText(contentAreaRect, "GoldDropRateRankText", "Rank 0 (+0%)", 16f, TextAlignmentOptions.MidlineLeft);
+            RectTransform goldRankRect = (RectTransform)goldRankText.transform;
+            goldRankRect.anchorMin = new Vector2(0f, 1f);
+            goldRankRect.anchorMax = new Vector2(1f, 1f);
+            goldRankRect.pivot = new Vector2(0.5f, 1f);
+            goldRankRect.sizeDelta = new Vector2(0f, 24f);
+            goldRankRect.anchoredPosition = new Vector2(0f, -122f);
+
+            Button purchaseGoldButton = CreateButton(contentAreaRect, "PurchaseGoldDropRateButton", "Purchase Gold Drop Rate", out TextMeshProUGUI _);
+            RectTransform purchaseGoldRect = (RectTransform)purchaseGoldButton.transform;
+            purchaseGoldRect.anchorMin = new Vector2(0f, 1f);
+            purchaseGoldRect.anchorMax = new Vector2(1f, 1f);
+            purchaseGoldRect.pivot = new Vector2(0.5f, 1f);
+            purchaseGoldRect.sizeDelta = new Vector2(0f, 44f);
+            purchaseGoldRect.anchoredPosition = new Vector2(0f, -150f);
+
+            TextMeshProUGUI combatSpeedRankText = CreateText(contentAreaRect, "CombatSpeedRankText", "Rank 0 (+0%)", 16f, TextAlignmentOptions.MidlineLeft);
+            RectTransform combatSpeedRankRect = (RectTransform)combatSpeedRankText.transform;
+            combatSpeedRankRect.anchorMin = new Vector2(0f, 1f);
+            combatSpeedRankRect.anchorMax = new Vector2(1f, 1f);
+            combatSpeedRankRect.pivot = new Vector2(0.5f, 1f);
+            combatSpeedRankRect.sizeDelta = new Vector2(0f, 24f);
+            combatSpeedRankRect.anchoredPosition = new Vector2(0f, -204f);
+
+            Button purchaseCombatSpeedButton = CreateButton(contentAreaRect, "PurchaseCombatSpeedButton", "Purchase Combat Speed", out TextMeshProUGUI _);
+            RectTransform purchaseCombatSpeedRect = (RectTransform)purchaseCombatSpeedButton.transform;
+            purchaseCombatSpeedRect.anchorMin = new Vector2(0f, 1f);
+            purchaseCombatSpeedRect.anchorMax = new Vector2(1f, 1f);
+            purchaseCombatSpeedRect.pivot = new Vector2(0.5f, 1f);
+            purchaseCombatSpeedRect.sizeDelta = new Vector2(0f, 44f);
+            purchaseCombatSpeedRect.anchoredPosition = new Vector2(0f, -232f);
+
+            UiLegacyShopPanel panel = windowObject.AddComponent<UiLegacyShopPanel>();
+            panel.SyncProxy = syncProxy;
+            panel.NetworkClient = networkClient;
+            panel.ShardBalanceText = shardBalanceText;
+            panel.XpMultiplierRankText = xpRankText;
+            panel.PurchaseXpMultiplierButton = purchaseXpButton;
+            panel.GoldDropRateRankText = goldRankText;
+            panel.PurchaseGoldDropRateButton = purchaseGoldButton;
+            panel.CombatSpeedRankText = combatSpeedRankText;
+            panel.PurchaseCombatSpeedButton = purchaseCombatSpeedButton;
 
             return windowObject;
         }

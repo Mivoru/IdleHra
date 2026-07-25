@@ -157,6 +157,7 @@ namespace FolkIdle.Client.Engine
         public int VisualEnemyLogisticsPoints;
         public int VisualEnemySupplyPoints;
         public int VisualLegacyShardBalance;
+        public long VisualLegacyPerksBitmask;
         [System.NonSerialized] public ObfuscatedInt32 VisualLegacyShardCell;
         [System.NonSerialized] public ObfuscatedInt64 VisualGoldCell;
         public byte VisualWorldBossAttemptCount;
@@ -504,6 +505,7 @@ namespace FolkIdle.Client.Engine
                     VisualVilaMasteryLevel = packet.VilaMasteryLevel;
                     VisualDraugrMasteryLevel = packet.DraugrMasteryLevel;
                     VisualLegacyShardBalance = packet.LegacyShardBalance;
+                    VisualLegacyPerksBitmask = packet.LegacyPerksBitmask;
                     VisualLegacyShardCell = new ObfuscatedInt32(packet.LegacyShardBalance, ResolveClientXorKey(packet.PlayerId, packet.LogicEpochCounter));
                     VisualGoldCell = new ObfuscatedInt64(packet.Gold, ResolveClientXorKey64(packet.PlayerId, packet.LogicEpochCounter));
                     VisualWorldBossAttemptCount = packet.WorldBossAttemptCount;
@@ -639,6 +641,7 @@ namespace FolkIdle.Client.Engine
             VisualVilaMasteryLevel = _snapshotB.Packet.VilaMasteryLevel;
             VisualDraugrMasteryLevel = _snapshotB.Packet.DraugrMasteryLevel;
             VisualLegacyShardBalance = _snapshotB.Packet.LegacyShardBalance;
+            VisualLegacyPerksBitmask = _snapshotB.Packet.LegacyPerksBitmask;
             VisualLegacyShardCell = new ObfuscatedInt32(_snapshotB.Packet.LegacyShardBalance, ResolveClientXorKey(_snapshotB.Packet.PlayerId, _snapshotB.Packet.LogicEpochCounter));
             VisualGoldCell = new ObfuscatedInt64(_snapshotB.Packet.Gold, ResolveClientXorKey64(_snapshotB.Packet.PlayerId, _snapshotB.Packet.LogicEpochCounter));
             VisualWorldBossAttemptCount = _snapshotB.Packet.WorldBossAttemptCount;

@@ -13,7 +13,7 @@ namespace FolkIdle.Client.Network
         // Modul: Play Mode audit fix. 689 -> 691: TownHallLevel +
         // CraftingWorkshopLevel (1 byte each) - mirrors server
         // NetworkPacketLayoutGuard exactly.
-        public const int ExpectedStateUpdateSize = 691;
+        public const int ExpectedStateUpdateSize = 699;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

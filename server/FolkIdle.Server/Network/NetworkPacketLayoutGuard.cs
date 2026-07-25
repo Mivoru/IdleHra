@@ -26,9 +26,12 @@ namespace FolkIdle.Server.Network
         // 700-byte structural ceiling the tests pin.
         //
         // Modul: Play Mode audit fix. 689 -> 691: TownHallLevel +
-        // CraftingWorkshopLevel (1 byte each) - see StateUpdatePacket's own
-        // comment. Still under the 700-byte ceiling.
-        public const int ExpectedStateUpdateSize = 691;
+        // CraftingWorkshopLevel (1 byte each). 691 -> 699: LegacyPerksBitmask
+        // (8 bytes) - see StateUpdatePacket's own comments. Still under the
+        // 700-byte ceiling, but with only 1 byte of headroom left before the
+        // next addition needs to either shrink something else or move the
+        // ceiling.
+        public const int ExpectedStateUpdateSize = 699;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

@@ -280,6 +280,19 @@ namespace FolkIdle.Server.Network
         public byte TownHallLevel;
         public byte CraftingWorkshopLevel;
 
+        // Modul: Play Mode audit fix. LegacyStoreEngine's 3 prestige perks
+        // (XP Multiplier/Gold Drop Rate/Combat Speed, packed into
+        // PlayerRecord.LegacyPerks at byte offsets 0/8/16 - see
+        // LegacyPerkResolver) already flowed into TickStatePayload.
+        // CachedLegacyPerks and gated real combat math (XP/gold bonus %,
+        // see ProgressionEngine/OfflineSimulationEngine's finalXpMultiplier
+        // callers), but were never on the wire - the client had no way to
+        // show current rank or compute next-rank cost, so the entire perk
+        // half of the Legacy Shop (citizen-slot unlocks were already
+        // reachable via CitizenMultiSlotsUnlocked) had no purchasable UI.
+        // 691 -> 699 bytes; see NetworkPacketLayoutGuard's updated pin.
+        public long LegacyPerksBitmask;
+
         // Modul 16: timed upgrade queue - PendingUpgradeBuildingId == 0 means
         // no upgrade is currently in flight for this player's village.
         public byte PendingUpgradeBuildingId;
