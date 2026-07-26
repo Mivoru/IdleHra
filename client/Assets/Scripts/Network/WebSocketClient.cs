@@ -74,6 +74,7 @@ namespace FolkIdle.Client.Network
         // instead of an unbounded one.
         private const int MaxQueuedStatePackets = 8;
         private const int MaxQueuedChatMessages = 128;
+        private const int MaxQueuedLootDrops = 256;
 
         // Thread-safe queue for main-thread consumption
         public ConcurrentQueue<StateUpdatePacket> PacketQueue { get; } = new ConcurrentQueue<StateUpdatePacket>();
@@ -84,6 +85,15 @@ namespace FolkIdle.Client.Network
         // recurring per-tick state channel - routed into their own queue so
         // UiChatWindow never has to filter them out of PacketQueue.
         public ConcurrentQueue<ResponseChatMessagePacket> ChatMessageQueue { get; } = new ConcurrentQueue<ResponseChatMessagePacket>();
+
+        // Modul: Loot Event Feed. Its own queue for the same reason chat has
+        // one - a distinct, separately-sized wire message that would
+        // otherwise have to be filtered back out of PacketQueue by every
+        // consumer. Capped like the others so a long backgrounded session
+        // cannot grow it without bound; drop-oldest is right here too, since
+        // the items themselves are already persisted server-side and only the
+        // on-screen tally line is lost.
+        public ConcurrentQueue<ResponseLootDropPacket> LootDropQueue { get; } = new ConcurrentQueue<ResponseLootDropPacket>();
 
         // Modul: enqueues then trims from the front until back under the
         // cap - safe under the single-producer (this receive loop is the
@@ -166,6 +176,10 @@ namespace FolkIdle.Client.Network
                     if (result.Count == Marshal.SizeOf<ResponseChatMessagePacket>())
                     {
                         ParseAndEnqueueChatMessage(result.Count);
+                    }
+                    else if (result.Count == Marshal.SizeOf<ResponseLootDropPacket>())
+                    {
+                        ParseAndEnqueueLootDrop(result.Count);
                     }
                     else
                     {
@@ -266,6 +280,17 @@ namespace FolkIdle.Client.Network
             }
 
             EnqueueWithCap(ChatMessageQueue, packet, MaxQueuedChatMessages);
+        }
+
+        private void ParseAndEnqueueLootDrop(int length)
+        {
+            if (!UnsafePacketParser.TryParseLootDrop(_receiveBuffer, length, out ResponseLootDropPacket packet))
+            {
+                Debug.LogWarning($"WebSocketClient: rejected malformed inbound loot drop packet (length {length}).");
+                return;
+            }
+
+            EnqueueWithCap(LootDropQueue, packet, MaxQueuedLootDrops);
         }
 
         // Zero-allocation-on-the-hot-path chat send: the packet struct and

@@ -272,27 +272,34 @@ namespace FolkIdle.Client.UI
                 LastDamageDeltaText.SetCharArray(_lineBuffer, 0, offset);
             }
 
-            SetPointsText(CombatVanguardPointsText, SyncProxy.VisualGuildCombatPoints);
-            SetPointsText(ProductionLogisticsPointsText, SyncProxy.VisualGuildLogisticsPoints);
-            SetPointsText(GatheringSupplyChainPointsText, SyncProxy.VisualGuildSupplyPoints);
+            SetPointsText(CombatVanguardPointsText, "Vanguard: ", SyncProxy.VisualGuildCombatPoints);
+            SetPointsText(ProductionLogisticsPointsText, "Logistics: ", SyncProxy.VisualGuildLogisticsPoints);
+            SetPointsText(GatheringSupplyChainPointsText, "Supply: ", SyncProxy.VisualGuildSupplyPoints);
 
-            SetPointsText(EnemyCombatVanguardPointsText, SyncProxy.VisualEnemyCombatPoints);
-            SetPointsText(EnemyProductionLogisticsPointsText, SyncProxy.VisualEnemyLogisticsPoints);
-            SetPointsText(EnemyGatheringSupplyChainPointsText, SyncProxy.VisualEnemySupplyPoints);
+            SetPointsText(EnemyCombatVanguardPointsText, "Enemy Vanguard: ", SyncProxy.VisualEnemyCombatPoints);
+            SetPointsText(EnemyProductionLogisticsPointsText, "Enemy Logistics: ", SyncProxy.VisualEnemyLogisticsPoints);
+            SetPointsText(EnemyGatheringSupplyChainPointsText, "Enemy Supply: ", SyncProxy.VisualEnemySupplyPoints);
 
             if (WarMultiplierText != null)
             {
-                int offset = WriteTextToBuffer(_lineBuffer, 0, "x");
+                int offset = WriteTextToBuffer(_lineBuffer, 0, "War multiplier: x");
                 offset = WriteIntToBuffer(_lineBuffer, offset, Mathf.RoundToInt(SyncProxy.VisualWarMultiplier * 100f));
                 WarMultiplierText.SetCharArray(_lineBuffer, 0, offset);
             }
         }
 
-        private void SetPointsText(TextMeshProUGUI target, int points)
+        // Modul: Guild sub-tab polish. The scene builder seeds each of these
+        // with a descriptive placeholder ("Vanguard: 0"), which this method
+        // then overwrote with the bare number on the very first refresh -
+        // leaving a column of six unlabelled zeros that told the player
+        // nothing about which track was which. The label is part of the
+        // written value now, so it survives every refresh.
+        private void SetPointsText(TextMeshProUGUI target, string label, int points)
         {
             if (target == null) return;
 
-            int offset = WriteIntToBuffer(_lineBuffer, 0, points);
+            int offset = WriteTextToBuffer(_lineBuffer, 0, label);
+            offset = WriteIntToBuffer(_lineBuffer, offset, points);
             target.SetCharArray(_lineBuffer, 0, offset);
         }
 

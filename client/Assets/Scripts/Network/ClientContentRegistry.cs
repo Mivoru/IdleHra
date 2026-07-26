@@ -220,16 +220,62 @@ namespace FolkIdle.Client.Network
         public static IReadOnlyList<ItemEntry> Foods => _foods;
         public static IReadOnlyList<ItemEntry> Potions => _potions;
 
-        // Turns "roasted_perch_food_consumable" into "Roasted Perch" - the
-        // content files carry no display names for items, only BaseIds.
+        // Turns "roasted_perch_food_consumable" into "Roasted Perch" and
+        // "eq_obsidian_cleaver_melee_weapon_slot_base" into "Obsidian
+        // Cleaver" - items.json carries no display names at all, only
+        // BaseIds, so every item label in the game is derived here.
+        //
+        // The suffix list is ordered longest-first: "_melee_weapon_slot_base"
+        // must be tried before "_base" or the result keeps a dangling
+        // "Melee Weapon Slot".
+        private static readonly string[] _strippedSuffixes =
+        {
+            "_melee_weapon_slot_base",
+            "_ranged_weapon_slot_base",
+            "_range_weapon_slot_base",
+            "_magic_weapon_slot_base",
+            "_chest_armor_slot_base",
+            "_boots_armor_slot_base",
+            "_leggings_armor_slot_base",
+            "_helmet_armor_slot_base",
+            "_gloves_armor_slot_base",
+            "_helper_offhand_base",
+            "_crafting_material",
+            FoodMarker,
+            OffensivePotionMarker,
+            DefensivePotionMarker
+        };
+
+        private static readonly string[] _strippedPrefixes = { "mat_", "eq_" };
+
         public static string GetItemDisplayName(ItemEntry item)
         {
             if (item == null) return string.Empty;
+            return GetItemDisplayName(item.BaseId);
+        }
 
-            string baseId = item.BaseId;
-            baseId = StripSuffix(baseId, FoodMarker);
-            baseId = StripSuffix(baseId, OffensivePotionMarker);
-            baseId = StripSuffix(baseId, DefensivePotionMarker);
+        public static string GetItemDisplayName(string baseId)
+        {
+            if (string.IsNullOrEmpty(baseId)) return string.Empty;
+
+            for (int i = 0; i < _strippedSuffixes.Length; i++)
+            {
+                string stripped = StripSuffix(baseId, _strippedSuffixes[i]);
+                if (!ReferenceEquals(stripped, baseId))
+                {
+                    baseId = stripped;
+                    break;
+                }
+            }
+
+            for (int i = 0; i < _strippedPrefixes.Length; i++)
+            {
+                if (baseId.StartsWith(_strippedPrefixes[i], StringComparison.Ordinal))
+                {
+                    baseId = baseId.Substring(_strippedPrefixes[i].Length);
+                    break;
+                }
+            }
 
             string[] words = baseId.Split('_');
             for (int i = 0; i < words.Length; i++)

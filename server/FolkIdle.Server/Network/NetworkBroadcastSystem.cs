@@ -211,6 +211,56 @@ namespace FolkIdle.Server.Network
             Task.Run(ListenLoopAsync);
             SubscribeToSessionEviction();
             _chatEngine.Subscribe();
+            Task.Run(LootDropDispatchLoopAsync);
+        }
+
+        // Modul: Loot Event Feed. Drains PlayerSessionRegistry.OutboundLootDropQueue
+        // and pushes each drop to the socket of the player it belongs to.
+        //
+        // Its own background loop rather than a hook on the 10Hz tick,
+        // because drops are produced by CombatLootEngine's own 3-second cron
+        // (never on the tick thread) and a socket write must not be able to
+        // stall the simulation. Mirrors ChatEngine's dispatch worker shape
+        // exactly, including the 50ms idle sleep - loot is bursty and rare,
+        // so a tight spin would burn a core to deliver a handful of messages
+        // a minute.
+        //
+        // Allocation-free per drop: one reusable buffer, one blittable
+        // write, no strings anywhere on the path (the packet carries a
+        // numeric ContentRegistry item id which the client resolves through
+        // its own content mirror).
+        private readonly byte[] _lootDropDispatchBuffer = new byte[Marshal.SizeOf<ResponseLootDropPacket>()];
+
+        private async Task LootDropDispatchLoopAsync()
+        {
+            while (_isRunning)
+            {
+                var registry = _playerSessionRegistry;
+                if (registry == null || !registry.OutboundLootDropQueue.TryDequeue(out ResponseLootDropPacket drop))
+                {
+                    await Task.Delay(50);
+                    continue;
+                }
+
+                if (!_connectedClients.TryGetValue(drop.PlayerId, out var session) || session.Socket.State != WebSocketState.Open)
+                {
+                    // The player logged off between the drop resolving and
+                    // this dispatch. The item is already persisted, so
+                    // dropping the notification loses nothing but the
+                    // on-screen line.
+                    continue;
+                }
+
+                try
+                {
+                    MemoryMarshal.Write(_lootDropDispatchBuffer, in drop);
+                    await session.SendAsync(new ArraySegment<byte>(_lootDropDispatchBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Loot drop dispatch failed for player {drop.PlayerId}: {ex.Message}");
+                }
+            }
         }
 
         // Modul: fired by ChatEngine.OnDispatchReady whenever the dispatch
@@ -623,6 +673,29 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: Inventory screen. The only inventory-shaped
+                    // endpoint that existed was HandleForgeInventorySnapshot,
+                    // which is scoped to what the Forge needs (equipment
+                    // instances plus the handful of materials the Forge's own
+                    // recipes consume). Nothing anywhere exposed the village
+                    // stash, the full commodity list, or which items are
+                    // currently equipped, so no inventory screen was possible.
+                    if (requestPath == "/api/v1/player/inventory" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandlePlayerInventorySnapshot(context);
+                        continue;
+                    }
+
+                    // Modul: Crafting Tree screen. ContentRegistry's 103
+                    // recipes have been fully functional server-side for a
+                    // long time but had no endpoint of any kind - the client
+                    // could not even enumerate them, let alone show costs.
+                    if (requestPath == "/api/v1/crafting/recipes" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleCraftingRecipeSnapshot(context);
+                        continue;
+                    }
+
                     // Modul: UI audit follow-up. DailyLoginRewardEngine
                     // already grants a real, server-authoritative streak
                     // reward on every login/register, but the result was
@@ -930,6 +1003,58 @@ namespace FolkIdle.Server.Network
         {
             public long PlayerId { get; set; }
             public string Username { get; set; } = string.Empty;
+        }
+
+        // Modul: Inventory screen.
+        private sealed class InventoryEquipmentResponse
+        {
+            public long Id { get; set; }
+            public string BaseItemId { get; set; } = string.Empty;
+            public int QualityTier { get; set; }
+            public bool IsEquipped { get; set; }
+        }
+
+        private sealed class InventoryStackResponse
+        {
+            public string ItemId { get; set; } = string.Empty;
+            public long BackpackQuantity { get; set; }
+            public long StashQuantity { get; set; }
+        }
+
+        private sealed class PlayerInventorySnapshotResponse
+        {
+            public int BackpackSlotsUsed { get; set; }
+            public long MaxStackQuantity { get; set; }
+            public System.Collections.Generic.List<InventoryEquipmentResponse> Equipment { get; set; } = new();
+            public System.Collections.Generic.List<InventoryStackResponse> Stacks { get; set; } = new();
+        }
+
+        // Modul: Crafting Tree screen. CurrentStock is the UNIFIED
+        // backpack+stash balance, i.e. exactly what
+        // InventoryAndStashSystem.TryConsumeUnifiedAsync will actually spend
+        // when the craft runs - so an affordable-looking recipe is genuinely
+        // affordable, rather than reporting one tier and spending from two.
+        private sealed class CraftingRecipeResponse
+        {
+            public int ResultItemId { get; set; }
+            public string ResultBaseItemId { get; set; } = string.Empty;
+            public int ProfessionType { get; set; }
+            public int RequiredLevel { get; set; }
+            public int CraftingTimeMs { get; set; }
+            public int Mat1Id { get; set; }
+            public string Mat1BaseItemId { get; set; } = string.Empty;
+            public int Mat1Count { get; set; }
+            public long Mat1CurrentStock { get; set; }
+            public int Mat2Id { get; set; }
+            public string Mat2BaseItemId { get; set; } = string.Empty;
+            public int Mat2Count { get; set; }
+            public long Mat2CurrentStock { get; set; }
+        }
+
+        private sealed class CraftingRecipeSnapshotResponse
+        {
+            public int PlayerLevel { get; set; }
+            public System.Collections.Generic.List<CraftingRecipeResponse> Recipes { get; set; } = new();
         }
 
         private sealed class LoginBonusStateResponse
@@ -2423,6 +2548,219 @@ namespace FolkIdle.Server.Network
             }
 
             context.Response.Close();
+        }
+
+        // Modul: Inventory screen. One read-only snapshot covering all three
+        // places a player's belongings actually live: EquipmentInstances
+        // (backpack gear), CommodityRecords (carried material stacks) and
+        // VillageStashInstances (the overflow stash CombatLootEngine spills
+        // into when the backpack is full). Equipped state comes from
+        // PlayerRecord's three equipped-id columns, which is what
+        // EquipmentSlotEngine itself treats as authoritative.
+        private async Task HandlePlayerInventorySnapshot(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                var player = await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(pr => pr.Id == playerId);
+
+                var equipment = await db.EquipmentInstances
+                    .AsNoTracking()
+                    .Where(e => e.PlayerId == playerId)
+                    .ToListAsync();
+
+                var commodities = await db.CommodityRecords
+                    .AsNoTracking()
+                    .Where(c => c.PlayerId == playerId)
+                    .ToListAsync();
+
+                var stash = await db.VillageStashInstances
+                    .AsNoTracking()
+                    .Where(v => v.PlayerId == playerId)
+                    .ToListAsync();
+
+                await transaction.CommitAsync();
+
+                long equippedWeapon = player?.EquippedWeaponId ?? 0L;
+                long equippedArmor = player?.EquippedArmorId ?? 0L;
+                long equippedLeggings = player?.EquippedLeggingsId ?? 0L;
+
+                var response = new PlayerInventorySnapshotResponse
+                {
+                    BackpackSlotsUsed = equipment.Count,
+                    MaxStackQuantity = FolkIdle.Server.Models.VillageStashInstance.MaxStackQuantity
+                };
+
+                for (int i = 0; i < equipment.Count; i++)
+                {
+                    var item = equipment[i];
+                    response.Equipment.Add(new InventoryEquipmentResponse
+                    {
+                        Id = item.Id,
+                        BaseItemId = item.BaseItemId,
+                        QualityTier = item.QualityTier,
+                        IsEquipped = item.Id == equippedWeapon || item.Id == equippedArmor || item.Id == equippedLeggings
+                    });
+                }
+
+                // Backpack and stash are merged by item id so the UI can show
+                // one row per material with both tiers side by side, which is
+                // how the player actually spends them (unified consumption,
+                // backpack first).
+                var stacksByItemId = new System.Collections.Generic.Dictionary<string, InventoryStackResponse>(commodities.Count + stash.Count);
+
+                for (int i = 0; i < commodities.Count; i++)
+                {
+                    var row = commodities[i];
+                    if (!stacksByItemId.TryGetValue(row.ItemId, out var stack))
+                    {
+                        stack = new InventoryStackResponse { ItemId = row.ItemId };
+                        stacksByItemId[row.ItemId] = stack;
+                    }
+                    stack.BackpackQuantity += row.Quantity;
+                }
+
+                for (int i = 0; i < stash.Count; i++)
+                {
+                    var row = stash[i];
+                    if (!stacksByItemId.TryGetValue(row.ItemId, out var stack))
+                    {
+                        stack = new InventoryStackResponse { ItemId = row.ItemId };
+                        stacksByItemId[row.ItemId] = stack;
+                    }
+                    stack.StashQuantity += row.Quantity;
+                }
+
+                response.Stacks.AddRange(stacksByItemId.Values);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Player inventory snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: Crafting Tree screen. Joins ContentRegistry's static recipe
+        // table against this player's live unified material balance in one
+        // response, so the client never has to guess at either half.
+        private async Task HandleCraftingRecipeSnapshot(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                var player = await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(pr => pr.Id == playerId);
+
+                var commodities = await db.CommodityRecords
+                    .AsNoTracking()
+                    .Where(c => c.PlayerId == playerId)
+                    .ToListAsync();
+
+                var stash = await db.VillageStashInstances
+                    .AsNoTracking()
+                    .Where(v => v.PlayerId == playerId)
+                    .ToListAsync();
+
+                await transaction.CommitAsync();
+
+                var unifiedStock = new System.Collections.Generic.Dictionary<string, long>(commodities.Count + stash.Count);
+                for (int i = 0; i < commodities.Count; i++)
+                {
+                    unifiedStock.TryGetValue(commodities[i].ItemId, out long existing);
+                    unifiedStock[commodities[i].ItemId] = existing + commodities[i].Quantity;
+                }
+                for (int i = 0; i < stash.Count; i++)
+                {
+                    unifiedStock.TryGetValue(stash[i].ItemId, out long existing);
+                    unifiedStock[stash[i].ItemId] = existing + stash[i].Quantity;
+                }
+
+                var response = new CraftingRecipeSnapshotResponse
+                {
+                    PlayerLevel = player?.CurrentLevel ?? 0
+                };
+
+                // Extracted to a synchronous helper: ContentRegistry.Recipes
+                // is a ReadOnlySpan, and a ref struct local is not permitted
+                // inside an async method under this language version.
+                AppendCraftingRecipes(response.Recipes, unifiedStock);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Crafting recipe snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private static void AppendCraftingRecipes(
+            System.Collections.Generic.List<CraftingRecipeResponse> target,
+            System.Collections.Generic.Dictionary<string, long> unifiedStock)
+        {
+            ReadOnlySpan<ContentRegistry.RecipeDefinition> recipes = ContentRegistry.Recipes;
+            for (int i = 0; i < recipes.Length; i++)
+            {
+                ContentRegistry.RecipeDefinition recipe = recipes[i];
+
+                string mat1BaseId = recipe.Mat1Id > 0 ? ContentRegistry.GetItemBaseId(recipe.Mat1Id) : string.Empty;
+                string mat2BaseId = recipe.Mat2Id > 0 ? ContentRegistry.GetItemBaseId(recipe.Mat2Id) : string.Empty;
+
+                unifiedStock.TryGetValue(mat1BaseId, out long mat1Stock);
+                unifiedStock.TryGetValue(mat2BaseId, out long mat2Stock);
+
+                target.Add(new CraftingRecipeResponse
+                {
+                    ResultItemId = recipe.ResultItemId,
+                    ResultBaseItemId = ContentRegistry.GetItemBaseId(recipe.ResultItemId),
+                    ProfessionType = recipe.ProfessionType,
+                    RequiredLevel = recipe.RequiredLevel,
+                    CraftingTimeMs = recipe.CraftingTimeMs,
+                    Mat1Id = recipe.Mat1Id,
+                    Mat1BaseItemId = mat1BaseId,
+                    Mat1Count = recipe.Mat1Count,
+                    Mat1CurrentStock = mat1Stock,
+                    Mat2Id = recipe.Mat2Id,
+                    Mat2BaseItemId = mat2BaseId,
+                    Mat2Count = recipe.Mat2Count,
+                    Mat2CurrentStock = mat2Stock
+                });
+            }
         }
 
         // Modul: UI rework. Batch id-to-username resolution for every

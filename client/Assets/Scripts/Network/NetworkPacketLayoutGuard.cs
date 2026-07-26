@@ -22,6 +22,11 @@ namespace FolkIdle.Client.Network
         public const int ExpectedRequestChatMessageSize = 139;
         public const int ExpectedResponseChatMessageSize = 147;
 
+        // Modul: Loot Event Feed. 22 bytes: PlayerId(8) + ItemId(4) +
+        // Quantity(4) + MonsterId(4) + QualityTier(1) + DropKind(1) -
+        // mirrors server NetworkPacketLayoutGuard exactly.
+        public const int ExpectedResponseLootDropSize = 22;
+
         public static void Validate()
         {
             int stateSize = Unsafe.SizeOf<StateUpdatePacket>();
@@ -52,6 +57,12 @@ namespace FolkIdle.Client.Network
             if (responseChatSize != ExpectedResponseChatMessageSize)
             {
                 throw new InvalidOperationException($"ResponseChatMessagePacket byte layout mismatch. Expected {ExpectedResponseChatMessageSize}, got {responseChatSize}.");
+            }
+
+            int lootDropSize = Unsafe.SizeOf<ResponseLootDropPacket>();
+            if (lootDropSize != ExpectedResponseLootDropSize)
+            {
+                throw new InvalidOperationException($"ResponseLootDropPacket byte layout mismatch. Expected {ExpectedResponseLootDropSize}, got {lootDropSize}.");
             }
         }
     }

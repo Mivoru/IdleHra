@@ -7079,6 +7079,115 @@ namespace FolkIdle.Server.Tests
             Assert.True(equipmentCount > 0, "Expected at least one successful equipment category roll (Rolls 2-5) across the burst.");
         }
 
+        // Modul: Loot Event Feed. Every drop CombatLootEngine actually
+        // persists must also be published onto OutboundLootDropQueue as a
+        // ResponseLootDropPacket, since that queue is the only thing
+        // NetworkBroadcastSystem's dispatch loop reads to tell the player
+        // what dropped. Before the feed existed the engine reported nothing
+        // but a single "a slot was consumed" flag with no item identity at
+        // all.
+        [Fact]
+        public async Task Test_CombatLootEngine_PublishesEveryGrantedDropOntoTheOutboundFeed()
+        {
+            const long testPlayerId = 970009131L;
+            const int monsterId = 104; // Sandstone Golem - mat_lodestone, region 3
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            while (_fixture.PlayerRegistry.OutboundLootDropQueue.TryDequeue(out _))
+            {
+            }
+
+            var combatLootEngine = new CombatLootEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            var processMethod = typeof(CombatLootEngine).GetMethod("ProcessMonsterLootDropAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+
+            for (int i = 0; i < 200; i++)
+            {
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f })!;
+            }
+
+            int publishedCount = 0;
+            long publishedMaterialQuantity = 0L;
+            while (_fixture.PlayerRegistry.OutboundLootDropQueue.TryDequeue(out FolkIdle.Server.Network.ResponseLootDropPacket drop))
+            {
+                publishedCount++;
+
+                Assert.Equal(testPlayerId, drop.PlayerId);
+                Assert.Equal(monsterId, drop.MonsterId);
+                Assert.True(drop.ItemId > 0, "A published drop must carry a real ContentRegistry item id.");
+                Assert.True(drop.Quantity > 0, "A published drop must carry a positive quantity.");
+
+                if (drop.DropKind == FolkIdle.Server.Network.ResponseLootDropPacket.DropKindMaterial)
+                {
+                    publishedMaterialQuantity += drop.Quantity;
+                }
+            }
+
+            Assert.True(publishedCount > 0, "Expected the drop burst to publish at least one loot event.");
+
+            // The feed must agree with the database it is describing: a
+            // player told they received N of a material must actually hold N.
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            long storedMaterialQuantity = await verifyDb.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == testPlayerId)
+                .SumAsync(c => (long?)c.Quantity) ?? 0L;
+
+            Assert.Equal(publishedMaterialQuantity, storedMaterialQuantity);
+        }
+
+        // Modul: Crafting Tree. ExecuteCraftingAsync used to look its
+        // material costs up by the stringified numeric Mat1Id/Mat2Id ("93"),
+        // but every writer of CommodityRecords/VillageStashInstances stores a
+        // BaseId slug, so the unified balance lookup could never match a row
+        // and all 103 recipes were permanently unfulfillable regardless of
+        // how much input material the player held.
+        [Fact]
+        public async Task Test_CraftingEngine_ConsumesMaterialsByBaseIdAndProducesResult()
+        {
+            const long testPlayerId = 970009132L;
+
+            // Recipe 184 (copper_bar): 3 tin_ore + 1 coal_node.
+            Assert.True(ContentRegistry.TryGetRecipe(184, out var recipe));
+            string mat1BaseId = ContentRegistry.GetItemBaseId(recipe.Mat1Id);
+            string mat2BaseId = ContentRegistry.GetItemBaseId(recipe.Mat2Id);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = mat1BaseId, Quantity = 10L });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = mat2BaseId, Quantity = 10L });
+                await db.SaveChangesAsync();
+            }
+
+            while (_fixture.PlayerRegistry.CraftingCompletionQueue.TryDequeue(out _))
+            {
+            }
+
+            var craftingEngine = new CraftingEngine(_fixture.DbContextFactory, _fixture.PlayerRegistry, _fixture.RetryingOptions);
+            await craftingEngine.ExecuteCraftingAsync(testPlayerId, 184);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            long remainingMat1 = await verifyDb.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == testPlayerId && c.ItemId == mat1BaseId)
+                .Select(c => (long?)c.Quantity).FirstOrDefaultAsync() ?? 0L;
+            long remainingMat2 = await verifyDb.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == testPlayerId && c.ItemId == mat2BaseId)
+                .Select(c => (long?)c.Quantity).FirstOrDefaultAsync() ?? 0L;
+
+            Assert.Equal(10L - recipe.Mat1Count, remainingMat1);
+            Assert.Equal(10L - recipe.Mat2Count, remainingMat2);
+
+            Assert.True(_fixture.PlayerRegistry.CraftingCompletionQueue.TryDequeue(out var completion),
+                "A successful craft must enqueue a completion notification.");
+            Assert.Equal(184, completion.CraftedItemId);
+            Assert.True(completion.Quantity >= 1);
+        }
+
         // Modul: Architecture Overhaul, Part 6. Equipping 4 pieces of the
         // Eternal Dreadnought set (SetId 10) must apply the 2-piece +15%
         // Total Armor multiplier AND flip on the 4-piece defensive

@@ -39,6 +39,13 @@ namespace FolkIdle.Server.Network
         public const int ExpectedRequestChatMessageSize = 139;
         public const int ExpectedResponseChatMessageSize = 147;
 
+        // Modul: Loot Event Feed. 22 bytes: PlayerId(8) + ItemId(4) +
+        // Quantity(4) + MonsterId(4) + QualityTier(1) + DropKind(1).
+        // Deliberately nowhere near any other packet size on this wire, so
+        // the size-based demultiplexing in both receive loops stays
+        // unambiguous.
+        public const int ExpectedResponseLootDropSize = 22;
+
         public static void Validate()
         {
             int stateSize = Unsafe.SizeOf<StateUpdatePacket>();
@@ -69,6 +76,19 @@ namespace FolkIdle.Server.Network
             if (responseChatSize != ExpectedResponseChatMessageSize)
             {
                 throw new InvalidOperationException($"ResponseChatMessagePacket byte layout mismatch. Expected {ExpectedResponseChatMessageSize}, got {responseChatSize}.");
+            }
+
+            int lootDropSize = Unsafe.SizeOf<ResponseLootDropPacket>();
+            if (lootDropSize != ExpectedResponseLootDropSize)
+            {
+                throw new InvalidOperationException($"ResponseLootDropPacket byte layout mismatch. Expected {ExpectedResponseLootDropSize}, got {lootDropSize}.");
+            }
+
+            if (ExpectedResponseLootDropSize == ExpectedClientCommandSize || ExpectedResponseLootDropSize == ExpectedStateUpdateSize ||
+                ExpectedResponseLootDropSize == ExpectedAuthHandshakeSize || ExpectedResponseLootDropSize == ExpectedRequestChatMessageSize ||
+                ExpectedResponseLootDropSize == ExpectedResponseChatMessageSize)
+            {
+                throw new InvalidOperationException("Packet size collision detected - the WS receive loops on both sides distinguish inbound message types by exact byte size, so every packet type must have a unique size.");
             }
 
             if (ExpectedRequestChatMessageSize == ExpectedClientCommandSize || ExpectedRequestChatMessageSize == ExpectedStateUpdateSize || ExpectedRequestChatMessageSize == ExpectedAuthHandshakeSize ||

@@ -173,9 +173,27 @@ namespace FolkIdle.Server.Domain.Economy
                 // availability is the combined balance, the Backpack drains
                 // first, and the remainder comes seamlessly out of the
                 // Village Stash inside this same Serializable transaction.
+                // Modul: Crafting Tree UI. These two lookups used to stringify
+                // the raw numeric Mat1Id/Mat2Id ("93", "129"). Nothing in this
+                // game has ever stored a commodity under a numeric key -
+                // every writer of CommodityRecords/VillageStashInstances uses
+                // a BaseId slug (AuthenticationEngine seeds
+                // GetMaterialString(1), CombatLootEngine grants
+                // GetItemBaseId(entry.ItemId), VillageManagementEngine spends
+                // "raw_log"/"copper_ore", gold is "gold"). So the unified
+                // balance lookup could never match a row,
+                // TryConsumeUnifiedAsync always reported insufficient
+                // materials, and every one of the 103 recipes in
+                // ContentRegistry was silently unfulfillable no matter how
+                // much of the input material the player actually held.
+                //
+                // Same shape as the PlaceLimitOrder BUY bug fixed earlier: a
+                // numeric content id used directly as a real game-object
+                // identity string instead of being resolved through
+                // GetItemBaseId first.
                 if (recipe.Mat1Id > 0 && recipe.Mat1Count > 0)
                 {
-                    string mat1ItemId = recipe.Mat1Id.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    string mat1ItemId = ContentRegistry.GetItemBaseId(recipe.Mat1Id);
                     if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, mat1ItemId, recipe.Mat1Count))
                     {
                         await transaction.RollbackAsync();
@@ -185,7 +203,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 if (recipe.Mat2Id > 0 && recipe.Mat2Count > 0)
                 {
-                    string mat2ItemId = recipe.Mat2Id.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    string mat2ItemId = ContentRegistry.GetItemBaseId(recipe.Mat2Id);
                     if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, mat2ItemId, recipe.Mat2Count))
                     {
                         await transaction.RollbackAsync();

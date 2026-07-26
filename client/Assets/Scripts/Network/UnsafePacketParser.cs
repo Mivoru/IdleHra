@@ -43,5 +43,23 @@ namespace FolkIdle.Client.Network
             }
             return true;
         }
+
+        // Modul: Loot Event Feed. Same truncated-buffer guard again, for the
+        // 22-byte ResponseLootDropPacket.
+        public static unsafe bool TryParseLootDrop(byte[] buffer, int receivedCount, out ResponseLootDropPacket packet)
+        {
+            int requiredSize = Unsafe.SizeOf<ResponseLootDropPacket>();
+            if (buffer == null || receivedCount < requiredSize || buffer.Length < requiredSize)
+            {
+                packet = default;
+                return false;
+            }
+
+            fixed (byte* ptr = buffer)
+            {
+                packet = Unsafe.ReadUnaligned<ResponseLootDropPacket>(ptr);
+            }
+            return true;
+        }
     }
 }

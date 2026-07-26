@@ -1,0 +1,251 @@
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+using FolkIdle.Client.Engine;
+using FolkIdle.Client.Network;
+
+namespace FolkIdle.Client.UI
+{
+    // Modul: Inventory screen. The game had no inventory view of any kind -
+    // a player could see equipment inside the Forge (only as crafting/reroll
+    // input) and nothing else. Materials and the village stash were entirely
+    // invisible despite being what the whole crafting and village-upgrade
+    // economy spends.
+    //
+    // Three sections in one scrolling list, backed by PlayerInventoryCache:
+    //   Equipped   - the gear actually on the character right now
+    //   Backpack   - carried equipment instances, and carried material stacks
+    //   Stash      - the village overflow store CombatLootEngine spills into
+    //                when the backpack is full
+    //
+    // Material rows show both tiers because that is how they are actually
+    // spent: InventoryAndStashSystem consumes the unified balance, backpack
+    // first, so a player needs to see both numbers to understand what a
+    // craft will actually draw from.
+    public class UiInventoryPanel : MonoBehaviour
+    {
+        public AssetRegistry Registry;
+        public VisualSyncProxy SyncProxy;
+
+        [Header("Header")]
+        public TMP_Text SummaryText;
+        public Button RefreshButton;
+
+        [Header("Rows - pooled")]
+        public Transform RowContainer;
+        public UiInventoryEntryRow RowPrefab;
+        public int InitialRowPoolCapacity = 24;
+
+        [Header("Section headers - pooled separately")]
+        public UiSectionHeaderRow SectionHeaderPrefab;
+
+        private UIComponentPool<UiInventoryEntryRow> _rowPool;
+        private UIComponentPool<UiSectionHeaderRow> _headerPool;
+        private readonly List<UiInventoryEntryRow> _activeRows = new List<UiInventoryEntryRow>();
+        private readonly List<UiSectionHeaderRow> _activeHeaders = new List<UiSectionHeaderRow>();
+
+        private bool _isDirty;
+
+        private void Awake()
+        {
+            if (RowPrefab != null && RowContainer != null)
+            {
+                _rowPool = new UIComponentPool<UiInventoryEntryRow>(RowPrefab, RowContainer, InitialRowPoolCapacity);
+            }
+
+            if (SectionHeaderPrefab != null && RowContainer != null)
+            {
+                _headerPool = new UIComponentPool<UiSectionHeaderRow>(SectionHeaderPrefab, RowContainer, 4);
+            }
+
+            if (RefreshButton != null)
+            {
+                RefreshButton.onClick.AddListener(PlayerInventoryCache.RequestSnapshot);
+            }
+        }
+
+        private void OnEnable()
+        {
+            PlayerInventoryCache.OnInventoryUpdated += HandleInventoryUpdated;
+            PlayerInventoryCache.RequestSnapshot();
+            _isDirty = true;
+        }
+
+        private void OnDisable()
+        {
+            PlayerInventoryCache.OnInventoryUpdated -= HandleInventoryUpdated;
+        }
+
+        // Rebuild is deferred to the next frame rather than run straight from
+        // the cache callback, which arrives off an await continuation -
+        // matching UiFriendsWindow/UiMailboxWindow's existing dirty-flag
+        // convention so pooled row churn always happens on a normal frame.
+        private void Update()
+        {
+            if (!_isDirty) return;
+            _isDirty = false;
+            RebuildRows();
+        }
+
+        private void HandleInventoryUpdated()
+        {
+            _isDirty = true;
+        }
+
+        private void RebuildRows()
+        {
+            if (_rowPool == null) return;
+
+            for (int i = 0; i < _activeRows.Count; i++) _rowPool.Despawn(_activeRows[i]);
+            _activeRows.Clear();
+
+            if (_headerPool != null)
+            {
+                for (int i = 0; i < _activeHeaders.Count; i++) _headerPool.Despawn(_activeHeaders[i]);
+                _activeHeaders.Clear();
+            }
+
+            IReadOnlyList<InventoryEquipmentData> equipment = PlayerInventoryCache.Equipment;
+            IReadOnlyList<InventoryStackData> stacks = PlayerInventoryCache.Stacks;
+
+            int equippedCount = 0;
+            for (int i = 0; i < equipment.Count; i++)
+            {
+                if (equipment[i].IsEquipped) equippedCount++;
+            }
+
+            if (SummaryText != null)
+            {
+                SummaryText.text =
+                    equippedCount + " equipped   -   " +
+                    (equipment.Count - equippedCount) + " carried items   -   " +
+                    stacks.Count + " material types   -   stacks cap at " + PlayerInventoryCache.MaxStackQuantity;
+            }
+
+            // ---- Equipped ----
+            AddSectionHeader("EQUIPPED");
+            bool anyEquipped = false;
+            for (int i = 0; i < equipment.Count; i++)
+            {
+                if (!equipment[i].IsEquipped) continue;
+                AddEquipmentRow(equipment[i]);
+                anyEquipped = true;
+            }
+            if (!anyEquipped)
+            {
+                AddPlainRow("Nothing equipped", "Equip gear from the Forge or your backpack.", string.Empty);
+            }
+
+            // ---- Backpack ----
+            AddSectionHeader("BACKPACK");
+            bool anyCarried = false;
+            for (int i = 0; i < equipment.Count; i++)
+            {
+                if (equipment[i].IsEquipped) continue;
+                AddEquipmentRow(equipment[i]);
+                anyCarried = true;
+            }
+
+            for (int i = 0; i < stacks.Count; i++)
+            {
+                if (stacks[i].BackpackQuantity <= 0) continue;
+                AddStackRow(stacks[i], stacks[i].BackpackQuantity, "carried");
+                anyCarried = true;
+            }
+
+            if (!anyCarried)
+            {
+                AddPlainRow("Backpack empty", "Kill monsters to start collecting materials and gear.", string.Empty);
+            }
+
+            // ---- Stash ----
+            AddSectionHeader("VILLAGE STASH");
+            bool anyStashed = false;
+            for (int i = 0; i < stacks.Count; i++)
+            {
+                if (stacks[i].StashQuantity <= 0) continue;
+                AddStackRow(stacks[i], stacks[i].StashQuantity, "stashed");
+                anyStashed = true;
+            }
+
+            if (!anyStashed)
+            {
+                AddPlainRow("Stash empty", "Drops overflow here automatically when your backpack is full.", string.Empty);
+            }
+        }
+
+        private void AddSectionHeader(string title)
+        {
+            if (_headerPool == null) return;
+
+            UiSectionHeaderRow header = _headerPool.Spawn();
+            header.Bind(title);
+            header.transform.SetAsLastSibling();
+            _activeHeaders.Add(header);
+        }
+
+        private void AddEquipmentRow(InventoryEquipmentData item)
+        {
+            Sprite icon = null;
+            Registry?.TryGetItemSprite(item.BaseItemId, out icon);
+
+            UiInventoryEntryRow row = _rowPool.Spawn();
+            row.Bind(
+                ClientContentRegistry.GetItemDisplayName(item.BaseItemId),
+                DescribeQuality(item.QualityTier) + "   -   instance #" + item.Id,
+                item.IsEquipped ? "equipped" : string.Empty,
+                item.IsEquipped,
+                icon);
+            row.transform.SetAsLastSibling();
+            _activeRows.Add(row);
+        }
+
+        private void AddStackRow(InventoryStackData stack, long quantity, string whereLabel)
+        {
+            Sprite icon = null;
+            Registry?.TryGetItemSprite(stack.ItemId, out icon);
+
+            UiInventoryEntryRow row = _rowPool.Spawn();
+            row.Bind(
+                ClientContentRegistry.GetItemDisplayName(stack.ItemId),
+                "Carried " + stack.BackpackQuantity + "   -   Stashed " + stack.StashQuantity + "   -   Total " + stack.Total,
+                quantity + " " + whereLabel,
+                false,
+                icon);
+            row.transform.SetAsLastSibling();
+            _activeRows.Add(row);
+        }
+
+        private void AddPlainRow(string title, string detail, string quantity)
+        {
+            UiInventoryEntryRow row = _rowPool.Spawn();
+            row.Bind(title, detail, quantity, false, null);
+            row.transform.SetAsLastSibling();
+            _activeRows.Add(row);
+        }
+
+        // Mirrors the server's RarityTier names, same table the loot feed
+        // and CombatLootEngine's weights are written against.
+        private static string DescribeQuality(int tier)
+        {
+            switch (tier)
+            {
+                case 2: return "Common";
+                case 3: return "Uncommon";
+                case 4: return "Rare";
+                case 5: return "Ultra Rare";
+                case 6: return "Epic";
+                case 7: return "Legendary";
+                case 8: return "Mythic";
+                case 9: return "Relic";
+                case 10: return "Ancient";
+                case 11: return "Divine";
+                case 12: return "Demonic";
+                case 13: return "Godly";
+                case 14: return "Transcendent";
+                default: return "Normal";
+            }
+        }
+    }
+}

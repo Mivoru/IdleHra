@@ -300,6 +300,15 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<CodexMultiplierUpdateNotification> CodexMultiplierUpdateQueue { get; } = new();
         public ConcurrentQueue<RegionCompletionNotification> RegionCompletionUpdateQueue { get; } = new();
         public ConcurrentQueue<CombatLootDropNotification> CombatLootDropQueue { get; } = new();
+
+        // Modul: Loot Event Feed. Deliberately a SECOND queue rather than
+        // reusing CombatLootDropQueue above. That one is drained by
+        // SimulationEngine's tick thread purely to decrement
+        // InventorySpaceRemaining; this one is drained by
+        // NetworkBroadcastSystem to push a ResponseLootDropPacket to the
+        // owning player's socket. A single queue cannot serve both, since
+        // whichever consumer dequeued an entry first would consume it.
+        public ConcurrentQueue<FolkIdle.Server.Network.ResponseLootDropPacket> OutboundLootDropQueue { get; } = new();
         public ConcurrentQueue<GuildMembershipChangeNotification> GuildMembershipChangeQueue { get; } = new();
         public ConcurrentQueue<CommandResultNotification> CommandResultQueue { get; } = new();
         public ConcurrentQueue<BillingSyncNotification> BillingSyncQueue { get; } = new();

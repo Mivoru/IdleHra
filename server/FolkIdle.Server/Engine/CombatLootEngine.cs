@@ -132,6 +132,10 @@ namespace FolkIdle.Server.Engine
         private readonly PlayerSessionRegistry _playerRegistry;
         private CancellationTokenSource _cts = new();
 
+        // Modul: Loot Event Feed staging buffer - see
+        // ProcessMonsterLootDropAsync for why drops are held until commit.
+        private readonly List<Network.ResponseLootDropPacket> _pendingDrops = new(8);
+
         public CombatLootEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry)
         {
             _serviceProvider = serviceProvider;
@@ -195,6 +199,15 @@ namespace FolkIdle.Server.Engine
             var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
             using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
+            // Modul: Loot Event Feed. Drops are staged here and only
+            // published once the transaction actually commits - announcing a
+            // drop the database then rolled back would leave the player
+            // looking at loot they do not own. Reused across calls (this
+            // worker is single-threaded: ExecuteAsync drains the queue one
+            // request at a time), so the feed costs no per-kill allocation
+            // once the list has grown to its steady-state size.
+            _pendingDrops.Clear();
+
             try
             {
                 int backpackCount = await dbContext.EquipmentInstances.CountAsync(e => e.PlayerId == playerId);
@@ -208,7 +221,7 @@ namespace FolkIdle.Server.Engine
                     LootTableEntry[] lootTable = ContentRegistry.GetLootTable(monsterLootTableId).ToArray();
                     if (lootTable.Length > 0)
                     {
-                        await GrantMaterialDropAsync(dbContext, playerId, lootTable);
+                        await GrantMaterialDropAsync(dbContext, playerId, monsterId, lootTable);
                     }
                 }
 
@@ -236,10 +249,17 @@ namespace FolkIdle.Server.Engine
                     PlayerId = playerId,
                     ConsumedInventorySlot = true
                 });
+
+                for (int i = 0; i < _pendingDrops.Count; i++)
+                {
+                    _playerRegistry.OutboundLootDropQueue.Enqueue(_pendingDrops[i]);
+                }
+                _pendingDrops.Clear();
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                _pendingDrops.Clear();
                 Console.WriteLine($"Combat loot drop failed: {ex.Message}");
             }
         }
@@ -263,7 +283,12 @@ namespace FolkIdle.Server.Engine
         // from its authored range; MaxQuantity <= 0 (every entry authored
         // before this pass) preserves the legacy one-unit-per-success
         // behavior instead of rolling an empty range.
-        private static async Task GrantMaterialDropAsync(FolkIdleDbContext dbContext, long playerId, LootTableEntry[] lootTable)
+        // Modul: Loot Event Feed. Instance (was static) so it can publish
+        // the drop it just granted onto OutboundLootDropQueue - the player
+        // needs to be told WHAT dropped, which is the whole point of the
+        // feed, and only this method knows which loot-table entry won the
+        // weighted roll.
+        private async Task GrantMaterialDropAsync(FolkIdleDbContext dbContext, long playerId, int monsterId, LootTableEntry[] lootTable)
         {
             int totalWeight = 0;
             for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight;
@@ -299,6 +324,8 @@ namespace FolkIdle.Server.Engine
                 {
                     existing.Quantity += quantity;
                 }
+
+                PublishLootDrop(playerId, monsterId, entry.ItemId, quantity, qualityTier: 0, Network.ResponseLootDropPacket.DropKindMaterial);
                 return;
             }
         }
@@ -329,6 +356,9 @@ namespace FolkIdle.Server.Engine
                     : "iron_ore";
                 int scrapValue = Math.Max(1, tier * monsterRegion);
                 await Domain.Economy.InventoryAndStashSystem.DepositToStashAsync(dbContext, playerId, scrapMaterialId, scrapValue);
+
+                int scrapItemId = monsterLootTable.Length > 0 ? monsterLootTable[0].ItemId : 0;
+                PublishLootDrop(playerId, monsterId, scrapItemId, scrapValue, qualityTier: 0, Network.ResponseLootDropPacket.DropKindScrap);
                 return;
             }
 
@@ -340,6 +370,29 @@ namespace FolkIdle.Server.Engine
                 QualityTier = tier,
                 AffixPayload = affixPayload,
                 IsAffixLocked = false
+            });
+
+            PublishLootDrop(playerId, monsterId, chosenItemId, 1, (byte)tier, Network.ResponseLootDropPacket.DropKindEquipment);
+        }
+
+        // Modul: Loot Event Feed. Enqueue only - the actual socket write is
+        // NetworkBroadcastSystem's job (it owns the connections; this engine
+        // never touches one). Called from inside the drop transaction but
+        // only AFTER the row has been added, and the enqueued items are
+        // discarded if that transaction later rolls back - see
+        // ProcessMonsterLootDropAsync's own note on _pendingDrops.
+        private void PublishLootDrop(long playerId, int monsterId, int itemId, int quantity, byte qualityTier, byte dropKind)
+        {
+            if (itemId <= 0 || quantity <= 0) return;
+
+            _pendingDrops.Add(new Network.ResponseLootDropPacket
+            {
+                PlayerId = playerId,
+                ItemId = itemId,
+                Quantity = quantity,
+                MonsterId = monsterId,
+                QualityTier = qualityTier,
+                DropKind = dropKind
             });
         }
 

@@ -33,6 +33,9 @@ namespace FolkIdle.Client.Editor
         private const string StoreRowPrefabPath = PrefabDirectory + "/UiStoreEntryRow.prefab";
         private const string SeasonPassRowPrefabPath = PrefabDirectory + "/UiSeasonPassMilestoneRow.prefab";
         private const string CombatMonsterRowPrefabPath = PrefabDirectory + "/UiCombatMonsterRow.prefab";
+        private const string InventoryRowPrefabPath = PrefabDirectory + "/UiInventoryEntryRow.prefab";
+        private const string SectionHeaderRowPrefabPath = PrefabDirectory + "/UiSectionHeaderRow.prefab";
+        private const string CraftingRecipeRowPrefabPath = PrefabDirectory + "/UiCraftingRecipeRow.prefab";
         private const string ForgeRecipeRowPrefabPath = PrefabDirectory + "/UiForgeRecipeRow.prefab";
         private const string ForgeEquipmentRowPrefabPath = PrefabDirectory + "/UiForgeEquipmentRow.prefab";
         private const string AssetRegistryAssetPath = PrefabDirectory + "/AssetRegistry.asset";
@@ -163,6 +166,12 @@ namespace FolkIdle.Client.Editor
             // server-side. See UiAccountPanel's own header comment.
             GameObject accountPanelObject = BuildAccountWindow(canvas.transform, networkClient);
 
+            // Modul: Inventory and Crafting Tree. Two brand new screens
+            // closing the two largest remaining content gaps - see
+            // UiInventoryPanel and UiCraftingTreePanel for what was missing.
+            GameObject inventoryPanelObject = BuildInventoryWindow(canvas.transform, assetRegistry, syncProxy);
+            GameObject craftingPanelObject = BuildCraftingTreeWindow(canvas.transform, networkClient, assetRegistry);
+
             // Modul: Map Hub, Part 3. Combat Selection (real region/
             // monster/character data, see UiCombatLocationPanel) and Boss
             // World (real HP/attack plus the real global leaderboard, see
@@ -198,7 +207,7 @@ namespace FolkIdle.Client.Editor
             (GameObject hamburgerBlocker, UiHamburgerMenuPanel hamburgerComponent, Dictionary<string, Button> menu) = BuildHamburgerPanel(canvas.transform, new[]
             {
                 ("Places", new[] { "World Map", "Combat", "Village", "Guild", "Market & Bank", "World Boss" }),
-                ("Character", new[] { "Forge", "Skills", "Bestiary", "Breeding Lab", "Race Mastery", "Mentorship" }),
+                ("Character", new[] { "Inventory", "Forge", "Crafting", "Skills", "Bestiary", "Breeding Lab", "Race Mastery", "Mentorship" }),
                 ("Progress", new[] { "Achievements", "Season Pass", "Login Bonus", "Statistics", "Leaderboard" }),
                 ("Social", new[] { "Friends", "Mailbox" }),
                 ("Economy", new[] { "Store", "Time Bank", "Legacy Shop" }),
@@ -225,7 +234,7 @@ namespace FolkIdle.Client.Editor
                 mailboxWindowObject, storeWindowObject, seasonPassWindowObject, settingsPanelObject,
                 friendsPanelObject, statisticsPanelObject, loginBonusPanelObject, raceMasteryWindowObject,
                 chronoBankWindowObject, legacyShopWindowObject, mentorshipContractWindowObject,
-                accountPanelObject
+                accountPanelObject, inventoryPanelObject, craftingPanelObject
             };
 
             // Index-aligned with screens[] above. UiTabGroup supports at most
@@ -240,7 +249,7 @@ namespace FolkIdle.Client.Editor
                 menu["Mailbox"], menu["Store"], menu["Season Pass"], menu["Settings"],
                 menu["Friends"], menu["Statistics"], menu["Login Bonus"], menu["Race Mastery"],
                 menu["Time Bank"], menu["Legacy Shop"], menu["Mentorship"],
-                menu["Account"]
+                menu["Account"], menu["Inventory"], menu["Crafting"]
             };
 
             const int HudGroupScreenIndex = 1;
@@ -424,6 +433,11 @@ namespace FolkIdle.Client.Editor
             // keeps accruing while the player is looking elsewhere.
             CombatSessionTracker combatSessionTracker = managers.AddComponent<CombatSessionTracker>();
             combatSessionTracker.SyncProxy = syncProxy;
+            // Modul: Loot Event Feed. The tracker drains
+            // WebSocketClient.LootDropQueue itself, so it needs the socket -
+            // without this the drop list stays permanently empty even though
+            // the server is publishing drops correctly.
+            combatSessionTracker.NetworkClient = networkClient;
 
             return managers;
         }
@@ -476,8 +490,7 @@ namespace FolkIdle.Client.Editor
 
             GameObject registerStep2Root = BuildAuthScreenRoot(blockingPanel.transform, "RegisterStep2Root", 400f);
             TMP_Text registerStep2EmailLabel = CreateText(registerStep2Root.transform, "RegisterStep2EmailLabel", string.Empty, 16f, TextAlignmentOptions.Center);
-            LayoutElement registerStep2EmailLabelLayout = registerStep2EmailLabel.gameObject.AddComponent<LayoutElement>();
-            registerStep2EmailLabelLayout.preferredHeight = 26f;
+            SetFixedLayoutHeight(registerStep2EmailLabel.gameObject, 26f);
             TMP_InputField registerUsernameField = BuildAuthInputField(registerStep2Root.transform, "RegisterUsernameField", "Username", false);
             TMP_InputField registerPasswordField = BuildAuthInputField(registerStep2Root.transform, "RegisterPasswordField", "Password", true);
             TMP_InputField registerConfirmPasswordField = BuildAuthInputField(registerStep2Root.transform, "RegisterConfirmPasswordField", "Confirm Password", true);
@@ -542,8 +555,7 @@ namespace FolkIdle.Client.Editor
         private static TMP_InputField BuildAuthInputField(Transform parent, string name, string placeholder, bool isPassword)
         {
             TMP_InputField field = CreateInputField(parent, name, placeholder);
-            LayoutElement layoutElement = field.gameObject.AddComponent<LayoutElement>();
-            layoutElement.preferredHeight = 50f;
+            SetFixedLayoutHeight(field.gameObject, 50f);
             if (isPassword)
             {
                 field.contentType = TMP_InputField.ContentType.Password;
@@ -554,8 +566,7 @@ namespace FolkIdle.Client.Editor
         private static Button BuildAuthButton(Transform parent, string name, string label)
         {
             Button button = CreateButton(parent, name, label, out TextMeshProUGUI _);
-            LayoutElement layoutElement = button.gameObject.AddComponent<LayoutElement>();
-            layoutElement.preferredHeight = 54f;
+            SetFixedLayoutHeight(button.gameObject, 54f);
             return button;
         }
 
@@ -602,8 +613,7 @@ namespace FolkIdle.Client.Editor
         private static TextMeshProUGUI CreateStatRow(Transform parent, string placeholderText)
         {
             TextMeshProUGUI text = CreateText(parent, "Stat_" + placeholderText, placeholderText, 16f, TextAlignmentOptions.MidlineLeft);
-            LayoutElement layoutElement = text.gameObject.AddComponent<LayoutElement>();
-            layoutElement.preferredHeight = 22f;
+            SetFixedLayoutHeight(text.gameObject, 22f);
             // Every caller's VerticalLayoutGroup sets childControlHeight = false
             // (so rows keep a fixed height instead of stretching to fill leftover
             // space), which means preferredHeight above is only used for the
@@ -750,8 +760,7 @@ namespace FolkIdle.Client.Editor
         {
             GameObject rowObject = new GameObject(rowName, typeof(RectTransform));
             rowObject.transform.SetParent(parent, false);
-            LayoutElement rowLayout = rowObject.AddComponent<LayoutElement>();
-            rowLayout.preferredHeight = 44f;
+            SetFixedLayoutHeight(rowObject, 44f);
 
             HorizontalLayoutGroup rowLayoutGroup = rowObject.AddComponent<HorizontalLayoutGroup>();
             rowLayoutGroup.spacing = 6f;
@@ -1151,8 +1160,7 @@ namespace FolkIdle.Client.Editor
             createPanel.InvitePlayerButton = inviteButton;
 
             TextMeshProUGUI guildActionsStatusText = CreateText(actionsAreaObject.transform, "GuildActionsStatusText", string.Empty, 14f, TextAlignmentOptions.Center);
-            LayoutElement guildActionsStatusLayoutElement = guildActionsStatusText.gameObject.AddComponent<LayoutElement>();
-            guildActionsStatusLayoutElement.preferredHeight = 24f;
+            SetFixedLayoutHeight(guildActionsStatusText.gameObject, 24f);
             createPanel.StatusText = guildActionsStatusText;
 
             return rosterAreaObject;
@@ -1173,16 +1181,28 @@ namespace FolkIdle.Client.Editor
             layout.childControlHeight = false;
             layout.childForceExpandHeight = false;
 
+            CreateGroupSectionLabel(groupObject.transform, "SUPPLY DEPOT");
+            CreateHelpText(groupObject.transform, "DepotHelpText",
+                "The depot is the guild-wide material pool. Every deposit fills the bar toward the next depot level, and each level raises the passive production bonus every member receives. Progress is shared, so partial deposits from many members still count.",
+                58f);
+
             TextMeshProUGUI levelText = CreateStatRow(groupObject.transform, "Lv. 0");
             TextMeshProUGUI contributionText = CreateStatRow(groupObject.transform, "0 / 0");
 
             (GameObject barBackground, RectTransform barFill) = BuildAnchoredProgressBar(groupObject.transform, new Color(0.3f, 0.7f, 1f, 1f));
-            LayoutElement barLayout = barBackground.AddComponent<LayoutElement>();
-            barLayout.preferredHeight = 24f;
+            SetFixedLayoutHeight(barBackground, 24f);
 
-            Button donateButton = CreateButton(groupObject.transform, "DonateButton", "Donate", out TextMeshProUGUI _);
-            LayoutElement donateLayout = donateButton.gameObject.AddComponent<LayoutElement>();
-            donateLayout.preferredHeight = 44f;
+            Button donateButton = CreateButton(groupObject.transform, "DonateButton", "Deposit 10 Copper Ore", out TextMeshProUGUI _);
+            SetFixedLayoutHeight(donateButton.gameObject, 44f);
+
+            // The panel's TargetMaterialId/DonateQuantity are fixed
+            // designer constants (1 = copper_ore, 10 per tap - see
+            // UiGuildLogisticsPanel's own header comment on why they are not
+            // resolved from inventory), so the button can state the real cost
+            // outright instead of just saying "Donate".
+            CreateHelpText(groupObject.transform, "DepotCostHelpText",
+                "Cost: 10 Copper Ore per deposit, taken from your backpack then your stash. The server checks the balance, so a deposit you cannot afford simply does nothing.",
+                40f);
 
             // Modul: Play Mode audit fix. Monolith contribution (drives
             // GuildRecords Mining/Woodcutting Monolith levels) and Treasury
@@ -1191,12 +1211,16 @@ namespace FolkIdle.Client.Editor
             // CommandType.ContributeToGuild with the Depot deposit above
             // in a shadowed if/else chain server-side and had no UI at all
             // - see UiGuildLogisticsPanel's own header comments.
+            CreateGroupSectionLabel(groupObject.transform, "MONOLITHS");
+            CreateHelpText(groupObject.transform, "MonolithHelpText",
+                "Monoliths are permanent guild upgrades: the Mining Monolith raises ore yield and the Woodcutting Monolith raises log yield for every member. Material ids are 1 Copper Ore, 2 Raw Log, 3 Iron Ore, 4 Oak Log, 5 Gold Ore, 6 Magic Log.",
+                58f);
+
             TextMeshProUGUI monolithLevelsText = CreateStatRow(groupObject.transform, "Mining Lv 0  Woodcutting Lv 0");
 
             GameObject monolithRowObject = new GameObject("MonolithContributionRow", typeof(RectTransform));
             monolithRowObject.transform.SetParent(groupObject.transform, false);
-            LayoutElement monolithRowLayout = monolithRowObject.AddComponent<LayoutElement>();
-            monolithRowLayout.preferredHeight = 44f;
+            SetFixedLayoutHeight(monolithRowObject, 44f);
 
             HorizontalLayoutGroup monolithRowLayoutGroup = monolithRowObject.AddComponent<HorizontalLayoutGroup>();
             monolithRowLayoutGroup.spacing = 6f;
@@ -1219,8 +1243,7 @@ namespace FolkIdle.Client.Editor
 
             GameObject treasuryRowObject = new GameObject("TreasuryContributionRow", typeof(RectTransform));
             treasuryRowObject.transform.SetParent(groupObject.transform, false);
-            LayoutElement treasuryRowLayout = treasuryRowObject.AddComponent<LayoutElement>();
-            treasuryRowLayout.preferredHeight = 44f;
+            SetFixedLayoutHeight(treasuryRowObject, 44f);
 
             HorizontalLayoutGroup treasuryRowLayoutGroup = treasuryRowObject.AddComponent<HorizontalLayoutGroup>();
             treasuryRowLayoutGroup.spacing = 6f;
@@ -1269,16 +1292,29 @@ namespace FolkIdle.Client.Editor
             layout.childControlHeight = false;
             layout.childForceExpandHeight = false;
 
+            CreateGroupSectionLabel(groupObject.transform, "GUILD RAID BOSS");
+            CreateHelpText(groupObject.transform, "RaidMechanicsHelpText",
+                "A raid boss is fought by the whole guild at once. Once launched it takes damage automatically on a five second server tick - nobody has to click. The fight resolves entirely server-side, so members who are offline still contribute their share.",
+                58f);
+
             TextMeshProUGUI tierText = CreateStatRow(groupObject.transform, "Tier 0");
             TextMeshProUGUI hpText = CreateStatRow(groupObject.transform, "0 / 0");
 
             (GameObject barBackground, RectTransform barFill) = BuildAnchoredProgressBar(groupObject.transform, new Color(0.85f, 0.2f, 0.2f, 1f));
-            LayoutElement barLayout = barBackground.AddComponent<LayoutElement>();
-            barLayout.preferredHeight = 24f;
+            SetFixedLayoutHeight(barBackground, 24f);
+
+            CreateGroupSectionLabel(groupObject.transform, "SCALING AND REWARDS");
+            CreateHelpText(groupObject.transform, "RaidScalingHelpText",
+                "Boss health is 1,000,000 multiplied by the raid tier, so each tier is a strictly harder fight than the last. Guild damage per tick is 10 per member level summed across the roster, which means recruiting and levelling members is the only way to raise raid DPS. Victory awards 100 guild contribution points.",
+                72f);
 
             Button launchButton = CreateButton(groupObject.transform, "LaunchRaidButton", "Launch Raid", out TextMeshProUGUI _);
-            LayoutElement launchLayout = launchButton.gameObject.AddComponent<LayoutElement>();
-            launchLayout.preferredHeight = 44f;
+            ((Image)launchButton.targetGraphic).color = new Color(0.62f, 0.24f, 0.20f, 1f);
+            SetFixedLayoutHeight(launchButton.gameObject, 44f);
+
+            CreateHelpText(groupObject.transform, "RaidEntryHelpText",
+                "Entry requirements: you must be in a guild, and only one raid can be active per guild at a time. Launching again while a boss is already up does nothing - finish or lose the current one first.",
+                48f);
 
             UiGuildRaidPanel panel = groupObject.AddComponent<UiGuildRaidPanel>();
             panel.SyncProxy = syncProxy;
@@ -1309,19 +1345,34 @@ namespace FolkIdle.Client.Editor
             layout.childControlHeight = false;
             layout.childForceExpandHeight = false;
 
+            CreateGroupSectionLabel(groupObject.transform, "GUILD WAR");
+            CreateHelpText(groupObject.transform, "WarScoringHelpText",
+                "A war is scored across three independent point tracks, and the guild with the higher combined total wins. Every track is earned by normal play - there is no separate war activity to grind.",
+                48f);
+            CreateHelpText(groupObject.transform, "WarVanguardHelpText",
+                "Vanguard: 10 points per monster your members kill, and 500 for a regional boss. This is the track that rewards simply staying in combat.",
+                40f);
+            CreateHelpText(groupObject.transform, "WarLogisticsHelpText",
+                "Logistics: 50 points per region tier for each crafted item of region tier 5 or higher. Only endgame crafts score, so this track rewards a guild with deep crafting progression.",
+                48f);
+            CreateHelpText(groupObject.transform, "WarSupplyHelpText",
+                "Supply: 100 points per 1,000 units of material burned through the contribution box below. Materials are consumed permanently, so this track converts stockpiles directly into score.",
+                48f);
+
             TextMeshProUGUI statusText = CreateStatRow(groupObject.transform, "War Status");
 
             GameObject noActiveWarRoot = new GameObject("NoActiveWarRoot", typeof(RectTransform));
             noActiveWarRoot.transform.SetParent(groupObject.transform, false);
-            LayoutElement noActiveLayout = noActiveWarRoot.AddComponent<LayoutElement>();
-            noActiveLayout.preferredHeight = 26f;
+            SetFixedLayoutHeight(noActiveWarRoot, 26f);
             TextMeshProUGUI countdownText = CreateText(noActiveWarRoot.transform, "MatchmakingCountdownText", string.Empty, 14f, TextAlignmentOptions.MidlineLeft);
             StretchFull((RectTransform)countdownText.transform);
 
             GameObject activeWarRoot = new GameObject("ActiveWarRoot", typeof(RectTransform));
             activeWarRoot.transform.SetParent(groupObject.transform, false);
-            LayoutElement activeWarLayout = activeWarRoot.AddComponent<LayoutElement>();
-            activeWarLayout.preferredHeight = 416f;
+            // Grown from 416 to fit the scoreboard caveat and the supply-cost
+            // explanation added below; a VerticalLayoutGroup slot that is too
+            // short silently clips its own tail rows.
+            SetFixedLayoutHeight(activeWarRoot, 508f);
 
             VerticalLayoutGroup activeWarLayoutGroup = activeWarRoot.AddComponent<VerticalLayoutGroup>();
             activeWarLayoutGroup.spacing = 4f;
@@ -1341,18 +1392,27 @@ namespace FolkIdle.Client.Editor
             TextMeshProUGUI enemySupplyPointsText = CreateStatRow(activeWarRoot.transform, "Enemy Supply: 0");
             TextMeshProUGUI multiplierText = CreateStatRow(activeWarRoot.transform, "x100");
 
+            // Modul: honesty note, not a placeholder. The six scoreboard
+            // values above are read from TickStatePayload fields that no
+            // server code writes yet - GuildWarMatches holds the real running
+            // totals, but nothing copies them back into each member's live
+            // payload (that needs a new periodic per-guild sync loop, tracked
+            // as an open item). Contributions genuinely do score; only this
+            // live readout is stale, and saying so beats six silent zeros
+            // that look like a broken feature.
+            CreateHelpText(activeWarRoot.transform, "WarScoreboardCaveatText",
+                "Live scoreboard totals are not being pushed to clients yet, so these six numbers may read zero during a real war. Your contributions are still recorded server-side and still count toward the result.",
+                48f);
+
             Button defendButton = CreateButton(activeWarRoot.transform, "DefendButton", "Defend", out TextMeshProUGUI _);
-            LayoutElement defendButtonLayout = defendButton.gameObject.AddComponent<LayoutElement>();
-            defendButtonLayout.preferredHeight = 46f;
+            SetFixedLayoutHeight(defendButton.gameObject, 46f);
 
             Button attackButton = CreateButton(activeWarRoot.transform, "AttackButton", "Attack", out TextMeshProUGUI _);
-            LayoutElement attackButtonLayout = attackButton.gameObject.AddComponent<LayoutElement>();
-            attackButtonLayout.preferredHeight = 46f;
+            SetFixedLayoutHeight(attackButton.gameObject, 46f);
 
             GameObject contributeRowObject = new GameObject("ContributeSupplyRow", typeof(RectTransform));
             contributeRowObject.transform.SetParent(activeWarRoot.transform, false);
-            LayoutElement contributeRowLayout = contributeRowObject.AddComponent<LayoutElement>();
-            contributeRowLayout.preferredHeight = 44f;
+            SetFixedLayoutHeight(contributeRowObject, 44f);
 
             HorizontalLayoutGroup contributeRowLayoutGroup = contributeRowObject.AddComponent<HorizontalLayoutGroup>();
             contributeRowLayoutGroup.spacing = 6f;
@@ -1360,6 +1420,10 @@ namespace FolkIdle.Client.Editor
             contributeRowLayoutGroup.childForceExpandWidth = false;
             contributeRowLayoutGroup.childControlHeight = true;
             contributeRowLayoutGroup.childForceExpandHeight = true;
+
+            CreateHelpText(activeWarRoot.transform, "WarSupplyCostHelpText",
+                "Material ids are 1 Copper Ore, 2 Raw Log, 3 Iron Ore, 4 Oak Log, 5 Gold Ore, 6 Magic Log. Quantities below 1,000 are consumed but score no points, so contribute in full thousands.",
+                44f);
 
             TMP_InputField contributeCommodityIdField = CreateInputField(contributeRowObject.transform, "ContributeCommodityIdField", "Item#");
             LayoutElement contributeCommodityIdLayout = contributeCommodityIdField.gameObject.AddComponent<LayoutElement>();
@@ -1402,6 +1466,55 @@ namespace FolkIdle.Client.Editor
         // A horizontal row of N equal-width tab buttons filling the given
         // RectTransform - shared by every UiTabGroup instance in this file
         // (Guild's four sub-tabs, Market & Bank's two).
+        // Modul: Guild sub-tab polish. A wrapped explanatory paragraph sized
+        // for a VerticalLayoutGroup slot, matching the description lines
+        // added to the Village rows and the World Boss panel. Non-interactive
+        // and deliberately dim, so it reads as guidance rather than as data.
+        // Modul: Guild sub-tab polish. The trap CreateStatRow documents,
+        // factored out. Every guild group runs a VerticalLayoutGroup with
+        // childControlHeight = false, which ignores LayoutElement.preferredHeight
+        // entirely - so a button or bar created here kept its own default
+        // RectTransform size and rendered enormously taller than the slot the
+        // layout maths had reserved for it (a 44px Donate button drawing ~100px
+        // tall, overlapping the row beneath). Setting both keeps the declared
+        // height and the real height in agreement.
+        private static LayoutElement SetFixedLayoutHeight(GameObject target, float height)
+        {
+            LayoutElement layoutElement = target.GetComponent<LayoutElement>();
+            if (layoutElement == null)
+            {
+                layoutElement = target.AddComponent<LayoutElement>();
+            }
+            layoutElement.preferredHeight = height;
+            layoutElement.minHeight = height;
+
+            RectTransform rect = (RectTransform)target.transform;
+            rect.sizeDelta = new Vector2(rect.sizeDelta.x, height);
+            return layoutElement;
+        }
+
+        private static TextMeshProUGUI CreateHelpText(Transform parent, string objectName, string body, float preferredHeight)
+        {
+            TextMeshProUGUI text = CreateText(parent, objectName, body, 12f, TextAlignmentOptions.TopLeft);
+            text.color = new Color(1f, 1f, 1f, 0.55f);
+            text.raycastTarget = false;
+            SetFixedLayoutHeight(text.gameObject, preferredHeight);
+            return text;
+        }
+
+        // Modul: Guild sub-tab polish. A gold section label inside one of the
+        // guild groups, same visual language as the hamburger menu sections
+        // and the Combat screen's roster header.
+        private static TextMeshProUGUI CreateGroupSectionLabel(Transform parent, string title)
+        {
+            TextMeshProUGUI text = CreateText(parent, "Section_" + title, title, 13f, TextAlignmentOptions.MidlineLeft);
+            text.color = new Color(0.85f, 0.72f, 0.45f, 1f);
+            text.characterSpacing = 6f;
+            text.raycastTarget = false;
+            SetFixedLayoutHeight(text.gameObject, 24f);
+            return text;
+        }
+
         private static Button[] BuildSubTabButtons(RectTransform areaRect, string[] labels)
         {
             HorizontalLayoutGroup layout = areaRect.gameObject.AddComponent<HorizontalLayoutGroup>();
@@ -1447,8 +1560,7 @@ namespace FolkIdle.Client.Editor
         {
             GameObject rowObject = new GameObject(rowName, typeof(RectTransform));
             rowObject.transform.SetParent(parent, false);
-            LayoutElement rowLayout = rowObject.AddComponent<LayoutElement>();
-            rowLayout.preferredHeight = 44f;
+            SetFixedLayoutHeight(rowObject, 44f);
 
             HorizontalLayoutGroup rowLayoutGroup = rowObject.AddComponent<HorizontalLayoutGroup>();
             rowLayoutGroup.spacing = 10f;
@@ -1999,8 +2111,7 @@ namespace FolkIdle.Client.Editor
             TextMeshProUGUI materialsText = CreateStatRow(panelObject.transform, "+0 Materials");
 
             Button dismissButton = CreateButton(panelObject.transform, "DismissButton", "OK", out TextMeshProUGUI _);
-            LayoutElement dismissLayout = dismissButton.gameObject.AddComponent<LayoutElement>();
-            dismissLayout.preferredHeight = 48f;
+            SetFixedLayoutHeight(dismissButton.gameObject, 48f);
 
             UiOfflineSummaryWindow modal = controllerObject.AddComponent<UiOfflineSummaryWindow>();
             modal.SyncProxy = syncProxy;
@@ -2528,8 +2639,7 @@ namespace FolkIdle.Client.Editor
             TextMeshProUGUI requiredMaterialText = CreateStatRow(textStackObject.transform, "Materials: -");
 
             Button craftButton = CreateButton(textStackObject.transform, "CraftButton", "Craft", out TextMeshProUGUI _);
-            LayoutElement craftButtonLayout = craftButton.gameObject.AddComponent<LayoutElement>();
-            craftButtonLayout.preferredHeight = 44f;
+            SetFixedLayoutHeight(craftButton.gameObject, 44f);
 
             UiForgeCraftingPanel craftingPanel = groupObject.AddComponent<UiForgeCraftingPanel>();
             craftingPanel.InventoryCache = inventoryCache;
@@ -2631,22 +2741,18 @@ namespace FolkIdle.Client.Editor
 
             TextMeshProUGUI targetSlotText = CreateStatRow(detailAreaObject.transform, "Target: (none)");
             Button selectTargetButton = CreateButton(detailAreaObject.transform, "SelectTargetButton", "Select Target", out TextMeshProUGUI _);
-            LayoutElement selectTargetLayout = selectTargetButton.gameObject.AddComponent<LayoutElement>();
-            selectTargetLayout.preferredHeight = 36f;
+            SetFixedLayoutHeight(selectTargetButton.gameObject, 36f);
 
             TextMeshProUGUI sac1SlotText = CreateStatRow(detailAreaObject.transform, "Sacrifice 1: (none)");
             Button selectSac1Button = CreateButton(detailAreaObject.transform, "SelectSacrifice1Button", "Select Sacrifice 1", out TextMeshProUGUI _);
-            LayoutElement selectSac1Layout = selectSac1Button.gameObject.AddComponent<LayoutElement>();
-            selectSac1Layout.preferredHeight = 36f;
+            SetFixedLayoutHeight(selectSac1Button.gameObject, 36f);
 
             TextMeshProUGUI sac2SlotText = CreateStatRow(detailAreaObject.transform, "Sacrifice 2: (none)");
             Button selectSac2Button = CreateButton(detailAreaObject.transform, "SelectSacrifice2Button", "Select Sacrifice 2", out TextMeshProUGUI _);
-            LayoutElement selectSac2Layout = selectSac2Button.gameObject.AddComponent<LayoutElement>();
-            selectSac2Layout.preferredHeight = 36f;
+            SetFixedLayoutHeight(selectSac2Button.gameObject, 36f);
 
             Button fuseButton = CreateButton(detailAreaObject.transform, "FuseButton", "Fuse", out TextMeshProUGUI _);
-            LayoutElement fuseButtonLayout = fuseButton.gameObject.AddComponent<LayoutElement>();
-            fuseButtonLayout.preferredHeight = 44f;
+            SetFixedLayoutHeight(fuseButton.gameObject, 44f);
 
             TextMeshProUGUI statusText = CreateStatRow(detailAreaObject.transform, string.Empty);
 
@@ -2731,8 +2837,7 @@ namespace FolkIdle.Client.Editor
             {
                 GameObject affixRowObject = new GameObject("AffixSlotRow" + i, typeof(RectTransform));
                 affixRowObject.transform.SetParent(textStackObject.transform, false);
-                LayoutElement affixRowLayout = affixRowObject.AddComponent<LayoutElement>();
-                affixRowLayout.preferredHeight = 30f;
+                SetFixedLayoutHeight(affixRowObject, 30f);
 
                 HorizontalLayoutGroup affixRowLayoutGroup = affixRowObject.AddComponent<HorizontalLayoutGroup>();
                 affixRowLayoutGroup.spacing = 6f;
@@ -2764,8 +2869,7 @@ namespace FolkIdle.Client.Editor
             TextMeshProUGUI rerollCostText = CreateStatRow(textStackObject.transform, "Cost: -");
 
             Button rerollButton = CreateButton(textStackObject.transform, "RerollButton", "Reroll", out TextMeshProUGUI _);
-            LayoutElement rerollButtonLayout = rerollButton.gameObject.AddComponent<LayoutElement>();
-            rerollButtonLayout.preferredHeight = 44f;
+            SetFixedLayoutHeight(rerollButton.gameObject, 44f);
 
             UiEquipmentRerollPanel rerollPanel = groupObject.AddComponent<UiEquipmentRerollPanel>();
             rerollPanel.InventoryCache = inventoryCache;
@@ -2957,8 +3061,7 @@ namespace FolkIdle.Client.Editor
         {
             GameObject nodeObject = new GameObject(nodeName, typeof(RectTransform));
             nodeObject.transform.SetParent(parent, false);
-            LayoutElement nodeLayout = nodeObject.AddComponent<LayoutElement>();
-            nodeLayout.preferredHeight = 90f;
+            SetFixedLayoutHeight(nodeObject, 90f);
             nodeObject.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.05f);
 
             HorizontalLayoutGroup nodeLayoutGroup = nodeObject.AddComponent<HorizontalLayoutGroup>();
@@ -3099,8 +3202,7 @@ namespace FolkIdle.Client.Editor
             GameObject rowObject = new GameObject(rowName, typeof(RectTransform));
             rowObject.transform.SetParent(parent, false);
             ((RectTransform)rowObject.transform).sizeDelta = new Vector2(0f, 104f);
-            LayoutElement rowLayout = rowObject.AddComponent<LayoutElement>();
-            rowLayout.preferredHeight = 104f;
+            SetFixedLayoutHeight(rowObject, 104f);
             rowObject.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.04f);
 
             VerticalLayoutGroup rowLayoutGroup = rowObject.AddComponent<VerticalLayoutGroup>();
@@ -3122,8 +3224,7 @@ namespace FolkIdle.Client.Editor
 
             GameObject headerRowObject = new GameObject("HeaderRow", typeof(RectTransform));
             headerRowObject.transform.SetParent(rowObject.transform, false);
-            LayoutElement headerRowLayout = headerRowObject.AddComponent<LayoutElement>();
-            headerRowLayout.preferredHeight = 26f;
+            SetFixedLayoutHeight(headerRowObject, 26f);
 
             HorizontalLayoutGroup headerLayoutGroup = headerRowObject.AddComponent<HorizontalLayoutGroup>();
             headerLayoutGroup.spacing = 8f;
@@ -3146,8 +3247,7 @@ namespace FolkIdle.Client.Editor
 
             GameObject progressBarRoot = new GameObject("ProgressBarRoot", typeof(RectTransform));
             progressBarRoot.transform.SetParent(rowObject.transform, false);
-            LayoutElement progressBarLayout = progressBarRoot.AddComponent<LayoutElement>();
-            progressBarLayout.preferredHeight = 20f;
+            SetFixedLayoutHeight(progressBarRoot, 20f);
 
             HorizontalLayoutGroup progressLayoutGroup = progressBarRoot.AddComponent<HorizontalLayoutGroup>();
             progressLayoutGroup.spacing = 6f;
@@ -3179,13 +3279,11 @@ namespace FolkIdle.Client.Editor
 
             TextMeshProUGUI descriptionText = CreateText(rowObject.transform, "DescriptionText", description, 12f, TextAlignmentOptions.TopLeft);
             descriptionText.color = new Color(1f, 1f, 1f, 0.55f);
-            LayoutElement descriptionLayout = descriptionText.gameObject.AddComponent<LayoutElement>();
-            descriptionLayout.preferredHeight = 32f;
+            SetFixedLayoutHeight(descriptionText.gameObject, 32f);
 
             TextMeshProUGUI costText = CreateText(rowObject.transform, "CostText", string.Empty, 12f, TextAlignmentOptions.MidlineLeft);
             costText.color = new Color(0.95f, 0.82f, 0.45f, 1f);
-            LayoutElement costLayout = costText.gameObject.AddComponent<LayoutElement>();
-            costLayout.preferredHeight = 20f;
+            SetFixedLayoutHeight(costText.gameObject, 20f);
 
             UiVillageBuildingRow rowComponent = rowObject.AddComponent<UiVillageBuildingRow>();
             rowComponent.BuildingId = buildingId;
@@ -3420,8 +3518,7 @@ namespace FolkIdle.Client.Editor
 
             GameObject headerRow = new GameObject("HeaderRow", typeof(RectTransform));
             headerRow.transform.SetParent(root.transform, false);
-            LayoutElement headerRowLayout = headerRow.AddComponent<LayoutElement>();
-            headerRowLayout.preferredHeight = 18f;
+            SetFixedLayoutHeight(headerRow, 18f);
             HorizontalLayoutGroup headerLayoutGroup = headerRow.AddComponent<HorizontalLayoutGroup>();
             headerLayoutGroup.childControlWidth = true;
             headerLayoutGroup.childForceExpandWidth = false;
@@ -3443,8 +3540,7 @@ namespace FolkIdle.Client.Editor
 
             GameObject progressRow = new GameObject("ProgressRow", typeof(RectTransform));
             progressRow.transform.SetParent(root.transform, false);
-            LayoutElement progressRowLayout = progressRow.AddComponent<LayoutElement>();
-            progressRowLayout.preferredHeight = 16f;
+            SetFixedLayoutHeight(progressRow, 16f);
             HorizontalLayoutGroup progressRowLayoutGroup = progressRow.AddComponent<HorizontalLayoutGroup>();
             progressRowLayoutGroup.spacing = 6f;
             progressRowLayoutGroup.childControlWidth = true;
@@ -3472,8 +3568,7 @@ namespace FolkIdle.Client.Editor
             progressTextLayout.preferredWidth = 80f;
 
             TextMeshProUGUI bonusText = CreateText(root.transform, "BonusFlagText", string.Empty, 12f, TextAlignmentOptions.MidlineLeft);
-            LayoutElement bonusTextLayout = bonusText.gameObject.AddComponent<LayoutElement>();
-            bonusTextLayout.preferredHeight = 16f;
+            SetFixedLayoutHeight(bonusText.gameObject, 16f);
             bonusText.color = new Color(1f, 0.85f, 0.3f, 1f);
             bonusText.gameObject.SetActive(false);
 
@@ -3530,8 +3625,7 @@ namespace FolkIdle.Client.Editor
 
             GameObject slotRowObject = new GameObject("SlotRow", typeof(RectTransform));
             slotRowObject.transform.SetParent(detailAreaObject.transform, false);
-            LayoutElement slotRowLayout = slotRowObject.AddComponent<LayoutElement>();
-            slotRowLayout.preferredHeight = 34f;
+            SetFixedLayoutHeight(slotRowObject, 34f);
             HorizontalLayoutGroup slotRowLayoutGroup = slotRowObject.AddComponent<HorizontalLayoutGroup>();
             slotRowLayoutGroup.spacing = 8f;
             slotRowLayoutGroup.childControlWidth = true;
@@ -3557,13 +3651,11 @@ namespace FolkIdle.Client.Editor
             TextMeshProUGUI inbredRiskText = CreateStatRow(detailAreaObject.transform, string.Empty);
 
             Button fuseButton = CreateButton(detailAreaObject.transform, "FuseGenesButton", "Fuse Genes", out TextMeshProUGUI _);
-            LayoutElement fuseButtonLayout = fuseButton.gameObject.AddComponent<LayoutElement>();
-            fuseButtonLayout.preferredHeight = 44f;
+            SetFixedLayoutHeight(fuseButton.gameObject, 44f);
 
             GameObject hatchingRoot = new GameObject("HatchingAnimationRoot", typeof(RectTransform));
             hatchingRoot.transform.SetParent(detailAreaObject.transform, false);
-            LayoutElement hatchingLayout = hatchingRoot.AddComponent<LayoutElement>();
-            hatchingLayout.preferredHeight = 20f;
+            SetFixedLayoutHeight(hatchingRoot, 20f);
             TextMeshProUGUI hatchingText = CreateText(hatchingRoot.transform, "HatchingText", "A new creature has been born!", 13f, TextAlignmentOptions.Center);
             StretchFull((RectTransform)hatchingText.transform);
 
@@ -3593,8 +3685,7 @@ namespace FolkIdle.Client.Editor
         {
             GameObject rowObject = new GameObject(rowName, typeof(RectTransform));
             rowObject.transform.SetParent(parent, false);
-            LayoutElement rowLayout = rowObject.AddComponent<LayoutElement>();
-            rowLayout.preferredHeight = 26f;
+            SetFixedLayoutHeight(rowObject, 26f);
 
             HorizontalLayoutGroup rowLayoutGroup = rowObject.AddComponent<HorizontalLayoutGroup>();
             rowLayoutGroup.spacing = 4f;
@@ -3802,8 +3893,7 @@ namespace FolkIdle.Client.Editor
         {
             GameObject root = new GameObject(displayName + "Row", typeof(RectTransform));
             root.transform.SetParent(parent, false);
-            LayoutElement rootLayout = root.AddComponent<LayoutElement>();
-            rootLayout.preferredHeight = 58f;
+            SetFixedLayoutHeight(root, 58f);
             root.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.05f);
 
             VerticalLayoutGroup layout = root.AddComponent<VerticalLayoutGroup>();
@@ -3816,8 +3906,7 @@ namespace FolkIdle.Client.Editor
 
             GameObject headerRow = new GameObject("HeaderRow", typeof(RectTransform));
             headerRow.transform.SetParent(root.transform, false);
-            LayoutElement headerRowLayout = headerRow.AddComponent<LayoutElement>();
-            headerRowLayout.preferredHeight = 20f;
+            SetFixedLayoutHeight(headerRow, 20f);
 
             HorizontalLayoutGroup headerLayoutGroup = headerRow.AddComponent<HorizontalLayoutGroup>();
             headerLayoutGroup.childControlWidth = true;
@@ -3835,8 +3924,7 @@ namespace FolkIdle.Client.Editor
 
             GameObject progressRow = new GameObject("ProgressRow", typeof(RectTransform));
             progressRow.transform.SetParent(root.transform, false);
-            LayoutElement progressRowLayout = progressRow.AddComponent<LayoutElement>();
-            progressRowLayout.preferredHeight = 16f;
+            SetFixedLayoutHeight(progressRow, 16f);
 
             HorizontalLayoutGroup progressRowLayoutGroup = progressRow.AddComponent<HorizontalLayoutGroup>();
             progressRowLayoutGroup.spacing = 6f;
@@ -3933,12 +4021,10 @@ namespace FolkIdle.Client.Editor
             layout.childForceExpandHeight = false;
 
             TextMeshProUGUI dayLabel = CreateText(boxObject.transform, "DayLabel", "Day " + day, 13f, TextAlignmentOptions.Center);
-            LayoutElement dayLabelLayout = dayLabel.gameObject.AddComponent<LayoutElement>();
-            dayLabelLayout.preferredHeight = 18f;
+            SetFixedLayoutHeight(dayLabel.gameObject, 18f);
 
             TextMeshProUGUI rewardText = CreateText(boxObject.transform, "RewardText", "0g", 12f, TextAlignmentOptions.Center);
-            LayoutElement rewardTextLayout = rewardText.gameObject.AddComponent<LayoutElement>();
-            rewardTextLayout.preferredHeight = 32f;
+            SetFixedLayoutHeight(rewardText.gameObject, 32f);
 
             return new LoginBonusDayBoxRefs
             {
@@ -4057,6 +4143,305 @@ namespace FolkIdle.Client.Editor
             panel.DeleteWarningText = deleteWarningText;
 
             return windowObject;
+        }
+
+        // ------------------------------------------------------------
+        // Inventory screen. Equipped gear, backpack (equipment instances and
+        // carried material stacks) and the village stash, in one scrolling
+        // list. See UiInventoryPanel for why none of this was visible before.
+        // ------------------------------------------------------------
+        private static GameObject BuildInventoryWindow(Transform canvasTransform, AssetRegistry assetRegistry, VisualSyncProxy syncProxy)
+        {
+            GameObject windowObject = BuildSimpleListWindowShell("InventoryWindow", canvasTransform, "Inventory", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+
+            TextMeshProUGUI summaryText = CreateText(contentAreaRect, "SummaryText", "Loading inventory...", 13f, TextAlignmentOptions.MidlineLeft);
+            summaryText.color = new Color(1f, 1f, 1f, 0.7f);
+            RectTransform summaryRect = (RectTransform)summaryText.transform;
+            summaryRect.anchorMin = new Vector2(0f, 1f);
+            summaryRect.anchorMax = new Vector2(1f, 1f);
+            summaryRect.pivot = new Vector2(0.5f, 1f);
+            summaryRect.sizeDelta = new Vector2(-110f, 30f);
+            summaryRect.anchoredPosition = new Vector2(-55f, 0f);
+
+            Button refreshButton = CreateButton(contentAreaRect, "RefreshButton", "Refresh", out TextMeshProUGUI _);
+            ((Image)refreshButton.targetGraphic).color = new Color(0.22f, 0.30f, 0.42f, 1f);
+            RectTransform refreshRect = (RectTransform)refreshButton.transform;
+            refreshRect.anchorMin = new Vector2(1f, 1f);
+            refreshRect.anchorMax = new Vector2(1f, 1f);
+            refreshRect.pivot = new Vector2(1f, 1f);
+            refreshRect.sizeDelta = new Vector2(100f, 32f);
+            refreshRect.anchoredPosition = Vector2.zero;
+
+            GameObject scrollAreaObject = new GameObject("ScrollArea", typeof(RectTransform));
+            scrollAreaObject.transform.SetParent(contentAreaRect, false);
+            RectTransform scrollAreaRect = (RectTransform)scrollAreaObject.transform;
+            scrollAreaRect.anchorMin = Vector2.zero;
+            scrollAreaRect.anchorMax = Vector2.one;
+            scrollAreaRect.offsetMin = Vector2.zero;
+            scrollAreaRect.offsetMax = new Vector2(0f, -36f);
+
+            (ScrollRect _, RectTransform content) = ChatSceneBuilder.BuildScrollView(scrollAreaRect);
+            StretchFull((RectTransform)content.parent.parent);
+
+            UiInventoryPanel panel = windowObject.AddComponent<UiInventoryPanel>();
+            panel.Registry = assetRegistry;
+            panel.SyncProxy = syncProxy;
+            panel.SummaryText = summaryText;
+            panel.RefreshButton = refreshButton;
+            panel.RowContainer = content;
+            panel.RowPrefab = BuildAndSaveInventoryRowPrefab().GetComponent<UiInventoryEntryRow>();
+            panel.SectionHeaderPrefab = BuildAndSaveSectionHeaderRowPrefab().GetComponent<UiSectionHeaderRow>();
+
+            return windowObject;
+        }
+
+        // ------------------------------------------------------------
+        // Crafting Tree screen. ContentRegistry's 103 recipes, grouped by
+        // profession, with real per-material stock and one-click craft.
+        // ------------------------------------------------------------
+        private static GameObject BuildCraftingTreeWindow(Transform canvasTransform, WebSocketClient networkClient, AssetRegistry assetRegistry)
+        {
+            GameObject windowObject = BuildSimpleListWindowShell("CraftingWindow", canvasTransform, "Crafting", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+
+            TextMeshProUGUI summaryText = CreateText(contentAreaRect, "SummaryText", "Loading recipes...", 13f, TextAlignmentOptions.MidlineLeft);
+            summaryText.color = new Color(1f, 1f, 1f, 0.7f);
+            RectTransform summaryRect = (RectTransform)summaryText.transform;
+            summaryRect.anchorMin = new Vector2(0f, 1f);
+            summaryRect.anchorMax = new Vector2(1f, 1f);
+            summaryRect.pivot = new Vector2(0.5f, 1f);
+            summaryRect.sizeDelta = new Vector2(-110f, 28f);
+            summaryRect.anchoredPosition = new Vector2(-55f, 0f);
+
+            Button refreshButton = CreateButton(contentAreaRect, "RefreshButton", "Refresh", out TextMeshProUGUI _);
+            ((Image)refreshButton.targetGraphic).color = new Color(0.22f, 0.30f, 0.42f, 1f);
+            RectTransform refreshRect = (RectTransform)refreshButton.transform;
+            refreshRect.anchorMin = new Vector2(1f, 1f);
+            refreshRect.anchorMax = new Vector2(1f, 1f);
+            refreshRect.pivot = new Vector2(1f, 1f);
+            refreshRect.sizeDelta = new Vector2(100f, 32f);
+            refreshRect.anchoredPosition = Vector2.zero;
+
+            // Profession filter strip. 103 recipes is not a browsable flat
+            // list on a portrait phone, and the four professions are genuinely
+            // separate progressions.
+            GameObject filterRowObject = new GameObject("ProfessionFilterRow", typeof(RectTransform));
+            filterRowObject.transform.SetParent(contentAreaRect, false);
+            RectTransform filterRowRect = (RectTransform)filterRowObject.transform;
+            filterRowRect.anchorMin = new Vector2(0f, 1f);
+            filterRowRect.anchorMax = new Vector2(1f, 1f);
+            filterRowRect.pivot = new Vector2(0.5f, 1f);
+            filterRowRect.sizeDelta = new Vector2(0f, 38f);
+            filterRowRect.anchoredPosition = new Vector2(0f, -32f);
+
+            string[] filterLabels = { "Smelting", "Equipment", "Cooking", "Alchemy", "All" };
+            int[] filterValues = { 2, 3, 4, 5, -1 };
+            Button[] filterButtons = BuildSubTabButtons(filterRowRect, filterLabels);
+
+            TextMeshProUGUI statusText = CreateText(contentAreaRect, "StatusText", string.Empty, 12f, TextAlignmentOptions.MidlineLeft);
+            statusText.color = new Color(1f, 0.86f, 0.6f, 1f);
+            RectTransform statusRect = (RectTransform)statusText.transform;
+            statusRect.anchorMin = new Vector2(0f, 1f);
+            statusRect.anchorMax = new Vector2(1f, 1f);
+            statusRect.pivot = new Vector2(0.5f, 1f);
+            statusRect.sizeDelta = new Vector2(0f, 20f);
+            statusRect.anchoredPosition = new Vector2(0f, -72f);
+
+            GameObject scrollAreaObject = new GameObject("ScrollArea", typeof(RectTransform));
+            scrollAreaObject.transform.SetParent(contentAreaRect, false);
+            RectTransform scrollAreaRect = (RectTransform)scrollAreaObject.transform;
+            scrollAreaRect.anchorMin = Vector2.zero;
+            scrollAreaRect.anchorMax = Vector2.one;
+            scrollAreaRect.offsetMin = Vector2.zero;
+            scrollAreaRect.offsetMax = new Vector2(0f, -96f);
+
+            (ScrollRect _, RectTransform content) = ChatSceneBuilder.BuildScrollView(scrollAreaRect);
+            StretchFull((RectTransform)content.parent.parent);
+
+            UiCraftingTreePanel panel = windowObject.AddComponent<UiCraftingTreePanel>();
+            panel.NetworkClient = networkClient;
+            panel.Registry = assetRegistry;
+            panel.SummaryText = summaryText;
+            panel.StatusText = statusText;
+            panel.RefreshButton = refreshButton;
+            panel.ProfessionFilterButtons = filterButtons;
+            panel.ProfessionFilterValues = filterValues;
+            panel.RowContainer = content;
+            panel.RowPrefab = BuildAndSaveCraftingRecipeRowPrefab().GetComponent<UiCraftingRecipeRow>();
+            panel.SectionHeaderPrefab = BuildAndSaveSectionHeaderRowPrefab().GetComponent<UiSectionHeaderRow>();
+
+            return windowObject;
+        }
+
+        private static GameObject BuildAndSaveInventoryRowPrefab()
+        {
+            EnsureFolder(PrefabDirectory);
+
+            GameObject root = new GameObject("UiInventoryEntryRow", typeof(RectTransform));
+            ((RectTransform)root.transform).sizeDelta = new Vector2(0f, 56f);
+            root.AddComponent<Image>().color = new Color(0.17f, 0.17f, 0.22f, 1f);
+
+            Image icon = new GameObject("Icon", typeof(RectTransform)).AddComponent<Image>();
+            icon.transform.SetParent(root.transform, false);
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+            RectTransform iconRect = (RectTransform)icon.transform;
+            iconRect.anchorMin = new Vector2(0f, 0.5f);
+            iconRect.anchorMax = new Vector2(0f, 0.5f);
+            iconRect.pivot = new Vector2(0f, 0.5f);
+            iconRect.sizeDelta = new Vector2(48f, 48f);
+            iconRect.anchoredPosition = new Vector2(4f, 0f);
+
+            Image equippedMarker = new GameObject("EquippedMarker", typeof(RectTransform)).AddComponent<Image>();
+            equippedMarker.transform.SetParent(root.transform, false);
+            equippedMarker.color = new Color(0.45f, 0.85f, 0.5f, 1f);
+            equippedMarker.raycastTarget = false;
+            RectTransform markerRect = (RectTransform)equippedMarker.transform;
+            markerRect.anchorMin = new Vector2(0f, 0f);
+            markerRect.anchorMax = new Vector2(0f, 1f);
+            markerRect.pivot = new Vector2(0f, 0.5f);
+            markerRect.sizeDelta = new Vector2(4f, 0f);
+            markerRect.anchoredPosition = Vector2.zero;
+            equippedMarker.gameObject.SetActive(false);
+
+            TextMeshProUGUI nameText = CreateText(root.transform, "NameText", "Item", 15f, TextAlignmentOptions.BottomLeft);
+            nameText.raycastTarget = false;
+            RectTransform nameRect = (RectTransform)nameText.transform;
+            nameRect.anchorMin = new Vector2(0f, 0.5f);
+            nameRect.anchorMax = new Vector2(1f, 1f);
+            nameRect.offsetMin = new Vector2(58f, 0f);
+            nameRect.offsetMax = new Vector2(-130f, -4f);
+
+            TextMeshProUGUI detailText = CreateText(root.transform, "DetailText", string.Empty, 12f, TextAlignmentOptions.TopLeft);
+            detailText.color = new Color(1f, 1f, 1f, 0.65f);
+            detailText.raycastTarget = false;
+            RectTransform detailRect = (RectTransform)detailText.transform;
+            detailRect.anchorMin = new Vector2(0f, 0f);
+            detailRect.anchorMax = new Vector2(1f, 0.5f);
+            detailRect.offsetMin = new Vector2(58f, 4f);
+            detailRect.offsetMax = new Vector2(-130f, 0f);
+
+            TextMeshProUGUI quantityText = CreateText(root.transform, "QuantityText", string.Empty, 13f, TextAlignmentOptions.MidlineRight);
+            quantityText.raycastTarget = false;
+            RectTransform quantityRect = (RectTransform)quantityText.transform;
+            quantityRect.anchorMin = new Vector2(1f, 0f);
+            quantityRect.anchorMax = new Vector2(1f, 1f);
+            quantityRect.pivot = new Vector2(1f, 0.5f);
+            quantityRect.sizeDelta = new Vector2(124f, 0f);
+            quantityRect.anchoredPosition = new Vector2(-8f, 0f);
+
+            UiInventoryEntryRow rowComponent = root.AddComponent<UiInventoryEntryRow>();
+            rowComponent.IconImage = icon;
+            rowComponent.EquippedMarker = equippedMarker;
+            rowComponent.NameText = nameText;
+            rowComponent.DetailText = detailText;
+            rowComponent.QuantityText = quantityText;
+
+            GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(root, InventoryRowPrefabPath, out bool success);
+            if (!success)
+            {
+                Debug.LogError("MainSceneBuilder: failed to save UiInventoryEntryRow prefab asset.");
+            }
+            Object.DestroyImmediate(root);
+            return prefabAsset;
+        }
+
+        private static GameObject BuildAndSaveSectionHeaderRowPrefab()
+        {
+            EnsureFolder(PrefabDirectory);
+
+            GameObject root = new GameObject("UiSectionHeaderRow", typeof(RectTransform));
+            ((RectTransform)root.transform).sizeDelta = new Vector2(0f, 30f);
+
+            TextMeshProUGUI titleText = CreateText(root.transform, "TitleText", "SECTION", 13f, TextAlignmentOptions.MidlineLeft);
+            titleText.color = new Color(0.85f, 0.72f, 0.45f, 1f);
+            titleText.characterSpacing = 6f;
+            titleText.raycastTarget = false;
+            RectTransform titleRect = (RectTransform)titleText.transform;
+            titleRect.anchorMin = Vector2.zero;
+            titleRect.anchorMax = Vector2.one;
+            titleRect.offsetMin = new Vector2(4f, 0f);
+            titleRect.offsetMax = new Vector2(-4f, 0f);
+
+            UiSectionHeaderRow rowComponent = root.AddComponent<UiSectionHeaderRow>();
+            rowComponent.TitleText = titleText;
+
+            GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(root, SectionHeaderRowPrefabPath, out bool success);
+            if (!success)
+            {
+                Debug.LogError("MainSceneBuilder: failed to save UiSectionHeaderRow prefab asset.");
+            }
+            Object.DestroyImmediate(root);
+            return prefabAsset;
+        }
+
+        private static GameObject BuildAndSaveCraftingRecipeRowPrefab()
+        {
+            EnsureFolder(PrefabDirectory);
+
+            GameObject root = new GameObject("UiCraftingRecipeRow", typeof(RectTransform));
+            ((RectTransform)root.transform).sizeDelta = new Vector2(0f, 64f);
+            root.AddComponent<Image>().color = new Color(0.17f, 0.17f, 0.22f, 1f);
+
+            Image icon = new GameObject("Icon", typeof(RectTransform)).AddComponent<Image>();
+            icon.transform.SetParent(root.transform, false);
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+            RectTransform iconRect = (RectTransform)icon.transform;
+            iconRect.anchorMin = new Vector2(0f, 0.5f);
+            iconRect.anchorMax = new Vector2(0f, 0.5f);
+            iconRect.pivot = new Vector2(0f, 0.5f);
+            iconRect.sizeDelta = new Vector2(48f, 48f);
+            iconRect.anchoredPosition = new Vector2(4f, 0f);
+
+            TextMeshProUGUI nameText = CreateText(root.transform, "NameText", "Recipe", 15f, TextAlignmentOptions.BottomLeft);
+            nameText.raycastTarget = false;
+            RectTransform nameRect = (RectTransform)nameText.transform;
+            nameRect.anchorMin = new Vector2(0f, 0.52f);
+            nameRect.anchorMax = new Vector2(1f, 1f);
+            nameRect.offsetMin = new Vector2(58f, 0f);
+            nameRect.offsetMax = new Vector2(-124f, -4f);
+
+            TextMeshProUGUI requirementText = CreateText(root.transform, "RequirementText", string.Empty, 12f, TextAlignmentOptions.TopLeft);
+            requirementText.raycastTarget = false;
+            RectTransform requirementRect = (RectTransform)requirementText.transform;
+            requirementRect.anchorMin = new Vector2(0f, 0.2f);
+            requirementRect.anchorMax = new Vector2(1f, 0.52f);
+            requirementRect.offsetMin = new Vector2(58f, 0f);
+            requirementRect.offsetMax = new Vector2(-124f, 0f);
+
+            TextMeshProUGUI gateText = CreateText(root.transform, "GateText", string.Empty, 11f, TextAlignmentOptions.TopLeft);
+            gateText.color = new Color(0.95f, 0.60f, 0.55f, 1f);
+            gateText.raycastTarget = false;
+            RectTransform gateRect = (RectTransform)gateText.transform;
+            gateRect.anchorMin = new Vector2(0f, 0f);
+            gateRect.anchorMax = new Vector2(1f, 0.2f);
+            gateRect.offsetMin = new Vector2(58f, 2f);
+            gateRect.offsetMax = new Vector2(-124f, 0f);
+
+            Button craftButton = CreateButton(root.transform, "CraftButton", "Craft", out TextMeshProUGUI craftLabel);
+            ((Image)craftButton.targetGraphic).color = new Color(0.28f, 0.52f, 0.34f, 1f);
+            RectTransform craftRect = (RectTransform)craftButton.transform;
+            craftRect.anchorMin = new Vector2(1f, 0.5f);
+            craftRect.anchorMax = new Vector2(1f, 0.5f);
+            craftRect.pivot = new Vector2(1f, 0.5f);
+            craftRect.sizeDelta = new Vector2(112f, 44f);
+            craftRect.anchoredPosition = new Vector2(-6f, 0f);
+
+            UiCraftingRecipeRow rowComponent = root.AddComponent<UiCraftingRecipeRow>();
+            rowComponent.IconImage = icon;
+            rowComponent.NameText = nameText;
+            rowComponent.RequirementText = requirementText;
+            rowComponent.GateText = gateText;
+            rowComponent.CraftButton = craftButton;
+            rowComponent.CraftButtonLabel = craftLabel;
+
+            GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(root, CraftingRecipeRowPrefabPath, out bool success);
+            if (!success)
+            {
+                Debug.LogError("MainSceneBuilder: failed to save UiCraftingRecipeRow prefab asset.");
+            }
+            Object.DestroyImmediate(root);
+            return prefabAsset;
         }
 
         private static GameObject BuildLeaderboardWindow(Transform canvasTransform)
@@ -4377,17 +4762,14 @@ namespace FolkIdle.Client.Editor
             layout.childForceExpandHeight = false;
 
             TextMeshProUGUI idText = CreateText(root.transform, "AchievementIdText", "Achievement 0", 14f, TextAlignmentOptions.MidlineLeft);
-            LayoutElement idLayout = idText.gameObject.AddComponent<LayoutElement>();
-            idLayout.preferredHeight = 18f;
+            SetFixedLayoutHeight(idText.gameObject, 18f);
 
             TextMeshProUGUI tierText = CreateText(root.transform, "TierText", "Tier None", 12f, TextAlignmentOptions.MidlineLeft);
-            LayoutElement tierLayout = tierText.gameObject.AddComponent<LayoutElement>();
-            tierLayout.preferredHeight = 14f;
+            SetFixedLayoutHeight(tierText.gameObject, 14f);
 
             GameObject progressRow = new GameObject("ProgressRow", typeof(RectTransform));
             progressRow.transform.SetParent(root.transform, false);
-            LayoutElement progressRowLayout = progressRow.AddComponent<LayoutElement>();
-            progressRowLayout.preferredHeight = 16f;
+            SetFixedLayoutHeight(progressRow, 16f);
 
             HorizontalLayoutGroup progressRowLayoutGroup = progressRow.AddComponent<HorizontalLayoutGroup>();
             progressRowLayoutGroup.spacing = 6f;
@@ -4406,8 +4788,7 @@ namespace FolkIdle.Client.Editor
 
             GameObject claimRow = new GameObject("ClaimRow", typeof(RectTransform));
             claimRow.transform.SetParent(root.transform, false);
-            LayoutElement claimRowLayout = claimRow.AddComponent<LayoutElement>();
-            claimRowLayout.preferredHeight = 22f;
+            SetFixedLayoutHeight(claimRow, 22f);
 
             Button claimButton = CreateButton(claimRow.transform, "ClaimButton", "Claim", out TextMeshProUGUI _);
             RectTransform claimButtonRect = (RectTransform)claimButton.transform;
@@ -5925,8 +6306,7 @@ namespace FolkIdle.Client.Editor
         {
             GameObject rowObject = new GameObject("CurrencyRow_" + placeholderText, typeof(RectTransform));
             rowObject.transform.SetParent(parent, false);
-            LayoutElement rowLayoutElement = rowObject.AddComponent<LayoutElement>();
-            rowLayoutElement.preferredHeight = 22f;
+            SetFixedLayoutHeight(rowObject, 22f);
 
             // Modul: UI rework. Same trap CreateStatRow already documents:
             // the parent VerticalLayoutGroup runs childControlHeight = false,

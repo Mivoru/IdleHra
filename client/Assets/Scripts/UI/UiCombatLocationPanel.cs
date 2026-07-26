@@ -86,6 +86,10 @@ namespace FolkIdle.Client.UI
         public TMP_Text DeployButtonLabel;
         public TMP_Text StatusText;
 
+        private const int MaxSessionDropLines = 6;
+        private const int MaxSessionKillLines = 8;
+
+        private readonly System.Text.StringBuilder _sessionTextBuilder = new System.Text.StringBuilder(512);
         private readonly List<string> _dropdownOptionBuffer = new List<string>(8);
         private readonly List<UiCombatMonsterRow> _activeRows = new List<UiCombatMonsterRow>();
         private UIComponentPool<UiCombatMonsterRow> _rowPool;
@@ -534,24 +538,81 @@ namespace FolkIdle.Client.UI
             {
                 SessionSummaryText.text = tracker == null || !tracker.HasSession
                     ? "Send a character out to start tracking this session."
-                    : tracker.TotalKills + " kills   -   " + UiCombatMonsterRow.FormatCompact(tracker.GoldGained) + " gold   -   " + UiCombatMonsterRow.FormatCompact(tracker.XpGained) + " XP";
+                    : tracker.TotalKills + " kills   -   " + tracker.TotalItemsDropped + " items   -   "
+                        + UiCombatMonsterRow.FormatCompact(tracker.GoldGained) + " gold   -   "
+                        + UiCombatMonsterRow.FormatCompact(tracker.XpGained) + " XP";
             }
 
             if (SessionKillListText == null) return;
 
-            if (tracker == null || tracker.Kills.Count == 0)
+            if (tracker == null || (tracker.Kills.Count == 0 && tracker.Drops.Count == 0))
             {
                 SessionKillListText.text = string.Empty;
                 return;
             }
 
-            System.Text.StringBuilder builder = new System.Text.StringBuilder(256);
-            IReadOnlyList<SessionKillEntry> kills = tracker.Kills;
-            for (int i = 0; i < kills.Count && i < 8; i++)
+            // Rebuilt only when the tracker reports a change (a kill tally
+            // refresh, or an inbound loot packet), never per frame - so the
+            // StringBuilder here is off the hot path entirely.
+            _sessionTextBuilder.Clear();
+
+            IReadOnlyList<SessionDropEntry> drops = tracker.Drops;
+            if (drops.Count > 0)
             {
-                builder.Append(kills[i].MonsterName).Append("  x").Append(kills[i].Kills).Append('\n');
+                _sessionTextBuilder.Append("Loot:  ");
+                for (int i = 0; i < drops.Count && i < MaxSessionDropLines; i++)
+                {
+                    if (i > 0) _sessionTextBuilder.Append(",  ");
+                    _sessionTextBuilder.Append(drops[i].ItemName).Append(" x").Append(drops[i].Quantity);
+
+                    // Equipment carries a rarity roll worth calling out - a
+                    // Legendary drop should not read the same as a lump of
+                    // ore. Materials and scrap report tier 0 and are skipped.
+                    if (drops[i].BestQualityTier > 1)
+                    {
+                        _sessionTextBuilder.Append(" [").Append(DescribeRarity(drops[i].BestQualityTier)).Append(']');
+                    }
+                }
+
+                if (drops.Count > MaxSessionDropLines)
+                {
+                    _sessionTextBuilder.Append(",  +").Append(drops.Count - MaxSessionDropLines).Append(" more");
+                }
+
+                _sessionTextBuilder.Append('\n');
             }
-            SessionKillListText.text = builder.ToString();
+
+            IReadOnlyList<SessionKillEntry> kills = tracker.Kills;
+            for (int i = 0; i < kills.Count && i < MaxSessionKillLines; i++)
+            {
+                _sessionTextBuilder.Append(kills[i].MonsterName).Append("  x").Append(kills[i].Kills).Append('\n');
+            }
+
+            SessionKillListText.SetText(_sessionTextBuilder);
+        }
+
+        // Mirrors the server's RarityTier constants (1 Normal through 14
+        // Transcendent) - these are the names CombatLootEngine's own weight
+        // table is written against.
+        private static string DescribeRarity(byte tier)
+        {
+            switch (tier)
+            {
+                case 2: return "Common";
+                case 3: return "Uncommon";
+                case 4: return "Rare";
+                case 5: return "Ultra Rare";
+                case 6: return "Epic";
+                case 7: return "Legendary";
+                case 8: return "Mythic";
+                case 9: return "Relic";
+                case 10: return "Ancient";
+                case 11: return "Divine";
+                case 12: return "Demonic";
+                case 13: return "Godly";
+                case 14: return "Transcendent";
+                default: return "Normal";
+            }
         }
 
         // ------------------------------------------------------------
