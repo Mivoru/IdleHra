@@ -980,7 +980,10 @@ namespace FolkIdle.Client.Network
             }
         }
 
-        public void SendEquipItemCommandZeroAlloc(long itemInstanceId)
+        // Modul: per-character equipment. characterId names which character puts
+        // the item on. Guid.Empty means the main character, which is what the
+        // server falls back to, so callers that do not care keep working.
+        public void SendEquipItemCommandZeroAlloc(long itemInstanceId, System.Guid characterId = default)
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)
             {
@@ -992,7 +995,8 @@ namespace FolkIdle.Client.Network
                     TertiaryId = 0,
                     LimitPrice = 0,
                     IsBuy = 0,
-                    QualityTier = 0
+                    QualityTier = 0,
+                    TargetGuid = characterId
                 };
 
                 SendPacket(ref packet);
@@ -1000,19 +1004,44 @@ namespace FolkIdle.Client.Network
         }
 
         // isArmorSlot: false clears the weapon slot, true clears the armor slot.
-        public void SendUnequipItemCommandZeroAlloc(bool isArmorSlot)
+        // Modul: 6-slot equipment. Was a single bool that could only say
+        // "weapon or armour", which is unusable now that armour is four
+        // separate slots. TargetId carries the slot index directly - 0 Weapon,
+        // 1 Helmet, 2 Chest, 3 Gloves, 4 Leggings, 5 Boots - matching
+        // EquipmentSlotEngine's constants on the server.
+        public void SendUnequipItemCommandZeroAlloc(int slotIndex, System.Guid characterId = default)
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)
             {
                 ClientCommandPacket packet = new ClientCommandPacket
                 {
                     Command = CommandType.UnequipItem,
-                    TargetId = 0,
+                    TargetId = slotIndex,
                     SecondaryId = 0,
                     TertiaryId = 0,
                     LimitPrice = 0,
-                    IsBuy = isArmorSlot ? (byte)1 : (byte)0,
-                    QualityTier = 0
+                    IsBuy = 0,
+                    QualityTier = 0,
+                    TargetGuid = characterId
+                };
+
+                SendPacket(ref packet);
+            }
+        }
+
+        // Modul: roster. Assigns a character to a gathering node or combat
+        // location. The server enforces that no two characters share one
+        // activity (CharacterSlotEngine) and that the slot is unlocked by the
+        // Town Hall, so the client never has to be the authority on either.
+        public void SendAssignCharacterActivityCommandZeroAlloc(System.Guid characterId, long activityId)
+        {
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                ClientCommandPacket packet = new ClientCommandPacket
+                {
+                    Command = CommandType.ChangeActivity,
+                    TargetId = activityId,
+                    TargetGuid = characterId
                 };
 
                 SendPacket(ref packet);

@@ -63,21 +63,38 @@ namespace FolkIdle.Client.Engine
         public float VisualAccumulatedTimeBankMs;
         public double VisualBankedChronoSeconds;
         public bool VisualIsChronoAccelerating;
-        public uint VisualChronoEngineStatus { get; private set; }
         public ulong VisualActiveChronoLockExpirationTicks { get; private set; }
         public byte VisualCurrentSimulationSpeedMultiplier { get; private set; }
         public long VisualLogicEpochCounter;
-        public ulong VisualLogicalEpochFrameIndex;
         public bool VisualWeaponAffixLocked;
         public bool VisualArmorAffixLocked;
         public bool VisualLeggingsAffixLocked;
         public long VisualEquippedLeggingsId;
+
+        // Modul: 6-slot equipment sync. The active character's other three
+        // slots. Helmets, gloves and boots existed as items and rolled
+        // slot-correct affixes long before any equip slot or packet field could
+        // carry them, so the client had no way to show them at all.
+        public long VisualEquippedHelmetId { get; private set; }
+        public long VisualEquippedGlovesId { get; private set; }
+        public long VisualEquippedBootsId { get; private set; }
+
+        // Modul: roster registers. What characters 2 and 3 are doing. Slot 1 is
+        // not mirrored here - it is VisualActiveActivityId, and a second copy
+        // could disagree with it.
+        public int VisualSlot2ActivityId { get; private set; }
+        public int VisualSlot3ActivityId { get; private set; }
+        public byte VisualSlot2ActivityHaltReason { get; private set; }
+        public byte VisualSlot3ActivityHaltReason { get; private set; }
+        public System.Guid VisualSlot1CharacterId { get; private set; }
+        public System.Guid VisualSlot2CharacterId { get; private set; }
+        public System.Guid VisualSlot3CharacterId { get; private set; }
+        public byte VisualTownHallLevel { get; private set; }
         public int VisualMiningMonolithLevel;
         public int VisualWoodcuttingMonolithLevel;
         public float VisualWorldBossHp;
         public float VisualWorldBossMaxHp;
         public int VisualGlobalEventId;
-        public int VisualNotificationQueueStateLength;
         public byte VisualActiveLanguageState = 1;
         public int VisualAutoEatThreshold;
 
@@ -98,6 +115,11 @@ namespace FolkIdle.Client.Engine
         public int VisualFood3ItemId { get; private set; }
         public int VisualFood3Count { get; private set; }
         public byte VisualActivityHaltReason { get; private set; }
+
+        // Modul: roster. The main character's current activity. The packet has
+        // always carried it; no proxy property ever exposed it, so no screen
+        // could say what the character was actually doing.
+        public long VisualActiveActivityId { get; private set; }
         public int VisualInventorySpaceRemaining { get; private set; }
         public int VisualInventoryCapacity { get; private set; }
 
@@ -227,13 +249,9 @@ namespace FolkIdle.Client.Engine
         public ulong VisualClaimedMilestonesBitmask;
 
         public uint VisualTotalItemsCraftedCount { get; private set; }
-        public byte VisualCraftingEngineStatus { get; private set; }
-        public uint VisualActiveMasteryBitmask { get; private set; }
         public uint VisualActiveStatusEffectModifierBitmask { get; private set; }
         public uint VisualRemainingBuffDurationTicks { get; private set; }
-        public uint VisualActiveMatchMmr { get; private set; }
         public uint VisualGlobalNodeRemainingHp { get; private set; }
-        public System.Guid VisualActiveMatchId { get; private set; }
 
         // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
         public int LumberjackLevel { get; private set; }
@@ -488,11 +506,9 @@ namespace FolkIdle.Client.Engine
                     VisualAccumulatedTimeBankMs = packet.AccumulatedTimeBankMs;
                     VisualBankedChronoSeconds = packet.VisualBankedChronoSeconds;
                     VisualIsChronoAccelerating = packet.IsChronoAccelerating != 0;
-                    VisualChronoEngineStatus = packet.ActiveChronoEngineStatus;
                     VisualActiveChronoLockExpirationTicks = packet.ActiveChronoLockExpirationTicks;
                     VisualCurrentSimulationSpeedMultiplier = packet.CurrentSimulationSpeedMultiplier;
                     VisualLogicEpochCounter = packet.LogicEpochCounter;
-                    VisualLogicalEpochFrameIndex = packet.LogicalEpochFrameIndex;
                     VisualWeaponAffixLocked = packet.EquippedWeaponAffixLocked != 0;
                     VisualArmorAffixLocked = packet.EquippedArmorAffixLocked != 0;
                     VisualLeggingsAffixLocked = packet.EquippedLeggingsAffixLocked != 0;
@@ -502,7 +518,6 @@ namespace FolkIdle.Client.Engine
                     VisualWorldBossHp = packet.WorldBossCurrentHp;
                     VisualWorldBossMaxHp = packet.WorldBossMaxHp;
                     VisualGlobalEventId = packet.ActiveEventType;
-                    VisualNotificationQueueStateLength = packet.NotificationQueueStateLength;
                     VisualActiveLanguageState = packet.ActiveLanguageState == 0 ? (byte)1 : packet.ActiveLanguageState;
                     VisualAutoEatThreshold = packet.AutoEatThreshold;
                     VisualActiveGuildWarId = packet.ActiveGuildWarId;
@@ -513,8 +528,20 @@ namespace FolkIdle.Client.Engine
                     VisualFood3ItemId = packet.Food3_ItemId;
                     VisualFood3Count = packet.Food3_Count;
                     VisualActivityHaltReason = packet.ActivityHaltReason;
+                    VisualActiveActivityId = packet.ActiveActivityId;
                     VisualInventorySpaceRemaining = packet.InventorySpaceRemaining;
                     VisualInventoryCapacity = packet.InventoryCapacity;
+                    VisualEquippedHelmetId = packet.EquippedHelmetId;
+                    VisualEquippedGlovesId = packet.EquippedGlovesId;
+                    VisualEquippedBootsId = packet.EquippedBootsId;
+                    VisualSlot2ActivityId = packet.Slot2ActivityId;
+                    VisualSlot3ActivityId = packet.Slot3ActivityId;
+                    VisualSlot2ActivityHaltReason = packet.Slot2ActivityHaltReason;
+                    VisualSlot3ActivityHaltReason = packet.Slot3ActivityHaltReason;
+                    VisualSlot1CharacterId = packet.Slot1_CharacterId;
+                    VisualSlot2CharacterId = packet.Slot2_CharacterId;
+                    VisualSlot3CharacterId = packet.Slot3_CharacterId;
+                    VisualTownHallLevel = packet.TownHallLevel;
                     VisualPlayerAccuracyRating = packet.PlayerAccuracyRating;
                     VisualPlayerArmorRating = packet.PlayerArmorRating;
                     VisualPlayerBlockStrengthPct = packet.PlayerBlockStrengthPct;
@@ -554,8 +581,6 @@ namespace FolkIdle.Client.Engine
                     VisualActiveMentorPlayerId = packet.ActiveMentorPlayerId;
                     VisualPremiumCurrencyBalance = packet.PremiumCurrencyBalance;
                     VisualTotalItemsCraftedCount = packet.TotalItemsCraftedCount;
-                    VisualCraftingEngineStatus = packet.CraftingEngineStatus;
-                    VisualActiveMasteryBitmask = packet.ActiveMasteryBitmask;
                     VisualActiveStatusEffectModifierBitmask = packet.ActiveStatusEffectModifierBitmask;
                     VisualRemainingBuffDurationTicks = packet.RemainingBuffDurationTicks;
                     VisualPlayerLevel = packet.CurrentLevel;
@@ -564,9 +589,7 @@ namespace FolkIdle.Client.Engine
                     VisualOffensivePotionDurationMs = packet.OffensivePotionDurationMs;
                     VisualActiveDefensivePotionId = packet.ActiveDefensivePotionId;
                     VisualDefensivePotionDurationMs = packet.DefensivePotionDurationMs;
-                    VisualActiveMatchMmr = packet.VisualActiveMatchMmr;
                     VisualGlobalNodeRemainingHp = packet.GlobalNodeRemainingHp;
-                    VisualActiveMatchId = packet.ActiveMatchId;
 
                     VisualUnlockedSkillsBitmask = packet.UnlockedSkillsBitmask;
                     VisualAvailableSkillPoints = packet.AvailableSkillPoints;
@@ -636,11 +659,9 @@ namespace FolkIdle.Client.Engine
             VisualAccumulatedTimeBankMs = Mathf.Lerp(_snapshotA.Packet.AccumulatedTimeBankMs, _snapshotB.Packet.AccumulatedTimeBankMs, t);
             VisualBankedChronoSeconds = _snapshotB.Packet.VisualBankedChronoSeconds;
             VisualIsChronoAccelerating = _snapshotB.Packet.IsChronoAccelerating != 0;
-            VisualChronoEngineStatus = _snapshotB.Packet.ActiveChronoEngineStatus;
             VisualActiveChronoLockExpirationTicks = _snapshotB.Packet.ActiveChronoLockExpirationTicks;
             VisualCurrentSimulationSpeedMultiplier = _snapshotB.Packet.CurrentSimulationSpeedMultiplier;
             VisualLogicEpochCounter = _snapshotB.Packet.LogicEpochCounter;
-            VisualLogicalEpochFrameIndex = _snapshotB.Packet.LogicalEpochFrameIndex;
 
             VisualWeaponAffixLocked = _snapshotB.Packet.EquippedWeaponAffixLocked != 0;
             VisualArmorAffixLocked = _snapshotB.Packet.EquippedArmorAffixLocked != 0;
@@ -652,7 +673,6 @@ namespace FolkIdle.Client.Engine
             VisualWorldBossHp = Mathf.Lerp(_snapshotA.Packet.WorldBossCurrentHp, _snapshotB.Packet.WorldBossCurrentHp, t);
             VisualWorldBossMaxHp = Mathf.Lerp(_snapshotA.Packet.WorldBossMaxHp, _snapshotB.Packet.WorldBossMaxHp, t);
             VisualGlobalEventId = _snapshotB.Packet.ActiveEventType;
-            VisualNotificationQueueStateLength = _snapshotB.Packet.NotificationQueueStateLength;
             VisualActiveLanguageState = _snapshotB.Packet.ActiveLanguageState == 0 ? (byte)1 : _snapshotB.Packet.ActiveLanguageState;
             VisualAutoEatThreshold = _snapshotB.Packet.AutoEatThreshold;
             VisualFood1ItemId = _snapshotB.Packet.Food1_ItemId;
@@ -662,8 +682,20 @@ namespace FolkIdle.Client.Engine
             VisualFood3ItemId = _snapshotB.Packet.Food3_ItemId;
             VisualFood3Count = _snapshotB.Packet.Food3_Count;
             VisualActivityHaltReason = _snapshotB.Packet.ActivityHaltReason;
+            VisualActiveActivityId = _snapshotB.Packet.ActiveActivityId;
             VisualInventorySpaceRemaining = _snapshotB.Packet.InventorySpaceRemaining;
             VisualInventoryCapacity = _snapshotB.Packet.InventoryCapacity;
+            VisualEquippedHelmetId = _snapshotB.Packet.EquippedHelmetId;
+            VisualEquippedGlovesId = _snapshotB.Packet.EquippedGlovesId;
+            VisualEquippedBootsId = _snapshotB.Packet.EquippedBootsId;
+            VisualSlot2ActivityId = _snapshotB.Packet.Slot2ActivityId;
+            VisualSlot3ActivityId = _snapshotB.Packet.Slot3ActivityId;
+            VisualSlot2ActivityHaltReason = _snapshotB.Packet.Slot2ActivityHaltReason;
+            VisualSlot3ActivityHaltReason = _snapshotB.Packet.Slot3ActivityHaltReason;
+            VisualSlot1CharacterId = _snapshotB.Packet.Slot1_CharacterId;
+            VisualSlot2CharacterId = _snapshotB.Packet.Slot2_CharacterId;
+            VisualSlot3CharacterId = _snapshotB.Packet.Slot3_CharacterId;
+            VisualTownHallLevel = _snapshotB.Packet.TownHallLevel;
             VisualPlayerAccuracyRating = _snapshotB.Packet.PlayerAccuracyRating;
             VisualPlayerArmorRating = _snapshotB.Packet.PlayerArmorRating;
             VisualPlayerBlockStrengthPct = _snapshotB.Packet.PlayerBlockStrengthPct;
@@ -704,8 +736,6 @@ namespace FolkIdle.Client.Engine
             VisualMentorshipExpBonusMultiplier = _snapshotB.Packet.MentorshipExpBonusMultiplier;
             VisualPremiumCurrencyBalance = _snapshotB.Packet.PremiumCurrencyBalance;
             VisualTotalItemsCraftedCount = _snapshotB.Packet.TotalItemsCraftedCount;
-            VisualCraftingEngineStatus = _snapshotB.Packet.CraftingEngineStatus;
-            VisualActiveMasteryBitmask = _snapshotB.Packet.ActiveMasteryBitmask;
             VisualActiveStatusEffectModifierBitmask = _snapshotB.Packet.ActiveStatusEffectModifierBitmask;
             VisualRemainingBuffDurationTicks = _snapshotB.Packet.RemainingBuffDurationTicks;
             VisualPlayerLevel = _snapshotB.Packet.CurrentLevel;
@@ -714,9 +744,7 @@ namespace FolkIdle.Client.Engine
             VisualOffensivePotionDurationMs = _snapshotB.Packet.OffensivePotionDurationMs;
             VisualActiveDefensivePotionId = _snapshotB.Packet.ActiveDefensivePotionId;
             VisualDefensivePotionDurationMs = _snapshotB.Packet.DefensivePotionDurationMs;
-            VisualActiveMatchMmr = _snapshotB.Packet.VisualActiveMatchMmr;
             VisualGlobalNodeRemainingHp = _snapshotB.Packet.GlobalNodeRemainingHp;
-            VisualActiveMatchId = _snapshotB.Packet.ActiveMatchId;
 
             VisualActiveGuildWarId = _snapshotB.Packet.ActiveGuildWarId;
             VisualWarMultiplier = Mathf.Lerp(_snapshotA.Packet.CachedWarMultiplier, _snapshotB.Packet.CachedWarMultiplier, t);
@@ -962,14 +990,23 @@ namespace FolkIdle.Client.Engine
             int con = packet.CON;
             int lck = packet.LCK;
             long equippedWeaponId = packet.EquippedWeaponId;
-            long equippedArmorId = packet.EquippedArmorId;
+            long equippedChestId = packet.EquippedChestId;
 
+            // Modul: 6-slot equipment sync. This used to compare only the weapon
+            // and the single "Armor" slot, so equipping a helmet, gloves, boots
+            // or leggings raised no change event and every listening screen kept
+            // rendering the previous loadout until some other stat happened to
+            // move. All six slots are compared now.
             bool changed = str != VisualSTR
                 || dex != VisualDEX
                 || con != VisualCON
                 || lck != VisualLCK
                 || equippedWeaponId != VisualEquippedWeaponId
-                || equippedArmorId != VisualEquippedArmorId;
+                || equippedChestId != VisualEquippedArmorId
+                || packet.EquippedHelmetId != VisualEquippedHelmetId
+                || packet.EquippedGlovesId != VisualEquippedGlovesId
+                || packet.EquippedBootsId != VisualEquippedBootsId
+                || packet.EquippedLeggingsId != VisualEquippedLeggingsId;
 
             if (!changed) return;
 
@@ -978,7 +1015,11 @@ namespace FolkIdle.Client.Engine
             VisualCON = con;
             VisualLCK = lck;
             VisualEquippedWeaponId = equippedWeaponId;
-            VisualEquippedArmorId = equippedArmorId;
+            VisualEquippedArmorId = equippedChestId;
+            VisualEquippedHelmetId = packet.EquippedHelmetId;
+            VisualEquippedGlovesId = packet.EquippedGlovesId;
+            VisualEquippedBootsId = packet.EquippedBootsId;
+            VisualEquippedLeggingsId = packet.EquippedLeggingsId;
 
             OnCharacterStateUpdated?.Invoke();
         }

@@ -438,6 +438,28 @@ namespace FolkIdle.Client.Network
 
         public static bool TryGetGatheringNode(long activityId, out GatheringNodeEntry node) => _gatheringNodes.TryGetValue(activityId, out node);
 
+        // Modul: roster. The full node list, ordered by activity id. Only a
+        // single-id lookup existed, so nothing could enumerate what a character
+        // may be assigned to - which is exactly what the roster screen needs.
+        public static IReadOnlyList<GatheringNodeEntry> GatheringNodes
+        {
+            get
+            {
+                if (_orderedGatheringNodes.Count != _gatheringNodes.Count)
+                {
+                    _orderedGatheringNodes.Clear();
+                    foreach (GatheringNodeEntry node in _gatheringNodes.Values)
+                    {
+                        _orderedGatheringNodes.Add(node);
+                    }
+                    _orderedGatheringNodes.Sort((a, b) => a.ActivityId.CompareTo(b.ActivityId));
+                }
+                return _orderedGatheringNodes;
+            }
+        }
+
+        private static readonly List<GatheringNodeEntry> _orderedGatheringNodes = new();
+
         public static SkillEntry GetSkill(int skillId)
         {
             if (_skills.TryGetValue(skillId, out SkillEntry skill)) return skill;

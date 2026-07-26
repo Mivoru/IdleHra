@@ -149,6 +149,18 @@ namespace FolkIdle.Server.Domain.Combat
         // roster yet keeps working exactly as before.
         public async Task EquipItemAsync(long playerId, long itemInstanceId, Guid characterId = default)
         {
+            // Modul: known gap, found in a live Play Mode run. Equipping several
+            // pieces in quick succession makes them contend for the same
+            // character row's FOR UPDATE lock, and a loser gets
+            // "a transient failure" that the catch below swallows - the item
+            // silently stays unequipped with no feedback. Switching to
+            // RetryingDbContextOptions is NOT sufficient on its own: EF refuses
+            // user-initiated transactions under a retrying strategy unless the
+            // whole body runs inside Database.CreateExecutionStrategy(), which
+            // needs both methods here restructured into re-runnable delegates
+            // (see CraftingEngine for the shape). Left as-is rather than
+            // half-applied, since a retrying context without the strategy
+            // wrapper throws on every equip.
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
             using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);

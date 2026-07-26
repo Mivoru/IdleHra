@@ -430,9 +430,27 @@ namespace FolkIdle.Server.Domain.Shared
                 }
             }
 
+            // Modul: roster slot ordering. This query had no OrderBy, so
+            // Postgres returned the rows in whatever order it liked and .Take(3)
+            // picked an arbitrary three. Everything downstream indexes this list
+            // by POSITION - characters[0] is treated as the main character whose
+            // gear hydrates the active register, characters[1] and [2] become
+            // the Slot2/Slot3 activity states - while the Town Hall unlock gate
+            // and the occupancy mutex both key off CharacterRecord.SlotIndex.
+            //
+            // The two disagreed. Caught in a live Play Mode session: a character
+            // stored at SlotIndex 1 was simulated and broadcast as slot 3, so
+            // the roster showed it in the wrong row, and the main character's
+            // equipment could be read off whichever character the database
+            // happened to return first. Ordering by SlotIndex makes position and
+            // SlotIndex the same thing, which is what every consumer already
+            // assumed, and makes .Take(3) mean "the first three slots" rather
+            // than "any three".
             var characters = await dbContext.CharacterRecords
                 .Include(c => c.Lineage)
                 .Where(c => c.PlayerId == playerId && !c.IsLockedInEscrow && !dbContext.MentorshipAcademyAssignments.Any(m => m.CharacterId == c.Id))
+                .OrderBy(c => c.SlotIndex)
+                .ThenBy(c => c.Id)
                 .Take(3)
                 .ToListAsync();
 

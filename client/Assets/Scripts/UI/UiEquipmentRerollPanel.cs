@@ -132,7 +132,16 @@ namespace FolkIdle.Client.UI
             for (int i = 0; i < owned.Count; i++)
             {
                 ForgeEquipmentInstanceData item = owned[i];
-                bool isEquipped = SyncProxy != null && (item.Id == SyncProxy.VisualEquippedWeaponId || item.Id == SyncProxy.VisualEquippedArmorId);
+                // Modul: 6-slot equipment. Checked only weapon and the single
+                // old "Armor" slot, so a helmet, gloves, boots or leggings the
+                // character was wearing did not read as equipped here.
+                bool isEquipped = SyncProxy != null && (
+                    item.Id == SyncProxy.VisualEquippedWeaponId
+                    || item.Id == SyncProxy.VisualEquippedArmorId
+                    || item.Id == SyncProxy.VisualEquippedHelmetId
+                    || item.Id == SyncProxy.VisualEquippedGlovesId
+                    || item.Id == SyncProxy.VisualEquippedBootsId
+                    || item.Id == SyncProxy.VisualEquippedLeggingsId);
                 UiForgeEquipmentRow row = _rowPool.Spawn();
                 row.Bind(item.Id, item.BaseItemId, item.QualityTier, item.IsAffixLocked, item.Id == _selectedItemId, HandleItemSelected, isEquipped, HandleItemEquipClicked);
                 _activeRows.Add(row);

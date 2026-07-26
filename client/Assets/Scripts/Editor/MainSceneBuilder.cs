@@ -170,6 +170,7 @@ namespace FolkIdle.Client.Editor
             // closing the two largest remaining content gaps - see
             // UiInventoryPanel and UiCraftingTreePanel for what was missing.
             GameObject larderPanelObject = BuildLarderWindow(canvas.transform, networkClient, syncProxy);
+            GameObject rosterPanelObject = BuildRosterWindow(canvas.transform, networkClient, syncProxy);
 
             GameObject inventoryPanelObject = BuildInventoryWindow(canvas.transform, assetRegistry, syncProxy, networkClient, inventoryCache);
             GameObject craftingPanelObject = BuildCraftingTreeWindow(canvas.transform, networkClient, assetRegistry);
@@ -209,7 +210,7 @@ namespace FolkIdle.Client.Editor
             (GameObject hamburgerBlocker, UiHamburgerMenuPanel hamburgerComponent, Dictionary<string, Button> menu) = BuildHamburgerPanel(canvas.transform, new[]
             {
                 ("Places", new[] { "World Map", "Combat", "Village", "Guild", "Market & Bank", "World Boss" }),
-                ("Character", new[] { "Inventory", "Larder", "Forge", "Crafting", "Skills", "Bestiary", "Breeding Lab", "Race Mastery", "Mentorship" }),
+                ("Character", new[] { "Roster", "Inventory", "Larder", "Forge", "Crafting", "Skills", "Bestiary", "Breeding Lab", "Race Mastery", "Mentorship" }),
                 ("Progress", new[] { "Achievements", "Season Pass", "Login Bonus", "Statistics", "Leaderboard" }),
                 ("Social", new[] { "Friends", "Mailbox" }),
                 ("Economy", new[] { "Store", "Time Bank", "Legacy Shop" }),
@@ -238,7 +239,8 @@ namespace FolkIdle.Client.Editor
                 mailboxWindowObject, storeWindowObject, seasonPassWindowObject, settingsPanelObject,
                 friendsPanelObject, statisticsPanelObject, loginBonusPanelObject, raceMasteryWindowObject,
                 chronoBankWindowObject, legacyShopWindowObject, mentorshipContractWindowObject,
-                accountPanelObject, inventoryPanelObject, craftingPanelObject, larderPanelObject
+                accountPanelObject, inventoryPanelObject, craftingPanelObject, larderPanelObject,
+                rosterPanelObject
             };
 
             // Index-aligned with screens[] above. UiTabGroup supports at most
@@ -253,7 +255,8 @@ namespace FolkIdle.Client.Editor
                 menu["Mailbox"], menu["Store"], menu["Season Pass"], menu["Settings"],
                 menu["Friends"], menu["Statistics"], menu["Login Bonus"], menu["Race Mastery"],
                 menu["Time Bank"], menu["Legacy Shop"], menu["Mentorship"],
-                menu["Account"], menu["Inventory"], menu["Crafting"], menu["Larder"]
+                menu["Account"], menu["Inventory"], menu["Crafting"], menu["Larder"],
+                menu["Roster"]
             };
 
             const int HudGroupScreenIndex = 1;
@@ -729,7 +732,10 @@ namespace FolkIdle.Client.Editor
             // Modul: Map Hub. Shifted further down to also clear the new
             // persistent top-right CurrencyDisplay (y -120 to -166).
             panelRect.anchoredPosition = new Vector2(-20f, -176f);
-            panelRect.sizeDelta = new Vector2(280f, 140f);
+            // Modul: 6-slot equipment. Six 44px rows plus 6px spacing and 10px
+            // padding top and bottom. Left at the old 140 this clipped four of
+            // the six rows straight off the bottom.
+            panelRect.sizeDelta = new Vector2(280f, 314f);
 
             Image panelBackground = panelObject.AddComponent<Image>();
             panelBackground.color = new Color(0f, 0f, 0f, 0.35f);
@@ -747,15 +753,20 @@ namespace FolkIdle.Client.Editor
             equipmentPanel.InventoryCache = inventoryCache;
             equipmentPanel.NetworkClient = networkClient;
 
-            (TextMeshProUGUI weaponText, Button weaponButton, GameObject weaponEmpty) = BuildEquipmentSlotRow(panelObject.transform, "WeaponSlot", "Weapon: (empty)");
-            (TextMeshProUGUI armorText, Button armorButton, GameObject armorEmpty) = BuildEquipmentSlotRow(panelObject.transform, "ArmorSlot", "Armor: (empty)");
+            // Modul: 6-slot equipment. Was two rows, Weapon and a single "Armor"
+            // that stood in for helmet, chest, gloves and boots at once. Built
+            // from UiEquipmentSlotsPanel.SlotDisplayNames so the row order can
+            // never drift from the slot indices the unequip command sends.
+            for (int slotIndex = 0; slotIndex < UiEquipmentSlotsPanel.SlotCount; slotIndex++)
+            {
+                string slotName = UiEquipmentSlotsPanel.SlotDisplayNames[slotIndex];
+                (TextMeshProUGUI slotText, Button unequipButton, GameObject emptyIndicator) =
+                    BuildEquipmentSlotRow(panelObject.transform, slotName + "Slot", slotName + ": (empty)");
 
-            equipmentPanel.WeaponSlotText = weaponText;
-            equipmentPanel.UnequipWeaponButton = weaponButton;
-            equipmentPanel.WeaponEmptyIndicator = weaponEmpty;
-            equipmentPanel.ArmorSlotText = armorText;
-            equipmentPanel.UnequipArmorButton = armorButton;
-            equipmentPanel.ArmorEmptyIndicator = armorEmpty;
+                equipmentPanel.SlotTexts[slotIndex] = slotText;
+                equipmentPanel.UnequipButtons[slotIndex] = unequipButton;
+                equipmentPanel.EmptyIndicators[slotIndex] = emptyIndicator;
+            }
 
             return panelBackground;
         }
@@ -4123,6 +4134,109 @@ namespace FolkIdle.Client.Editor
             banner.BackgroundImage = background;
 
             bannerObject.SetActive(false);
+        }
+
+
+        // Modul: roster. Three character rows, each with its own activity
+        // picker, so a player can actually field the characters the server has
+        // been simulating. Before this the only assignable character was the
+        // main one - slots 2 and 3 were unreachable however far the village had
+        // been built.
+        private static GameObject BuildRosterWindow(Transform canvasTransform, WebSocketClient networkClient, VisualSyncProxy syncProxy)
+        {
+            GameObject windowObject = BuildSimpleListWindowShell("RosterWindow", canvasTransform, "Roster", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+
+            VerticalLayoutGroup layout = contentAreaRect.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = 6f;
+            layout.childControlWidth = true;
+            layout.childForceExpandWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandHeight = false;
+
+            CreateHelpText(contentAreaRect, "RosterHelpText",
+                "Each character can work on one thing at a time, and no two characters may do the SAME thing - one can fish while another mines or fights. Extra slots unlock as the Town Hall grows.", 62f);
+
+            UiRosterPanel panel = windowObject.AddComponent<UiRosterPanel>();
+            panel.NetworkClient = networkClient;
+            panel.SyncProxy = syncProxy;
+
+            for (int slotIndex = 0; slotIndex < UiRosterPanel.SlotCount; slotIndex++)
+            {
+                TextMeshProUGUI header = CreateGroupSectionLabel(contentAreaRect, "CHARACTER " + (slotIndex + 1));
+                panel.SlotHeaderTexts[slotIndex] = header;
+
+                TextMeshProUGUI status = CreateText(contentAreaRect, "Slot" + slotIndex + "StatusText", "Idle.", 14f, TextAlignmentOptions.MidlineLeft);
+                SetFixedLayoutHeight(status.gameObject, 24f);
+                panel.SlotStatusTexts[slotIndex] = status;
+
+                GameObject rowObject = new GameObject("Slot" + slotIndex + "Row", typeof(RectTransform));
+                rowObject.transform.SetParent(contentAreaRect, false);
+                SetFixedLayoutHeight(rowObject, 44f);
+
+                HorizontalLayoutGroup rowLayout = rowObject.AddComponent<HorizontalLayoutGroup>();
+                rowLayout.spacing = 6f;
+                rowLayout.childControlWidth = true;
+                rowLayout.childForceExpandWidth = true;
+                rowLayout.childControlHeight = true;
+                rowLayout.childForceExpandHeight = true;
+
+                TMP_Dropdown dropdown = CreateTmpDropdown(rowObject.transform, "Slot" + slotIndex + "ActivityDropdown");
+                if (dropdown.targetGraphic is Image dropdownBackground)
+                {
+                    dropdownBackground.color = new Color(0.18f, 0.18f, 0.24f, 1f);
+                }
+                if (dropdown.captionText != null)
+                {
+                    dropdown.captionText.color = Color.white;
+                }
+                LayoutElement dropdownLayout = dropdown.gameObject.AddComponent<LayoutElement>();
+                dropdownLayout.flexibleWidth = 3f;
+                panel.SlotActivityDropdowns[slotIndex] = dropdown;
+
+                Button assignButton = CreateButton(rowObject.transform, "Slot" + slotIndex + "AssignButton", "Send", out TextMeshProUGUI _);
+                ((Image)assignButton.targetGraphic).color = new Color(0.28f, 0.52f, 0.34f, 1f);
+                StretchFlexibleWidth(assignButton.gameObject, 1f);
+                panel.SlotAssignButtons[slotIndex] = assignButton;
+
+                Button stopButton = CreateButton(rowObject.transform, "Slot" + slotIndex + "StopButton", "Stop", out TextMeshProUGUI _);
+                ((Image)stopButton.targetGraphic).color = new Color(0.42f, 0.28f, 0.28f, 1f);
+                StretchFlexibleWidth(stopButton.gameObject, 1f);
+                panel.SlotStopButtons[slotIndex] = stopButton;
+
+                // Drawn over the row and shown only while the slot is locked, so
+                // a player cannot fiddle with controls the Town Hall has not
+                // opened yet.
+                GameObject lockedOverlay = new GameObject("Slot" + slotIndex + "LockedOverlay", typeof(RectTransform));
+                lockedOverlay.transform.SetParent(rowObject.transform, false);
+                StretchFull((RectTransform)lockedOverlay.transform);
+                Image lockedImage = lockedOverlay.AddComponent<Image>();
+                lockedImage.color = new Color(0.05f, 0.05f, 0.07f, 0.88f);
+                lockedOverlay.transform.SetAsLastSibling();
+                panel.SlotLockedOverlays[slotIndex] = lockedOverlay;
+            }
+
+            TextMeshProUGUI summary = CreateText(contentAreaRect, "RosterSummaryText", string.Empty, 14f, TextAlignmentOptions.MidlineLeft);
+            summary.color = new Color(0.75f, 0.9f, 1f, 0.85f);
+            SetFixedLayoutHeight(summary.gameObject, 40f);
+            panel.SummaryText = summary;
+
+            return windowObject;
+        }
+
+        // Modul: roster. A LayoutElement carrying only a flexible width, for
+        // buttons inside a HorizontalLayoutGroup that already controls height.
+        // Deliberately not SetFixedLayoutHeight, which pins minHeight and would
+        // fight the row's own childForceExpandHeight.
+        private static void StretchFlexibleWidth(GameObject target, float flexibleWidth)
+        {
+            LayoutElement layoutElement = target.GetComponent<LayoutElement>();
+            if (layoutElement == null)
+            {
+                layoutElement = target.AddComponent<LayoutElement>();
+            }
+            layoutElement.flexibleWidth = flexibleWidth;
+            layoutElement.minHeight = 0f;
+            layoutElement.preferredHeight = 0f;
         }
 
         private static GameObject BuildAchievementsWindow(Transform canvasTransform, WebSocketClient networkClient)

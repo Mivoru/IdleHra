@@ -7,39 +7,56 @@ using FolkIdle.Client.Network;
 
 namespace FolkIdle.Client.UI
 {
-    // Modul 16/21: active weapon/armor slot display + unequip dispatch.
+    // Modul 16/21: active equipment slot display + unequip dispatch.
     // Event-driven only - refreshes from VisualSyncProxy.OnCharacterStateUpdated
     // (equipped item id changes) and EquipmentInventoryCache.OnSnapshotUpdated
     // (item name/tier metadata), never from an Update() loop.
+    //
+    // Modul: 6-slot equipment. Was two hardcoded slots, Weapon and a single
+    // "Armor" that stood in for helmet, chest, gloves and boots together. All
+    // six are separate now, so the panel is array-driven over SlotCount rather
+    // than two copies of every field - adding a seventh slot later (the GDD's
+    // helper/offhand) is then one array entry rather than another six members.
     public class UiEquipmentSlotsPanel : MonoBehaviour
     {
+        // Index order matches EquipmentSlotEngine's server-side constants
+        // exactly: 0 Weapon, 1 Helmet, 2 Chest, 3 Gloves, 4 Leggings, 5 Boots.
+        // The unequip command sends this index straight through, so the two
+        // orderings must never drift.
+        public const int SlotWeapon = 0;
+        public const int SlotHelmet = 1;
+        public const int SlotChest = 2;
+        public const int SlotGloves = 3;
+        public const int SlotLeggings = 4;
+        public const int SlotBoots = 5;
+        public const int SlotCount = 6;
+
+        public static readonly string[] SlotDisplayNames = { "Weapon", "Helmet", "Chest", "Gloves", "Leggings", "Boots" };
+
         public VisualSyncProxy SyncProxy;
         public EquipmentInventoryCache InventoryCache;
         public WebSocketClient NetworkClient;
 
-        [Header("Weapon Slot")]
-        public TextMeshProUGUI WeaponSlotText;
-        public Button UnequipWeaponButton;
-        public GameObject WeaponEmptyIndicator;
+        [Header("Slots (index order: Weapon, Helmet, Chest, Gloves, Leggings, Boots)")]
+        public TextMeshProUGUI[] SlotTexts = new TextMeshProUGUI[SlotCount];
+        public Button[] UnequipButtons = new Button[SlotCount];
+        public GameObject[] EmptyIndicators = new GameObject[SlotCount];
 
-        [Header("Armor Slot")]
-        public TextMeshProUGUI ArmorSlotText;
-        public Button UnequipArmorButton;
-        public GameObject ArmorEmptyIndicator;
-
-        private readonly char[] _weaponBuffer = new char[128];
-        private readonly char[] _armorBuffer = new char[128];
+        // One reusable char buffer per slot. TMP_Text.SetCharArray takes the
+        // buffer directly, so nothing here allocates on a refresh.
+        private readonly char[][] _slotBuffers = new char[SlotCount][];
 
         private void Awake()
         {
-            if (UnequipWeaponButton != null)
+            for (int slotIndex = 0; slotIndex < SlotCount; slotIndex++)
             {
-                UnequipWeaponButton.onClick.AddListener(HandleUnequipWeaponClicked);
-            }
+                _slotBuffers[slotIndex] = new char[128];
 
-            if (UnequipArmorButton != null)
-            {
-                UnequipArmorButton.onClick.AddListener(HandleUnequipArmorClicked);
+                if (UnequipButtons != null && slotIndex < UnequipButtons.Length && UnequipButtons[slotIndex] != null)
+                {
+                    int capturedSlot = slotIndex;
+                    UnequipButtons[slotIndex].onClick.AddListener(() => HandleUnequipClicked(capturedSlot));
+                }
             }
         }
 
@@ -96,11 +113,29 @@ namespace FolkIdle.Client.UI
         {
             if (SyncProxy == null) return;
 
-            long weaponId = SyncProxy.VisualEquippedWeaponId;
-            long armorId = SyncProxy.VisualEquippedArmorId;
+            for (int slotIndex = 0; slotIndex < SlotCount; slotIndex++)
+            {
+                RefreshSlot(
+                    GetEquippedId(slotIndex),
+                    SlotTexts != null && slotIndex < SlotTexts.Length ? SlotTexts[slotIndex] : null,
+                    UnequipButtons != null && slotIndex < UnequipButtons.Length ? UnequipButtons[slotIndex] : null,
+                    EmptyIndicators != null && slotIndex < EmptyIndicators.Length ? EmptyIndicators[slotIndex] : null,
+                    _slotBuffers[slotIndex]);
+            }
+        }
 
-            RefreshSlot(weaponId, WeaponSlotText, UnequipWeaponButton, WeaponEmptyIndicator, _weaponBuffer);
-            RefreshSlot(armorId, ArmorSlotText, UnequipArmorButton, ArmorEmptyIndicator, _armorBuffer);
+        private long GetEquippedId(int slotIndex)
+        {
+            switch (slotIndex)
+            {
+                case SlotWeapon: return SyncProxy.VisualEquippedWeaponId;
+                case SlotHelmet: return SyncProxy.VisualEquippedHelmetId;
+                case SlotChest: return SyncProxy.VisualEquippedArmorId;
+                case SlotGloves: return SyncProxy.VisualEquippedGlovesId;
+                case SlotLeggings: return SyncProxy.VisualEquippedLeggingsId;
+                case SlotBoots: return SyncProxy.VisualEquippedBootsId;
+                default: return 0L;
+            }
         }
 
         private void RefreshSlot(long equippedId, TextMeshProUGUI slotText, Button unequipButton, GameObject emptyIndicator, char[] buffer)
@@ -157,28 +192,18 @@ namespace FolkIdle.Client.UI
 
         // Disables the button immediately so a double-click cannot dispatch the
         // unequip command twice before the next state packet settles the slot.
-        private void HandleUnequipWeaponClicked()
+        private void HandleUnequipClicked(int slotIndex)
         {
             if (NetworkClient == null) return;
 
-            if (UnequipWeaponButton != null)
+            // Disabled immediately so a double-click cannot dispatch the
+            // unequip twice before the next state packet settles the slot.
+            if (UnequipButtons != null && slotIndex < UnequipButtons.Length && UnequipButtons[slotIndex] != null)
             {
-                UnequipWeaponButton.interactable = false;
+                UnequipButtons[slotIndex].interactable = false;
             }
 
-            NetworkClient.SendUnequipItemCommandZeroAlloc(false);
-        }
-
-        private void HandleUnequipArmorClicked()
-        {
-            if (NetworkClient == null) return;
-
-            if (UnequipArmorButton != null)
-            {
-                UnequipArmorButton.interactable = false;
-            }
-
-            NetworkClient.SendUnequipItemCommandZeroAlloc(true);
+            NetworkClient.SendUnequipItemCommandZeroAlloc(slotIndex);
         }
 
         private static int WriteTextToBuffer(char[] buffer, int offset, string text)

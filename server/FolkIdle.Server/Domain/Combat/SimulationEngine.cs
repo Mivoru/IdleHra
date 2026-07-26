@@ -2804,16 +2804,12 @@ namespace FolkIdle.Server.Domain.Combat
                                 PremiumCurrencyBalance = (uint)currentPayload.PremiumCurrency,
                                 LegacyShardBalance = currentPayload.LegacyShardBalance,
                                 IsChronoAccelerating = currentPayload.IsChronoAccelerating ? (byte)1 : (byte)0,
-                                ActiveBankedChronoSeconds = (uint)Math.Max(0, Math.Min(uint.MaxValue, currentPayload.BankedChronoSeconds)),
                                 CurrentSimulationSpeedMultiplier = (byte)Math.Clamp(currentPayload.SpeedMultiplier, 1, 4),
                                 VisualBankedChronoSeconds = (uint)ChronoBufferEngine.ClampBankedSeconds(currentPayload.BankedChronoSeconds),
-                                ActiveChronoEngineStatus = ResolveChronoEngineStatus(ref currentPayload),
                                 ActiveChronoLockExpirationTicks = (ulong)Math.Max(0L, currentPayload.ActiveChronoLockExpirationTicks),
-                                VisualActiveMatchMmr = (uint)Math.Max(0, currentPayload.ActiveMatchMmr),
                                 GlobalNodeRemainingHp = currentPayload.GlobalNodeRemainingHp <= 0L
                                     ? 0U
                                     : (currentPayload.GlobalNodeRemainingHp > uint.MaxValue ? uint.MaxValue : (uint)currentPayload.GlobalNodeRemainingHp),
-                                ActiveMatchId = currentPayload.ActiveCrossShardMatchId,
                                 // Modul: Play Mode audit fix. Never assigned
                                 // here despite the field existing on the wire
                                 // and StateCheckpointManager now hydrating it
@@ -2853,7 +2849,30 @@ namespace FolkIdle.Server.Domain.Combat
                                 LCK = currentPayload.LCK,
                                 EquippedWeaponId = currentPayload.EquippedWeaponId,
                                 EquippedWeaponAffixLocked = currentPayload.EquippedWeaponAffixLocked ? (byte)1 : (byte)0,
-                                EquippedArmorId = currentPayload.EquippedArmorId,
+                                EquippedChestId = currentPayload.EquippedArmorId,
+
+                                // Modul: 6-slot equipment sync. The three slots
+                                // that previously had nowhere to go on the wire -
+                                // helmets, gloves and boots existed as items and
+                                // rolled slot-correct affixes, but no packet
+                                // field carried them, so the client could not
+                                // show them even once they became equippable.
+                                EquippedHelmetId = currentPayload.EquippedHelmetId,
+                                EquippedGlovesId = currentPayload.EquippedGlovesId,
+                                EquippedBootsId = currentPayload.EquippedBootsId,
+
+                                // Modul: roster registers. Characters 2 and 3
+                                // read straight from their parked slot state -
+                                // the register holds slot 1 at broadcast time,
+                                // so these are the only place the other two
+                                // characters appear on the wire at all.
+                                // Clamped rather than cast, so an id outside the
+                                // 16-bit space would saturate visibly instead of
+                                // wrapping to a different activity.
+                                Slot2ActivityId = (ushort)Math.Clamp(currentPayload.Slot2Activity.ActiveActivityId, 0, ushort.MaxValue),
+                                Slot3ActivityId = (ushort)Math.Clamp(currentPayload.Slot3Activity.ActiveActivityId, 0, ushort.MaxValue),
+                                Slot2ActivityHaltReason = currentPayload.Slot2Activity.ActivityHaltReason,
+                                Slot3ActivityHaltReason = currentPayload.Slot3Activity.ActivityHaltReason,
                                 EquippedArmorAffixLocked = currentPayload.EquippedArmorAffixLocked ? (byte)1 : (byte)0,
                                 EquippedLeggingsId = currentPayload.EquippedLeggingsId,
                                 EquippedLeggingsAffixLocked = currentPayload.EquippedLeggingsAffixLocked ? (byte)1 : (byte)0,
@@ -2908,10 +2927,8 @@ namespace FolkIdle.Server.Domain.Combat
                                 ActiveStatusEffectModifierBitmask = statBitmask,
                                 RemainingBuffDurationTicks = statDurTicks,
                                 ActiveChallengeSeed = currentPayload.ActiveChallengeSeed,
-                                NotificationQueueStateLength = (byte)Math.Clamp(GlobalEngineState.NotificationQueueStateLength, 0, 255),
                                 ActiveLanguageState = currentPayload.ActiveLanguageState == 0 ? (byte)1 : currentPayload.ActiveLanguageState,
                                 ActiveAudioTrackId = audioTrackId,
-                                ActiveMasteryBitmask = _liveSessionContexts.TryGetValue(currentPayload.PlayerId, out var mCtx) ? mCtx.ActiveMasteryBitmask : 0,
                                 NetworkDiagnosticsToken = currentPayload.NetworkDiagnosticsToken,
                                 Gold = currentPayload.CurrentGold,
                                 WorldBossAttemptCount = currentPayload.WorldBossAttemptCount,

@@ -44,7 +44,19 @@ namespace FolkIdle.Server.Network
         // See StateUpdatePacket's own comment. Headroom under the 700-byte
         // ceiling the tests pin is back to 6 bytes, 4 of which the inventory
         // census then spent on InventoryCapacity: 694 -> 698.
-        public const int ExpectedStateUpdateSize = 698;
+        //
+        // Modul: wire compaction for 6-slot equipment. 698 -> 686, the second
+        // time this packet has shrunk while gaining fields. Added 30 bytes
+        // (EquippedHelmetId/GlovesId/BootsId, the Slot2/Slot3 activity ids and
+        // their halt reasons); reclaimed 42 by deleting eight fields that were
+        // mirrored into VisualSyncProxy properties no UI element reads -
+        // ActiveMatchId, LogicalEpochFrameIndex, ActiveChronoEngineStatus,
+        // ActiveBankedChronoSeconds, VisualActiveMatchMmr, ActiveMasteryBitmask,
+        // CraftingEngineStatus and NotificationQueueStateLength. See
+        // StateUpdatePacket's own comment for why each one went.
+        //
+        // Headroom under the 700-byte ceiling the tests pin: 14 bytes.
+        public const int ExpectedStateUpdateSize = 686;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

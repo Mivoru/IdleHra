@@ -119,6 +119,12 @@ namespace FolkIdle.Client.UI
         {
             if (NetworkClient == null || instanceId <= 0) return;
 
+            // Modul: 6-slot equipment. No slot index is sent on purpose: the
+            // server resolves the destination slot from the item's own BaseId
+            // (EquipmentSlotEngine.ResolveSlotIndex), so a helmet lands in the
+            // helmet slot and boots in the boots slot without the client having
+            // to duplicate that classification and risk disagreeing with it.
+            // The character defaults to the main one.
             NetworkClient.SendEquipItemCommandZeroAlloc(instanceId);
             _pendingRefreshTimer = PostEquipRefreshDelaySeconds;
 

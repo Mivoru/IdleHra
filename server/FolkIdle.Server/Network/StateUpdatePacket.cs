@@ -221,7 +221,62 @@ namespace FolkIdle.Server.Network
         public long EquippedWeaponId;
         public byte EquippedWeaponAffixLocked;
 
-        public long EquippedArmorId;
+        public long EquippedChestId;
+
+        // Modul: wire compaction for 6-slot equipment. Eight more fields were
+        // removed here to pay for the equipment and roster registers below.
+        // Every one was mirrored into a VisualSyncProxy property that no UI
+        // element anywhere in the project reads - the same audit that removed
+        // the server-diagnostic gauges in the previous pass, run again:
+        //   ActiveMatchId (16 bytes)        - cross-shard match Guid
+        //   LogicalEpochFrameIndex (8)      - duplicate of LogicEpochCounter
+        //   ActiveChronoEngineStatus (4)    - one of FOUR chrono fields, of
+        //                                     which only VisualBankedChronoSeconds
+        //                                     and IsChronoAccelerating are read
+        //   ActiveBankedChronoSeconds (4)   - as above
+        //   VisualActiveMatchMmr (4)        - cross-shard MMR
+        //   ActiveMasteryBitmask (4)        - Race Mastery reads REST instead
+        //   CraftingEngineStatus (1)        - never written to anything
+        //   NotificationQueueStateLength (1)- a global server queue depth
+        // Total 42 bytes reclaimed. A 10Hz per-player packet is the most
+        // expensive place in the game to carry a field, so anything no screen
+        // renders does not belong on it.
+
+        // Modul: 6-slot equipment sync. The ACTIVE character's full equipment.
+        // EquippedArmorId became EquippedChestId: the old single "Armor" slot
+        // held all four armour pieces, and chest is where the generic
+        // "_armor_slot_" fallback still resolves (see
+        // EquipmentSlotEngine.ResolveSlotIndex), so nothing moves.
+        //
+        // These are the character the tick is broadcasting - slot 1 in normal
+        // operation, because the tick loop's register always ends a frame with
+        // slot 1 loaded. Slots 2 and 3 do not ship their equipment on the hot
+        // path: gear changes on a button press, not at 10Hz, and the roster
+        // screen reads the other characters' loadouts from
+        // /api/v1/player/inventory instead of paying 96 bytes a frame for data
+        // that changes once a minute.
+        public long EquippedHelmetId;
+        public long EquippedGlovesId;
+        public long EquippedBootsId;
+
+        // Modul: roster registers. What characters 2 and 3 are doing, so the
+        // roster screen can show three live characters rather than one.
+        //
+        // ushort, not the long that ActiveActivityId uses: activity ids are
+        // gathering nodes (101-412) and monster ids (1-525), so the entire id
+        // space fits in 16 bits nine times over. Slot 1's activity is not
+        // duplicated here - it is ActiveActivityId above, and duplicating it
+        // would create two values that could disagree.
+        public ushort Slot2ActivityId;
+        public ushort Slot3ActivityId;
+
+        // Per-slot halt reason (see ActivityHaltReason). One character running
+        // out of food says nothing about the other two, so "why is this one
+        // idle" has to be answered per character or the roster would show the
+        // main character's excuse against all three.
+        public byte Slot2ActivityHaltReason;
+        public byte Slot3ActivityHaltReason;
+
         public byte EquippedArmorAffixLocked;
 
         // Modul: Full-Stack Expansion, Part 1. Third equipment slot -
@@ -319,24 +374,16 @@ namespace FolkIdle.Server.Network
         public byte AcademyLevel;
         public byte CurrentPopulationCount;
         public uint ActiveChallengeSeed;
-        public byte NotificationQueueStateLength;
         public byte ActiveLanguageState;
-        public uint ActiveBankedChronoSeconds;
         public byte CurrentSimulationSpeedMultiplier;
         public uint PremiumCurrencyBalance;
         public byte ActiveAudioTrackId;
         public uint TotalItemsCraftedCount;
-        public byte CraftingEngineStatus;
-        public uint ActiveMasteryBitmask;
-        public ulong LogicalEpochFrameIndex;
         public uint ActiveStatusEffectModifierBitmask;
         public uint RemainingBuffDurationTicks;
         public uint VisualBankedChronoSeconds;
-        public uint ActiveChronoEngineStatus;
         public ulong ActiveChronoLockExpirationTicks;
-        public uint VisualActiveMatchMmr;
         public uint GlobalNodeRemainingHp;
-        public System.Guid ActiveMatchId;
         public uint NetworkDiagnosticsToken;
         public long Gold;
         public byte WorldBossAttemptCount;
