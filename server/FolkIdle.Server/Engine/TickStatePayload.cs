@@ -428,6 +428,27 @@ namespace FolkIdle.Server.Engine
         // next monster. Primitive byte bitmask - zero allocation.
         public byte TargetStatusEffectBitmask;
 
+        // Modul: multi-slot simulation. Parked activity state for character
+        // slots 2 and 3.
+        //
+        // Slot 1's activity state is NOT here - it is the flat
+        // ActiveActivityId / PlayerHp / CurrentMonsterId / ... fields above,
+        // which double as the tick's "active character register". Each tick the
+        // engine swaps a slot's parked state into that register, runs the
+        // ordinary per-activity tick against it, and swaps it back out (see
+        // SimulationEngine.SwapSlotIntoActiveRegister). The swap is its own
+        // inverse, and the loop always finishes with slot 1 loaded, so every
+        // downstream consumer that reads the flat fields - the outbound packet,
+        // the checkpoint flush, the offline extrapolation - keeps seeing the
+        // main character exactly as it did before multi-slot existed.
+        //
+        // Doing it this way rather than indexing three uniform slot structs
+        // left ProcessSubTick's 618 lines and all ~115 existing references to
+        // the flat fields untouched, so the change could not silently alter
+        // single-character behaviour.
+        public CharacterActivityState Slot2Activity;
+        public CharacterActivityState Slot3Activity;
+
         public void InitializeObfuscation(long sessionKey)
         {
             ObfuscationSessionKey = sessionKey == 0L ? PlayerId ^ 0x5F3759DF5F3759DFL : sessionKey;

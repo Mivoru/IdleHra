@@ -769,13 +769,16 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                // Modul: Deploy activation fix. Applies a committed activity
-                // change to the live payload. Only when the change targets the
-                // character this session is actually simulating (Slot1) - the
-                // payload models exactly one running activity, so applying a
-                // Slot2/Slot3 change here would silently retarget the wrong
-                // character's fight. Non-Slot1 changes are already persisted
-                // and take effect the next time that character occupies Slot1.
+                // Modul: Deploy activation fix, generalised for multi-slot.
+                // Applies a committed activity change to the live payload.
+                //
+                // This used to skip any change whose character was not Slot1,
+                // on the (then true) grounds that the payload modelled exactly
+                // one running activity. That made assigning a second or third
+                // character a no-op for the whole session: the row was written,
+                // the queue entry was dropped here, and nothing ever ran. Now
+                // that every unlocked slot is simulated, the change is routed
+                // to whichever slot owns the character.
                 while (_playerRegistry.ActivityChangeQueue.TryDequeue(out var activityChange))
                 {
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, activityChange.PlayerId);
@@ -784,12 +787,18 @@ namespace FolkIdle.Server.Domain.Combat
                         continue;
                     }
 
-                    if (currentPayload.Slot1_CharacterId != activityChange.CharacterId)
+                    int targetSlotIndex = ResolveSlotIndexForCharacter(ref currentPayload, activityChange.CharacterId);
+                    if (targetSlotIndex < 0)
                     {
                         continue;
                     }
 
+                    // Load the owning slot, apply, put it back - the same
+                    // register discipline the tick loop uses, so a change to
+                    // slot 3 cannot clobber slot 1's fight.
+                    SwapSlotIntoActiveRegister(ref currentPayload, targetSlotIndex);
                     ApplyActivityChangeToPayload(ref currentPayload, activityChange.TargetActivityId);
+                    SwapSlotIntoActiveRegister(ref currentPayload, targetSlotIndex);
                 }
 
                 // Modul: larder. LarderEngine has already committed the slot to
@@ -3007,6 +3016,17 @@ namespace FolkIdle.Server.Domain.Combat
         // or CurrentMonsterHp behind would carry the previous target's
         // half-dead health onto the new one, and a stale
         // CombatTargetTickAccumulator would land a free hit on arrival.
+        // Modul: multi-slot simulation. Which slot holds this character, or -1
+        // if the player is not carrying them in an unlocked slot this session.
+        private static int ResolveSlotIndexForCharacter(ref TickStatePayload payload, System.Guid characterId)
+        {
+            if (characterId == System.Guid.Empty) return -1;
+            if (payload.Slot1_CharacterId == characterId) return 0;
+            if (payload.Slot2_CharacterId == characterId) return 1;
+            if (payload.Slot3_CharacterId == characterId) return 2;
+            return -1;
+        }
+
         private static void ApplyActivityChangeToPayload(ref TickStatePayload payload, long targetActivityId)
         {
             payload.ActiveActivityId = targetActivityId;
@@ -3044,12 +3064,17 @@ namespace FolkIdle.Server.Domain.Combat
                     return Network.CommandResultCode.TargetNotFound;
                 }
 
-                int mainCharacterLevel = await db.PlayerRecords.AsNoTracking()
-                    .Where(p => p.Id == playerId)
-                    .Select(p => p.CurrentLevel)
-                    .FirstOrDefaultAsync();
+                // Modul: Town Hall slot gating. Was the main character's
+                // CurrentLevel; the second and third slots now hang off the
+                // Town Hall's level instead - see CharacterSlotEngine for why
+                // level was the wrong axis.
+                int townHallLevel = await db.VillageInfrastructures
+                    .AsNoTracking()
+                    .Where(v => v.PlayerId == playerId && v.BuildingId == VillageManagementEngine.TownHallBuildingId)
+                    .Select(v => (int?)v.CurrentLevel)
+                    .SingleOrDefaultAsync() ?? 0;
 
-                if (!CharacterSlotEngine.IsSlotUnlocked(requesting.SlotIndex, mainCharacterLevel))
+                if (!CharacterSlotEngine.IsSlotUnlocked(requesting.SlotIndex, townHallLevel))
                 {
                     await transaction.RollbackAsync();
                     return Network.CommandResultCode.LevelTooLow;
@@ -3892,7 +3917,7 @@ namespace FolkIdle.Server.Domain.Combat
             if (payload.Quarantine_Active) return;
 
             ProcessPassiveVillageTick(ref payload, TickIntervalSeconds, now);
-            ProcessSubTick(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
+            ProcessAllSlotSubTicks(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
 
             if (chronoAccelerating)
             {
@@ -3905,7 +3930,7 @@ namespace FolkIdle.Server.Domain.Combat
                     }
 
                     ProcessPassiveVillageTick(ref payload, TickIntervalSeconds, now);
-                    ProcessSubTick(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
+                    ProcessAllSlotSubTicks(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
                 }
 
                 payload.BankedChronoSeconds -= (payload.SpeedMultiplier - 1) * TickIntervalSeconds;
@@ -3935,7 +3960,7 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     payload.AccumulatedTimeBankMs -= 100;
                     ProcessPassiveVillageTick(ref payload, TickIntervalSeconds, now);
-                    ProcessSubTick(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
+                    ProcessAllSlotSubTicks(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
                 }
                 else
                 {
@@ -4096,13 +4121,23 @@ namespace FolkIdle.Server.Domain.Combat
             return false;
         }
 
-        private static void ProcessSubTick(ref TickStatePayload payload, int localXpMultiplier, int localDropMultiplier, System.Collections.Concurrent.ConcurrentQueue<GuildWarPointEvent> guildWarPointQueue, System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext> liveSessionContexts)
+        // Modul: multi-slot simulation. Everything in the old ProcessSubTick
+        // prologue that belongs to the ACCOUNT rather than to one character:
+        // character aging, mana regeneration, potion/food buff countdowns, and
+        // child maturation. It has to run exactly once per tick.
+        //
+        // With three characters now driving ProcessSubTick up to three times a
+        // tick, leaving these here would have aged every character three times
+        // as fast, tripled mana regen, and expired potions three times quicker
+        // the moment a second slot was assigned - a silent, invisible speedup
+        // of unrelated systems as a side effect of a UI action.
+        //
+        // The activity guard is preserved as "any slot is working": before
+        // multi-slot, an idle player's potions did not tick down and their
+        // characters did not age, and that behaviour is deliberately unchanged
+        // rather than quietly fixed as part of this refactor.
+        private static void ProcessAccountTick(ref TickStatePayload payload)
         {
-            if (payload.ActiveActivityId <= 0 || payload.InventorySpaceRemaining <= 0)
-            {
-                return;
-            }
-
             payload.TicksSinceLastFlush++;
             payload.IsDirty = true;
 
@@ -4142,6 +4177,180 @@ namespace FolkIdle.Server.Domain.Combat
                     payload.ActiveChildMaturationMs = 0;
                 }
             }
+        }
+
+        // Modul: multi-slot simulation. Swaps character slot `slotIndex`'s
+        // parked state into the payload's active register (the flat
+        // ActiveActivityId / PlayerHp / CurrentMonsterId / Slot1_* fields) and,
+        // called a second time with the same index, swaps it straight back.
+        //
+        // Being its own inverse is the safety property that matters here: the
+        // per-slot loop cannot leave a foreign character loaded in the register
+        // even if the body between the two calls returns early, because both
+        // calls sit in the same straight-line block. Slot 0 is a no-op, so the
+        // register holds the main character whenever the loop is not mid-slot -
+        // which is what the outbound packet, the checkpoint flush and the
+        // offline extrapolation all assume.
+        //
+        // Pure unmanaged field exchanges: no allocation, no boxing.
+        private static void SwapSlotIntoActiveRegister(ref TickStatePayload payload, int slotIndex)
+        {
+            if (slotIndex == 0)
+            {
+                return;
+            }
+
+            if (slotIndex == 1)
+            {
+                SwapRegisterWith(ref payload, ref payload.Slot2Activity, ref payload.Slot2_CharacterId, ref payload.Slot2_AgeTicks, ref payload.Slot2_AgePhase, ref payload.Slot2_GeneticVector);
+            }
+            else
+            {
+                SwapRegisterWith(ref payload, ref payload.Slot3Activity, ref payload.Slot3_CharacterId, ref payload.Slot3_AgeTicks, ref payload.Slot3_AgePhase, ref payload.Slot3_GeneticVector);
+            }
+        }
+
+        private static void SwapRegisterWith(
+            ref TickStatePayload payload,
+            ref CharacterActivityState parked,
+            ref System.Guid parkedCharacterId,
+            ref long parkedAgeTicks,
+            ref int parkedAgePhase,
+            ref long parkedGeneticVector)
+        {
+            Swap(ref payload.ActiveActivityId, ref parked.ActiveActivityId);
+            Swap(ref payload.CurrentProgressTicks, ref parked.CurrentProgressTicks);
+            Swap(ref payload.RequiredProgressTicks, ref parked.RequiredProgressTicks);
+            Swap(ref payload.CurrentMonsterId, ref parked.CurrentMonsterId);
+            Swap(ref payload.CurrentMonsterHp, ref parked.CurrentMonsterHp);
+            Swap(ref payload.PlayerHp, ref parked.PlayerHp);
+            Swap(ref payload.CombatTargetTickAccumulator, ref parked.CombatTargetTickAccumulator);
+            Swap(ref payload.TargetStatusEffectBitmask, ref parked.TargetStatusEffectBitmask);
+            Swap(ref payload.GatheringProgressTicks, ref parked.GatheringProgressTicks);
+            Swap(ref payload.HarvestLoopCount, ref parked.HarvestLoopCount);
+            Swap(ref payload.ActivityHaltReason, ref parked.ActivityHaltReason);
+
+            // Identity travels with the activity: combat stats are derived from
+            // the active character's race, age phase and genetic loci, so a
+            // slot has to fight as itself rather than as slot 1. The Slot1_*
+            // fields ARE the register's identity, so this exchanges them with
+            // the parked slot's own Slot2_*/Slot3_* fields.
+            Swap(ref payload.Slot1_CharacterId, ref parkedCharacterId);
+            Swap(ref payload.Slot1_AgeTicks, ref parkedAgeTicks);
+            Swap(ref payload.Slot1_AgePhase, ref parkedAgePhase);
+            Swap(ref payload.Slot1_GeneticVector, ref parkedGeneticVector);
+        }
+
+        private static void Swap<T>(ref T left, ref T right) where T : struct
+        {
+            T temporary = left;
+            left = right;
+            right = temporary;
+        }
+
+        // Modul: multi-slot simulation. Runs one 10Hz activity step for every
+        // character the player has unlocked AND assigned.
+        //
+        // Before this, only slot 1 was ever simulated - slots 2 and 3 held a
+        // persisted ActiveActivityId that nothing acted on, so assigning a
+        // second character produced no gold, no drops and no progress of any
+        // kind. The occupancy mutex in CharacterSlotEngine guarantees no two
+        // slots share an activity id, so the three passes can never
+        // double-count the same node or monster.
+        private static void ProcessAllSlotSubTicks(ref TickStatePayload payload, int localXpMultiplier, int localDropMultiplier, System.Collections.Concurrent.ConcurrentQueue<GuildWarPointEvent> guildWarPointQueue, System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext> liveSessionContexts)
+        {
+            int unlockedSlots = CharacterSlotEngine.GetUnlockedSlotCount(payload.TownHallLevel);
+
+            // The old ProcessSubTick bailed out before its prologue whenever the
+            // player was idle or their backpack was full, so aging, mana regen
+            // and potion countdowns did not advance in those states. That is
+            // preserved verbatim rather than quietly corrected here - the
+            // generalisation is only from "slot 1 is working" to "any unlocked
+            // slot is working".
+            if (!HasAnyWorkingSlot(ref payload, unlockedSlots))
+            {
+                return;
+            }
+
+            ProcessAccountTick(ref payload);
+
+            for (int slotIndex = 0; slotIndex < unlockedSlots; slotIndex++)
+            {
+                // Slots 2 and 3 only run when a real character occupies them.
+                // Slot 0 is exempt: it is the pre-existing single-character path
+                // and injected virtual players legitimately have no
+                // CharacterRecord, so requiring one there would stop them.
+                if (slotIndex > 0 && !SlotHoldsCharacter(ref payload, slotIndex))
+                {
+                    continue;
+                }
+
+                SwapSlotIntoActiveRegister(ref payload, slotIndex);
+                ProcessSubTick(ref payload, localXpMultiplier, localDropMultiplier, guildWarPointQueue, liveSessionContexts);
+                SwapSlotIntoActiveRegister(ref payload, slotIndex);
+            }
+        }
+
+        private static bool SlotHoldsCharacter(ref TickStatePayload payload, int slotIndex)
+        {
+            return slotIndex switch
+            {
+                0 => payload.Slot1_CharacterId != System.Guid.Empty,
+                1 => payload.Slot2_CharacterId != System.Guid.Empty,
+                2 => payload.Slot3_CharacterId != System.Guid.Empty,
+                _ => false
+            };
+        }
+
+        // True when at least one unlocked slot has a character on an activity
+        // and there is backpack room to put its yield. Reads the parked slots
+        // directly rather than swapping, since a swap per probe would be pure
+        // overhead on the common single-character path.
+        private static bool HasAnyWorkingSlot(ref TickStatePayload payload, int unlockedSlots)
+        {
+            if (payload.InventorySpaceRemaining <= 0)
+            {
+                return false;
+            }
+
+            // Slot 0: exactly the original condition, no character requirement.
+            if (payload.ActiveActivityId > 0)
+            {
+                return true;
+            }
+
+            if (unlockedSlots > 1 && payload.Slot2Activity.ActiveActivityId > 0 && payload.Slot2_CharacterId != System.Guid.Empty)
+            {
+                return true;
+            }
+
+            if (unlockedSlots > 2 && payload.Slot3Activity.ActiveActivityId > 0 && payload.Slot3_CharacterId != System.Guid.Empty)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static void ProcessSubTick(ref TickStatePayload payload, int localXpMultiplier, int localDropMultiplier, System.Collections.Concurrent.ConcurrentQueue<GuildWarPointEvent> guildWarPointQueue, System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext> liveSessionContexts)
+        {
+            // Modul: multi-slot simulation. Guard kept byte-for-byte identical
+            // to the pre-multi-slot original. It deliberately does NOT also
+            // require a character id: injected virtual players (the benchmark
+            // stress tester, several integration tests) run an activity with no
+            // CharacterRecord behind them, and adding that condition here
+            // silently stopped them ticking. Whether a SLOT holds a character is
+            // the slot loop's business, not this function's - see
+            // ProcessAllSlotSubTicks.
+            //
+            // The account-level prologue that used to live here now runs once
+            // per tick in ProcessAccountTick.
+            if (payload.ActiveActivityId <= 0 || payload.InventorySpaceRemaining <= 0)
+            {
+                return;
+            }
+
+            payload.IsDirty = true;
 
             if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out var gatheringNode))
             {

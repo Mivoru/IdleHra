@@ -25,6 +25,17 @@ namespace FolkIdle.Server.Domain.Shared
         public const int ThresholdPct = 30;
     }
 
+    // Modul: multi-slot simulation. The two starting values every character
+    // slot hydrates with, named once so slot 1's long-standing literals and
+    // slots 2-3's new ones cannot drift apart.
+    public static class CharacterSlotDefaults
+    {
+        // Milli-HP, matching the engine's thousandths convention everywhere
+        // else (the outbound packet divides by 1000).
+        public const int MilliHp = 100000;
+        public const int RequiredProgressTicks = 50;
+    }
+
     public class StateCheckpointManager
     {
         private readonly IServiceProvider _serviceProvider;
@@ -791,6 +802,15 @@ namespace FolkIdle.Server.Domain.Shared
                 payload.Slot2_AgeTicks = characters[1].AgeTicks;
                 payload.Slot2_AgePhase = characters[1].AgePhase;
                 payload.Slot2_GeneticVector = characters[1].Lineage?.GeneticVector ?? 0;
+
+                // Modul: multi-slot simulation. These slots' persisted activity
+                // assignments were loaded nowhere - only characters[0]'s was
+                // read - so a second or third character came back from every
+                // login idle regardless of what the player had assigned, and
+                // nothing simulated them anyway. Both halves are fixed now.
+                payload.Slot2Activity.ActiveActivityId = characters[1].ActiveActivityId;
+                payload.Slot2Activity.PlayerHp = CharacterSlotDefaults.MilliHp;
+                payload.Slot2Activity.RequiredProgressTicks = CharacterSlotDefaults.RequiredProgressTicks;
             }
             if (characters.Count > 2)
             {
@@ -798,6 +818,10 @@ namespace FolkIdle.Server.Domain.Shared
                 payload.Slot3_AgeTicks = characters[2].AgeTicks;
                 payload.Slot3_AgePhase = characters[2].AgePhase;
                 payload.Slot3_GeneticVector = characters[2].Lineage?.GeneticVector ?? 0;
+
+                payload.Slot3Activity.ActiveActivityId = characters[2].ActiveActivityId;
+                payload.Slot3Activity.PlayerHp = CharacterSlotDefaults.MilliHp;
+                payload.Slot3Activity.RequiredProgressTicks = CharacterSlotDefaults.RequiredProgressTicks;
             }
 
             return payload;

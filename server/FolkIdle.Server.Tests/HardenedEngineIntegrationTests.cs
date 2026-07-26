@@ -7015,6 +7015,12 @@ namespace FolkIdle.Server.Tests
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60 });
                 db.CharacterRecords.Add(new CharacterRecord { Id = mainCharacterId, PlayerId = testPlayerId, SlotIndex = 0 });
                 db.CharacterRecords.Add(new CharacterRecord { Id = secondCharacterId, PlayerId = testPlayerId, SlotIndex = 1 });
+
+                // Modul: Town Hall slot gating. Slot 2 used to ride on the
+                // seeded CurrentLevel of 60; it now needs a Town Hall of at
+                // least 3, or this test measures the unlock gate instead of the
+                // occupancy mutex it is actually about.
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = testPlayerId, BuildingId = VillageManagementEngine.TownHallBuildingId, CurrentLevel = CharacterSlotEngine.Slot2TownHallRequirement });
                 await db.SaveChangesAsync();
             }
 
@@ -7047,60 +7053,91 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(0L, after - before);
         }
 
-        // Modul: Architecture Overhaul, Part 6. Slot 1 requires the main
-        // character to be level 30+; slot 2 requires level 60+. Both gates
-        // are enforced independently of the occupancy mutex above.
+        // Modul: Town Hall slot gating. The second slot requires Town Hall 3
+        // and the third requires Town Hall 5, enforced independently of the
+        // occupancy mutex above.
+        //
+        // This test used to drive the main character's CurrentLevel through
+        // 29 / 30 / 60. Level was the wrong axis: it is a pure function of
+        // leaving combat running, so the extra slots arrived on a timer that
+        // rewarded no decision and had nothing to do with the village they
+        // exist to populate. The Town Hall can only be raised by gathering
+        // raw_log and copper_ore, which is what extra characters are for.
         [Fact]
-        public async Task Test_CharacterSlotEngine_LevelGatesBlockLockedSlots()
+        public async Task Test_CharacterSlotEngine_TownHallGatesBlockLockedSlots()
         {
             const long testPlayerId = 970009002L;
             var mainCharacterId = Guid.NewGuid();
-            var slot1CharacterId = Guid.NewGuid();
             var slot2CharacterId = Guid.NewGuid();
+            var slot3CharacterId = Guid.NewGuid();
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 29 });
+                // A high character level must NOT unlock anything any more -
+                // seeding level 99 here is the guard against the old rule
+                // quietly surviving.
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 99 });
                 db.CharacterRecords.Add(new CharacterRecord { Id = mainCharacterId, PlayerId = testPlayerId, SlotIndex = 0 });
-                db.CharacterRecords.Add(new CharacterRecord { Id = slot1CharacterId, PlayerId = testPlayerId, SlotIndex = 1 });
-                db.CharacterRecords.Add(new CharacterRecord { Id = slot2CharacterId, PlayerId = testPlayerId, SlotIndex = 2 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = slot2CharacterId, PlayerId = testPlayerId, SlotIndex = 1 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = slot3CharacterId, PlayerId = testPlayerId, SlotIndex = 2 });
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = testPlayerId, BuildingId = VillageManagementEngine.TownHallBuildingId, CurrentLevel = 2 });
                 await db.SaveChangesAsync();
             }
 
             var simulationEngine = CreateTestSimulationEngine();
 
-            // Level 29: slot 1 (requires 30) is still locked.
-            var slot1AtLevel29 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot1CharacterId, 92L);
-            Assert.Equal(CommandResultCode.LevelTooLow, slot1AtLevel29);
+            // Slot 1 is always available, whatever the Town Hall level.
+            var slot1Assignment = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, mainCharacterId, 91L);
+            Assert.Equal(CommandResultCode.Success, slot1Assignment);
 
-            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                var player = await db.PlayerRecords.SingleAsync(p => p.Id == testPlayerId);
-                player.CurrentLevel = 30;
-                await db.SaveChangesAsync();
-            }
+            // Town Hall 2: slot 2 (requires 3) is still locked, despite the
+            // character being level 99.
+            var slot2AtTownHall2 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot2CharacterId, 92L);
+            Assert.Equal(CommandResultCode.LevelTooLow, slot2AtTownHall2);
 
-            // Level 30: slot 1 unlocks, slot 2 (requires 60) stays locked.
-            var slot1AtLevel30 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot1CharacterId, 92L);
-            Assert.Equal(CommandResultCode.Success, slot1AtLevel30);
+            await SetTownHallLevelAsync(testPlayerId, 3);
 
-            var slot2AtLevel30 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot2CharacterId, 93L);
-            Assert.Equal(CommandResultCode.LevelTooLow, slot2AtLevel30);
+            // Town Hall 3: slot 2 unlocks, slot 3 (requires 5) stays locked.
+            var slot2AtTownHall3 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot2CharacterId, 92L);
+            Assert.Equal(CommandResultCode.Success, slot2AtTownHall3);
 
-            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                var player = await db.PlayerRecords.SingleAsync(p => p.Id == testPlayerId);
-                player.CurrentLevel = 60;
-                await db.SaveChangesAsync();
-            }
+            var slot3AtTownHall3 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot3CharacterId, 93L);
+            Assert.Equal(CommandResultCode.LevelTooLow, slot3AtTownHall3);
 
-            // Level 60: slot 2 finally unlocks.
-            var slot2AtLevel60 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot2CharacterId, 93L);
-            Assert.Equal(CommandResultCode.Success, slot2AtLevel60);
+            await SetTownHallLevelAsync(testPlayerId, 5);
 
-            Assert.Equal(1, CharacterSlotEngine.GetSlotUnlockLevelRequirement(0));
-            Assert.Equal(30, CharacterSlotEngine.GetSlotUnlockLevelRequirement(1));
-            Assert.Equal(60, CharacterSlotEngine.GetSlotUnlockLevelRequirement(2));
+            // Town Hall 5: the third slot finally opens.
+            var slot3AtTownHall5 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot3CharacterId, 93L);
+            Assert.Equal(CommandResultCode.Success, slot3AtTownHall5);
+
+            // And the occupancy mutex still applies across all three: any
+            // character may do anything, but never the SAME thing as another.
+            var slot3OntoSlot2sMonster = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot3CharacterId, 92L);
+            Assert.Equal(CommandResultCode.NodeOccupied, slot3OntoSlot2sMonster);
+
+            Assert.Equal(0, CharacterSlotEngine.GetSlotUnlockTownHallRequirement(0));
+            Assert.Equal(3, CharacterSlotEngine.GetSlotUnlockTownHallRequirement(1));
+            Assert.Equal(5, CharacterSlotEngine.GetSlotUnlockTownHallRequirement(2));
+
+            // GetUnlockedSlotCount is what the tick loop reads to decide how
+            // many characters to simulate, so it has to agree with
+            // IsSlotUnlocked at every level or a slot could be assignable but
+            // never simulated (or the reverse).
+            Assert.Equal(1, CharacterSlotEngine.GetUnlockedSlotCount(0));
+            Assert.Equal(1, CharacterSlotEngine.GetUnlockedSlotCount(2));
+            Assert.Equal(2, CharacterSlotEngine.GetUnlockedSlotCount(3));
+            Assert.Equal(2, CharacterSlotEngine.GetUnlockedSlotCount(4));
+            Assert.Equal(3, CharacterSlotEngine.GetUnlockedSlotCount(5));
+            Assert.Equal(CharacterSlotEngine.MaxCharacterSlots, CharacterSlotEngine.GetUnlockedSlotCount(99));
+        }
+
+        private async Task SetTownHallLevelAsync(long playerId, int level)
+        {
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var townHall = await db.VillageInfrastructures
+                .SingleAsync(v => v.PlayerId == playerId && v.BuildingId == VillageManagementEngine.TownHallBuildingId);
+            townHall.CurrentLevel = level;
+            await db.SaveChangesAsync();
         }
 
         // Modul: Architecture Overhaul, Part 6. Independent Multi-Drop
@@ -7425,6 +7462,173 @@ namespace FolkIdle.Server.Tests
             }
 
             Assert.Equal(10, checkedNodes);
+        }
+
+        // Modul: multi-slot simulation. THE defect this work exists to fix: only
+        // slot 1 was ever simulated. CharacterRecord.ActiveActivityId has always
+        // been per-character and ChangeCharacterActivityAsync has always written
+        // it per-character, but ProcessSubTick ran once against slot 1's state
+        // and the ActivityChangeQueue drain discarded any change that was not
+        // slot 1's - so a second or third character sat there producing nothing,
+        // forever.
+        //
+        // Driven at the payload level rather than through a live socket, because
+        // the assertion is about the tick loop's own arithmetic: after N ticks,
+        // did the parked slot's progress actually advance?
+        [Fact]
+        public void Test_MultiSlot_SecondAndThirdCharactersActuallyProgress()
+        {
+            var payload = new TickStatePayload
+            {
+                PlayerId = 970004401L,
+                InventorySpaceRemaining = 20,
+                InventoryCapacity = 20,
+                CurrentLevel = 10,
+                // Town Hall 5 unlocks all three slots.
+                TownHallLevel = CharacterSlotEngine.Slot3TownHallRequirement
+            };
+
+            // Three characters, three DIFFERENT gathering nodes - the occupancy
+            // mutex forbids sharing one.
+            payload.Slot1_CharacterId = Guid.NewGuid();
+            payload.Slot1_AgePhase = 1;
+            payload.ActiveActivityId = 101L;   // Woodcutting node 1
+            payload.PlayerHp = 100000;
+
+            payload.Slot2_CharacterId = Guid.NewGuid();
+            payload.Slot2_AgePhase = 1;
+            payload.Slot2Activity.ActiveActivityId = 102L;  // Woodcutting node 2
+            payload.Slot2Activity.PlayerHp = 100000;
+
+            payload.Slot3_CharacterId = Guid.NewGuid();
+            payload.Slot3_AgePhase = 1;
+            payload.Slot3Activity.ActiveActivityId = 201L;  // Mining node 1
+            payload.Slot3Activity.PlayerHp = 100000;
+
+            RunSlotTicks(ref payload, 25);
+
+            // Every slot advanced. Before this change, slots 2 and 3 stayed at
+            // exactly 0 no matter how long the game ran.
+            Assert.True(payload.GatheringProgressTicks > 0 || payload.HarvestLoopCount > 0,
+                "Slot 1 did not progress.");
+            Assert.True(payload.Slot2Activity.GatheringProgressTicks > 0 || payload.Slot2Activity.HarvestLoopCount > 0,
+                "Slot 2 did not progress - the second character is still doing nothing.");
+            Assert.True(payload.Slot3Activity.GatheringProgressTicks > 0 || payload.Slot3Activity.HarvestLoopCount > 0,
+                "Slot 3 did not progress - the third character is still doing nothing.");
+
+            // The register discipline held: slot 1's identity and activity are
+            // back in the flat fields after the loop, which is what the outbound
+            // packet, the checkpoint flush and the offline extrapolation all
+            // read.
+            Assert.Equal(101L, payload.ActiveActivityId);
+            Assert.Equal(102L, payload.Slot2Activity.ActiveActivityId);
+            Assert.Equal(201L, payload.Slot3Activity.ActiveActivityId);
+        }
+
+        // Modul: multi-slot simulation. A locked slot must not be simulated, or
+        // the Town Hall gate would be cosmetic - the character would earn
+        // without the player ever having unlocked it.
+        [Fact]
+        public void Test_MultiSlot_LockedSlotsAreNotSimulated()
+        {
+            var payload = new TickStatePayload
+            {
+                PlayerId = 970004402L,
+                InventorySpaceRemaining = 20,
+                InventoryCapacity = 20,
+                CurrentLevel = 10,
+                // Town Hall 2: only slot 1 is unlocked.
+                TownHallLevel = 2
+            };
+
+            payload.Slot1_CharacterId = Guid.NewGuid();
+            payload.Slot1_AgePhase = 1;
+            payload.ActiveActivityId = 101L;
+            payload.PlayerHp = 100000;
+
+            // A character sitting in a locked slot, assigned and ready.
+            payload.Slot2_CharacterId = Guid.NewGuid();
+            payload.Slot2_AgePhase = 1;
+            payload.Slot2Activity.ActiveActivityId = 102L;
+            payload.Slot2Activity.PlayerHp = 100000;
+
+            RunSlotTicks(ref payload, 25);
+
+            Assert.True(payload.GatheringProgressTicks > 0 || payload.HarvestLoopCount > 0,
+                "Slot 1 must still run at Town Hall 2.");
+            Assert.Equal(0, payload.Slot2Activity.GatheringProgressTicks);
+            Assert.Equal(0L, payload.Slot2Activity.HarvestLoopCount);
+        }
+
+        // Modul: multi-slot simulation. The account-level prologue - character
+        // aging, mana regeneration, potion countdowns, child maturation - has to
+        // run exactly ONCE per tick however many characters are working. It used
+        // to live at the top of ProcessSubTick, so running that three times a
+        // tick would have aged every character three times as fast and expired
+        // potions three times quicker the moment a second slot was assigned: a
+        // silent speedup of unrelated systems as a side effect of a UI action.
+        [Fact]
+        public void Test_MultiSlot_AccountLevelTickRunsOncePerTickNotOncePerCharacter()
+        {
+            const int ticks = 20;
+
+            var singleSlot = new TickStatePayload
+            {
+                PlayerId = 970004403L,
+                InventorySpaceRemaining = 20,
+                InventoryCapacity = 20,
+                CurrentLevel = 10,
+                TownHallLevel = CharacterSlotEngine.Slot3TownHallRequirement,
+                OffensivePotionDurationMs = 600000,
+                ActiveOffensivePotionId = 1
+            };
+            singleSlot.Slot1_CharacterId = Guid.NewGuid();
+            singleSlot.Slot1_AgePhase = 1;
+            singleSlot.ActiveActivityId = 101L;
+            singleSlot.PlayerHp = 100000;
+
+            var threeSlots = singleSlot;
+            threeSlots.PlayerId = 970004404L;
+            threeSlots.Slot2_CharacterId = Guid.NewGuid();
+            threeSlots.Slot2_AgePhase = 1;
+            threeSlots.Slot2Activity.ActiveActivityId = 102L;
+            threeSlots.Slot2Activity.PlayerHp = 100000;
+            threeSlots.Slot3_CharacterId = Guid.NewGuid();
+            threeSlots.Slot3_AgePhase = 1;
+            threeSlots.Slot3Activity.ActiveActivityId = 201L;
+            threeSlots.Slot3Activity.PlayerHp = 100000;
+
+            RunSlotTicks(ref singleSlot, ticks);
+            RunSlotTicks(ref threeSlots, ticks);
+
+            // Identical account-level wear despite three times the characters.
+            Assert.Equal(singleSlot.OffensivePotionDurationMs, threeSlots.OffensivePotionDurationMs);
+            Assert.Equal(singleSlot.Slot1_AgeTicks, threeSlots.Slot1_AgeTicks);
+            Assert.Equal(singleSlot.CurrentMana, threeSlots.CurrentMana);
+            Assert.Equal(singleSlot.TicksSinceLastFlush, threeSlots.TicksSinceLastFlush);
+        }
+
+        // Reflection is used deliberately: ProcessAllSlotSubTicks is private
+        // static, and driving it directly is the only way to assert on the tick
+        // arithmetic without standing up a socket, a database session and a
+        // 10Hz thread for what is a pure state transition.
+        private static void RunSlotTicks(ref TickStatePayload payload, int tickCount)
+        {
+            var method = typeof(SimulationEngine).GetMethod(
+                "ProcessAllSlotSubTicks",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.NotNull(method);
+
+            var guildWarQueue = new System.Collections.Concurrent.ConcurrentQueue<GuildWarPointEvent>();
+            var sessionContexts = new System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext>();
+
+            object boxed = payload;
+            var args = new object[] { boxed, 100, 100, guildWarQueue, sessionContexts };
+            for (int i = 0; i < tickCount; i++)
+            {
+                method!.Invoke(null, args);
+            }
+            payload = (TickStatePayload)args[0];
         }
 
         // Modul: crafting output. THE bug this test exists for: every one of
