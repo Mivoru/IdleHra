@@ -35,6 +35,9 @@ namespace FolkIdle.Server.Models
         public DbSet<MonsterCodexEntry> MonsterCodexEntries { get; set; }
         public DbSet<PlayerRegionCompletion> PlayerRegionCompletions { get; set; }
         public DbSet<PlayerRaceMastery> PlayerRaceMasteries { get; set; }
+
+        // Modul: race unlocks - see PlayerRaceUnlock and RaceUnlockRegistry.
+        public DbSet<PlayerRaceUnlock> PlayerRaceUnlocks { get; set; }
         public DbSet<PlayerAchievement> PlayerAchievements { get; set; }
         public DbSet<GuildWarMatch> GuildWarMatches { get; set; }
         public DbSet<GuildWarActiveMatch> GuildWarActiveMatches { get; set; }
@@ -242,6 +245,11 @@ namespace FolkIdle.Server.Models
                 .HasKey(m => new { m.PlayerId, m.RaceId });
             modelBuilder.Entity<PlayerRaceMastery>()
                 .HasIndex(m => m.PlayerId);
+
+            modelBuilder.Entity<PlayerRaceUnlock>()
+                .HasKey(u => new { u.PlayerId, u.RaceId });
+            modelBuilder.Entity<PlayerRaceUnlock>()
+                .HasIndex(u => u.PlayerId);
 
             modelBuilder.Entity<PlayerRegionCompletion>()
                 .HasKey(r => new { r.PlayerId, r.RegionId });

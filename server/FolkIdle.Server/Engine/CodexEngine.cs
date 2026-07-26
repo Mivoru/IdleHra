@@ -112,10 +112,32 @@ namespace FolkIdle.Server.Engine
 
                     var codexLeveledUpPlayerIds = new System.Collections.Generic.HashSet<long>();
 
+                    // Modul: race unlocks. A region boss's FIRST kill unlocks a
+                    // playable race. Detected here rather than in the combat
+                    // tick because this is the one place that already knows
+                    // whether a monster had ever been killed before - the codex
+                    // entry's prior KillCount. Recording it in the tick would
+                    // mean either a second per-kill DB read on the hot path or a
+                    // duplicate first-kill ledger.
+                    var newlyUnlockedRaces = new System.Collections.Generic.List<(long PlayerId, byte RaceId, int MonsterId)>();
+
                     foreach (var group in killsToProcess.GroupBy(k => new { k.PlayerId, k.MonsterId }))
                     {
                         var key = new { group.Key.PlayerId, group.Key.MonsterId };
                         int kills = group.Count();
+
+                        // Captured BEFORE the increment below: a boss whose
+                        // codex entry did not exist, or existed at zero, has
+                        // never been killed by this player.
+                        byte raceUnlockedByThisMonster = RaceUnlockRegistry.GetRaceUnlockedByBoss(key.MonsterId);
+                        if (raceUnlockedByThisMonster != 0)
+                        {
+                            bool everKilledBefore = codexEntries.TryGetValue(key, out var priorEntry) && priorEntry.KillCount > 0;
+                            if (!everKilledBefore)
+                            {
+                                newlyUnlockedRaces.Add((key.PlayerId, raceUnlockedByThisMonster, key.MonsterId));
+                            }
+                        }
 
                         if (codexEntries.TryGetValue(key, out var entry))
                         {
@@ -193,6 +215,50 @@ namespace FolkIdle.Server.Engine
                         }
                     }
 
+                    // Modul: race unlocks. Persist the milestone and hand the
+                    // player an actual character of the race - an "unlock" that
+                    // grants nothing playable is just a line in a menu, and
+                    // there is no other way to obtain a non-Human character:
+                    // accounts are created Human and BreedingEngine refuses
+                    // cross-race pairs.
+                    if (newlyUnlockedRaces.Count > 0)
+                    {
+                        long unlockEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+                        var unlockPlayerIds = newlyUnlockedRaces.Select(u => u.PlayerId).Distinct().ToList();
+                        var alreadyUnlocked = await dbContext.PlayerRaceUnlocks
+                            .Where(u => unlockPlayerIds.Contains(u.PlayerId))
+                            .Select(u => new { u.PlayerId, u.RaceId })
+                            .ToListAsync(stoppingToken);
+                        var alreadyUnlockedSet = new System.Collections.Generic.HashSet<(long, int)>(
+                            alreadyUnlocked.Select(u => (u.PlayerId, u.RaceId)));
+
+                        for (int i = 0; i < newlyUnlockedRaces.Count; i++)
+                        {
+                            (long unlockPlayerId, byte unlockRaceId, int unlockMonsterId) = newlyUnlockedRaces[i];
+
+                            // The codex-entry probe above says "never killed
+                            // before"; this says "never unlocked before". They
+                            // can disagree if a codex row was ever pruned, and
+                            // the composite primary key would throw on the
+                            // duplicate rather than silently skipping.
+                            if (!alreadyUnlockedSet.Add((unlockPlayerId, unlockRaceId)))
+                            {
+                                continue;
+                            }
+
+                            dbContext.PlayerRaceUnlocks.Add(new PlayerRaceUnlock
+                            {
+                                PlayerId = unlockPlayerId,
+                                RaceId = unlockRaceId,
+                                UnlockedAtEpoch = unlockEpoch,
+                                UnlockedByMonsterId = unlockMonsterId
+                            });
+
+                            await GrantUnlockedRaceCharacterAsync(dbContext, unlockPlayerId, unlockRaceId, stoppingToken);
+                        }
+                    }
+
                     foreach (var group in killsToProcess.GroupBy(k => new { k.PlayerId, k.RaceId }))
                     {
                         if (group.Key.RaceId <= 0) continue;
@@ -261,6 +327,68 @@ namespace FolkIdle.Server.Engine
                     Console.WriteLine($"Failed to process Codex entries: {ex.Message}");
                 }
             }
+        }
+
+        // Modul: race unlocks. Hands the player a level-1 character of a
+        // newly-unlocked race, inside the caller's already-open Serializable
+        // transaction.
+        //
+        // The character is granted rather than merely made "available" because
+        // there is no other route to a non-Human character in this game:
+        // AuthenticationEngine creates every account with
+        // GeneticVector = RaceIds.Human, and BreedingEngine rejects any pair
+        // whose LocusRace.Dominant values differ, so cross-race breeding cannot
+        // produce one either. An unlock that granted nothing would have left
+        // five races exactly as unobtainable as before.
+        //
+        // SlotIndex: the first free active slot if there is one, otherwise the
+        // next roster index. A character beyond the three active slots still
+        // exists and is still the player's - it simply waits for a slot to be
+        // freed, which is the roster screen's job.
+        private static async Task GrantUnlockedRaceCharacterAsync(FolkIdleDbContext dbContext, long playerId, byte raceId, CancellationToken stoppingToken)
+        {
+            var existingSlotIndices = await dbContext.CharacterRecords
+                .Where(c => c.PlayerId == playerId)
+                .Select(c => c.SlotIndex)
+                .ToListAsync(stoppingToken);
+
+            int slotIndex = 0;
+            while (existingSlotIndices.Contains(slotIndex))
+            {
+                slotIndex++;
+            }
+
+            var grantedCharacterId = Guid.NewGuid();
+
+            dbContext.CharacterRecords.Add(new CharacterRecord
+            {
+                Id = grantedCharacterId,
+                PlayerId = playerId,
+                Level = 1,
+                // Adult, not child: this is a reward for killing a region boss,
+                // and handing the player something that cannot work until it
+                // matures would read as a penalty.
+                AgePhase = 1,
+                AgeTicks = 0L,
+                SlotIndex = slotIndex,
+                // Idle. Which activity it runs is the player's decision, and
+                // assigning one here could collide with an existing character's
+                // activity and violate the occupancy mutex.
+                ActiveActivityId = 0L
+            });
+
+            // The race lives in the genome's first locus - dominant AND
+            // recessive, so the race breeds true with its own kind rather than
+            // reverting to whatever the recessive half held.
+            var genome = new GeneticVector(0L);
+            genome.LocusRace = new Locus { Dominant = raceId, Recessive = raceId };
+
+            dbContext.CharacterLineages.Add(new CharacterLineageRegistry
+            {
+                CharacterId = grantedCharacterId,
+                GenerationIndex = 0,
+                GeneticVector = genome.RawValue
+            });
         }
     }
 }

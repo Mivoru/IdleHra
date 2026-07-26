@@ -7464,6 +7464,133 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(10, checkedNodes);
         }
 
+        // Modul: race unlocks. The game ships six races and every player could
+        // only ever have Human ones: AuthenticationEngine creates each account
+        // with GeneticVector = RaceIds.Human, the only other source of a
+        // character is BreedingEngine, and BreedingEngine refuses any pair whose
+        // LocusRace.Dominant values differ. Vila, Draugr, Kobold, Vodnik and
+        // Moosleute were therefore unreachable content - authored stats, racial
+        // passives and mastery tracks no player could ever see.
+        //
+        // The mapping is exact: five canonical regions, five bosses, five races
+        // beyond the Human starter.
+        [Fact]
+        public void Test_RaceUnlockRegistry_MapsEveryRegionBossToADistinctRace()
+        {
+            var mapped = new HashSet<byte>();
+
+            for (int region = RaceUnlockRegistry.FirstRegion; region <= RaceUnlockRegistry.LastRegion; region++)
+            {
+                int bossId = RaceUnlockRegistry.GetRegionBossMonsterId(region);
+
+                // The boss is the last of the region's five canonical monster
+                // ids, and it must be a real monster that is actually flagged as
+                // that region's boss in the content files.
+                Assert.Equal(90 + region * 5, bossId);
+                Assert.Equal(region, ContentRegistry.GetMonsterRegionTier(bossId));
+
+                byte raceId = RaceUnlockRegistry.GetRaceUnlockedByBoss(bossId);
+                Assert.True(RaceUnlockRegistry.IsPlayableRace(raceId), $"Region {region}'s boss maps to no playable race.");
+                Assert.NotEqual(RaceIds.Human, raceId);
+                Assert.True(mapped.Add(raceId), $"Race {raceId} is unlocked by more than one boss.");
+            }
+
+            // Every non-Human race is reachable, and Human needs no unlock.
+            Assert.Equal(5, mapped.Count);
+            Assert.True(RaceUnlockRegistry.IsUnlockedByDefault(RaceIds.Human));
+            Assert.False(RaceUnlockRegistry.IsUnlockedByDefault(RaceIds.Moosleute));
+
+            // A regular monster unlocks nothing - only the five bosses do.
+            Assert.Equal(0, RaceUnlockRegistry.GetRaceUnlockedByBoss(91));
+            Assert.Equal(0, RaceUnlockRegistry.GetRaceUnlockedByBoss(114));
+            Assert.Equal(0, RaceUnlockRegistry.GetRaceUnlockedByBoss(1));
+        }
+
+        // Modul: race unlocks. Killing a region boss for the first time must
+        // record the unlock AND hand over a character of that race - an unlock
+        // that grants nothing playable would leave the race exactly as
+        // unobtainable as before. A repeat kill must grant nothing further.
+        [Fact]
+        public async Task Test_RaceUnlock_FirstBossKillGrantsACharacterOfThatRaceAndRepeatsDoNot()
+        {
+            const long testPlayerId = 970004501L;
+            const int regionOneBossId = 95;   // Alpha Wolf
+            byte expectedRace = RaceUnlockRegistry.GetRaceUnlockedByBoss(regionOneBossId);
+            Assert.Equal(RaceIds.Vila, expectedRace);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            var codexEngine = new CodexEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            // First kill of the region 1 boss.
+            CodexEngine.KillEventQueue.Enqueue(new KillEvent { PlayerId = testPlayerId, MonsterId = regionOneBossId, RaceId = RaceIds.Human, GainedXp = 100 });
+            await DrainCodexQueueAsync(codexEngine);
+
+            Guid grantedCharacterId;
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var unlock = await verify.PlayerRaceUnlocks.AsNoTracking()
+                    .SingleOrDefaultAsync(u => u.PlayerId == testPlayerId);
+                Assert.NotNull(unlock);
+                Assert.Equal(expectedRace, (byte)unlock!.RaceId);
+                Assert.Equal(regionOneBossId, unlock.UnlockedByMonsterId);
+                Assert.True(unlock.UnlockedAtEpoch > 0);
+
+                // And an actual character of that race arrived.
+                var granted = await verify.CharacterRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == testPlayerId)
+                    .ToListAsync();
+                Assert.Single(granted);
+                grantedCharacterId = granted[0].Id;
+
+                // Adult, so it can work immediately - a child would read as a
+                // penalty for killing a boss.
+                Assert.Equal(1, granted[0].AgePhase);
+                Assert.Equal(0L, granted[0].ActiveActivityId);
+
+                var lineage = await verify.CharacterLineages.AsNoTracking()
+                    .SingleAsync(l => l.CharacterId == grantedCharacterId);
+                var genome = new GeneticVector(lineage.GeneticVector);
+
+                // Dominant AND recessive, so the race breeds true with its own
+                // kind rather than reverting through the recessive half.
+                Assert.Equal(expectedRace, genome.LocusRace.Dominant);
+                Assert.Equal(expectedRace, genome.LocusRace.Recessive);
+            }
+
+            // Killing the same boss again must not unlock or grant anything
+            // more - otherwise farming one boss would print characters.
+            CodexEngine.KillEventQueue.Enqueue(new KillEvent { PlayerId = testPlayerId, MonsterId = regionOneBossId, RaceId = RaceIds.Human, GainedXp = 100 });
+            await DrainCodexQueueAsync(codexEngine);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.Equal(1, await verify.PlayerRaceUnlocks.AsNoTracking().CountAsync(u => u.PlayerId == testPlayerId));
+                Assert.Equal(1, await verify.CharacterRecords.AsNoTracking().CountAsync(c => c.PlayerId == testPlayerId));
+            }
+        }
+
+        // CodexEngine's worker is a 5-second cron loop, so the test drives one
+        // pass of its private body directly rather than sleeping.
+        private static async Task DrainCodexQueueAsync(CodexEngine engine)
+        {
+            var method = typeof(CodexEngine).GetMethod("ExecuteAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(method);
+
+            using var cts = new CancellationTokenSource();
+            var task = (Task)method!.Invoke(engine, new object[] { cts.Token })!;
+
+            // The loop delays 5s, processes, then delays again. Give it one full
+            // pass before cancelling.
+            await Task.WhenAny(task, Task.Delay(9000));
+            cts.Cancel();
+            try { await task; } catch (OperationCanceledException) { }
+        }
+
         // Modul: multi-slot simulation. THE defect this work exists to fix: only
         // slot 1 was ever simulated. CharacterRecord.ActiveActivityId has always
         // been per-character and ChangeCharacterActivityAsync has always written
