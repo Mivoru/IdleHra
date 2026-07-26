@@ -47,6 +47,30 @@ namespace FolkIdle.Server.Engine
         // out of food says nothing about the other two.
         public byte ActivityHaltReason;
 
+        // Modul: per-character equipment. Each character's own gear, and the
+        // stat totals derived from it.
+        //
+        // Equipment used to be account-wide, which could not survive more than
+        // one character working at once: a miner needs a pickaxe while a fighter
+        // holds a sword, and one shared weapon slot cannot be both. The derived
+        // totals ride along because recomputing them would mean a database read
+        // per character per swap, on a 10Hz path - they are recalculated only
+        // when that character's gear actually changes (see
+        // EquipmentSlotUpdateQueue) exactly as the single-character version did.
+        public long EquippedWeaponId;
+        public long EquippedHelmetId;
+        public long EquippedChestId;
+        public long EquippedGlovesId;
+        public long EquippedLeggingsId;
+        public long EquippedBootsId;
+        public bool EquippedWeaponAffixLocked;
+        public bool EquippedArmorAffixLocked;
+        public bool EquippedLeggingsAffixLocked;
+        public EquippedAffixTotals CachedAffixTotals;
+        public int CachedWeaponSetId;
+        public int CachedArmorSetId;
+        public int CachedLeggingsSetId;
+
         // Identity. Kept alongside the activity state rather than left behind
         // in the payload's Slot1_*/Slot2_*/Slot3_* fields, because combat stats
         // are derived from the ACTIVE character's race, age phase and genetic

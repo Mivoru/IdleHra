@@ -2604,9 +2604,20 @@ namespace FolkIdle.Server.Network
 
                 await transaction.CommitAsync();
 
-                long equippedWeapon = player?.EquippedWeaponId ?? 0L;
-                long equippedArmor = player?.EquippedArmorId ?? 0L;
-                long equippedLeggings = player?.EquippedLeggingsId ?? 0L;
+                // Modul: per-character equipment. "Is this item equipped" is an
+                // account-wide question for the inventory screen - an item worn
+                // by the second character is just as unavailable as one worn by
+                // the first, and showing it as free to sell would be a lie.
+                var wornItemIds = new System.Collections.Generic.HashSet<long>();
+                foreach (var rosterCharacter in await db.CharacterRecords.AsNoTracking().Where(c => c.PlayerId == playerId).ToListAsync())
+                {
+                    if (rosterCharacter.EquippedWeaponId.HasValue) wornItemIds.Add(rosterCharacter.EquippedWeaponId.Value);
+                    if (rosterCharacter.EquippedHelmetId.HasValue) wornItemIds.Add(rosterCharacter.EquippedHelmetId.Value);
+                    if (rosterCharacter.EquippedChestId.HasValue) wornItemIds.Add(rosterCharacter.EquippedChestId.Value);
+                    if (rosterCharacter.EquippedGlovesId.HasValue) wornItemIds.Add(rosterCharacter.EquippedGlovesId.Value);
+                    if (rosterCharacter.EquippedLeggingsId.HasValue) wornItemIds.Add(rosterCharacter.EquippedLeggingsId.Value);
+                    if (rosterCharacter.EquippedBootsId.HasValue) wornItemIds.Add(rosterCharacter.EquippedBootsId.Value);
+                }
 
                 var response = new PlayerInventorySnapshotResponse
                 {
@@ -2650,7 +2661,7 @@ namespace FolkIdle.Server.Network
                         Id = item.Id,
                         BaseItemId = item.BaseItemId,
                         QualityTier = item.QualityTier,
-                        IsEquipped = item.Id == equippedWeapon || item.Id == equippedArmor || item.Id == equippedLeggings,
+                        IsEquipped = wornItemIds.Contains(item.Id),
                         Affixes = affixes,
                         IsAffixLocked = item.IsAffixLocked || payloadLockFlag
                     });

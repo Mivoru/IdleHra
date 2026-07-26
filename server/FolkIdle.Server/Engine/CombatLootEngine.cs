@@ -203,18 +203,36 @@ namespace FolkIdle.Server.Engine
                 .AsNoTracking()
                 .CountAsync(e => e.PlayerId == playerId);
 
-            var equipped = await db.PlayerRecords
+            // Modul: per-character equipment. Worn gear lives on the character
+            // now, and every character's worn pieces are off the player's back -
+            // three characters in full kit means up to eighteen items that are
+            // not taking backpack slots. Counting only the main character's
+            // three would have shrunk the apparent backpack by everything the
+            // other two were wearing.
+            var wornSlots = await db.CharacterRecords
                 .AsNoTracking()
-                .Where(p => p.Id == playerId)
-                .Select(p => new { p.EquippedWeaponId, p.EquippedArmorId, p.EquippedLeggingsId })
-                .SingleOrDefaultAsync();
+                .Where(c => c.PlayerId == playerId)
+                .Select(c => new
+                {
+                    c.EquippedWeaponId,
+                    c.EquippedHelmetId,
+                    c.EquippedChestId,
+                    c.EquippedGlovesId,
+                    c.EquippedLeggingsId,
+                    c.EquippedBootsId
+                })
+                .ToListAsync();
 
             int wornCount = 0;
-            if (equipped != null)
+            for (int i = 0; i < wornSlots.Count; i++)
             {
-                if (equipped.EquippedWeaponId.HasValue) wornCount++;
-                if (equipped.EquippedArmorId.HasValue) wornCount++;
-                if (equipped.EquippedLeggingsId.HasValue) wornCount++;
+                var character = wornSlots[i];
+                if (character.EquippedWeaponId.HasValue) wornCount++;
+                if (character.EquippedHelmetId.HasValue) wornCount++;
+                if (character.EquippedChestId.HasValue) wornCount++;
+                if (character.EquippedGlovesId.HasValue) wornCount++;
+                if (character.EquippedLeggingsId.HasValue) wornCount++;
+                if (character.EquippedBootsId.HasValue) wornCount++;
             }
 
             int backpackEquipment = ownedEquipment - wornCount;

@@ -95,18 +95,15 @@ namespace FolkIdle.Server.Models
         // References EquipmentInstances.Id (informally called a "Guid" elsewhere
         // in this codebase, e.g. AffixRerollEngine.ExecuteRerollAsync, but it is
         // actually a long).
-        public long? EquippedWeaponId { get; set; }
-        public long? EquippedArmorId { get; set; }
-
-        // Modul: Full-Stack Expansion, Part 1. Third equipment slot -
-        // Leggings. Nullable, no DB-level foreign key, deliberately
-        // matching EquippedWeaponId/EquippedArmorId's existing convention:
-        // forge fusion and bank deposit legitimately delete
-        // EquipmentInstances rows, and the equipped-item guards
-        // (MarketEscrowEngine/MailboxAndBankEngine/ForgeSplicingEngine)
-        // are the mechanism that prevents dangling references, not a
-        // database constraint an asymmetric FK here would fight.
-        public long? EquippedLeggingsId { get; set; }
+        // Modul: per-character equipment. EquippedWeaponId, EquippedArmorId
+        // and EquippedLeggingsId moved to CharacterRecord and widened to six
+        // slots there. They were account-wide, so all three of a player's
+        // characters shared one weapon - impossible once more than one
+        // character works at a time. See CharacterRecord for the full account.
+        //
+        // Anything that needs "is this item worn by ANYBODY on this account"
+        // (market listing, forge fusion, mail, seasonal wipe) now asks
+        // EquipmentSlotEngine.IsEquippedAnywhereAsync instead of reading these.
 
         // Modul: Deferred Part 5 Implementation, Part 2. Absolute
         // server-epoch expiry timestamps for the potion columns that

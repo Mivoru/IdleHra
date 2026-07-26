@@ -738,13 +738,34 @@ namespace FolkIdle.Server.Domain.Combat
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, equipUpdate.PlayerId);
                     if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
                     {
+                        // Modul: per-character equipment. Equipment used to be
+                        // account-wide, so this could write straight into the
+                        // payload. Now it has to land on the slot that owns the
+                        // character - otherwise equipping a helmet on the miner
+                        // would re-stat the swordsman. Same register discipline
+                        // the tick loop uses: load the owning slot, apply, put it
+                        // back.
+                        int equipSlotIndex = ResolveSlotIndexForCharacter(ref currentPayload, equipUpdate.CharacterId);
+                        if (equipSlotIndex < 0)
+                        {
+                            continue;
+                        }
+
+                        SwapSlotIntoActiveRegister(ref currentPayload, equipSlotIndex);
+
                         currentPayload.EquippedWeaponId = equipUpdate.EquippedWeaponId;
-                        currentPayload.EquippedArmorId = equipUpdate.EquippedArmorId;
+                        currentPayload.EquippedHelmetId = equipUpdate.EquippedHelmetId;
+                        currentPayload.EquippedArmorId = equipUpdate.EquippedChestId;
+                        currentPayload.EquippedGlovesId = equipUpdate.EquippedGlovesId;
                         currentPayload.EquippedLeggingsId = equipUpdate.EquippedLeggingsId;
+                        currentPayload.EquippedBootsId = equipUpdate.EquippedBootsId;
                         currentPayload.CachedAffixTotals = equipUpdate.AffixTotals;
                         currentPayload.CachedWeaponSetId = equipUpdate.EquippedWeaponSetId;
                         currentPayload.CachedArmorSetId = equipUpdate.EquippedArmorSetId;
                         currentPayload.CachedLeggingsSetId = equipUpdate.EquippedLeggingsSetId;
+
+                        SwapSlotIntoActiveRegister(ref currentPayload, equipSlotIndex);
+
                         currentPayload.IsDirty = true;
                     }
                 }
@@ -2185,29 +2206,39 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         long equipPlayerId = currentPayload.PlayerId;
                         long equipItemId = cmd.TargetId;
+                        // Modul: per-character equipment. TargetGuid names which
+                        // character puts the item on. Guid.Empty - what every
+                        // client that predates the roster sends - resolves to the
+                        // main character, so old behaviour is preserved exactly.
+                        System.Guid equipCharacterId = cmd.TargetGuid;
                         if (equipItemId > 0 && _equipmentSlotEngine != null)
                         {
                             SafeDispatchAsync("Equipment.Equip", equipPlayerId, async () => {
-                                await _equipmentSlotEngine.EquipItemAsync(equipPlayerId, equipItemId);
+                                await _equipmentSlotEngine.EquipItemAsync(equipPlayerId, equipItemId, equipCharacterId);
                             });
                         }
                     }
                     else if (cmd.Command == CommandType.UnequipItem)
                     {
                         long unequipPlayerId = currentPayload.PlayerId;
-                        // Modul: Full-Stack Expansion, Part 1. Wire mapping
-                        // for the 3-slot unequip: TargetId 2 selects the
-                        // Leggings slot; otherwise the legacy IsBuy flag
-                        // keeps its original weapon(0)/armor(1) meaning, so
-                        // every pre-leggings client packet behaves exactly
-                        // as before.
-                        int unequipSlot = cmd.TargetId == 2L
-                            ? EquipmentSlotEngine.SlotLeggings
-                            : (cmd.IsBuy != 0 ? EquipmentSlotEngine.SlotArmor : EquipmentSlotEngine.SlotWeapon);
+                        // Modul: per-character equipment. Wire mapping widened
+                        // from three slots to six. TargetId now carries the slot
+                        // index directly (0 Weapon, 1 Helmet, 2 Chest, 3 Gloves,
+                        // 4 Leggings, 5 Boots).
+                        //
+                        // The one legacy case that must keep working is a client
+                        // that predates this and sends TargetId 0 with the old
+                        // IsBuy flag meaning weapon(0)/armor(1): TargetId 0 plus
+                        // IsBuy set is therefore read as the Chest slot, which is
+                        // where the old single "Armor" slot's contents now live.
+                        int unequipSlot = cmd.TargetId == 0L && cmd.IsBuy != 0
+                            ? EquipmentSlotEngine.SlotChest
+                            : (int)cmd.TargetId;
+                        System.Guid unequipCharacterId = cmd.TargetGuid;
                         if (_equipmentSlotEngine != null)
                         {
                             SafeDispatchAsync("Equipment.Unequip", unequipPlayerId, async () => {
-                                await _equipmentSlotEngine.UnequipItemAsync(unequipPlayerId, unequipSlot);
+                                await _equipmentSlotEngine.UnequipItemAsync(unequipPlayerId, unequipSlot, unequipCharacterId);
                             });
                         }
                     }
@@ -4229,6 +4260,22 @@ namespace FolkIdle.Server.Domain.Combat
             Swap(ref payload.GatheringProgressTicks, ref parked.GatheringProgressTicks);
             Swap(ref payload.HarvestLoopCount, ref parked.HarvestLoopCount);
             Swap(ref payload.ActivityHaltReason, ref parked.ActivityHaltReason);
+
+            // Modul: per-character equipment. Gear and its derived totals travel
+            // with the character, or every slot would fight in slot 1's armour.
+            Swap(ref payload.EquippedWeaponId, ref parked.EquippedWeaponId);
+            Swap(ref payload.EquippedHelmetId, ref parked.EquippedHelmetId);
+            Swap(ref payload.EquippedArmorId, ref parked.EquippedChestId);
+            Swap(ref payload.EquippedGlovesId, ref parked.EquippedGlovesId);
+            Swap(ref payload.EquippedLeggingsId, ref parked.EquippedLeggingsId);
+            Swap(ref payload.EquippedBootsId, ref parked.EquippedBootsId);
+            Swap(ref payload.EquippedWeaponAffixLocked, ref parked.EquippedWeaponAffixLocked);
+            Swap(ref payload.EquippedArmorAffixLocked, ref parked.EquippedArmorAffixLocked);
+            Swap(ref payload.EquippedLeggingsAffixLocked, ref parked.EquippedLeggingsAffixLocked);
+            Swap(ref payload.CachedAffixTotals, ref parked.CachedAffixTotals);
+            Swap(ref payload.CachedWeaponSetId, ref parked.CachedWeaponSetId);
+            Swap(ref payload.CachedArmorSetId, ref parked.CachedArmorSetId);
+            Swap(ref payload.CachedLeggingsSetId, ref parked.CachedLeggingsSetId);
 
             // Identity travels with the activity: combat stats are derived from
             // the active character's race, age phase and genetic loci, so a

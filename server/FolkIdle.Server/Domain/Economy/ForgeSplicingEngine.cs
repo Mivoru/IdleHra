@@ -78,20 +78,18 @@ namespace FolkIdle.Server.Domain.Economy
                     .FromSqlRaw(query)
                     .ToListAsync();
 
-                // Modul: equipped-item guard. PlayerRecord.EquippedWeaponId/
-                // EquippedArmorId only ever reference EquipmentInstances.Id
-                // (see EquipmentSlotEngine) - reject the fusion outright if any
+                // Modul: equipped-item guard. Reject the fusion outright if any
                 // of the three locked rows is currently equipped, preventing a
                 // dangling equip pointer or phantom duplication if the row is
                 // later deleted/vaporized below.
-                var player = await db.PlayerRecords
-                    .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
-                    .SingleOrDefaultAsync();
-
-                if (player != null && (
-                    (player.EquippedWeaponId.HasValue && (player.EquippedWeaponId == targetItemGuid || player.EquippedWeaponId == sacrificialItem1Guid || player.EquippedWeaponId == sacrificialItem2Guid)) ||
-                    (player.EquippedArmorId.HasValue && (player.EquippedArmorId == targetItemGuid || player.EquippedArmorId == sacrificialItem1Guid || player.EquippedArmorId == sacrificialItem2Guid)) ||
-                    (player.EquippedLeggingsId.HasValue && (player.EquippedLeggingsId == targetItemGuid || player.EquippedLeggingsId == sacrificialItem1Guid || player.EquippedLeggingsId == sacrificialItem2Guid))))
+                //
+                // Modul: per-character equipment. This used to read three fields
+                // off the player row. Gear now belongs to individual characters,
+                // so the question is whether ANY character on the account is
+                // wearing any of the three - a fusion that consumed the item a
+                // second character was holding would leave that character
+                // pointing at a deleted row.
+                if (await EquipmentSlotEngine.IsAnyEquippedAnywhereAsync(db, playerId, targetItemGuid, sacrificialItem1Guid, sacrificialItem2Guid))
                 {
                     await transaction.RollbackAsync();
                     Console.WriteLine("Fusion failed: target or sacrifice item is currently equipped.");

@@ -70,7 +70,12 @@ namespace FolkIdle.Server.Domain.Economy
                 // Modul 04/40: an item currently equipped on the character
                 // cannot be migrated into escrow out from under it - abort
                 // before any row mutation happens.
-                if (player.EquippedWeaponId == equip.Id || player.EquippedArmorId == equip.Id || player.EquippedLeggingsId == equip.Id)
+                // Modul: per-character equipment. Was a three-field compare on
+                // the player row. Equipment now lives on characters, so an item
+                // worn by ANY of them must be unlistable - otherwise a player
+                // could sell the sword their second character is holding and
+                // leave a dangling equip pointer behind.
+                if (await EquipmentSlotEngine.IsEquippedAnywhereAsync(db, playerId, equip.Id))
                 {
                     await transaction.RollbackAsync();
                     Console.WriteLine("MarketListItem failed: Item is currently equipped.");

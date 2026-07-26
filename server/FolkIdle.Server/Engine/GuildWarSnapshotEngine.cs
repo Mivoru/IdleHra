@@ -212,8 +212,15 @@ namespace FolkIdle.Server.Engine
                 completedAreaFlags |= 1 << completedRegionIds[i];
             }
 
-            (EquippedAffixTotals equippedAffixTotals, _, _, _) =
-                await EquipmentSlotEngine.ComputeEquippedTotalsAsync(db, player.EquippedWeaponId, player.EquippedArmorId);
+            // Modul: per-character equipment. Guild-war strength is measured
+            // from the member's main character, which is the one whose gear
+            // this snapshot has always meant - it just used to be stored on the
+            // player row. A member with no character contributes bare stats.
+            EquippedAffixTotals equippedAffixTotals = default;
+            if (character != null)
+            {
+                (equippedAffixTotals, _, _, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(db, character);
+            }
 
             CombatStats stats = StatsCalculator.Calculate(
                 player.BaseStrength, player.BaseDexterity, player.BaseConstitution, player.BaseLuck,

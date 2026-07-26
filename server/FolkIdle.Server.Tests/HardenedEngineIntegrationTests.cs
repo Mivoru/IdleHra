@@ -1214,11 +1214,23 @@ namespace FolkIdle.Server.Tests
                 sac1Id = sac1.Id;
                 sac2Id = sac2.Id;
 
+                var marketMainCharacterId = Guid.NewGuid();
                 db.PlayerRecords.Add(new PlayerRecord
                 {
                     Id = testPlayerId,
-                    PlayerGuid = Guid.NewGuid(),
-                    AuthenticatorToken = Guid.NewGuid(),
+                    PlayerGuid = marketMainCharacterId,
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                // Modul: per-character equipment. The worn item hangs off the
+                // character now; IsEquippedAnywhereAsync is what the market
+                // consults, and it looks at characters, not the player row.
+                db.CharacterRecords.Add(new CharacterRecord
+                {
+                    Id = marketMainCharacterId,
+                    PlayerId = testPlayerId,
+                    Level = 1,
+                    AgePhase = 1,
+                    SlotIndex = 0,
                     EquippedWeaponId = targetId
                 });
                 await db.SaveChangesAsync();
@@ -2578,14 +2590,26 @@ namespace FolkIdle.Server.Tests
                 await db.SaveChangesAsync();
                 originalWeaponId = weapon.Id;
 
+                var seasonalMainCharacterId = Guid.NewGuid();
                 db.PlayerRecords.Add(new PlayerRecord
                 {
                     Id = testPlayerId,
-                    PlayerGuid = Guid.NewGuid(),
+                    PlayerGuid = seasonalMainCharacterId,
                     AuthenticatorToken = Guid.NewGuid(),
-                    EquippedWeaponId = originalWeaponId,
                     CurrentLevel = 10,
                     CurrentXp = 5000
+                });
+                // Modul: per-character equipment. The seasonal wipe now clears
+                // "characters" as well as "PlayerRecords", so the fixture has to
+                // put the gear where the wipe will look for it.
+                db.CharacterRecords.Add(new CharacterRecord
+                {
+                    Id = seasonalMainCharacterId,
+                    PlayerId = testPlayerId,
+                    Level = 10,
+                    AgePhase = 1,
+                    SlotIndex = 0,
+                    EquippedWeaponId = originalWeaponId
                 });
                 await db.SaveChangesAsync();
             }
@@ -2596,9 +2620,14 @@ namespace FolkIdle.Server.Tests
             await using (var verifyDb = await dbContextFactory.CreateDbContextAsync())
             {
                 var playerAfter = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
-                Assert.Null(playerAfter.EquippedWeaponId);
-                Assert.Null(playerAfter.EquippedArmorId);
-                Assert.Null(playerAfter.EquippedLeggingsId);
+
+                var characterAfter = await verifyDb.CharacterRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId);
+                Assert.Null(characterAfter.EquippedWeaponId);
+                Assert.Null(characterAfter.EquippedChestId);
+                Assert.Null(characterAfter.EquippedLeggingsId);
+                Assert.Null(characterAfter.EquippedHelmetId);
+                Assert.Null(characterAfter.EquippedGlovesId);
+                Assert.Null(characterAfter.EquippedBootsId);
                 Assert.Equal(1, playerAfter.CurrentLevel);
                 Assert.Equal(0L, playerAfter.CurrentXp);
 
@@ -3126,13 +3155,22 @@ namespace FolkIdle.Server.Tests
                 // GuildId: the trade license must pass so the
                 // equipped-item guard under test is actually reached.
                 db.GuildRecords.Add(new GuildRecord { Id = 970000905L, Name = "EquippedGuardGuild970000905" });
+                var guildMainCharacterId = Guid.NewGuid();
                 db.PlayerRecords.Add(new PlayerRecord
                 {
                     Id = testPlayerId,
-                    PlayerGuid = Guid.NewGuid(),
+                    PlayerGuid = guildMainCharacterId,
                     AuthenticatorToken = Guid.NewGuid(),
-                    EquippedWeaponId = equipmentId,
                     GuildId = 970000905L
+                });
+                db.CharacterRecords.Add(new CharacterRecord
+                {
+                    Id = guildMainCharacterId,
+                    PlayerId = testPlayerId,
+                    Level = 1,
+                    AgePhase = 1,
+                    SlotIndex = 0,
+                    EquippedWeaponId = equipmentId
                 });
                 await db.SaveChangesAsync();
             }
@@ -6368,8 +6406,10 @@ namespace FolkIdle.Server.Tests
                 var buyerGold = await verifyDb.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == lowLevelBuyerId && c.ItemId == "gold");
                 Assert.Equal(1000000L, buyerGold.Quantity);
 
-                var buyer = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == lowLevelBuyerId);
-                Assert.Null(buyer.EquippedWeaponId);
+                // Modul: per-character equipment. Nothing may have been
+                // equipped on any of the buyer's characters.
+                Assert.False(await verifyDb.CharacterRecords.AsNoTracking()
+                    .AnyAsync(c => c.PlayerId == lowLevelBuyerId && c.EquippedWeaponId != null));
             }
         }
 
@@ -6535,7 +6575,11 @@ namespace FolkIdle.Server.Tests
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
+                var leggingsMainCharacterId = Guid.NewGuid();
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = leggingsMainCharacterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
+                // Modul: per-character equipment. Gear hangs off a character
+                // now, so a player without one has nowhere to put it.
+                db.CharacterRecords.Add(new CharacterRecord { Id = leggingsMainCharacterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 0 });
                 var leggings = new EquipmentInstance
                 {
                     PlayerId = testPlayerId,
@@ -6553,13 +6597,13 @@ namespace FolkIdle.Server.Tests
 
             await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                var player = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
-                Assert.Equal(leggingsId, player.EquippedLeggingsId);
-                Assert.Null(player.EquippedArmorId);
-                Assert.Null(player.EquippedWeaponId);
+                var character = await verifyDb.CharacterRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId);
+                Assert.Equal(leggingsId, character.EquippedLeggingsId);
+                Assert.Null(character.EquippedChestId);
+                Assert.Null(character.EquippedWeaponId);
 
                 (EquippedAffixTotals totals, _, _, _) =
-                    await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verifyDb, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
+                    await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verifyDb, character);
                 Assert.Equal(45, totals.FlatDefense);
                 Assert.Equal(0, totals.FlatAttack);
             }
@@ -6568,8 +6612,8 @@ namespace FolkIdle.Server.Tests
 
             await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                var player = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
-                Assert.Null(player.EquippedLeggingsId);
+                var unequippedCharacter = await verifyDb.CharacterRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId);
+                Assert.Null(unequippedCharacter.EquippedLeggingsId);
             }
         }
 
@@ -7035,7 +7079,7 @@ namespace FolkIdle.Server.Tests
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60 });
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = mainCharacterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60 });
                 db.CharacterRecords.Add(new CharacterRecord { Id = mainCharacterId, PlayerId = testPlayerId, SlotIndex = 0 });
                 db.CharacterRecords.Add(new CharacterRecord { Id = secondCharacterId, PlayerId = testPlayerId, SlotIndex = 1 });
 
@@ -7485,6 +7529,162 @@ namespace FolkIdle.Server.Tests
             }
 
             Assert.Equal(10, checkedNodes);
+        }
+
+        // Modul: per-character equipment. The account-wide lock. Equipment moved
+        // from PlayerRecord to CharacterRecord, so "is this item equipped?"
+        // stopped being a three-field comparison on one row and became a
+        // question about every character the player owns.
+        //
+        // This is the security-relevant half of the refactor: anything that
+        // destroys, transfers or re-points an EquipmentInstances row - a market
+        // listing, a forge fusion, a mail send, a season wipe - has to see gear
+        // worn by ANY character. Checking only the main character would let a
+        // player sell the sword their second character is holding and leave that
+        // character pointing at a row that no longer exists.
+        [Fact]
+        public async Task Test_PerCharacterEquipment_IsEquippedAnywhereSeesEveryCharactersGear()
+        {
+            const long testPlayerId = 970004701L;
+            var mainCharacterId = Guid.NewGuid();
+            var secondCharacterId = Guid.NewGuid();
+
+            long mainWeaponId, secondBootsId, carriedId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = mainCharacterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = mainCharacterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 0 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = secondCharacterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 1 });
+
+                var mainWeapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "bronze_dagger_melee_weapon_slot_base", QualityTier = 0, AffixPayload = "{}" };
+                var secondBoots = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "eq_iron_sabatons_boots_armor_slot_base", QualityTier = 0, AffixPayload = "{}" };
+                var carried = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "iron_breastplate_chest_armor_slot_base", QualityTier = 0, AffixPayload = "{}" };
+                db.EquipmentInstances.AddRange(mainWeapon, secondBoots, carried);
+                await db.SaveChangesAsync();
+
+                mainWeaponId = mainWeapon.Id;
+                secondBootsId = secondBoots.Id;
+                carriedId = carried.Id;
+            }
+
+            var slotEngine = new EquipmentSlotEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            await slotEngine.EquipItemAsync(testPlayerId, mainWeaponId, mainCharacterId);
+            await slotEngine.EquipItemAsync(testPlayerId, secondBootsId, secondCharacterId);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var main = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == mainCharacterId);
+                var second = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == secondCharacterId);
+
+                // Each character wears its own gear, and neither wears the
+                // other's - the whole point of the move.
+                Assert.Equal(mainWeaponId, main.EquippedWeaponId);
+                Assert.Null(main.EquippedBootsId);
+                Assert.Equal(secondBootsId, second.EquippedBootsId);
+                Assert.Null(second.EquippedWeaponId);
+
+                // Boots are a real slot now. Under the old three-slot model the
+                // generic "_armor_slot_" fallback would have jammed them into
+                // the single Armor slot alongside chest pieces.
+                Assert.Equal(EquipmentSlotEngine.SlotBoots, EquipmentSlotEngine.ResolveSlotIndex("eq_iron_sabatons_boots_armor_slot_base"));
+                Assert.Equal(EquipmentSlotEngine.SlotHelmet, EquipmentSlotEngine.ResolveSlotIndex("eq_iron_helm_helmet_armor_slot_base"));
+                Assert.Equal(EquipmentSlotEngine.SlotGloves, EquipmentSlotEngine.ResolveSlotIndex("eq_iron_gauntlets_gloves_armor_slot_base"));
+                Assert.Equal(EquipmentSlotEngine.SlotChest, EquipmentSlotEngine.ResolveSlotIndex("iron_breastplate_chest_armor_slot_base"));
+
+                // The account-wide lock sees BOTH characters' gear, which is
+                // what stops the market/forge/mail from consuming worn items.
+                Assert.True(await EquipmentSlotEngine.IsEquippedAnywhereAsync(verify, testPlayerId, mainWeaponId));
+                Assert.True(await EquipmentSlotEngine.IsEquippedAnywhereAsync(verify, testPlayerId, secondBootsId));
+                Assert.False(await EquipmentSlotEngine.IsEquippedAnywhereAsync(verify, testPlayerId, carriedId));
+
+                // The forge's three-at-once variant agrees.
+                Assert.True(await EquipmentSlotEngine.IsAnyEquippedAnywhereAsync(verify, testPlayerId, carriedId, secondBootsId, 0L));
+                Assert.False(await EquipmentSlotEngine.IsAnyEquippedAnywhereAsync(verify, testPlayerId, carriedId, 0L, 0L));
+            }
+
+            // One physical item cannot be worn twice. Without this guard a
+            // single drop would multiply its stats across the whole roster.
+            await slotEngine.EquipItemAsync(testPlayerId, mainWeaponId, secondCharacterId);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var second = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == secondCharacterId);
+                Assert.Null(second.EquippedWeaponId);
+
+                var main = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == mainCharacterId);
+                Assert.Equal(mainWeaponId, main.EquippedWeaponId);
+            }
+
+            // Unequipping one character leaves the other untouched.
+            await slotEngine.UnequipItemAsync(testPlayerId, EquipmentSlotEngine.SlotBoots, secondCharacterId);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.Null((await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == secondCharacterId)).EquippedBootsId);
+                Assert.Equal(mainWeaponId, (await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == mainCharacterId)).EquippedWeaponId);
+                Assert.False(await EquipmentSlotEngine.IsEquippedAnywhereAsync(verify, testPlayerId, secondBootsId));
+            }
+        }
+
+        // Modul: per-character equipment. Each character has to fight in its own
+        // armour. The tick's slot-swap register now carries equipment and the
+        // affix totals derived from it, so a character being simulated reads its
+        // own gear - not slot 1's.
+        [Fact]
+        public void Test_PerCharacterEquipment_SlotSwapCarriesEachCharactersOwnGear()
+        {
+            var payload = new TickStatePayload
+            {
+                PlayerId = 970004702L,
+                InventorySpaceRemaining = 20,
+                InventoryCapacity = 20,
+                CurrentLevel = 10,
+                TownHallLevel = CharacterSlotEngine.Slot3TownHallRequirement
+            };
+
+            payload.Slot1_CharacterId = Guid.NewGuid();
+            payload.EquippedWeaponId = 1111L;
+            payload.CachedAffixTotals = new EquippedAffixTotals { FlatAttack = 10 };
+
+            payload.Slot2_CharacterId = Guid.NewGuid();
+            payload.Slot2Activity.EquippedWeaponId = 2222L;
+            payload.Slot2Activity.CachedAffixTotals = new EquippedAffixTotals { FlatAttack = 20 };
+
+            payload.Slot3_CharacterId = Guid.NewGuid();
+            payload.Slot3Activity.EquippedWeaponId = 3333L;
+            payload.Slot3Activity.CachedAffixTotals = new EquippedAffixTotals { FlatAttack = 30 };
+
+            var swap = typeof(SimulationEngine).GetMethod(
+                "SwapSlotIntoActiveRegister",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Assert.NotNull(swap);
+
+            for (int slotIndex = 0; slotIndex < CharacterSlotEngine.MaxCharacterSlots; slotIndex++)
+            {
+                object boxed = payload;
+                var args = new object[] { boxed, slotIndex };
+
+                swap!.Invoke(null, args);
+                var loaded = (TickStatePayload)args[0];
+
+                long expectedWeaponId = 1111L + slotIndex * 1111L;
+                int expectedAttack = 10 + slotIndex * 10;
+                Assert.Equal(expectedWeaponId, loaded.EquippedWeaponId);
+                Assert.Equal(expectedAttack, loaded.CachedAffixTotals.FlatAttack);
+
+                // The swap is its own inverse, so the register comes back to
+                // slot 1 - which is what the outbound packet and the checkpoint
+                // flush both assume.
+                args[0] = loaded;
+                swap.Invoke(null, args);
+                var restored = (TickStatePayload)args[0];
+                Assert.Equal(1111L, restored.EquippedWeaponId);
+                Assert.Equal(10, restored.CachedAffixTotals.FlatAttack);
+                Assert.Equal(2222L, restored.Slot2Activity.EquippedWeaponId);
+                Assert.Equal(3333L, restored.Slot3Activity.EquippedWeaponId);
+            }
         }
 
         // Modul: breeding pairs. A granted race pair has to be able to actually
@@ -8104,7 +8304,9 @@ namespace FolkIdle.Server.Tests
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                var censusMainCharacterId = Guid.NewGuid();
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = censusMainCharacterId, AuthenticatorToken = Guid.NewGuid() });
+                db.CharacterRecords.Add(new CharacterRecord { Id = censusMainCharacterId, PlayerId = testPlayerId, Level = 1, AgePhase = 1, SlotIndex = 0 });
 
                 // Three material types, one of them holding a thousand units -
                 // a stack is one slot, not one slot per unit.
@@ -8128,8 +8330,11 @@ namespace FolkIdle.Server.Tests
                 await db.SaveChangesAsync();
                 equippedId = worn.Id;
 
-                var player = await db.PlayerRecords.SingleAsync(p => p.Id == testPlayerId);
-                player.EquippedWeaponId = equippedId;
+                // Modul: per-character equipment. Worn gear is off the player's
+                // back wherever it is worn, so the census reads it from the
+                // character rather than the player row.
+                var censusCharacter = await db.CharacterRecords.SingleAsync(c => c.PlayerId == testPlayerId);
+                censusCharacter.EquippedWeaponId = equippedId;
                 await db.SaveChangesAsync();
             }
 
@@ -8715,7 +8920,12 @@ namespace FolkIdle.Server.Tests
             long weaponId, armorId;
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60 });
+                // Modul: per-character equipment. Equipping resolves the main
+                // character - the one whose Id equals PlayerGuid - so the
+                // fixture has to create it or the gear has nowhere to land.
+                var setBonusMainCharacterId = Guid.NewGuid();
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = setBonusMainCharacterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = setBonusMainCharacterId, PlayerId = testPlayerId, Level = 60, AgePhase = 1, SlotIndex = 0 });
                 var weapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "bronze_dagger_melee_weapon_slot_base", QualityTier = 0, AffixPayload = "{}", SetId = SetBonusEngine.ChimingSteelSetId };
                 var armor = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "iron_breastplate_chest_armor_slot_base", QualityTier = 0, AffixPayload = "{}", SetId = SetBonusEngine.ChimingSteelSetId };
                 db.EquipmentInstances.Add(weapon);
@@ -8730,9 +8940,9 @@ namespace FolkIdle.Server.Tests
             await equipmentSlotEngine.EquipItemAsync(testPlayerId, armorId);
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
-            var player = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+            var setBonusCharacter = await verifyDb.CharacterRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId);
 
-            (_, int weaponSetId, int armorSetId, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verifyDb, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
+            (_, int weaponSetId, int armorSetId, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verifyDb, setBonusCharacter);
 
             Assert.Equal(SetBonusEngine.ChimingSteelSetId, weaponSetId);
             Assert.Equal(SetBonusEngine.ChimingSteelSetId, armorSetId);

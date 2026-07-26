@@ -270,9 +270,7 @@ namespace FolkIdle.Server.Engine
                     .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
                     .SingleOrDefaultAsync();
                 if (playerRow != null && (
-                    (playerRow.EquippedWeaponId.HasValue && playerRow.EquippedWeaponId.Value == eq.Id) ||
-                    (playerRow.EquippedArmorId.HasValue && playerRow.EquippedArmorId.Value == eq.Id) ||
-                    (playerRow.EquippedLeggingsId.HasValue && playerRow.EquippedLeggingsId.Value == eq.Id)))
+                    await EquipmentSlotEngine.IsEquippedAnywhereAsync(db, playerId, eq.Id)))
                 {
                     await transaction.RollbackAsync();
                     Console.WriteLine("BankDeposit failed: Item is currently equipped.");

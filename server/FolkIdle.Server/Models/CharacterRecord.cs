@@ -49,6 +49,34 @@ namespace FolkIdle.Server.Models
         // named paternal/maternal.
         public bool IsFemale { get; set; }
 
+        // Modul: per-character equipment. These six slots used to live on
+        // PlayerRecord, which meant all three of a player's characters shared
+        // one weapon, one chest piece and one pair of leggings.
+        //
+        // That was incoherent the moment more than one character could work at
+        // once: a character mining needs a pickaxe while another fights with a
+        // sword and a third fishes with a rod, and a single account-wide weapon
+        // slot cannot hold three things. Gear belongs to whoever is wearing it.
+        //
+        // The slot set also widened from three (Weapon / Armor / Leggings) to
+        // six. AffixRegistry.EquipmentSlotMask has always modelled Helmet,
+        // Chest, Leggings, Boots, Gloves and Weapon separately, and
+        // AffixRegistry.ResolveSlot has always matched the corresponding
+        // "_helmet_armor_slot_", "_gloves_armor_slot_" and "_boots_armor_slot_"
+        // BaseId markers - so helmets, gloves and boots already rolled
+        // slot-correct affixes that no equip slot could ever receive. The old
+        // "Armor" slot swallowed all four armour pieces into one, and three
+        // quarters of the armour catalogue was unwearable.
+        //
+        // Nullable: null means the slot is empty. Every value is an
+        // EquipmentInstances.Id.
+        public long? EquippedWeaponId { get; set; }
+        public long? EquippedHelmetId { get; set; }
+        public long? EquippedChestId { get; set; }
+        public long? EquippedGlovesId { get; set; }
+        public long? EquippedLeggingsId { get; set; }
+        public long? EquippedBootsId { get; set; }
+
         // Modul 13.4.3: Breeding Grounds cooldown gate. Set on both parents by
         // BreedingEngine after a successful breed; ExecuteBreedingAsync rejects
         // a new attempt while BreedingCooldownEndEpoch is still in the future.

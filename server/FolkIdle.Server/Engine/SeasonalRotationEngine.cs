@@ -236,7 +236,13 @@ namespace FolkIdle.Server.Engine
                 // gear. Must null these out in the same statement/
                 // transaction as the level/gold reset below, before the
                 // TRUNCATE recycles the id space.
-                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"CurrentLevel\" = 1, \"CurrentXp\" = 0, \"AccumulatedTimeBankSeconds\" = 0, \"ActiveOffensivePotionId\" = 0, \"OffensivePotionDurationMs\" = 0, \"ActiveDefensivePotionId\" = 0, \"DefensivePotionDurationMs\" = 0, \"BankedChronoSeconds\" = 0, \"IsChronoAccelerating\" = FALSE, \"EquippedWeaponId\" = NULL, \"EquippedArmorId\" = NULL, \"EquippedLeggingsId\" = NULL", stoppingToken);
+                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"CurrentLevel\" = 1, \"CurrentXp\" = 0, \"AccumulatedTimeBankSeconds\" = 0, \"ActiveOffensivePotionId\" = 0, \"OffensivePotionDurationMs\" = 0, \"ActiveDefensivePotionId\" = 0, \"DefensivePotionDurationMs\" = 0, \"BankedChronoSeconds\" = 0, \"IsChronoAccelerating\" = FALSE", stoppingToken);
+
+                // Modul: per-character equipment. The six equip pointers moved
+                // off "PlayerRecords" onto "characters", so the seasonal wipe
+                // needs a second statement or every character would come out of
+                // the rollover still pointing at gear the wipe deleted.
+                await db.Database.ExecuteSqlRawAsync("UPDATE \"characters\" SET \"EquippedWeaponId\" = NULL, \"EquippedHelmetId\" = NULL, \"EquippedChestId\" = NULL, \"EquippedGlovesId\" = NULL, \"EquippedLeggingsId\" = NULL, \"EquippedBootsId\" = NULL", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("UPDATE \"CommodityRecords\" SET \"Quantity\" = 0 WHERE \"ItemId\" = 'gold'", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"CommodityRecords\" WHERE \"ItemId\" <> 'gold'", stoppingToken);
 

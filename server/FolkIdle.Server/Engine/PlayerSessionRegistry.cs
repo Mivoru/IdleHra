@@ -40,9 +40,20 @@ namespace FolkIdle.Server.Engine
     public struct EquipmentSlotUpdateNotification
     {
         public long PlayerId;
+
+        // Modul: per-character equipment. WHICH character changed. Equipment
+        // used to be account-wide, so the tick thread could apply an update
+        // without asking - now it has to route the change to the right slot's
+        // register, or equipping a helmet on the miner would re-stat the
+        // swordsman.
+        public System.Guid CharacterId;
+
         public long EquippedWeaponId;
-        public long EquippedArmorId;
+        public long EquippedHelmetId;
+        public long EquippedChestId;
+        public long EquippedGlovesId;
         public long EquippedLeggingsId;
+        public long EquippedBootsId;
         // Modul: Affix System Unification. Was four loose ints, which could
         // only carry four of the GDD's twelve affixes - the other eight had
         // nowhere to go and silently contributed nothing.

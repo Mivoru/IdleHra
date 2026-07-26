@@ -230,9 +230,14 @@ namespace FolkIdle.Server.Domain.Shared
                         player.BaseDexterity = state.DEX;
                         player.BaseConstitution = state.CON;
                         player.BaseLuck = state.LCK;
-                        player.EquippedWeaponId = state.EquippedWeaponId == 0L ? null : state.EquippedWeaponId;
-                        player.EquippedArmorId = state.EquippedArmorId == 0L ? null : state.EquippedArmorId;
-                        player.EquippedLeggingsId = state.EquippedLeggingsId == 0L ? null : state.EquippedLeggingsId;
+                        // Modul: per-character equipment. The flush used to
+                        // mirror the payload's equipped ids back onto
+                        // PlayerRecords. Equipment now lives on CharacterRecord
+                        // and EquipmentSlotEngine is its only writer, committing
+                        // inside its own Serializable transaction - so the
+                        // payload's copy is a read-through cache and writing it
+                        // back here would let a stale register overwrite a fresh
+                        // equip that landed between two checkpoints.
                         long consumableFlushEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                         player.ActiveOffensivePotionId = state.ActiveOffensivePotionId;
                         player.ActiveOffensivePotionExpiresEpoch = state.OffensivePotionDurationMs > 0 ? consumableFlushEpoch + state.OffensivePotionDurationMs / 1000L : 0L;
@@ -470,8 +475,20 @@ namespace FolkIdle.Server.Domain.Shared
             // derived stat totals StatsCalculator reads every tick are not - they
             // must be recomputed once at login rather than starting zeroed until
             // the player's next equip action.
-            (EquippedAffixTotals equippedAffixTotals, int equippedWeaponSetId, int equippedArmorSetId, int equippedLeggingsSetId) =
-                await EquipmentSlotEngine.ComputeEquippedTotalsAsync(dbContext, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
+            // Modul: per-character equipment. Totals are per character now, so
+            // this resolves the main character's gear rather than the account's.
+            // Slots 2 and 3 get the same treatment further down, where their
+            // parked activity state is filled in - each character has to fight
+            // in its own armour.
+            CharacterRecord? mainCharacterRecord = characters.Count > 0 ? characters[0] : null;
+
+            EquippedAffixTotals equippedAffixTotals = default;
+            int equippedWeaponSetId = 0, equippedArmorSetId = 0, equippedLeggingsSetId = 0;
+            if (mainCharacterRecord != null)
+            {
+                (equippedAffixTotals, equippedWeaponSetId, equippedArmorSetId, equippedLeggingsSetId) =
+                    await EquipmentSlotEngine.ComputeEquippedTotalsAsync(dbContext, mainCharacterRecord);
+            }
 
             var mentorCount = await dbContext.MentorshipAcademyAssignments
                 .CountAsync(m => m.PlayerId == playerId);
@@ -680,9 +697,12 @@ namespace FolkIdle.Server.Domain.Shared
                 DEX = player.BaseDexterity,
                 CON = player.BaseConstitution,
                 LCK = player.BaseLuck,
-                EquippedWeaponId = player.EquippedWeaponId ?? 0L,
-                EquippedArmorId = player.EquippedArmorId ?? 0L,
-                EquippedLeggingsId = player.EquippedLeggingsId ?? 0L,
+                EquippedWeaponId = mainCharacterRecord?.EquippedWeaponId ?? 0L,
+                EquippedHelmetId = mainCharacterRecord?.EquippedHelmetId ?? 0L,
+                EquippedArmorId = mainCharacterRecord?.EquippedChestId ?? 0L,
+                EquippedGlovesId = mainCharacterRecord?.EquippedGlovesId ?? 0L,
+                EquippedLeggingsId = mainCharacterRecord?.EquippedLeggingsId ?? 0L,
+                EquippedBootsId = mainCharacterRecord?.EquippedBootsId ?? 0L,
                 XpPenaltyExpiresEpoch = player.XpPenaltyExpiresEpoch,
 
                 // Modul: Deferred Part 5 Implementation, Part 2. Durable
@@ -811,6 +831,7 @@ namespace FolkIdle.Server.Domain.Shared
                 payload.Slot2Activity.ActiveActivityId = characters[1].ActiveActivityId;
                 payload.Slot2Activity.PlayerHp = CharacterSlotDefaults.MilliHp;
                 payload.Slot2Activity.RequiredProgressTicks = CharacterSlotDefaults.RequiredProgressTicks;
+                payload.Slot2Activity = await HydrateSlotEquipmentAsync(dbContext, characters[1], payload.Slot2Activity);
             }
             if (characters.Count > 2)
             {
@@ -822,9 +843,40 @@ namespace FolkIdle.Server.Domain.Shared
                 payload.Slot3Activity.ActiveActivityId = characters[2].ActiveActivityId;
                 payload.Slot3Activity.PlayerHp = CharacterSlotDefaults.MilliHp;
                 payload.Slot3Activity.RequiredProgressTicks = CharacterSlotDefaults.RequiredProgressTicks;
+                payload.Slot3Activity = await HydrateSlotEquipmentAsync(dbContext, characters[2], payload.Slot3Activity);
             }
 
             return payload;
+        }
+
+        // Modul: per-character equipment. Loads one non-main character's gear
+        // and the stat totals derived from it into its parked slot state.
+        //
+        // The equipped ids are persisted but the derived totals are not, so a
+        // character whose gear was never recomputed at login would fight naked
+        // until its owner happened to re-equip something - the exact bug the
+        // main character's login-time recompute was added to prevent, repeated
+        // once per extra slot.
+        // Taken and returned by value rather than by ref: async methods cannot
+        // have ref parameters, and a struct copy at login time costs nothing.
+        private static async Task<CharacterActivityState> HydrateSlotEquipmentAsync(FolkIdleDbContext dbContext, CharacterRecord character, CharacterActivityState slot)
+        {
+            slot.EquippedWeaponId = character.EquippedWeaponId ?? 0L;
+            slot.EquippedHelmetId = character.EquippedHelmetId ?? 0L;
+            slot.EquippedChestId = character.EquippedChestId ?? 0L;
+            slot.EquippedGlovesId = character.EquippedGlovesId ?? 0L;
+            slot.EquippedLeggingsId = character.EquippedLeggingsId ?? 0L;
+            slot.EquippedBootsId = character.EquippedBootsId ?? 0L;
+
+            (EquippedAffixTotals totals, int weaponSetId, int armorSetId, int leggingsSetId) =
+                await EquipmentSlotEngine.ComputeEquippedTotalsAsync(dbContext, character);
+
+            slot.CachedAffixTotals = totals;
+            slot.CachedWeaponSetId = weaponSetId;
+            slot.CachedArmorSetId = armorSetId;
+            slot.CachedLeggingsSetId = leggingsSetId;
+
+            return slot;
         }
 
         private static byte ClampByte(int value)
@@ -1097,9 +1149,14 @@ namespace FolkIdle.Server.Domain.Shared
                         player.BaseDexterity = state.DEX;
                         player.BaseConstitution = state.CON;
                         player.BaseLuck = state.LCK;
-                        player.EquippedWeaponId = state.EquippedWeaponId == 0L ? null : state.EquippedWeaponId;
-                        player.EquippedArmorId = state.EquippedArmorId == 0L ? null : state.EquippedArmorId;
-                        player.EquippedLeggingsId = state.EquippedLeggingsId == 0L ? null : state.EquippedLeggingsId;
+                        // Modul: per-character equipment. The flush used to
+                        // mirror the payload's equipped ids back onto
+                        // PlayerRecords. Equipment now lives on CharacterRecord
+                        // and EquipmentSlotEngine is its only writer, committing
+                        // inside its own Serializable transaction - so the
+                        // payload's copy is a read-through cache and writing it
+                        // back here would let a stale register overwrite a fresh
+                        // equip that landed between two checkpoints.
                         long consumableFlushEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                         player.ActiveOffensivePotionId = state.ActiveOffensivePotionId;
                         player.ActiveOffensivePotionExpiresEpoch = state.OffensivePotionDurationMs > 0 ? consumableFlushEpoch + state.OffensivePotionDurationMs / 1000L : 0L;

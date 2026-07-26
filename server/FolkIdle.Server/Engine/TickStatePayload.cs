@@ -133,6 +133,20 @@ namespace FolkIdle.Server.Engine
         public long EquippedLeggingsId;
         public bool EquippedLeggingsAffixLocked;
 
+        // Modul: per-character equipment. Helmet, gloves and boots. The old
+        // model had one "Armor" slot standing in for all four armour pieces, so
+        // three quarters of the armour catalogue was unwearable even though
+        // AffixRegistry had always rolled slot-correct affixes for it.
+        //
+        // Like every other equipment field here, these are the ACTIVE
+        // character's - the tick swaps each slot's own gear in and out through
+        // SimulationEngine's register, so ProcessSubTick and StatsCalculator
+        // read whichever character is currently being simulated without either
+        // of them knowing slots exist.
+        public long EquippedHelmetId;
+        public long EquippedGlovesId;
+        public long EquippedBootsId;
+
         public int CachedMiningMonolithLevel;
         public int CachedWoodcuttingMonolithLevel;
         public long GuildId;
