@@ -172,29 +172,41 @@ namespace FolkIdle.Client.Network
         // would need editing every time content is added.
         public static bool IsRegionBoss(MonsterEntry monster)
         {
-            if (monster == null) return false;
+            if (monster == null || !TryResolveCanonicalRegion(monster, out int regionId)) return false;
 
-            IReadOnlyList<MonsterEntry> region = GetMonstersInRegion(monster.RegionTier);
+            IReadOnlyList<MonsterEntry> region = GetMonstersInRegion(regionId);
             return region.Count > 0 && region[region.Count - 1].Id == monster.Id;
         }
 
-        // Modul: display names for the regions. GameData has no name field
-        // for a region (it has no region records at all), and the server
-        // refers to them purely as "Region N". These are the client-side
-        // display strings, keyed to the authored RegionTier values, so the
-        // Combat screen can say "Ashen Wastes" rather than "Region 3".
+        // Modul: canonical progression content. There are exactly FIVE
+        // regions, each with four regular monsters plus one boss - the
+        // m_01_* through m_05_* entity family (monsters.json ids 91-115).
+        //
+        // monsters.json also still carries 90 older entries whose RegionTier
+        // spans 1-10. Deriving locations from RegionTier alone therefore
+        // produced ten locations and dumped dozens of unrelated legacy
+        // monsters into them (region 1 listed 41 creatures). Locations are now
+        // built from the canonical family only, by EnemyId prefix, so the
+        // Combat screen shows precisely the intended 5 x (4 + 1).
+        public const int CanonicalRegionCount = 5;
+
         private static readonly string[] _regionNames =
         {
-            "Greenmoor Lowlands",
+            "Sunlit Plains",
             "Whispering Woods",
-            "Karst Canyons",
-            "Frostbound Fjords",
-            "Auroral Citadel",
-            "Emberfall Caldera",
-            "The Void Rift",
-            "Eternal Winter",
-            "Tempest Reach",
-            "The Last Dawn"
+            "Scorched Wasteland",
+            "Frozen Peaks",
+            "Shadow Citadel"
+        };
+
+        // Inclusive character-level band each region is designed for.
+        private static readonly (int Min, int Max)[] _regionLevelBands =
+        {
+            (1, 20),
+            (21, 40),
+            (41, 60),
+            (61, 80),
+            (81, 100)
         };
 
         public static string GetRegionName(int regionId)
@@ -202,6 +214,20 @@ namespace FolkIdle.Client.Network
             return regionId >= 1 && regionId <= _regionNames.Length
                 ? _regionNames[regionId - 1]
                 : "Region " + regionId;
+        }
+
+        // Renders as "Levels 21-40", or "Levels 81-100+" for the last region,
+        // which is the open-ended endgame band.
+        public static string GetRegionLevelBand(int regionId)
+        {
+            if (regionId < 1 || regionId > _regionLevelBands.Length)
+            {
+                return string.Empty;
+            }
+
+            (int min, int max) = _regionLevelBands[regionId - 1];
+            bool isFinalRegion = regionId == _regionLevelBands.Length;
+            return "Levels " + min + "-" + max + (isFinalRegion ? "+" : string.Empty);
         }
 
         // ------------------------------------------------------------
@@ -295,6 +321,31 @@ namespace FolkIdle.Client.Network
                 : value;
         }
 
+        // Canonical entity ids are "m_<region>_<name>", e.g. m_03_basilisk.
+        // The region number is carried in the prefix, which is what makes this
+        // family identifiable without a separate content file.
+        private const string CanonicalEnemyIdPrefix = "m_0";
+
+        private static bool TryResolveCanonicalRegion(MonsterEntry monster, out int regionId)
+        {
+            regionId = 0;
+
+            string enemyId = monster.EnemyId;
+            if (string.IsNullOrEmpty(enemyId) || !enemyId.StartsWith(CanonicalEnemyIdPrefix, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            // "m_0" + one digit + "_"
+            if (enemyId.Length < 5 || enemyId[4] != '_') return false;
+
+            int parsed = enemyId[3] - '0';
+            if (parsed < 1 || parsed > CanonicalRegionCount) return false;
+
+            regionId = parsed;
+            return true;
+        }
+
         private static void BuildDerivedIndexes()
         {
             _monstersByRegion.Clear();
@@ -302,11 +353,16 @@ namespace FolkIdle.Client.Network
 
             foreach (MonsterEntry monster in _monsters.Values)
             {
-                if (!_monstersByRegion.TryGetValue(monster.RegionTier, out List<MonsterEntry> list))
+                if (!TryResolveCanonicalRegion(monster, out int regionId))
                 {
-                    list = new List<MonsterEntry>(16);
-                    _monstersByRegion[monster.RegionTier] = list;
-                    _regionIds.Add(monster.RegionTier);
+                    continue;
+                }
+
+                if (!_monstersByRegion.TryGetValue(regionId, out List<MonsterEntry> list))
+                {
+                    list = new List<MonsterEntry>(8);
+                    _monstersByRegion[regionId] = list;
+                    _regionIds.Add(regionId);
                 }
                 list.Add(monster);
             }

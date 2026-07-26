@@ -43,10 +43,10 @@ namespace FolkIdle.Server.Engine
         public long EquippedWeaponId;
         public long EquippedArmorId;
         public long EquippedLeggingsId;
-        public int EquippedFlatAttack;
-        public int EquippedFlatDefense;
-        public int EquippedCritBonus;
-        public int EquippedLuckBonus;
+        // Modul: Affix System Unification. Was four loose ints, which could
+        // only carry four of the GDD's twelve affixes - the other eight had
+        // nowhere to go and silently contributed nothing.
+        public EquippedAffixTotals AffixTotals;
 
         // Modul: Architecture Overhaul, Part 4. Per-slot SetId, so the
         // tick thread can cache them onto TickStatePayload for

@@ -1012,6 +1012,16 @@ namespace FolkIdle.Server.Network
             public string BaseItemId { get; set; } = string.Empty;
             public int QualityTier { get; set; }
             public bool IsEquipped { get; set; }
+
+            // Modul: Affix System Unification. Without these the Inventory
+            // screen could name an item and its rarity but say nothing about
+            // what it actually does, which is the entire point of a rarity
+            // system. Keyed by GDD affix id (AffixRegistry), magnitudes in
+            // whole points for flat affixes and tenths of a percent for
+            // percentage ones.
+            public Dictionary<string, int> Affixes { get; set; } = new();
+
+            public bool IsAffixLocked { get; set; }
         }
 
         private sealed class InventoryStackResponse
@@ -2607,12 +2617,37 @@ namespace FolkIdle.Server.Network
                 for (int i = 0; i < equipment.Count; i++)
                 {
                     var item = equipment[i];
+
+                    var affixes = new Dictionary<string, int>();
+                    bool payloadLockFlag = false;
+                    if (!string.IsNullOrWhiteSpace(item.AffixPayload) &&
+                        System.Text.Json.Nodes.JsonNode.Parse(item.AffixPayload) is System.Text.Json.Nodes.JsonObject affixObject)
+                    {
+                        foreach (var kvp in affixObject)
+                        {
+                            if (kvp.Value is not System.Text.Json.Nodes.JsonValue affixValue) continue;
+
+                            if (kvp.Key == "is_affix_locked")
+                            {
+                                payloadLockFlag = affixValue.TryGetValue(out bool lockedFlag) && lockedFlag;
+                                continue;
+                            }
+
+                            if (affixValue.TryGetValue(out int magnitude))
+                            {
+                                affixes[kvp.Key] = magnitude;
+                            }
+                        }
+                    }
+
                     response.Equipment.Add(new InventoryEquipmentResponse
                     {
                         Id = item.Id,
                         BaseItemId = item.BaseItemId,
                         QualityTier = item.QualityTier,
-                        IsEquipped = item.Id == equippedWeapon || item.Id == equippedArmor || item.Id == equippedLeggings
+                        IsEquipped = item.Id == equippedWeapon || item.Id == equippedArmor || item.Id == equippedLeggings,
+                        Affixes = affixes,
+                        IsAffixLocked = item.IsAffixLocked || payloadLockFlag
                     });
                 }
 

@@ -202,7 +202,7 @@ namespace FolkIdle.Server.Engine
                 completedAreaFlags |= 1 << completedRegionIds[i];
             }
 
-            (int equippedFlatAttack, int equippedFlatDefense, int equippedCritBonus, int equippedLuckBonus, _, _, _) =
+            (EquippedAffixTotals equippedAffixTotals, _, _, _) =
                 await EquipmentSlotEngine.ComputeEquippedTotalsAsync(db, player.EquippedWeaponId, player.EquippedArmorId);
 
             CombatStats stats = StatsCalculator.Calculate(
@@ -210,7 +210,7 @@ namespace FolkIdle.Server.Engine
                 player.ActiveOffensivePotionId, player.ActiveDefensivePotionId,
                 activeAgePhase, completedAreaFlags, activeRaceId,
                 humanMastery, vilaMastery, draugrMastery,
-                equippedFlatAttack, equippedFlatDefense, equippedCritBonus, equippedLuckBonus,
+                equippedAffixTotals,
                 isEpicMutation, locusSpeed, locusCrit);
 
             int lineageIndex = player.SelectedLineageId;

@@ -915,7 +915,7 @@ namespace FolkIdle.Server.Tests
         public void Test_StatsCalculator_ComputeEffectiveMilliAttack_ScalesWithGearAndLevel()
         {
             CombatStats naked = StatsCalculator.Calculate(str: 0, dex: 0, con: 0, lck: 0);
-            CombatStats geared = StatsCalculator.Calculate(str: 100, dex: 0, con: 0, lck: 0, equippedFlatAttack: 500);
+            CombatStats geared = StatsCalculator.Calculate(str: 100, dex: 0, con: 0, lck: 0, equippedAffixTotals: new EquippedAffixTotals { FlatAttack = 500 });
 
             long nakedAttack = StatsCalculator.ComputeEffectiveMilliAttack(in naked, damageScalePerLevelPct: 0, level: 0);
             long gearedAttack = StatsCalculator.ComputeEffectiveMilliAttack(in geared, damageScalePerLevelPct: 0, level: 0);
@@ -1651,12 +1651,20 @@ namespace FolkIdle.Server.Tests
                 });
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "premium_diamond", Quantity = initialPremiumCurrency });
 
+                // Modul: Affix System Unification. This used to seed
+                // BaseItemId = "1" and an affix key "flat_hp_aaaa" - both
+                // artefacts of the bugs since fixed. BaseItemId is always a
+                // slug (the old code's int.TryParse on it always failed, which
+                // is why every rerolled affix was scaled as region 1), and the
+                // random hex key suffix made the affix unreadable to
+                // EquipmentSlotEngine. A real chest slug and a plain GDD affix
+                // id now stand in for a genuine item.
                 var equipment = new EquipmentInstance
                 {
-                    BaseItemId = "1",
+                    BaseItemId = "eq_linen_shroud_chest_armor_slot_base",
                     PlayerId = testPlayerId,
                     QualityTier = 1,
-                    AffixPayload = "{\"flat_hp_aaaa\":50}",
+                    AffixPayload = "{\"flat_hp\":50}",
                     IsAffixLocked = false
                 };
                 db.EquipmentInstances.Add(equipment);
@@ -1671,15 +1679,63 @@ namespace FolkIdle.Server.Tests
 
             var commodity = await verifyDb.CommodityRecords.AsNoTracking()
                 .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "premium_diamond");
-            Assert.Equal(initialPremiumCurrency - 5, commodity.Quantity);
+            Assert.Equal(initialPremiumCurrency - AffixRegistry.CalculateRerollDiamondCost(1), commodity.Quantity);
 
             var updatedEquipment = await verifyDb.EquipmentInstances.AsNoTracking()
                 .SingleAsync(e => e.Id == equipmentId);
 
             var affixPayload = JsonNode.Parse(updatedEquipment.AffixPayload) as JsonObject;
             Assert.NotNull(affixPayload);
-            Assert.False(affixPayload!.ContainsKey("flat_hp_aaaa"));
             Assert.Single(affixPayload);
+
+            // A chest has exactly two legal affixes, so the replacement is
+            // necessarily flat_armor - and it must be a readable, plain GDD id.
+            Assert.False(affixPayload!.ContainsKey("flat_hp"));
+            Assert.True(affixPayload.ContainsKey("flat_armor"));
+        }
+
+        // Modul: Affix System Unification. An item whose BaseItemId carries no
+        // recognisable slot suffix has no legal affix pool, so a reroll must
+        // refuse rather than invent one - and must not charge for the refusal.
+        [Fact]
+        public async Task Test_AffixReroll_RefusesAndRefundsWhenTheItemSlotIsUnrecognisable()
+        {
+            const long testPlayerId = 990000012L;
+            const long initialPremiumCurrency = 100L;
+            long equipmentId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "premium_diamond", Quantity = initialPremiumCurrency });
+
+                var equipment = new EquipmentInstance
+                {
+                    BaseItemId = "some_item_with_no_slot_suffix",
+                    PlayerId = testPlayerId,
+                    QualityTier = 1,
+                    AffixPayload = "{\"flat_hp\":50}",
+                    IsAffixLocked = false
+                };
+                db.EquipmentInstances.Add(equipment);
+                await db.SaveChangesAsync();
+                equipmentId = equipment.Id;
+            }
+
+            var rerollEngine = new AffixRerollEngine(_fixture.ServiceProvider);
+            await rerollEngine.ExecuteRerollAsync(testPlayerId, equipmentId, affixIndex: 0);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            long remaining = await verifyDb.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == testPlayerId && c.ItemId == "premium_diamond")
+                .Select(c => c.Quantity).FirstAsync();
+            Assert.Equal(initialPremiumCurrency, remaining);
+
+            var untouched = await verifyDb.EquipmentInstances.AsNoTracking().SingleAsync(e => e.Id == equipmentId);
+            var payload = JsonNode.Parse(untouched.AffixPayload) as JsonObject;
+            Assert.NotNull(payload);
+            Assert.True(payload!.ContainsKey("flat_hp"));
         }
 
         [Fact]
@@ -6502,10 +6558,10 @@ namespace FolkIdle.Server.Tests
                 Assert.Null(player.EquippedArmorId);
                 Assert.Null(player.EquippedWeaponId);
 
-                (int attack, int defense, int crit, int luck, _, _, _) =
+                (EquippedAffixTotals totals, _, _, _) =
                     await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verifyDb, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
-                Assert.Equal(45, defense);
-                Assert.Equal(0, attack);
+                Assert.Equal(45, totals.FlatDefense);
+                Assert.Equal(0, totals.FlatAttack);
             }
 
             await slotEngine.UnequipItemAsync(testPlayerId, EquipmentSlotEngine.SlotLeggings);
@@ -7118,6 +7174,212 @@ namespace FolkIdle.Server.Tests
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
         }
 
+        // Modul: Affix System Unification. Every affix a drop rolls must be
+        // legal for that item's slot per GDD Module 14 section 1.3 - the old
+        // generator ignored slot legality entirely and the old reroll could put
+        // a shield-only block_chance_pct on a sword.
+        [Fact]
+        public void Test_AffixRegistry_OnlyRollsAffixesLegalForTheItemSlot()
+        {
+            // A weapon must never receive an armour-or-shield affix.
+            var weaponAffixes = new Dictionary<string, int>();
+            AffixRegistry.RollAffixes("eq_steel_claymore_melee_weapon_slot_base", regionTier: 3, rarityTier: 14, affixCount: 5, weaponAffixes);
+
+            Assert.NotEmpty(weaponAffixes);
+            foreach (var key in weaponAffixes.Keys)
+            {
+                string affixId = AffixRegistry.StripStackSuffix(key);
+                Assert.True(AffixRegistry.TryGetDefinition(affixId, out var definition), $"Rolled an unknown affix id '{affixId}'.");
+                Assert.True((definition.AllowedSlots & EquipmentSlotMask.Weapon) != 0,
+                    $"Affix '{affixId}' is not legal on a weapon but was rolled onto one.");
+            }
+
+            // A shield is the only slot block_chance_pct may occupy, so it must
+            // be reachable there and nowhere else.
+            Assert.True(AffixRegistry.TryGetDefinition("block_chance_pct", out var block));
+            Assert.Equal(EquipmentSlotMask.Shield, block.AllowedSlots);
+
+            var chestAffixes = new Dictionary<string, int>();
+            AffixRegistry.RollAffixes("eq_linen_shroud_chest_armor_slot_base", regionTier: 1, rarityTier: 1, affixCount: 1, chestAffixes);
+            Assert.Single(chestAffixes);
+            foreach (var key in chestAffixes.Keys)
+            {
+                string affixId = AffixRegistry.StripStackSuffix(key);
+                Assert.True(AffixRegistry.TryGetDefinition(affixId, out var definition));
+                Assert.True((definition.AllowedSlots & EquipmentSlotMask.Chest) != 0);
+            }
+        }
+
+        // Modul: Affix System Unification. GDD Module 03 section 5.2 - the
+        // rarity to affix-count table - and the stacking fallback that lets a
+        // Chest piece reach five affixes despite having only two legal ones
+        // (the GDD's pool assumes Ring and Amulet slots this game lacks).
+        [Fact]
+        public void Test_AffixRegistry_AffixCountFollowsRarityEvenWhenTheLegalPoolIsSmaller()
+        {
+            Assert.Equal(1, RarityTier.GetAffixCount(1));
+            Assert.Equal(1, RarityTier.GetAffixCount(3));
+            Assert.Equal(2, RarityTier.GetAffixCount(4));
+            Assert.Equal(2, RarityTier.GetAffixCount(6));
+            Assert.Equal(3, RarityTier.GetAffixCount(7));
+            Assert.Equal(3, RarityTier.GetAffixCount(9));
+            Assert.Equal(4, RarityTier.GetAffixCount(10));
+            Assert.Equal(4, RarityTier.GetAffixCount(12));
+            Assert.Equal(5, RarityTier.GetAffixCount(13));
+            Assert.Equal(5, RarityTier.GetAffixCount(14));
+
+            // Chest has exactly two legal affixes, so five rolls must produce
+            // five payload entries via stacked "#n" keys rather than silently
+            // collapsing to two.
+            var chestAffixes = new Dictionary<string, int>();
+            AffixRegistry.RollAffixes("eq_linen_shroud_chest_armor_slot_base", regionTier: 2, rarityTier: 14, affixCount: 5, chestAffixes);
+            Assert.Equal(5, chestAffixes.Count);
+        }
+
+        // Modul: Affix System Unification. GDD 1.1 flat laws and 1.2 percentage
+        // law, plus the Module 03 section 5.3 reroll cost.
+        [Fact]
+        public void Test_AffixRegistry_ScalingLawsAndRerollCostMatchTheSpec()
+        {
+            Assert.True(AffixRegistry.TryGetDefinition("flat_hp", out var flatHp));
+            // floor(15 * R * 1.22^(N-1)); R=1, N=1 -> 15.
+            Assert.Equal(15, AffixRegistry.CalculateMagnitude(flatHp, 1, 1));
+            // R=3, N=5 -> floor(15*3*1.22^4) = floor(45 * 2.21533...) = 99.
+            Assert.Equal(99, AffixRegistry.CalculateMagnitude(flatHp, 3, 5));
+
+            Assert.True(AffixRegistry.TryGetDefinition("flat_armor", out var flatArmor));
+            // floor(2 * R * 1.18^(N-1)); R=1, N=1 -> 2.
+            Assert.Equal(2, AffixRegistry.CalculateMagnitude(flatArmor, 1, 1));
+
+            // Percentage law in tenths: crit_dmg_pct is 5.0% base, +2.5%/tier,
+            // so tier 1 is 50 tenths and tier 3 is 50 + 2*25 = 100 tenths (10%).
+            Assert.True(AffixRegistry.TryGetDefinition("crit_dmg_pct", out var critDamage));
+            Assert.Equal(50, AffixRegistry.CalculateMagnitude(critDamage, 1, 1));
+            Assert.Equal(100, AffixRegistry.CalculateMagnitude(critDamage, 1, 3));
+
+            // Diamond_Cost = floor(5 * 1.35^(N-1)).
+            Assert.Equal(5L, AffixRegistry.CalculateRerollDiamondCost(1));
+            Assert.Equal(30L, AffixRegistry.CalculateRerollDiamondCost(7));
+            Assert.Equal(247L, AffixRegistry.CalculateRerollDiamondCost(14));
+        }
+
+        // Modul: Affix System Unification. THE bug this work existed to fix.
+        // A reroll used to remove a numeric-keyed affix and write a
+        // GDD-named one that EquipmentSlotEngine did not read, so the player
+        // paid diamonds and the item lost the stat outright. The reroll must
+        // leave the item with the same number of readable, stat-contributing
+        // affixes it started with.
+        [Fact]
+        public async Task Test_AffixReroll_ReplacesAffixWithoutDestroyingItsStatContribution()
+        {
+            const long testPlayerId = 970009151L;
+            const string baseItemId = "eq_steel_claymore_melee_weapon_slot_base";
+            const int rarityTier = 7; // Legendary -> 3 affixes, 30 diamonds.
+
+            long itemId;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+
+                var rolled = new Dictionary<string, int>();
+                AffixRegistry.RollAffixes(baseItemId, regionTier: 1, rarityTier: rarityTier, affixCount: RarityTier.GetAffixCount(rarityTier), rolled);
+
+                var instance = new EquipmentInstance
+                {
+                    BaseItemId = baseItemId,
+                    PlayerId = testPlayerId,
+                    QualityTier = rarityTier,
+                    AffixPayload = System.Text.Json.JsonSerializer.Serialize(rolled),
+                    IsAffixLocked = false
+                };
+                db.EquipmentInstances.Add(instance);
+
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "premium_diamond", Quantity = 500L });
+                await db.SaveChangesAsync();
+                itemId = instance.Id;
+            }
+
+            int affixCountBefore;
+            int statTotalBefore;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var before = await db.EquipmentInstances.AsNoTracking().FirstAsync(e => e.Id == itemId);
+                (affixCountBefore, statTotalBefore) = SummariseAffixPayload(before.AffixPayload);
+            }
+
+            Assert.Equal(RarityTier.GetAffixCount(rarityTier), affixCountBefore);
+            Assert.True(statTotalBefore > 0, "The seeded item must start with a non-zero affix total.");
+
+            var rerollEngine = new AffixRerollEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await rerollEngine.ExecuteRerollAsync(testPlayerId, itemId, affixIndex: 0);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var after = await db.EquipmentInstances.AsNoTracking().FirstAsync(e => e.Id == itemId);
+                (int affixCountAfter, int statTotalAfter) = SummariseAffixPayload(after.AffixPayload);
+
+                // Same number of affixes, all still readable, all still worth
+                // something. Before the fix this dropped to affixCountBefore-1
+                // readable affixes and the removed one's value was gone.
+                Assert.Equal(affixCountBefore, affixCountAfter);
+                Assert.True(statTotalAfter > 0, "Every affix on the item was unreadable after the reroll.");
+
+                // And the replacement must be legal for a weapon.
+                foreach (var key in ParseAffixKeys(after.AffixPayload))
+                {
+                    string affixId = AffixRegistry.StripStackSuffix(key);
+                    Assert.True(AffixRegistry.TryGetDefinition(affixId, out var definition), $"Reroll produced unknown affix id '{affixId}'.");
+                    Assert.True((definition.AllowedSlots & EquipmentSlotMask.Weapon) != 0,
+                        $"Reroll put '{affixId}' on a weapon, where it is not legal.");
+                }
+
+                // The diamonds actually left the account, at the GDD price.
+                long remaining = await db.CommodityRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == testPlayerId && c.ItemId == "premium_diamond")
+                    .Select(c => c.Quantity).FirstAsync();
+                Assert.Equal(500L - AffixRegistry.CalculateRerollDiamondCost(rarityTier), remaining);
+            }
+        }
+
+        private static List<string> ParseAffixKeys(string affixPayload)
+        {
+            var keys = new List<string>();
+            if (System.Text.Json.Nodes.JsonNode.Parse(affixPayload) is not System.Text.Json.Nodes.JsonObject obj) return keys;
+
+            foreach (var kvp in obj)
+            {
+                if (kvp.Key == "is_affix_locked") continue;
+                keys.Add(kvp.Key);
+            }
+            return keys;
+        }
+
+        // Counts readable affixes and sums their magnitudes - "readable" being
+        // the whole point, since the pre-fix bug produced keys nothing parsed.
+        private static (int Count, int Total) SummariseAffixPayload(string affixPayload)
+        {
+            int count = 0;
+            int total = 0;
+            if (System.Text.Json.Nodes.JsonNode.Parse(affixPayload) is not System.Text.Json.Nodes.JsonObject obj)
+            {
+                return (0, 0);
+            }
+
+            foreach (var kvp in obj)
+            {
+                if (kvp.Key == "is_affix_locked") continue;
+                if (kvp.Value is not System.Text.Json.Nodes.JsonValue value) continue;
+                if (!value.TryGetValue(out int magnitude)) continue;
+
+                if (!AffixRegistry.TryGetDefinition(AffixRegistry.StripStackSuffix(kvp.Key), out _)) continue;
+
+                count++;
+                total += magnitude;
+            }
+
+            return (count, total);
+        }
+
         // Modul: Deploy activation fix. A committed multi-character activity
         // change must reach the LIVE payload, not just the characters row.
         // Before this, ChangeCharacterActivityAsync persisted the new
@@ -7500,7 +7762,7 @@ namespace FolkIdle.Server.Tests
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
             var player = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
 
-            (_, _, _, _, int weaponSetId, int armorSetId, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verifyDb, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
+            (_, int weaponSetId, int armorSetId, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verifyDb, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
 
             Assert.Equal(SetBonusEngine.ChimingSteelSetId, weaponSetId);
             Assert.Equal(SetBonusEngine.ChimingSteelSetId, armorSetId);

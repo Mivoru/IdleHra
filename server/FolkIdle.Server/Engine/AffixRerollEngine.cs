@@ -25,6 +25,26 @@ namespace FolkIdle.Server.Engine
             _playerRegistry = playerRegistry;
         }
 
+        // Modul: Affix System Unification. BaseItemId is a slug, so an item's
+        // region tier has to come from a reverse lookup over the catalogue -
+        // the same GetItemBaseId identity space every other resolution in this
+        // codebase uses. Linear over a bounded static table, and only on the
+        // reroll command path, never on a tick.
+        private static int ResolveRegionTier(string baseItemId)
+        {
+            if (string.IsNullOrEmpty(baseItemId)) return 1;
+
+            ReadOnlySpan<ItemDefinition> items = ContentRegistry.ItemDefinitions;
+            for (int i = 0; i < items.Length; i++)
+            {
+                if (string.Equals(ContentRegistry.GetItemBaseId(items[i].Id), baseItemId, StringComparison.Ordinal))
+                {
+                    return items[i].RegionTier > 0 ? items[i].RegionTier : 1;
+                }
+            }
+            return 1;
+        }
+
         public async Task ExecuteRerollAsync(long playerId, long targetItemGuid, int affixIndex)
         {
             using var scope = _serviceProvider.CreateScope();
@@ -76,7 +96,11 @@ namespace FolkIdle.Server.Engine
 
                 string affixKeyToReroll = rerollableKeys[affixIndex];
 
-                long cost = (long)Math.Floor(5 * Math.Pow(1.35, targetItem.QualityTier - 1));
+                // Modul: Affix System Unification. Same GDD Module 03 section
+                // 5.3 formula as before, now sourced from AffixRegistry so client
+                // and server quote one number - see that method's note on the
+                // GDD's own illustrative prices disagreeing with its formula.
+                long cost = AffixRegistry.CalculateRerollDiamondCost(targetItem.QualityTier);
 
                 var premiumCurrencyQuery = $"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = 'premium_diamond' FOR UPDATE";
                 var premiumRecord = await db.CommodityRecords.FromSqlRaw(premiumCurrencyQuery).SingleOrDefaultAsync();
@@ -90,25 +114,53 @@ namespace FolkIdle.Server.Engine
 
                 premiumRecord.Quantity -= cost;
 
-                affixPayload.Remove(affixKeyToReroll);
-                string newAffixType = AffixEngine.GetRandomAffixKey();
-                
-                int regionTier = 1;
-                if (int.TryParse(targetItem.BaseItemId, out int baseId) && baseId > 0)
-                {
-                    if (ContentRegistry.ItemDefinitions.Length > baseId - 1)
-                    {
-                        regionTier = ContentRegistry.ItemDefinitions[baseId - 1].RegionTier;
-                    }
-                }
-                
-                int targetValue = 0;
-                if (newAffixType == "flat_hp") targetValue = AffixEngine.CalculateFlatHp(regionTier, targetItem.QualityTier);
-                else if (newAffixType == "flat_armor") targetValue = AffixEngine.CalculateFlatArmor(regionTier, targetItem.QualityTier);
-                else targetValue = AffixEngine.CalculatePercentagePool(5, 2, targetItem.QualityTier);
+                // Modul: Affix System Unification. Three separate bugs lived
+                // in this block.
+                //
+                // 1. The replacement affix came from AffixEngine.GetRandomAffixKey,
+                //    which picked uniformly from all twelve ids with no regard
+                //    for slot legality - a shield-only block_chance_pct could
+                //    land on a sword.
+                // 2. regionTier was resolved by int.TryParse on BaseItemId,
+                //    but BaseItemId is a slug like
+                //    "eq_steel_claymore_melee_weapon_slot_base", so the parse
+                //    ALWAYS failed and every rerolled affix was scaled as
+                //    though it came from region 1.
+                // 3. Every percentage affix was valued with one hardcoded
+                //    base/growth pair (5, 2), ignoring the per-affix numbers
+                //    the GDD actually specifies.
+                //
+                // On top of that the new key carried a random hex suffix
+                // ("flat_hp_a3f2") that no reader recognised, so a reroll
+                // silently deleted the old stat and added nothing readable in
+                // its place - the player paid diamonds to make the item
+                // strictly worse. Keys are now plain GDD affix ids.
+                string replacedAffixId = AffixRegistry.StripStackSuffix(affixKeyToReroll);
 
-                string newAffixKey = $"{newAffixType}_{Guid.NewGuid().ToString().Substring(0, 4)}";
-                
+                if (!AffixRegistry.TryRollReplacement(targetItem.BaseItemId, replacedAffixId, out var replacement))
+                {
+                    Console.WriteLine("Reroll failed: no affix is legal for this item's slot.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                int regionTier = ResolveRegionTier(targetItem.BaseItemId);
+                int targetValue = AffixRegistry.CalculateMagnitude(replacement, regionTier, targetItem.QualityTier);
+
+                affixPayload.Remove(affixKeyToReroll);
+
+                // Preserve the stack shape: if the item already carries this
+                // affix, the replacement becomes a further stacked instance
+                // rather than overwriting the existing one.
+                string newAffixKey = replacement.Id;
+                int stackIndex = 2;
+                while (affixPayload.ContainsKey(newAffixKey))
+                {
+                    newAffixKey = replacement.Id + AffixRegistry.StackSeparator + stackIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    stackIndex++;
+                }
+
                 affixPayload[newAffixKey] = targetValue;
                 targetItem.AffixPayload = affixPayload.ToJsonString();
 

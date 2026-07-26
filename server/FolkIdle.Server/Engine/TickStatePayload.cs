@@ -257,10 +257,9 @@ namespace FolkIdle.Server.Engine
         // unequip (see EquipmentSlotUpdateQueue), read as plain O(1) field
         // access from StatsCalculator every tick - never re-parsed from JSON or
         // re-queried from the DB on the hot path.
-        public int CachedEquippedFlatAttack;
-        public int CachedEquippedFlatDefense;
-        public int CachedEquippedCritBonus;
-        public int CachedEquippedLuckBonus;
+        // Modul: Affix System Unification - see EquippedAffixTotals for why
+        // this replaced four separate cached ints.
+        public EquippedAffixTotals CachedAffixTotals;
 
         // Modul: Architecture Overhaul, Part 4. Per-slot equipment SetId
         // (0 = no set), refreshed alongside the flat totals above on every

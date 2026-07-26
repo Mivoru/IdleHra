@@ -52,6 +52,14 @@ namespace FolkIdle.Server.Engine
         public float WoodcuttingYieldBonusPct { get; set; }
         public float CritMitigationPct { get; set; }
 
+        // Modul: Affix System Unification. The two GDD weapon affixes that had
+        // no home in CombatStats at all: melee/range/magic_dmg_pct summed into
+        // one multiplier (this combat model has a single damage number, not
+        // per-type resistances) and crit_dmg_pct, which raises the crit
+        // multiplier above its 1.5 baseline.
+        public float EquipmentDamagePct { get; set; }
+        public float EquipmentCritDamagePct { get; set; }
+
         // Modul: Architecture Overhaul, Part 4. Equipment set bonuses -
         // see SetBonusEngine. FireDamageMultiplierPct/ThornsReflection/
         // CooldownReduction/BurnApplication/CcImmunity are 4-piece
@@ -66,7 +74,7 @@ namespace FolkIdle.Server.Engine
 
     public static class StatsCalculator
     {
-        public static CombatStats Calculate(int str, int dex, int con, int lck, int activeOffensivePotionId = 0, int activeDefensivePotionId = 0, int activeAgePhase = 1, int completedAreaFlags = 0, int activeRaceId = 0, int humanMastery = 0, int vilaMastery = 0, int draugrMastery = 0, int equippedFlatAttack = 0, int equippedFlatDefense = 0, int equippedCritBonus = 0, int equippedLuckBonus = 0, bool isEpicMutation = false, int locusSpeed = 0, int locusCrit = 0, int equippedWeaponSetId = 0, int equippedArmorSetId = 0, int equippedLeggingsSetId = 0)
+        public static CombatStats Calculate(int str, int dex, int con, int lck, int activeOffensivePotionId = 0, int activeDefensivePotionId = 0, int activeAgePhase = 1, int completedAreaFlags = 0, int activeRaceId = 0, int humanMastery = 0, int vilaMastery = 0, int draugrMastery = 0, EquippedAffixTotals equippedAffixTotals = default, bool isEpicMutation = false, int locusSpeed = 0, int locusCrit = 0, int equippedWeaponSetId = 0, int equippedArmorSetId = 0, int equippedLeggingsSetId = 0)
         {
             var stats = new CombatStats();
 
@@ -216,11 +224,23 @@ namespace FolkIdle.Server.Engine
             // access here). Applied additively alongside potions, before the age
             // penalty scaling below, so equipped bonuses are subject to the same
             // age-phase falloff as every other external stat source.
-            stats.FlatMeleeDamage += equippedFlatAttack;
-            stats.FlatRangedDamage += equippedFlatAttack;
-            stats.FlatPhysicalArmor += equippedFlatDefense;
-            stats.CritChancePct += equippedCritBonus;
-            stats.LootLuckPct += equippedLuckBonus;
+            // Modul: Affix System Unification. All twelve GDD affixes now land
+            // on a real stat. Percentage totals arrive in tenths of a percent
+            // (see EquippedAffixTotals) so each is divided by 10 here, which is
+            // the single place that conversion happens.
+            stats.FlatMeleeDamage += equippedAffixTotals.FlatAttack;
+            stats.FlatRangedDamage += equippedAffixTotals.FlatAttack;
+            stats.FlatPhysicalArmor += equippedAffixTotals.FlatDefense;
+            stats.FlatArmorPenetration += equippedAffixTotals.FlatArmorPenetration;
+            stats.MaxHp += equippedAffixTotals.FlatHp;
+            stats.CritChancePct += equippedAffixTotals.CritChanceTenthsPct / 10f;
+            stats.LootLuckPct += equippedAffixTotals.LootLuckTenthsPct / 10f;
+            stats.AttackSpeedPct += equippedAffixTotals.AttackSpeedTenthsPct / 10f;
+            stats.LifestealPct += equippedAffixTotals.LifestealTenthsPct / 10f;
+            stats.DodgeChancePct += equippedAffixTotals.DodgeTenthsPct / 10f;
+            stats.BlockStrengthPct += equippedAffixTotals.BlockTenthsPct / 10f;
+            stats.EquipmentDamagePct += equippedAffixTotals.DamageTenthsPct / 10f;
+            stats.EquipmentCritDamagePct += equippedAffixTotals.CritDamageTenthsPct / 10f;
 
             // Modul 13.4.3: inherited genetic loci (see GeneticSplicingEngine/
             // BreedingEngine). LocusCrit scales Crit Chance directly; LocusSpeed
@@ -284,7 +304,27 @@ namespace FolkIdle.Server.Engine
         // second time here would double-count it.
         public static long ComputeEffectiveMilliAttack(in CombatStats stats, int damageScalePerLevelPct, int level)
         {
-            return BaseMilliAttack + (BaseMilliAttack * damageScalePerLevelPct * level / 100) + (stats.FlatMeleeDamage * 1000L);
+            long flatMilliAttack = BaseMilliAttack + (BaseMilliAttack * damageScalePerLevelPct * level / 100) + (stats.FlatMeleeDamage * 1000L);
+
+            // Modul: Affix System Unification. The GDD's melee/range/magic
+            // damage percentage affixes multiply total attack, applied here
+            // rather than at each of the five combat call sites so weapon
+            // affixes cannot be silently skipped by one of them.
+            if (stats.EquipmentDamagePct <= 0f)
+            {
+                return flatMilliAttack;
+            }
+
+            return flatMilliAttack + (long)(flatMilliAttack * (stats.EquipmentDamagePct / 100f));
+        }
+
+        // Modul: Affix System Unification. The player's crit multiplier, 1.5
+        // baseline plus whatever crit_dmg_pct the equipped weapon rolled. A
+        // single accessor so the live combat tick and the offline/warp
+        // projections cannot drift apart on crit maths.
+        public static float ComputeCritMultiplier(in CombatStats stats)
+        {
+            return 1.5f + (stats.EquipmentCritDamagePct / 100f);
         }
     }
 }

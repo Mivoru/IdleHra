@@ -723,10 +723,7 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.EquippedWeaponId = equipUpdate.EquippedWeaponId;
                         currentPayload.EquippedArmorId = equipUpdate.EquippedArmorId;
                         currentPayload.EquippedLeggingsId = equipUpdate.EquippedLeggingsId;
-                        currentPayload.CachedEquippedFlatAttack = equipUpdate.EquippedFlatAttack;
-                        currentPayload.CachedEquippedFlatDefense = equipUpdate.EquippedFlatDefense;
-                        currentPayload.CachedEquippedCritBonus = equipUpdate.EquippedCritBonus;
-                        currentPayload.CachedEquippedLuckBonus = equipUpdate.EquippedLuckBonus;
+                        currentPayload.CachedAffixTotals = equipUpdate.AffixTotals;
                         currentPayload.CachedWeaponSetId = equipUpdate.EquippedWeaponSetId;
                         currentPayload.CachedArmorSetId = equipUpdate.EquippedArmorSetId;
                         currentPayload.CachedLeggingsSetId = equipUpdate.EquippedLeggingsSetId;
@@ -2602,7 +2599,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 broadcastActiveAgePhase = currentPayload.Slot1_AgePhase;
                                 broadcastActiveRaceId = (int)(currentPayload.Slot1_GeneticVector & 0xFF);
                             }
-                            var broadcastCombatStats = StatsCalculator.Calculate(currentPayload.STR, currentPayload.DEX, currentPayload.CON, currentPayload.LCK, currentPayload.ActiveOffensivePotionId, currentPayload.ActiveDefensivePotionId, broadcastActiveAgePhase, currentPayload.CompletedAreaFlags, broadcastActiveRaceId, currentPayload.HumanMasteryLevel, currentPayload.VilaMasteryLevel, currentPayload.DraugrMasteryLevel, currentPayload.CachedEquippedFlatAttack, currentPayload.CachedEquippedFlatDefense, currentPayload.CachedEquippedCritBonus, currentPayload.CachedEquippedLuckBonus, currentPayload.IsEpicMutation, currentPayload.LocusSpeed, currentPayload.LocusCrit, currentPayload.CachedWeaponSetId, currentPayload.CachedArmorSetId, currentPayload.CachedLeggingsSetId);
+                            var broadcastCombatStats = StatsCalculator.Calculate(currentPayload.STR, currentPayload.DEX, currentPayload.CON, currentPayload.LCK, currentPayload.ActiveOffensivePotionId, currentPayload.ActiveDefensivePotionId, broadcastActiveAgePhase, currentPayload.CompletedAreaFlags, broadcastActiveRaceId, currentPayload.HumanMasteryLevel, currentPayload.VilaMasteryLevel, currentPayload.DraugrMasteryLevel, currentPayload.CachedAffixTotals, currentPayload.IsEpicMutation, currentPayload.LocusSpeed, currentPayload.LocusCrit, currentPayload.CachedWeaponSetId, currentPayload.CachedArmorSetId, currentPayload.CachedLeggingsSetId);
 
                             // Modul: onboarding signal - true only while the
                             // account's first character exists but has never
@@ -3075,7 +3072,7 @@ namespace FolkIdle.Server.Domain.Combat
 
             int warpActiveRaceId = payload.Slot1_CharacterId != System.Guid.Empty ? (int)(payload.Slot1_GeneticVector & 0xFF) : 0;
             int warpActiveAgePhase = payload.Slot1_CharacterId != System.Guid.Empty ? payload.Slot1_AgePhase : 1;
-            var warpCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, warpActiveAgePhase, payload.CompletedAreaFlags, warpActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId);
+            var warpCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, warpActiveAgePhase, payload.CompletedAreaFlags, warpActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId);
 
             // Modul: expected incoming damage over this warp period, mirroring
             // the live tick's monster crit formula (5% base + 0.5% per region
@@ -3249,7 +3246,7 @@ namespace FolkIdle.Server.Domain.Combat
                 warpGatherActiveAgePhase = payload.Slot1_AgePhase;
                 warpGatherActiveRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
             }
-            var warpGatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, warpGatherActiveAgePhase, payload.CompletedAreaFlags, warpGatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId);
+            var warpGatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, warpGatherActiveAgePhase, payload.CompletedAreaFlags, warpGatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId);
 
             int monolithLevel = professionType == 0 ? payload.CachedWoodcuttingMonolithLevel : payload.CachedMiningMonolithLevel;
             double yieldBonusPct = System.Math.Min(monolithLevel, 50);
@@ -4059,7 +4056,7 @@ namespace FolkIdle.Server.Domain.Combat
                             gatherActiveAgePhase = payload.Slot1_AgePhase;
                             gatherActiveRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
                         }
-                        var gatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherActiveAgePhase, payload.CompletedAreaFlags, gatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId);
+                        var gatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherActiveAgePhase, payload.CompletedAreaFlags, gatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId);
 
                         int monolithLevel = gatheringNode.ProfessionType == 0 ? payload.CachedWoodcuttingMonolithLevel : payload.CachedMiningMonolithLevel;
                         float yieldBonusPct = Math.Min(monolithLevel * 1.0f, 50.0f);
@@ -4182,7 +4179,7 @@ namespace FolkIdle.Server.Domain.Combat
                 activeRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
             }
 
-            var combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedEquippedFlatAttack, payload.CachedEquippedFlatDefense, payload.CachedEquippedCritBonus, payload.CachedEquippedLuckBonus, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId);
+            var combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedWeaponSetId, payload.CachedArmorSetId, payload.CachedLeggingsSetId);
             
             long baseMilliHp = 100000L;
             long effectiveMilliHp = baseMilliHp + (baseMilliHp * lineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.MaxHp * 1000L);
@@ -4239,7 +4236,7 @@ namespace FolkIdle.Server.Domain.Combat
                     float critMult = 1.0f;
                     if (Random.Shared.NextDouble() <= (combatStats.CritChancePct / 100.0f))
                     {
-                        critMult = 1.5f;
+                        critMult = StatsCalculator.ComputeCritMultiplier(combatStats);
                     }
 
                     long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel);

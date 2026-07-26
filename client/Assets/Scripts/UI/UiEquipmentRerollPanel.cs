@@ -50,8 +50,10 @@ namespace FolkIdle.Client.UI
         // Mirrors AffixRerollEngine.ExecuteRerollAsync's cost formula exactly for
         // preview purposes only; the server remains the sole source of truth for
         // the actual charge.
-        private const long RerollBaseCost = 5L;
-        private const double RerollCostTierScale = 1.35;
+        // Modul: Affix System Unification. The cost formula now lives in one
+        // place per side - ClientAffixRegistry.GetRerollDiamondCost mirrors the
+        // server's AffixRegistry.CalculateRerollDiamondCost - instead of being
+        // re-derived from loose constants here.
 
         private UIComponentPool<UiForgeEquipmentRow> _rowPool;
         private readonly List<UiForgeEquipmentRow> _activeRows = new List<UiForgeEquipmentRow>();
@@ -212,7 +214,7 @@ namespace FolkIdle.Client.UI
 
             RefreshAffixSelectionHighlights();
 
-            long cost = (long)Math.Floor(RerollBaseCost * Math.Pow(RerollCostTierScale, selected.QualityTier - 1));
+            long cost = ClientAffixRegistry.GetRerollDiamondCost(selected.QualityTier);
             uint balance = SyncProxy != null ? SyncProxy.VisualPremiumCurrencyBalance : 0u;
             bool canAfford = balance >= cost;
 
@@ -238,7 +240,7 @@ namespace FolkIdle.Client.UI
                 return;
             }
 
-            long cost = (long)Math.Floor(RerollBaseCost * Math.Pow(RerollCostTierScale, selected.QualityTier - 1));
+            long cost = ClientAffixRegistry.GetRerollDiamondCost(selected.QualityTier);
             uint balance = SyncProxy != null ? SyncProxy.VisualPremiumCurrencyBalance : 0u;
             RerollButton.interactable = balance >= cost;
         }
@@ -267,10 +269,9 @@ namespace FolkIdle.Client.UI
                 string key = _selectedAffixKeys[i];
                 int magnitude = selected.Affixes[key];
 
-                int offset = WriteTextToBuffer(_affixBuffer, 0, ResolveAffixLabel(key));
-                offset = WriteTextToBuffer(_affixBuffer, offset, ": ");
-                offset = WriteIntToBuffer(_affixBuffer, offset, magnitude);
-                slotText.SetCharArray(_affixBuffer, 0, offset);
+                // Describe applies the flat-versus-percentage distinction, so a
+                // crit_dmg_pct magnitude of 75 renders "+7.5%" rather than "75".
+                slotText.text = ClientAffixRegistry.Describe(key, magnitude);
             }
         }
 
@@ -301,16 +302,14 @@ namespace FolkIdle.Client.UI
         // Server-generated affix keys are plain numeric slot ids (EquipmentGenerator:
         // "1"=attack, "2"=defense, "3"=crit, "4"=luck). Anything outside that range
         // (future affix types) falls back to the raw key so nothing is hidden.
+        // Modul: Affix System Unification. Was a four-case switch over the
+        // legacy numeric keys only, so every GDD-named affix rendered as its
+        // raw id ("crit_dmg_pct") with a magnitude in tenths of a percent that
+        // read as a nonsense whole number. ClientAffixRegistry knows every id
+        // and which are percentages.
         private static string ResolveAffixLabel(string key)
         {
-            switch (key)
-            {
-                case "1": return "Attack";
-                case "2": return "Defense";
-                case "3": return "Crit";
-                case "4": return "Luck";
-                default: return key;
-            }
+            return ClientAffixRegistry.Describe(key, 0);
         }
 
         private ForgeEquipmentInstanceData FindSelectedItem()

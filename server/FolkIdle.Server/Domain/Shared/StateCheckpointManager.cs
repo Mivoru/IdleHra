@@ -412,7 +412,7 @@ namespace FolkIdle.Server.Domain.Shared
             // derived stat totals StatsCalculator reads every tick are not - they
             // must be recomputed once at login rather than starting zeroed until
             // the player's next equip action.
-            (int equippedAttack, int equippedDefense, int equippedCrit, int equippedLuck, int equippedWeaponSetId, int equippedArmorSetId, int equippedLeggingsSetId) =
+            (EquippedAffixTotals equippedAffixTotals, int equippedWeaponSetId, int equippedArmorSetId, int equippedLeggingsSetId) =
                 await EquipmentSlotEngine.ComputeEquippedTotalsAsync(dbContext, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
 
             var mentorCount = await dbContext.MentorshipAcademyAssignments
@@ -615,10 +615,7 @@ namespace FolkIdle.Server.Domain.Shared
                 DefensivePotionDurationMs = player.ActiveDefensivePotionExpiresEpoch > nowEpochSeconds ? (int)Math.Min(int.MaxValue, (player.ActiveDefensivePotionExpiresEpoch - nowEpochSeconds) * 1000L) : 0,
                 ActiveFoodBuffId = player.ActiveFoodExpiresEpoch > nowEpochSeconds ? player.ActiveFoodId : 0,
                 FoodBuffDurationMs = player.ActiveFoodExpiresEpoch > nowEpochSeconds ? (int)Math.Min(int.MaxValue, (player.ActiveFoodExpiresEpoch - nowEpochSeconds) * 1000L) : 0,
-                CachedEquippedFlatAttack = equippedAttack,
-                CachedEquippedFlatDefense = equippedDefense,
-                CachedEquippedCritBonus = equippedCrit,
-                CachedEquippedLuckBonus = equippedLuck,
+                CachedAffixTotals = equippedAffixTotals,
                 CachedWeaponSetId = equippedWeaponSetId,
                 CachedArmorSetId = equippedArmorSetId,
                 CachedLeggingsSetId = equippedLeggingsSetId,

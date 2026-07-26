@@ -2896,6 +2896,21 @@ namespace FolkIdle.Client.Editor
             Button rerollButton = CreateButton(textStackObject.transform, "RerollButton", "Reroll", out TextMeshProUGUI _);
             SetFixedLayoutHeight(rerollButton.gameObject, 44f);
 
+            // Modul: Affix System Unification. The rules were nowhere on
+            // screen: nothing said how many affixes a rarity grants, what a
+            // reroll costs, or that a reroll can only produce an affix legal
+            // for that item's slot. All three are GDD-specified and all three
+            // are things a player has to know before spending diamonds.
+            CreateHelpText(textStackObject.transform, "RerollRulesText",
+                "Rarity sets the affix count: Normal to Uncommon 1, Rare to Epic 2, Legendary to Relic 3, Ancient to Demonic 4, Godly and Transcendent 5.",
+                46f);
+            CreateHelpText(textStackObject.transform, "RerollCostRulesText",
+                "A reroll costs floor(5 x 1.35 ^ (rarity - 1)) Diamonds, so 5 at Normal and 247 at Transcendent. It replaces one affix with another that is legal for this item's slot, and never returns the same affix.",
+                58f);
+            CreateHelpText(textStackObject.transform, "RerollLockRulesText",
+                "An affix locked by a failed Forge fusion can never be rerolled again.",
+                28f);
+
             UiEquipmentRerollPanel rerollPanel = groupObject.AddComponent<UiEquipmentRerollPanel>();
             rerollPanel.InventoryCache = inventoryCache;
             rerollPanel.NetworkClient = networkClient;

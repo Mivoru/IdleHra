@@ -381,7 +381,6 @@ namespace FolkIdle.Server.Engine
 
             int tier = RarityTier.RollTier(lootLuckPct);
             string baseItemId = ContentRegistry.GetItemBaseId(chosenItemId);
-            bool isWeapon = baseItemId.Contains("_weapon_slot_");
 
             if (backpackFull)
             {
@@ -397,7 +396,7 @@ namespace FolkIdle.Server.Engine
                 return;
             }
 
-            string affixPayload = BuildAffixPayload(tier, monsterRegion, isWeapon);
+            string affixPayload = BuildAffixPayload(tier, monsterRegion, baseItemId);
             dbContext.EquipmentInstances.Add(new EquipmentInstance
             {
                 BaseItemId = baseItemId,
@@ -461,46 +460,22 @@ namespace FolkIdle.Server.Engine
             return chosenId;
         }
 
-        // Modul 14: secondary attribute formulas. Flat HP and Flat Defense use
-        // the exact GDD formulas given; Flat Attack mirrors Defense's shape
-        // (no explicit attack formula was given) so weapon drops scale
-        // consistently with armor drops. Crit/Luck percentage affixes use an
-        // invented but documented base-plus-per-tier-step growth increment,
-        // since the GDD does not specify exact base/growth numbers for them.
-        private static string BuildAffixPayload(int tier, int region, bool isWeapon)
+        // Modul: Affix System Unification. Rolls from AffixRegistry (GDD
+        // Module 14 section 1.3) rather than the previous hand-rolled
+        // four-candidate list keyed "1".."5".
+        //
+        // The old version had two fatal problems. It wrote numeric keys that
+        // AffixRerollEngine did not understand and that EquipmentSlotEngine
+        // only partially read - "5" (flat HP) was written by every single drop
+        // and read by nothing at all, so the GDD's headline flat affix never
+        // applied. And it ignored slot legality entirely, so it could only
+        // produce attack/defense/crit/luck regardless of what the GDD says
+        // each slot may roll.
+        private static string BuildAffixPayload(int tier, int region, string baseItemId)
         {
             int affixCount = RarityTier.GetAffixCount(tier);
-            var affixes = new Dictionary<string, int>();
-
-            double tierScale = tier - 1;
-            int flatHp = (int)Math.Floor(15.0 * region * Math.Pow(1.22, tierScale));
-            int flatDefense = (int)Math.Floor(2.0 * region * Math.Pow(1.18, tierScale));
-            int flatAttack = (int)Math.Floor(3.0 * region * Math.Pow(1.20, tierScale));
-            int critPct = 10 + (int)(tierScale * 2);
-            int luckPct = 5 + (int)(tierScale * 1);
-
-            // Priority order: the gear-slot-appropriate primary stat first,
-            // then HP, then crit, then luck - truncated to affixCount.
-            var orderedKeys = isWeapon
-                ? new[] { ("1", flatAttack), ("5", flatHp), ("3", critPct), ("4", luckPct) }
-                : new[] { ("2", flatDefense), ("5", flatHp), ("3", critPct), ("4", luckPct) };
-
-            int slotsFilled = 0;
-            for (int i = 0; i < orderedKeys.Length && slotsFilled < affixCount; i++)
-            {
-                affixes[orderedKeys[i].Item1] = orderedKeys[i].Item2;
-                slotsFilled++;
-            }
-
-            // Tier 13-14 grant a 5th affix slot; add the secondary gear-slot
-            // stat (defense on weapons, attack on armor) as a minor bonus.
-            if (affixCount >= 5 && slotsFilled < affixCount)
-            {
-                string secondaryKey = isWeapon ? "2" : "1";
-                int secondaryValue = isWeapon ? flatDefense : flatAttack;
-                affixes[secondaryKey] = secondaryValue;
-            }
-
+            var affixes = new Dictionary<string, int>(affixCount);
+            AffixRegistry.RollAffixes(baseItemId, region, tier, affixCount, affixes);
             return JsonSerializer.Serialize(affixes);
         }
     }

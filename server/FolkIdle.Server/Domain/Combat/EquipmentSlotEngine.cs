@@ -184,7 +184,7 @@ namespace FolkIdle.Server.Domain.Combat
         // of which single slot just changed.
         private static async Task<EquipmentSlotUpdateNotification> BuildNotificationAsync(FolkIdleDbContext db, PlayerRecord player)
         {
-            (int attack, int defense, int crit, int luck, int weaponSetId, int armorSetId, int leggingsSetId) = await ComputeEquippedTotalsAsync(db, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
+            (EquippedAffixTotals totals, int weaponSetId, int armorSetId, int leggingsSetId) = await ComputeEquippedTotalsAsync(db, player.EquippedWeaponId, player.EquippedArmorId, player.EquippedLeggingsId);
 
             return new EquipmentSlotUpdateNotification
             {
@@ -192,10 +192,7 @@ namespace FolkIdle.Server.Domain.Combat
                 EquippedWeaponId = player.EquippedWeaponId ?? 0L,
                 EquippedArmorId = player.EquippedArmorId ?? 0L,
                 EquippedLeggingsId = player.EquippedLeggingsId ?? 0L,
-                EquippedFlatAttack = attack,
-                EquippedFlatDefense = defense,
-                EquippedCritBonus = crit,
-                EquippedLuckBonus = luck,
+                AffixTotals = totals,
                 EquippedWeaponSetId = weaponSetId,
                 EquippedArmorSetId = armorSetId,
                 EquippedLeggingsSetId = leggingsSetId
@@ -207,9 +204,9 @@ namespace FolkIdle.Server.Domain.Combat
         // are hydrated from PlayerRecords, but the derived stat totals are not
         // themselves persisted - they must be recomputed once here rather than
         // reading stale/zeroed values until the player's next equip action).
-        public static async Task<(int Attack, int Defense, int Crit, int Luck, int WeaponSetId, int ArmorSetId, int LeggingsSetId)> ComputeEquippedTotalsAsync(FolkIdleDbContext db, long? weaponId, long? armorId, long? leggingsId = null)
+        public static async Task<(EquippedAffixTotals Totals, int WeaponSetId, int ArmorSetId, int LeggingsSetId)> ComputeEquippedTotalsAsync(FolkIdleDbContext db, long? weaponId, long? armorId, long? leggingsId = null)
         {
-            int totalAttack = 0, totalDefense = 0, totalCrit = 0, totalLuck = 0;
+            EquippedAffixTotals totals = default;
             int weaponSetId = 0, armorSetId = 0, leggingsSetId = 0;
 
             if (weaponId.HasValue)
@@ -217,7 +214,7 @@ namespace FolkIdle.Server.Domain.Combat
                 var weapon = await db.EquipmentInstances.AsNoTracking().FirstOrDefaultAsync(e => e.Id == weaponId.Value);
                 if (weapon != null)
                 {
-                    AddAffixTotals(weapon.AffixPayload, ref totalAttack, ref totalDefense, ref totalCrit, ref totalLuck);
+                    AddAffixTotals(weapon.AffixPayload, ref totals);
                     weaponSetId = weapon.SetId;
                 }
             }
@@ -227,7 +224,7 @@ namespace FolkIdle.Server.Domain.Combat
                 var armor = await db.EquipmentInstances.AsNoTracking().FirstOrDefaultAsync(e => e.Id == armorId.Value);
                 if (armor != null)
                 {
-                    AddAffixTotals(armor.AffixPayload, ref totalAttack, ref totalDefense, ref totalCrit, ref totalLuck);
+                    AddAffixTotals(armor.AffixPayload, ref totals);
                     armorSetId = armor.SetId;
                 }
             }
@@ -241,20 +238,32 @@ namespace FolkIdle.Server.Domain.Combat
                 var leggings = await db.EquipmentInstances.AsNoTracking().FirstOrDefaultAsync(e => e.Id == leggingsId.Value);
                 if (leggings != null)
                 {
-                    AddAffixTotals(leggings.AffixPayload, ref totalAttack, ref totalDefense, ref totalCrit, ref totalLuck);
+                    AddAffixTotals(leggings.AffixPayload, ref totals);
                     leggingsSetId = leggings.SetId;
                 }
             }
 
-            return (totalAttack, totalDefense, totalCrit, totalLuck, weaponSetId, armorSetId, leggingsSetId);
+            return (totals, weaponSetId, armorSetId, leggingsSetId);
         }
 
-        // Affix keys are the plain numeric slot ids EquipmentGenerator writes
-        // ("1"=attack, "2"=defense, "3"=crit, "4"=luck); "is_affix_locked" may
-        // also be present as a bool in the same object (see ForgeSplicingEngine),
-        // so this parses defensively via JsonNode rather than a typed
-        // Dictionary<string,int> that would throw on the mixed-type payload.
-        private static void AddAffixTotals(string affixPayload, ref int attack, ref int defense, ref int crit, ref int luck)
+        // Modul: Affix System Unification. Reads GDD affix ids
+        // (AffixRegistry, Module 14 section 1.3) and folds each into the stat
+        // it actually belongs to.
+        //
+        // Before this it understood only the four numeric keys "1".."4", which
+        // meant every GDD-named affix - i.e. everything AffixRerollEngine had
+        // ever written - contributed exactly zero, and "5" (flat HP, written by
+        // every drop) was read by nothing at all.
+        //
+        // The legacy numeric keys are still honoured so items already in
+        // players' backpacks keep the stats they were generated with; there is
+        // no migration and none is needed.
+        //
+        // "is_affix_locked" may also be present as a bool in the same object
+        // (see ForgeSplicingEngine), so this parses defensively via JsonNode
+        // rather than a typed Dictionary<string,int> that would throw on the
+        // mixed-type payload.
+        private static void AddAffixTotals(string affixPayload, ref EquippedAffixTotals totals)
         {
             if (string.IsNullOrWhiteSpace(affixPayload) || JsonNode.Parse(affixPayload) is not JsonObject affixObject)
             {
@@ -273,12 +282,38 @@ namespace FolkIdle.Server.Domain.Combat
                     continue;
                 }
 
+                // Legacy numeric keys from items generated before the affix
+                // ids were unified.
                 switch (kvp.Key)
                 {
-                    case "1": attack += magnitude; break;
-                    case "2": defense += magnitude; break;
-                    case "3": crit += magnitude; break;
-                    case "4": luck += magnitude; break;
+                    case "1": totals.FlatAttack += magnitude; continue;
+                    case "2": totals.FlatDefense += magnitude; continue;
+                    case "3": totals.CritChanceTenthsPct += magnitude * 10; continue;
+                    case "4": totals.LootLuckTenthsPct += magnitude * 10; continue;
+                    case "5": totals.FlatHp += magnitude; continue;
+                }
+
+                switch (AffixRegistry.StripStackSuffix(kvp.Key))
+                {
+                    case "flat_hp": totals.FlatHp += magnitude; break;
+                    case "flat_armor": totals.FlatDefense += magnitude; break;
+                    case "armor_pen_flat": totals.FlatArmorPenetration += magnitude; break;
+
+                    // The three damage-type percentages all raise the same
+                    // effective attack in this combat model - there is one
+                    // damage number, not per-type resistances - so they sum
+                    // into one accumulator rather than pretending to be
+                    // three independent stats.
+                    case "melee_dmg_pct":
+                    case "range_dmg_pct":
+                    case "magic_dmg_pct": totals.DamageTenthsPct += magnitude; break;
+
+                    case "attack_speed_pct": totals.AttackSpeedTenthsPct += magnitude; break;
+                    case "crit_chance_pct": totals.CritChanceTenthsPct += magnitude; break;
+                    case "crit_dmg_pct": totals.CritDamageTenthsPct += magnitude; break;
+                    case "lifesteal_pct": totals.LifestealTenthsPct += magnitude; break;
+                    case "dodge_chance_pct": totals.DodgeTenthsPct += magnitude; break;
+                    case "block_chance_pct": totals.BlockTenthsPct += magnitude; break;
                 }
             }
         }

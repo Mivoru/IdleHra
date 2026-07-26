@@ -56,6 +56,7 @@ namespace FolkIdle.Client.UI
         private readonly List<UiInventoryEntryRow> _activeRows = new List<UiInventoryEntryRow>();
         private readonly List<UiSectionHeaderRow> _activeHeaders = new List<UiSectionHeaderRow>();
 
+        private readonly System.Text.StringBuilder _detailBuilder = new System.Text.StringBuilder(256);
         private bool _isDirty;
         private float _pendingRefreshTimer;
 
@@ -232,7 +233,7 @@ namespace FolkIdle.Client.UI
             UiInventoryEntryRow row = _rowPool.Spawn();
             row.BindWithAction(
                 ClientContentRegistry.GetItemDisplayName(item.BaseItemId),
-                DescribeQuality(item.QualityTier) + "   -   instance #" + item.Id,
+                BuildEquipmentDetail(item),
                 item.IsEquipped ? "equipped" : string.Empty,
                 item.IsEquipped,
                 icon,
@@ -270,27 +271,33 @@ namespace FolkIdle.Client.UI
             _activeRows.Add(row);
         }
 
-        // Mirrors the server's RarityTier names, same table the loot feed
-        // and CombatLootEngine's weights are written against.
-        private static string DescribeQuality(int tier)
+        // Modul: Affix System Unification. Rarity, the affix count that rarity
+        // grants, and the actual rolled affixes - so the row answers "what does
+        // this item do" rather than just naming it.
+        private string BuildEquipmentDetail(InventoryEquipmentData item)
         {
-            switch (tier)
+            _detailBuilder.Clear();
+            _detailBuilder.Append(ClientAffixRegistry.GetRarityName(item.QualityTier));
+            _detailBuilder.Append(" (").Append(ClientAffixRegistry.GetAffixCount(item.QualityTier)).Append(" affixes)");
+
+            if (item.IsAffixLocked)
             {
-                case 2: return "Common";
-                case 3: return "Uncommon";
-                case 4: return "Rare";
-                case 5: return "Ultra Rare";
-                case 6: return "Epic";
-                case 7: return "Legendary";
-                case 8: return "Mythic";
-                case 9: return "Relic";
-                case 10: return "Ancient";
-                case 11: return "Divine";
-                case 12: return "Demonic";
-                case 13: return "Godly";
-                case 14: return "Transcendent";
-                default: return "Normal";
+                _detailBuilder.Append("   -   LOCKED");
             }
+
+            if (item.Affixes != null && item.Affixes.Count > 0)
+            {
+                _detailBuilder.Append("   -   ");
+                bool first = true;
+                foreach (var affix in item.Affixes)
+                {
+                    if (!first) _detailBuilder.Append(",  ");
+                    _detailBuilder.Append(ClientAffixRegistry.Describe(affix.Key, affix.Value));
+                    first = false;
+                }
+            }
+
+            return _detailBuilder.ToString();
         }
     }
 }

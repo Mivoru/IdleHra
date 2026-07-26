@@ -13,6 +13,13 @@ namespace FolkIdle.Client.Engine
         public string BaseItemId { get; set; } = string.Empty;
         public int QualityTier { get; set; }
         public bool IsEquipped { get; set; }
+
+        // Modul: Affix System Unification. GDD affix id -> magnitude. Rendered
+        // through ClientAffixRegistry.Describe, which knows which ids are
+        // percentages carried in tenths.
+        public Dictionary<string, int> Affixes { get; set; } = new Dictionary<string, int>();
+
+        public bool IsAffixLocked { get; set; }
     }
 
     public class InventoryStackData

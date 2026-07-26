@@ -232,7 +232,12 @@ namespace FolkIdle.Client.UI
                 string progress = requiredKills > 0
                     ? currentKills + " / " + requiredKills + " clears"
                     : "no progress recorded yet";
-                LocationProgressText.text = "Location " + position + " of " + ids.Count + "   -   " + progress + (completed ? "   -   CLEARED" : string.Empty);
+                // Modul: canonical content. The level band tells the player at
+                // a glance whether a location is meant for them, which matters
+                // now that all five are always browsable rather than gated.
+                LocationProgressText.text = "Location " + position + " of " + ids.Count
+                    + "   -   " + ClientContentRegistry.GetRegionLevelBand(regionId)
+                    + "   -   " + progress + (completed ? "   -   CLEARED" : string.Empty);
             }
 
             if (LocationProgressFill != null)
