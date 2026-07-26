@@ -236,6 +236,11 @@ var timeBankService = new TimeBankService(engine, checkpointManager);
 mailboxEngine.StartCleanupCron();
 liveOpsTickEngine.StartCron();
 pushNotificationTriggerEngine.StartCron();
+// Modul: Guild War scoreboard sync. PlayerSessionRegistry is constructed after
+// GuildWarEngine, the same ordering problem RegisterSimulationEngine and
+// RegisterPlayerSessionRegistry already solve - handed over explicitly here,
+// before the cron starts, so the scoreboard loop has somewhere to publish to.
+guildWarEngine.RegisterPlayerSessionRegistry(playerRegistry);
 guildWarEngine.StartCron();
 guildWarSnapshotEngine.StartCron();
 guildMatchmakingEngine.StartCron();

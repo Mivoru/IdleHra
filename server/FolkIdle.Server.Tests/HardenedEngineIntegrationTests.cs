@@ -7079,6 +7079,237 @@ namespace FolkIdle.Server.Tests
             Assert.True(equipmentCount > 0, "Expected at least one successful equipment category roll (Rolls 2-5) across the burst.");
         }
 
+        // Modul: Deploy activation fix / Guild War scoreboard sync. The three
+        // tests below only need a running tick thread and the registry queues
+        // it drains, so this builds the smallest SimulationEngine that starts
+        // cleanly rather than repeating the full 30-argument construction in
+        // each one. Mirrors the wiring the guild-membership test above uses.
+        private SimulationEngine BuildMinimalSimulationEngine(PlayerSessionRegistry playerRegistry)
+        {
+            var contextFactory = _fixture.ServiceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+            var retryingDbOptions = _fixture.RetryingOptions;
+
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8097/");
+            var lootEngine = new LootTableEngine();
+            var checkpointManager = new StateCheckpointManager(_fixture.ServiceProvider);
+            var forgeEngine = new ForgeSplicingEngine(_fixture.ServiceProvider);
+            var marketEngine = new MarketOrderBookEngine(_fixture.ServiceProvider, playerRegistry);
+            var guildEngine = new GuildContributionEngine(_fixture.ServiceProvider);
+            var escrowEngine = new MarketEscrowEngine(_fixture.ServiceProvider, playerRegistry);
+            var mailboxEngine = new MailboxAndBankEngine(_fixture.ServiceProvider, playerRegistry);
+            var rerollEngine = new AffixRerollEngine(_fixture.ServiceProvider);
+            var breedingEngine = new BreedingEngine(_fixture.ServiceProvider, playerRegistry);
+            var guildLogisticsEngine = new GuildLogisticsEngine(_fixture.ServiceProvider, playerRegistry);
+            var craftingEngine = new CraftingEngine(contextFactory, playerRegistry, retryingDbOptions);
+            var worldBossEngine = new WorldBossEngine(_fixture.ServiceProvider, playerRegistry);
+            var villageBuildingEngine = new VillageBuildingEngine(_fixture.ServiceProvider, playerRegistry);
+            var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, playerRegistry);
+            var mentorshipEngine = new MentorshipEngine(_fixture.ServiceProvider, playerRegistry);
+            var guildWarEngine = new GuildWarEngine(_fixture.ServiceProvider);
+            var chronoCoreEngine = new ChronoCoreEngine(_fixture.ServiceProvider, playerRegistry);
+            var legacyStoreEngine = new LegacyStoreEngine(_fixture.ServiceProvider, playerRegistry);
+            var guildLogisticsDepotEngine = new GuildLogisticsDepotEngine(_fixture.ServiceProvider, playerRegistry);
+            var guildCombatSimulationEngine = new GuildCombatSimulationEngine(_fixture.ServiceProvider, playerRegistry);
+
+            return new SimulationEngine(
+                lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
+                escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
+                villageBuildingEngine, villageManagementEngine, mentorshipEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
+        }
+
+        // Modul: Deploy activation fix. A committed multi-character activity
+        // change must reach the LIVE payload, not just the characters row.
+        // Before this, ChangeCharacterActivityAsync persisted the new
+        // activity and then enqueued a ReloadState - which only clears
+        // IsSuspended and reloads nothing - so pressing Deploy wrote the
+        // right value to the database and the running session ignored it for
+        // the rest of the connection. Combat never started.
+        [Fact]
+        public async Task Test_ActivityChangeQueue_AppliesCommittedActivityToLivePayload()
+        {
+            const long testPlayerId = 970009141L;
+            Guid characterId = Guid.NewGuid();
+            const long targetActivityId = 91L; // Field Mouse
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 25 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, Level = 1, SlotIndex = 0, ActiveActivityId = 0L });
+                await db.SaveChangesAsync();
+            }
+
+            var playerRegistry = new PlayerSessionRegistry();
+            var simulationEngine = BuildMinimalSimulationEngine(playerRegistry);
+
+            try
+            {
+                simulationEngine.Start();
+
+                // Slot1_CharacterId is what the drain matches on - the live
+                // session simulates exactly one activity, so a change aimed at
+                // a character this session is not running must not silently
+                // retarget the fight.
+                simulationEngine.InjectVirtualPlayer(new TickStatePayload
+                {
+                    PlayerId = testPlayerId,
+                    CurrentLevel = 25,
+                    Slot1_CharacterId = characterId,
+                    ActiveActivityId = 0L,
+                    InventorySpaceRemaining = 20
+                });
+
+                var resultCode = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, characterId, targetActivityId);
+                Assert.Equal(FolkIdle.Server.Network.CommandResultCode.Success, resultCode);
+
+                // The persisted half already worked before the fix.
+                await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+                {
+                    long persisted = await verifyDb.CharacterRecords.AsNoTracking()
+                        .Where(c => c.Id == characterId)
+                        .Select(c => c.ActiveActivityId)
+                        .FirstAsync();
+                    Assert.Equal(targetActivityId, persisted);
+                }
+
+                // The live half is what this test exists for.
+                playerRegistry.ActivityChangeQueue.Enqueue(new ActivityChangeNotification
+                {
+                    PlayerId = testPlayerId,
+                    CharacterId = characterId,
+                    TargetActivityId = targetActivityId
+                });
+
+                await WaitForConditionAsync(
+                    () => simulationEngine.GetActivePlayerActiveActivityId(testPlayerId) == targetActivityId,
+                    "The live payload never picked up the committed activity change.");
+            }
+            finally
+            {
+                simulationEngine.Stop();
+            }
+        }
+
+        // Modul: Deploy activation fix. A change aimed at a character the live
+        // session is NOT simulating must leave the running activity alone -
+        // it is already persisted and applies when that character next
+        // occupies Slot1.
+        [Fact]
+        public async Task Test_ActivityChangeQueue_IgnoresChangeForNonSlot1Character()
+        {
+            const long testPlayerId = 970009142L;
+            Guid slot1CharacterId = Guid.NewGuid();
+            Guid otherCharacterId = Guid.NewGuid();
+            const long runningActivityId = 55L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 25 });
+                await db.SaveChangesAsync();
+            }
+
+            var playerRegistry = new PlayerSessionRegistry();
+            var simulationEngine = BuildMinimalSimulationEngine(playerRegistry);
+
+            try
+            {
+                simulationEngine.Start();
+
+                simulationEngine.InjectVirtualPlayer(new TickStatePayload
+                {
+                    PlayerId = testPlayerId,
+                    CurrentLevel = 25,
+                    Slot1_CharacterId = slot1CharacterId,
+                    ActiveActivityId = runningActivityId,
+                    InventorySpaceRemaining = 20
+                });
+
+                playerRegistry.ActivityChangeQueue.Enqueue(new ActivityChangeNotification
+                {
+                    PlayerId = testPlayerId,
+                    CharacterId = otherCharacterId,
+                    TargetActivityId = 91L
+                });
+
+                // Give the drain several ticks to run and prove it did not act.
+                await Task.Delay(600);
+                Assert.Equal(runningActivityId, simulationEngine.GetActivePlayerActiveActivityId(testPlayerId));
+            }
+            finally
+            {
+                simulationEngine.Stop();
+            }
+        }
+
+        // Modul: Guild War scoreboard sync. GuildWarMatches has always held
+        // the real running totals; nothing copied them into each member's
+        // live payload, so every client showed six zeros during a real war.
+        [Fact]
+        public async Task Test_GuildWarScoreboardQueue_AppliesMatchTotalsToEveryGuildMember()
+        {
+            const long testPlayerId = 970009143L;
+            const long testGuildId = 970009144L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 25 });
+                await db.SaveChangesAsync();
+            }
+
+            var playerRegistry = new PlayerSessionRegistry();
+            var simulationEngine = BuildMinimalSimulationEngine(playerRegistry);
+
+            try
+            {
+                simulationEngine.Start();
+
+                simulationEngine.InjectVirtualPlayer(new TickStatePayload
+                {
+                    PlayerId = testPlayerId,
+                    CurrentLevel = 25,
+                    GuildId = testGuildId,
+                    InventorySpaceRemaining = 20
+                });
+
+                // The drain fans out through the tick-thread guild index, so
+                // the member has to be in it - the same path a real join takes.
+                await WaitForConditionAsync(
+                    () => simulationEngine.GetActivePlayerGuildId(testPlayerId) == testGuildId,
+                    "Injected player never became visible to the tick thread.");
+
+                playerRegistry.GuildMembershipChangeQueue.Enqueue(new GuildMembershipChangeNotification
+                {
+                    PlayerId = testPlayerId,
+                    OldGuildId = 0L,
+                    NewGuildId = testGuildId
+                });
+
+                await WaitForConditionAsync(
+                    () => simulationEngine.IsPlayerInGuildIndex(testGuildId, testPlayerId),
+                    "Player never appeared in the tick-thread guild index.");
+
+                playerRegistry.GuildWarScoreboardQueue.Enqueue(new GuildWarScoreboardNotification
+                {
+                    GuildId = testGuildId,
+                    OurCombatVanguardPoints = 1200,
+                    OurProductionLogisticsPoints = 250,
+                    OurGatheringSupplyChainPoints = 400,
+                    EnemyCombatVanguardPoints = 800,
+                    EnemyProductionLogisticsPoints = 100,
+                    EnemyGatheringSupplyChainPoints = 50,
+                    ScoreShare = 0.65f
+                });
+
+                await WaitForConditionAsync(
+                    () => simulationEngine.GetActivePlayerGuildCombatVanguardPoints(testPlayerId) == 1200,
+                    "The live payload never received the guild war scoreboard totals.");
+            }
+            finally
+            {
+                simulationEngine.Stop();
+            }
+        }
+
         // Modul: Loot Event Feed. Every drop CombatLootEngine actually
         // persists must also be published onto OutboundLootDropQueue as a
         // ResponseLootDropPacket, since that queue is the only thing

@@ -169,7 +169,7 @@ namespace FolkIdle.Client.Editor
             // Modul: Inventory and Crafting Tree. Two brand new screens
             // closing the two largest remaining content gaps - see
             // UiInventoryPanel and UiCraftingTreePanel for what was missing.
-            GameObject inventoryPanelObject = BuildInventoryWindow(canvas.transform, assetRegistry, syncProxy);
+            GameObject inventoryPanelObject = BuildInventoryWindow(canvas.transform, assetRegistry, syncProxy, networkClient, inventoryCache);
             GameObject craftingPanelObject = BuildCraftingTreeWindow(canvas.transform, networkClient, assetRegistry);
 
             // Modul: Map Hub, Part 3. Combat Selection (real region/
@@ -1361,18 +1361,46 @@ namespace FolkIdle.Client.Editor
 
             TextMeshProUGUI statusText = CreateStatRow(groupObject.transform, "War Status");
 
+            // Modul: Guild War scoreboard sync. An explicit banner rather
+            // than an empty region - with no war running the panel used to
+            // show only a bare countdown line above a hidden scoreboard,
+            // which read as a screen that had failed to load.
             GameObject noActiveWarRoot = new GameObject("NoActiveWarRoot", typeof(RectTransform));
             noActiveWarRoot.transform.SetParent(groupObject.transform, false);
-            SetFixedLayoutHeight(noActiveWarRoot, 26f);
-            TextMeshProUGUI countdownText = CreateText(noActiveWarRoot.transform, "MatchmakingCountdownText", string.Empty, 14f, TextAlignmentOptions.MidlineLeft);
-            StretchFull((RectTransform)countdownText.transform);
+            SetFixedLayoutHeight(noActiveWarRoot, 96f);
+            noActiveWarRoot.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.35f);
+
+            TextMeshProUGUI noWarBannerText = CreateText(noActiveWarRoot.transform, "NoActiveWarBannerText", "No Active Guild War", 20f, TextAlignmentOptions.Center);
+            RectTransform noWarBannerRect = (RectTransform)noWarBannerText.transform;
+            noWarBannerRect.anchorMin = new Vector2(0f, 1f);
+            noWarBannerRect.anchorMax = new Vector2(1f, 1f);
+            noWarBannerRect.pivot = new Vector2(0.5f, 1f);
+            noWarBannerRect.sizeDelta = new Vector2(0f, 30f);
+            noWarBannerRect.anchoredPosition = new Vector2(0f, -8f);
+
+            TextMeshProUGUI noWarHelpText = CreateText(noActiveWarRoot.transform, "NoActiveWarHelpText", "Matchmaking runs weekly. Your guild is paired automatically - there is nothing to queue for.", 12f, TextAlignmentOptions.Center);
+            noWarHelpText.color = new Color(1f, 1f, 1f, 0.55f);
+            RectTransform noWarHelpRect = (RectTransform)noWarHelpText.transform;
+            noWarHelpRect.anchorMin = new Vector2(0f, 1f);
+            noWarHelpRect.anchorMax = new Vector2(1f, 1f);
+            noWarHelpRect.pivot = new Vector2(0.5f, 1f);
+            noWarHelpRect.sizeDelta = new Vector2(-16f, 32f);
+            noWarHelpRect.anchoredPosition = new Vector2(0f, -38f);
+
+            TextMeshProUGUI countdownText = CreateText(noActiveWarRoot.transform, "MatchmakingCountdownText", string.Empty, 14f, TextAlignmentOptions.Center);
+            RectTransform countdownRect = (RectTransform)countdownText.transform;
+            countdownRect.anchorMin = new Vector2(0f, 0f);
+            countdownRect.anchorMax = new Vector2(1f, 0f);
+            countdownRect.pivot = new Vector2(0.5f, 0f);
+            countdownRect.sizeDelta = new Vector2(0f, 24f);
+            countdownRect.anchoredPosition = new Vector2(0f, 6f);
 
             GameObject activeWarRoot = new GameObject("ActiveWarRoot", typeof(RectTransform));
             activeWarRoot.transform.SetParent(groupObject.transform, false);
-            // Grown from 416 to fit the scoreboard caveat and the supply-cost
-            // explanation added below; a VerticalLayoutGroup slot that is too
-            // short silently clips its own tail rows.
-            SetFixedLayoutHeight(activeWarRoot, 508f);
+            // Sized for the scoreboard, the freshness note and the supply-cost
+            // explanation below; a VerticalLayoutGroup slot that is too short
+            // silently clips its own tail rows.
+            SetFixedLayoutHeight(activeWarRoot, 488f);
 
             VerticalLayoutGroup activeWarLayoutGroup = activeWarRoot.AddComponent<VerticalLayoutGroup>();
             activeWarLayoutGroup.spacing = 4f;
@@ -1392,17 +1420,14 @@ namespace FolkIdle.Client.Editor
             TextMeshProUGUI enemySupplyPointsText = CreateStatRow(activeWarRoot.transform, "Enemy Supply: 0");
             TextMeshProUGUI multiplierText = CreateStatRow(activeWarRoot.transform, "x100");
 
-            // Modul: honesty note, not a placeholder. The six scoreboard
-            // values above are read from TickStatePayload fields that no
-            // server code writes yet - GuildWarMatches holds the real running
-            // totals, but nothing copies them back into each member's live
-            // payload (that needs a new periodic per-guild sync loop, tracked
-            // as an open item). Contributions genuinely do score; only this
-            // live readout is stale, and saying so beats six silent zeros
-            // that look like a broken feature.
-            CreateHelpText(activeWarRoot.transform, "WarScoreboardCaveatText",
-                "Live scoreboard totals are not being pushed to clients yet, so these six numbers may read zero during a real war. Your contributions are still recorded server-side and still count toward the result.",
-                48f);
+            // Modul: Guild War scoreboard sync. The caveat that used to sit
+            // here ("live totals are not pushed to clients yet") is gone
+            // because that is no longer true - GuildWarEngine.RunScoreboardSyncLoopAsync
+            // now pushes real GuildWarMatches totals into every online
+            // member's payload every five seconds.
+            CreateHelpText(activeWarRoot.transform, "WarScoreboardFreshnessText",
+                "Scoreboard totals refresh every five seconds from the authoritative match record.",
+                28f);
 
             Button defendButton = CreateButton(activeWarRoot.transform, "DefendButton", "Defend", out TextMeshProUGUI _);
             SetFixedLayoutHeight(defendButton.gameObject, 46f);
@@ -4150,7 +4175,7 @@ namespace FolkIdle.Client.Editor
         // carried material stacks) and the village stash, in one scrolling
         // list. See UiInventoryPanel for why none of this was visible before.
         // ------------------------------------------------------------
-        private static GameObject BuildInventoryWindow(Transform canvasTransform, AssetRegistry assetRegistry, VisualSyncProxy syncProxy)
+        private static GameObject BuildInventoryWindow(Transform canvasTransform, AssetRegistry assetRegistry, VisualSyncProxy syncProxy, WebSocketClient networkClient, EquipmentInventoryCache inventoryCache)
         {
             GameObject windowObject = BuildSimpleListWindowShell("InventoryWindow", canvasTransform, "Inventory", out RectTransform contentAreaRect, out TextMeshProUGUI _);
 
@@ -4172,21 +4197,33 @@ namespace FolkIdle.Client.Editor
             refreshRect.sizeDelta = new Vector2(100f, 32f);
             refreshRect.anchoredPosition = Vector2.zero;
 
+            TextMeshProUGUI statusText = CreateText(contentAreaRect, "StatusText", string.Empty, 12f, TextAlignmentOptions.MidlineLeft);
+            statusText.color = new Color(1f, 0.86f, 0.6f, 1f);
+            RectTransform statusRect = (RectTransform)statusText.transform;
+            statusRect.anchorMin = new Vector2(0f, 1f);
+            statusRect.anchorMax = new Vector2(1f, 1f);
+            statusRect.pivot = new Vector2(0.5f, 1f);
+            statusRect.sizeDelta = new Vector2(0f, 20f);
+            statusRect.anchoredPosition = new Vector2(0f, -34f);
+
             GameObject scrollAreaObject = new GameObject("ScrollArea", typeof(RectTransform));
             scrollAreaObject.transform.SetParent(contentAreaRect, false);
             RectTransform scrollAreaRect = (RectTransform)scrollAreaObject.transform;
             scrollAreaRect.anchorMin = Vector2.zero;
             scrollAreaRect.anchorMax = Vector2.one;
             scrollAreaRect.offsetMin = Vector2.zero;
-            scrollAreaRect.offsetMax = new Vector2(0f, -36f);
+            scrollAreaRect.offsetMax = new Vector2(0f, -58f);
 
             (ScrollRect _, RectTransform content) = ChatSceneBuilder.BuildScrollView(scrollAreaRect);
             StretchFull((RectTransform)content.parent.parent);
 
             UiInventoryPanel panel = windowObject.AddComponent<UiInventoryPanel>();
+            panel.NetworkClient = networkClient;
+            panel.InventoryCache = inventoryCache;
             panel.Registry = assetRegistry;
             panel.SyncProxy = syncProxy;
             panel.SummaryText = summaryText;
+            panel.StatusText = statusText;
             panel.RefreshButton = refreshButton;
             panel.RowContainer = content;
             panel.RowPrefab = BuildAndSaveInventoryRowPrefab().GetComponent<UiInventoryEntryRow>();
@@ -4309,7 +4346,7 @@ namespace FolkIdle.Client.Editor
             nameRect.anchorMin = new Vector2(0f, 0.5f);
             nameRect.anchorMax = new Vector2(1f, 1f);
             nameRect.offsetMin = new Vector2(58f, 0f);
-            nameRect.offsetMax = new Vector2(-130f, -4f);
+            nameRect.offsetMax = new Vector2(-220f, -4f);
 
             TextMeshProUGUI detailText = CreateText(root.transform, "DetailText", string.Empty, 12f, TextAlignmentOptions.TopLeft);
             detailText.color = new Color(1f, 1f, 1f, 0.65f);
@@ -4318,7 +4355,7 @@ namespace FolkIdle.Client.Editor
             detailRect.anchorMin = new Vector2(0f, 0f);
             detailRect.anchorMax = new Vector2(1f, 0.5f);
             detailRect.offsetMin = new Vector2(58f, 4f);
-            detailRect.offsetMax = new Vector2(-130f, 0f);
+            detailRect.offsetMax = new Vector2(-220f, 0f);
 
             TextMeshProUGUI quantityText = CreateText(root.transform, "QuantityText", string.Empty, 13f, TextAlignmentOptions.MidlineRight);
             quantityText.raycastTarget = false;
@@ -4327,7 +4364,20 @@ namespace FolkIdle.Client.Editor
             quantityRect.anchorMax = new Vector2(1f, 1f);
             quantityRect.pivot = new Vector2(1f, 0.5f);
             quantityRect.sizeDelta = new Vector2(124f, 0f);
-            quantityRect.anchoredPosition = new Vector2(-8f, 0f);
+            quantityRect.anchoredPosition = new Vector2(-98f, 0f);
+
+            // Modul: interactive inventory. Hidden by default and revealed
+            // per-bind, since only unequipped equipment rows have anything
+            // to do here (see UiInventoryEntryRow.BindWithAction).
+            Button actionButton = CreateButton(root.transform, "ActionButton", "Equip", out TextMeshProUGUI actionButtonLabel);
+            ((Image)actionButton.targetGraphic).color = new Color(0.28f, 0.52f, 0.34f, 1f);
+            RectTransform actionRect = (RectTransform)actionButton.transform;
+            actionRect.anchorMin = new Vector2(1f, 0.5f);
+            actionRect.anchorMax = new Vector2(1f, 0.5f);
+            actionRect.pivot = new Vector2(1f, 0.5f);
+            actionRect.sizeDelta = new Vector2(86f, 40f);
+            actionRect.anchoredPosition = new Vector2(-6f, 0f);
+            actionButton.gameObject.SetActive(false);
 
             UiInventoryEntryRow rowComponent = root.AddComponent<UiInventoryEntryRow>();
             rowComponent.IconImage = icon;
@@ -4335,6 +4385,8 @@ namespace FolkIdle.Client.Editor
             rowComponent.NameText = nameText;
             rowComponent.DetailText = detailText;
             rowComponent.QuantityText = quantityText;
+            rowComponent.ActionButton = actionButton;
+            rowComponent.ActionButtonLabel = actionButtonLabel;
 
             GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(root, InventoryRowPrefabPath, out bool success);
             if (!success)

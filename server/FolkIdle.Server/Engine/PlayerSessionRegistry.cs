@@ -301,6 +301,20 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<RegionCompletionNotification> RegionCompletionUpdateQueue { get; } = new();
         public ConcurrentQueue<CombatLootDropNotification> CombatLootDropQueue { get; } = new();
 
+        // Modul: Deploy activation fix. ChangeCharacterActivityAsync runs on
+        // a background dispatch task (it does real DB work inside a
+        // Serializable transaction), but the live TickStatePayload is owned
+        // exclusively by the 10Hz tick thread and must never be mutated from
+        // anywhere else. This is the established hand-off for exactly that
+        // situation - the same shape as CombatLootDropQueue and
+        // RegionCompletionUpdateQueue above. An unmanaged struct in a
+        // lock-free queue, so the tick-thread drain allocates nothing.
+        public ConcurrentQueue<ActivityChangeNotification> ActivityChangeQueue { get; } = new();
+
+        // Modul: Guild War scoreboard sync - see
+        // GuildWarScoreboardNotification for what was missing.
+        public ConcurrentQueue<GuildWarScoreboardNotification> GuildWarScoreboardQueue { get; } = new();
+
         // Modul: Loot Event Feed. Deliberately a SECOND queue rather than
         // reusing CombatLootDropQueue above. That one is drained by
         // SimulationEngine's tick thread purely to decrement

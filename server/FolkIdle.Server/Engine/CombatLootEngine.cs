@@ -109,6 +109,41 @@ namespace FolkIdle.Server.Engine
         public bool ConsumedInventorySlot;
     }
 
+    // Modul: Guild War scoreboard sync. GuildWarMatches has always held the
+    // real running war totals, but nothing ever copied them back into each
+    // member's live TickStatePayload - so all six scoreboard fields (and the
+    // war multiplier) were permanently zero on every client during a real
+    // war, which read as a broken feature rather than as a missing sync.
+    // This is the missing link: one notification per guild per sync pass,
+    // drained by the tick thread onto every online member of that guild.
+    public struct GuildWarScoreboardNotification
+    {
+        public long GuildId;
+        public int OurCombatVanguardPoints;
+        public int OurProductionLogisticsPoints;
+        public int OurGatheringSupplyChainPoints;
+        public int EnemyCombatVanguardPoints;
+        public int EnemyProductionLogisticsPoints;
+        public int EnemyGatheringSupplyChainPoints;
+
+        // This guild's share of the combined war score, 0..1. See
+        // GuildWarEngine.RunScoreboardSyncLoopAsync for why the previously
+        // undefined CachedWarMultiplier field carries this.
+        public float ScoreShare;
+    }
+
+    // Modul: Deploy activation fix. Carries a committed activity change from
+    // the background dispatch that persisted it back to the tick thread that
+    // owns the live payload. CharacterId is included so the tick can confirm
+    // the change actually applies to the character the live session is
+    // simulating (Slot1) rather than blindly retargeting the fight.
+    public struct ActivityChangeNotification
+    {
+        public long PlayerId;
+        public Guid CharacterId;
+        public long TargetActivityId;
+    }
+
     // Modul 03/10/11/12: an equipment drop roll request from the 10 Hz tick.
     // ProcessSubTick is a static method (matching CodexEngine.KillEventQueue's
     // established convention) so it enqueues onto this static queue directly

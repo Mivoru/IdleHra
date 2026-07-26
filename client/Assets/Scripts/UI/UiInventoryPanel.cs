@@ -25,11 +25,22 @@ namespace FolkIdle.Client.UI
     // craft will actually draw from.
     public class UiInventoryPanel : MonoBehaviour
     {
+        // Modul: interactive inventory. Equipping is asynchronous
+        // server-side (EquipmentSlotEngine runs the swap on a background
+        // dispatch and reports back through EquipmentSlotUpdateNotification),
+        // so there is nothing to read back the instant the command is sent.
+        // Rather than guess at the outcome client-side, the panel re-pulls
+        // the authoritative snapshot shortly afterwards.
+        private const float PostEquipRefreshDelaySeconds = 0.75f;
+
+        public WebSocketClient NetworkClient;
+        public EquipmentInventoryCache InventoryCache;
         public AssetRegistry Registry;
         public VisualSyncProxy SyncProxy;
 
         [Header("Header")]
         public TMP_Text SummaryText;
+        public TMP_Text StatusText;
         public Button RefreshButton;
 
         [Header("Rows - pooled")]
@@ -46,6 +57,7 @@ namespace FolkIdle.Client.UI
         private readonly List<UiSectionHeaderRow> _activeHeaders = new List<UiSectionHeaderRow>();
 
         private bool _isDirty;
+        private float _pendingRefreshTimer;
 
         private void Awake()
         {
@@ -83,9 +95,36 @@ namespace FolkIdle.Client.UI
         // convention so pooled row churn always happens on a normal frame.
         private void Update()
         {
+            if (_pendingRefreshTimer > 0f)
+            {
+                _pendingRefreshTimer -= Time.deltaTime;
+                if (_pendingRefreshTimer <= 0f)
+                {
+                    PlayerInventoryCache.RequestSnapshot();
+
+                    // Modul: the Forge reads its owned-equipment list from
+                    // this separate cache, so leaving it stale would show a
+                    // just-equipped item as still freely available there.
+                    InventoryCache?.RequestSnapshot();
+                }
+            }
+
             if (!_isDirty) return;
             _isDirty = false;
             RebuildRows();
+        }
+
+        private void HandleEquipClicked(long instanceId)
+        {
+            if (NetworkClient == null || instanceId <= 0) return;
+
+            NetworkClient.SendEquipItemCommandZeroAlloc(instanceId);
+            _pendingRefreshTimer = PostEquipRefreshDelaySeconds;
+
+            if (StatusText != null)
+            {
+                StatusText.text = "Equipping...";
+            }
         }
 
         private void HandleInventoryUpdated()
@@ -191,12 +230,18 @@ namespace FolkIdle.Client.UI
             Registry?.TryGetItemSprite(item.BaseItemId, out icon);
 
             UiInventoryEntryRow row = _rowPool.Spawn();
-            row.Bind(
+            row.BindWithAction(
                 ClientContentRegistry.GetItemDisplayName(item.BaseItemId),
                 DescribeQuality(item.QualityTier) + "   -   instance #" + item.Id,
                 item.IsEquipped ? "equipped" : string.Empty,
                 item.IsEquipped,
-                icon);
+                icon,
+                item.Id,
+                // Already-equipped gear offers no action here; unequipping
+                // stays where it already lives, on the character HUD's
+                // equipment slots.
+                item.IsEquipped ? null : "Equip",
+                item.IsEquipped ? (System.Action<long>)null : HandleEquipClicked);
             row.transform.SetAsLastSibling();
             _activeRows.Add(row);
         }

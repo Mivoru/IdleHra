@@ -282,8 +282,16 @@ namespace FolkIdle.Client.UI
 
             if (WarMultiplierText != null)
             {
-                int offset = WriteTextToBuffer(_lineBuffer, 0, "War multiplier: x");
-                offset = WriteIntToBuffer(_lineBuffer, offset, Mathf.RoundToInt(SyncProxy.VisualWarMultiplier * 100f));
+                // Modul: Guild War scoreboard sync. CachedWarMultiplier had no
+                // definition anywhere server-side when this panel was written,
+                // and rendering an undefined value as "x50" implied a reward
+                // multiplier the server does not apply. It now carries a real,
+                // derived quantity - this guild's share of the combined war
+                // score (see GuildWarEngine.RunScoreboardSyncLoopAsync) - and
+                // is labelled as exactly that.
+                int offset = WriteTextToBuffer(_lineBuffer, 0, "Score share: ");
+                offset = WriteIntToBuffer(_lineBuffer, offset, Mathf.RoundToInt(Mathf.Clamp01(SyncProxy.VisualWarMultiplier) * 100f));
+                offset = WriteTextToBuffer(_lineBuffer, offset, "%");
                 WarMultiplierText.SetCharArray(_lineBuffer, 0, offset);
             }
         }

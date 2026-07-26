@@ -46,6 +46,18 @@ namespace FolkIdle.Server.Engine
         public readonly ConcurrentQueue<GuildWarSupplyContribution> SupplyChainQueue = new();
         private CancellationTokenSource _cts = new();
 
+        // Modul: Guild War scoreboard sync. Assigned after construction
+        // (Program.cs builds PlayerSessionRegistry after this engine, the
+        // same ordering problem RegisterSimulationEngine/
+        // RegisterPlayerSessionRegistry already solve elsewhere). Null until
+        // then, and the sync loop simply does nothing while it is.
+        private PlayerSessionRegistry? _playerRegistry;
+
+        public void RegisterPlayerSessionRegistry(PlayerSessionRegistry registry)
+        {
+            _playerRegistry = registry;
+        }
+
         public GuildWarEngine(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
@@ -61,8 +73,93 @@ namespace FolkIdle.Server.Engine
             var aggregationTask = RunAggregationLoopAsync(stoppingToken);
             var supplyChainTask = RunSupplyChainLoopAsync(stoppingToken);
             var matchmakingTask = RunMatchmakingLoopAsync(stoppingToken);
+            var scoreboardTask = RunScoreboardSyncLoopAsync(stoppingToken);
 
-            await Task.WhenAll(aggregationTask, supplyChainTask, matchmakingTask);
+            await Task.WhenAll(aggregationTask, supplyChainTask, matchmakingTask, scoreboardTask);
+        }
+
+        // Modul: Guild War scoreboard sync. The missing half of the war
+        // feature. The three loops above correctly accumulate points onto the
+        // GuildWarMatches row, but nothing ever read that row back out to the
+        // players fighting the war - the six scoreboard fields on
+        // TickStatePayload were declared, wired all the way through the
+        // packet and into the client UI, and never written by anything. Every
+        // client therefore showed a column of zeros during a real war.
+        //
+        // A read-only poll rather than an event: war points arrive from three
+        // unrelated sources (combat kills, tier-5 crafts, supply burns) across
+        // every member of both guilds, so a periodic snapshot of the
+        // authoritative row is both simpler and cheaper than trying to fan
+        // every individual increment out to every member.
+        //
+        // Five seconds matches the guild raid tick - fast enough that a
+        // scoreboard feels live, slow enough that a handful of concurrent wars
+        // costs one small indexed query each per interval.
+        private const int ScoreboardSyncIntervalMs = 5000;
+
+        private async Task RunScoreboardSyncLoopAsync(CancellationToken stoppingToken)
+        {
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                await Task.Delay(ScoreboardSyncIntervalMs, stoppingToken);
+
+                if (_playerRegistry == null)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                    var activeMatches = await dbContext.GuildWarMatches
+                        .AsNoTracking()
+                        .Where(m => m.IsActive)
+                        .ToListAsync(stoppingToken);
+
+                    for (int i = 0; i < activeMatches.Count; i++)
+                    {
+                        var match = activeMatches[i];
+
+                        int totalA = match.CombatVanguardWP_A + match.ProductionLogisticsWP_A + match.GatheringSupplyChainWP_A;
+                        int totalB = match.CombatVanguardWP_B + match.ProductionLogisticsWP_B + match.GatheringSupplyChainWP_B;
+                        int combined = totalA + totalB;
+
+                        // A war with no points scored yet is an even split,
+                        // not a division by zero and not a 0% rout.
+                        float shareA = combined > 0 ? totalA / (float)combined : 0.5f;
+
+                        _playerRegistry.GuildWarScoreboardQueue.Enqueue(new GuildWarScoreboardNotification
+                        {
+                            GuildId = match.GuildA_Id,
+                            OurCombatVanguardPoints = match.CombatVanguardWP_A,
+                            OurProductionLogisticsPoints = match.ProductionLogisticsWP_A,
+                            OurGatheringSupplyChainPoints = match.GatheringSupplyChainWP_A,
+                            EnemyCombatVanguardPoints = match.CombatVanguardWP_B,
+                            EnemyProductionLogisticsPoints = match.ProductionLogisticsWP_B,
+                            EnemyGatheringSupplyChainPoints = match.GatheringSupplyChainWP_B,
+                            ScoreShare = shareA
+                        });
+
+                        _playerRegistry.GuildWarScoreboardQueue.Enqueue(new GuildWarScoreboardNotification
+                        {
+                            GuildId = match.GuildB_Id,
+                            OurCombatVanguardPoints = match.CombatVanguardWP_B,
+                            OurProductionLogisticsPoints = match.ProductionLogisticsWP_B,
+                            OurGatheringSupplyChainPoints = match.GatheringSupplyChainWP_B,
+                            EnemyCombatVanguardPoints = match.CombatVanguardWP_A,
+                            EnemyProductionLogisticsPoints = match.ProductionLogisticsWP_A,
+                            EnemyGatheringSupplyChainPoints = match.GatheringSupplyChainWP_A,
+                            ScoreShare = 1f - shareA
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Guild war scoreboard sync failed: {ex.Message}");
+                }
+            }
         }
 
         private async Task RunAggregationLoopAsync(CancellationToken stoppingToken)

@@ -561,7 +561,16 @@ namespace FolkIdle.Server.Domain.Shared
                 SelectedLineageId = player.SelectedLineageId,
                 LastLogoutTimestamp = player.LastLogoutTimestamp,
                 AccumulatedTimeBankMs = player.AccumulatedTimeBankSeconds * 1000L,
-                ActiveActivityId = 1,
+                // Modul: Deploy activation fix. Was hardcoded to 1. The block
+                // further down overwrites this with characters[0]'s real
+                // persisted activity, but ONLY when that query returned a
+                // character - and it excludes any character currently lent
+                // out as a mentor (MentorshipAcademyAssignments). A player
+                // whose only character is mentoring therefore silently
+                // resumed as though deployed on activity 1 forever, with no
+                // character to actually run it. Idle (0) is the honest
+                // default for "no eligible character".
+                ActiveActivityId = 0,
                 CurrentProgressTicks = 0,
                 RequiredProgressTicks = 50,
                 InventorySpaceRemaining = 20 + RaceMasteryResolver.GetHumanVaultBonusSlots(humanMastery),

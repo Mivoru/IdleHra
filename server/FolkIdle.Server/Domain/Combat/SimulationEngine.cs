@@ -281,6 +281,37 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
+        // Modul: Deploy activation fix. Test-only observability for the
+        // ActivityChangeQueue drain - the live payload is tick-thread owned,
+        // so a test cannot read it directly and must poll through here,
+        // tolerating a tick's worth of latency.
+        internal long GetActivePlayerActiveActivityId(long playerId)
+        {
+            lock (_activePlayers)
+            {
+                return _activePlayers.TryGetValue(playerId, out var payload) ? payload.ActiveActivityId : -1L;
+            }
+        }
+
+        internal int GetActivePlayerCurrentMonsterId(long playerId)
+        {
+            lock (_activePlayers)
+            {
+                return _activePlayers.TryGetValue(playerId, out var payload) ? payload.CurrentMonsterId : -1;
+            }
+        }
+
+        // Modul: Guild War scoreboard sync. Test-only observability for the
+        // GuildWarScoreboardQueue drain, same tick-thread-ownership reason as
+        // the two hooks above.
+        internal int GetActivePlayerGuildCombatVanguardPoints(long playerId)
+        {
+            lock (_activePlayers)
+            {
+                return _activePlayers.TryGetValue(playerId, out var payload) ? payload.GuildCombatVanguardPoints : -1;
+            }
+        }
+
         internal long GetActivePlayerGuildId(long playerId)
         {
             lock (_activePlayers)
@@ -720,6 +751,59 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         currentPayload.CompletedAreaFlags |= regionCompletionUpdate.CompletedRegionFlags;
                         currentPayload.IsDirty = true;
+                    }
+                }
+
+                // Modul: Deploy activation fix. Applies a committed activity
+                // change to the live payload. Only when the change targets the
+                // character this session is actually simulating (Slot1) - the
+                // payload models exactly one running activity, so applying a
+                // Slot2/Slot3 change here would silently retarget the wrong
+                // character's fight. Non-Slot1 changes are already persisted
+                // and take effect the next time that character occupies Slot1.
+                while (_playerRegistry.ActivityChangeQueue.TryDequeue(out var activityChange))
+                {
+                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, activityChange.PlayerId);
+                    if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                    {
+                        continue;
+                    }
+
+                    if (currentPayload.Slot1_CharacterId != activityChange.CharacterId)
+                    {
+                        continue;
+                    }
+
+                    ApplyActivityChangeToPayload(ref currentPayload, activityChange.TargetActivityId);
+                }
+
+                // Modul: Guild War scoreboard sync. Fans one authoritative
+                // per-guild snapshot out to every online member of that guild
+                // via the tick-thread-owned guild index, so a scoreboard costs
+                // one query per warring guild rather than one per member.
+                while (_playerRegistry.GuildWarScoreboardQueue.TryDequeue(out var warScoreboard))
+                {
+                    if (!_guildMembersIndex.TryGetValue(warScoreboard.GuildId, out var warMembers))
+                    {
+                        continue;
+                    }
+
+                    for (int memberIndex = 0; memberIndex < warMembers.Count; memberIndex++)
+                    {
+                        ref var memberPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, warMembers[memberIndex]);
+                        if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref memberPayload))
+                        {
+                            continue;
+                        }
+
+                        memberPayload.GuildCombatVanguardPoints = warScoreboard.OurCombatVanguardPoints;
+                        memberPayload.GuildProductionLogisticsPoints = warScoreboard.OurProductionLogisticsPoints;
+                        memberPayload.GuildGatheringSupplyChainPoints = warScoreboard.OurGatheringSupplyChainPoints;
+                        memberPayload.EnemyCombatVanguardPoints = warScoreboard.EnemyCombatVanguardPoints;
+                        memberPayload.EnemyProductionLogisticsPoints = warScoreboard.EnemyProductionLogisticsPoints;
+                        memberPayload.EnemyGatheringSupplyChainPoints = warScoreboard.EnemyGatheringSupplyChainPoints;
+                        memberPayload.CachedWarMultiplier = warScoreboard.ScoreShare;
+                        memberPayload.IsDirty = true;
                     }
                 }
 
@@ -1377,18 +1461,30 @@ namespace FolkIdle.Server.Domain.Combat
                                 _playerRegistry?.EnqueueCommandResult(pId, (byte)resultCode);
                                 if (resultCode == Network.CommandResultCode.Success)
                                 {
-                                    _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+                                    // Modul: Deploy activation fix. This used to
+                                    // enqueue only a ReloadState, which does not
+                                    // reload anything - it clears IsSuspended and
+                                    // nothing else. So the new activity was
+                                    // written to the characters row correctly and
+                                    // then ignored by the live session for the
+                                    // rest of the connection: pressing Deploy
+                                    // appeared to work and combat never started.
+                                    // Hand the change to the tick thread, which
+                                    // owns the payload, and let it apply the same
+                                    // live mutation the single-character branch
+                                    // below already performs.
+                                    _playerRegistry?.ActivityChangeQueue.Enqueue(new ActivityChangeNotification
+                                    {
+                                        PlayerId = pId,
+                                        CharacterId = characterId,
+                                        TargetActivityId = targetActivityId
+                                    });
                                 }
                             });
                         }
                         else
                         {
-                            currentPayload.ActiveActivityId = cmd.TargetId;
-                            currentPayload.CurrentProgressTicks = 0;
-                            currentPayload.CurrentMonsterId = 0;
-                            currentPayload.CurrentMonsterHp = 0;
-                            currentPayload.CombatTargetTickAccumulator = 0;
-                            currentPayload.GatheringProgressTicks = 0;
+                            ApplyActivityChangeToPayload(ref currentPayload, cmd.TargetId);
                         }
                     }
                     else if (cmd.Command == CommandType.ContributeToGuild)
@@ -2570,6 +2666,22 @@ namespace FolkIdle.Server.Domain.Combat
                                 // GuildWarMatches->TickStatePayload sync loop,
                                 // not just a missing packet-copy line).
                                 ActiveGuildWarId = currentPayload.ActiveGuildWarId,
+
+                                // Modul: Guild War scoreboard sync. These seven
+                                // fields existed on the wire and were read by
+                                // UiGuildWarPanel, but were never assigned here -
+                                // the second half of the same gap that left
+                                // TickStatePayload unwritten. Both ends are wired
+                                // now: GuildWarEngine.RunScoreboardSyncLoopAsync
+                                // pushes real GuildWarMatches totals into the
+                                // payload, and this copies them out to the client.
+                                GuildCombatVanguardPoints = currentPayload.GuildCombatVanguardPoints,
+                                GuildProductionLogisticsPoints = currentPayload.GuildProductionLogisticsPoints,
+                                GuildGatheringSupplyChainPoints = currentPayload.GuildGatheringSupplyChainPoints,
+                                EnemyCombatVanguardPoints = currentPayload.EnemyCombatVanguardPoints,
+                                EnemyProductionLogisticsPoints = currentPayload.EnemyProductionLogisticsPoints,
+                                EnemyGatheringSupplyChainPoints = currentPayload.EnemyGatheringSupplyChainPoints,
+                                CachedWarMultiplier = currentPayload.CachedWarMultiplier,
                                 AutoEatThreshold = currentPayload.AutoEatThreshold,
                                 STR = currentPayload.STR,
                                 DEX = currentPayload.DEX,
@@ -2765,6 +2877,27 @@ namespace FolkIdle.Server.Domain.Combat
         // character belonging to the player for the duration of the check
         // so two simultaneous requests targeting the same node cannot both
         // observe it as free.
+        // Modul: Deploy activation fix. The one place a live activity switch
+        // is applied, shared by the single-character command branch and the
+        // multi-character ActivityChangeQueue drain so the two can never
+        // diverge again. Pure value-type field writes on a payload the tick
+        // thread already owns - no allocation, no locking.
+        //
+        // Every counter reset here is load-bearing: leaving CurrentMonsterId
+        // or CurrentMonsterHp behind would carry the previous target's
+        // half-dead health onto the new one, and a stale
+        // CombatTargetTickAccumulator would land a free hit on arrival.
+        private static void ApplyActivityChangeToPayload(ref TickStatePayload payload, long targetActivityId)
+        {
+            payload.ActiveActivityId = targetActivityId;
+            payload.CurrentProgressTicks = 0;
+            payload.CurrentMonsterId = 0;
+            payload.CurrentMonsterHp = 0;
+            payload.CombatTargetTickAccumulator = 0;
+            payload.GatheringProgressTicks = 0;
+            payload.IsDirty = true;
+        }
+
         internal async Task<Network.CommandResultCode> ChangeCharacterActivityAsync(long playerId, Guid characterId, long targetActivityId)
         {
             await using var db = await _contextFactory.CreateDbContextAsync();
