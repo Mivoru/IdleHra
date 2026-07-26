@@ -15,25 +15,38 @@ namespace FolkIdle.Client.UI
         public Button BlockButton;
         public Button UnblockButton;
 
+        // Modul: UI rework. Opens this friend's private (whisper) thread in
+        // the chat panel alongside the roster. The whisper channel has
+        // existed on the wire since the social layer shipped
+        // (ChatChannelType.Whisper / SendWhisperMessageZeroAlloc) but there
+        // was no way anywhere in the client to pick a recipient, so it was
+        // unreachable.
+        public Button ChatButton;
+
         private readonly char[] _nameBuffer = new char[48];
         private long _playerId;
+        private string _username = string.Empty;
         private Action<long> _onRemoveClicked;
         private Action<long> _onBlockClicked;
         private Action<long> _onUnblockClicked;
+        private Action<long, string> _onChatClicked;
 
         private void Awake()
         {
             if (RemoveButton != null) RemoveButton.onClick.AddListener(HandleRemoveClicked);
             if (BlockButton != null) BlockButton.onClick.AddListener(HandleBlockClicked);
             if (UnblockButton != null) UnblockButton.onClick.AddListener(HandleUnblockClicked);
+            if (ChatButton != null) ChatButton.onClick.AddListener(HandleChatClicked);
         }
 
-        public void Bind(long playerId, string username, int level, bool isBlocked, Action<long> onRemoveClicked, Action<long> onBlockClicked, Action<long> onUnblockClicked)
+        public void Bind(long playerId, string username, int level, bool isBlocked, Action<long> onRemoveClicked, Action<long> onBlockClicked, Action<long> onUnblockClicked, Action<long, string> onChatClicked)
         {
             _playerId = playerId;
+            _username = username ?? string.Empty;
             _onRemoveClicked = onRemoveClicked;
             _onBlockClicked = onBlockClicked;
             _onUnblockClicked = onUnblockClicked;
+            _onChatClicked = onChatClicked;
 
             if (NameText != null)
             {
@@ -47,6 +60,16 @@ namespace FolkIdle.Client.UI
             if (RemoveButton != null) RemoveButton.gameObject.SetActive(!isBlocked);
             if (BlockButton != null) BlockButton.gameObject.SetActive(!isBlocked);
             if (UnblockButton != null) UnblockButton.gameObject.SetActive(isBlocked);
+
+            // Whispering someone you have blocked is pointless - the server
+            // drops it at dispatch (see NetworkBroadcastSystem's block
+            // filter), so the button is hidden rather than silently failing.
+            if (ChatButton != null) ChatButton.gameObject.SetActive(!isBlocked);
+        }
+
+        private void HandleChatClicked()
+        {
+            _onChatClicked?.Invoke(_playerId, _username);
         }
 
         private void HandleRemoveClicked()

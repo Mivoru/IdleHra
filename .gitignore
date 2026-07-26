@@ -32,3 +32,6 @@ telemetry.bin
 # Target: Local AI tooling config (contains machine-local auth tokens/permissions)
 .mcp.json
 **/.claude/
+
+# Local dev server log
+server/FolkIdle.Server/server_dev.log

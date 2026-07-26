@@ -27,6 +27,12 @@ namespace FolkIdle.Client.UI
         public Button AddFriendButton;
         public TMP_Text StatusText;
 
+        // Modul: UI rework. The private-chat half of this screen. Clicking
+        // a roster row's Chat button points this window at that friend's
+        // whisper thread - see UiFriendEntryRow.ChatButton.
+        [Header("Private Chat")]
+        public UiChatWindow WhisperChatWindow;
+
         private UIComponentPool<UiFriendEntryRow> _rowPool;
         private readonly List<UiFriendEntryRow> _activeRows = new List<UiFriendEntryRow>();
         private bool _isDirty;
@@ -82,10 +88,24 @@ namespace FolkIdle.Client.UI
             for (int i = 0; i < entries.Count; i++)
             {
                 FriendEntryData entry = entries[i];
+
+                // The roster already knows both id and username, so seeding
+                // the shared name cache here spares every whisper row an
+                // HTTP round-trip to learn the same thing.
+                PlayerNameCache.Seed(entry.PlayerId, entry.Username);
+
                 UiFriendEntryRow row = _rowPool.Spawn();
-                row.Bind(entry.PlayerId, entry.Username, entry.Level, entry.IsBlocked, HandleRemoveClicked, HandleBlockClicked, HandleUnblockClicked);
+                row.Bind(entry.PlayerId, entry.Username, entry.Level, entry.IsBlocked, HandleRemoveClicked, HandleBlockClicked, HandleUnblockClicked, HandleChatClicked);
                 _activeRows.Add(row);
             }
+        }
+
+        private void HandleChatClicked(long targetPlayerId, string username)
+        {
+            if (WhisperChatWindow == null) return;
+
+            WhisperChatWindow.SetWhisperTarget(targetPlayerId, username);
+            SetStatus("Private chat with " + username + ".");
         }
 
         private void HandleAddFriendClicked()

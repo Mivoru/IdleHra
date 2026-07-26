@@ -15,6 +15,13 @@ namespace FolkIdle.Client.UI
     {
         public TMP_Text RowText;
 
+        // Modul: bounded so a hostile/overlong username can never push the
+        // message itself out of the fixed row buffer entirely.
+        private const int MaxDisplayNameLength = 24;
+
+        private static readonly Color OwnMessageColor = new Color(0.72f, 0.90f, 1f, 1f);
+        private static readonly Color OtherMessageColor = Color.white;
+
         private readonly char[] _rowUiBuffer = new char[200];
 
         // Modul: Full-Stack Social Layer, Part 5. Click-to-action hook -
@@ -38,13 +45,38 @@ namespace FolkIdle.Client.UI
             }
         }
 
-        public void Bind(long senderPlayerId, long timestampEpochMs, string messageText)
+        // Modul: UI rework. senderDisplayName may be null - PlayerNameCache
+        // resolves ids to usernames asynchronously, so a brand-new sender
+        // renders as "Player #1042" for the one frame before the batched
+        // lookup lands and the window rebinds. isOwnMessage tints the row so
+        // a player can pick their own lines out of the log at a glance,
+        // which matters most in the whisper view where both sides of the
+        // conversation share one column.
+        public void Bind(long senderPlayerId, string senderDisplayName, bool isOwnMessage, string messageText)
         {
             _boundSenderPlayerId = senderPlayerId;
             if (RowText == null) return;
 
-            int offset = WriteTextToBuffer(_rowUiBuffer, 0, "Player #");
-            offset = WriteLongToBuffer(_rowUiBuffer, offset, senderPlayerId);
+            RowText.color = isOwnMessage ? OwnMessageColor : OtherMessageColor;
+
+            int offset;
+            if (string.IsNullOrEmpty(senderDisplayName))
+            {
+                offset = WriteTextToBuffer(_rowUiBuffer, 0, "Player #");
+                offset = WriteLongToBuffer(_rowUiBuffer, offset, senderPlayerId);
+            }
+            else
+            {
+                int nameLength = senderDisplayName.Length;
+                if (nameLength > MaxDisplayNameLength) nameLength = MaxDisplayNameLength;
+
+                offset = 0;
+                for (int i = 0; i < nameLength; i++)
+                {
+                    _rowUiBuffer[offset++] = senderDisplayName[i];
+                }
+            }
+
             offset = WriteTextToBuffer(_rowUiBuffer, offset, ": ");
 
             int remaining = _rowUiBuffer.Length - offset;

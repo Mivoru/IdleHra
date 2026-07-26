@@ -612,6 +612,17 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: UI rework. Reverse lookup of the above -
+                    // "?ids=1,2,3" to usernames, so chat/whisper rows can
+                    // show a name instead of the raw SenderPlayerId the
+                    // wire protocol carries. Batched deliberately; see
+                    // PlayerNameEntryResponse's own comment.
+                    if (requestPath == "/api/v1/players/names" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandlePlayerNames(context);
+                        continue;
+                    }
+
                     // Modul: UI audit follow-up. DailyLoginRewardEngine
                     // already grants a real, server-authoritative streak
                     // reward on every login/register, but the result was
@@ -906,6 +917,19 @@ namespace FolkIdle.Server.Network
         private sealed class PlayerResolveResponse
         {
             public long PlayerId { get; set; }
+        }
+
+        // Modul: UI rework. The reverse of PlayerResolveResponse - chat,
+        // guild rosters and whisper threads all carry a raw numeric
+        // SenderPlayerId over the wire (ResponseChatMessagePacket has no
+        // room for a name), so every social surface in the client was
+        // rendering "Player #1042" instead of a username. Batched by
+        // construction: a chat log resolves one request for every id it is
+        // currently displaying, not one request per row.
+        private sealed class PlayerNameEntryResponse
+        {
+            public long PlayerId { get; set; }
+            public string Username { get; set; } = string.Empty;
         }
 
         private sealed class LoginBonusStateResponse
@@ -2395,6 +2419,76 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Player resolve error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: UI rework. Batch id-to-username resolution for every
+        // social surface that only ever receives a numeric player id (chat
+        // rows, whisper threads). Capped at NameLookupBatchLimit ids per
+        // request so a malformed or hostile query string cannot turn one
+        // GET into an unbounded IN(...) scan; unknown ids are simply absent
+        // from the response rather than 404ing the whole batch, since a
+        // chat log legitimately contains ids of players that no longer
+        // exist.
+        private const int NameLookupBatchLimit = 64;
+
+        private async Task HandlePlayerNames(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                string rawIds = (query["ids"] ?? string.Empty).Trim();
+                if (string.IsNullOrEmpty(rawIds))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                string[] parts = rawIds.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                var requestedIds = new System.Collections.Generic.List<long>(parts.Length);
+                for (int i = 0; i < parts.Length && requestedIds.Count < NameLookupBatchLimit; i++)
+                {
+                    if (long.TryParse(parts[i], out long parsed) && parsed > 0 && !requestedIds.Contains(parsed))
+                    {
+                        requestedIds.Add(parsed);
+                    }
+                }
+
+                if (requestedIds.Count == 0)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var rows = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => requestedIds.Contains(p.Id))
+                    .Select(p => new PlayerNameEntryResponse { PlayerId = p.Id, Username = p.Username ?? string.Empty })
+                    .ToListAsync();
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, rows);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Player names lookup error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

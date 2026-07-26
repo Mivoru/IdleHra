@@ -217,6 +217,15 @@ namespace FolkIdle.Server.Domain.Social
 
         public void Subscribe()
         {
+            // Modul: started BEFORE the Redis availability check, not after.
+            // Without Redis this pod still has to deliver its own players'
+            // messages to each other through the local-loopback path added
+            // to the three Publish*Async methods below - and that path
+            // enqueues onto OutboundDispatchQueue, which is inert unless
+            // this worker is running. Idempotent, so the Redis-present path
+            // reaching it again below is harmless.
+            StartDispatchWorker();
+
             var redis = _serviceProvider.GetService<IConnectionMultiplexer>();
             if (redis == null || !redis.IsConnected)
             {
@@ -346,13 +355,14 @@ namespace FolkIdle.Server.Domain.Social
                 return false;
             }
 
+            long timestampEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
             var redis = _serviceProvider.GetService<IConnectionMultiplexer>();
             if (redis == null || !redis.IsConnected)
             {
-                return false;
+                return DispatchLocally(playerId, timestampEpochMs, trimmed, GlobalChannelType, DispatchModeGlobal, guildId: 0, targetPlayerId: 0);
             }
 
-            long timestampEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             string payload = $"{playerId}:{timestampEpochMs}:{trimmed}";
 
             try
@@ -364,7 +374,7 @@ namespace FolkIdle.Server.Domain.Social
             catch (Exception ex)
             {
                 Console.WriteLine($"Chat publish failed for player {playerId}: {ex.Message}");
-                return false;
+                return DispatchLocally(playerId, timestampEpochMs, trimmed, GlobalChannelType, DispatchModeGlobal, guildId: 0, targetPlayerId: 0);
             }
         }
 
@@ -391,13 +401,14 @@ namespace FolkIdle.Server.Domain.Social
                 return false;
             }
 
+            long timestampEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
             var redis = _serviceProvider.GetService<IConnectionMultiplexer>();
             if (redis == null || !redis.IsConnected)
             {
-                return false;
+                return DispatchLocally(playerId, timestampEpochMs, trimmed, GuildChannelType, DispatchModeGuild, guildId, targetPlayerId: 0);
             }
 
-            long timestampEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             string payload = $"{playerId}:{guildId}:{timestampEpochMs}:{trimmed}";
 
             try
@@ -409,7 +420,7 @@ namespace FolkIdle.Server.Domain.Social
             catch (Exception ex)
             {
                 Console.WriteLine($"Guild chat publish failed for player {playerId}: {ex.Message}");
-                return false;
+                return DispatchLocally(playerId, timestampEpochMs, trimmed, GuildChannelType, DispatchModeGuild, guildId, targetPlayerId: 0);
             }
         }
 
@@ -436,13 +447,14 @@ namespace FolkIdle.Server.Domain.Social
                 return false;
             }
 
+            long timestampEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
             var redis = _serviceProvider.GetService<IConnectionMultiplexer>();
             if (redis == null || !redis.IsConnected)
             {
-                return false;
+                return DispatchLocally(playerId, timestampEpochMs, trimmed, WhisperChannelType, DispatchModeWhisper, guildId: 0, targetPlayerId);
             }
 
-            long timestampEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             string payload = $"{playerId}:{targetPlayerId}:{timestampEpochMs}:{trimmed}";
 
             try
@@ -454,8 +466,30 @@ namespace FolkIdle.Server.Domain.Social
             catch (Exception ex)
             {
                 Console.WriteLine($"Whisper chat publish failed for player {playerId}: {ex.Message}");
-                return false;
+                return DispatchLocally(playerId, timestampEpochMs, trimmed, WhisperChannelType, DispatchModeWhisper, guildId: 0, targetPlayerId);
             }
+        }
+
+        // Modul: single-pod loopback. Every chat channel previously reached
+        // its own recipients ONLY by round-tripping through Redis Pub/Sub -
+        // so with Redis unreachable (this project's documented "Redis is
+        // optional, degrade gracefully" stance, already applied to the
+        // leaderboard endpoints and RedisPlayerSessionLock.RenewAsync)
+        // Publish*Async returned false immediately and chat was silently,
+        // completely dead: no global, no guild, no whisper, not even
+        // between two players connected to this very pod.
+        //
+        // The Redis hop exists for CROSS-pod fan-out, not for delivery as
+        // such - HandleRedisMessageAsync and friends do nothing but rebuild
+        // the packet and enqueue it onto OutboundDispatchQueue, which is
+        // exactly what this does directly. So without Redis, delivery
+        // degrades to "everyone connected to this pod" instead of "nobody",
+        // and the multi-pod path is untouched when Redis is present.
+        private bool DispatchLocally(long senderPlayerId, long timestampEpochMs, string messageText, byte channelType, byte dispatchMode, long guildId, long targetPlayerId)
+        {
+            ResponseChatMessagePacket packet = BuildResponsePacket(senderPlayerId, timestampEpochMs, messageText, channelType);
+            OutboundDispatchQueue.Enqueue(new ChatDispatchItem(packet, dispatchMode, guildId, targetPlayerId));
+            return true;
         }
     }
 }

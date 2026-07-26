@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -90,12 +91,6 @@ namespace FolkIdle.Client.Editor
             GameObject rowPrefabAsset = ChatSceneBuilder.BuildAndSaveRowPrefab();
             ChatSceneBuilder.RegisterRowPrefabAsAddressable(rowPrefabAsset);
 
-            // Modul: Map Hub, Part 1. Chat is no longer one of the mutually
-            // exclusive screens - it is now a persistent, semi-transparent,
-            // minimizable bottom-left corner overlay, always active
-            // regardless of which map-hub screen is showing.
-            GameObject chatWindowObject = BuildChatOverlay(canvas.transform, rowPrefabAsset);
-
             // Modul: Full-Game UI Architecture, Part 3. Every always-on HUD
             // panel now lives under one HudGroup root instead of parenting
             // straight to the Canvas, so the top-level screen switcher can
@@ -160,6 +155,13 @@ namespace FolkIdle.Client.Editor
             GameObject statisticsPanelObject = BuildStatisticsWindow(canvas.transform);
             GameObject loginBonusPanelObject = BuildLoginBonusWindow(canvas.transform);
 
+            // Modul: UI rework. Account screen - identity plus the two
+            // account-level actions. Log Off already existed (buried in
+            // Settings); account deletion did not have a UI anywhere despite
+            // CommandType.TriggerGdprPurge being real and validated
+            // server-side. See UiAccountPanel's own header comment.
+            GameObject accountPanelObject = BuildAccountWindow(canvas.transform, networkClient);
+
             // Modul: Map Hub, Part 3. Combat Selection (real region/
             // monster/character data, see UiCombatSelectionPanel) and Boss
             // World (real HP/attack plus the real global leaderboard, see
@@ -173,15 +175,33 @@ namespace FolkIdle.Client.Editor
             // Boss), now the default/home screen.
             (GameObject mainMapHubObject, Button combatZoneButton, Button villageZoneButton, Button guildZoneButton, Button marketZoneButton, Button bossZoneButton) = BuildMainMapHub(canvas.transform);
 
+            // Modul: UI rework. World chat is a child of the map hub, not a
+            // Canvas-level overlay - see BuildChatPanel's header comment for
+            // why the old always-on overlay both overlapped every screen and
+            // never worked at all.
+            BuildWorldChatOverlay(mainMapHubObject.transform, networkClient);
+
             // Modul: Map Hub, Part 5. Hamburger sliding menu - folds every
             // screen not represented as one of the 5 map zones (per user
             // direction: Bestiary reuses the existing Codex window rather
             // than duplicating it under a second name).
-            (GameObject hamburgerBlocker, UiHamburgerMenuPanel hamburgerComponent, Button[] hamburgerMenuButtons) = BuildHamburgerPanel(canvas.transform, new[]
+            //
+            // Modul: UI rework. Grouped under section headers and keyed by
+            // label rather than by array position. The old flat string[] had
+            // to stay index-aligned by hand with two further arrays 40 lines
+            // below (screens[] / screenButtons[]), so reordering or
+            // inserting a single entry silently pointed menu items at the
+            // wrong screens. "Places" is new: the five map zones were
+            // previously reachable only by going back to the map and finding
+            // the right region of it.
+            (GameObject hamburgerBlocker, UiHamburgerMenuPanel hamburgerComponent, Dictionary<string, Button> menu) = BuildHamburgerPanel(canvas.transform, new[]
             {
-                "Forge", "Skills", "Bestiary", "Breeding Lab", "Achievements", "Leaderboard",
-                "Mailbox", "Store", "Season Pass", "Settings", "Friends", "Statistics", "Login Bonus",
-                "Race Mastery", "Time Bank", "Legacy Shop", "Mentorship"
+                ("Places", new[] { "World Map", "Combat", "Village", "Guild", "Market & Bank", "World Boss" }),
+                ("Character", new[] { "Forge", "Skills", "Bestiary", "Breeding Lab", "Race Mastery", "Mentorship" }),
+                ("Progress", new[] { "Achievements", "Season Pass", "Login Bonus", "Statistics", "Leaderboard" }),
+                ("Social", new[] { "Friends", "Mailbox" }),
+                ("Economy", new[] { "Store", "Time Bank", "Legacy Shop" }),
+                ("System", new[] { "Account", "Settings" })
             });
 
             // Modul: Map Hub, Part 6. Persistent top-left (hamburger toggle
@@ -190,11 +210,9 @@ namespace FolkIdle.Client.Editor
             // screen per the map-hub spec's UI persistence requirement.
             (Button hamburgerToggleButton, Button homeButton, Button battlePassBannerButton) = BuildPersistentBars(canvas.transform, syncProxy, assetRegistry);
 
-            // Modul: Map Hub, Part 7. One screen switcher for all 20
-            // top-level screens - replaces the old flat scrollable nav-tab
-            // strip. Index 0 (MainMapHub) has no dedicated Buttons[] entry
-            // - it is the default/home screen, reached from every other
-            // screen via homeButton, not a single "open map" button.
+            // Modul: Map Hub, Part 7. One screen switcher for every
+            // top-level screen - replaces the old flat scrollable nav-tab
+            // strip. Index 0 (MainMapHub) is the default/home screen.
             GameObject screenManagerObject = new GameObject("ScreenManager", typeof(RectTransform));
             screenManagerObject.transform.SetParent(canvas.transform, false);
 
@@ -205,17 +223,23 @@ namespace FolkIdle.Client.Editor
                 codexWindowObject, breedingLabWindowObject, achievementsWindowObject, leaderboardWindowObject,
                 mailboxWindowObject, storeWindowObject, seasonPassWindowObject, settingsPanelObject,
                 friendsPanelObject, statisticsPanelObject, loginBonusPanelObject, raceMasteryWindowObject,
-                chronoBankWindowObject, legacyShopWindowObject, mentorshipContractWindowObject
+                chronoBankWindowObject, legacyShopWindowObject, mentorshipContractWindowObject,
+                accountPanelObject
             };
 
+            // Index-aligned with screens[] above. UiTabGroup supports at most
+            // one Buttons[] entry per screen; the map zones therefore keep
+            // their zone button here and their duplicate hamburger entry is
+            // wired separately as a ShowIndex persistent listener below.
             Button[] screenButtons =
             {
                 null, null, combatZoneButton, villageZoneButton, guildZoneButton,
-                marketZoneButton, bossZoneButton, hamburgerMenuButtons[0], hamburgerMenuButtons[1],
-                hamburgerMenuButtons[2], hamburgerMenuButtons[3], hamburgerMenuButtons[4], hamburgerMenuButtons[5],
-                hamburgerMenuButtons[6], hamburgerMenuButtons[7], hamburgerMenuButtons[8], hamburgerMenuButtons[9],
-                hamburgerMenuButtons[10], hamburgerMenuButtons[11], hamburgerMenuButtons[12], hamburgerMenuButtons[13],
-                hamburgerMenuButtons[14], hamburgerMenuButtons[15], hamburgerMenuButtons[16]
+                marketZoneButton, bossZoneButton, menu["Forge"], menu["Skills"],
+                menu["Bestiary"], menu["Breeding Lab"], menu["Achievements"], menu["Leaderboard"],
+                menu["Mailbox"], menu["Store"], menu["Season Pass"], menu["Settings"],
+                menu["Friends"], menu["Statistics"], menu["Login Bonus"], menu["Race Mastery"],
+                menu["Time Bank"], menu["Legacy Shop"], menu["Mentorship"],
+                menu["Account"]
             };
 
             const int HudGroupScreenIndex = 1;
@@ -237,6 +261,18 @@ namespace FolkIdle.Client.Editor
             UnityEditor.Events.UnityEventTools.AddIntPersistentListener(homeButton.onClick, screenTabGroup.ShowIndex, 0);
             UnityEditor.Events.UnityEventTools.AddIntPersistentListener(battlePassBannerButton.onClick, screenTabGroup.ShowIndex, SeasonPassScreenIndex);
 
+            // Modul: UI rework. The "Places" section duplicates the five map
+            // zones (plus the map itself) as menu entries. They cannot go in
+            // screenButtons[] - that array is one button per screen - so
+            // each is wired directly to UiTabGroup.ShowIndex with its own
+            // screen index, the same mechanism homeButton already uses.
+            UnityEditor.Events.UnityEventTools.AddIntPersistentListener(menu["World Map"].onClick, screenTabGroup.ShowIndex, 0);
+            UnityEditor.Events.UnityEventTools.AddIntPersistentListener(menu["Combat"].onClick, screenTabGroup.ShowIndex, 2);
+            UnityEditor.Events.UnityEventTools.AddIntPersistentListener(menu["Village"].onClick, screenTabGroup.ShowIndex, 3);
+            UnityEditor.Events.UnityEventTools.AddIntPersistentListener(menu["Guild"].onClick, screenTabGroup.ShowIndex, 4);
+            UnityEditor.Events.UnityEventTools.AddIntPersistentListener(menu["Market & Bank"].onClick, screenTabGroup.ShowIndex, 5);
+            UnityEditor.Events.UnityEventTools.AddIntPersistentListener(menu["World Boss"].onClick, screenTabGroup.ShowIndex, 6);
+
             // Modul: plain field assignment, not a persistent listener -
             // UiHamburgerMenuPanel already self-wires ToggleButton.onClick
             // inside its own Awake() (established codebase convention),
@@ -246,12 +282,13 @@ namespace FolkIdle.Client.Editor
             hamburgerComponent.ToggleButton = hamburgerToggleButton;
 
             // Modul: every hamburger menu button both switches screens (via
-            // the index-aligned Buttons[] entry above, self-wired inside
-            // UiTabGroup.Awake) and closes the sliding panel afterward -
-            // two independent persistent listeners on the same onClick.
-            for (int menuIndex = 0; menuIndex < hamburgerMenuButtons.Length; menuIndex++)
+            // the index-aligned Buttons[] entry above, or the explicit
+            // ShowIndex listener for the Places section) and closes the
+            // sliding panel afterward - two independent persistent listeners
+            // on the same onClick.
+            foreach (Button menuButton in menu.Values)
             {
-                UnityEditor.Events.UnityEventTools.AddPersistentListener(hamburgerMenuButtons[menuIndex].onClick, hamburgerComponent.Close);
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(menuButton.onClick, hamburgerComponent.Close);
             }
 
             // Modul: Full-Game UI Architecture, Part 4. Persistent global
@@ -271,8 +308,8 @@ namespace FolkIdle.Client.Editor
             // null button).
             UiTutorialController tutorialController = BuildTutorialSystem(
                 canvas.transform, syncProxy, equipmentSlotsBackground, playerPortraitImage,
-                forgeButton: hamburgerMenuButtons[0], marketButton: marketZoneButton, guildButton: guildZoneButton,
-                skillTreeButton: hamburgerMenuButtons[1], chatButton: null);
+                forgeButton: menu["Forge"], marketButton: marketZoneButton, guildButton: guildZoneButton,
+                skillTreeButton: menu["Skills"], chatButton: null);
 
             // Modul: Map Hub. Built LAST, deliberately - LoginWindow's
             // BlockingPanel must always render (and raycast-block) on top
@@ -371,6 +408,14 @@ namespace FolkIdle.Client.Editor
             managers.AddComponent<EquipmentInventoryCache>();
             managers.AddComponent<SfxPoolEngine>();
             managers.AddComponent<AssetLifecycleCoordinator>();
+
+            // Modul: UI rework. Single drain point for the inbound chat
+            // stream, feeding all three chat windows (World/Guild/Whisper).
+            // Lives here rather than on any one window so a message still
+            // reaches a channel whose screen is currently hidden - see
+            // ChatRelay's own header comment.
+            ChatRelay chatRelay = managers.AddComponent<ChatRelay>();
+            chatRelay.NetworkClient = networkClient;
 
             return managers;
         }
@@ -934,7 +979,7 @@ namespace FolkIdle.Client.Editor
             subTabHeaderRect.sizeDelta = new Vector2(0f, 44f);
             subTabHeaderRect.anchoredPosition = new Vector2(0f, -12f);
 
-            Button[] subTabButtons = BuildSubTabButtons(subTabHeaderRect, new[] { "Roster", "Logistics", "Raid", "War", "Applications" });
+            Button[] subTabButtons = BuildSubTabButtons(subTabHeaderRect, new[] { "Roster", "Chat", "Logistics", "Raid", "War", "Applications" });
 
             GameObject contentAreaObject = new GameObject("ContentArea", typeof(RectTransform));
             contentAreaObject.transform.SetParent(windowRect, false);
@@ -945,18 +990,31 @@ namespace FolkIdle.Client.Editor
             contentAreaRect.offsetMax = new Vector2(-20f, -64f);
 
             GameObject rosterGroup = BuildGuildRosterGroup(contentAreaRect, syncProxy, networkClient);
+
+            // Modul: UI rework. Guild chat gets its own sub-tab here rather
+            // than sharing the map hub's world-chat log - the server has
+            // always had a real, separate guild channel (ChatEngine.
+            // GuildChannelType, routed strictly to the sender's own guild
+            // using the server's cached GuildId, never a client-supplied
+            // one) that nothing client-side ever sent to or displayed.
+            GameObject guildChatGroup = new GameObject("ChatGroup", typeof(RectTransform));
+            guildChatGroup.transform.SetParent(contentAreaRect, false);
+            StretchFull((RectTransform)guildChatGroup.transform);
+            BuildChatPanel(guildChatGroup.transform, "GuildChatPanel", "Guild Chat", ChatChannelType.Guild, networkClient, withMinimizeToggle: false);
+
             GameObject logisticsGroup = BuildGuildLogisticsGroup(contentAreaRect, syncProxy, networkClient);
             GameObject raidGroup = BuildGuildRaidGroup(contentAreaRect, syncProxy, networkClient, sfxEngine);
             GameObject warGroup = BuildGuildWarGroup(contentAreaRect, syncProxy, networkClient);
             GameObject applicationsGroup = BuildGuildApplicationsGroup(contentAreaRect);
 
+            guildChatGroup.SetActive(false);
             logisticsGroup.SetActive(false);
             raidGroup.SetActive(false);
             warGroup.SetActive(false);
             applicationsGroup.SetActive(false);
 
             UiTabGroup tabGroup = windowObject.AddComponent<UiTabGroup>();
-            tabGroup.Groups = new[] { rosterGroup, logisticsGroup, raidGroup, warGroup, applicationsGroup };
+            tabGroup.Groups = new[] { rosterGroup, guildChatGroup, logisticsGroup, raidGroup, warGroup, applicationsGroup };
             tabGroup.Buttons = subTabButtons;
 
             return windowObject;
@@ -3867,6 +3925,87 @@ namespace FolkIdle.Client.Editor
             return windowObject;
         }
 
+        // Modul: UI rework. Account screen. See UiAccountPanel's own header
+        // comment for why account deletion lives here and why it is armed in
+        // two steps rather than fired on a single tap.
+        private static GameObject BuildAccountWindow(Transform canvasTransform, WebSocketClient networkClient)
+        {
+            GameObject windowObject = BuildSimpleListWindowShell("AccountWindow", canvasTransform, "Account", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+
+            TextMeshProUGUI usernameText = CreateText(contentAreaRect, "UsernameText", "Signed in", 26f, TextAlignmentOptions.MidlineLeft);
+            RectTransform usernameRect = (RectTransform)usernameText.transform;
+            usernameRect.anchorMin = new Vector2(0f, 1f);
+            usernameRect.anchorMax = new Vector2(1f, 1f);
+            usernameRect.pivot = new Vector2(0.5f, 1f);
+            usernameRect.sizeDelta = new Vector2(0f, 40f);
+            usernameRect.anchoredPosition = Vector2.zero;
+
+            TextMeshProUGUI playerIdText = CreateText(contentAreaRect, "PlayerIdText", "Player ID: (connecting...)", 15f, TextAlignmentOptions.MidlineLeft);
+            playerIdText.color = new Color(1f, 1f, 1f, 0.6f);
+            RectTransform playerIdRect = (RectTransform)playerIdText.transform;
+            playerIdRect.anchorMin = new Vector2(0f, 1f);
+            playerIdRect.anchorMax = new Vector2(1f, 1f);
+            playerIdRect.pivot = new Vector2(0.5f, 1f);
+            playerIdRect.sizeDelta = new Vector2(0f, 26f);
+            playerIdRect.anchoredPosition = new Vector2(0f, -44f);
+
+            TextMeshProUGUI levelText = CreateText(contentAreaRect, "LevelText", "Level -", 17f, TextAlignmentOptions.MidlineLeft);
+            RectTransform levelRect = (RectTransform)levelText.transform;
+            levelRect.anchorMin = new Vector2(0f, 1f);
+            levelRect.anchorMax = new Vector2(1f, 1f);
+            levelRect.pivot = new Vector2(0.5f, 1f);
+            levelRect.sizeDelta = new Vector2(0f, 28f);
+            levelRect.anchoredPosition = new Vector2(0f, -80f);
+
+            TextMeshProUGUI guildText = CreateText(contentAreaRect, "GuildText", "Guild: -", 17f, TextAlignmentOptions.MidlineLeft);
+            RectTransform guildRect = (RectTransform)guildText.transform;
+            guildRect.anchorMin = new Vector2(0f, 1f);
+            guildRect.anchorMax = new Vector2(1f, 1f);
+            guildRect.pivot = new Vector2(0.5f, 1f);
+            guildRect.sizeDelta = new Vector2(0f, 28f);
+            guildRect.anchoredPosition = new Vector2(0f, -112f);
+
+            TextMeshProUGUI dangerHeader = CreateText(contentAreaRect, "DangerHeader", "DANGER ZONE", 14f, TextAlignmentOptions.MidlineLeft);
+            dangerHeader.color = new Color(0.9f, 0.45f, 0.4f, 1f);
+            dangerHeader.characterSpacing = 6f;
+            RectTransform dangerHeaderRect = (RectTransform)dangerHeader.transform;
+            dangerHeaderRect.anchorMin = new Vector2(0f, 0f);
+            dangerHeaderRect.anchorMax = new Vector2(1f, 0f);
+            dangerHeaderRect.pivot = new Vector2(0.5f, 0f);
+            dangerHeaderRect.sizeDelta = new Vector2(0f, 26f);
+            dangerHeaderRect.anchoredPosition = new Vector2(0f, 108f);
+
+            TextMeshProUGUI deleteWarningText = CreateText(contentAreaRect, "DeleteWarningText", "Permanently erases this account and all of its progress.", 13f, TextAlignmentOptions.MidlineLeft);
+            deleteWarningText.color = new Color(1f, 1f, 1f, 0.6f);
+            RectTransform deleteWarningRect = (RectTransform)deleteWarningText.transform;
+            deleteWarningRect.anchorMin = new Vector2(0f, 0f);
+            deleteWarningRect.anchorMax = new Vector2(1f, 0f);
+            deleteWarningRect.pivot = new Vector2(0.5f, 0f);
+            deleteWarningRect.sizeDelta = new Vector2(0f, 44f);
+            deleteWarningRect.anchoredPosition = new Vector2(0f, 60f);
+
+            Button deleteAccountButton = CreateButton(contentAreaRect, "DeleteAccountButton", "Delete Account", out TextMeshProUGUI deleteAccountLabel);
+            ((Image)deleteAccountButton.targetGraphic).color = new Color(0.52f, 0.16f, 0.16f, 1f);
+            RectTransform deleteAccountRect = (RectTransform)deleteAccountButton.transform;
+            deleteAccountRect.anchorMin = new Vector2(0f, 0f);
+            deleteAccountRect.anchorMax = new Vector2(1f, 0f);
+            deleteAccountRect.pivot = new Vector2(0.5f, 0f);
+            deleteAccountRect.sizeDelta = new Vector2(0f, 48f);
+            deleteAccountRect.anchoredPosition = new Vector2(0f, 6f);
+
+            UiAccountPanel panel = windowObject.AddComponent<UiAccountPanel>();
+            panel.NetworkClient = networkClient;
+            panel.UsernameText = usernameText;
+            panel.PlayerIdText = playerIdText;
+            panel.LevelText = levelText;
+            panel.GuildText = guildText;
+            panel.DeleteAccountButton = deleteAccountButton;
+            panel.DeleteAccountButtonLabel = deleteAccountLabel;
+            panel.DeleteWarningText = deleteWarningText;
+
+            return windowObject;
+        }
+
         private static GameObject BuildLeaderboardWindow(Transform canvasTransform)
         {
             GameObject windowObject = BuildSimpleListWindowShell("LeaderboardWindow", canvasTransform, "Leaderboard", out RectTransform contentAreaRect, out TextMeshProUGUI _);
@@ -3957,11 +4096,29 @@ namespace FolkIdle.Client.Editor
         // worked over the WebSocket wire, but there was no UI to see the
         // list or trigger them (see FriendsCache/UiFriendsWindow's own
         // comments). Replaces the old BuildPlaceholderWindow static shell.
+        // Modul: UI rework. Two columns: the roster (add-friend field,
+        // status line, pooled friend rows) on the left, a real private
+        // whisper thread on the right. The whisper channel has existed on
+        // the wire since the social layer shipped but nothing client-side
+        // could ever pick a recipient, so it was unreachable - clicking a
+        // roster row's Chat button now points the panel at that friend.
         private static GameObject BuildFriendsWindow(Transform canvasTransform, WebSocketClient networkClient)
         {
             GameObject windowObject = BuildSimpleListWindowShell("FriendsWindow", canvasTransform, "Friends", out RectTransform contentAreaRect, out TextMeshProUGUI _);
 
-            (TMP_InputField usernameInput, Button addButton) = BuildLabeledInputRow(contentAreaRect, "AddFriendRow", "Username", "Add Friend");
+            GameObject rosterColumnObject = new GameObject("RosterColumn", typeof(RectTransform));
+            rosterColumnObject.transform.SetParent(contentAreaRect, false);
+            RectTransform rosterColumnRect = (RectTransform)rosterColumnObject.transform;
+            rosterColumnRect.anchorMin = new Vector2(0f, 0f);
+            rosterColumnRect.anchorMax = new Vector2(1f, 1f);
+            rosterColumnRect.offsetMin = Vector2.zero;
+            rosterColumnRect.offsetMax = new Vector2(0f, 0f);
+            // Portrait-first: the roster takes the top 52% and the chat the
+            // rest, rather than a side-by-side split that would leave both
+            // halves unusably narrow at the 1080-wide reference resolution.
+            rosterColumnRect.anchorMin = new Vector2(0f, 0.48f);
+
+            (TMP_InputField usernameInput, Button addButton) = BuildLabeledInputRow(rosterColumnRect, "AddFriendRow", "Username", "Add Friend");
             RectTransform addRowRect = (RectTransform)usernameInput.transform.parent;
             addRowRect.anchorMin = new Vector2(0f, 1f);
             addRowRect.anchorMax = new Vector2(1f, 1f);
@@ -3969,7 +4126,8 @@ namespace FolkIdle.Client.Editor
             addRowRect.sizeDelta = new Vector2(0f, 44f);
             addRowRect.anchoredPosition = Vector2.zero;
 
-            TextMeshProUGUI statusText = CreateText(contentAreaRect, "StatusText", string.Empty, 13f, TextAlignmentOptions.MidlineLeft);
+            TextMeshProUGUI statusText = CreateText(rosterColumnRect, "StatusText", "Add a friend by their exact username, then tap Chat to talk privately.", 13f, TextAlignmentOptions.MidlineLeft);
+            statusText.color = new Color(1f, 1f, 1f, 0.6f);
             RectTransform statusRect = (RectTransform)statusText.transform;
             statusRect.anchorMin = new Vector2(0f, 1f);
             statusRect.anchorMax = new Vector2(1f, 1f);
@@ -3978,14 +4136,25 @@ namespace FolkIdle.Client.Editor
             statusRect.anchoredPosition = new Vector2(0f, -50f);
 
             GameObject scrollAreaObject = new GameObject("ScrollArea", typeof(RectTransform));
-            scrollAreaObject.transform.SetParent(contentAreaRect, false);
+            scrollAreaObject.transform.SetParent(rosterColumnRect, false);
             RectTransform scrollAreaRect = (RectTransform)scrollAreaObject.transform;
             scrollAreaRect.anchorMin = Vector2.zero;
             scrollAreaRect.anchorMax = Vector2.one;
-            scrollAreaRect.offsetMin = Vector2.zero;
-            scrollAreaRect.offsetMax = new Vector2(0f, -86f);
+            scrollAreaRect.offsetMin = new Vector2(0f, 6f);
+            scrollAreaRect.offsetMax = new Vector2(0f, -80f);
 
             (ScrollRect _, RectTransform content) = ChatSceneBuilder.BuildScrollView(scrollAreaRect);
+            StretchFull((RectTransform)content.parent.parent);
+
+            GameObject chatColumnObject = new GameObject("PrivateChatColumn", typeof(RectTransform));
+            chatColumnObject.transform.SetParent(contentAreaRect, false);
+            RectTransform chatColumnRect = (RectTransform)chatColumnObject.transform;
+            chatColumnRect.anchorMin = new Vector2(0f, 0f);
+            chatColumnRect.anchorMax = new Vector2(1f, 0.46f);
+            chatColumnRect.offsetMin = Vector2.zero;
+            chatColumnRect.offsetMax = Vector2.zero;
+
+            UiChatWindow whisperChat = BuildChatPanel(chatColumnRect, "PrivateChatPanel", "Private Chat", ChatChannelType.Whisper, networkClient, withMinimizeToggle: false);
 
             GameObject rowPrefabAsset = BuildAndSaveFriendRowPrefab();
 
@@ -3996,6 +4165,7 @@ namespace FolkIdle.Client.Editor
             window.AddFriendUsernameField = usernameInput;
             window.AddFriendButton = addButton;
             window.StatusText = statusText;
+            window.WhisperChatWindow = whisperChat;
 
             return windowObject;
         }
@@ -4012,7 +4182,7 @@ namespace FolkIdle.Client.Editor
             nameTextRect.anchorMin = Vector2.zero;
             nameTextRect.anchorMax = Vector2.one;
             nameTextRect.offsetMin = new Vector2(6f, 0f);
-            nameTextRect.offsetMax = new Vector2(-180f, 0f);
+            nameTextRect.offsetMax = new Vector2(-250f, 0f);
 
             Button removeButton = CreateButton(root.transform, "RemoveButton", "Remove", out TextMeshProUGUI _);
             RectTransform removeRect = (RectTransform)removeButton.transform;
@@ -4030,6 +4200,15 @@ namespace FolkIdle.Client.Editor
             blockRect.sizeDelta = new Vector2(70f, 0f);
             blockRect.anchoredPosition = new Vector2(-88f, 0f);
 
+            Button chatButton = CreateButton(root.transform, "ChatButton", "Chat", out TextMeshProUGUI _);
+            ((Image)chatButton.targetGraphic).color = new Color(0.24f, 0.58f, 0.42f, 1f);
+            RectTransform chatRect = (RectTransform)chatButton.transform;
+            chatRect.anchorMin = new Vector2(1f, 0.1f);
+            chatRect.anchorMax = new Vector2(1f, 0.9f);
+            chatRect.pivot = new Vector2(1f, 0.5f);
+            chatRect.sizeDelta = new Vector2(66f, 0f);
+            chatRect.anchoredPosition = new Vector2(-162f, 0f);
+
             Button unblockButton = CreateButton(root.transform, "UnblockButton", "Unblock", out TextMeshProUGUI _);
             RectTransform unblockRect = (RectTransform)unblockButton.transform;
             unblockRect.anchorMin = new Vector2(1f, 0.1f);
@@ -4043,6 +4222,7 @@ namespace FolkIdle.Client.Editor
             rowComponent.RemoveButton = removeButton;
             rowComponent.BlockButton = blockButton;
             rowComponent.UnblockButton = unblockButton;
+            rowComponent.ChatButton = chatButton;
 
             GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(root, FriendRowPrefabPath, out bool success);
             if (!success)
@@ -5152,13 +5332,41 @@ namespace FolkIdle.Client.Editor
         // both dims the rest of the screen and closes the menu on an
         // outside click.
         // ------------------------------------------------------------
-        private static (GameObject blocker, UiHamburgerMenuPanel component, Button[] menuButtons) BuildHamburgerPanel(Transform canvasTransform, string[] labels)
+        // ------------------------------------------------------------
+        // Hamburger sliding menu.
+        //
+        // Modul: UI rework. This menu rendered as a completely empty dark
+        // strip - the reported "there is nothing in the burger menu". The
+        // cause was a layout mismatch, not missing entries: the buttons went
+        // into ChatSceneBuilder.BuildScrollView's shared content object,
+        // whose VerticalLayoutGroup is configured childControlHeight=false
+        // (correct for the pooled prefab rows every other caller feeds it,
+        // which carry their own baked sizeDelta). A GameObject created here
+        // by CreateButton has a default RectTransform, i.e. height 0, and
+        // with childControlHeight=false the LayoutElement.preferredHeight of
+        // 50 set on each one was simply ignored - so all 17 entries stacked
+        // up as zero-height slivers.
+        //
+        // Rebuilt with its own layout rather than the shared one, plus the
+        // structure the menu actually needs to be usable at 17+ entries:
+        // a titled header, section dividers, and the map destinations
+        // themselves (previously reachable ONLY by returning to the map and
+        // hunting for the right zone).
+        // ------------------------------------------------------------
+        private const float HamburgerPanelWidth = 400f;
+        private const float HamburgerHeaderHeight = 56f;
+        private const float HamburgerEntryHeight = 52f;
+        private const float HamburgerSectionHeight = 30f;
+
+        private static (GameObject blocker, UiHamburgerMenuPanel component, Dictionary<string, Button> menuButtons) BuildHamburgerPanel(
+            Transform canvasTransform,
+            (string header, string[] entries)[] sections)
         {
             GameObject blockerObject = new GameObject("HamburgerBlocker", typeof(RectTransform));
             blockerObject.transform.SetParent(canvasTransform, false);
             StretchFull((RectTransform)blockerObject.transform);
             Image blockerImage = blockerObject.AddComponent<Image>();
-            blockerImage.color = new Color(0f, 0f, 0f, 0.5f);
+            blockerImage.color = new Color(0f, 0f, 0f, 0.6f);
             Button blockerButton = blockerObject.AddComponent<Button>();
             blockerButton.targetGraphic = blockerImage;
 
@@ -5168,28 +5376,101 @@ namespace FolkIdle.Client.Editor
             panelRect.anchorMin = new Vector2(0f, 0f);
             panelRect.anchorMax = new Vector2(0f, 1f);
             panelRect.pivot = new Vector2(0f, 0.5f);
-            panelRect.sizeDelta = new Vector2(360f, 0f);
+            panelRect.sizeDelta = new Vector2(HamburgerPanelWidth, 0f);
             panelRect.anchoredPosition = Vector2.zero;
-            panelObject.AddComponent<Image>().color = new Color(0.08f, 0.08f, 0.1f, 0.98f);
+            panelObject.AddComponent<Image>().color = new Color(0.07f, 0.07f, 0.09f, 0.99f);
 
-            (ScrollRect _, RectTransform content) = ChatSceneBuilder.BuildScrollView(panelRect);
+            // Header: title plus an explicit close button. The blocker
+            // behind the panel already closes on click, but that is not
+            // discoverable, and on a phone the panel covers the hamburger
+            // toggle that opened it.
+            GameObject headerObject = new GameObject("MenuHeader", typeof(RectTransform));
+            headerObject.transform.SetParent(panelRect, false);
+            RectTransform headerRect = (RectTransform)headerObject.transform;
+            headerRect.anchorMin = new Vector2(0f, 1f);
+            headerRect.anchorMax = new Vector2(1f, 1f);
+            headerRect.pivot = new Vector2(0.5f, 1f);
+            headerRect.sizeDelta = new Vector2(0f, HamburgerHeaderHeight);
+            headerRect.anchoredPosition = Vector2.zero;
+            headerObject.AddComponent<Image>().color = new Color(0.16f, 0.13f, 0.10f, 1f);
 
-            Button[] menuButtons = new Button[labels.Length];
-            for (int i = 0; i < labels.Length; i++)
+            TextMeshProUGUI menuTitle = CreateText(headerRect, "MenuTitle", "Menu", 22f, TextAlignmentOptions.MidlineLeft);
+            RectTransform menuTitleRect = (RectTransform)menuTitle.transform;
+            menuTitleRect.anchorMin = Vector2.zero;
+            menuTitleRect.anchorMax = Vector2.one;
+            menuTitleRect.offsetMin = new Vector2(18f, 0f);
+            menuTitleRect.offsetMax = new Vector2(-60f, 0f);
+
+            Button closeButton = CreateButton(headerRect, "CloseMenuButton", "X", out TextMeshProUGUI _);
+            ((Image)closeButton.targetGraphic).color = new Color(0.35f, 0.18f, 0.18f, 1f);
+            RectTransform closeRect = (RectTransform)closeButton.transform;
+            closeRect.anchorMin = new Vector2(1f, 0.5f);
+            closeRect.anchorMax = new Vector2(1f, 0.5f);
+            closeRect.pivot = new Vector2(1f, 0.5f);
+            closeRect.sizeDelta = new Vector2(44f, 40f);
+            closeRect.anchoredPosition = new Vector2(-10f, 0f);
+
+            GameObject scrollAreaObject = new GameObject("ScrollArea", typeof(RectTransform));
+            scrollAreaObject.transform.SetParent(panelRect, false);
+            RectTransform scrollAreaRect = (RectTransform)scrollAreaObject.transform;
+            scrollAreaRect.anchorMin = Vector2.zero;
+            scrollAreaRect.anchorMax = Vector2.one;
+            scrollAreaRect.offsetMin = new Vector2(0f, 0f);
+            scrollAreaRect.offsetMax = new Vector2(0f, -HamburgerHeaderHeight);
+
+            (ScrollRect _, RectTransform content) = ChatSceneBuilder.BuildScrollView(scrollAreaRect);
+            StretchFull((RectTransform)content.parent.parent);
+
+            // The fix for the empty menu: this menu builds its children live
+            // rather than instantiating pre-sized prefab rows, so the layout
+            // group has to be the thing that decides their height.
+            VerticalLayoutGroup contentLayout = content.GetComponent<VerticalLayoutGroup>();
+            contentLayout.childControlHeight = true;
+            contentLayout.childForceExpandHeight = false;
+            contentLayout.spacing = 4f;
+            contentLayout.padding = new RectOffset(10, 10, 8, 24);
+
+            Dictionary<string, Button> menuButtons = new Dictionary<string, Button>(32);
+
+            for (int sectionIndex = 0; sectionIndex < sections.Length; sectionIndex++)
             {
-                Button button = CreateButton(content, "MenuButton_" + labels[i], labels[i], out TextMeshProUGUI _);
-                LayoutElement buttonLayout = button.gameObject.AddComponent<LayoutElement>();
-                buttonLayout.preferredHeight = 50f;
-                menuButtons[i] = button;
+                (string header, string[] entries) = sections[sectionIndex];
+
+                TextMeshProUGUI sectionLabel = CreateText(content, "Section_" + header, header.ToUpperInvariant(), 13f, TextAlignmentOptions.MidlineLeft);
+                sectionLabel.color = new Color(0.85f, 0.72f, 0.45f, 1f);
+                sectionLabel.characterSpacing = 6f;
+                LayoutElement sectionLayout = sectionLabel.gameObject.AddComponent<LayoutElement>();
+                sectionLayout.preferredHeight = HamburgerSectionHeight;
+                sectionLayout.minHeight = HamburgerSectionHeight;
+
+                for (int entryIndex = 0; entryIndex < entries.Length; entryIndex++)
+                {
+                    string label = entries[entryIndex];
+
+                    Button button = CreateButton(content, "MenuButton_" + label, label, out TextMeshProUGUI buttonLabel);
+                    ((Image)button.targetGraphic).color = new Color(0.16f, 0.16f, 0.21f, 1f);
+                    buttonLabel.alignment = TextAlignmentOptions.MidlineLeft;
+                    buttonLabel.fontSize = 17f;
+                    RectTransform buttonLabelRect = (RectTransform)buttonLabel.transform;
+                    buttonLabelRect.offsetMin = new Vector2(16f, 0f);
+                    buttonLabelRect.offsetMax = new Vector2(-10f, 0f);
+
+                    LayoutElement buttonLayout = button.gameObject.AddComponent<LayoutElement>();
+                    buttonLayout.preferredHeight = HamburgerEntryHeight;
+                    buttonLayout.minHeight = HamburgerEntryHeight;
+
+                    menuButtons[label] = button;
+                }
             }
 
             UiHamburgerMenuPanel hamburgerComponent = panelObject.AddComponent<UiHamburgerMenuPanel>();
             hamburgerComponent.PanelRect = panelRect;
             hamburgerComponent.Blocker = blockerObject;
-            hamburgerComponent.HiddenPositionX = -380f;
+            hamburgerComponent.HiddenPositionX = -(HamburgerPanelWidth + 20f);
             hamburgerComponent.ShownPositionX = 0f;
 
             UnityEditor.Events.UnityEventTools.AddPersistentListener(blockerButton.onClick, hamburgerComponent.Close);
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(closeButton.onClick, hamburgerComponent.Close);
 
             return (blockerObject, hamburgerComponent, menuButtons);
         }
@@ -5305,73 +5586,165 @@ namespace FolkIdle.Client.Editor
         }
 
         // ------------------------------------------------------------
-        // Chat overlay - persistent, semi-transparent, minimizable
-        // bottom-left corner window. Reuses ChatSceneBuilder.BuildChatWindow
-        // unmodified, then adds a header bar (title + minimize toggle) and
-        // reparents the 3 existing children (Scroll View, MessageInputField,
-        // SendButton - in that exact creation order) under a new
-        // ExpandedContent container the toggle can hide as one unit.
+        // Chat panels.
+        //
+        // Modul: UI rework. Chat used to be exactly one window: a single
+        // always-on bottom-left overlay parented straight to the Canvas as
+        // its FIRST child, which meant every full-screen game window built
+        // after it (all 20+ of them) drew right over the top of it - the
+        // reported "chat overlaps things / chat is broken" symptom. It also
+        // mixed all three server channels into one log, and, most simply,
+        // its UiChatWindow.NetworkClient was never assigned by anything, so
+        // it could neither send nor receive a single message.
+        //
+        // Now there are three separate, channel-filtered instances, each
+        // parented INTO the screen that owns it so Unity's own sibling
+        // ordering and the screen switcher handle visibility for free:
+        //   - World chat   -> child of MainMapHub (the map/home screen)
+        //   - Guild chat   -> a sub-tab of the Guild window
+        //   - Private chat -> the right-hand half of the Friends window
         // ------------------------------------------------------------
-        private static GameObject BuildChatOverlay(Transform canvasTransform, GameObject chatRowPrefabAsset)
+        private const float ChatHeaderHeight = 30f;
+        private const float ChatComposeHeight = 40f;
+        private const float ChatSendButtonWidth = 78f;
+
+        private static UiChatWindow BuildChatPanel(
+            Transform parent,
+            string panelName,
+            string headerTitle,
+            ChatChannelType channel,
+            WebSocketClient networkClient,
+            bool withMinimizeToggle)
         {
-            GameObject chatWindowObject = ChatSceneBuilder.BuildChatWindow(canvasTransform, chatRowPrefabAsset);
+            GameObject panelObject = new GameObject(panelName, typeof(RectTransform));
+            panelObject.transform.SetParent(parent, false);
+            RectTransform panelRect = (RectTransform)panelObject.transform;
+            StretchFull(panelRect);
 
-            RectTransform windowRect = (RectTransform)chatWindowObject.transform;
-            windowRect.anchorMin = new Vector2(0f, 0f);
-            windowRect.anchorMax = new Vector2(0.34f, 0.38f);
-            windowRect.offsetMin = new Vector2(12f, 78f);
-            windowRect.offsetMax = new Vector2(-12f, 0f);
+            panelObject.AddComponent<Image>().color = new Color(0.05f, 0.05f, 0.08f, 0.72f);
 
-            Image background = chatWindowObject.AddComponent<Image>();
-            background.color = new Color(0.05f, 0.05f, 0.08f, 0.55f);
+            UiChatWindow chatWindow = panelObject.AddComponent<UiChatWindow>();
+            chatWindow.NetworkClient = networkClient;
+            chatWindow.Channel = (byte)channel;
+            chatWindow.RowPrefabAddressableKey = ChatSceneBuilder.ChatConstants.RowPrefabAddressableKey;
 
-            Transform scrollViewTransform = chatWindowObject.transform.GetChild(0);
-            Transform inputFieldTransform = chatWindowObject.transform.GetChild(1);
-            Transform sendButtonTransform = chatWindowObject.transform.GetChild(2);
-
-            GameObject expandedContentObject = new GameObject("ExpandedContent", typeof(RectTransform));
-            expandedContentObject.transform.SetParent(chatWindowObject.transform, false);
-            RectTransform expandedContentRect = (RectTransform)expandedContentObject.transform;
-            expandedContentRect.anchorMin = Vector2.zero;
-            expandedContentRect.anchorMax = Vector2.one;
-            expandedContentRect.offsetMin = Vector2.zero;
-            expandedContentRect.offsetMax = new Vector2(0f, -34f);
-
-            scrollViewTransform.SetParent(expandedContentRect, false);
-            inputFieldTransform.SetParent(expandedContentRect, false);
-            sendButtonTransform.SetParent(expandedContentRect, false);
-
+            // Header bar - title on the left, optional minimize toggle on
+            // the right. Always present so no chat panel is ever an
+            // unlabelled grey box.
             GameObject headerBarObject = new GameObject("HeaderBar", typeof(RectTransform));
-            headerBarObject.transform.SetParent(chatWindowObject.transform, false);
+            headerBarObject.transform.SetParent(panelRect, false);
             RectTransform headerBarRect = (RectTransform)headerBarObject.transform;
             headerBarRect.anchorMin = new Vector2(0f, 1f);
             headerBarRect.anchorMax = new Vector2(1f, 1f);
             headerBarRect.pivot = new Vector2(0.5f, 1f);
-            headerBarRect.sizeDelta = new Vector2(0f, 30f);
+            headerBarRect.sizeDelta = new Vector2(0f, ChatHeaderHeight);
             headerBarRect.anchoredPosition = Vector2.zero;
-            headerBarObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.6f);
+            headerBarObject.AddComponent<Image>().color = new Color(0.14f, 0.13f, 0.18f, 0.95f);
 
-            TextMeshProUGUI headerLabel = CreateText(headerBarRect, "ChatHeaderLabel", "Chat", 14f, TextAlignmentOptions.MidlineLeft);
+            TextMeshProUGUI headerLabel = CreateText(headerBarRect, "HeaderLabel", headerTitle, 15f, TextAlignmentOptions.MidlineLeft);
             RectTransform headerLabelRect = (RectTransform)headerLabel.transform;
             headerLabelRect.anchorMin = Vector2.zero;
             headerLabelRect.anchorMax = Vector2.one;
             headerLabelRect.offsetMin = new Vector2(10f, 0f);
             headerLabelRect.offsetMax = new Vector2(-40f, 0f);
+            chatWindow.HeaderLabel = headerLabel;
 
-            Button minimizeButton = CreateButton(headerBarRect, "MinimizeToggleButton", "-", out TextMeshProUGUI minimizeLabel);
-            RectTransform minimizeRect = (RectTransform)minimizeButton.transform;
-            minimizeRect.anchorMin = new Vector2(1f, 0f);
-            minimizeRect.anchorMax = new Vector2(1f, 1f);
-            minimizeRect.pivot = new Vector2(1f, 0.5f);
-            minimizeRect.sizeDelta = new Vector2(32f, 0f);
-            minimizeRect.anchoredPosition = Vector2.zero;
+            GameObject expandedContentObject = new GameObject("ExpandedContent", typeof(RectTransform));
+            expandedContentObject.transform.SetParent(panelRect, false);
+            RectTransform expandedContentRect = (RectTransform)expandedContentObject.transform;
+            expandedContentRect.anchorMin = Vector2.zero;
+            expandedContentRect.anchorMax = Vector2.one;
+            expandedContentRect.offsetMin = new Vector2(6f, 6f);
+            expandedContentRect.offsetMax = new Vector2(-6f, -(ChatHeaderHeight + 4f));
 
-            UiChatMinimizePanel minimizePanel = chatWindowObject.AddComponent<UiChatMinimizePanel>();
-            minimizePanel.ExpandedContent = expandedContentObject;
-            minimizePanel.MinimizeToggleButton = minimizeButton;
-            minimizePanel.ToggleButtonLabel = minimizeLabel;
+            // Message log. Fixed-pixel compose strip at the bottom rather
+            // than the shared BuildScrollView's own 18% bottom anchor - a
+            // percentage there gives a comically tall input box in the tall
+            // Friends panel and an unusably short one in the map overlay.
+            GameObject logAreaObject = new GameObject("LogArea", typeof(RectTransform));
+            logAreaObject.transform.SetParent(expandedContentRect, false);
+            RectTransform logAreaRect = (RectTransform)logAreaObject.transform;
+            logAreaRect.anchorMin = Vector2.zero;
+            logAreaRect.anchorMax = Vector2.one;
+            logAreaRect.offsetMin = new Vector2(0f, ChatComposeHeight + 6f);
+            logAreaRect.offsetMax = Vector2.zero;
 
-            return chatWindowObject;
+            (ScrollRect scrollRect, RectTransform content) = ChatSceneBuilder.BuildScrollView(logAreaRect);
+            StretchFull((RectTransform)scrollRect.transform);
+
+            // UiChatWindow drives row positions and the content height
+            // itself (fixed-slot virtualization) - a VerticalLayoutGroup /
+            // ContentSizeFitter would fight it for control of both, so the
+            // shared scroll view's layout components come straight back off.
+            Object.DestroyImmediate(content.GetComponent<ContentSizeFitter>());
+            Object.DestroyImmediate(content.GetComponent<VerticalLayoutGroup>());
+
+            TextMeshProUGUI emptyStateText = CreateText(logAreaRect, "EmptyStateText", string.Empty, 13f, TextAlignmentOptions.Center);
+            emptyStateText.color = new Color(1f, 1f, 1f, 0.45f);
+            emptyStateText.fontStyle = FontStyles.Italic;
+            StretchFull((RectTransform)emptyStateText.transform);
+            chatWindow.EmptyStateText = emptyStateText;
+
+            // Compose strip.
+            TMP_InputField inputField = CreateInputField(expandedContentRect, "MessageInputField", "Type a message...");
+            inputField.lineType = TMP_InputField.LineType.SingleLine;
+            RectTransform inputRect = (RectTransform)inputField.transform;
+            inputRect.anchorMin = new Vector2(0f, 0f);
+            inputRect.anchorMax = new Vector2(1f, 0f);
+            inputRect.pivot = new Vector2(0f, 0f);
+            inputRect.sizeDelta = new Vector2(-(ChatSendButtonWidth + 6f), ChatComposeHeight);
+            inputRect.anchoredPosition = Vector2.zero;
+
+            Button sendButton = CreateButton(expandedContentRect, "SendButton", "Send", out TextMeshProUGUI _);
+            RectTransform sendRect = (RectTransform)sendButton.transform;
+            sendRect.anchorMin = new Vector2(1f, 0f);
+            sendRect.anchorMax = new Vector2(1f, 0f);
+            sendRect.pivot = new Vector2(1f, 0f);
+            sendRect.sizeDelta = new Vector2(ChatSendButtonWidth, ChatComposeHeight);
+            sendRect.anchoredPosition = Vector2.zero;
+
+            chatWindow.ChatScrollRect = scrollRect;
+            chatWindow.RowContainer = content;
+            chatWindow.MessageInputField = inputField;
+            chatWindow.SendButton = sendButton;
+
+            if (withMinimizeToggle)
+            {
+                Button minimizeButton = CreateButton(headerBarRect, "MinimizeToggleButton", "-", out TextMeshProUGUI minimizeLabel);
+                RectTransform minimizeRect = (RectTransform)minimizeButton.transform;
+                minimizeRect.anchorMin = new Vector2(1f, 0f);
+                minimizeRect.anchorMax = new Vector2(1f, 1f);
+                minimizeRect.pivot = new Vector2(1f, 0.5f);
+                minimizeRect.sizeDelta = new Vector2(34f, -6f);
+                minimizeRect.anchoredPosition = new Vector2(-3f, 0f);
+
+                UiChatMinimizePanel minimizePanel = panelObject.AddComponent<UiChatMinimizePanel>();
+                minimizePanel.ExpandedContent = expandedContentObject;
+                minimizePanel.MinimizeToggleButton = minimizeButton;
+                minimizePanel.ToggleButtonLabel = minimizeLabel;
+            }
+
+            return chatWindow;
+        }
+
+        // World chat, docked into the bottom of the map hub itself.
+        // Parenting it to the hub (rather than the Canvas) is what confines
+        // it to the map screen per the "world chat belongs on the map, guild
+        // and private chat live in their own screens" split, and removes the
+        // whole class of overlap bugs that came from a Canvas-level overlay
+        // competing for z-order with every full-screen window.
+        private static UiChatWindow BuildWorldChatOverlay(Transform mapHubTransform, WebSocketClient networkClient)
+        {
+            GameObject dockObject = new GameObject("WorldChatDock", typeof(RectTransform));
+            dockObject.transform.SetParent(mapHubTransform, false);
+            RectTransform dockRect = (RectTransform)dockObject.transform;
+            dockRect.anchorMin = new Vector2(0f, 0f);
+            dockRect.anchorMax = new Vector2(1f, 0f);
+            dockRect.pivot = new Vector2(0.5f, 0f);
+            dockRect.sizeDelta = new Vector2(-24f, 300f);
+            dockRect.anchoredPosition = new Vector2(0f, 64f);
+
+            return BuildChatPanel(dockRect, "WorldChatPanel", "World Chat", ChatChannelType.Global, networkClient, withMinimizeToggle: true);
         }
 
         // ------------------------------------------------------------

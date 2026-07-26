@@ -104,6 +104,14 @@ namespace FolkIdle.Client.Network
         private long _lastLogicEpochCounter;
         private uint _lastChallengeSeed;
 
+        // Modul: UI rework. This client's own PlayerId, as reported by the
+        // authoritative StateUpdatePacket stream - previously private and
+        // only reachable through ComputeGdprConfirmationHash. Chat needs it
+        // to tell "my own message" apart from everyone else's, and the
+        // Account screen needs it to display who is actually logged in.
+        // 0 until the first state packet lands.
+        public long LocalPlayerId => _lastPlayerId;
+
         public void Start()
         {
             NetworkPacketLayoutGuard.Validate();
