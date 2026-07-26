@@ -2,6 +2,46 @@ using System.Runtime.InteropServices;
 
 namespace FolkIdle.Client.Network
 {
+
+    // Modul: halt reasons. Why a character is not currently earning, on the
+    // wire so the client can name the cause. This exists because every one of
+    // these states used to look identical to "idle by choice": the activity id
+    // silently became 0 (or, for a full backpack, stayed non-zero while every
+    // drop was discarded) and the player was left staring at a character that
+    // had simply stopped, with nothing on screen saying why.
+    public static class ActivityHaltReason
+    {
+        // Running normally, or idle because the player has not deployed.
+        public const byte None = 0;
+
+        // Auto-eat fired with all three larder slots empty. The activity is
+        // stopped; restocking the larder and redeploying resumes it.
+        public const byte OutOfFood = 1;
+
+        // The character was killed and respawned at full HP. Combat activities
+        // stop on death, gathering does not.
+        public const byte Died = 2;
+
+        // The activity is still running but the backpack is full, so every
+        // material and equipment drop is being discarded. Not a stop - a
+        // silent, ongoing loss, which is worse, and the reason this warning
+        // is reported even while ActiveActivityId is non-zero.
+        public const byte InventoryFull = 3;
+
+        // No character is eligible to run an activity - typically the only
+        // character is lent out as an Academy mentor.
+        public const byte NoEligibleCharacter = 4;
+    }
+
+    // Modul: larder. Per-slot cap on stocked food. Chosen so a slot count
+    // always fits the packet's ushort with room to spare, and so a single
+    // command cannot move a player's whole cooking stockpile into the larder
+    // in one click.
+    public static class LarderLimits
+    {
+        public const int SlotCapacity = 999;
+        public const int SlotCount = 3;
+    }
     // Modul: mirrors server/FolkIdle.Server/Network/StateUpdatePacket.cs
     // exactly - see that file's comment. Generic client error-feedback
     // channel: the CommandResult0-3 ring buffer carries the reason(s) the
@@ -51,6 +91,58 @@ namespace FolkIdle.Client.Network
         public int CurrentProgressTicks;
         public int RequiredProgressTicks;
         public int InventorySpaceRemaining;
+
+        // Modul: inventory census. The backpack's total slot count, so
+        // InventorySpaceRemaining can be recomputed as capacity minus a real
+        // occupied-slot census rather than only ever decremented. Previously
+        // capacity existed nowhere: hydration wrote "20 + human vault bonus"
+        // straight into InventorySpaceRemaining and the number was thereafter
+        // indistinguishable from remaining space, so nothing could ever restore
+        // it. Also lets the client show "13/20" instead of a bare countdown.
+        public int InventoryCapacity;
+
+        // Modul: larder + halt reasons. Five fields were removed here to pay
+        // for the larder's 13 bytes, all of them dead weight on a per-player
+        // 10Hz packet:
+        //   IsQuarantineActive              - a byte duplicating
+        //     Quarantine_Active, which the client already reads (63 uses).
+        //     Its only writer OR-ed the same two flags into both.
+        //   UiScreenShakeIntensity          - never written and never read,
+        //     anywhere, on either side.
+        //   TotalAnalyticsEventsLoggedCount - a GLOBAL server counter, not
+        //     player state.
+        //   VisualActiveConnectionThroughput- a GLOBAL server metric.
+        //   CurrentNodeMemoryLoadMetrics    - GC.GetTotalMemory(false)/1024,
+        //     called once per player per tick to ship the server's own heap
+        //     size to every client. The client mirrored all three into
+        //     VisualSyncProxy properties that no UI element reads.
+        // Server-diagnostic gauges belong on the /api/v1 metrics surface, not
+        // on the hot path.
+
+        // Modul: larder. The auto-eat larder, mirrored from TickStatePayload's
+        // Food{1,2,3}_ItemId/_Count. Before this the payload's food slots were
+        // read by four separate systems (auto-eat, both world-boss depletion
+        // checks, the Chrono warp catch-up) and assigned by NOTHING - there was
+        // no command, no UI and no persistence to put food in them - so every
+        // player's larder was permanently empty and any combat activity halted
+        // the first time HP crossed the auto-eat threshold. See
+        // CommandType.StockFoodSlot.
+        //
+        // ushort rather than int on both axes: item ids run to ~140 and a slot
+        // is capped at LarderSlotCapacity (999), so 2 bytes each is honest
+        // sizing rather than 4 bytes of leading zeroes at 10Hz.
+        public ushort Food1_ItemId;
+        public ushort Food1_Count;
+        public ushort Food2_ItemId;
+        public ushort Food2_Count;
+        public ushort Food3_ItemId;
+        public ushort Food3_Count;
+
+        // Modul: halt reasons. Why the activity is not running, so the client
+        // can say so instead of showing a character that silently stopped.
+        // ActiveActivityId dropping to 0 was previously indistinguishable from
+        // "the player never deployed". See ActivityHaltReason.* constants.
+        public byte ActivityHaltReason;
 
         public int CurrentMonsterId;
         public int CurrentMonsterHp;
@@ -184,14 +276,12 @@ namespace FolkIdle.Client.Network
         public byte AcademyLevel;
         public byte CurrentPopulationCount;
         public uint ActiveChallengeSeed;
-        public byte IsQuarantineActive;
         public byte NotificationQueueStateLength;
         public byte ActiveLanguageState;
         public uint ActiveBankedChronoSeconds;
         public byte CurrentSimulationSpeedMultiplier;
         public uint PremiumCurrencyBalance;
         public byte ActiveAudioTrackId;
-        public byte UiScreenShakeIntensity;
         public uint TotalItemsCraftedCount;
         public byte CraftingEngineStatus;
         public uint ActiveMasteryBitmask;
@@ -205,9 +295,6 @@ namespace FolkIdle.Client.Network
         public uint GlobalNodeRemainingHp;
         public System.Guid ActiveMatchId;
         public uint NetworkDiagnosticsToken;
-        public ulong TotalAnalyticsEventsLoggedCount;
-        public uint VisualActiveConnectionThroughput;
-        public uint CurrentNodeMemoryLoadMetrics;
         public long Gold;
         public byte WorldBossAttemptCount;
         public byte WorldBossEventState;

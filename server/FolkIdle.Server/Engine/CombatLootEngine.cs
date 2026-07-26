@@ -107,6 +107,23 @@ namespace FolkIdle.Server.Engine
     {
         public long PlayerId;
         public bool ConsumedInventorySlot;
+
+        // Modul: inventory census. ConsumedInventorySlot above is set on every
+        // kill regardless of what actually dropped, and the tick thread's drain
+        // decrements InventorySpaceRemaining by one for each - a counter that
+        // only ever falls. After 20 kills every player's backpack read as full
+        // and all loot was silently discarded for the rest of the session,
+        // whether or not a single item had dropped. Nothing restored the
+        // counter; only a relogin did, because hydration reset it to capacity
+        // without looking at the backpack either.
+        //
+        // These two fields replace that guess with the truth. OccupiedSlots is
+        // counted inside the same Serializable transaction that granted the
+        // loot, so it accounts for stacking (a second Iron Ore joins an existing
+        // row and occupies no new slot), for items sold or consumed since the
+        // last kill, and for equipment moved onto the character.
+        public bool HasSlotCensus;
+        public int OccupiedSlots;
     }
 
     // Modul: Guild War scoreboard sync. GuildWarMatches has always held the
@@ -162,6 +179,49 @@ namespace FolkIdle.Server.Engine
     public class CombatLootEngine
     {
         public static readonly ConcurrentQueue<CombatLootDropRequest> DropRequestQueue = new();
+
+        // Modul: inventory census. How many backpack slots a player actually
+        // occupies right now.
+        //
+        // The backpack is stack-based: CommodityRecords holds one row per
+        // material type with an unbounded quantity, so a thousand Iron Ore
+        // occupy one slot, not a thousand. Equipment does not stack - each
+        // EquipmentInstance is its own slot - except for the at most three
+        // pieces currently worn, which live on the character rather than in the
+        // pack.
+        //
+        // Two COUNTs per kill. That is the price of an inventory number that is
+        // correct; the previous free version was a one-way counter that made the
+        // game stop producing loot after 20 kills.
+        public static async Task<int> CountOccupiedBackpackSlotsAsync(FolkIdleDbContext db, long playerId)
+        {
+            int materialStacks = await db.CommodityRecords
+                .AsNoTracking()
+                .CountAsync(c => c.PlayerId == playerId && c.Quantity > 0);
+
+            int ownedEquipment = await db.EquipmentInstances
+                .AsNoTracking()
+                .CountAsync(e => e.PlayerId == playerId);
+
+            var equipped = await db.PlayerRecords
+                .AsNoTracking()
+                .Where(p => p.Id == playerId)
+                .Select(p => new { p.EquippedWeaponId, p.EquippedArmorId, p.EquippedLeggingsId })
+                .SingleOrDefaultAsync();
+
+            int wornCount = 0;
+            if (equipped != null)
+            {
+                if (equipped.EquippedWeaponId.HasValue) wornCount++;
+                if (equipped.EquippedArmorId.HasValue) wornCount++;
+                if (equipped.EquippedLeggingsId.HasValue) wornCount++;
+            }
+
+            int backpackEquipment = ownedEquipment - wornCount;
+            if (backpackEquipment < 0) backpackEquipment = 0;
+
+            return materialStacks + backpackEquipment;
+        }
 
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry _playerRegistry;
@@ -279,10 +339,18 @@ namespace FolkIdle.Server.Engine
                 await dbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
 
+                // Modul: inventory census. Counted after the commit, on the
+                // same context, so it reflects everything this kill granted.
+                // Two cheap COUNT queries once per kill - the alternative was a
+                // counter that made the game unplayable after 20 kills.
+                int occupiedSlots = await CountOccupiedBackpackSlotsAsync(dbContext, playerId);
+
                 _playerRegistry.CombatLootDropQueue.Enqueue(new CombatLootDropNotification
                 {
                     PlayerId = playerId,
-                    ConsumedInventorySlot = true
+                    ConsumedInventorySlot = true,
+                    HasSlotCensus = true,
+                    OccupiedSlots = occupiedSlots
                 });
 
                 for (int i = 0; i < _pendingDrops.Count; i++)

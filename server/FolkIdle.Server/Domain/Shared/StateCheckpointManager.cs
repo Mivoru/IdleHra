@@ -16,6 +16,15 @@ using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Domain.Shared
 {
+    // Modul: larder. Where auto-eat kicks in for a player who has never
+    // touched the slider. 30 percent leaves enough headroom for one more
+    // monster hit to land before the heal resolves at 10Hz, without burning
+    // food on scratches.
+    public static class AutoEatDefaults
+    {
+        public const int ThresholdPct = 30;
+    }
+
     public class StateCheckpointManager
     {
         private readonly IServiceProvider _serviceProvider;
@@ -187,6 +196,20 @@ namespace FolkIdle.Server.Domain.Shared
                         player.OffensivePotionDurationMs = state.OffensivePotionDurationMs;
                         player.ActiveDefensivePotionId = state.ActiveDefensivePotionId;
                         player.DefensivePotionDurationMs = state.DefensivePotionDurationMs;
+
+                        // Modul: larder. The auto-eat step consumes from these
+                        // slots every time it fires, so the payload - not the
+                        // PlayerRecords row LarderEngine wrote - is the current
+                        // truth about what is left. Without this, food eaten
+                        // during a session was restored in full at the next
+                        // login: infinite sustain from one stocking.
+                        player.LarderSlot1ItemId = state.Food1_Count > 0 ? state.Food1_ItemId : 0;
+                        player.LarderSlot1Count = state.Food1_Count;
+                        player.LarderSlot2ItemId = state.Food2_Count > 0 ? state.Food2_ItemId : 0;
+                        player.LarderSlot2Count = state.Food2_Count;
+                        player.LarderSlot3ItemId = state.Food3_Count > 0 ? state.Food3_ItemId : 0;
+                        player.LarderSlot3Count = state.Food3_Count;
+                        player.AutoEatThresholdPct = state.AutoEatThreshold;
                         player.LogicEpochCounter = state.LogicEpochCounter + 1;
                         player.BankedChronoSeconds = state.BankedChronoSeconds;
                         player.IsChronoAccelerating = state.IsChronoAccelerating;
@@ -209,6 +232,20 @@ namespace FolkIdle.Server.Domain.Shared
                         player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
                         player.PremiumDiamonds = state.PremiumCurrency;
                         player.AvailableSkillPoints = state.AvailableSkillPoints;
+
+                        // Modul: larder. The auto-eat step consumes from these
+                        // slots every time it fires, so the payload - not the
+                        // PlayerRecords row LarderEngine wrote - is the current
+                        // truth about what is left. Without this, food eaten
+                        // during a session was restored in full at the next
+                        // login: infinite sustain from one stocking.
+                        player.LarderSlot1ItemId = state.Food1_Count > 0 ? state.Food1_ItemId : 0;
+                        player.LarderSlot1Count = state.Food1_Count;
+                        player.LarderSlot2ItemId = state.Food2_Count > 0 ? state.Food2_ItemId : 0;
+                        player.LarderSlot2Count = state.Food2_Count;
+                        player.LarderSlot3ItemId = state.Food3_Count > 0 ? state.Food3_ItemId : 0;
+                        player.LarderSlot3Count = state.Food3_Count;
+                        player.AutoEatThresholdPct = state.AutoEatThreshold;
                         await UpsertAccountChronoRegistryAsync(dbContext, state);
                         await UpsertChroniclePassAsync(dbContext, state);
                         await UpsertLifetimeAchievementsAsync(dbContext, player, state);
@@ -408,6 +445,16 @@ namespace FolkIdle.Server.Domain.Shared
             int vodnikMastery = masteries.FirstOrDefault(m => m.RaceId == RaceIds.Vodnik)?.MasteryLevel ?? 0;
             int moosleuteMastery = masteries.FirstOrDefault(m => m.RaceId == RaceIds.Moosleute)?.MasteryLevel ?? 0;
 
+            // Modul: inventory census. Hydration used to write "20 + bonus"
+            // directly into InventorySpaceRemaining without ever looking at the
+            // backpack, which meant a relogin was the only way to get inventory
+            // space back - and gave a player with a genuinely full pack twenty
+            // phantom slots. Counted here from the real rows, once per login, by
+            // the same helper the per-kill census uses so the two can never
+            // disagree about what a slot is.
+            int backpackCapacity = SimulationEngine.DefaultBackpackCapacity + RaceMasteryResolver.GetHumanVaultBonusSlots(humanMastery);
+            int occupiedBackpackSlots = await CombatLootEngine.CountOccupiedBackpackSlotsAsync(dbContext, playerId);
+
             // Modul 16/21: EquippedWeaponId/ArmorId are persisted, but the
             // derived stat totals StatsCalculator reads every tick are not - they
             // must be recomputed once at login rather than starting zeroed until
@@ -573,7 +620,30 @@ namespace FolkIdle.Server.Domain.Shared
                 ActiveActivityId = 0,
                 CurrentProgressTicks = 0,
                 RequiredProgressTicks = 50,
-                InventorySpaceRemaining = 20 + RaceMasteryResolver.GetHumanVaultBonusSlots(humanMastery),
+                // Modul: inventory census. Was "20 + bonus" unconditionally,
+                // regardless of what the backpack actually held - so a player
+                // who logged out with a full pack logged back in with twenty
+                // free slots, and the number then only ever fell. Both fields
+                // are now derived from a real count of occupied slots taken just
+                // above; capacity is carried separately so the difference can be
+                // recomputed rather than only decremented.
+                InventoryCapacity = backpackCapacity,
+                InventorySpaceRemaining = Math.Max(0, backpackCapacity - occupiedBackpackSlots),
+
+                // Modul: larder. Restores the three auto-eat slots and the
+                // player's chosen threshold. All four were previously
+                // session-only fields with no storage behind them, so the larder
+                // was empty at every login and the threshold reverted to the
+                // default. A persisted 0 threshold means "never configured" -
+                // taking it literally would mean auto-eat only fires at exactly
+                // 0 HP, i.e. never.
+                Food1_ItemId = player.LarderSlot1ItemId,
+                Food1_Count = player.LarderSlot1Count,
+                Food2_ItemId = player.LarderSlot2ItemId,
+                Food2_Count = player.LarderSlot2Count,
+                Food3_ItemId = player.LarderSlot3ItemId,
+                Food3_Count = player.LarderSlot3Count,
+                AutoEatThreshold = player.AutoEatThresholdPct > 0 ? player.AutoEatThresholdPct : AutoEatDefaults.ThresholdPct,
                 PlayerHp = 100000,
                 CurrentGold = loadedGold,
                 PremiumCurrency = player.PremiumDiamonds,
@@ -669,6 +739,16 @@ namespace FolkIdle.Server.Domain.Shared
             payload.InitializeObfuscation(GenerateSessionXorKey(playerId, player.LogicEpochCounter));
 
             QuestEngine.ApplyToPayload(ref payload, dailyQuests, QuestEngine.GetUtcDateKey(questLoadEpochSeconds));
+
+            // Modul: halt reasons. The query above deliberately excludes
+            // escrowed characters and any character lent out as an Academy
+            // mentor, so a player can legitimately own characters and still
+            // have none eligible to deploy. That produced a hub that offered
+            // no explanation for why nothing could be started.
+            if (characters.Count == 0)
+            {
+                payload.ActivityHaltReason = Network.ActivityHaltReason.NoEligibleCharacter;
+            }
 
             if (characters.Count > 0)
             {

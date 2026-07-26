@@ -169,6 +169,8 @@ namespace FolkIdle.Client.Editor
             // Modul: Inventory and Crafting Tree. Two brand new screens
             // closing the two largest remaining content gaps - see
             // UiInventoryPanel and UiCraftingTreePanel for what was missing.
+            GameObject larderPanelObject = BuildLarderWindow(canvas.transform, networkClient, syncProxy);
+
             GameObject inventoryPanelObject = BuildInventoryWindow(canvas.transform, assetRegistry, syncProxy, networkClient, inventoryCache);
             GameObject craftingPanelObject = BuildCraftingTreeWindow(canvas.transform, networkClient, assetRegistry);
 
@@ -207,7 +209,7 @@ namespace FolkIdle.Client.Editor
             (GameObject hamburgerBlocker, UiHamburgerMenuPanel hamburgerComponent, Dictionary<string, Button> menu) = BuildHamburgerPanel(canvas.transform, new[]
             {
                 ("Places", new[] { "World Map", "Combat", "Village", "Guild", "Market & Bank", "World Boss" }),
-                ("Character", new[] { "Inventory", "Forge", "Crafting", "Skills", "Bestiary", "Breeding Lab", "Race Mastery", "Mentorship" }),
+                ("Character", new[] { "Inventory", "Larder", "Forge", "Crafting", "Skills", "Bestiary", "Breeding Lab", "Race Mastery", "Mentorship" }),
                 ("Progress", new[] { "Achievements", "Season Pass", "Login Bonus", "Statistics", "Leaderboard" }),
                 ("Social", new[] { "Friends", "Mailbox" }),
                 ("Economy", new[] { "Store", "Time Bank", "Legacy Shop" }),
@@ -219,6 +221,8 @@ namespace FolkIdle.Client.Editor
             // bottom (Season Pass banner) bars - stay visible across every
             // screen per the map-hub spec's UI persistence requirement.
             (Button hamburgerToggleButton, Button homeButton, Button battlePassBannerButton) = BuildPersistentBars(canvas.transform, syncProxy, assetRegistry);
+
+            BuildActivityHaltBanner(canvas.transform, syncProxy);
 
             // Modul: Map Hub, Part 7. One screen switcher for every
             // top-level screen - replaces the old flat scrollable nav-tab
@@ -234,7 +238,7 @@ namespace FolkIdle.Client.Editor
                 mailboxWindowObject, storeWindowObject, seasonPassWindowObject, settingsPanelObject,
                 friendsPanelObject, statisticsPanelObject, loginBonusPanelObject, raceMasteryWindowObject,
                 chronoBankWindowObject, legacyShopWindowObject, mentorshipContractWindowObject,
-                accountPanelObject, inventoryPanelObject, craftingPanelObject
+                accountPanelObject, inventoryPanelObject, craftingPanelObject, larderPanelObject
             };
 
             // Index-aligned with screens[] above. UiTabGroup supports at most
@@ -249,7 +253,7 @@ namespace FolkIdle.Client.Editor
                 menu["Mailbox"], menu["Store"], menu["Season Pass"], menu["Settings"],
                 menu["Friends"], menu["Statistics"], menu["Login Bonus"], menu["Race Mastery"],
                 menu["Time Bank"], menu["Legacy Shop"], menu["Mentorship"],
-                menu["Account"], menu["Inventory"], menu["Crafting"]
+                menu["Account"], menu["Inventory"], menu["Crafting"], menu["Larder"]
             };
 
             const int HudGroupScreenIndex = 1;
@@ -3874,6 +3878,225 @@ namespace FolkIdle.Client.Editor
             contentAreaRect.offsetMax = new Vector2(-20f, -60f);
 
             return windowObject;
+        }
+
+
+        // Modul: larder. The auto-eat larder screen - three food slots plus the
+        // threshold that decides when the character eats from them.
+        //
+        // Nothing could put food in those slots before this: the server read
+        // them from four places and wrote them from none, so every larder was
+        // empty and every combat activity stopped the first time the character
+        // took damage. See UiLarderPanel's own header for the full account.
+        //
+        // Built as a vertical layout rather than the absolute anchoring the
+        // Combat screen uses, because the three slot rows are identical and a
+        // layout group keeps them so.
+        private static GameObject BuildLarderWindow(Transform canvasTransform, WebSocketClient networkClient, VisualSyncProxy syncProxy)
+        {
+            GameObject windowObject = BuildSimpleListWindowShell("LarderWindow", canvasTransform, "Larder", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+
+            VerticalLayoutGroup layout = contentAreaRect.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = 6f;
+            layout.childControlWidth = true;
+            layout.childForceExpandWidth = true;
+            // childControlHeight must stay true: with it false, every
+            // LayoutElement.preferredHeight below is ignored and the whole
+            // screen collapses to zero-height rows - the exact failure that
+            // left the hamburger menu looking empty.
+            layout.childControlHeight = true;
+            layout.childForceExpandHeight = false;
+
+            CreateHelpText(contentAreaRect, "LarderHelpText",
+                "Your character eats from these three slots automatically during combat. When all three run dry the character stops fighting. Cook food at the Crafting bench, then load it here.", 62f);
+
+            UiLarderPanel panel = windowObject.AddComponent<UiLarderPanel>();
+            panel.NetworkClient = networkClient;
+            panel.SyncProxy = syncProxy;
+
+            for (int slotIndex = 0; slotIndex < 3; slotIndex++)
+            {
+                CreateGroupSectionLabel(contentAreaRect, "SLOT " + (slotIndex + 1));
+
+                TextMeshProUGUI contentsText = CreateText(contentAreaRect, "Slot" + slotIndex + "ContentsText", "Empty", 15f, TextAlignmentOptions.MidlineLeft);
+                SetFixedLayoutHeight(contentsText.gameObject, 24f);
+                panel.SlotContentsTexts[slotIndex] = contentsText;
+
+                GameObject rowObject = new GameObject("Slot" + slotIndex + "Row", typeof(RectTransform));
+                rowObject.transform.SetParent(contentAreaRect, false);
+                SetFixedLayoutHeight(rowObject, 44f);
+
+                HorizontalLayoutGroup rowLayout = rowObject.AddComponent<HorizontalLayoutGroup>();
+                rowLayout.spacing = 6f;
+                rowLayout.childControlWidth = true;
+                rowLayout.childForceExpandWidth = true;
+                rowLayout.childControlHeight = true;
+                rowLayout.childForceExpandHeight = true;
+
+                TMP_Dropdown dropdown = CreateTmpDropdown(rowObject.transform, "Slot" + slotIndex + "FoodDropdown");
+                // Same re-tint as the Combat screen's consumable slots: the
+                // stock template is light grey and reads as a glaring white bar
+                // against this near-black panel.
+                if (dropdown.targetGraphic is Image dropdownBackground)
+                {
+                    dropdownBackground.color = new Color(0.18f, 0.18f, 0.24f, 1f);
+                }
+                if (dropdown.captionText != null)
+                {
+                    dropdown.captionText.color = Color.white;
+                }
+                LayoutElement dropdownLayout = dropdown.gameObject.AddComponent<LayoutElement>();
+                dropdownLayout.flexibleWidth = 3f;
+                panel.SlotFoodDropdowns[slotIndex] = dropdown;
+
+                TMP_InputField quantityField = CreateInputField(rowObject.transform, "Slot" + slotIndex + "QuantityField", "Qty");
+                LayoutElement quantityLayout = quantityField.gameObject.GetComponent<LayoutElement>();
+                if (quantityLayout == null) quantityLayout = quantityField.gameObject.AddComponent<LayoutElement>();
+                quantityLayout.flexibleWidth = 1f;
+                quantityLayout.minHeight = 0f;
+                quantityLayout.preferredHeight = 0f;
+                panel.SlotQuantityInputs[slotIndex] = quantityField;
+
+                Button loadButton = CreateButton(rowObject.transform, "Slot" + slotIndex + "LoadButton", "Load", out TextMeshProUGUI _);
+                ((Image)loadButton.targetGraphic).color = new Color(0.28f, 0.52f, 0.34f, 1f);
+                LayoutElement loadLayout = loadButton.gameObject.GetComponent<LayoutElement>();
+                if (loadLayout == null) loadLayout = loadButton.gameObject.AddComponent<LayoutElement>();
+                loadLayout.flexibleWidth = 1f;
+                loadLayout.minHeight = 0f;
+                loadLayout.preferredHeight = 0f;
+                panel.SlotLoadButtons[slotIndex] = loadButton;
+
+                Button unloadButton = CreateButton(rowObject.transform, "Slot" + slotIndex + "UnloadButton", "Empty", out TextMeshProUGUI _);
+                ((Image)unloadButton.targetGraphic).color = new Color(0.42f, 0.28f, 0.28f, 1f);
+                LayoutElement unloadLayout = unloadButton.gameObject.GetComponent<LayoutElement>();
+                if (unloadLayout == null) unloadLayout = unloadButton.gameObject.AddComponent<LayoutElement>();
+                unloadLayout.flexibleWidth = 1f;
+                unloadLayout.minHeight = 0f;
+                unloadLayout.preferredHeight = 0f;
+                panel.SlotUnloadButtons[slotIndex] = unloadButton;
+            }
+
+            CreateGroupSectionLabel(contentAreaRect, "AUTO-EAT THRESHOLD");
+
+            TextMeshProUGUI thresholdValue = CreateText(contentAreaRect, "ThresholdValueText", "Eat when health drops below 30%", 15f, TextAlignmentOptions.MidlineLeft);
+            SetFixedLayoutHeight(thresholdValue.gameObject, 24f);
+            panel.ThresholdValueText = thresholdValue;
+
+            Slider thresholdSlider = CreateHorizontalSlider(contentAreaRect, "ThresholdSlider");
+            SetFixedLayoutHeight(thresholdSlider.gameObject, 32f);
+            panel.ThresholdSlider = thresholdSlider;
+
+            CreateHelpText(contentAreaRect, "ThresholdHelpText",
+                "Higher means eating sooner and more often - safer, but food runs out faster. This setting is saved with your character.", 40f);
+
+            TextMeshProUGUI sustainText = CreateText(contentAreaRect, "SustainEstimateText", string.Empty, 14f, TextAlignmentOptions.MidlineLeft);
+            sustainText.color = new Color(0.75f, 0.9f, 1f, 0.85f);
+            SetFixedLayoutHeight(sustainText.gameObject, 24f);
+            panel.SustainEstimateText = sustainText;
+
+            TextMeshProUGUI statusText = CreateText(contentAreaRect, "StatusText", string.Empty, 13f, TextAlignmentOptions.MidlineLeft);
+            statusText.color = new Color(1f, 0.86f, 0.6f, 1f);
+            SetFixedLayoutHeight(statusText.gameObject, 44f);
+            panel.StatusText = statusText;
+
+            return windowObject;
+        }
+
+        // Modul: larder. A plain uGUI horizontal slider. There was no slider
+        // helper in this file because, until the auto-eat threshold got a
+        // screen, no built panel had one - CommandType.UpdateAutoEatThreshold
+        // was reachable from no UI at all.
+        private static Slider CreateHorizontalSlider(Transform parent, string objectName)
+        {
+            GameObject sliderObject = new GameObject(objectName, typeof(RectTransform));
+            sliderObject.transform.SetParent(parent, false);
+            Slider slider = sliderObject.AddComponent<Slider>();
+
+            GameObject backgroundObject = new GameObject("Background", typeof(RectTransform));
+            backgroundObject.transform.SetParent(sliderObject.transform, false);
+            RectTransform backgroundRect = (RectTransform)backgroundObject.transform;
+            backgroundRect.anchorMin = new Vector2(0f, 0.28f);
+            backgroundRect.anchorMax = new Vector2(1f, 0.72f);
+            backgroundRect.offsetMin = Vector2.zero;
+            backgroundRect.offsetMax = Vector2.zero;
+            backgroundObject.AddComponent<Image>().color = new Color(0.16f, 0.16f, 0.2f, 1f);
+
+            GameObject fillAreaObject = new GameObject("Fill Area", typeof(RectTransform));
+            fillAreaObject.transform.SetParent(sliderObject.transform, false);
+            RectTransform fillAreaRect = (RectTransform)fillAreaObject.transform;
+            fillAreaRect.anchorMin = new Vector2(0f, 0.28f);
+            fillAreaRect.anchorMax = new Vector2(1f, 0.72f);
+            fillAreaRect.offsetMin = new Vector2(8f, 0f);
+            fillAreaRect.offsetMax = new Vector2(-8f, 0f);
+
+            GameObject fillObject = new GameObject("Fill", typeof(RectTransform));
+            fillObject.transform.SetParent(fillAreaObject.transform, false);
+            RectTransform fillRect = (RectTransform)fillObject.transform;
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = new Vector2(0f, 1f);
+            fillRect.offsetMin = Vector2.zero;
+            fillRect.offsetMax = new Vector2(16f, 0f);
+            fillObject.AddComponent<Image>().color = new Color(0.85f, 0.72f, 0.45f, 1f);
+
+            GameObject handleAreaObject = new GameObject("Handle Slide Area", typeof(RectTransform));
+            handleAreaObject.transform.SetParent(sliderObject.transform, false);
+            RectTransform handleAreaRect = (RectTransform)handleAreaObject.transform;
+            handleAreaRect.anchorMin = Vector2.zero;
+            handleAreaRect.anchorMax = Vector2.one;
+            handleAreaRect.offsetMin = new Vector2(8f, 0f);
+            handleAreaRect.offsetMax = new Vector2(-8f, 0f);
+
+            GameObject handleObject = new GameObject("Handle", typeof(RectTransform));
+            handleObject.transform.SetParent(handleAreaObject.transform, false);
+            RectTransform handleRect = (RectTransform)handleObject.transform;
+            handleRect.anchorMin = new Vector2(0f, 0f);
+            handleRect.anchorMax = new Vector2(0f, 1f);
+            handleRect.sizeDelta = new Vector2(26f, 0f);
+            handleObject.AddComponent<Image>().color = new Color(0.95f, 0.88f, 0.7f, 1f);
+
+            slider.fillRect = fillRect;
+            slider.handleRect = handleRect;
+            slider.targetGraphic = handleObject.GetComponent<Image>();
+            slider.direction = Slider.Direction.LeftToRight;
+
+            return slider;
+        }
+
+        // Modul: halt reasons. The banner that names why the character is not
+        // earning. Parented to the persistent bar layer rather than to any one
+        // screen: the player has to find out without going looking, and the
+        // states it reports (empty larder, death, full backpack) are exactly
+        // the ones that used to leave a character standing still with no
+        // explanation anywhere in the game.
+        private static void BuildActivityHaltBanner(Transform canvasTransform, VisualSyncProxy syncProxy)
+        {
+            GameObject bannerObject = new GameObject("ActivityHaltBanner", typeof(RectTransform));
+            bannerObject.transform.SetParent(canvasTransform, false);
+            RectTransform bannerRect = (RectTransform)bannerObject.transform;
+            bannerRect.anchorMin = new Vector2(0.04f, 1f);
+            bannerRect.anchorMax = new Vector2(0.96f, 1f);
+            bannerRect.pivot = new Vector2(0.5f, 1f);
+            bannerRect.sizeDelta = new Vector2(0f, 64f);
+            bannerRect.anchoredPosition = new Vector2(0f, -112f);
+
+            Image background = bannerObject.AddComponent<Image>();
+            background.color = new Color(0.62f, 0.18f, 0.16f, 0.94f);
+
+            TextMeshProUGUI message = CreateText(bannerRect, "MessageText", string.Empty, 14f, TextAlignmentOptions.Midline);
+            RectTransform messageRect = (RectTransform)message.transform;
+            messageRect.anchorMin = Vector2.zero;
+            messageRect.anchorMax = Vector2.one;
+            messageRect.offsetMin = new Vector2(12f, 6f);
+            messageRect.offsetMax = new Vector2(-12f, -6f);
+            message.raycastTarget = false;
+
+            UiActivityHaltBanner banner = bannerObject.AddComponent<UiActivityHaltBanner>();
+            banner.SyncProxy = syncProxy;
+            banner.BannerRoot = bannerObject;
+            banner.MessageText = message;
+            banner.BackgroundImage = background;
+
+            bannerObject.SetActive(false);
         }
 
         private static GameObject BuildAchievementsWindow(Transform canvasTransform, WebSocketClient networkClient)

@@ -158,5 +158,31 @@ namespace FolkIdle.Server.Models
         // once earned, always active, exactly like PremiumDiamonds rewards
         // from the same tier crossing.
         public int LogisticsGatheringSpeedBonusPct { get; set; }
+
+        // Modul: larder. The three auto-eat food slots, persisted. Before this
+        // they existed only as TickStatePayload fields that four systems read
+        // (the auto-eat step, both World Boss depletion checks, and the Chrono
+        // warp catch-up) and that NOTHING ever assigned - no command, no UI, no
+        // storage - so the larder was permanently empty for every player and
+        // any combat activity halted the first time HP crossed the auto-eat
+        // threshold. See LarderEngine and CommandType.StockFoodSlot.
+        //
+        // Stored on the player rather than the character because the auto-eat
+        // stock is account-level sustain, consumed by whichever character
+        // occupies Slot1.
+        public int LarderSlot1ItemId { get; set; }
+        public int LarderSlot1Count { get; set; }
+        public int LarderSlot2ItemId { get; set; }
+        public int LarderSlot2Count { get; set; }
+        public int LarderSlot3ItemId { get; set; }
+        public int LarderSlot3Count { get; set; }
+
+        // Modul: larder. TickStatePayload.AutoEatThreshold was equally
+        // transient - CommandType.UpdateAutoEatThreshold wrote it to the live
+        // payload and nowhere else, so the player's chosen threshold was
+        // silently discarded at every logout. 0 means "never set", which
+        // StateCheckpointManager resolves to the default rather than to a
+        // threshold of 0% (which would disable auto-eat entirely).
+        public int AutoEatThresholdPct { get; set; }
     }
 }

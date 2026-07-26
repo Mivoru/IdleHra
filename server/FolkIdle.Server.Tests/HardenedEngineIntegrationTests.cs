@@ -7174,6 +7174,234 @@ namespace FolkIdle.Server.Tests
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
         }
 
+        // Modul: crafting output. THE bug this test exists for: every one of
+        // the 103 recipes consumed its materials, committed the transaction,
+        // enqueued a completion notification - and granted nothing. The
+        // tick-thread drain of CraftingCompletionQueue only bumped a quest
+        // counter and guild-war points; no code path anywhere wrote the crafted
+        // item to CommodityRecords, EquipmentInstances or the stash. Crafting
+        // was purely a material sink.
+        [Fact]
+        public async Task Test_Crafting_GrantsTheCraftedItemAndNotJustConsumesMaterials()
+        {
+            const long testPlayerId = 970004201L;
+            // copper_bar_crafting_material: 3x mat 93 + 1x mat 129, Smelting.
+            const int resultItemId = 184;
+
+            Assert.True(ContentRegistry.TryGetRecipe(resultItemId, out var recipe));
+            string mat1BaseId = ContentRegistry.GetItemBaseId(recipe.Mat1Id);
+            string mat2BaseId = ContentRegistry.GetItemBaseId(recipe.Mat2Id);
+            string resultBaseId = ContentRegistry.GetItemBaseId(resultItemId);
+            Assert.False(string.IsNullOrEmpty(resultBaseId));
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = mat1BaseId, Quantity = 100L });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = mat2BaseId, Quantity = 100L });
+                await db.SaveChangesAsync();
+            }
+
+            var contextFactory = _fixture.ServiceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+            var craftingEngine = new CraftingEngine(contextFactory, _fixture.PlayerRegistry, _fixture.RetryingOptions);
+            await craftingEngine.ExecuteCraftingAsync(testPlayerId, resultItemId);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                // Materials went, as they always did.
+                long remainingMat1 = await verify.CommodityRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == testPlayerId && c.ItemId == mat1BaseId)
+                    .Select(c => c.Quantity).SingleAsync();
+                Assert.Equal(100L - recipe.Mat1Count, remainingMat1);
+
+                // And now the output arrives too. Before the fix this row did
+                // not exist at all.
+                long produced = await verify.CommodityRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == testPlayerId && c.ItemId == resultBaseId)
+                    .Select(c => c.Quantity).SingleAsync();
+                Assert.True(produced > 0, "Crafting consumed materials and produced nothing.");
+            }
+        }
+
+        // Modul: larder. The write side of the auto-eat system, which did not
+        // exist: four server systems read the food slots and nothing assigned
+        // them, so every larder was permanently empty and combat stopped the
+        // first time the character was hurt.
+        [Fact]
+        public async Task Test_Larder_StockingMovesFoodFromTheBackpackIntoTheSlotAndUnloadingReturnsIt()
+        {
+            const long testPlayerId = 970004202L;
+            const int foodItemId = FoodRegistry.FirstCookedFoodItemId; // cooked_pond_minnow_t1_food
+            const int stockedQuantity = 12;
+
+            string foodBaseId = ContentRegistry.GetItemBaseId(foodItemId);
+            Assert.False(string.IsNullOrEmpty(foodBaseId));
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = foodBaseId, Quantity = 50L });
+                await db.SaveChangesAsync();
+            }
+
+            var larderEngine = new LarderEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await larderEngine.ExecuteStockFoodSlotAsync(testPlayerId, slotIndex: 1, foodItemId: foodItemId, quantity: stockedQuantity);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+                Assert.Equal(foodItemId, player.LarderSlot2ItemId);
+                Assert.Equal(stockedQuantity, player.LarderSlot2Count);
+                // Slot 2 was targeted; the other two must be untouched.
+                Assert.Equal(0, player.LarderSlot1Count);
+                Assert.Equal(0, player.LarderSlot3Count);
+
+                long backpack = await verify.CommodityRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == testPlayerId && c.ItemId == foodBaseId)
+                    .Select(c => c.Quantity).SingleAsync();
+                Assert.Equal(50L - stockedQuantity, backpack);
+            }
+
+            // The tick thread learns about it through the queue, never by
+            // touching the payload from the dispatch thread.
+            Assert.True(_fixture.PlayerRegistry.LarderSlotUpdateQueue.TryDequeue(out var notification));
+            Assert.Equal(testPlayerId, notification.PlayerId);
+            Assert.Equal(1, notification.SlotIndex);
+            Assert.Equal(foodItemId, notification.ItemId);
+            Assert.Equal(stockedQuantity, notification.Count);
+
+            // Quantity 0 unloads. The food must come back rather than be
+            // destroyed - the player paid materials and cooking time for it.
+            await larderEngine.ExecuteStockFoodSlotAsync(testPlayerId, slotIndex: 1, foodItemId: 0, quantity: 0);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+                Assert.Equal(0, player.LarderSlot2ItemId);
+                Assert.Equal(0, player.LarderSlot2Count);
+
+                long backpack = await verify.CommodityRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == testPlayerId && c.ItemId == foodBaseId)
+                    .Select(c => c.Quantity).SingleAsync();
+                Assert.Equal(50L, backpack);
+            }
+        }
+
+        // Modul: larder. Stocking food the player does not hold must refuse
+        // outright rather than fabricate a stocked slot.
+        [Fact]
+        public async Task Test_Larder_RefusesToStockFoodTheBackpackDoesNotContain()
+        {
+            const long testPlayerId = 970004203L;
+            const int foodItemId = FoodRegistry.FirstCookedFoodItemId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            var larderEngine = new LarderEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await larderEngine.ExecuteStockFoodSlotAsync(testPlayerId, slotIndex: 0, foodItemId: foodItemId, quantity: 5);
+
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+            Assert.Equal(0, player.LarderSlot1ItemId);
+            Assert.Equal(0, player.LarderSlot1Count);
+        }
+
+        // Modul: larder. Two bugs in one place. AlchemyCompendium classified
+        // food by the BaseId marker "_food_consumable", which none of the ten
+        // real cooked foods carry - and IsValidConsumable failure leads to
+        // TerminateSessionForSecurity, so eating real food would have
+        // force-disconnected the player. Meanwhile the auto-eat step scored
+        // every slot at a hardcoded 50000 milli-HP, so its "pick the
+        // highest-healing food" comparison was a tie every time and a tier-10
+        // roast healed exactly as much as a tier-1 minnow.
+        [Fact]
+        public void Test_FoodRegistry_RecognisesEveryCookedFoodAndScalesHealingByTier()
+        {
+            for (int itemId = FoodRegistry.FirstCookedFoodItemId; itemId <= FoodRegistry.LastCookedFoodItemId; itemId++)
+            {
+                Assert.True(FoodRegistry.IsFood(itemId), $"Item {itemId} is a cooking-recipe output but was not recognised as food.");
+                Assert.True(AlchemyCompendium.IsValidConsumable((uint)itemId), $"Item {itemId} is real food but would have failed consumable validation.");
+                Assert.True(FoodRegistry.GetHealMilliHp(itemId) > 0);
+            }
+
+            // GDD Module "Cooking (Sustain & Auto-Eat Economy)" 3.2 heal
+            // payouts, in the engine's milli-HP units.
+            Assert.Equal(40 * 1000, FoodRegistry.GetHealMilliHp(FoodRegistry.FirstCookedFoodItemId));
+            Assert.Equal(82000 * 1000, FoodRegistry.GetHealMilliHp(FoodRegistry.LastCookedFoodItemId));
+
+            // Strictly increasing, which is what makes the auto-eat selection
+            // mean anything at all.
+            for (int itemId = FoodRegistry.FirstCookedFoodItemId; itemId < FoodRegistry.LastCookedFoodItemId; itemId++)
+            {
+                Assert.True(FoodRegistry.GetHealMilliHp(itemId + 1) > FoodRegistry.GetHealMilliHp(itemId));
+            }
+
+            // A weapon is not food, and must score zero so an occupied-but-bogus
+            // slot can never win the selection.
+            Assert.False(FoodRegistry.IsFood(19));
+            Assert.Equal(0, FoodRegistry.GetHealMilliHp(19));
+            Assert.Equal(0, FoodRegistry.GetHealMilliHp(0));
+        }
+
+        // Modul: inventory census. InventorySpaceRemaining only ever fell:
+        // CombatLootEngine set ConsumedInventorySlot on every kill regardless of
+        // whether anything dropped, the tick thread decremented, and nothing
+        // restored it - so after 20 kills every backpack read as full and all
+        // loot was silently discarded for the rest of the session. Hydration
+        // reset it to capacity without looking at the backpack either, so a
+        // relogin was the only way to get space back and a genuinely full pack
+        // was handed twenty phantom slots.
+        [Fact]
+        public async Task Test_InventoryCensus_CountsStacksOnceAndExcludesEquippedGear()
+        {
+            const long testPlayerId = 970004204L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+
+                // Three material types, one of them holding a thousand units -
+                // a stack is one slot, not one slot per unit.
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "mat_copper_ore_mining_material", Quantity = 1000L });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "mat_tin_ore_mining_material", Quantity = 3L });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "mat_raw_log_woodcutting_material", Quantity = 7L });
+
+                // An empty stack occupies nothing.
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "mat_coal_node_mining_material", Quantity = 0L });
+
+                await db.SaveChangesAsync();
+            }
+
+            long equippedId;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var worn = new EquipmentInstance { BaseItemId = "eq_steel_claymore_melee_weapon_slot_base", PlayerId = testPlayerId, QualityTier = 1, AffixPayload = "{}" };
+                var carried = new EquipmentInstance { BaseItemId = "eq_linen_shroud_chest_armor_slot_base", PlayerId = testPlayerId, QualityTier = 1, AffixPayload = "{}" };
+                db.EquipmentInstances.Add(worn);
+                db.EquipmentInstances.Add(carried);
+                await db.SaveChangesAsync();
+                equippedId = worn.Id;
+
+                var player = await db.PlayerRecords.SingleAsync(p => p.Id == testPlayerId);
+                player.EquippedWeaponId = equippedId;
+                await db.SaveChangesAsync();
+            }
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                int occupied = await CombatLootEngine.CountOccupiedBackpackSlotsAsync(db, testPlayerId);
+
+                // 3 non-empty material stacks + 1 carried equipment piece. The
+                // worn weapon lives on the character, and the zero-quantity
+                // stack is not a slot.
+                Assert.Equal(4, occupied);
+            }
+        }
+
         // Modul: Affix System Unification. Every affix a drop rolls must be
         // legal for that item's slot per GDD Module 14 section 1.3 - the old
         // generator ignored slot legality entirely and the old reroll could put

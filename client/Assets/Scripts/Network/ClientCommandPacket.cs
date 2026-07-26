@@ -81,7 +81,19 @@ namespace FolkIdle.Client.Network
         // which shared its CommandType with the materials/Monolith
         // contribution path in an if/else chain server-side - see the
         // server-side enum's identical comment.
-        ContributeGuildTreasury = 64
+        ContributeGuildTreasury = 64,
+
+        // Modul: larder. Loads food from the backpack into one of the three
+        // auto-eat slots, or unloads a slot back into the backpack. Carries no
+        // new wire fields: ConsumableItemId is the food, TargetSlotIndex the
+        // 0-based larder slot, DepositQuantity how many units to move (0 =
+        // unload). The packet size is unchanged.
+        //
+        // Nothing anywhere could put food in those slots before this command
+        // existed, so every player's larder was permanently empty and any
+        // combat activity stopped the first time HP crossed the auto-eat
+        // threshold. See LarderEngine.
+        StockFoodSlot = 65
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

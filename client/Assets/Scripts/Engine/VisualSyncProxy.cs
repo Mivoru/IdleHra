@@ -88,6 +88,19 @@ namespace FolkIdle.Client.Engine
         // change once per stat/equipment recompute, not every tick, so
         // Lerp'ing them would just add stale-looking lag to a combat
         // stats panel without any visual benefit.
+        // Modul: larder + halt reasons + inventory census. The three things a
+        // player needs on screen and had no way to see: what is in the auto-eat
+        // slots, why their character stopped, and how full the backpack is.
+        public int VisualFood1ItemId { get; private set; }
+        public int VisualFood1Count { get; private set; }
+        public int VisualFood2ItemId { get; private set; }
+        public int VisualFood2Count { get; private set; }
+        public int VisualFood3ItemId { get; private set; }
+        public int VisualFood3Count { get; private set; }
+        public byte VisualActivityHaltReason { get; private set; }
+        public int VisualInventorySpaceRemaining { get; private set; }
+        public int VisualInventoryCapacity { get; private set; }
+
         public int VisualPlayerAccuracyRating { get; private set; }
         public int VisualPlayerArmorRating { get; private set; }
         public float VisualPlayerBlockStrengthPct { get; private set; }
@@ -221,9 +234,6 @@ namespace FolkIdle.Client.Engine
         public uint VisualActiveMatchMmr { get; private set; }
         public uint VisualGlobalNodeRemainingHp { get; private set; }
         public System.Guid VisualActiveMatchId { get; private set; }
-        public ulong VisualTotalAnalyticsEventsLoggedCount { get; private set; }
-        public uint VisualActiveConnectionThroughput { get; private set; }
-        public uint VisualCurrentNodeMemoryLoadMetrics { get; private set; }
 
         // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
         public int LumberjackLevel { get; private set; }
@@ -496,8 +506,15 @@ namespace FolkIdle.Client.Engine
                     VisualActiveLanguageState = packet.ActiveLanguageState == 0 ? (byte)1 : packet.ActiveLanguageState;
                     VisualAutoEatThreshold = packet.AutoEatThreshold;
                     VisualActiveGuildWarId = packet.ActiveGuildWarId;
-                    VisualActiveConnectionThroughput = packet.VisualActiveConnectionThroughput;
-                    VisualCurrentNodeMemoryLoadMetrics = packet.CurrentNodeMemoryLoadMetrics;
+                    VisualFood1ItemId = packet.Food1_ItemId;
+                    VisualFood1Count = packet.Food1_Count;
+                    VisualFood2ItemId = packet.Food2_ItemId;
+                    VisualFood2Count = packet.Food2_Count;
+                    VisualFood3ItemId = packet.Food3_ItemId;
+                    VisualFood3Count = packet.Food3_Count;
+                    VisualActivityHaltReason = packet.ActivityHaltReason;
+                    VisualInventorySpaceRemaining = packet.InventorySpaceRemaining;
+                    VisualInventoryCapacity = packet.InventoryCapacity;
                     VisualPlayerAccuracyRating = packet.PlayerAccuracyRating;
                     VisualPlayerArmorRating = packet.PlayerArmorRating;
                     VisualPlayerBlockStrengthPct = packet.PlayerBlockStrengthPct;
@@ -550,7 +567,6 @@ namespace FolkIdle.Client.Engine
                     VisualActiveMatchMmr = packet.VisualActiveMatchMmr;
                     VisualGlobalNodeRemainingHp = packet.GlobalNodeRemainingHp;
                     VisualActiveMatchId = packet.ActiveMatchId;
-                    VisualTotalAnalyticsEventsLoggedCount = packet.TotalAnalyticsEventsLoggedCount;
 
                     VisualUnlockedSkillsBitmask = packet.UnlockedSkillsBitmask;
                     VisualAvailableSkillPoints = packet.AvailableSkillPoints;
@@ -639,8 +655,15 @@ namespace FolkIdle.Client.Engine
             VisualNotificationQueueStateLength = _snapshotB.Packet.NotificationQueueStateLength;
             VisualActiveLanguageState = _snapshotB.Packet.ActiveLanguageState == 0 ? (byte)1 : _snapshotB.Packet.ActiveLanguageState;
             VisualAutoEatThreshold = _snapshotB.Packet.AutoEatThreshold;
-            VisualActiveConnectionThroughput = _snapshotB.Packet.VisualActiveConnectionThroughput;
-            VisualCurrentNodeMemoryLoadMetrics = _snapshotB.Packet.CurrentNodeMemoryLoadMetrics;
+            VisualFood1ItemId = _snapshotB.Packet.Food1_ItemId;
+            VisualFood1Count = _snapshotB.Packet.Food1_Count;
+            VisualFood2ItemId = _snapshotB.Packet.Food2_ItemId;
+            VisualFood2Count = _snapshotB.Packet.Food2_Count;
+            VisualFood3ItemId = _snapshotB.Packet.Food3_ItemId;
+            VisualFood3Count = _snapshotB.Packet.Food3_Count;
+            VisualActivityHaltReason = _snapshotB.Packet.ActivityHaltReason;
+            VisualInventorySpaceRemaining = _snapshotB.Packet.InventorySpaceRemaining;
+            VisualInventoryCapacity = _snapshotB.Packet.InventoryCapacity;
             VisualPlayerAccuracyRating = _snapshotB.Packet.PlayerAccuracyRating;
             VisualPlayerArmorRating = _snapshotB.Packet.PlayerArmorRating;
             VisualPlayerBlockStrengthPct = _snapshotB.Packet.PlayerBlockStrengthPct;
@@ -694,7 +717,6 @@ namespace FolkIdle.Client.Engine
             VisualActiveMatchMmr = _snapshotB.Packet.VisualActiveMatchMmr;
             VisualGlobalNodeRemainingHp = _snapshotB.Packet.GlobalNodeRemainingHp;
             VisualActiveMatchId = _snapshotB.Packet.ActiveMatchId;
-            VisualTotalAnalyticsEventsLoggedCount = _snapshotB.Packet.TotalAnalyticsEventsLoggedCount;
 
             VisualActiveGuildWarId = _snapshotB.Packet.ActiveGuildWarId;
             VisualWarMultiplier = Mathf.Lerp(_snapshotA.Packet.CachedWarMultiplier, _snapshotB.Packet.CachedWarMultiplier, t);

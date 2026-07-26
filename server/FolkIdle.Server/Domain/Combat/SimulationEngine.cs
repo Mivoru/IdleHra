@@ -54,6 +54,11 @@ namespace FolkIdle.Server.Domain.Combat
         private readonly VillageManagementEngine _villageManagementEngine;
         private readonly GuildLogisticsEngine _guildLogisticsEngine;
         private readonly CraftingEngine _craftingEngine;
+
+        // Modul: larder. Optional, matching the _equipmentSlotEngine /
+        // _relationshipEngine convention, so the many test fixtures that
+        // construct this engine directly keep compiling.
+        private readonly LarderEngine? _larderEngine;
         private readonly WorldBossEngine _worldBossEngine;
         private readonly MentorshipEngine _mentorshipEngine;
         private readonly GuildWarEngine _guildWarEngine;
@@ -83,9 +88,15 @@ namespace FolkIdle.Server.Domain.Combat
 
         public bool IsRunning => _isRunning;
 
+        // Modul: inventory census. The base backpack size before
+        // RaceMasteryResolver's Human vault bonus - the same 20 hydration has
+        // always used, named once so the census fallback and hydration cannot
+        // drift apart.
+        public const int DefaultBackpackCapacity = 20;
+
         public static int ActiveGlobalEventId { get; private set; }
 
-        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, MentorshipEngine mentorshipEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null)
+        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, MentorshipEngine mentorshipEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null)
         {
             _lootEngine = lootEngine;
             _checkpointManager = checkpointManager;
@@ -101,6 +112,7 @@ namespace FolkIdle.Server.Domain.Combat
             _villageBuildingEngine = villageBuildingEngine;
             _guildLogisticsEngine = guildLogisticsEngine;
             _craftingEngine = craftingEngine;
+            _larderEngine = larderEngine;
             _worldBossEngine = worldBossEngine;
             _mentorshipEngine = mentorshipEngine;
             _guildWarEngine = guildWarEngine;
@@ -774,6 +786,47 @@ namespace FolkIdle.Server.Domain.Combat
                     ApplyActivityChangeToPayload(ref currentPayload, activityChange.TargetActivityId);
                 }
 
+                // Modul: larder. LarderEngine has already committed the slot to
+                // PlayerRecords; this is the hand-off that makes it live for the
+                // running session, so restocking mid-fight takes effect on the
+                // next tick rather than at the next login.
+                while (_playerRegistry.LarderSlotUpdateQueue.TryDequeue(out var larderUpdate))
+                {
+                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, larderUpdate.PlayerId);
+                    if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                    {
+                        continue;
+                    }
+
+                    switch (larderUpdate.SlotIndex)
+                    {
+                        case 0:
+                            currentPayload.Food1_ItemId = larderUpdate.ItemId;
+                            currentPayload.Food1_Count = larderUpdate.Count;
+                            break;
+                        case 1:
+                            currentPayload.Food2_ItemId = larderUpdate.ItemId;
+                            currentPayload.Food2_Count = larderUpdate.Count;
+                            break;
+                        case 2:
+                            currentPayload.Food3_ItemId = larderUpdate.ItemId;
+                            currentPayload.Food3_Count = larderUpdate.Count;
+                            break;
+                    }
+
+                    // Modul: halt reasons. Stocking food is the direct answer to
+                    // an OutOfFood halt, so clear the banner as soon as there is
+                    // something to eat. The activity itself still needs
+                    // redeploying - only the player can decide that - so this
+                    // does not restart it.
+                    if (currentPayload.ActivityHaltReason == Network.ActivityHaltReason.OutOfFood && larderUpdate.Count > 0)
+                    {
+                        currentPayload.ActivityHaltReason = Network.ActivityHaltReason.None;
+                    }
+
+                    currentPayload.IsDirty = true;
+                }
+
                 // Modul: Guild War scoreboard sync. Fans one authoritative
                 // per-guild snapshot out to every online member of that guild
                 // via the tick-thread-owned guild index, so a scoreboard costs
@@ -809,7 +862,21 @@ namespace FolkIdle.Server.Domain.Combat
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, combatLootDrop.PlayerId);
                     if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
                     {
-                        if (combatLootDrop.ConsumedInventorySlot && currentPayload.InventorySpaceRemaining > 0)
+                        // Modul: inventory census. Assign from the truth when
+                        // the loot engine sent one. The decrement below is only
+                        // the fallback for a notification with no census (the
+                        // no-loot-table early-out path), and even then the next
+                        // real kill corrects it - the old behaviour was decrement
+                        // only, forever, which made every backpack read as full
+                        // after 20 kills and silently discarded all loot for the
+                        // rest of the session.
+                        if (combatLootDrop.HasSlotCensus)
+                        {
+                            int capacity = currentPayload.InventoryCapacity > 0 ? currentPayload.InventoryCapacity : DefaultBackpackCapacity;
+                            int remaining = capacity - combatLootDrop.OccupiedSlots;
+                            currentPayload.InventorySpaceRemaining = remaining > 0 ? remaining : 0;
+                        }
+                        else if (combatLootDrop.ConsumedInventorySlot && currentPayload.InventorySpaceRemaining > 0)
                         {
                             currentPayload.InventorySpaceRemaining--;
                         }
@@ -2129,6 +2196,30 @@ namespace FolkIdle.Server.Domain.Combat
                             });
                         }
                     }
+                    else if (cmd.Command == CommandType.StockFoodSlot)
+                    {
+                        // Modul: larder. Deliberately does NOT terminate the
+                        // session on a bad request. Every field here is
+                        // player-chosen from a UI list (which slot, which food,
+                        // how many), so a stale client sending a food id that no
+                        // longer exists is a mistake to report, not evidence of
+                        // tampering - and TerminateSessionForSecurity for a
+                        // mis-click is exactly the failure mode that made eating
+                        // food force-disconnect players before AlchemyCompendium
+                        // was fixed. LarderEngine validates and reports through
+                        // the CommandResult ring buffer instead.
+                        long larderPlayerId = currentPayload.PlayerId;
+                        int larderSlot = (int)cmd.TargetSlotIndex;
+                        int larderFoodId = (int)cmd.ConsumableItemId;
+                        int larderQuantity = (int)Math.Min(cmd.DepositQuantity, (uint)Network.LarderLimits.SlotCapacity);
+
+                        if (_larderEngine != null)
+                        {
+                            SafeDispatchAsync("Larder.StockFoodSlot", larderPlayerId, async () => {
+                                await _larderEngine.ExecuteStockFoodSlotAsync(larderPlayerId, larderSlot, larderFoodId, larderQuantity);
+                            });
+                        }
+                    }
                     else if (cmd.Command == CommandType.ExecuteCombatTurn)
                     {
                         if (!ClientCommandValidator.ValidateCombatTurnRequest(ref currentPayload, ref cmd))
@@ -2179,6 +2270,19 @@ namespace FolkIdle.Server.Domain.Combat
                             continue;
                         }
                         currentPayload.AutoEatThreshold = thresholdValue;
+
+                        // Modul: larder. This used to write the live payload and
+                        // nothing else, so a player's chosen auto-eat threshold
+                        // was silently discarded at every logout and reverted to
+                        // the default on the next login.
+                        if (_larderEngine != null)
+                        {
+                            long thresholdPlayerId = currentPayload.PlayerId;
+                            int persistedThreshold = thresholdValue;
+                            SafeDispatchAsync("Larder.PersistAutoEatThreshold", thresholdPlayerId, async () => {
+                                await _larderEngine.PersistAutoEatThresholdAsync(thresholdPlayerId, persistedThreshold);
+                            });
+                        }
                         currentPayload.IsDirty = true;
                     }
                     else if (cmd.Command == CommandType.AttackWorldBoss)
@@ -2615,6 +2719,23 @@ namespace FolkIdle.Server.Domain.Combat
                                 CurrentProgressTicks = currentPayload.CurrentProgressTicks,
                                 RequiredProgressTicks = currentPayload.RequiredProgressTicks,
                                 InventorySpaceRemaining = currentPayload.InventorySpaceRemaining,
+                                InventoryCapacity = currentPayload.InventoryCapacity > 0 ? currentPayload.InventoryCapacity : DefaultBackpackCapacity,
+
+                                // Modul: larder + halt reasons. Narrowed to
+                                // ushort on the wire, clamped rather than cast,
+                                // so a payload value that somehow exceeded the
+                                // slot cap truncates to the cap instead of
+                                // wrapping to a small number and telling the
+                                // player they have 3 apples when they have
+                                // 65539.
+                                Food1_ItemId = (ushort)Math.Clamp(currentPayload.Food1_ItemId, 0, ushort.MaxValue),
+                                Food1_Count = (ushort)Math.Clamp(currentPayload.Food1_Count, 0, LarderLimits.SlotCapacity),
+                                Food2_ItemId = (ushort)Math.Clamp(currentPayload.Food2_ItemId, 0, ushort.MaxValue),
+                                Food2_Count = (ushort)Math.Clamp(currentPayload.Food2_Count, 0, LarderLimits.SlotCapacity),
+                                Food3_ItemId = (ushort)Math.Clamp(currentPayload.Food3_ItemId, 0, ushort.MaxValue),
+                                Food3_Count = (ushort)Math.Clamp(currentPayload.Food3_Count, 0, LarderLimits.SlotCapacity),
+                                ActivityHaltReason = currentPayload.ActivityHaltReason,
+
                                 CurrentMonsterId = currentPayload.CurrentMonsterId,
                                 CurrentMonsterHp = currentPayload.CurrentMonsterHp / 1000,
                                 PlayerHp = currentPayload.PlayerHp / 1000,
@@ -2741,15 +2862,11 @@ namespace FolkIdle.Server.Domain.Combat
                                 ActiveStatusEffectModifierBitmask = statBitmask,
                                 RemainingBuffDurationTicks = statDurTicks,
                                 ActiveChallengeSeed = currentPayload.ActiveChallengeSeed,
-                                IsQuarantineActive = (currentPayload.Quarantine_Active || currentPayload.IsQuarantined) ? (byte)1 : (byte)0,
                                 NotificationQueueStateLength = (byte)Math.Clamp(GlobalEngineState.NotificationQueueStateLength, 0, 255),
                                 ActiveLanguageState = currentPayload.ActiveLanguageState == 0 ? (byte)1 : currentPayload.ActiveLanguageState,
                                 ActiveAudioTrackId = audioTrackId,
                                 ActiveMasteryBitmask = _liveSessionContexts.TryGetValue(currentPayload.PlayerId, out var mCtx) ? mCtx.ActiveMasteryBitmask : 0,
                                 NetworkDiagnosticsToken = currentPayload.NetworkDiagnosticsToken,
-                                VisualActiveConnectionThroughput = (uint)GlobalEngineState.ActiveConnectionThroughput,
-                                CurrentNodeMemoryLoadMetrics = (uint)(GC.GetTotalMemory(false) / 1024),
-                                TotalAnalyticsEventsLoggedCount = (ulong)GlobalEngineState.TotalAnalyticsEventsLoggedCount,
                                 Gold = currentPayload.CurrentGold,
                                 WorldBossAttemptCount = currentPayload.WorldBossAttemptCount,
                                 WorldBossEventState = _worldBossEngine.EventState,
@@ -2892,6 +3009,15 @@ namespace FolkIdle.Server.Domain.Combat
             payload.CurrentMonsterHp = 0;
             payload.CombatTargetTickAccumulator = 0;
             payload.GatheringProgressTicks = 0;
+
+            // Modul: halt reasons. Deploying is the player's answer to
+            // whatever stopped them, so the reason must not survive it - an
+            // "out of food" banner that persists after a restock-and-redeploy
+            // is worse than none at all. Clearing here rather than in the tick
+            // loop also covers the multi-character queue drain, which routes
+            // through this same method.
+            payload.ActivityHaltReason = Network.ActivityHaltReason.None;
+
             payload.IsDirty = true;
         }
 
@@ -3741,6 +3867,20 @@ namespace FolkIdle.Server.Domain.Combat
             {
                 payload.SpeedMultiplier = 1;
                 extraIterations = 0;
+
+                // Modul: halt reasons. A full backpack does not stop the
+                // activity - it keeps running and throws every drop away (see
+                // the InventorySpaceRemaining <= 0 early-outs in
+                // ProcessGatheringTick and both loot-grant loops). That is a
+                // silent, unbounded loss of everything the player is playing
+                // for, so it is reported even though nothing halted.
+                payload.ActivityHaltReason = Network.ActivityHaltReason.InventoryFull;
+            }
+            else if (payload.ActiveActivityId > 0)
+            {
+                // Running and earning: whatever stopped the player last has
+                // been resolved, so the reason must not linger.
+                payload.ActivityHaltReason = Network.ActivityHaltReason.None;
             }
 
             if (payload.Quarantine_Active) return;
@@ -4342,9 +4482,17 @@ namespace FolkIdle.Server.Domain.Combat
                 int bestFoodIndex = 0;
                 int highestHeal = 0;
 
-                int heal1 = payload.Food1_ItemId > 0 ? 50000 : 0;
-                int heal2 = payload.Food2_ItemId > 0 ? 50000 : 0;
-                int heal3 = payload.Food3_ItemId > 0 ? 50000 : 0;
+                // Modul: larder. These were all a hardcoded 50000 milli-HP,
+                // which made the "highest-healing food" selection below a tie
+                // on every comparison - so it always drained slot 1 first
+                // regardless of what the player had loaded, and a tier-10
+                // Astral Ambrosia Roast (82000 HP per the GDD) restored the
+                // same 50 HP as a tier-1 minnow. FoodRegistry lookups on the
+                // cooked id block are integer arithmetic on a static array -
+                // no allocation on this per-tick path.
+                int heal1 = FoodRegistry.GetHealMilliHp(payload.Food1_ItemId);
+                int heal2 = FoodRegistry.GetHealMilliHp(payload.Food2_ItemId);
+                int heal3 = FoodRegistry.GetHealMilliHp(payload.Food3_ItemId);
 
                 if (payload.Food1_Count > 0 && heal1 > highestHeal) { bestFoodIndex = 1; highestHeal = heal1; }
                 if (payload.Food2_Count > 0 && heal2 > highestHeal) { bestFoodIndex = 2; highestHeal = heal2; }
@@ -4364,6 +4512,11 @@ namespace FolkIdle.Server.Domain.Combat
                                 payload.ActiveActivityId));
                     }
 
+                    // Modul: halt reasons. This was the single most common
+                    // way a session ended and the only trace of it was a
+                    // telemetry metric no player can see - the character just
+                    // stopped. Now named on the wire.
+                    payload.ActivityHaltReason = Network.ActivityHaltReason.OutOfFood;
                     payload.ActiveActivityId = 0;
                     payload.CurrentMonsterHp = 0;
                     payload.CurrentMonsterId = 0;
@@ -4388,6 +4541,9 @@ namespace FolkIdle.Server.Domain.Combat
                     payload.CurrentMonsterHp = 0;
                     payload.CombatTargetTickAccumulator = 0;
                     payload.ActiveActivityId = 0;
+                    // Modul: halt reasons. A full-HP character sitting idle
+                    // looked exactly like one that had never been deployed.
+                    payload.ActivityHaltReason = Network.ActivityHaltReason.Died;
                     return;
                 }
             }

@@ -106,6 +106,22 @@ namespace FolkIdle.Server.Engine
         public int Food3_ItemId;
         public int Food3_Count;
 
+
+        // Modul: inventory census. The backpack's total slot count, so
+        // InventorySpaceRemaining can be recomputed as capacity minus a real
+        // occupied-slot census rather than only ever decremented. Previously
+        // capacity existed nowhere: hydration wrote "20 + human vault bonus"
+        // straight into InventorySpaceRemaining and the number was thereafter
+        // indistinguishable from remaining space, so nothing could ever restore
+        // it. Also lets the client show "13/20" instead of a bare countdown.
+        public int InventoryCapacity;
+
+        // Modul: halt reasons. See Network.ActivityHaltReason. Owned by the
+        // tick thread like the rest of this payload; set at each halt site and
+        // cleared the moment an activity starts running again, so it is always
+        // a statement about right now rather than a sticky history.
+        public byte ActivityHaltReason;
+
         public long EquippedWeaponId;
         public bool EquippedWeaponAffixLocked;
 

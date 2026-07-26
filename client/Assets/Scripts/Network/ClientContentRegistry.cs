@@ -236,7 +236,48 @@ namespace FolkIdle.Client.Network
         // server's ConsumableEngine.TryApplyConsumable uses, so the client
         // can never offer something the server would refuse to apply.
         // ------------------------------------------------------------
+        // Modul: larder. This marker is the narrow legacy one, carried by
+        // exactly four items (roasted_perch, viper_stew, bear_stew,
+        // yeti_platter) that no recipe produces and no monster drops. The ten
+        // foods the game actually has - the cooking recipes' outputs, items
+        // 194-203 - end in "_food" with no "_consumable", so the food dropdown
+        // offered only unobtainable items and hid every real one. Both markers
+        // are honoured now, matching the server's FoodRegistry.
         public const string FoodMarker = "_food_consumable";
+        public const string CookedFoodMarker = "_food";
+
+        // Mirrors FoodRegistry's heal table (GDD Module "Cooking (Sustain &
+        // Auto-Eat Economy)" 3.2) for display only - the server is the
+        // authority on what a food actually restores.
+        private static readonly int[] _foodHealPayoutFlatHp =
+        {
+            40, 120, 310, 750, 1720, 3840, 8450, 18200, 38900, 82000
+        };
+
+        public const int FirstCookedFoodItemId = 194;
+        public const int LastCookedFoodItemId = 203;
+
+        // Flat HP one unit of this food restores, or 0 if it is not food.
+        public static int GetFoodHealFlatHp(int itemId)
+        {
+            if (itemId >= FirstCookedFoodItemId && itemId <= LastCookedFoodItemId)
+            {
+                return _foodHealPayoutFlatHp[itemId - FirstCookedFoodItemId];
+            }
+
+            if (!TryGetItemById(itemId, out ItemEntry item) || !IsFood(item.BaseId))
+            {
+                return 0;
+            }
+
+            int tierIndex = Mathf.Clamp(item.RegionTier - 1, 0, _foodHealPayoutFlatHp.Length - 1);
+            return _foodHealPayoutFlatHp[tierIndex];
+        }
+
+        public static bool IsFood(string baseId)
+        {
+            return !string.IsNullOrEmpty(baseId) && baseId.Contains(CookedFoodMarker);
+        }
         public const string OffensivePotionMarker = "_offensive_potion_consumable";
         public const string DefensivePotionMarker = "_defensive_potion_consumable";
 
@@ -269,7 +310,11 @@ namespace FolkIdle.Client.Network
             "_crafting_material",
             FoodMarker,
             OffensivePotionMarker,
-            DefensivePotionMarker
+            DefensivePotionMarker,
+            // Modul: larder. Must come after FoodMarker above, which is longer
+            // and more specific - stripping "_food" first would leave a
+            // dangling "Consumable" on the four legacy items.
+            CookedFoodMarker
         };
 
         private static readonly string[] _strippedPrefixes = { "mat_", "eq_" };
@@ -377,7 +422,7 @@ namespace FolkIdle.Client.Network
             _potions.Clear();
             foreach (ItemEntry item in _items.Values)
             {
-                if (item.BaseId.Contains(FoodMarker))
+                if (IsFood(item.BaseId))
                 {
                     _foods.Add(item);
                 }

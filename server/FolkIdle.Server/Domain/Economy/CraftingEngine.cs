@@ -211,6 +211,21 @@ namespace FolkIdle.Server.Domain.Economy
                     }
                 }
 
+                // Modul: crafting output. This was the missing half of the
+                // recipe loop: the materials were consumed, the transaction
+                // committed, a completion notification was enqueued - and the
+                // crafted item was never granted anywhere. The tick-thread
+                // drain only bumps a quest counter and guild-war points, so
+                // every one of the 103 recipes destroyed its inputs and
+                // produced nothing. (CraftingCompletionNotification's own
+                // comment shows the intent was for the tick thread to "adjust
+                // inventory balances" - it never did.)
+                //
+                // Granted inside the same Serializable transaction as the
+                // consumption, so a craft is all-or-nothing rather than able
+                // to eat materials and then fail to pay out.
+                await GrantCraftedOutputAsync(context, playerId, recipe, quantityProduced);
+
                 await context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 return (true, quantityProduced);
@@ -226,6 +241,71 @@ namespace FolkIdle.Server.Domain.Economy
                     Quantity = quantityProduced
                 });
             }
+        }
+
+        // Modul: crafting output. Where a crafted item lands depends on what it
+        // is, and the recipe's ProfessionType is the authority on that:
+        //   2 Smelting  -> metal bars, stackable
+        //   3 Equipment -> a real EquipmentInstance
+        //   4 Cooking   -> food consumables, stackable
+        //   5 Alchemy   -> potions, stackable
+        // Stackables go to CommodityRecords (the backpack), keyed by BaseId
+        // exactly like every other commodity writer in this codebase.
+        private static async Task GrantCraftedOutputAsync(FolkIdleDbContext context, long playerId, ContentRegistry.RecipeDefinition recipe, int quantityProduced)
+        {
+            if (quantityProduced <= 0 || recipe.ResultItemId <= 0) return;
+
+            string resultBaseId = ContentRegistry.GetItemBaseId(recipe.ResultItemId);
+            if (string.IsNullOrEmpty(resultBaseId)) return;
+
+            const int EquipmentAssemblyProfession = 3;
+            if (recipe.ProfessionType == EquipmentAssemblyProfession)
+            {
+                // GDD Module 14 section 2: forged equipment is a structural
+                // base "before affix attachment or rarity modification occurs",
+                // so a craft yields Normal rarity. Rarity is raised afterwards
+                // through the Forge's fusion system, not at the bench. Affixes
+                // still roll, because even Normal grants one (GDD 5.2).
+                int regionTier = ResolveRegionTierForItem(recipe.ResultItemId);
+
+                for (int i = 0; i < quantityProduced; i++)
+                {
+                    var rolled = new Dictionary<string, int>();
+                    AffixRegistry.RollAffixes(resultBaseId, regionTier, rarityTier: RarityTier.Normal, affixCount: RarityTier.GetAffixCount(RarityTier.Normal), destination: rolled);
+
+                    context.EquipmentInstances.Add(new EquipmentInstance
+                    {
+                        BaseItemId = resultBaseId,
+                        PlayerId = playerId,
+                        QualityTier = RarityTier.Normal,
+                        AffixPayload = System.Text.Json.JsonSerializer.Serialize(rolled),
+                        IsAffixLocked = false
+                    });
+                }
+                return;
+            }
+
+            var existing = await context.CommodityRecords
+                .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {resultBaseId} FOR UPDATE")
+                .SingleOrDefaultAsync();
+
+            if (existing == null)
+            {
+                context.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = resultBaseId, Quantity = quantityProduced });
+            }
+            else
+            {
+                existing.Quantity += quantityProduced;
+            }
+        }
+
+        private static int ResolveRegionTierForItem(int itemId)
+        {
+            ReadOnlySpan<ItemDefinition> items = ContentRegistry.ItemDefinitions;
+            if (itemId < 1 || itemId > items.Length) return 1;
+
+            int authored = items[itemId - 1].RegionTier;
+            return authored > 0 ? authored : 1;
         }
 
         public async Task ExecuteEquipmentCraftingAsync(long playerId, uint recipeId, uint slotIndex, uint tickToken)

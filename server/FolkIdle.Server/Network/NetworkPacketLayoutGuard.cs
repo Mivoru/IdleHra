@@ -31,7 +31,20 @@ namespace FolkIdle.Server.Network
         // 700-byte ceiling, but with only 1 byte of headroom left before the
         // next addition needs to either shrink something else or move the
         // ceiling.
-        public const int ExpectedStateUpdateSize = 699;
+        //
+        // Modul: larder + halt reasons. 699 -> 694, the first time this packet
+        // has shrunk while gaining fields. Added 13 bytes (six ushort larder
+        // slots + one ActivityHaltReason byte); removed 18 by deleting
+        // IsQuarantineActive (a duplicate of Quarantine_Active),
+        // UiScreenShakeIntensity (never written or read anywhere), and the
+        // three server-diagnostic gauges TotalAnalyticsEventsLoggedCount,
+        // VisualActiveConnectionThroughput and CurrentNodeMemoryLoadMetrics -
+        // the last of which called GC.GetTotalMemory once per player per tick
+        // to ship the server's own heap size to a client that never read it.
+        // See StateUpdatePacket's own comment. Headroom under the 700-byte
+        // ceiling the tests pin is back to 6 bytes, 4 of which the inventory
+        // census then spent on InventoryCapacity: 694 -> 698.
+        public const int ExpectedStateUpdateSize = 698;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

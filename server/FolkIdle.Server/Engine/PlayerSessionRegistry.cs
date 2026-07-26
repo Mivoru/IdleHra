@@ -79,6 +79,20 @@ namespace FolkIdle.Server.Engine
     // instead, and the tick thread drains it into the payload the same
     // way every other cross-thread report in this codebase works (see
     // GuildMembershipChangeNotification for the identical pattern).
+    // Modul: larder. LarderEngine does its work on a background dispatch task
+    // inside a Serializable transaction, but the live TickStatePayload belongs
+    // to the 10Hz tick thread alone. This carries the committed slot contents
+    // back to it - the same hand-off shape as ActivityChangeNotification.
+    public struct LarderSlotUpdateNotification
+    {
+        public long PlayerId;
+        // 0-based, matching the wire. The tick-thread drain maps it onto the
+        // 1-based Food1/Food2/Food3 payload fields.
+        public int SlotIndex;
+        public int ItemId;
+        public int Count;
+    }
+
     public struct CommandResultNotification
     {
         public long PlayerId;
@@ -310,6 +324,9 @@ namespace FolkIdle.Server.Engine
         // RegionCompletionUpdateQueue above. An unmanaged struct in a
         // lock-free queue, so the tick-thread drain allocates nothing.
         public ConcurrentQueue<ActivityChangeNotification> ActivityChangeQueue { get; } = new();
+
+        // Modul: larder - see LarderSlotUpdateNotification.
+        public ConcurrentQueue<LarderSlotUpdateNotification> LarderSlotUpdateQueue { get; } = new();
 
         // Modul: Guild War scoreboard sync - see
         // GuildWarScoreboardNotification for what was missing.

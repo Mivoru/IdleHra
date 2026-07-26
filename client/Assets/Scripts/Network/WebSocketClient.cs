@@ -769,6 +769,26 @@ namespace FolkIdle.Client.Network
             }
         }
 
+        // Modul: larder. Loads food into one of the three auto-eat slots, or
+        // unloads it with quantity 0. Reuses existing wire fields
+        // (ConsumableItemId / TargetSlotIndex / DepositQuantity) so
+        // ClientCommandPacket's byte size is unchanged.
+        public void SendStockFoodSlotCommandZeroAlloc(uint slotIndex, uint foodItemId, uint quantity)
+        {
+            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
+            {
+                ClientCommandPacket packet = new ClientCommandPacket
+                {
+                    Command = CommandType.StockFoodSlot,
+                    TargetSlotIndex = slotIndex,
+                    ConsumableItemId = foodItemId,
+                    DepositQuantity = quantity
+                };
+
+                SendPacket(ref packet);
+            }
+        }
+
         public void SendLanguageSwitchCommandZeroAlloc(byte languageId)
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)
