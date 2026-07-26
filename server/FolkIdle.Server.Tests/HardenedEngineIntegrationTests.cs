@@ -7269,6 +7269,66 @@ namespace FolkIdle.Server.Tests
             return flagged;
         }
 
+        // Modul: guild war snapshot cast. RosterPayloadJson is a jsonb column
+        // and Npgsql binds a string parameter as text; Postgres will not
+        // implicitly coerce one to the other in an INSERT. Every refresh
+        // therefore failed with 42804 "column is of type jsonb but expression
+        // is of type text" - printed on every single server boot - and the
+        // catch around the caller swallowed it, so no guild's defensive
+        // snapshot had ever been written and every guild war resolved against
+        // whatever stale row happened to exist.
+        [Fact]
+        public async Task Test_GuildWarSnapshot_RefreshActuallyWritesTheDefensiveRoster()
+        {
+            const long testPlayerId = 970004301L;
+            long guildId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var guild = new GuildRecord { Name = "SnapCast" + Guid.NewGuid().ToString("N")[..8] };
+                db.GuildRecords.Add(guild);
+                await db.SaveChangesAsync();
+                guildId = guild.Id;
+
+                var playerGuid = Guid.NewGuid();
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = playerGuid,
+                    AuthenticatorToken = Guid.NewGuid(),
+                    GuildId = guildId,
+                    CurrentLevel = 20,
+                    BaseStrength = 30,
+                    BaseDexterity = 20,
+                    BaseConstitution = 25,
+                    BaseLuck = 10
+                });
+                db.GuildMembers.Add(new GuildMember { GuildId = guildId, PlayerId = testPlayerId, ContributionPoints = 500 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = playerGuid, PlayerId = testPlayerId, AgePhase = 1 });
+                await db.SaveChangesAsync();
+            }
+
+            var snapshotEngine = new GuildWarSnapshotEngine(_fixture.ServiceProvider);
+            await snapshotEngine.RefreshAllGuildSnapshotsAsync(CancellationToken.None);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var snapshot = await verify.GuildWarDefensiveSnapshots.AsNoTracking()
+                    .SingleOrDefaultAsync(x => x.GuildId == guildId);
+
+                Assert.NotNull(snapshot);
+                Assert.False(string.IsNullOrWhiteSpace(snapshot!.RosterPayloadJson),
+                    "The defensive snapshot row exists but carries no roster payload.");
+
+                // And it must round-trip back into the type the war simulation
+                // deserialises it as - a row of valid-but-wrong JSON would pass
+                // the existence check above and still break every war.
+                var stats = System.Text.Json.JsonSerializer.Deserialize<CombatStats>(snapshot.RosterPayloadJson);
+                Assert.True(stats.MaxHp > 0 || stats.FlatMeleeDamage > 0,
+                    "The snapshot deserialised to an all-zero roster, so the guild would defend with nothing.");
+            }
+        }
+
         // Modul: gathering loot tables. The property that decides whether the
         // crafting tree is a game or a wall: can a player actually obtain the
         // materials every recipe asks for?

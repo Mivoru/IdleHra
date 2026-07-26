@@ -131,11 +131,21 @@ namespace FolkIdle.Server.Engine
 
             string payload = JsonSerializer.Serialize(aggregate);
 
+            // Modul: guild war snapshot cast. RosterPayloadJson is a jsonb
+            // column (see the InitialBaseline migration), and Npgsql binds a
+            // string parameter as text. Postgres will not implicitly coerce
+            // text to jsonb in an INSERT, so every single refresh failed with
+            // 42804 "column is of type jsonb but expression is of type text" -
+            // visible on every server boot. The catch around the caller
+            // swallowed it, so no guild's defensive snapshot had ever been
+            // written or updated, and every guild war resolved against whatever
+            // stale row happened to exist. The explicit ::jsonb cast is the
+            // standard fix and changes nothing else about the statement.
             var upsertQuery = @"
                 INSERT INTO ""GuildWarDefensiveSnapshots"" (""GuildId"", ""RosterPayloadJson"")
-                VALUES ({0}, {1})
+                VALUES ({0}, CAST({1} AS jsonb))
                 ON CONFLICT (""GuildId"")
-                DO UPDATE SET ""RosterPayloadJson"" = {1};
+                DO UPDATE SET ""RosterPayloadJson"" = CAST({1} AS jsonb);
             ";
             await db.Database.ExecuteSqlRawAsync(upsertQuery, guildId, payload);
         }
