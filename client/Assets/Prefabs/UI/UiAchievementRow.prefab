@@ -355,7 +355,7 @@ MonoBehaviour:
   m_PreferredWidth: -1
   m_PreferredHeight: 14
   m_FlexibleWidth: -1
-  m_FlexibleHeight: -1
+  m_FlexibleHeight: 0
   m_LayoutPriority: 1
 --- !u!1 &3259813889419720458
 GameObject:
@@ -513,7 +513,7 @@ MonoBehaviour:
   m_PreferredWidth: -1
   m_PreferredHeight: 18
   m_FlexibleWidth: -1
-  m_FlexibleHeight: -1
+  m_FlexibleHeight: 0
   m_LayoutPriority: 1
 --- !u!1 &4483568721746983233
 GameObject:
@@ -1085,7 +1085,7 @@ MonoBehaviour:
   m_PreferredWidth: -1
   m_PreferredHeight: 16
   m_FlexibleWidth: -1
-  m_FlexibleHeight: -1
+  m_FlexibleHeight: 0
   m_LayoutPriority: 1
 --- !u!114 &8190241645117967073
 MonoBehaviour:
@@ -1168,5 +1168,5 @@ MonoBehaviour:
   m_PreferredWidth: -1
   m_PreferredHeight: 22
   m_FlexibleWidth: -1
-  m_FlexibleHeight: -1
+  m_FlexibleHeight: 0
   m_LayoutPriority: 1

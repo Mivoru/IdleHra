@@ -1517,6 +1517,21 @@ namespace FolkIdle.Client.Editor
             layoutElement.preferredHeight = height;
             layoutElement.minHeight = height;
 
+            // Modul: layout-trap sweep. Pinning a preferred height is not
+            // enough to pin a height. If the target also carries a layout group
+            // of its own with childForceExpandHeight = true - which any row
+            // built as a Horizontal/VerticalLayoutGroup does, so its own
+            // children fill it - that group reports flexibleHeight = 1, and an
+            // UNSET LayoutElement.flexibleHeight (-1) means "no opinion" rather
+            // than "zero", so it does not override. Unity then hands the row
+            // every spare pixel in the parent.
+            //
+            // The Larder screen's three slot rows were laid out at 368px each
+            // instead of 44: the parent's leftover 1106px split three ways.
+            // Stating zero explicitly is what "fixed" has to mean, and it is
+            // correct for every existing caller by definition of this helper.
+            layoutElement.flexibleHeight = 0f;
+
             RectTransform rect = (RectTransform)target.transform;
             rect.sizeDelta = new Vector2(rect.sizeDelta.x, height);
             return layoutElement;
@@ -4070,8 +4085,19 @@ namespace FolkIdle.Client.Editor
         // explanation anywhere in the game.
         private static void BuildActivityHaltBanner(Transform canvasTransform, VisualSyncProxy syncProxy)
         {
+            // The component lives on a holder that is never deactivated, and
+            // the banner it shows and hides is a CHILD of that holder. Putting
+            // UiActivityHaltBanner on the same GameObject it toggles would be a
+            // one-way trip: MonoBehaviour.Update does not run on an inactive
+            // object, so the first time the banner hid itself it could never
+            // notice a later halt and would stay hidden for the rest of the
+            // session.
+            GameObject holderObject = new GameObject("ActivityHaltBannerHolder", typeof(RectTransform));
+            holderObject.transform.SetParent(canvasTransform, false);
+            StretchFull((RectTransform)holderObject.transform);
+
             GameObject bannerObject = new GameObject("ActivityHaltBanner", typeof(RectTransform));
-            bannerObject.transform.SetParent(canvasTransform, false);
+            bannerObject.transform.SetParent(holderObject.transform, false);
             RectTransform bannerRect = (RectTransform)bannerObject.transform;
             bannerRect.anchorMin = new Vector2(0.04f, 1f);
             bannerRect.anchorMax = new Vector2(0.96f, 1f);
@@ -4090,7 +4116,7 @@ namespace FolkIdle.Client.Editor
             messageRect.offsetMax = new Vector2(-12f, -6f);
             message.raycastTarget = false;
 
-            UiActivityHaltBanner banner = bannerObject.AddComponent<UiActivityHaltBanner>();
+            UiActivityHaltBanner banner = holderObject.AddComponent<UiActivityHaltBanner>();
             banner.SyncProxy = syncProxy;
             banner.BannerRoot = bannerObject;
             banner.MessageText = message;
@@ -5821,8 +5847,27 @@ namespace FolkIdle.Client.Editor
             viewportObject.transform.SetParent(templateRect, false);
             RectTransform viewportRect = (RectTransform)viewportObject.transform;
             StretchFull(viewportRect);
-            viewportObject.AddComponent<Image>().color = Color.clear;
-            viewportObject.AddComponent<Mask>().showMaskGraphic = false;
+            // Modul: layout-trap sweep. This was an Image tinted Color.clear
+            // plus a stencil Mask - the exact combination that made every
+            // ScrollView in the game render as nothing (see
+            // ChatSceneBuilder.BuildScrollView, fixed the same way). A Mask
+            // whose own graphic is transparent makes Unity compile
+            // UNITY_UI_ALPHACLIP, and the alpha test then discards every
+            // fragment, so nothing is ever written to the stencil buffer and
+            // the entire masked subtree is clipped away. showMaskGraphic =
+            // false does not help: it suppresses the colour write, not the
+            // alpha clip.
+            //
+            // The visible symptom was that opening ANY dropdown in the game -
+            // the Combat screen's food and potion pickers, the Larder's three
+            // food slots, every filter control - showed an empty list. The
+            // options were there and selectable by keyboard; they just did not
+            // draw.
+            //
+            // RectMask2D clips by rectangle, needs no graphic at all, and
+            // allocates no per-mask material variant. A dropdown list is a
+            // plain rectangle, so nothing is lost.
+            viewportObject.AddComponent<RectMask2D>();
 
             GameObject contentObject = new GameObject("Content", typeof(RectTransform));
             contentObject.transform.SetParent(viewportRect, false);

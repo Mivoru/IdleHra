@@ -20,10 +20,16 @@ namespace FolkIdle.Client.UI
     // Lives on the persistent bar layer so it is visible from any screen, not
     // only from Combat - the whole point is that the player finds out without
     // having to go looking.
+    //
+    // This component MUST sit on a holder that is never deactivated, with
+    // BannerRoot as a child. Update does not run on an inactive GameObject, so
+    // if this were attached to BannerRoot itself the first hide would be
+    // permanent - it could never observe a later halt.
     public class UiActivityHaltBanner : MonoBehaviour
     {
         public VisualSyncProxy SyncProxy;
 
+        // The object shown and hidden. Never this component's own GameObject.
         public GameObject BannerRoot;
         public TMP_Text MessageText;
         public Image BackgroundImage;
