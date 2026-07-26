@@ -455,6 +455,12 @@ namespace FolkIdle.Server.Engine
         // array's (0, 0) default for every id not listed below - this is a
         // representation change, not a behavior change, for every existing
         // monster and Woodcutting/Mining LootTableId.
+        // Modul: activity id bands. The gathering keys in this table moved with
+        // the nodes themselves - Woodcutting 101-105 became 1001-1005, Mining
+        // 201-205 became 2001-2005, Fishing 301-309 became 3001-3009 and
+        // Herbalism 401-412 became 4001-4012. Monster LootTableIds (1-90 legacy,
+        // 501-525 canonical) are untouched; only the gathering half of this
+        // shared key space moved. See ActivityIdBands for why.
         private static readonly Dictionary<int, (int Start, int Count)> _lootSegments = new()
         {
             // Modul: every single Cooking recipe (ProfessionType 4) also
@@ -474,37 +480,37 @@ namespace FolkIdle.Server.Engine
             // table like the rest, and index 21 is left in place rather than
             // removed so the indices of every entry authored after it stay
             // stable.
-            { 101, (47, 3) },
-            { 102, (50, 3) },
-            { 103, (53, 3) },
-            { 104, (56, 3) },
-            { 105, (59, 2) },
-            { 201, (61, 3) },
-            { 202, (64, 3) },
-            { 203, (67, 3) },
-            { 204, (70, 3) },
-            { 205, (73, 4) },
-            { 301, (0, 1) },
-            { 302, (1, 1) },
-            { 303, (2, 1) },
-            { 304, (3, 1) },
-            { 305, (4, 1) },
-            { 306, (5, 1) },
-            { 307, (6, 1) },
-            { 308, (7, 1) },
-            { 309, (8, 1) },
-            { 401, (9, 1) },
-            { 402, (10, 1) },
-            { 403, (11, 1) },
-            { 404, (12, 1) },
-            { 405, (13, 1) },
-            { 406, (14, 1) },
-            { 407, (15, 1) },
-            { 408, (16, 1) },
-            { 409, (17, 1) },
-            { 410, (18, 1) },
-            { 411, (19, 1) },
-            { 412, (20, 1) },
+            { 1001, (47, 3) },
+            { 1002, (50, 3) },
+            { 1003, (53, 3) },
+            { 1004, (56, 3) },
+            { 1005, (59, 2) },
+            { 2001, (61, 3) },
+            { 2002, (64, 3) },
+            { 2003, (67, 3) },
+            { 2004, (70, 3) },
+            { 2005, (73, 4) },
+            { 3001, (0, 1) },
+            { 3002, (1, 1) },
+            { 3003, (2, 1) },
+            { 3004, (3, 1) },
+            { 3005, (4, 1) },
+            { 3006, (5, 1) },
+            { 3007, (6, 1) },
+            { 3008, (7, 1) },
+            { 3009, (8, 1) },
+            { 4001, (9, 1) },
+            { 4002, (10, 1) },
+            { 4003, (11, 1) },
+            { 4004, (12, 1) },
+            { 4005, (13, 1) },
+            { 4006, (14, 1) },
+            { 4007, (15, 1) },
+            { 4008, (16, 1) },
+            { 4009, (17, 1) },
+            { 4010, (18, 1) },
+            { 4011, (19, 1) },
+            { 4012, (20, 1) },
 
             // Modul: Full-Stack Expansion, Part 2 - monster loot tables
             // for the 25 new regional monsters (monster ids 91-115). The

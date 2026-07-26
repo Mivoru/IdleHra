@@ -1545,7 +1545,7 @@ namespace FolkIdle.Server.Tests
         public void Test_Chrono_ActiveTimeAcceleration()
         {
             const long testPlayerId = 980000001L;
-            const int gatheringActivityId = 101;
+            const int gatheringActivityId = 1001;   // Woodcutting node 1 (band 1000)
 
             var simulationEngine = CreateTestSimulationEngine();
 
@@ -4589,7 +4589,7 @@ namespace FolkIdle.Server.Tests
                 simulationEngine.InjectVirtualPlayer(new TickStatePayload
                 {
                     PlayerId = healthyPlayerId,
-                    ActiveActivityId = 101,
+                    ActiveActivityId = 1001,   // Woodcutting node 1 (band 1000)
                     GatheringProgressTicks = 0,
                     InventorySpaceRemaining = 1000
                 });
@@ -4649,7 +4649,7 @@ namespace FolkIdle.Server.Tests
             Assert.True(ContentRegistry.GetLootTable(int.MaxValue).IsEmpty);
             Assert.True(ContentRegistry.GetLootTable(999999).IsEmpty);
 
-            Assert.False(ContentRegistry.GetLootTable(301).IsEmpty);
+            Assert.False(ContentRegistry.GetLootTable(3001).IsEmpty);
         }
 
         // Modul: proves the guild lock-order normalization (Part 2) -
@@ -6778,13 +6778,15 @@ namespace FolkIdle.Server.Tests
 
             // Modul: gathering loot tables. This used to assert node 101's table
             // was EMPTY, standing in for "monster tables have not leaked into
-            // the node id space". That proxy stopped holding the moment
+            // the node id space". Node ids have since moved into their own
+            // bands (Woodcutting 1001-1005), which removes the shadowing
+            // outright - see ActivityIdBands. That proxy stopped holding the moment
             // Woodcutting got real content - node 101 is now populated on
             // purpose. The actual invariant is that a gathering node drops
             // gathering materials, so it is asserted directly: no entry in a
             // Woodcutting node's table may be one of the monster-only mat_*
             // drops (ids 250+), which is what a leak would look like.
-            var woodcuttingTable = ContentRegistry.GetLootTable(101).ToArray();
+            var woodcuttingTable = ContentRegistry.GetLootTable(1001).ToArray();
             Assert.NotEmpty(woodcuttingTable);
             foreach (var entry in woodcuttingTable)
             {
@@ -7687,6 +7689,181 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        // Modul: activity id bands. THE bug this pass exists to close. Monster
+        // ids and gathering node ids share one activity space, and Region 3's
+        // five monsters (101-105: Desert Crab, Ashen Basilisk, Ember Elemental,
+        // Sandstone Golem and the Magma Wyrm boss) sat directly on top of
+        // Woodcutting nodes 101-105.
+        //
+        // ProcessSubTick resolves an activity by asking TryGetGatheringNode
+        // FIRST, so sending 101 always started chopping wood - Region 3 could
+        // not be fought at all, and because the Magma Wyrm was unkillable the
+        // Kobold race unlock hanging off its first kill was unreachable too.
+        //
+        // This asserts the spaces are disjoint rather than just that today's
+        // five ids moved, so re-introducing the overlap with any future content
+        // fails here instead of silently making a region unplayable again.
+        [Fact]
+        public void Test_ActivityIdBands_MonsterAndGatheringSpacesCannotOverlap()
+        {
+            var gatheringIds = new HashSet<long>();
+            foreach (var node in ContentRegistry.GatheringNodes.ToArray())
+            {
+                Assert.True(ActivityIdBands.IsGatheringActivity(node.ActivityId),
+                    $"Gathering node {node.ActivityId} is outside the gathering bands.");
+                Assert.True(gatheringIds.Add(node.ActivityId), $"Duplicate gathering activity id {node.ActivityId}.");
+            }
+
+            ReadOnlySpan<MonsterDefinition> monsters = ContentRegistry.Monsters;
+            for (int i = 0; i < monsters.Length; i++)
+            {
+                long monsterId = monsters[i].Id;
+
+                Assert.False(gatheringIds.Contains(monsterId),
+                    $"Monster {monsterId} collides with a gathering node - deploying against it would start gathering instead.");
+
+                // The resolution order that made the collision fatal: if a
+                // monster id ever resolves as a node again, combat is silently
+                // unreachable for it.
+                Assert.False(ContentRegistry.TryGetGatheringNode(monsterId, out _),
+                    $"Monster {monsterId} resolves as a gathering node.");
+
+                Assert.True(ActivityIdBands.IsCombatActivity(monsterId));
+                Assert.False(ActivityIdBands.IsGatheringActivity(monsterId));
+            }
+
+            // Region 3 specifically, since it was the region that vanished.
+            for (int monsterId = 101; monsterId <= 105; monsterId++)
+            {
+                Assert.False(ContentRegistry.TryGetGatheringNode(monsterId, out _),
+                    $"Region 3 monster {monsterId} is still shadowed by a gathering node.");
+            }
+
+            // And the Magma Wyrm is reachable again, so the Kobold unlock is
+            // obtainable - the mapping the race registry depends on.
+            Assert.Equal(RaceIds.Kobold, RaceUnlockRegistry.GetRaceUnlockedByBoss(105));
+            Assert.False(ContentRegistry.TryGetGatheringNode(105, out _));
+
+            // The World Boss sentinel sits clear of every band.
+            Assert.False(ActivityIdBands.IsGatheringActivity(ActivityIdBands.WorldBossActivityId));
+            Assert.False(ActivityIdBands.IsCombatActivity(ActivityIdBands.WorldBossActivityId));
+        }
+
+        // Modul: activity id bands. Every gathering node kept its loot table
+        // through the re-key. The tables are keyed by activity id, so a node
+        // whose id moved without its segment moving would silently start
+        // dropping nothing - the exact "authored content that yields nothing"
+        // failure the loot-table pass existed to fix.
+        [Fact]
+        public void Test_ActivityIdBands_EveryRekeyedNodeKeptItsLootTable()
+        {
+            int checkedNodes = 0;
+            foreach (var node in ContentRegistry.GatheringNodes.ToArray())
+            {
+                checkedNodes++;
+                Assert.False(ContentRegistry.GetLootTable((int)node.ActivityId).IsEmpty,
+                    $"Gathering node {node.ActivityId} lost its loot table in the re-key.");
+            }
+            Assert.Equal(31, checkedNodes);
+
+            // The legacy ids must now resolve to nothing at all, or something is
+            // still reading the pre-re-key space.
+            foreach (int legacyId in new[] { 101, 105, 201, 205, 301, 309, 401, 412 })
+            {
+                Assert.False(ContentRegistry.TryGetGatheringNode(legacyId, out _),
+                    $"Legacy gathering id {legacyId} still resolves.");
+            }
+
+            // The documented mapping, so the migration's SQL and the code agree.
+            Assert.Equal(1001L, ActivityIdBands.MapLegacyGatheringId(101L));
+            Assert.Equal(1005L, ActivityIdBands.MapLegacyGatheringId(105L));
+            Assert.Equal(2005L, ActivityIdBands.MapLegacyGatheringId(205L));
+            Assert.Equal(3009L, ActivityIdBands.MapLegacyGatheringId(309L));
+            Assert.Equal(4012L, ActivityIdBands.MapLegacyGatheringId(412L));
+
+            // Combat ids and the World Boss sentinel pass through untouched -
+            // the migration must not move them.
+            Assert.Equal(91L, ActivityIdBands.MapLegacyGatheringId(91L));
+            Assert.Equal(105L, ActivityIdBands.MapLegacyGatheringId(105L) - 900L);
+            Assert.Equal(9999L, ActivityIdBands.MapLegacyGatheringId(9999L));
+        }
+
+        // Modul: retryable equip. Rapid equips contend for the same character
+        // row's FOR UPDATE lock; the loser used to get a transient failure that
+        // the catch swallowed, leaving the item silently unequipped. A live Play
+        // Mode run lost four of ten equips that way. With the execution strategy
+        // wrapping the transaction, every one has to land.
+        [Fact]
+        public async Task Test_EquipmentSlotEngine_RapidConcurrentEquipsAllLandWithoutSilentDrops()
+        {
+            const long testPlayerId = 970004801L;
+            var mainCharacterId = Guid.NewGuid();
+
+            string[] baseIds =
+            {
+                "bronze_dagger_melee_weapon_slot_base",
+                "eq_iron_helm_helmet_armor_slot_base",
+                "iron_breastplate_chest_armor_slot_base",
+                "eq_iron_gauntlets_gloves_armor_slot_base",
+                "transcendent_platelegs_leggings_armor_slot_base",
+                "eq_iron_sabatons_boots_armor_slot_base"
+            };
+
+            var itemIds = new List<long>();
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = mainCharacterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = mainCharacterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 0 });
+
+                foreach (string baseId in baseIds)
+                {
+                    var instance = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = baseId, QualityTier = 1, AffixPayload = "{}" };
+                    db.EquipmentInstances.Add(instance);
+                }
+                await db.SaveChangesAsync();
+
+                itemIds.AddRange(await db.EquipmentInstances.AsNoTracking()
+                    .Where(e => e.PlayerId == testPlayerId).Select(e => e.Id).ToListAsync());
+            }
+
+            var slotEngine = new EquipmentSlotEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            // All six at once, deliberately contending for the same row.
+            var equips = new List<Task>();
+            for (int i = 0; i < itemIds.Count; i++)
+            {
+                long itemId = itemIds[i];
+                equips.Add(slotEngine.EquipItemAsync(testPlayerId, itemId, mainCharacterId));
+            }
+            await Task.WhenAll(equips);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var character = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == mainCharacterId);
+
+                // One item per slot went in, so all six slots must be filled.
+                // Before the retry wrapper, contention left several null.
+                Assert.NotNull(character.EquippedWeaponId);
+                Assert.NotNull(character.EquippedHelmetId);
+                Assert.NotNull(character.EquippedChestId);
+                Assert.NotNull(character.EquippedGlovesId);
+                Assert.NotNull(character.EquippedLeggingsId);
+                Assert.NotNull(character.EquippedBootsId);
+
+                // And each slot holds a distinct item - no retry double-applied.
+                var worn = new HashSet<long>
+                {
+                    character.EquippedWeaponId!.Value,
+                    character.EquippedHelmetId!.Value,
+                    character.EquippedChestId!.Value,
+                    character.EquippedGlovesId!.Value,
+                    character.EquippedLeggingsId!.Value,
+                    character.EquippedBootsId!.Value
+                };
+                Assert.Equal(6, worn.Count);
+            }
+        }
+
         // Modul: breeding pairs. A granted race pair has to be able to actually
         // breed, or it is a decoration. That needs three things to line up: one
         // male and one female, both the same race, and BreedingEngine honouring
@@ -7977,17 +8154,17 @@ namespace FolkIdle.Server.Tests
             // mutex forbids sharing one.
             payload.Slot1_CharacterId = Guid.NewGuid();
             payload.Slot1_AgePhase = 1;
-            payload.ActiveActivityId = 101L;   // Woodcutting node 1
+            payload.ActiveActivityId = 1001L;   // Woodcutting node 1 (band 1000)
             payload.PlayerHp = 100000;
 
             payload.Slot2_CharacterId = Guid.NewGuid();
             payload.Slot2_AgePhase = 1;
-            payload.Slot2Activity.ActiveActivityId = 102L;  // Woodcutting node 2
+            payload.Slot2Activity.ActiveActivityId = 1002L;  // Woodcutting node 2 (band 1000)
             payload.Slot2Activity.PlayerHp = 100000;
 
             payload.Slot3_CharacterId = Guid.NewGuid();
             payload.Slot3_AgePhase = 1;
-            payload.Slot3Activity.ActiveActivityId = 201L;  // Mining node 1
+            payload.Slot3Activity.ActiveActivityId = 2001L;  // Mining node 1 (band 2000)
             payload.Slot3Activity.PlayerHp = 100000;
 
             RunSlotTicks(ref payload, 25);
@@ -8005,9 +8182,9 @@ namespace FolkIdle.Server.Tests
             // back in the flat fields after the loop, which is what the outbound
             // packet, the checkpoint flush and the offline extrapolation all
             // read.
-            Assert.Equal(101L, payload.ActiveActivityId);
-            Assert.Equal(102L, payload.Slot2Activity.ActiveActivityId);
-            Assert.Equal(201L, payload.Slot3Activity.ActiveActivityId);
+            Assert.Equal(1001L, payload.ActiveActivityId);
+            Assert.Equal(1002L, payload.Slot2Activity.ActiveActivityId);
+            Assert.Equal(2001L, payload.Slot3Activity.ActiveActivityId);
         }
 
         // Modul: multi-slot simulation. A locked slot must not be simulated, or
@@ -8028,13 +8205,13 @@ namespace FolkIdle.Server.Tests
 
             payload.Slot1_CharacterId = Guid.NewGuid();
             payload.Slot1_AgePhase = 1;
-            payload.ActiveActivityId = 101L;
+            payload.ActiveActivityId = 1001L;
             payload.PlayerHp = 100000;
 
             // A character sitting in a locked slot, assigned and ready.
             payload.Slot2_CharacterId = Guid.NewGuid();
             payload.Slot2_AgePhase = 1;
-            payload.Slot2Activity.ActiveActivityId = 102L;
+            payload.Slot2Activity.ActiveActivityId = 1002L;
             payload.Slot2Activity.PlayerHp = 100000;
 
             RunSlotTicks(ref payload, 25);
@@ -8069,18 +8246,18 @@ namespace FolkIdle.Server.Tests
             };
             singleSlot.Slot1_CharacterId = Guid.NewGuid();
             singleSlot.Slot1_AgePhase = 1;
-            singleSlot.ActiveActivityId = 101L;
+            singleSlot.ActiveActivityId = 1001L;
             singleSlot.PlayerHp = 100000;
 
             var threeSlots = singleSlot;
             threeSlots.PlayerId = 970004404L;
             threeSlots.Slot2_CharacterId = Guid.NewGuid();
             threeSlots.Slot2_AgePhase = 1;
-            threeSlots.Slot2Activity.ActiveActivityId = 102L;
+            threeSlots.Slot2Activity.ActiveActivityId = 1002L;
             threeSlots.Slot2Activity.PlayerHp = 100000;
             threeSlots.Slot3_CharacterId = Guid.NewGuid();
             threeSlots.Slot3_AgePhase = 1;
-            threeSlots.Slot3Activity.ActiveActivityId = 201L;
+            threeSlots.Slot3Activity.ActiveActivityId = 2001L;
             threeSlots.Slot3Activity.PlayerHp = 100000;
 
             RunSlotTicks(ref singleSlot, ticks);

@@ -147,133 +147,193 @@ namespace FolkIdle.Server.Domain.Combat
         // player's characters is putting the item on. Guid.Empty means "the
         // main character", so a client that has not been taught about the
         // roster yet keeps working exactly as before.
+        // Modul: retryable equip. The outcome of one attempt, so the retriable
+        // delegate can report what happened without performing side effects
+        // itself. A delegate handed to an execution strategy may run more than
+        // once, so anything that must happen exactly once - pushing a command
+        // result to the player, enqueuing a slot update for the tick thread -
+        // has to sit outside it, keyed off this.
+        private readonly struct EquipAttemptOutcome
+        {
+            public readonly bool Committed;
+            public readonly byte? ResultCode;
+            public readonly EquipmentSlotUpdateNotification Notification;
+
+            public EquipAttemptOutcome(bool committed, byte? resultCode, EquipmentSlotUpdateNotification notification)
+            {
+                Committed = committed;
+                ResultCode = resultCode;
+                Notification = notification;
+            }
+
+            public static EquipAttemptOutcome Rejected(byte? resultCode = null) => new(false, resultCode, default);
+            public static EquipAttemptOutcome Success(EquipmentSlotUpdateNotification notification) => new(true, null, notification);
+        }
+
+        // Modul: retryable equip. Equipping several pieces in quick succession
+        // makes them contend for the same character row's FOR UPDATE lock, and
+        // a loser used to get "a transient failure" that the catch below
+        // swallowed - the item silently stayed unequipped with no feedback at
+        // all. Two fast clicks in a real session did the same thing, and a live
+        // Play Mode run lost four of ten equips to it.
+        //
+        // The fix is the pattern CraftingEngine already uses: a
+        // retry-configured context plus an execution strategy wrapping the whole
+        // transaction, so a Serializable conflict is retried as a unit. A
+        // retrying context WITHOUT the strategy wrapper is not a partial fix but
+        // a regression - EF refuses user-initiated transactions under one and
+        // throws on every single equip.
+        //
+        // The delegate is re-runnable: it clears the change tracker on entry so
+        // a retry does not inherit a half-applied graph, and it returns its
+        // outcome instead of enqueuing anything.
         public async Task EquipItemAsync(long playerId, long itemInstanceId, Guid characterId = default)
         {
-            // Modul: known gap, found in a live Play Mode run. Equipping several
-            // pieces in quick succession makes them contend for the same
-            // character row's FOR UPDATE lock, and a loser gets
-            // "a transient failure" that the catch below swallows - the item
-            // silently stays unequipped with no feedback. Switching to
-            // RetryingDbContextOptions is NOT sufficient on its own: EF refuses
-            // user-initiated transactions under a retrying strategy unless the
-            // whole body runs inside Database.CreateExecutionStrategy(), which
-            // needs both methods here restructured into re-runnable delegates
-            // (see CraftingEngine for the shape). Left as-is rather than
-            // half-applied, since a retrying context without the strategy
-            // wrapper throws on every equip.
-            using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-            using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var db = new FolkIdleDbContext(_serviceProvider.GetRequiredService<RetryingDbContextOptions>().Options);
+            var strategy = db.Database.CreateExecutionStrategy();
 
+            EquipAttemptOutcome outcome;
             try
             {
-                var item = await db.EquipmentInstances
-                    .FromSqlInterpolated($"SELECT * FROM \"EquipmentInstances\" WHERE \"Id\" = {itemInstanceId} FOR UPDATE")
-                    .SingleOrDefaultAsync();
-
-                if (item == null || item.PlayerId != playerId)
+                outcome = await strategy.ExecuteAsync(async () =>
                 {
-                    await transaction.RollbackAsync();
-                    return;
-                }
+                    db.ChangeTracker.Clear();
+                    using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-                int slotIndex = ResolveSlotIndex(item.BaseItemId);
-                if (slotIndex < 0)
-                {
-                    await transaction.RollbackAsync();
-                    return;
-                }
+                    var item = await db.EquipmentInstances
+                        .FromSqlInterpolated($"SELECT * FROM \"EquipmentInstances\" WHERE \"Id\" = {itemInstanceId} FOR UPDATE")
+                        .SingleOrDefaultAsync();
 
-                var character = await ResolveCharacterForUpdateAsync(db, playerId, characterId);
-                if (character == null)
-                {
-                    await transaction.RollbackAsync();
-                    return;
-                }
+                    if (item == null || item.PlayerId != playerId)
+                    {
+                        await transaction.RollbackAsync();
+                        return EquipAttemptOutcome.Rejected();
+                    }
 
-                // Modul: per-character equipment. One physical item cannot be
-                // worn by two characters at once. Without this, equipping the
-                // same sword on all three would triple its stats across the
-                // roster from a single drop.
-                if (await IsEquippedAnywhereAsync(db, playerId, itemInstanceId))
-                {
-                    await transaction.RollbackAsync();
-                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.ItemEquipped);
-                    return;
-                }
+                    int slotIndex = ResolveSlotIndex(item.BaseItemId);
+                    if (slotIndex < 0)
+                    {
+                        await transaction.RollbackAsync();
+                        return EquipAttemptOutcome.Rejected();
+                    }
 
-                int playerLevel = await db.PlayerRecords.AsNoTracking()
-                    .Where(p => p.Id == playerId)
-                    .Select(p => p.CurrentLevel)
-                    .FirstOrDefaultAsync();
+                    var character = await ResolveCharacterForUpdateAsync(db, playerId, characterId);
+                    if (character == null)
+                    {
+                        await transaction.RollbackAsync();
+                        return EquipAttemptOutcome.Rejected();
+                    }
 
-                // Modul: Advanced Economy Refactoring, Part 2.3. Level
-                // gate at equip time - the second half of the anti-cheese
-                // lock (MarketEscrowEngine.BuyItemAsync blocks the
-                // purchase; this blocks equipping over-leveled gear
-                // acquired through any other channel: mail, bank
-                // withdrawal, pre-gate inventory).
-                int requiredLevel = EquipmentLevelGate.DeriveRequiredLevel(item.BaseItemId, item.QualityTier);
-                if (playerLevel < requiredLevel)
-                {
-                    await transaction.RollbackAsync();
-                    Console.WriteLine($"Equip rejected: player {playerId} level {playerLevel} below required {requiredLevel} for {item.BaseItemId} T{item.QualityTier}.");
-                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.LevelTooLow);
-                    return;
-                }
+                    // Modul: per-character equipment. One physical item cannot be
+                    // worn by two characters at once. Without this, equipping the
+                    // same sword on all three would triple its stats across the
+                    // roster from a single drop.
+                    if (await IsEquippedAnywhereAsync(db, playerId, itemInstanceId))
+                    {
+                        await transaction.RollbackAsync();
+                        return EquipAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.ItemEquipped);
+                    }
 
-                WriteSlot(character, slotIndex, item.Id);
+                    int playerLevel = await db.PlayerRecords.AsNoTracking()
+                        .Where(p => p.Id == playerId)
+                        .Select(p => p.CurrentLevel)
+                        .FirstOrDefaultAsync();
 
-                await db.SaveChangesAsync();
+                    // Modul: Advanced Economy Refactoring, Part 2.3. Level
+                    // gate at equip time - the second half of the anti-cheese
+                    // lock (MarketEscrowEngine.BuyItemAsync blocks the
+                    // purchase; this blocks equipping over-leveled gear
+                    // acquired through any other channel: mail, bank
+                    // withdrawal, pre-gate inventory).
+                    int requiredLevel = EquipmentLevelGate.DeriveRequiredLevel(item.BaseItemId, item.QualityTier);
+                    if (playerLevel < requiredLevel)
+                    {
+                        await transaction.RollbackAsync();
+                        Console.WriteLine($"Equip rejected: player {playerId} level {playerLevel} below required {requiredLevel} for {item.BaseItemId} T{item.QualityTier}.");
+                        return EquipAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.LevelTooLow);
+                    }
 
-                EquipmentSlotUpdateNotification notification = await BuildNotificationAsync(db, character);
+                    WriteSlot(character, slotIndex, item.Id);
 
-                await transaction.CommitAsync();
+                    await db.SaveChangesAsync();
 
-                _playerRegistry?.EquipmentSlotUpdateQueue.Enqueue(notification);
+                    EquipmentSlotUpdateNotification notification = await BuildNotificationAsync(db, character);
+
+                    await transaction.CommitAsync();
+
+                    return EquipAttemptOutcome.Success(notification);
+                });
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                // Reached only once the strategy has exhausted its retries or
+                // hit something it does not consider transient.
                 Console.WriteLine($"Equip item failed for player {playerId}: {ex.Message}");
+                return;
             }
+
+            PublishOutcome(playerId, outcome);
         }
 
         public async Task UnequipItemAsync(long playerId, int slotIndex, Guid characterId = default)
         {
-            using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-            using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            await using var db = new FolkIdleDbContext(_serviceProvider.GetRequiredService<RetryingDbContextOptions>().Options);
+            var strategy = db.Database.CreateExecutionStrategy();
 
+            EquipAttemptOutcome outcome;
             try
             {
-                if (slotIndex < 0 || slotIndex >= SlotCount)
+                outcome = await strategy.ExecuteAsync(async () =>
                 {
-                    await transaction.RollbackAsync();
-                    return;
-                }
+                    db.ChangeTracker.Clear();
+                    using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-                var character = await ResolveCharacterForUpdateAsync(db, playerId, characterId);
-                if (character == null)
-                {
-                    await transaction.RollbackAsync();
-                    return;
-                }
+                    if (slotIndex < 0 || slotIndex >= SlotCount)
+                    {
+                        await transaction.RollbackAsync();
+                        return EquipAttemptOutcome.Rejected();
+                    }
 
-                WriteSlot(character, slotIndex, null);
+                    var character = await ResolveCharacterForUpdateAsync(db, playerId, characterId);
+                    if (character == null)
+                    {
+                        await transaction.RollbackAsync();
+                        return EquipAttemptOutcome.Rejected();
+                    }
 
-                await db.SaveChangesAsync();
+                    WriteSlot(character, slotIndex, null);
 
-                EquipmentSlotUpdateNotification notification = await BuildNotificationAsync(db, character);
+                    await db.SaveChangesAsync();
 
-                await transaction.CommitAsync();
+                    EquipmentSlotUpdateNotification notification = await BuildNotificationAsync(db, character);
 
-                _playerRegistry?.EquipmentSlotUpdateQueue.Enqueue(notification);
+                    await transaction.CommitAsync();
+
+                    return EquipAttemptOutcome.Success(notification);
+                });
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
                 Console.WriteLine($"Unequip item failed for player {playerId}: {ex.Message}");
+                return;
+            }
+
+            PublishOutcome(playerId, outcome);
+        }
+
+        // The exactly-once half of both operations, kept out of the retriable
+        // delegate so a retry cannot double-report a rejection or push the same
+        // slot update to the tick thread twice.
+        private void PublishOutcome(long playerId, EquipAttemptOutcome outcome)
+        {
+            if (outcome.ResultCode.HasValue)
+            {
+                _playerRegistry?.EnqueueCommandResult(playerId, outcome.ResultCode.Value);
+            }
+
+            if (outcome.Committed)
+            {
+                _playerRegistry?.EquipmentSlotUpdateQueue.Enqueue(outcome.Notification);
             }
         }
 

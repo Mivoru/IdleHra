@@ -1481,7 +1481,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                     if (!isInternalCommand && !ClientCommandValidator.ValidateNoAntiCheatPayload(ref currentPayload, ref cmd))
                     {
-                        _antiCheatTelemetryEngine.RequestShadowBan(routingPlayerId, 54, 2);
+                        _antiCheatTelemetryEngine?.RequestShadowBan(routingPlayerId, 54, 2);
                         continue;
                     }
 
@@ -1495,7 +1495,7 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         if (!ClientCommandValidator.ValidateAntiCheatChallengeResponse(ref currentPayload, ref cmd))
                         {
-                            _antiCheatTelemetryEngine.RequestShadowBan(routingPlayerId, 54, 3);
+                            _antiCheatTelemetryEngine?.RequestShadowBan(routingPlayerId, 54, 3);
                         }
                         else
                         {
@@ -2607,7 +2607,7 @@ namespace FolkIdle.Server.Domain.Combat
                             currentPayload.IsQuarantined = true;
                             currentPayload.Quarantine_Active = true;
                             currentPayload.ActiveChallengeAnswered = 1;
-                            _antiCheatTelemetryEngine.RequestShadowBan(currentPayload.PlayerId, 54, 4);
+                            _antiCheatTelemetryEngine?.RequestShadowBan(currentPayload.PlayerId, 54, 4);
                         }
 
                         if (_liveSessionContexts.TryGetValue(kvp.Key, out var sessionContext))
