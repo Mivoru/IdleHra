@@ -105,6 +105,17 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
+                // Modul: breeding pairs. The paternal/maternal labels used to be
+                // positional only - any two characters could breed, including
+                // two of the same sex, because no sex existed. Now that every
+                // race arrives as a male/female pair, the labels have to mean
+                // what they say or the pair is not a pair.
+                if (pChar.IsFemale || !mChar.IsFemale)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
                 var pVec = new GeneticVector(pLineage.GeneticVector);
                 var mVec = new GeneticVector(mLineage.GeneticVector);
 
@@ -160,7 +171,11 @@ namespace FolkIdle.Server.Engine
                     PlayerId = playerId,
                     Level = 1,
                     AgePhase = 0,
-                    IsLockedInEscrow = false
+                    IsLockedInEscrow = false,
+                    // Modul: breeding pairs. A coin flip. Without a sex of its
+                    // own every child would default to male and a lineage would
+                    // be unable to breed past its founding pair.
+                    IsFemale = Random.Shared.Next(2) == 1
                 };
 
                 var newLineage = new CharacterLineageRegistry

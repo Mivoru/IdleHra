@@ -255,7 +255,10 @@ namespace FolkIdle.Server.Engine
                                 UnlockedByMonsterId = unlockMonsterId
                             });
 
-                            await GrantUnlockedRaceCharacterAsync(dbContext, unlockPlayerId, unlockRaceId, stoppingToken);
+                            // Modul: breeding pairs. A male AND a female, so the
+                            // unlocked race is a founding population rather than
+                            // a single character the player can never propagate.
+                            await CharacterGrantEngine.GrantRacePairAsync(dbContext, unlockPlayerId, unlockRaceId, stoppingToken);
                         }
                     }
 
@@ -329,66 +332,5 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        // Modul: race unlocks. Hands the player a level-1 character of a
-        // newly-unlocked race, inside the caller's already-open Serializable
-        // transaction.
-        //
-        // The character is granted rather than merely made "available" because
-        // there is no other route to a non-Human character in this game:
-        // AuthenticationEngine creates every account with
-        // GeneticVector = RaceIds.Human, and BreedingEngine rejects any pair
-        // whose LocusRace.Dominant values differ, so cross-race breeding cannot
-        // produce one either. An unlock that granted nothing would have left
-        // five races exactly as unobtainable as before.
-        //
-        // SlotIndex: the first free active slot if there is one, otherwise the
-        // next roster index. A character beyond the three active slots still
-        // exists and is still the player's - it simply waits for a slot to be
-        // freed, which is the roster screen's job.
-        private static async Task GrantUnlockedRaceCharacterAsync(FolkIdleDbContext dbContext, long playerId, byte raceId, CancellationToken stoppingToken)
-        {
-            var existingSlotIndices = await dbContext.CharacterRecords
-                .Where(c => c.PlayerId == playerId)
-                .Select(c => c.SlotIndex)
-                .ToListAsync(stoppingToken);
-
-            int slotIndex = 0;
-            while (existingSlotIndices.Contains(slotIndex))
-            {
-                slotIndex++;
-            }
-
-            var grantedCharacterId = Guid.NewGuid();
-
-            dbContext.CharacterRecords.Add(new CharacterRecord
-            {
-                Id = grantedCharacterId,
-                PlayerId = playerId,
-                Level = 1,
-                // Adult, not child: this is a reward for killing a region boss,
-                // and handing the player something that cannot work until it
-                // matures would read as a penalty.
-                AgePhase = 1,
-                AgeTicks = 0L,
-                SlotIndex = slotIndex,
-                // Idle. Which activity it runs is the player's decision, and
-                // assigning one here could collide with an existing character's
-                // activity and violate the occupancy mutex.
-                ActiveActivityId = 0L
-            });
-
-            // The race lives in the genome's first locus - dominant AND
-            // recessive, so the race breeds true with its own kind rather than
-            // reverting to whatever the recessive half held.
-            var genome = new GeneticVector(0L);
-            genome.LocusRace = new Locus { Dominant = raceId, Recessive = raceId };
-
-            dbContext.CharacterLineages.Add(new CharacterLineageRegistry
-            {
-                CharacterId = grantedCharacterId,
-                GenerationIndex = 0,
-                GeneticVector = genome.RawValue
-            });
-        }
     }
 }

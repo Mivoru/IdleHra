@@ -2611,7 +2611,12 @@ namespace FolkIdle.Server.Network
                 var response = new PlayerInventorySnapshotResponse
                 {
                     BackpackSlotsUsed = equipment.Count,
-                    MaxStackQuantity = FolkIdle.Server.Models.VillageStashInstance.MaxStackQuantity
+                    // Modul: unlimited village chest. Was
+                    // VillageStashInstance.MaxStackQuantity (9999), which the
+                    // Inventory screen rendered as "stacks cap at 9999". There
+                    // is no cap any more, so 0 is the agreed "unbounded"
+                    // sentinel and the client suppresses the line entirely.
+                    MaxStackQuantity = 0L
                 };
 
                 for (int i = 0; i < equipment.Count; i++)

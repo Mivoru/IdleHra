@@ -262,21 +262,13 @@ namespace FolkIdle.Server.Engine
                     db.PlayerRecords.Add(player);
                     await db.SaveChangesAsync();
 
-                    db.CharacterRecords.Add(new CharacterRecord
-                    {
-                        Id = characterId,
-                        PlayerId = player.Id,
-                        Level = 1,
-                        AgePhase = 1,
-                        AgeTicks = 0L
-                    });
-
-                    db.CharacterLineages.Add(new CharacterLineageRegistry
-                    {
-                        CharacterId = characterId,
-                        GenerationIndex = 0,
-                        GeneticVector = RaceIds.Human
-                    });
+                    // Modul: breeding pairs. Was a single character. A lone
+                    // starter is a dead end - BreedingEngine needs a male and a
+                    // female of the same race, so a one-character account could
+                    // never breed at all until it happened to be granted a
+                    // second. Every account now starts with a Human pair; see
+                    // CharacterGrantEngine.
+                    CharacterGrantEngine.SeedStarterHumanPair(db, player.Id, characterId);
 
                     db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = "gold", Quantity = 1000L });
                     db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = ContentRegistry.GetMaterialString(1), Quantity = 25L });
@@ -500,21 +492,13 @@ namespace FolkIdle.Server.Engine
                     db.PlayerRecords.Add(player);
                     await db.SaveChangesAsync();
 
-                    db.CharacterRecords.Add(new CharacterRecord
-                    {
-                        Id = characterId,
-                        PlayerId = player.Id,
-                        Level = 1,
-                        AgePhase = 1,
-                        AgeTicks = 0L
-                    });
-
-                    db.CharacterLineages.Add(new CharacterLineageRegistry
-                    {
-                        CharacterId = characterId,
-                        GenerationIndex = 0,
-                        GeneticVector = RaceIds.Human
-                    });
+                    // Modul: breeding pairs. Was a single character. A lone
+                    // starter is a dead end - BreedingEngine needs a male and a
+                    // female of the same race, so a one-character account could
+                    // never breed at all until it happened to be granted a
+                    // second. Every account now starts with a Human pair; see
+                    // CharacterGrantEngine.
+                    CharacterGrantEngine.SeedStarterHumanPair(db, player.Id, characterId);
 
                     db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = "gold", Quantity = 1000L });
                     db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = ContentRegistry.GetMaterialString(1), Quantity = 25L });

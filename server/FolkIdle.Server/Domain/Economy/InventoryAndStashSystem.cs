@@ -112,10 +112,22 @@ namespace FolkIdle.Server.Domain.Economy
             return true;
         }
 
-        // Deposits into the stash tier, clamped to MaxStackQuantity per
-        // stack - the overflow beyond the cap is returned (not silently
-        // destroyed) so the caller decides what to do with the remainder.
-        // Upsert semantics rely on the unique (PlayerId, ItemId) index.
+        // Deposits into the Village Chest. Upsert semantics rely on the unique
+        // (PlayerId, ItemId) index.
+        //
+        // Modul: unlimited village chest. This used to clamp each stack to
+        // VillageStashInstance.MaxStackQuantity (9999) and return the overflow
+        // for the caller to handle. No caller ever handled it meaningfully -
+        // the only place to put a rejected remainder is the backpack the player
+        // was depositing FROM, so in practice a full stack silently ate
+        // everything above the cap at the exact moment a player had succeeded
+        // at the game.
+        //
+        // The chest is now genuinely unbounded, so this always accepts the
+        // whole quantity. The return value is kept (and is always 0) rather
+        // than changed to void, so the handful of call sites that check it stay
+        // correct without edits and a future bounded tier could reintroduce a
+        // real remainder without another signature change.
         public static async Task<long> DepositToStashAsync(FolkIdleDbContext db, long playerId, string itemId, long quantity)
         {
             if (quantity <= 0)
@@ -128,24 +140,17 @@ namespace FolkIdle.Server.Domain.Economy
                 .ToListAsync();
             var stash = stashRows.Count > 0 ? stashRows[0] : null;
 
-            long currentQuantity = stash?.Quantity ?? 0L;
-            long acceptable = Math.Min(quantity, VillageStashInstance.MaxStackQuantity - currentQuantity);
-            if (acceptable <= 0)
-            {
-                return quantity;
-            }
-
             if (stash == null)
             {
-                db.VillageStashInstances.Add(new VillageStashInstance { PlayerId = playerId, ItemId = itemId, Quantity = acceptable });
+                db.VillageStashInstances.Add(new VillageStashInstance { PlayerId = playerId, ItemId = itemId, Quantity = quantity });
             }
             else
             {
-                stash.Quantity = currentQuantity + acceptable;
+                stash.Quantity += quantity;
                 db.VillageStashInstances.Update(stash);
             }
 
-            return quantity - acceptable;
+            return 0L;
         }
     }
 }

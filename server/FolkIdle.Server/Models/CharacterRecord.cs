@@ -32,6 +32,23 @@ namespace FolkIdle.Server.Models
         public long AgeTicks { get; set; } = 0;
         public bool IsLockedInEscrow { get; set; }
 
+        // Modul: breeding pairs. A character's sex. There was no such concept:
+        // ExecuteBreedingAsync simply took two character ids and labelled them
+        // "paternal" and "maternal", so a character could be bred with itself's
+        // own kind in any combination and the labels meant nothing.
+        //
+        // It matters now because races are granted as breeding PAIRS - a new
+        // account starts with one male and one female Human, and each region
+        // boss's first kill grants a male/female pair of the unlocked race. A
+        // pair that cannot actually breed would be a decoration, since
+        // BreedingEngine also requires both parents to share a race and there
+        // is no other way to obtain a second character of a non-Human race.
+        //
+        // false = male, true = female. A bool rather than an enum because there
+        // are exactly two breeding roles and the parent columns are already
+        // named paternal/maternal.
+        public bool IsFemale { get; set; }
+
         // Modul 13.4.3: Breeding Grounds cooldown gate. Set on both parents by
         // BreedingEngine after a successful breed; ExecuteBreedingAsync rejects
         // a new attempt while BreedingCooldownEndEpoch is still in the future.

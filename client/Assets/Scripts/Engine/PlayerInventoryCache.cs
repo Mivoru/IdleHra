@@ -56,7 +56,10 @@ namespace FolkIdle.Client.Engine
         public static IReadOnlyList<InventoryEquipmentData> Equipment => _equipment;
         public static IReadOnlyList<InventoryStackData> Stacks => _stacks;
         public static int BackpackSlotsUsed { get; private set; }
-        public static long MaxStackQuantity { get; private set; } = 9999L;
+        // Modul: unlimited village chest. 0 means "no cap" - the server sends
+        // that now, and the Inventory summary suppresses the cap line entirely
+        // rather than printing a limit that no longer exists.
+        public static long MaxStackQuantity { get; private set; }
 
         private static List<InventoryEquipmentData> _equipment = new List<InventoryEquipmentData>();
         private static List<InventoryStackData> _stacks = new List<InventoryStackData>();
@@ -97,7 +100,7 @@ namespace FolkIdle.Client.Engine
                 _equipment = data.Equipment ?? new List<InventoryEquipmentData>();
                 _stacks = data.Stacks ?? new List<InventoryStackData>();
                 BackpackSlotsUsed = data.BackpackSlotsUsed;
-                if (data.MaxStackQuantity > 0) MaxStackQuantity = data.MaxStackQuantity;
+                MaxStackQuantity = data.MaxStackQuantity;
 
                 // Equipped first, then rarest, so the most relevant gear is
                 // at the top of the list without the player having to scroll.

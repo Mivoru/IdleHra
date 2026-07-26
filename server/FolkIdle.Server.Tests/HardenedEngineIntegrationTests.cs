@@ -475,7 +475,7 @@ namespace FolkIdle.Server.Tests
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10000L });
                 db.CharacterRecords.AddRange(
                     new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
-                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false });
+                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
                 db.CharacterLineages.AddRange(
                     new CharacterLineageRegistry { CharacterId = parentAId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
                     new CharacterLineageRegistry { CharacterId = parentBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue });
@@ -534,7 +534,7 @@ namespace FolkIdle.Server.Tests
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 1L });
                 db.CharacterRecords.AddRange(
                     new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
-                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false });
+                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
                 db.CharacterLineages.AddRange(
                     new CharacterLineageRegistry { CharacterId = parentAId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
                     new CharacterLineageRegistry { CharacterId = parentBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue });
@@ -583,7 +583,7 @@ namespace FolkIdle.Server.Tests
                 // Both parents belong to testPlayerId, not the attacker attempting to breed them.
                 db.CharacterRecords.AddRange(
                     new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
-                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false });
+                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
                 db.CharacterLineages.AddRange(
                     new CharacterLineageRegistry { CharacterId = parentAId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
                     new CharacterLineageRegistry { CharacterId = parentBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue });
@@ -633,7 +633,7 @@ namespace FolkIdle.Server.Tests
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10000L });
                 db.CharacterRecords.AddRange(
                     new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsBreedingActive = true, BreedingCooldownEndEpoch = futureCooldownEpoch },
-                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false });
+                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
                 db.CharacterLineages.AddRange(
                     new CharacterLineageRegistry { CharacterId = parentAId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
                     new CharacterLineageRegistry { CharacterId = parentBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue });
@@ -1058,7 +1058,7 @@ namespace FolkIdle.Server.Tests
                 // case within 2 generations.
                 db.CharacterRecords.AddRange(
                     new CharacterRecord { Id = siblingAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
-                    new CharacterRecord { Id = siblingBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false });
+                    new CharacterRecord { Id = siblingBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
                 db.CharacterLineages.AddRange(
                     new CharacterLineageRegistry { CharacterId = siblingAId, ParentPaternalId = grandparentId, GenerationIndex = 1, GeneticVector = sharedGenome.RawValue },
                     new CharacterLineageRegistry { CharacterId = siblingBId, ParentPaternalId = grandparentId, GenerationIndex = 1, GeneticVector = sharedGenome.RawValue });
@@ -1115,8 +1115,8 @@ namespace FolkIdle.Server.Tests
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10000L });
                 db.CharacterRecords.AddRange(
                     new CharacterRecord { Id = sharedParentId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
-                    new CharacterRecord { Id = candidateBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
-                    new CharacterRecord { Id = candidateCId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false });
+                    new CharacterRecord { Id = candidateBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true },
+                    new CharacterRecord { Id = candidateCId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
                 db.CharacterLineages.AddRange(
                     new CharacterLineageRegistry { CharacterId = sharedParentId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
                     new CharacterLineageRegistry { CharacterId = candidateBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
@@ -6609,21 +6609,44 @@ namespace FolkIdle.Server.Tests
                 Assert.Equal(94L, stash.Quantity);
             }
 
-            // Stack cap: deposit far beyond 9999 - the stack tops out at
-            // exactly the cap and the overflow comes back to the caller.
+            // Modul: unlimited village chest. This block used to assert the
+            // opposite: that a deposit past 9999 topped out at the cap and
+            // handed the remainder back. No caller ever did anything useful
+            // with that remainder - the only place to put it is the backpack
+            // the player was depositing FROM - so the cap silently destroyed
+            // materials at the exact moment a player had succeeded at the game.
+            // The chest is unbounded now; the whole deposit must land.
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
                 long overflow = await InventoryAndStashSystem.DepositToStashAsync(db, testPlayerId, "copper_ore", 20000L);
                 await db.SaveChangesAsync();
                 await tx.CommitAsync();
-                Assert.Equal(20000L - (VillageStashInstance.MaxStackQuantity - 94L), overflow);
+                Assert.Equal(0L, overflow);
             }
 
             await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 var stash = await verifyDb.VillageStashInstances.AsNoTracking().SingleAsync(s => s.PlayerId == testPlayerId && s.ItemId == "copper_ore");
-                Assert.Equal(VillageStashInstance.MaxStackQuantity, stash.Quantity);
+                Assert.Equal(94L + 20000L, stash.Quantity);
+            }
+
+            // And a chest that big is still spendable without carrying anything
+            // back out - which is the whole point of the chest being linked to
+            // the workbench rather than being a museum.
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                bool consumed = await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, testPlayerId, "copper_ore", 15000L);
+                Assert.True(consumed, "Materials sitting in the Village Chest must be spendable directly.");
+                await db.SaveChangesAsync();
+                await tx.CommitAsync();
+            }
+
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var stash = await verifyDb.VillageStashInstances.AsNoTracking().SingleAsync(s => s.PlayerId == testPlayerId && s.ItemId == "copper_ore");
+                Assert.Equal(94L + 20000L - 15000L, stash.Quantity);
             }
         }
 
@@ -7464,6 +7487,127 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(10, checkedNodes);
         }
 
+        // Modul: breeding pairs. A granted race pair has to be able to actually
+        // breed, or it is a decoration. That needs three things to line up: one
+        // male and one female, both the same race, and BreedingEngine honouring
+        // its own paternal/maternal labels - which it did not, because until now
+        // no sex existed and any two characters could pair.
+        [Fact]
+        public async Task Test_BreedingPair_GrantedRacePairCanBreedAndSameSexIsRefused()
+        {
+            const long testPlayerId = 970004601L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 100000L });
+                await db.SaveChangesAsync();
+            }
+
+            // Grant the Kobold pair the region 3 boss would hand over.
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await CharacterGrantEngine.GrantRacePairAsync(db, testPlayerId, RaceIds.Kobold, CancellationToken.None);
+                await db.SaveChangesAsync();
+            }
+
+            Guid maleId;
+            Guid femaleId;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var pair = await db.CharacterRecords.Where(c => c.PlayerId == testPlayerId).ToListAsync();
+                Assert.Equal(2, pair.Count);
+                maleId = pair.Single(c => !c.IsFemale).Id;
+                femaleId = pair.Single(c => c.IsFemale).Id;
+
+                // BreedingEngine's own pre-existing gates, unrelated to sex: a
+                // built Breeding Lab and both parents at level 50. A granted
+                // pair arrives at level 1 on purpose - the race is a founding
+                // population you still have to raise, not an instant dynasty.
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = testPlayerId, BuildingId = VillageManagementEngine.BreedingGroundsBuildingId, CurrentLevel = 1 });
+                foreach (var character in pair) character.Level = 50;
+                await db.SaveChangesAsync();
+            }
+
+            var breedingEngine = new BreedingEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            // Two males is not a pair, whatever the argument order claims.
+            await breedingEngine.ExecuteBreedingAsync(testPlayerId, maleId, maleId);
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.Equal(2, await verify.CharacterRecords.AsNoTracking().CountAsync(c => c.PlayerId == testPlayerId));
+            }
+
+            // Arguments the wrong way round - female as paternal - is also not a
+            // pair. The labels have to mean what they say.
+            await breedingEngine.ExecuteBreedingAsync(testPlayerId, femaleId, maleId);
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.Equal(2, await verify.CharacterRecords.AsNoTracking().CountAsync(c => c.PlayerId == testPlayerId));
+            }
+
+            // The real pair breeds, and the child inherits the race - which is
+            // what makes the grant a founding population rather than a dead end.
+            await breedingEngine.ExecuteBreedingAsync(testPlayerId, maleId, femaleId);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var roster = await verify.CharacterRecords.AsNoTracking().Where(c => c.PlayerId == testPlayerId).ToListAsync();
+                Assert.Equal(3, roster.Count);
+
+                var child = roster.Single(c => c.Id != maleId && c.Id != femaleId);
+                var childLineage = await verify.CharacterLineages.AsNoTracking().SingleAsync(l => l.CharacterId == child.Id);
+                Assert.Equal(RaceIds.Kobold, new GeneticVector(childLineage.GeneticVector).LocusRace.Dominant);
+                Assert.Equal(maleId, childLineage.ParentPaternalId);
+                Assert.Equal(femaleId, childLineage.ParentMaternalId);
+            }
+        }
+
+        // Modul: breeding pairs. A brand new account must be able to breed on
+        // day one. It could not before: registration created exactly one
+        // character, and BreedingEngine needs two of the same race.
+        [Fact]
+        public void Test_BreedingPair_StarterRosterIsOneMaleAndOneFemaleHuman()
+        {
+            // Exercised against the same helper both registration paths call,
+            // so the starter roster and the race-unlock reward cannot drift.
+            var seeded = new System.Collections.Generic.List<CharacterRecord>();
+            var seededLineages = new System.Collections.Generic.List<CharacterLineageRegistry>();
+
+            var mainCharacterId = Guid.NewGuid();
+            using (var db = new FolkIdleDbContext(_fixture.RetryingOptions.Options))
+            {
+                CharacterGrantEngine.SeedStarterHumanPair(db, 970004602L, mainCharacterId);
+
+                foreach (var entry in db.ChangeTracker.Entries<CharacterRecord>())
+                {
+                    seeded.Add(entry.Entity);
+                }
+                foreach (var entry in db.ChangeTracker.Entries<CharacterLineageRegistry>())
+                {
+                    seededLineages.Add(entry.Entity);
+                }
+            }
+
+            Assert.Equal(2, seeded.Count);
+            Assert.Single(seeded.Where(c => !c.IsFemale));
+            Assert.Single(seeded.Where(c => c.IsFemale));
+
+            // The male keeps the player's PlayerGuid, because that id is what
+            // StateCheckpointManager resolves as Slot1 and the rest of the
+            // codebase treats as the main character.
+            Assert.Equal(mainCharacterId, seeded.Single(c => !c.IsFemale).Id);
+            Assert.Equal(0, seeded.Single(c => !c.IsFemale).SlotIndex);
+            Assert.Equal(1, seeded.Single(c => c.IsFemale).SlotIndex);
+
+            foreach (var lineage in seededLineages)
+            {
+                var genome = new GeneticVector(lineage.GeneticVector);
+                Assert.Equal(RaceIds.Human, genome.LocusRace.Dominant);
+                Assert.Equal(RaceIds.Human, genome.LocusRace.Recessive);
+            }
+        }
+
         // Modul: race unlocks. The game ships six races and every player could
         // only ever have Human ones: AuthenticationEngine creates each account
         // with GeneticVector = RaceIds.Human, the only other source of a
@@ -7540,26 +7684,40 @@ namespace FolkIdle.Server.Tests
                 Assert.Equal(regionOneBossId, unlock.UnlockedByMonsterId);
                 Assert.True(unlock.UnlockedAtEpoch > 0);
 
-                // And an actual character of that race arrived.
+                // Modul: breeding pairs. A MALE AND A FEMALE, not one
+                // character. A lone character of a race is a dead end -
+                // BreedingEngine needs both parents to share a race, and there
+                // is no other route to a second non-Human character - so a
+                // single grant would have handed the player a race they could
+                // look at and never propagate.
                 var granted = await verify.CharacterRecords.AsNoTracking()
                     .Where(c => c.PlayerId == testPlayerId)
                     .ToListAsync();
-                Assert.Single(granted);
+                Assert.Equal(2, granted.Count);
+                Assert.Single(granted.Where(c => !c.IsFemale));
+                Assert.Single(granted.Where(c => c.IsFemale));
+
+                // Distinct slots, or the pair would collide in the roster.
+                Assert.Equal(2, granted.Select(c => c.SlotIndex).Distinct().Count());
+
                 grantedCharacterId = granted[0].Id;
 
-                // Adult, so it can work immediately - a child would read as a
-                // penalty for killing a boss.
-                Assert.Equal(1, granted[0].AgePhase);
-                Assert.Equal(0L, granted[0].ActiveActivityId);
+                foreach (var character in granted)
+                {
+                    // Adults, so they can work and breed immediately - children
+                    // would read as a penalty for killing a boss.
+                    Assert.Equal(1, character.AgePhase);
+                    Assert.Equal(0L, character.ActiveActivityId);
 
-                var lineage = await verify.CharacterLineages.AsNoTracking()
-                    .SingleAsync(l => l.CharacterId == grantedCharacterId);
-                var genome = new GeneticVector(lineage.GeneticVector);
+                    var lineage = await verify.CharacterLineages.AsNoTracking()
+                        .SingleAsync(l => l.CharacterId == character.Id);
+                    var genome = new GeneticVector(lineage.GeneticVector);
 
-                // Dominant AND recessive, so the race breeds true with its own
-                // kind rather than reverting through the recessive half.
-                Assert.Equal(expectedRace, genome.LocusRace.Dominant);
-                Assert.Equal(expectedRace, genome.LocusRace.Recessive);
+                    // Dominant AND recessive, so the pair breeds true rather
+                    // than reverting through a recessive half neither carries.
+                    Assert.Equal(expectedRace, genome.LocusRace.Dominant);
+                    Assert.Equal(expectedRace, genome.LocusRace.Recessive);
+                }
             }
 
             // Killing the same boss again must not unlock or grant anything
@@ -7570,7 +7728,7 @@ namespace FolkIdle.Server.Tests
             await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 Assert.Equal(1, await verify.PlayerRaceUnlocks.AsNoTracking().CountAsync(u => u.PlayerId == testPlayerId));
-                Assert.Equal(1, await verify.CharacterRecords.AsNoTracking().CountAsync(c => c.PlayerId == testPlayerId));
+                Assert.Equal(2, await verify.CharacterRecords.AsNoTracking().CountAsync(c => c.PlayerId == testPlayerId));
             }
         }
 

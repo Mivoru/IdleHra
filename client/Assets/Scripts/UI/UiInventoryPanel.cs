@@ -157,10 +157,17 @@ namespace FolkIdle.Client.UI
 
             if (SummaryText != null)
             {
+                // Modul: unlimited village chest. The trailing "stacks cap at
+                // 9999" is gone whenever the server reports no cap (0) - the
+                // Village Chest is unbounded now, and telling a player about a
+                // limit that does not exist is worse than saying nothing.
                 SummaryText.text =
                     equippedCount + " equipped   -   " +
                     (equipment.Count - equippedCount) + " carried items   -   " +
-                    stacks.Count + " material types   -   stacks cap at " + PlayerInventoryCache.MaxStackQuantity;
+                    stacks.Count + " material types" +
+                    (PlayerInventoryCache.MaxStackQuantity > 0
+                        ? "   -   stacks cap at " + PlayerInventoryCache.MaxStackQuantity
+                        : "   -   Village Chest storage is unlimited");
             }
 
             // ---- Equipped ----
