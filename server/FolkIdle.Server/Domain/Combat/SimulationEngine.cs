@@ -473,6 +473,12 @@ namespace FolkIdle.Server.Domain.Combat
             _activePlayers.Remove(playerId);
             _liveSessionContexts.TryRemove(playerId, out _);
             _playerRegistry.UnregisterPlayer(playerId);
+
+            // Modul: anti-cheat false positive. Command-timing profiles used to
+            // outlive the session that produced them, so the ring buffer mixed
+            // this session's cadence with the last one's and treated the offline
+            // gap between them as a normal interval.
+            _antiCheatTelemetryEngine?.ForgetPlayer(playerId);
         }
 
         public void InjectVirtualPlayer(TickStatePayload payload)

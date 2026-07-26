@@ -6705,11 +6705,25 @@ namespace FolkIdle.Server.Tests
             }
 
             // The remapped table ids must be exactly what the monster rows
-            // reference, and the previously-empty woodcutting node ids the
-            // monster ids shadow (101-105) must have stayed empty.
+            // reference, and the woodcutting node ids the monster ids shadow
+            // (101-105) must not pick up monster drops.
             Assert.Equal(505, ContentRegistry.Monsters[95 - 1].LootTableId);
-            Assert.True(ContentRegistry.GetLootTable(101).IsEmpty,
-                "Gathering node 101's loot table must remain empty - monster tables must not leak into the node id space.");
+
+            // Modul: gathering loot tables. This used to assert node 101's table
+            // was EMPTY, standing in for "monster tables have not leaked into
+            // the node id space". That proxy stopped holding the moment
+            // Woodcutting got real content - node 101 is now populated on
+            // purpose. The actual invariant is that a gathering node drops
+            // gathering materials, so it is asserted directly: no entry in a
+            // Woodcutting node's table may be one of the monster-only mat_*
+            // drops (ids 250+), which is what a leak would look like.
+            var woodcuttingTable = ContentRegistry.GetLootTable(101).ToArray();
+            Assert.NotEmpty(woodcuttingTable);
+            foreach (var entry in woodcuttingTable)
+            {
+                Assert.True(ContentRegistry.GetItemBaseId(entry.ItemId).Contains("_woodcutting_material"),
+                    $"Gathering node 101 drops item {entry.ItemId} ({ContentRegistry.GetItemBaseId(entry.ItemId)}), which is not a woodcutting material - a monster table has leaked into the node id space.");
+            }
 
             Assert.Equal(5, CraftingEngine.GetMaxForgeTierForRegion(1));
             Assert.Equal(5, CraftingEngine.GetMaxForgeTierForRegion(2));
@@ -7172,6 +7186,185 @@ namespace FolkIdle.Server.Tests
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
                 villageBuildingEngine, villageManagementEngine, mentorshipEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
+        }
+
+        // Modul: anti-cheat false positive. This detector permanently
+        // quarantined legitimate players, and a quarantine cannot be lifted:
+        // ProcessSingleTick returns early on Quarantine_Active so the account
+        // stops progressing entirely, the socket is closed on every login, and
+        // no code anywhere sets the flag back to false. A false positive is
+        // therefore an unappealable ban, which makes the precision of this
+        // heuristic a correctness concern rather than a tuning preference.
+        //
+        // Exercised through the public RecordCommand surface with a real
+        // registry, asserting on whether a shadow-ban was actually requested.
+        [Fact]
+        public void Test_AntiCheat_FlagsASteadyMacroButNotAHumanClickingQuickly()
+        {
+            // A burst: 30 commands a few milliseconds apart, which is a player
+            // opening screens and equipping items in a hurry. Under the old
+            // absolute-variance test every interval was near zero, so the
+            // variance was near zero and this earned an instant permanent ban.
+            var burstRegistry = new PlayerSessionRegistry();
+            var burstEngine = new AntiCheatTelemetryEngine(_fixture.ServiceProvider, null!, burstRegistry);
+            for (int i = 0; i < 30; i++)
+            {
+                burstEngine.RecordCommand(880000001L, (byte)CommandType.EquipItem);
+            }
+            Assert.True(burstRegistry.QuarantineNotificationQueue.IsEmpty,
+                "A player clicking quickly was flagged as a macro.");
+
+            // The client's own diagnostics ping is timer-driven and therefore
+            // perfectly regular by construction. Detecting it would mean
+            // banning players for running the game as shipped.
+            var pingRegistry = new PlayerSessionRegistry();
+            var pingEngine = new AntiCheatTelemetryEngine(_fixture.ServiceProvider, null!, pingRegistry);
+            for (int i = 0; i < 60; i++)
+            {
+                pingEngine.RecordCommand(880000002L, (byte)CommandType.PingNetworkDiagnostics);
+            }
+            Assert.True(pingRegistry.QuarantineNotificationQueue.IsEmpty,
+                "The client's own heartbeat was flagged as automation.");
+
+            // The statistic itself, exercised directly: a script firing on a
+            // fixed 2-second cadence over two minutes must still be caught.
+            Assert.True(EvaluateCadence(intervalMs: 2000, sampleCount: 60, jitterMs: 0),
+                "A perfectly regular 2s macro was not detected.");
+
+            // And a human at the same average pace, with ordinary human
+            // jitter, must not be.
+            Assert.False(EvaluateCadence(intervalMs: 2000, sampleCount: 60, jitterMs: 900),
+                "A human acting roughly every 2 seconds was flagged as a macro.");
+        }
+
+        // Drives one player's timing ring with a synthetic cadence and reports
+        // whether it tripped the detector. jitterMs 0 is a machine; a large
+        // jitter is a person.
+        private bool EvaluateCadence(int intervalMs, int sampleCount, int jitterMs)
+        {
+            var registry = new PlayerSessionRegistry();
+            var engine = new AntiCheatTelemetryEngine(_fixture.ServiceProvider, null!, registry);
+
+            // Deterministic jitter, so this test cannot flake.
+            var random = new Random(20260726);
+            long playerId = 880000003L + jitterMs;
+
+            var profile = engine.GetType()
+                .GetNestedType("CommandTimingProfile", System.Reflection.BindingFlags.NonPublic);
+            Assert.NotNull(profile);
+
+            var instance = Activator.CreateInstance(profile!, nonPublic: true);
+            var recordAndCheck = profile!.GetMethod("RecordAndCheck");
+            Assert.NotNull(recordAndCheck);
+
+            long now = 0L;
+            bool flagged = false;
+            for (int i = 0; i < sampleCount; i++)
+            {
+                flagged |= (bool)recordAndCheck!.Invoke(instance, new object[] { now })!;
+                now += intervalMs + (jitterMs > 0 ? random.Next(-jitterMs, jitterMs + 1) : 0);
+            }
+
+            GC.KeepAlive(playerId);
+            return flagged;
+        }
+
+        // Modul: gathering loot tables. The property that decides whether the
+        // crafting tree is a game or a wall: can a player actually obtain the
+        // materials every recipe asks for?
+        //
+        // Before this, Woodcutting nodes 101-105 and Mining nodes 202-205 had
+        // no loot table at all (201 held one hand-placed coal entry), so a
+        // player could chop and mine for hours and receive only mastery XP. All
+        // ten Smelting recipes were unreachable, and with them every
+        // Equipment-assembly recipe that consumes a bar - the entire gear
+        // progression had no entry point.
+        //
+        // This test walks every authored recipe and asserts each ingredient is
+        // reachable from SOME source - a gathering node, a monster drop, or
+        // another recipe's output. It will fail again the moment a recipe is
+        // added whose materials nothing produces, which is exactly the class of
+        // bug it exists to catch.
+        [Fact]
+        public void Test_ContentRegistry_EveryRecipeIngredientIsObtainableFromSomeSource()
+        {
+            var obtainable = new HashSet<int>();
+
+            // Everything any loot table can drop: gathering nodes, monsters,
+            // the lot.
+            foreach (var node in ContentRegistry.GatheringNodes.ToArray())
+            {
+                foreach (var entry in ContentRegistry.GetLootTable(node.ActivityId).ToArray())
+                {
+                    obtainable.Add(entry.ItemId);
+                }
+            }
+
+            ReadOnlySpan<MonsterDefinition> monsters = ContentRegistry.Monsters;
+            for (int i = 0; i < monsters.Length; i++)
+            {
+                foreach (var entry in ContentRegistry.GetLootTable(monsters[i].LootTableId).ToArray())
+                {
+                    obtainable.Add(entry.ItemId);
+                }
+            }
+
+            // Plus everything crafting itself produces - bars feed equipment
+            // recipes, so an intermediate counts as obtainable.
+            ReadOnlySpan<ContentRegistry.RecipeDefinition> recipes = ContentRegistry.Recipes;
+            for (int i = 0; i < recipes.Length; i++)
+            {
+                obtainable.Add(recipes[i].ResultItemId);
+            }
+
+            var unobtainable = new List<string>();
+            for (int i = 0; i < recipes.Length; i++)
+            {
+                var recipe = recipes[i];
+
+                if (recipe.Mat1Count > 0 && recipe.Mat1Id > 0 && !obtainable.Contains(recipe.Mat1Id))
+                {
+                    unobtainable.Add($"recipe {recipe.ResultItemId} needs Mat1 {recipe.Mat1Id} ({ContentRegistry.GetItemBaseId(recipe.Mat1Id)})");
+                }
+
+                if (recipe.Mat2Count > 0 && recipe.Mat2Id > 0 && !obtainable.Contains(recipe.Mat2Id))
+                {
+                    unobtainable.Add($"recipe {recipe.ResultItemId} needs Mat2 {recipe.Mat2Id} ({ContentRegistry.GetItemBaseId(recipe.Mat2Id)})");
+                }
+            }
+
+            Assert.True(unobtainable.Count == 0,
+                "Recipes require materials nothing in the game produces: " + string.Join("; ", unobtainable));
+        }
+
+        // Modul: gathering loot tables. Every Woodcutting and Mining node must
+        // actually drop something - an authored node with an empty table is a
+        // player spending real time for nothing, which is what all nine of
+        // these did.
+        [Fact]
+        public void Test_ContentRegistry_EveryWoodcuttingAndMiningNodeDropsSomething()
+        {
+            const int Woodcutting = 0;
+            const int Mining = 1;
+
+            int checkedNodes = 0;
+            foreach (var node in ContentRegistry.GatheringNodes.ToArray())
+            {
+                if (node.ProfessionType != Woodcutting && node.ProfessionType != Mining) continue;
+
+                checkedNodes++;
+                var table = ContentRegistry.GetLootTable(node.ActivityId).ToArray();
+                Assert.True(table.Length > 0, $"Gathering node {node.ActivityId} has no loot table - it yields nothing but mastery XP.");
+
+                foreach (var entry in table)
+                {
+                    Assert.True(entry.Weight > 0, $"Node {node.ActivityId} has a zero-weight entry, which can never be rolled.");
+                    Assert.True(entry.ItemId > 0 && entry.ItemId <= ContentRegistry.ItemDefinitions.Length,
+                        $"Node {node.ActivityId} drops item id {entry.ItemId}, which is not in items.json.");
+                }
+            }
+
+            Assert.Equal(10, checkedNodes);
         }
 
         // Modul: crafting output. THE bug this test exists for: every one of

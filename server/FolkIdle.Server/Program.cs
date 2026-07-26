@@ -49,6 +49,54 @@ if (args.Length > 0 && args[0] == "--migrate")
     return;
 }
 
+// Modul: anti-cheat false positive. An operator path to lift a quarantine.
+//
+// AntiCheatTelemetryEngine sets Quarantine_Active on a heuristic verdict, and
+// that verdict was permanent: SimulationEngine.ProcessSingleTick returns early
+// while the flag is set so the account stops progressing entirely, the socket
+// is force-closed on every login, and NO code path anywhere in this codebase
+// ever set the flag back to false. A wrongly flagged player - and the detector
+// did wrongly flag them, see that engine's own comments - had no route back,
+// no appeal, and no support tool. A ban system that cannot be reversed is a
+// bug in the ban system regardless of how accurate the detector becomes.
+if (args.Length > 1 && args[0] == "--lift-quarantine")
+{
+    if (!long.TryParse(args[1], out long quarantinedPlayerId))
+    {
+        Console.WriteLine("Usage: --lift-quarantine <playerId>");
+        return;
+    }
+
+    var liftConnectionString = Environment.GetEnvironmentVariable("FOLKIDLE_DB_CONN") ?? ConnectionStringDefaults.LocalDevelopmentFallback;
+    var liftOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+        .UseNpgsql(liftConnectionString)
+        .Options;
+
+    await using (var liftContext = new FolkIdleDbContext(liftOptions))
+    {
+        var quarantinedPlayer = await liftContext.PlayerRecords.FirstOrDefaultAsync(p => p.Id == quarantinedPlayerId);
+        if (quarantinedPlayer == null)
+        {
+            Console.WriteLine($"No player {quarantinedPlayerId}.");
+            return;
+        }
+
+        quarantinedPlayer.IsQuarantined = false;
+        quarantinedPlayer.Quarantine_Active = false;
+
+        // The shadow ban also froze the player's open market listings, which
+        // must be released with it or the account returns with its economy
+        // still locked.
+        await liftContext.Database.ExecuteSqlRawAsync(
+            "UPDATE \"MarketOrderRecords\" SET \"IsQuarantined\" = FALSE WHERE \"SellerId\" = {0}",
+            quarantinedPlayerId);
+
+        await liftContext.SaveChangesAsync();
+        Console.WriteLine($"Quarantine lifted for player {quarantinedPlayerId}.");
+    }
+    return;
+}
+
 // Modul: content-validation entrypoint for the CI pipeline - exercises the
 // exact same ContentRegistry/ActiveSkillEngine parse-and-validate path the
 // real server boot runs, then exits. A malformed GameData JSON exits

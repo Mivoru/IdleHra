@@ -375,6 +375,72 @@ namespace FolkIdle.Server.Engine
             new LootTableEntry { ItemId = 353, Weight = 15 },  // index 44: mat_necrotic_core
             new LootTableEntry { ItemId = 356, Weight = 20 },  // index 45: mat_broken_blade
             new LootTableEntry { ItemId = 359, Weight = 100 }, // index 46: mat_demon_heart
+
+            // Modul: gathering loot tables. Woodcutting (101-105) and Mining
+            // (202-205) were the last empty gathering tables in the game - node
+            // 201 held one hand-placed coal entry so Cooking's second material
+            // was obtainable, and everything else dropped literally nothing.
+            // A player could chop trees for hours and receive only mastery XP,
+            // which meant all ten Smelting recipes, and through them every
+            // Equipment-assembly recipe, were unreachable: the whole gear
+            // progression had no entry point.
+            //
+            // Two axes of design here. Each node spans a small band of adjacent
+            // material tiers rather than one material apiece, so a node stays
+            // worth visiting as the player levels past its floor; and each
+            // band's top material is rarer than its floor material, so
+            // progression comes from moving up nodes rather than grinding the
+            // first one. Weights are relative within a table.
+            //
+            // Woodcutting: ten tree types across five nodes, overlapping by one
+            // so consecutive nodes share a material.
+            new LootTableEntry { ItemId = 99, Weight = 55, MinQuantity = 1, MaxQuantity = 3 },  // index 47: oak_logs        (node 101)
+            new LootTableEntry { ItemId = 174, Weight = 30, MinQuantity = 1, MaxQuantity = 2 }, // index 48: beech_logs_raw  (node 101)
+            new LootTableEntry { ItemId = 117, Weight = 15 },                                   // index 49: willow_logs     (node 101)
+
+            new LootTableEntry { ItemId = 117, Weight = 50, MinQuantity = 1, MaxQuantity = 3 }, // index 50: willow_logs     (node 102)
+            new LootTableEntry { ItemId = 153, Weight = 33, MinQuantity = 1, MaxQuantity = 2 }, // index 51: birch_trees     (node 102)
+            new LootTableEntry { ItemId = 135, Weight = 17 },                                   // index 52: pine_trees      (node 102)
+
+            new LootTableEntry { ItemId = 135, Weight = 50, MinQuantity = 1, MaxQuantity = 3 }, // index 53: pine_trees      (node 103)
+            new LootTableEntry { ItemId = 8, Weight = 33, MinQuantity = 1, MaxQuantity = 2 },   // index 54: maple_trees     (node 103)
+            new LootTableEntry { ItemId = 27, Weight = 17 },                                    // index 55: yew_trees       (node 103)
+
+            new LootTableEntry { ItemId = 27, Weight = 50, MinQuantity = 1, MaxQuantity = 3 },  // index 56: yew_trees       (node 104)
+            new LootTableEntry { ItemId = 45, Weight = 33, MinQuantity = 1, MaxQuantity = 2 },  // index 57: elder_trees     (node 104)
+            new LootTableEntry { ItemId = 63, Weight = 17 },                                    // index 58: ancient_wood    (node 104)
+
+            new LootTableEntry { ItemId = 63, Weight = 62, MinQuantity = 1, MaxQuantity = 3 },  // index 59: ancient_wood    (node 105)
+            new LootTableEntry { ItemId = 81, Weight = 38, MinQuantity = 1, MaxQuantity = 2 },  // index 60: yggdrasil_burl  (node 105)
+
+            // Mining: the nine ores the ten Smelting recipes consume, plus coal
+            // on the first three nodes. Coal is the single most demanded
+            // material in the game - Mat2Id on every Smelting AND every Cooking
+            // recipe - so it stays common and available early rather than being
+            // gated behind a high-tier node.
+            new LootTableEntry { ItemId = 165, Weight = 45, MinQuantity = 1, MaxQuantity = 3 }, // index 61: copper_ore      (node 201)
+            new LootTableEntry { ItemId = 129, Weight = 35, MinQuantity = 1, MaxQuantity = 2 }, // index 62: coal_node       (node 201)
+            new LootTableEntry { ItemId = 93, Weight = 20 },                                    // index 63: tin_ore         (node 201)
+
+            new LootTableEntry { ItemId = 93, Weight = 45, MinQuantity = 1, MaxQuantity = 3 },  // index 64: tin_ore         (node 202)
+            new LootTableEntry { ItemId = 129, Weight = 33, MinQuantity = 1, MaxQuantity = 2 }, // index 65: coal_node       (node 202)
+            new LootTableEntry { ItemId = 111, Weight = 22 },                                   // index 66: iron_ore        (node 202)
+
+            new LootTableEntry { ItemId = 111, Weight = 45, MinQuantity = 1, MaxQuantity = 3 }, // index 67: iron_ore        (node 203)
+            new LootTableEntry { ItemId = 129, Weight = 30, MinQuantity = 1, MaxQuantity = 2 }, // index 68: coal_node       (node 203)
+            new LootTableEntry { ItemId = 147, Weight = 25 },                                   // index 69: silver_ore      (node 203)
+
+            new LootTableEntry { ItemId = 147, Weight = 45, MinQuantity = 1, MaxQuantity = 3 }, // index 70: silver_ore      (node 204)
+            new LootTableEntry { ItemId = 1, Weight = 35, MinQuantity = 1, MaxQuantity = 2 },   // index 71: gold_ore        (node 204)
+            new LootTableEntry { ItemId = 21, Weight = 20 },                                    // index 72: mithril_ore     (node 204)
+
+            // The endgame node carries all four top ores. Adamantite, obsidian
+            // and celestial appear nowhere else, so this is the only source for
+            // the last three Smelting recipes.
+            new LootTableEntry { ItemId = 21, Weight = 34, MinQuantity = 1, MaxQuantity = 3 },  // index 73: mithril_ore     (node 205)
+            new LootTableEntry { ItemId = 39, Weight = 28, MinQuantity = 1, MaxQuantity = 2 },  // index 74: adamantite_ore  (node 205)
+            new LootTableEntry { ItemId = 57, Weight = 22, MinQuantity = 1, MaxQuantity = 2 },  // index 75: obsidian_ore    (node 205)
+            new LootTableEntry { ItemId = 75, Weight = 16 },                                    // index 76: celestial_ore   (node 205)
         };
 
         // Modul: LootTableId -> (Start, Count) into _lootEntries, keyed by
@@ -402,7 +468,22 @@ namespace FolkIdle.Server.Engine
             // this is the minimum addition needed to satisfy the "fully
             // close the loop for Cooking" requirement, not a general
             // Woodcutting/Mining loot-table fix.
-            { 201, (21, 1) },
+            // Modul: gathering loot tables. Node 201 previously held index 21
+            // alone - a single coal entry hand-placed so Cooking's second
+            // material was obtainable at all. It now has a real three-material
+            // table like the rest, and index 21 is left in place rather than
+            // removed so the indices of every entry authored after it stay
+            // stable.
+            { 101, (47, 3) },
+            { 102, (50, 3) },
+            { 103, (53, 3) },
+            { 104, (56, 3) },
+            { 105, (59, 2) },
+            { 201, (61, 3) },
+            { 202, (64, 3) },
+            { 203, (67, 3) },
+            { 204, (70, 3) },
+            { 205, (73, 4) },
             { 301, (0, 1) },
             { 302, (1, 1) },
             { 303, (2, 1) },
