@@ -32,6 +32,7 @@ namespace FolkIdle.Client.Editor
         private const string MailboxRowPrefabPath = PrefabDirectory + "/UiMailboxEntryRow.prefab";
         private const string StoreRowPrefabPath = PrefabDirectory + "/UiStoreEntryRow.prefab";
         private const string SeasonPassRowPrefabPath = PrefabDirectory + "/UiSeasonPassMilestoneRow.prefab";
+        private const string CombatMonsterRowPrefabPath = PrefabDirectory + "/UiCombatMonsterRow.prefab";
         private const string ForgeRecipeRowPrefabPath = PrefabDirectory + "/UiForgeRecipeRow.prefab";
         private const string ForgeEquipmentRowPrefabPath = PrefabDirectory + "/UiForgeEquipmentRow.prefab";
         private const string AssetRegistryAssetPath = PrefabDirectory + "/AssetRegistry.asset";
@@ -163,11 +164,11 @@ namespace FolkIdle.Client.Editor
             GameObject accountPanelObject = BuildAccountWindow(canvas.transform, networkClient);
 
             // Modul: Map Hub, Part 3. Combat Selection (real region/
-            // monster/character data, see UiCombatSelectionPanel) and Boss
+            // monster/character data, see UiCombatLocationPanel) and Boss
             // World (real HP/attack plus the real global leaderboard, see
             // BuildBossWorldPanel) - the two new full-screen panels reached
             // from the map's Combat and Boss zones.
-            (GameObject combatPanelObject, UiCombatSelectionPanel combatPanelComponent) = BuildCombatSelectionPanel(canvas.transform);
+            (GameObject combatPanelObject, UiCombatLocationPanel combatPanelComponent) = BuildCombatSelectionPanel(canvas.transform, networkClient, syncProxy, assetRegistry);
             GameObject bossWorldPanelObject = BuildBossWorldPanel(canvas.transform, syncProxy, sfxEngine, networkClient);
 
             // Modul: Map Hub, Part 4. The medieval map field itself - 5
@@ -416,6 +417,13 @@ namespace FolkIdle.Client.Editor
             // ChatRelay's own header comment.
             ChatRelay chatRelay = managers.AddComponent<ChatRelay>();
             chatRelay.NetworkClient = networkClient;
+
+            // Modul: UI rework. Baselines gold/XP/kill counts at deploy time
+            // so the Combat screen can show what this session actually
+            // farmed. On Managers, not on the Combat screen, so the tally
+            // keeps accruing while the player is looking elsewhere.
+            CombatSessionTracker combatSessionTracker = managers.AddComponent<CombatSessionTracker>();
+            combatSessionTracker.SyncProxy = syncProxy;
 
             return managers;
         }
@@ -1842,11 +1850,20 @@ namespace FolkIdle.Client.Editor
             rect.anchorMin = new Vector2(0f, 1f);
             rect.anchorMax = new Vector2(0f, 1f);
             rect.pivot = new Vector2(0f, 1f);
-            rect.sizeDelta = new Vector2(220f, 20f);
-            // Modul: Map Hub. Below the shifted CharacterStatsPanel
-            // (y -72 to -292) instead of the old -250, so the two never
-            // overlap on the Character/Arena screen.
-            rect.anchoredPosition = new Vector2(20f, -300f);
+            rect.anchorMin = new Vector2(1f, 0f);
+            rect.anchorMax = new Vector2(1f, 0f);
+            rect.pivot = new Vector2(1f, 0f);
+            rect.sizeDelta = new Vector2(240f, 20f);
+            text.alignment = TextAlignmentOptions.MidlineRight;
+            // Modul: UI rework. Moved from top-left (20, -300) to just
+            // above the Season Pass banner on the right. At -300 it sat
+            // 120px INSIDE every full-screen window (they all start at
+            // -180) and printed "All progress saved" straight across
+            // whatever that window was drawing - visible on the Combat and
+            // Map screens alike. Bottom-right also keeps it clear of the
+            // bottom-left world chat dock. Lifted 60px so it clears the
+            // 54px-tall Season Pass banner underneath it.
+            rect.anchoredPosition = new Vector2(-16f, 60f);
 
             UiSaveTrustIndicator indicator = text.gameObject.AddComponent<UiSaveTrustIndicator>();
             indicator.SyncProxy = syncProxy;
@@ -1892,9 +1909,17 @@ namespace FolkIdle.Client.Editor
             layout.childForceExpandHeight = false;
             layout.childAlignment = TextAnchor.UpperRight;
 
+            rect.sizeDelta = new Vector2(190f, 90f);
+
             TextMeshProUGUI humanText = CreateStatRow(panelObject.transform, "Human: +0%");
             TextMeshProUGUI vilaText = CreateStatRow(panelObject.transform, "Vila: +0%");
             TextMeshProUGUI draugrText = CreateStatRow(panelObject.transform, "Draugr: +0%");
+            humanText.fontSize = 13f;
+            vilaText.fontSize = 13f;
+            draugrText.fontSize = 13f;
+            humanText.alignment = TextAlignmentOptions.MidlineRight;
+            vilaText.alignment = TextAlignmentOptions.MidlineRight;
+            draugrText.alignment = TextAlignmentOptions.MidlineRight;
 
             UiCodexBonusBinder binder = panelObject.AddComponent<UiCodexBonusBinder>();
             binder.SyncProxy = syncProxy;
@@ -3020,14 +3045,20 @@ namespace FolkIdle.Client.Editor
 
             (ScrollRect _, RectTransform content) = ChatSceneBuilder.BuildScrollView(contentAreaRect);
 
-            UiVillageBuildingRow forgeRow = BuildVillageBuildingRow(content, "ForgeRow", 1, "Forge");
-            UiVillageBuildingRow innRow = BuildVillageBuildingRow(content, "InnRow", 2, "Inn");
-            UiVillageBuildingRow breedingRow = BuildVillageBuildingRow(content, "BreedingGroundsRow", 3, "Breeding Grounds");
-            UiVillageBuildingRow academyRow = BuildVillageBuildingRow(content, "MentorshipAcademyRow", 4, "Mentorship Academy");
-            UiVillageBuildingRow lumberjackRow = BuildVillageBuildingRow(content, "LumberjackRow", 5, "Lumberjack");
-            UiVillageBuildingRow quarryRow = BuildVillageBuildingRow(content, "QuarryRow", 6, "Quarry");
-            UiVillageBuildingRow mineRow = BuildVillageBuildingRow(content, "MineRow", 7, "Mine");
-            UiVillageBuildingRow warehouseRow = BuildVillageBuildingRow(content, "WarehouseRow", 8, "Warehouse");
+            // Modul: UI rework. Every row now carries a one-line
+            // description of what the building actually does, taken from
+            // what VillageManagementEngine and the consuming engines really
+            // read that level for - not marketing copy. Before this the
+            // screen was ten identical name/level/button rows with no
+            // indication of what any of them were for.
+            UiVillageBuildingRow forgeRow = BuildVillageBuildingRow(content, "ForgeRow", 1, "Forge", "Unlocks higher equipment crafting and reroll tiers.");
+            UiVillageBuildingRow innRow = BuildVillageBuildingRow(content, "InnRow", 2, "Inn", "Speeds up how fast newly bred children mature.");
+            UiVillageBuildingRow breedingRow = BuildVillageBuildingRow(content, "BreedingGroundsRow", 3, "Breeding Grounds", "Raises your population cap and breeding quality.");
+            UiVillageBuildingRow academyRow = BuildVillageBuildingRow(content, "MentorshipAcademyRow", 4, "Mentorship Academy", "Adds a mentor slot per level - each mentor boosts XP gain.");
+            UiVillageBuildingRow lumberjackRow = BuildVillageBuildingRow(content, "LumberjackRow", 5, "Lumberjack", "Passive Wood income while you are away.");
+            UiVillageBuildingRow quarryRow = BuildVillageBuildingRow(content, "QuarryRow", 6, "Quarry", "Passive Stone income while you are away.");
+            UiVillageBuildingRow mineRow = BuildVillageBuildingRow(content, "MineRow", 7, "Mine", "Passive Ore income and better tool tiers.");
+            UiVillageBuildingRow warehouseRow = BuildVillageBuildingRow(content, "WarehouseRow", 8, "Warehouse", "Raises how much passive income can bank up offline.");
 
             // Modul: Play Mode audit fix. Town Hall/Crafting Workshop (ids
             // 9/10) existed server-side with real upgrade logic (Town Hall
@@ -3035,8 +3066,8 @@ namespace FolkIdle.Client.Editor
             // crafting rarity odds) but had no UI row at all, so every
             // other building was permanently stuck at the level-2 ceiling
             // with no way to raise it.
-            UiVillageBuildingRow townHallRow = BuildVillageBuildingRow(content, "TownHallRow", 9, "Town Hall");
-            UiVillageBuildingRow craftingWorkshopRow = BuildVillageBuildingRow(content, "CraftingWorkshopRow", 10, "Crafting Workshop");
+            UiVillageBuildingRow townHallRow = BuildVillageBuildingRow(content, "TownHallRow", 9, "Town Hall", "Raises the level cap of EVERY building to 2 + 2 per Town Hall level. Also boosts passive gold.");
+            UiVillageBuildingRow craftingWorkshopRow = BuildVillageBuildingRow(content, "CraftingWorkshopRow", 10, "Crafting Workshop", "Improves the rarity odds on everything you craft.");
 
             UiVillageOverviewWindow window = windowObject.AddComponent<UiVillageOverviewWindow>();
             window.SyncProxy = syncProxy;
@@ -3063,20 +3094,30 @@ namespace FolkIdle.Client.Editor
         // than BuildAnchoredProgressBar's RectTransform.anchorMax.x
         // pattern, matching UiVillageBuildingRow.ProgressBarFill's actual
         // field type (Image, not RectTransform).
-        private static UiVillageBuildingRow BuildVillageBuildingRow(Transform parent, string rowName, int buildingId, string displayName)
+        private static UiVillageBuildingRow BuildVillageBuildingRow(Transform parent, string rowName, int buildingId, string displayName, string description)
         {
             GameObject rowObject = new GameObject(rowName, typeof(RectTransform));
             rowObject.transform.SetParent(parent, false);
+            ((RectTransform)rowObject.transform).sizeDelta = new Vector2(0f, 104f);
             LayoutElement rowLayout = rowObject.AddComponent<LayoutElement>();
-            rowLayout.preferredHeight = 70f;
+            rowLayout.preferredHeight = 104f;
             rowObject.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.04f);
 
             VerticalLayoutGroup rowLayoutGroup = rowObject.AddComponent<VerticalLayoutGroup>();
             rowLayoutGroup.padding = new RectOffset(8, 8, 6, 6);
-            rowLayoutGroup.spacing = 4f;
+            rowLayoutGroup.spacing = 2f;
             rowLayoutGroup.childControlWidth = true;
             rowLayoutGroup.childForceExpandWidth = true;
-            rowLayoutGroup.childControlHeight = false;
+            // Modul: UI rework. childControlHeight was false here, but every
+            // child of this group is a bare GameObject created in this
+            // method with a default (zero-height) RectTransform and a
+            // LayoutElement.preferredHeight - which a group with
+            // childControlHeight = false ignores entirely. The result was a
+            // zero-height header row, so the Upgrade buttons kept their own
+            // default size and spilled across two rows each. Every child
+            // here declares a preferred height, so letting the group apply
+            // it is both correct and what the call sites already intended.
+            rowLayoutGroup.childControlHeight = true;
             rowLayoutGroup.childForceExpandHeight = false;
 
             GameObject headerRowObject = new GameObject("HeaderRow", typeof(RectTransform));
@@ -3136,6 +3177,16 @@ namespace FolkIdle.Client.Editor
 
             progressBarRoot.SetActive(false);
 
+            TextMeshProUGUI descriptionText = CreateText(rowObject.transform, "DescriptionText", description, 12f, TextAlignmentOptions.TopLeft);
+            descriptionText.color = new Color(1f, 1f, 1f, 0.55f);
+            LayoutElement descriptionLayout = descriptionText.gameObject.AddComponent<LayoutElement>();
+            descriptionLayout.preferredHeight = 32f;
+
+            TextMeshProUGUI costText = CreateText(rowObject.transform, "CostText", string.Empty, 12f, TextAlignmentOptions.MidlineLeft);
+            costText.color = new Color(0.95f, 0.82f, 0.45f, 1f);
+            LayoutElement costLayout = costText.gameObject.AddComponent<LayoutElement>();
+            costLayout.preferredHeight = 20f;
+
             UiVillageBuildingRow rowComponent = rowObject.AddComponent<UiVillageBuildingRow>();
             rowComponent.BuildingId = buildingId;
             rowComponent.BuildingNameText = nameText;
@@ -3144,6 +3195,8 @@ namespace FolkIdle.Client.Editor
             rowComponent.ProgressBarRoot = progressBarRoot;
             rowComponent.ProgressBarFill = fillImage;
             rowComponent.ProgressRemainingText = remainingText;
+            rowComponent.DescriptionText = descriptionText;
+            rowComponent.CostText = costText;
 
             return rowComponent;
         }
@@ -4563,7 +4616,13 @@ namespace FolkIdle.Client.Editor
             Button guildZone = BuildMapZone(mapFieldRect, "GuildZone", "Guild Hall", new Vector2(0.52f, 0.72f), new Vector2(0.94f, 0.95f), new Color(0.30f, 0.24f, 0.42f, 1f));
             Button marketZone = BuildMapZone(mapFieldRect, "MarketZone", "Market", new Vector2(0.06f, 0.47f), new Vector2(0.48f, 0.69f), new Color(0.44f, 0.36f, 0.10f, 1f));
             Button bossZone = BuildMapZone(mapFieldRect, "BossZone", "World Boss", new Vector2(0.52f, 0.47f), new Vector2(0.94f, 0.69f), new Color(0.46f, 0.12f, 0.12f, 1f));
-            Button combatZone = BuildMapZone(mapFieldRect, "CombatZone", "Combat", new Vector2(0.06f, 0.06f), new Vector2(0.94f, 0.44f), new Color(0.18f, 0.34f, 0.18f, 1f));
+            // Modul: UI rework. Bottom raised from 0.06 to 0.20: the world
+            // chat dock now lives in the bottom ~300px of the hub (see
+            // BuildWorldChatOverlay), and at 0.06 the Combat zone ran
+            // underneath it - the chat drew on top of a live button, so the
+            // bottom third of the largest zone on the map was both visually
+            // covered and unclickable.
+            Button combatZone = BuildMapZone(mapFieldRect, "CombatZone", "Combat", new Vector2(0.06f, 0.20f), new Vector2(0.94f, 0.44f), new Color(0.18f, 0.34f, 0.18f, 1f));
 
             return (hubObject, combatZone, villageZone, guildZone, marketZone, bossZone);
         }
@@ -4590,122 +4649,465 @@ namespace FolkIdle.Client.Editor
         }
 
         // ------------------------------------------------------------
-        // Combat Selection panel (map hub "Combat" zone) - 5 real region
-        // rows (CodexRegionsCache) each with a TMP_Dropdown of the
-        // player's real Codex monster inventory and a Deploy button, plus
-        // 4 real character assignment slots (BreedingRosterCache). See
-        // UiCombatSelectionPanel's header comment for the full data-source
-        // rationale.
+        // Combat screen.
+        //
+        // Modul: UI rework. Replaces five identical "Region N (0 / 1000)"
+        // rows, each with a dropdown that listed the player's ENTIRE
+        // discovered monster codex regardless of which region the row
+        // claimed to be (the client mirror of monsters.json did not carry
+        // RegionTier, so it genuinely could not tell which monsters belonged
+        // where), and which showed no art, no monster stats, no target
+        // health and no feedback of any kind.
+        //
+        // The new layout, top to bottom - see UiCombatLocationPanel's own
+        // header comment for what backs each part with real data:
+        //   [<]  big location / target art  [>]
+        //        location name + clear progress bar
+        //        selected target name + live HP bar
+        //   monster roster for this location, boss last
+        //   your stats + the four character slots
+        //   food and potion slots
+        //   this session's tally
+        //   [ Fight ]  [ Watch the fight ]
         // ------------------------------------------------------------
-        private static (GameObject panel, UiCombatSelectionPanel component) BuildCombatSelectionPanel(Transform canvasTransform)
+        private static (GameObject panel, UiCombatLocationPanel component) BuildCombatSelectionPanel(
+            Transform canvasTransform, WebSocketClient networkClient, VisualSyncProxy syncProxy, AssetRegistry assetRegistry)
         {
-            GameObject windowObject = BuildSimpleListWindowShell("CombatSelectionPanel", canvasTransform, "Combat", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+            GameObject panelObject = BuildSimpleListWindowShell("CombatPanel", canvasTransform, "Choose Your Hunt", out RectTransform contentAreaRect, out TextMeshProUGUI _);
 
-            (ScrollRect _, RectTransform scrollContent) = ChatSceneBuilder.BuildScrollView(contentAreaRect);
+            UiCombatLocationPanel panel = panelObject.AddComponent<UiCombatLocationPanel>();
+            panel.NetworkClient = networkClient;
+            panel.SyncProxy = syncProxy;
+            panel.Registry = assetRegistry;
 
-            TMP_Text[] regionLabels = new TMP_Text[5];
-            TMP_Dropdown[] monsterDropdowns = new TMP_Dropdown[5];
-            Button[] deployButtons = new Button[5];
+            // ---- Feature image + location arrows (top block) ----
+            GameObject featureBlockObject = new GameObject("FeatureBlock", typeof(RectTransform));
+            featureBlockObject.transform.SetParent(contentAreaRect, false);
+            RectTransform featureBlockRect = (RectTransform)featureBlockObject.transform;
+            featureBlockRect.anchorMin = new Vector2(0f, 1f);
+            featureBlockRect.anchorMax = new Vector2(1f, 1f);
+            featureBlockRect.pivot = new Vector2(0.5f, 1f);
+            featureBlockRect.sizeDelta = new Vector2(0f, 300f);
+            featureBlockRect.anchoredPosition = Vector2.zero;
 
-            for (int i = 0; i < 5; i++)
+            Image featureImage = new GameObject("FeatureImage", typeof(RectTransform)).AddComponent<Image>();
+            featureImage.transform.SetParent(featureBlockRect, false);
+            featureImage.preserveAspect = true;
+            RectTransform featureImageRect = (RectTransform)featureImage.transform;
+            featureImageRect.anchorMin = new Vector2(0f, 0f);
+            featureImageRect.anchorMax = new Vector2(1f, 1f);
+            featureImageRect.offsetMin = new Vector2(72f, 0f);
+            featureImageRect.offsetMax = new Vector2(-72f, 0f);
+            panel.FeatureImage = featureImage;
+
+            TextMeshProUGUI featureCaption = CreateText(featureImageRect, "FeatureCaption", string.Empty, 20f, TextAlignmentOptions.Center);
+            featureCaption.color = new Color(1f, 1f, 1f, 0.5f);
+            featureCaption.fontStyle = FontStyles.Italic;
+            StretchFull((RectTransform)featureCaption.transform);
+            panel.FeatureCaptionText = featureCaption;
+
+            Button previousButton = CreateButton(featureBlockRect, "PreviousLocationButton", "<", out TextMeshProUGUI previousLabel);
+            previousLabel.fontSize = 34f;
+            RectTransform previousRect = (RectTransform)previousButton.transform;
+            previousRect.anchorMin = new Vector2(0f, 0.5f);
+            previousRect.anchorMax = new Vector2(0f, 0.5f);
+            previousRect.pivot = new Vector2(0f, 0.5f);
+            previousRect.sizeDelta = new Vector2(62f, 96f);
+            previousRect.anchoredPosition = Vector2.zero;
+            panel.PreviousLocationButton = previousButton;
+
+            Button nextButton = CreateButton(featureBlockRect, "NextLocationButton", ">", out TextMeshProUGUI nextLabel);
+            nextLabel.fontSize = 34f;
+            RectTransform nextRect = (RectTransform)nextButton.transform;
+            nextRect.anchorMin = new Vector2(1f, 0.5f);
+            nextRect.anchorMax = new Vector2(1f, 0.5f);
+            nextRect.pivot = new Vector2(1f, 0.5f);
+            nextRect.sizeDelta = new Vector2(62f, 96f);
+            nextRect.anchoredPosition = Vector2.zero;
+            panel.NextLocationButton = nextButton;
+
+            // ---- Location name + clear progress ----
+            TextMeshProUGUI locationName = CreateText(contentAreaRect, "LocationNameText", "Location", 26f, TextAlignmentOptions.Center);
+            RectTransform locationNameRect = (RectTransform)locationName.transform;
+            locationNameRect.anchorMin = new Vector2(0f, 1f);
+            locationNameRect.anchorMax = new Vector2(1f, 1f);
+            locationNameRect.pivot = new Vector2(0.5f, 1f);
+            locationNameRect.sizeDelta = new Vector2(0f, 34f);
+            locationNameRect.anchoredPosition = new Vector2(0f, -302f);
+            panel.LocationNameText = locationName;
+
+            TextMeshProUGUI locationProgress = CreateText(contentAreaRect, "LocationProgressText", string.Empty, 14f, TextAlignmentOptions.Center);
+            locationProgress.color = new Color(1f, 1f, 1f, 0.65f);
+            RectTransform locationProgressRect = (RectTransform)locationProgress.transform;
+            locationProgressRect.anchorMin = new Vector2(0f, 1f);
+            locationProgressRect.anchorMax = new Vector2(1f, 1f);
+            locationProgressRect.pivot = new Vector2(0.5f, 1f);
+            locationProgressRect.sizeDelta = new Vector2(0f, 22f);
+            locationProgressRect.anchoredPosition = new Vector2(0f, -336f);
+            panel.LocationProgressText = locationProgress;
+
+            GameObject locationBarHost = new GameObject("LocationProgressBar", typeof(RectTransform));
+            locationBarHost.transform.SetParent(contentAreaRect, false);
+            RectTransform locationBarHostRect = (RectTransform)locationBarHost.transform;
+            locationBarHostRect.anchorMin = new Vector2(0f, 1f);
+            locationBarHostRect.anchorMax = new Vector2(1f, 1f);
+            locationBarHostRect.pivot = new Vector2(0.5f, 1f);
+            locationBarHostRect.sizeDelta = new Vector2(0f, 8f);
+            locationBarHostRect.anchoredPosition = new Vector2(0f, -360f);
+            (GameObject locationBarBackground, RectTransform locationFill) = BuildAnchoredProgressBar(locationBarHostRect, new Color(0.45f, 0.72f, 0.35f, 1f));
+            // BuildAnchoredProgressBar leaves its background on a default
+            // RectTransform because every existing caller drops it into a
+            // LayoutGroup that sizes it. These two do not, so they stretch
+            // it to the host explicitly rather than rendering a stray
+            // default-sized box.
+            StretchFull((RectTransform)locationBarBackground.transform);
+            panel.LocationProgressFill = locationFill;
+
+            // ---- Selected target: name + live HP bar ----
+            GameObject targetRootObject = new GameObject("TargetHealthRoot", typeof(RectTransform));
+            targetRootObject.transform.SetParent(contentAreaRect, false);
+            RectTransform targetRootRect = (RectTransform)targetRootObject.transform;
+            targetRootRect.anchorMin = new Vector2(0f, 1f);
+            targetRootRect.anchorMax = new Vector2(1f, 1f);
+            targetRootRect.pivot = new Vector2(0.5f, 1f);
+            targetRootRect.sizeDelta = new Vector2(0f, 62f);
+            targetRootRect.anchoredPosition = new Vector2(0f, -376f);
+            panel.TargetHealthRoot = targetRootObject;
+
+            TextMeshProUGUI targetName = CreateText(targetRootRect, "TargetNameText", string.Empty, 20f, TextAlignmentOptions.Center);
+            RectTransform targetNameRect = (RectTransform)targetName.transform;
+            targetNameRect.anchorMin = new Vector2(0f, 1f);
+            targetNameRect.anchorMax = new Vector2(1f, 1f);
+            targetNameRect.pivot = new Vector2(0.5f, 1f);
+            targetNameRect.sizeDelta = new Vector2(0f, 26f);
+            targetNameRect.anchoredPosition = Vector2.zero;
+            panel.TargetNameText = targetName;
+
+            GameObject targetBarHost = new GameObject("TargetHealthBar", typeof(RectTransform));
+            targetBarHost.transform.SetParent(targetRootRect, false);
+            RectTransform targetBarHostRect = (RectTransform)targetBarHost.transform;
+            targetBarHostRect.anchorMin = new Vector2(0f, 1f);
+            targetBarHostRect.anchorMax = new Vector2(1f, 1f);
+            targetBarHostRect.pivot = new Vector2(0.5f, 1f);
+            targetBarHostRect.sizeDelta = new Vector2(0f, 20f);
+            targetBarHostRect.anchoredPosition = new Vector2(0f, -28f);
+            (GameObject targetBarBackground, RectTransform targetFill) = BuildAnchoredProgressBar(targetBarHostRect, new Color(0.78f, 0.24f, 0.22f, 1f));
+            StretchFull((RectTransform)targetBarBackground.transform);
+            panel.TargetHealthFill = targetFill;
+
+            TextMeshProUGUI targetHealth = CreateText(targetBarHostRect, "TargetHealthText", string.Empty, 13f, TextAlignmentOptions.Center);
+            StretchFull((RectTransform)targetHealth.transform);
+            panel.TargetHealthText = targetHealth;
+
+            // ---- Monster roster ----
+            TextMeshProUGUI rosterHeader = CreateText(contentAreaRect, "RosterHeader", "CREATURES OF THIS LOCATION", 13f, TextAlignmentOptions.MidlineLeft);
+            rosterHeader.color = new Color(0.85f, 0.72f, 0.45f, 1f);
+            rosterHeader.characterSpacing = 6f;
+            RectTransform rosterHeaderRect = (RectTransform)rosterHeader.transform;
+            rosterHeaderRect.anchorMin = new Vector2(0f, 1f);
+            rosterHeaderRect.anchorMax = new Vector2(1f, 1f);
+            rosterHeaderRect.pivot = new Vector2(0.5f, 1f);
+            rosterHeaderRect.sizeDelta = new Vector2(0f, 24f);
+            rosterHeaderRect.anchoredPosition = new Vector2(0f, -444f);
+
+            GameObject rosterAreaObject = new GameObject("RosterArea", typeof(RectTransform));
+            rosterAreaObject.transform.SetParent(contentAreaRect, false);
+            RectTransform rosterAreaRect = (RectTransform)rosterAreaObject.transform;
+            rosterAreaRect.anchorMin = new Vector2(0f, 0f);
+            rosterAreaRect.anchorMax = new Vector2(1f, 1f);
+            rosterAreaRect.offsetMin = new Vector2(0f, 560f);
+            rosterAreaRect.offsetMax = new Vector2(0f, -470f);
+
+            (ScrollRect _, RectTransform rosterContent) = ChatSceneBuilder.BuildScrollView(rosterAreaRect);
+            StretchFull((RectTransform)rosterContent.parent.parent);
+            panel.MonsterRowContainer = rosterContent;
+            panel.MonsterRowPrefab = BuildAndSaveCombatMonsterRowPrefab().GetComponent<UiCombatMonsterRow>();
+
+            // ---- Character stats + slots ----
+            TextMeshProUGUI characterStats = CreateText(contentAreaRect, "CharacterStatsText", string.Empty, 14f, TextAlignmentOptions.MidlineLeft);
+            RectTransform characterStatsRect = (RectTransform)characterStats.transform;
+            characterStatsRect.anchorMin = new Vector2(0f, 0f);
+            characterStatsRect.anchorMax = new Vector2(0.62f, 0f);
+            characterStatsRect.pivot = new Vector2(0f, 0f);
+            characterStatsRect.sizeDelta = new Vector2(0f, 54f);
+            characterStatsRect.anchoredPosition = new Vector2(0f, 484f);
+            panel.CharacterStatsText = characterStats;
+
+            TextMeshProUGUI characterHealth = CreateText(contentAreaRect, "CharacterHealthText", string.Empty, 15f, TextAlignmentOptions.MidlineRight);
+            RectTransform characterHealthRect = (RectTransform)characterHealth.transform;
+            characterHealthRect.anchorMin = new Vector2(0.62f, 0f);
+            characterHealthRect.anchorMax = new Vector2(1f, 0f);
+            characterHealthRect.pivot = new Vector2(1f, 0f);
+            characterHealthRect.sizeDelta = new Vector2(0f, 54f);
+            characterHealthRect.anchoredPosition = new Vector2(0f, 484f);
+            panel.CharacterHealthText = characterHealth;
+
+            GameObject slotRowObject = new GameObject("CharacterSlotRow", typeof(RectTransform));
+            slotRowObject.transform.SetParent(contentAreaRect, false);
+            RectTransform slotRowRect = (RectTransform)slotRowObject.transform;
+            slotRowRect.anchorMin = new Vector2(0f, 0f);
+            slotRowRect.anchorMax = new Vector2(1f, 0f);
+            slotRowRect.pivot = new Vector2(0.5f, 0f);
+            slotRowRect.sizeDelta = new Vector2(0f, 60f);
+            slotRowRect.anchoredPosition = new Vector2(0f, 418f);
+
+            HorizontalLayoutGroup slotLayout = slotRowObject.AddComponent<HorizontalLayoutGroup>();
+            slotLayout.spacing = 8f;
+            slotLayout.childControlWidth = true;
+            slotLayout.childForceExpandWidth = true;
+            slotLayout.childControlHeight = true;
+            slotLayout.childForceExpandHeight = true;
+
+            for (int slotIndex = 0; slotIndex < 4; slotIndex++)
             {
-                GameObject rowObject = new GameObject("RegionRow" + i, typeof(RectTransform));
-                rowObject.transform.SetParent(scrollContent, false);
-                LayoutElement rowLayout = rowObject.AddComponent<LayoutElement>();
-                rowLayout.preferredHeight = 96f;
-                rowObject.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.04f);
+                Button slotButton = CreateButton(slotRowRect, "CharacterSlot" + (slotIndex + 1), string.Empty, out TextMeshProUGUI _);
+                ((Image)slotButton.targetGraphic).color = new Color(0.18f, 0.18f, 0.24f, 1f);
 
-                VerticalLayoutGroup rowLayoutGroup = rowObject.AddComponent<VerticalLayoutGroup>();
-                rowLayoutGroup.padding = new RectOffset(10, 10, 8, 8);
-                rowLayoutGroup.spacing = 6f;
-                rowLayoutGroup.childControlWidth = true;
-                rowLayoutGroup.childForceExpandWidth = true;
-                rowLayoutGroup.childControlHeight = false;
-                rowLayoutGroup.childForceExpandHeight = false;
-
-                TextMeshProUGUI regionLabel = CreateText(rowObject.transform, "RegionLabelText", "Region " + (i + 1), 15f, TextAlignmentOptions.MidlineLeft);
-                LayoutElement regionLabelLayout = regionLabel.gameObject.AddComponent<LayoutElement>();
-                regionLabelLayout.preferredHeight = 22f;
-
-                GameObject subRowObject = new GameObject("DropdownRow", typeof(RectTransform));
-                subRowObject.transform.SetParent(rowObject.transform, false);
-                LayoutElement subRowLayout = subRowObject.AddComponent<LayoutElement>();
-                subRowLayout.preferredHeight = 40f;
-
-                HorizontalLayoutGroup subRowLayoutGroup = subRowObject.AddComponent<HorizontalLayoutGroup>();
-                subRowLayoutGroup.spacing = 8f;
-                subRowLayoutGroup.childControlWidth = true;
-                subRowLayoutGroup.childForceExpandWidth = false;
-                subRowLayoutGroup.childControlHeight = true;
-                subRowLayoutGroup.childForceExpandHeight = true;
-
-                TMP_Dropdown dropdown = CreateTmpDropdown(subRowObject.transform, "MonsterDropdown");
-                LayoutElement dropdownLayout = dropdown.gameObject.AddComponent<LayoutElement>();
-                dropdownLayout.flexibleWidth = 1f;
-
-                Button deployButton = CreateButton(subRowObject.transform, "DeployButton", "Deploy", out TextMeshProUGUI _);
-                LayoutElement deployLayout = deployButton.gameObject.AddComponent<LayoutElement>();
-                deployLayout.preferredWidth = 100f;
-
-                regionLabels[i] = regionLabel;
-                monsterDropdowns[i] = dropdown;
-                deployButtons[i] = deployButton;
-            }
-
-            TextMeshProUGUI slotsHeaderText = CreateText(scrollContent, "CharacterSlotsHeaderText", "Character Slots", 15f, TextAlignmentOptions.MidlineLeft);
-            LayoutElement slotsHeaderLayout = slotsHeaderText.gameObject.AddComponent<LayoutElement>();
-            slotsHeaderLayout.preferredHeight = 26f;
-
-            GameObject slotsRowObject = new GameObject("CharacterSlotsRow", typeof(RectTransform));
-            slotsRowObject.transform.SetParent(scrollContent, false);
-            LayoutElement slotsRowLayout = slotsRowObject.AddComponent<LayoutElement>();
-            slotsRowLayout.preferredHeight = 70f;
-
-            HorizontalLayoutGroup slotsLayoutGroup = slotsRowObject.AddComponent<HorizontalLayoutGroup>();
-            slotsLayoutGroup.spacing = 8f;
-            slotsLayoutGroup.childControlWidth = true;
-            slotsLayoutGroup.childForceExpandWidth = true;
-            slotsLayoutGroup.childControlHeight = true;
-            slotsLayoutGroup.childForceExpandHeight = true;
-
-            TMP_Text[] slotTexts = new TMP_Text[4];
-            Button[] slotButtons = new Button[4];
-            GameObject[] slotHighlights = new GameObject[4];
-
-            for (int i = 0; i < 4; i++)
-            {
-                GameObject slotObject = new GameObject("CharacterSlot" + i, typeof(RectTransform));
-                slotObject.transform.SetParent(slotsRowObject.transform, false);
-                Image slotImage = slotObject.AddComponent<Image>();
-                slotImage.color = new Color(1f, 1f, 1f, 0.08f);
-                Button slotButton = slotObject.AddComponent<Button>();
-                slotButton.targetGraphic = slotImage;
-
-                GameObject highlightObject = new GameObject("SelectedHighlight", typeof(RectTransform));
-                highlightObject.transform.SetParent(slotObject.transform, false);
-                StretchFull((RectTransform)highlightObject.transform);
-                Image highlightImage = highlightObject.AddComponent<Image>();
-                highlightImage.color = new Color(0.3f, 0.7f, 1f, 0.35f);
-                highlightImage.raycastTarget = false;
-                highlightObject.SetActive(false);
-
-                TextMeshProUGUI slotText = CreateText(slotObject.transform, "SlotText", "(empty)", 12f, TextAlignmentOptions.Center);
+                TextMeshProUGUI slotText = CreateText(slotButton.transform, "SlotText", "empty", 13f, TextAlignmentOptions.Center);
                 StretchFull((RectTransform)slotText.transform);
 
-                slotTexts[i] = slotText;
-                slotButtons[i] = slotButton;
-                slotHighlights[i] = highlightObject;
+                GameObject highlight = new GameObject("SelectedHighlight", typeof(RectTransform));
+                highlight.transform.SetParent(slotButton.transform, false);
+                StretchFull((RectTransform)highlight.transform);
+                Image highlightImage = highlight.AddComponent<Image>();
+                highlightImage.color = new Color(0.95f, 0.78f, 0.35f, 0.28f);
+                highlightImage.raycastTarget = false;
+                highlight.SetActive(false);
+
+                panel.CharacterSlotButtons[slotIndex] = slotButton;
+                panel.CharacterSlotTexts[slotIndex] = slotText;
+                panel.CharacterSlotSelectedHighlights[slotIndex] = highlight;
             }
 
-            UiCombatSelectionPanel panelComponent = windowObject.AddComponent<UiCombatSelectionPanel>();
-            panelComponent.RegionLabelTexts = regionLabels;
-            panelComponent.MonsterDropdowns = monsterDropdowns;
-            panelComponent.DeployButtons = deployButtons;
-            panelComponent.CharacterSlotTexts = slotTexts;
-            panelComponent.CharacterSlotButtons = slotButtons;
-            panelComponent.CharacterSlotSelectedHighlights = slotHighlights;
+            // ---- Food + potion slots ----
+            (TMP_Dropdown foodDropdown, Button useFoodButton) = BuildConsumableSlot(contentAreaRect, "FoodSlot", "Food", 348f);
+            panel.FoodDropdown = foodDropdown;
+            panel.UseFoodButton = useFoodButton;
 
-            return (windowObject, panelComponent);
+            (TMP_Dropdown potionDropdown, Button usePotionButton) = BuildConsumableSlot(contentAreaRect, "PotionSlot", "Potion", 296f);
+            panel.PotionDropdown = potionDropdown;
+            panel.UsePotionButton = usePotionButton;
+
+            TextMeshProUGUI activeBuff = CreateText(contentAreaRect, "ActiveBuffText", "No active potion.", 13f, TextAlignmentOptions.MidlineLeft);
+            activeBuff.color = new Color(0.75f, 0.9f, 1f, 0.85f);
+            RectTransform activeBuffRect = (RectTransform)activeBuff.transform;
+            activeBuffRect.anchorMin = new Vector2(0f, 0f);
+            activeBuffRect.anchorMax = new Vector2(1f, 0f);
+            activeBuffRect.pivot = new Vector2(0.5f, 0f);
+            activeBuffRect.sizeDelta = new Vector2(0f, 22f);
+            activeBuffRect.anchoredPosition = new Vector2(0f, 268f);
+            panel.ActiveBuffText = activeBuff;
+
+            // ---- Session tally ----
+            TextMeshProUGUI sessionHeader = CreateText(contentAreaRect, "SessionHeader", "THIS SESSION", 13f, TextAlignmentOptions.MidlineLeft);
+            sessionHeader.color = new Color(0.85f, 0.72f, 0.45f, 1f);
+            sessionHeader.characterSpacing = 6f;
+            RectTransform sessionHeaderRect = (RectTransform)sessionHeader.transform;
+            sessionHeaderRect.anchorMin = new Vector2(0f, 0f);
+            sessionHeaderRect.anchorMax = new Vector2(1f, 0f);
+            sessionHeaderRect.pivot = new Vector2(0.5f, 0f);
+            sessionHeaderRect.sizeDelta = new Vector2(0f, 22f);
+            sessionHeaderRect.anchoredPosition = new Vector2(0f, 240f);
+
+            TextMeshProUGUI sessionSummary = CreateText(contentAreaRect, "SessionSummaryText", "Send a character out to start tracking this session.", 14f, TextAlignmentOptions.MidlineLeft);
+            RectTransform sessionSummaryRect = (RectTransform)sessionSummary.transform;
+            sessionSummaryRect.anchorMin = new Vector2(0f, 0f);
+            sessionSummaryRect.anchorMax = new Vector2(1f, 0f);
+            sessionSummaryRect.pivot = new Vector2(0.5f, 0f);
+            sessionSummaryRect.sizeDelta = new Vector2(0f, 24f);
+            sessionSummaryRect.anchoredPosition = new Vector2(0f, 214f);
+            panel.SessionSummaryText = sessionSummary;
+
+            TextMeshProUGUI sessionKills = CreateText(contentAreaRect, "SessionKillListText", string.Empty, 13f, TextAlignmentOptions.TopLeft);
+            sessionKills.color = new Color(1f, 1f, 1f, 0.72f);
+            RectTransform sessionKillsRect = (RectTransform)sessionKills.transform;
+            sessionKillsRect.anchorMin = new Vector2(0f, 0f);
+            sessionKillsRect.anchorMax = new Vector2(1f, 0f);
+            sessionKillsRect.pivot = new Vector2(0.5f, 0f);
+            sessionKillsRect.sizeDelta = new Vector2(0f, 120f);
+            sessionKillsRect.anchoredPosition = new Vector2(0f, 92f);
+            panel.SessionKillListText = sessionKills;
+
+            // ---- Status + actions ----
+            TextMeshProUGUI statusText = CreateText(contentAreaRect, "StatusText", string.Empty, 13f, TextAlignmentOptions.Center);
+            statusText.color = new Color(1f, 0.86f, 0.6f, 1f);
+            RectTransform statusRect = (RectTransform)statusText.transform;
+            statusRect.anchorMin = new Vector2(0f, 0f);
+            statusRect.anchorMax = new Vector2(1f, 0f);
+            statusRect.pivot = new Vector2(0.5f, 0f);
+            statusRect.sizeDelta = new Vector2(0f, 22f);
+            statusRect.anchoredPosition = new Vector2(0f, 66f);
+            panel.StatusText = statusText;
+
+            Button deployButton = CreateButton(contentAreaRect, "DeployButton", "Fight", out TextMeshProUGUI deployLabel);
+            ((Image)deployButton.targetGraphic).color = new Color(0.62f, 0.24f, 0.20f, 1f);
+            deployLabel.fontSize = 20f;
+            RectTransform deployRect = (RectTransform)deployButton.transform;
+            deployRect.anchorMin = new Vector2(0f, 0f);
+            deployRect.anchorMax = new Vector2(0.58f, 0f);
+            deployRect.pivot = new Vector2(0f, 0f);
+            deployRect.sizeDelta = new Vector2(-6f, 56f);
+            deployRect.anchoredPosition = Vector2.zero;
+            panel.DeployButton = deployButton;
+            panel.DeployButtonLabel = deployLabel;
+
+            Button watchButton = CreateButton(contentAreaRect, "WatchFightButton", "Watch the fight", out TextMeshProUGUI _);
+            ((Image)watchButton.targetGraphic).color = new Color(0.22f, 0.30f, 0.42f, 1f);
+            RectTransform watchRect = (RectTransform)watchButton.transform;
+            watchRect.anchorMin = new Vector2(0.58f, 0f);
+            watchRect.anchorMax = new Vector2(1f, 0f);
+            watchRect.pivot = new Vector2(1f, 0f);
+            watchRect.sizeDelta = new Vector2(0f, 56f);
+            watchRect.anchoredPosition = Vector2.zero;
+
+            // Modul: the old Deploy button switched screens unconditionally,
+            // even in the (common) case where it had silently discarded both
+            // selections and dispatched nothing at all. Splitting the screen
+            // switch onto its own button means a failed Fight now stays put
+            // and says why, instead of looking like it worked.
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(watchButton.onClick, panel.OpenCharacterScreen);
+
+            return (panelObject, panel);
+        }
+
+        private static (TMP_Dropdown dropdown, Button useButton) BuildConsumableSlot(RectTransform parent, string slotName, string label, float anchoredY)
+        {
+            GameObject rowObject = new GameObject(slotName, typeof(RectTransform));
+            rowObject.transform.SetParent(parent, false);
+            RectTransform rowRect = (RectTransform)rowObject.transform;
+            rowRect.anchorMin = new Vector2(0f, 0f);
+            rowRect.anchorMax = new Vector2(1f, 0f);
+            rowRect.pivot = new Vector2(0.5f, 0f);
+            rowRect.sizeDelta = new Vector2(0f, 44f);
+            rowRect.anchoredPosition = new Vector2(0f, anchoredY);
+
+            TextMeshProUGUI slotLabel = CreateText(rowRect, "SlotLabel", label, 15f, TextAlignmentOptions.MidlineLeft);
+            RectTransform slotLabelRect = (RectTransform)slotLabel.transform;
+            slotLabelRect.anchorMin = new Vector2(0f, 0f);
+            slotLabelRect.anchorMax = new Vector2(0f, 1f);
+            slotLabelRect.pivot = new Vector2(0f, 0.5f);
+            slotLabelRect.sizeDelta = new Vector2(90f, 0f);
+            slotLabelRect.anchoredPosition = Vector2.zero;
+
+            TMP_Dropdown dropdown = CreateTmpDropdown(rowRect, slotName + "Dropdown");
+            RectTransform dropdownRect = (RectTransform)dropdown.transform;
+            dropdownRect.anchorMin = new Vector2(0f, 0f);
+            dropdownRect.anchorMax = new Vector2(1f, 1f);
+            dropdownRect.offsetMin = new Vector2(94f, 2f);
+            dropdownRect.offsetMax = new Vector2(-104f, -2f);
+
+            // CreateTmpDropdown mirrors Unity's stock light-grey dropdown
+            // template. Two of those against this screen's near-black panel
+            // read as two glaring white bars, so the closed control is
+            // re-tinted to match everything around it. The open template
+            // list keeps its light styling - it draws over the page and
+            // needs the contrast.
+            if (dropdown.targetGraphic is Image dropdownBackground)
+            {
+                dropdownBackground.color = new Color(0.18f, 0.18f, 0.24f, 1f);
+            }
+            if (dropdown.captionText != null)
+            {
+                dropdown.captionText.color = Color.white;
+            }
+
+            Button useButton = CreateButton(rowRect, slotName + "UseButton", "Use", out TextMeshProUGUI _);
+            ((Image)useButton.targetGraphic).color = new Color(0.28f, 0.52f, 0.34f, 1f);
+            RectTransform useRect = (RectTransform)useButton.transform;
+            useRect.anchorMin = new Vector2(1f, 0f);
+            useRect.anchorMax = new Vector2(1f, 1f);
+            useRect.pivot = new Vector2(1f, 0.5f);
+            useRect.sizeDelta = new Vector2(96f, -4f);
+            useRect.anchoredPosition = Vector2.zero;
+
+            return (dropdown, useButton);
+        }
+
+        private static GameObject BuildAndSaveCombatMonsterRowPrefab()
+        {
+            EnsureFolder(PrefabDirectory);
+
+            GameObject root = new GameObject("UiCombatMonsterRow", typeof(RectTransform));
+            RectTransform rootRect = (RectTransform)root.transform;
+            rootRect.sizeDelta = new Vector2(0f, 64f);
+
+            Image background = root.AddComponent<Image>();
+            background.color = new Color(0.17f, 0.17f, 0.22f, 1f);
+            Button selectButton = root.AddComponent<Button>();
+            selectButton.targetGraphic = background;
+
+            GameObject highlightObject = new GameObject("SelectedHighlight", typeof(RectTransform));
+            highlightObject.transform.SetParent(rootRect, false);
+            StretchFull((RectTransform)highlightObject.transform);
+            Image highlightImage = highlightObject.AddComponent<Image>();
+            highlightImage.color = new Color(0.95f, 0.78f, 0.35f, 0.30f);
+            highlightImage.raycastTarget = false;
+            highlightObject.SetActive(false);
+
+            Image icon = new GameObject("Icon", typeof(RectTransform)).AddComponent<Image>();
+            icon.transform.SetParent(rootRect, false);
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+            RectTransform iconRect = (RectTransform)icon.transform;
+            iconRect.anchorMin = new Vector2(0f, 0.5f);
+            iconRect.anchorMax = new Vector2(0f, 0.5f);
+            iconRect.pivot = new Vector2(0f, 0.5f);
+            iconRect.sizeDelta = new Vector2(56f, 56f);
+            iconRect.anchoredPosition = new Vector2(4f, 0f);
+
+            TextMeshProUGUI nameText = CreateText(rootRect, "NameText", "Monster", 16f, TextAlignmentOptions.BottomLeft);
+            nameText.raycastTarget = false;
+            RectTransform nameRect = (RectTransform)nameText.transform;
+            nameRect.anchorMin = new Vector2(0f, 0.5f);
+            nameRect.anchorMax = new Vector2(1f, 1f);
+            nameRect.offsetMin = new Vector2(66f, 0f);
+            nameRect.offsetMax = new Vector2(-110f, -6f);
+
+            TextMeshProUGUI statsText = CreateText(rootRect, "StatsText", string.Empty, 13f, TextAlignmentOptions.TopLeft);
+            statsText.color = new Color(1f, 1f, 1f, 0.7f);
+            statsText.raycastTarget = false;
+            RectTransform statsRect = (RectTransform)statsText.transform;
+            statsRect.anchorMin = new Vector2(0f, 0f);
+            statsRect.anchorMax = new Vector2(1f, 0.5f);
+            statsRect.offsetMin = new Vector2(66f, 6f);
+            statsRect.offsetMax = new Vector2(-110f, 0f);
+
+            TextMeshProUGUI killsText = CreateText(rootRect, "KillsText", string.Empty, 12f, TextAlignmentOptions.MidlineRight);
+            killsText.raycastTarget = false;
+            RectTransform killsRect = (RectTransform)killsText.transform;
+            killsRect.anchorMin = new Vector2(1f, 0f);
+            killsRect.anchorMax = new Vector2(1f, 1f);
+            killsRect.pivot = new Vector2(1f, 0.5f);
+            killsRect.sizeDelta = new Vector2(104f, 0f);
+            killsRect.anchoredPosition = new Vector2(-6f, 0f);
+
+            Image bossBadge = new GameObject("BossBadge", typeof(RectTransform)).AddComponent<Image>();
+            bossBadge.transform.SetParent(rootRect, false);
+            bossBadge.color = new Color(0.85f, 0.25f, 0.22f, 1f);
+            bossBadge.raycastTarget = false;
+            RectTransform bossBadgeRect = (RectTransform)bossBadge.transform;
+            bossBadgeRect.anchorMin = new Vector2(0f, 0f);
+            bossBadgeRect.anchorMax = new Vector2(0f, 1f);
+            bossBadgeRect.pivot = new Vector2(0f, 0.5f);
+            bossBadgeRect.sizeDelta = new Vector2(4f, 0f);
+            bossBadgeRect.anchoredPosition = Vector2.zero;
+
+            UiCombatMonsterRow rowComponent = root.AddComponent<UiCombatMonsterRow>();
+            rowComponent.SelectButton = selectButton;
+            rowComponent.IconImage = icon;
+            rowComponent.SelectedHighlight = highlightImage;
+            rowComponent.BossBadge = bossBadge;
+            rowComponent.NameText = nameText;
+            rowComponent.StatsText = statsText;
+            rowComponent.KillsText = killsText;
+
+            GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(root, CombatMonsterRowPrefabPath, out bool success);
+            if (!success)
+            {
+                Debug.LogError("MainSceneBuilder: failed to save UiCombatMonsterRow prefab asset.");
+            }
+            Object.DestroyImmediate(root);
+            return prefabAsset;
         }
 
         // Modul: hand-built TMP_Dropdown hierarchy (Label + Template >
@@ -4844,9 +5246,32 @@ namespace FolkIdle.Client.Editor
             hpSectionRect.anchorMin = new Vector2(0f, 1f);
             hpSectionRect.anchorMax = new Vector2(1f, 1f);
             hpSectionRect.pivot = new Vector2(0.5f, 1f);
-            hpSectionRect.sizeDelta = new Vector2(0f, 150f);
+            hpSectionRect.sizeDelta = new Vector2(0f, 236f);
             hpSectionRect.anchoredPosition = Vector2.zero;
             hpSectionObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.4f);
+
+            // Modul: UI rework. The section used to open straight onto an
+            // unlabelled red bar reading "0 / 0" with an Attack button that
+            // was silently non-interactable for roughly 23 days a month
+            // (the boss event only runs in a scheduled window) and no text
+            // anywhere saying so. Name, live event state and an explanation
+            // of the run budget added, all from fields the state packet
+            // already carries.
+            TextMeshProUGUI bossNameText = CreateText(hpSectionRect, "BossNameText", "The World Boss", 22f, TextAlignmentOptions.Center);
+            RectTransform bossNameRect = (RectTransform)bossNameText.transform;
+            bossNameRect.anchorMin = new Vector2(0f, 1f);
+            bossNameRect.anchorMax = new Vector2(1f, 1f);
+            bossNameRect.pivot = new Vector2(0.5f, 1f);
+            bossNameRect.sizeDelta = new Vector2(0f, 30f);
+            bossNameRect.anchoredPosition = new Vector2(0f, -8f);
+
+            TextMeshProUGUI eventStateText = CreateText(hpSectionRect, "EventStateText", string.Empty, 14f, TextAlignmentOptions.Center);
+            RectTransform eventStateRect = (RectTransform)eventStateText.transform;
+            eventStateRect.anchorMin = new Vector2(0f, 1f);
+            eventStateRect.anchorMax = new Vector2(1f, 1f);
+            eventStateRect.pivot = new Vector2(0.5f, 1f);
+            eventStateRect.sizeDelta = new Vector2(0f, 22f);
+            eventStateRect.anchoredPosition = new Vector2(0f, -40f);
 
             (GameObject hpBackground, RectTransform hpFill) = BuildAnchoredProgressBar(hpSectionRect, new Color(0.8f, 0.1f, 0.1f, 1f));
             RectTransform hpBgRect = (RectTransform)hpBackground.transform;
@@ -4854,7 +5279,7 @@ namespace FolkIdle.Client.Editor
             hpBgRect.anchorMax = new Vector2(1f, 1f);
             hpBgRect.pivot = new Vector2(0.5f, 1f);
             hpBgRect.sizeDelta = new Vector2(-20f, 28f);
-            hpBgRect.anchoredPosition = new Vector2(0f, -16f);
+            hpBgRect.anchoredPosition = new Vector2(0f, -74f);
 
             TextMeshProUGUI hpText = CreateText(hpSectionRect, "BossHpText", "0 / 0", 16f, TextAlignmentOptions.Center);
             RectTransform hpTextRect = (RectTransform)hpText.transform;
@@ -4862,7 +5287,7 @@ namespace FolkIdle.Client.Editor
             hpTextRect.anchorMax = new Vector2(1f, 1f);
             hpTextRect.pivot = new Vector2(0.5f, 1f);
             hpTextRect.sizeDelta = new Vector2(0f, 24f);
-            hpTextRect.anchoredPosition = new Vector2(0f, -50f);
+            hpTextRect.anchoredPosition = new Vector2(0f, -108f);
 
             TextMeshProUGUI runsText = CreateText(hpSectionRect, "WorldBossRunsText", "Runs: 0", 14f, TextAlignmentOptions.MidlineLeft);
             RectTransform runsTextRect = (RectTransform)runsText.transform;
@@ -4870,15 +5295,25 @@ namespace FolkIdle.Client.Editor
             runsTextRect.anchorMax = new Vector2(0.5f, 1f);
             runsTextRect.pivot = new Vector2(0f, 1f);
             runsTextRect.sizeDelta = new Vector2(0f, 40f);
-            runsTextRect.anchoredPosition = new Vector2(14f, -84f);
+            runsTextRect.anchoredPosition = new Vector2(14f, -140f);
 
             Button attackButton = CreateButton(hpSectionRect, "WorldBossAttackButton", "Attack", out TextMeshProUGUI _);
+            ((Image)attackButton.targetGraphic).color = new Color(0.62f, 0.24f, 0.20f, 1f);
             RectTransform attackRect = (RectTransform)attackButton.transform;
             attackRect.anchorMin = new Vector2(0.5f, 1f);
             attackRect.anchorMax = new Vector2(1f, 1f);
             attackRect.pivot = new Vector2(1f, 1f);
-            attackRect.sizeDelta = new Vector2(-14f, 40f);
-            attackRect.anchoredPosition = new Vector2(-14f, -84f);
+            attackRect.sizeDelta = new Vector2(-14f, 44f);
+            attackRect.anchoredPosition = new Vector2(-14f, -138f);
+
+            TextMeshProUGUI bossHelpText = CreateText(hpSectionRect, "BossHelpText", "Everyone on the server fights the same boss. You get 3 attacks per event window; damage is ranked below.", 12f, TextAlignmentOptions.TopLeft);
+            bossHelpText.color = new Color(1f, 1f, 1f, 0.55f);
+            RectTransform bossHelpRect = (RectTransform)bossHelpText.transform;
+            bossHelpRect.anchorMin = new Vector2(0f, 1f);
+            bossHelpRect.anchorMax = new Vector2(1f, 1f);
+            bossHelpRect.pivot = new Vector2(0.5f, 1f);
+            bossHelpRect.sizeDelta = new Vector2(-28f, 40f);
+            bossHelpRect.anchoredPosition = new Vector2(0f, -190f);
 
             UiCommandDispatcher dispatcher = hpSectionObject.AddComponent<UiCommandDispatcher>();
             dispatcher.NetworkClient = networkClient;
@@ -4891,6 +5326,7 @@ namespace FolkIdle.Client.Editor
             binder.BossHpText = hpText;
             binder.WorldBossRunsText = runsText;
             binder.WorldBossAttackButton = attackButton;
+            binder.EventStateText = eventStateText;
             binder.SoundEngine = sfxEngine;
 
             // Modul: UI audit follow-up. Previously capped at anchorMax.y =
@@ -4904,7 +5340,10 @@ namespace FolkIdle.Client.Editor
             leaderboardSectionRect.anchorMin = Vector2.zero;
             leaderboardSectionRect.anchorMax = Vector2.one;
             leaderboardSectionRect.offsetMin = Vector2.zero;
-            leaderboardSectionRect.offsetMax = new Vector2(0f, -150f);
+            // Kept in step with hpSectionRect's height above (236f) - these
+            // two are a matched pair and drifting them apart overlaps the
+            // Top Players header onto the Attack row.
+            leaderboardSectionRect.offsetMax = new Vector2(0f, -244f);
 
             TextMeshProUGUI leaderboardTitleText = CreateText(leaderboardSectionRect, "TopPlayersTitleText", "Top Players", 16f, TextAlignmentOptions.MidlineLeft);
             RectTransform leaderboardTitleRect = (RectTransform)leaderboardTitleText.transform;
@@ -5489,6 +5928,16 @@ namespace FolkIdle.Client.Editor
             LayoutElement rowLayoutElement = rowObject.AddComponent<LayoutElement>();
             rowLayoutElement.preferredHeight = 22f;
 
+            // Modul: UI rework. Same trap CreateStatRow already documents:
+            // the parent VerticalLayoutGroup runs childControlHeight = false,
+            // so preferredHeight above only feeds the group's spacing math
+            // and never reaches the RectTransform. A GameObject created here
+            // starts at height 0, so both currency rows collapsed to
+            // nothing - the top-right panel rendered as an empty grey box
+            // with the Gold and Gems labels spilling out of it at unrelated
+            // screen positions. Set the real height to match.
+            ((RectTransform)rowObject.transform).sizeDelta = new Vector2(0f, 22f);
+
             HorizontalLayoutGroup rowLayout = rowObject.AddComponent<HorizontalLayoutGroup>();
             rowLayout.spacing = 4f;
             rowLayout.childControlWidth = true;
@@ -5688,6 +6137,23 @@ namespace FolkIdle.Client.Editor
             // Compose strip.
             TMP_InputField inputField = CreateInputField(expandedContentRect, "MessageInputField", "Type a message...");
             inputField.lineType = TMP_InputField.LineType.SingleLine;
+
+            // CreateInputField paints a white box with black text, which is
+            // right for a form field on a light panel but reads as a glaring
+            // slab under a dark, semi-transparent chat log. Re-tinted to sit
+            // in the panel rather than on top of it.
+            if (inputField.targetGraphic is Image inputBackground)
+            {
+                inputBackground.color = new Color(0.13f, 0.13f, 0.18f, 1f);
+            }
+            if (inputField.textComponent != null)
+            {
+                inputField.textComponent.color = Color.white;
+            }
+            if (inputField.placeholder is TMP_Text placeholderLabel)
+            {
+                placeholderLabel.color = new Color(1f, 1f, 1f, 0.4f);
+            }
             RectTransform inputRect = (RectTransform)inputField.transform;
             inputRect.anchorMin = new Vector2(0f, 0f);
             inputRect.anchorMax = new Vector2(1f, 0f);

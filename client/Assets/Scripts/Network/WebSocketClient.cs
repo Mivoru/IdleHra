@@ -373,7 +373,7 @@ namespace FolkIdle.Client.Network
         // Guid.Empty), so SimulationEngine's ChangeActivity handler always
         // took its legacy single-character branch - there was no way to
         // target one of a player's multiple character slots. Needed once
-        // UiCombatSelectionPanel's Deploy button actually had a character
+        // UiCombatLocationPanel's Fight button actually had a character
         // slot selection to send (see its own comment).
         public void SendChangeActivityCommandZeroAlloc(long targetActivityId, System.Guid characterGuid)
         {

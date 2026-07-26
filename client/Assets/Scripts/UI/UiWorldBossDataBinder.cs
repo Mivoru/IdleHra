@@ -29,6 +29,7 @@ namespace FolkIdle.Client.UI
         public TMP_Text BossHpText;
         public TMP_Text WorldBossRunsText;
         public Button WorldBossAttackButton;
+        public TMP_Text EventStateText;
 
         [Header("World Boss Audio")]
         public SfxPoolEngine SoundEngine;
@@ -98,6 +99,44 @@ namespace FolkIdle.Client.UI
                 // happened instead of the real kick it was.
                 WorldBossAttackButton.interactable = attemptCount < MaxAttempts && eventState == EventStateActive;
             }
+
+            RefreshEventStateText(eventState, attemptCount);
+        }
+
+        // Modul: UI rework. Gating the Attack button on the event window
+        // (above) stopped the click from force-disconnecting the player, but
+        // left them staring at a permanently greyed-out button with no
+        // explanation for ~half the month. This says which of the three
+        // real states the boss is in, and when the active one ends.
+        private void RefreshEventStateText(byte eventState, int attemptCount)
+        {
+            if (EventStateText == null) return;
+
+            if (eventState == EventStateActive)
+            {
+                long remainingSeconds = SyncProxy.VisualWorldBossEventEndEpoch - System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                EventStateText.color = new Color(0.55f, 0.9f, 0.55f, 1f);
+                EventStateText.text = remainingSeconds > 0
+                    ? "Event active - ends in " + FormatRemaining(remainingSeconds)
+                    : "Event active";
+                return;
+            }
+
+            EventStateText.color = new Color(1f, 1f, 1f, 0.55f);
+            EventStateText.text = attemptCount >= MaxAttempts
+                ? "No attacks left this event window."
+                : "No boss event running right now. Attacks unlock when the next window opens.";
+        }
+
+        private static string FormatRemaining(long totalSeconds)
+        {
+            long days = totalSeconds / 86400L;
+            long hours = (totalSeconds % 86400L) / 3600L;
+            long minutes = (totalSeconds % 3600L) / 60L;
+
+            if (days > 0) return days + "d " + hours + "h";
+            if (hours > 0) return hours + "h " + minutes + "m";
+            return minutes + "m";
         }
 
         private void HandleEventStateChanged(byte previousState, byte newState)

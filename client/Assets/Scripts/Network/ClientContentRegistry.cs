@@ -17,6 +17,19 @@ namespace FolkIdle.Client.Network
         public int LootTableId { get; set; }
         public string Name { get; set; } = string.Empty;
         public string EnemyId { get; set; } = string.Empty;
+
+        // Modul: UI rework. Which of the game's regions this monster
+        // belongs to. Already authored in GameData/monsters.json and read by
+        // the server (ContentRegistry.GetMonsterRegionTier, which drives
+        // region completion and the Codex region rows) but simply absent
+        // from this client-side mirror, so the client had no idea which
+        // monsters lived where - which is why the old Combat screen offered
+        // one flat dropdown of every discovered monster under all five
+        // region rows alike.
+        public int RegionTier { get; set; }
+
+        public int Armor { get; set; }
+        public int DodgeRating { get; set; }
     }
 
     public sealed class ItemEntry
@@ -101,6 +114,8 @@ namespace FolkIdle.Client.Network
                 _skills[skill.SkillId] = skill;
             }
 
+            BuildDerivedIndexes();
+
             _isInitialized = true;
         }
 
@@ -119,6 +134,160 @@ namespace FolkIdle.Client.Network
         }
 
         public static bool TryGetItemByBaseId(string baseId, out ItemEntry item) => _itemsByBaseId.TryGetValue(baseId, out item);
+
+        public static bool TryGetMonster(int id, out MonsterEntry monster) => _monsters.TryGetValue(id, out monster);
+
+        public static bool TryGetItemById(int id, out ItemEntry item) => _items.TryGetValue(id, out item);
+
+        // ------------------------------------------------------------
+        // Modul: UI rework - region/location model for the Combat screen.
+        //
+        // There is no "region" table anywhere: a region is defined purely by
+        // which monsters carry that RegionTier, exactly as the server's own
+        // region-progress endpoint derives it (see
+        // NetworkBroadcastSystem.HandleCodexRegionsSnapshot, which walks
+        // every monster and groups by GetMonsterRegionTier). This mirrors
+        // that derivation rather than inventing a parallel content file that
+        // could drift from it.
+        // ------------------------------------------------------------
+        private static readonly Dictionary<int, List<MonsterEntry>> _monstersByRegion = new();
+        private static readonly List<int> _regionIds = new();
+
+        public static IReadOnlyList<int> RegionIds => _regionIds;
+
+        // Monsters of one region, weakest first. The last entry is the
+        // region's boss - see IsRegionBoss.
+        public static IReadOnlyList<MonsterEntry> GetMonstersInRegion(int regionId)
+        {
+            return _monstersByRegion.TryGetValue(regionId, out List<MonsterEntry> list)
+                ? list
+                : System.Array.Empty<MonsterEntry>();
+        }
+
+        // The single toughest monster in a region. Every authored region
+        // ends in one dramatically higher-HP entry (Kelpie Mare at 772k
+        // against ~80k for the rest of region 1; Malakor at 15M against
+        // ~520k), so "highest MaxHp in the region" identifies the boss from
+        // the real balance data instead of a hand-maintained id list that
+        // would need editing every time content is added.
+        public static bool IsRegionBoss(MonsterEntry monster)
+        {
+            if (monster == null) return false;
+
+            IReadOnlyList<MonsterEntry> region = GetMonstersInRegion(monster.RegionTier);
+            return region.Count > 0 && region[region.Count - 1].Id == monster.Id;
+        }
+
+        // Modul: display names for the regions. GameData has no name field
+        // for a region (it has no region records at all), and the server
+        // refers to them purely as "Region N". These are the client-side
+        // display strings, keyed to the authored RegionTier values, so the
+        // Combat screen can say "Ashen Wastes" rather than "Region 3".
+        private static readonly string[] _regionNames =
+        {
+            "Greenmoor Lowlands",
+            "Whispering Woods",
+            "Karst Canyons",
+            "Frostbound Fjords",
+            "Auroral Citadel",
+            "Emberfall Caldera",
+            "The Void Rift",
+            "Eternal Winter",
+            "Tempest Reach",
+            "The Last Dawn"
+        };
+
+        public static string GetRegionName(int regionId)
+        {
+            return regionId >= 1 && regionId <= _regionNames.Length
+                ? _regionNames[regionId - 1]
+                : "Region " + regionId;
+        }
+
+        // ------------------------------------------------------------
+        // Modul: UI rework - consumables, for the Combat screen's food and
+        // potion slots. Classified by the same three BaseId markers the
+        // server's ConsumableEngine.TryApplyConsumable uses, so the client
+        // can never offer something the server would refuse to apply.
+        // ------------------------------------------------------------
+        public const string FoodMarker = "_food_consumable";
+        public const string OffensivePotionMarker = "_offensive_potion_consumable";
+        public const string DefensivePotionMarker = "_defensive_potion_consumable";
+
+        private static readonly List<ItemEntry> _foods = new();
+        private static readonly List<ItemEntry> _potions = new();
+
+        public static IReadOnlyList<ItemEntry> Foods => _foods;
+        public static IReadOnlyList<ItemEntry> Potions => _potions;
+
+        // Turns "roasted_perch_food_consumable" into "Roasted Perch" - the
+        // content files carry no display names for items, only BaseIds.
+        public static string GetItemDisplayName(ItemEntry item)
+        {
+            if (item == null) return string.Empty;
+
+            string baseId = item.BaseId;
+            baseId = StripSuffix(baseId, FoodMarker);
+            baseId = StripSuffix(baseId, OffensivePotionMarker);
+            baseId = StripSuffix(baseId, DefensivePotionMarker);
+
+            string[] words = baseId.Split('_');
+            for (int i = 0; i < words.Length; i++)
+            {
+                if (words[i].Length > 0)
+                {
+                    words[i] = char.ToUpperInvariant(words[i][0]) + words[i].Substring(1);
+                }
+            }
+            return string.Join(" ", words);
+        }
+
+        private static string StripSuffix(string value, string suffix)
+        {
+            return value.EndsWith(suffix, StringComparison.Ordinal)
+                ? value.Substring(0, value.Length - suffix.Length)
+                : value;
+        }
+
+        private static void BuildDerivedIndexes()
+        {
+            _monstersByRegion.Clear();
+            _regionIds.Clear();
+
+            foreach (MonsterEntry monster in _monsters.Values)
+            {
+                if (!_monstersByRegion.TryGetValue(monster.RegionTier, out List<MonsterEntry> list))
+                {
+                    list = new List<MonsterEntry>(16);
+                    _monstersByRegion[monster.RegionTier] = list;
+                    _regionIds.Add(monster.RegionTier);
+                }
+                list.Add(monster);
+            }
+
+            _regionIds.Sort();
+            foreach (List<MonsterEntry> list in _monstersByRegion.Values)
+            {
+                list.Sort((a, b) => a.MaxHp.CompareTo(b.MaxHp));
+            }
+
+            _foods.Clear();
+            _potions.Clear();
+            foreach (ItemEntry item in _items.Values)
+            {
+                if (item.BaseId.Contains(FoodMarker))
+                {
+                    _foods.Add(item);
+                }
+                else if (item.BaseId.Contains(OffensivePotionMarker) || item.BaseId.Contains(DefensivePotionMarker))
+                {
+                    _potions.Add(item);
+                }
+            }
+
+            _foods.Sort((a, b) => a.RegionTier.CompareTo(b.RegionTier));
+            _potions.Sort((a, b) => a.RegionTier.CompareTo(b.RegionTier));
+        }
 
         public static bool TryGetGatheringNode(long activityId, out GatheringNodeEntry node) => _gatheringNodes.TryGetValue(activityId, out node);
 

@@ -47,6 +47,19 @@ namespace FolkIdle.Client.Engine
         public Sprite FemaleIcon;
     }
 
+    // Modul: UI rework. Backdrop art for a combat location, keyed by the
+    // RegionTier values authored in GameData/monsters.json. Populated by
+    // AssetRegistryBuilder from Assets/Images/Sprites/Locations/NN/Location.png
+    // where such a file exists - none do yet (the generated art so far is
+    // monsters and materials only), so the Combat screen falls back to a
+    // plain tinted frame and picks this up automatically once the art lands.
+    [Serializable]
+    public class RegionSpriteMapping
+    {
+        public int RegionId;
+        public Sprite Backdrop;
+    }
+
     // Designer-facing, type-safe MonsterId/ItemId -> AssetReference lookup.
     // Serialized as flat Lists for Inspector drag-and-drop editing (Unity cannot
     // serialize Dictionaries directly); compiled into Dictionaries once so
@@ -60,6 +73,7 @@ namespace FolkIdle.Client.Engine
         public List<MonsterSpriteMapping> monsterSpriteMappings = new List<MonsterSpriteMapping>();
         public List<ItemSpriteMapping> itemSpriteMappings = new List<ItemSpriteMapping>();
         public List<RaceSpriteMapping> raceSpriteMappings = new List<RaceSpriteMapping>();
+        public List<RegionSpriteMapping> regionSpriteMappings = new List<RegionSpriteMapping>();
         public Sprite GoldIcon;
         public Sprite GemsIcon;
 
@@ -69,6 +83,7 @@ namespace FolkIdle.Client.Engine
         private Dictionary<int, Sprite> _monsterIconCache;
         private Dictionary<string, Sprite> _itemIconCache;
         private Dictionary<int, RaceSpriteMapping> _raceIconCache;
+        private Dictionary<int, Sprite> _regionBackdropCache;
 
         private void OnEnable()
         {
@@ -116,6 +131,27 @@ namespace FolkIdle.Client.Engine
                 if (mapping == null) continue;
                 _raceIconCache[mapping.RaceId] = mapping;
             }
+
+            _regionBackdropCache = new Dictionary<int, Sprite>(regionSpriteMappings.Count);
+            for (int i = 0; i < regionSpriteMappings.Count; i++)
+            {
+                RegionSpriteMapping mapping = regionSpriteMappings[i];
+                if (mapping == null || mapping.Backdrop == null) continue;
+                _regionBackdropCache[mapping.RegionId] = mapping.Backdrop;
+            }
+        }
+
+        // Silent on a miss, unlike TryGetMonsterAsset - no region backdrop
+        // art exists yet at all, so warning per lookup would spam the console
+        // every time the Combat screen pages between locations.
+        public bool TryGetRegionBackdrop(int regionId, out Sprite backdrop)
+        {
+            if (_regionBackdropCache == null)
+            {
+                BuildCaches();
+            }
+
+            return _regionBackdropCache.TryGetValue(regionId, out backdrop);
         }
 
         public bool TryGetMonsterAsset(int monsterId, out AssetReference assetRef)

@@ -148,19 +148,56 @@ namespace FolkIdle.Client.Editor
             registry.monsterSpriteMappings.Clear();
             registry.itemSpriteMappings.Clear();
             registry.raceSpriteMappings.Clear();
+            registry.regionSpriteMappings.Clear();
 
             int unmatchedCount = 0;
             unmatchedCount += PopulateMonsterSprites(registry, monsterNameToId);
             unmatchedCount += PopulateCharacterSprites(registry);
             unmatchedCount += PopulateMaterialSprites(registry, knownBaseIds);
             unmatchedCount += PopulateCurrencySprites(registry);
+            PopulateRegionBackdrops(registry);
 
             EditorUtility.SetDirty(registry);
             AssetDatabase.SaveAssets();
 
             Debug.Log("AssetRegistryBuilder: populated " + registry.monsterSpriteMappings.Count + " monster, " +
                 registry.itemSpriteMappings.Count + " item, " + registry.raceSpriteMappings.Count +
-                " race sprite mapping(s); " + unmatchedCount + " sprite(s) skipped (no confident match, see warnings above).");
+                " race, " + registry.regionSpriteMappings.Count + " region sprite mapping(s); " + unmatchedCount + " sprite(s) skipped (no confident match, see warnings above).");
+        }
+
+        // Modul: UI rework. Backdrop art for the Combat screen's location
+        // header, picked up from Assets/Images/Sprites/Locations/NN/Location.png.
+        // No such file exists yet - the generated art so far is monsters and
+        // materials only - so this currently maps nothing and the Combat
+        // screen falls back to a tinted frame with the location name. Drop a
+        // Location.png into any numbered location folder and re-run this
+        // menu item and it appears with no code change.
+        private static void PopulateRegionBackdrops(AssetRegistry registry)
+        {
+            string locationsRoot = SpritesRootPath + "/Locations";
+            if (!AssetDatabase.IsValidFolder(locationsRoot))
+            {
+                return;
+            }
+
+            string[] folders = AssetDatabase.GetSubFolders(locationsRoot);
+            for (int i = 0; i < folders.Length; i++)
+            {
+                string folderName = System.IO.Path.GetFileName(folders[i]);
+                if (!int.TryParse(folderName, out int regionId) || regionId <= 0)
+                {
+                    continue;
+                }
+
+                string backdropPath = folders[i] + "/Location.png";
+                Sprite backdrop = AssetDatabase.LoadAssetAtPath<Sprite>(backdropPath);
+                if (backdrop == null)
+                {
+                    continue;
+                }
+
+                registry.regionSpriteMappings.Add(new RegionSpriteMapping { RegionId = regionId, Backdrop = backdrop });
+            }
         }
 
         private static int PopulateMonsterSprites(AssetRegistry registry, Dictionary<string, int> monsterNameToId)

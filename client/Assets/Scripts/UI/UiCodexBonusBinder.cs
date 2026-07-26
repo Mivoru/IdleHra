@@ -61,18 +61,25 @@ namespace FolkIdle.Client.UI
         {
             if (SyncProxy == null) return;
 
-            WriteBonusText(HumanBonusText, SyncProxy.VisualHumanMasteryLevel);
-            WriteBonusText(VilaBonusText, SyncProxy.VisualVilaMasteryLevel);
-            WriteBonusText(DraugrBonusText, SyncProxy.VisualDraugrMasteryLevel);
+            WriteBonusText(HumanBonusText, "Human ", SyncProxy.VisualHumanMasteryLevel);
+            WriteBonusText(VilaBonusText, "Vila ", SyncProxy.VisualVilaMasteryLevel);
+            WriteBonusText(DraugrBonusText, "Draugr ", SyncProxy.VisualDraugrMasteryLevel);
         }
 
-        private void WriteBonusText(TMP_Text target, int masteryLevel)
+        // Modul: UI rework. The label used to be written by the scene
+        // builder as placeholder text ("Human: +0%") and then overwritten
+        // here with the bare percentage, so the live overlay read as three
+        // context-free "+0%" lines in the corner of every screen. The race
+        // name is part of the value now, not a placeholder that gets thrown
+        // away on the first frame.
+        private void WriteBonusText(TMP_Text target, string raceLabel, int masteryLevel)
         {
             if (target == null) return;
 
             int bonusPercent = GetBonusPercent(masteryLevel);
 
-            int offset = WriteTextToBuffer(_codexUiBuffer, 0, "+");
+            int offset = WriteTextToBuffer(_codexUiBuffer, 0, raceLabel);
+            offset = WriteTextToBuffer(_codexUiBuffer, offset, "+");
             offset = WriteIntToBuffer(_codexUiBuffer, offset, bonusPercent);
             offset = WriteTextToBuffer(_codexUiBuffer, offset, "%");
 

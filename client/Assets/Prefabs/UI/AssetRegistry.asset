@@ -97,5 +97,6 @@ MonoBehaviour:
   - RaceId: 5
     MaleIcon: {fileID: 21300000, guid: 22f4cbdaeacb18f4989f548b2123314b, type: 3}
     FemaleIcon: {fileID: 21300000, guid: 64e7ad38862e9b84abd5805fe0b02910, type: 3}
+  regionSpriteMappings: []
   GoldIcon: {fileID: 21300000, guid: 69e278371a988894e995f7aeee7f0bd0, type: 3}
   GemsIcon: {fileID: 21300000, guid: 67563e8202c60d44a91e890d7ecc1cc8, type: 3}

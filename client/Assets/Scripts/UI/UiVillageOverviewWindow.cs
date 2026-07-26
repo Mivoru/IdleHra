@@ -201,12 +201,21 @@ namespace FolkIdle.Client.UI
             }
         }
 
-        private static void SetRowLevel(UiVillageBuildingRow row, int level)
+        private void SetRowLevel(UiVillageBuildingRow row, int level)
         {
-            if (row != null)
-            {
-                row.SetLevel(level);
-            }
+            if (row == null) return;
+
+            row.SetLevel(level);
+
+            // Modul: UI rework. The Town Hall ceiling
+            // (VillageManagementEngine.ResolveMaxBuildingLevel: 2 +
+            // TownHallLevel * 2) is the single most confusing thing about
+            // this screen - every building silently stops accepting
+            // upgrades at level 2 on a fresh account and nothing anywhere
+            // explained why. The Town Hall itself is capped by its own
+            // level, same as everything else.
+            int maxLevel = 2 + (SyncProxy != null ? SyncProxy.TownHallLevel : 0) * 2;
+            row.SetUpgradeCost(level, maxLevel);
         }
 
         private UiVillageBuildingRow FindRow(int buildingId)

@@ -92,6 +92,22 @@ namespace FolkIdle.Client.Engine
         public int VisualPlayerArmorRating { get; private set; }
         public float VisualPlayerBlockStrengthPct { get; private set; }
 
+        // Modul: UI rework. StateUpdatePacket has carried CurrentLevel,
+        // CurrentXp and the four potion-buff fields since long before this
+        // pass, but nothing in this proxy ever read any of them, so no
+        // screen could show a live level, XP total or remaining buff timer -
+        // the same "on the wire, never surfaced" gap as the seven fields
+        // fixed in a previous pass, just in the receive direction. Discrete,
+        // not interpolated: a level and an item id have no meaningful
+        // intermediate value, and the potion countdowns tick in whole
+        // 100ms server steps.
+        public int VisualPlayerLevel { get; private set; }
+        public long VisualPlayerXp { get; private set; }
+        public int VisualActiveOffensivePotionId { get; private set; }
+        public int VisualOffensivePotionDurationMs { get; private set; }
+        public int VisualActiveDefensivePotionId { get; private set; }
+        public int VisualDefensivePotionDurationMs { get; private set; }
+
         // Modul: onboarding signal mirrored from StateUpdatePacket.IsFreshAccount -
         // UiLoginWindow/UiTutorialController key off this to decide whether
         // to arm the FTUE. Stable from the first received packet onward
@@ -525,6 +541,12 @@ namespace FolkIdle.Client.Engine
                     VisualActiveMasteryBitmask = packet.ActiveMasteryBitmask;
                     VisualActiveStatusEffectModifierBitmask = packet.ActiveStatusEffectModifierBitmask;
                     VisualRemainingBuffDurationTicks = packet.RemainingBuffDurationTicks;
+                    VisualPlayerLevel = packet.CurrentLevel;
+                    VisualPlayerXp = packet.CurrentXp;
+                    VisualActiveOffensivePotionId = packet.ActiveOffensivePotionId;
+                    VisualOffensivePotionDurationMs = packet.OffensivePotionDurationMs;
+                    VisualActiveDefensivePotionId = packet.ActiveDefensivePotionId;
+                    VisualDefensivePotionDurationMs = packet.DefensivePotionDurationMs;
                     VisualActiveMatchMmr = packet.VisualActiveMatchMmr;
                     VisualGlobalNodeRemainingHp = packet.GlobalNodeRemainingHp;
                     VisualActiveMatchId = packet.ActiveMatchId;
@@ -663,6 +685,12 @@ namespace FolkIdle.Client.Engine
             VisualActiveMasteryBitmask = _snapshotB.Packet.ActiveMasteryBitmask;
             VisualActiveStatusEffectModifierBitmask = _snapshotB.Packet.ActiveStatusEffectModifierBitmask;
             VisualRemainingBuffDurationTicks = _snapshotB.Packet.RemainingBuffDurationTicks;
+            VisualPlayerLevel = _snapshotB.Packet.CurrentLevel;
+            VisualPlayerXp = _snapshotB.Packet.CurrentXp;
+            VisualActiveOffensivePotionId = _snapshotB.Packet.ActiveOffensivePotionId;
+            VisualOffensivePotionDurationMs = _snapshotB.Packet.OffensivePotionDurationMs;
+            VisualActiveDefensivePotionId = _snapshotB.Packet.ActiveDefensivePotionId;
+            VisualDefensivePotionDurationMs = _snapshotB.Packet.DefensivePotionDurationMs;
             VisualActiveMatchMmr = _snapshotB.Packet.VisualActiveMatchMmr;
             VisualGlobalNodeRemainingHp = _snapshotB.Packet.GlobalNodeRemainingHp;
             VisualActiveMatchId = _snapshotB.Packet.ActiveMatchId;

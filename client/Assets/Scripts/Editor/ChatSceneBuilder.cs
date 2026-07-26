@@ -165,8 +165,30 @@ namespace FolkIdle.Client.Editor
             viewportRect.offsetMax = Vector2.zero;
             viewportRect.pivot = new Vector2(0f, 1f);
 
-            viewportObject.AddComponent<Image>().color = Color.clear;
-            viewportObject.AddComponent<Mask>().showMaskGraphic = false;
+            // Modul: UI rework - RectMask2D, NOT Mask + a transparent Image.
+            //
+            // This was THE bug behind "every list in the game looks empty".
+            // The old pairing was an Image tinted Color.clear plus a
+            // Mask with showMaskGraphic = false. Unity's StencilMaterial
+            // enables the UNITY_UI_ALPHACLIP shader keyword whenever a mask
+            // graphic is set not to draw, and that keyword does
+            // `clip(color.a - 0.001)` - so an alpha-0 mask image discards
+            // every one of its own pixels, writes nothing at all into the
+            // stencil buffer, and therefore clips away 100% of the content
+            // inside it. Every single scroll view in the game runs through
+            // this one helper: guild roster, market listings, bank vault,
+            // forge recipes, codex, achievements, leaderboard, mailbox,
+            // store, season pass, friends, the hamburger menu. All of them
+            // were rendering their rows correctly - correct names, sizes,
+            // positions, all verifiable in the hierarchy - and then having
+            // every pixel thrown away at draw time.
+            //
+            // RectMask2D clips by rectangle instead of by stencil, needs no
+            // graphic at all, allocates no per-mask material variant, and
+            // does not add the two extra draw calls a stencil mask costs.
+            // Rectangular clipping is all a vertical list has ever needed
+            // here.
+            viewportObject.AddComponent<RectMask2D>();
 
             GameObject contentObject = new GameObject("Content", typeof(RectTransform));
             contentObject.transform.SetParent(viewportRect, false);
