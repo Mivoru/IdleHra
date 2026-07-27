@@ -521,6 +521,22 @@ namespace FolkIdle.Client.Engine
                     VisualActiveLanguageState = packet.ActiveLanguageState == 0 ? (byte)1 : packet.ActiveLanguageState;
                     VisualAutoEatThreshold = packet.AutoEatThreshold;
                     VisualActiveGuildWarId = packet.ActiveGuildWarId;
+
+                    // Modul: Guild War scoreboard sync. The six point totals and
+                    // the war multiplier were assigned ONLY in the steady-state
+                    // interpolation branch, so on the first packet after
+                    // connecting the panel saw a live war id with every score
+                    // still at zero - it rendered an active war that both guilds
+                    // were apparently losing 0-0 until a second packet arrived.
+                    // Same one-branch omission that once froze four other fields
+                    // after the first packet.
+                    VisualWarMultiplier = packet.CachedWarMultiplier;
+                    VisualGuildCombatPoints = packet.GuildCombatVanguardPoints;
+                    VisualGuildLogisticsPoints = packet.GuildProductionLogisticsPoints;
+                    VisualGuildSupplyPoints = packet.GuildGatheringSupplyChainPoints;
+                    VisualEnemyCombatPoints = packet.EnemyCombatVanguardPoints;
+                    VisualEnemyLogisticsPoints = packet.EnemyProductionLogisticsPoints;
+                    VisualEnemySupplyPoints = packet.EnemyGatheringSupplyChainPoints;
                     VisualFood1ItemId = packet.Food1_ItemId;
                     VisualFood1Count = packet.Food1_Count;
                     VisualFood2ItemId = packet.Food2_ItemId;

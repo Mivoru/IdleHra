@@ -46,6 +46,11 @@ namespace FolkIdle.Server.Engine
         public readonly ConcurrentQueue<GuildWarSupplyContribution> SupplyChainQueue = new();
         private CancellationTokenSource _cts = new();
 
+        // Modul: Guild War scoreboard sync. The guilds that had an active war on
+        // the previous sync pass, so a war that has since ended can be detected
+        // and cleared. Touched only by the single sync loop task.
+        private System.Collections.Generic.HashSet<long> _guildsAtWarLastCycle = new();
+
         // Modul: Guild War scoreboard sync. Assigned after construction
         // (Program.cs builds PlayerSessionRegistry after this engine, the
         // same ordering problem RegisterSimulationEngine/
@@ -118,6 +123,17 @@ namespace FolkIdle.Server.Engine
                         .Where(m => m.IsActive)
                         .ToListAsync(stoppingToken);
 
+                    // Modul: Guild War scoreboard sync. Which guilds are at war
+                    // THIS cycle. Any guild that was in the previous cycle's set
+                    // and is not in this one has just finished its war, and has
+                    // to be told - see the clearing pass below.
+                    var guildsAtWarThisCycle = new System.Collections.Generic.HashSet<long>();
+                    for (int i = 0; i < activeMatches.Count; i++)
+                    {
+                        guildsAtWarThisCycle.Add(activeMatches[i].GuildA_Id);
+                        guildsAtWarThisCycle.Add(activeMatches[i].GuildB_Id);
+                    }
+
                     for (int i = 0; i < activeMatches.Count; i++)
                     {
                         var match = activeMatches[i];
@@ -154,6 +170,27 @@ namespace FolkIdle.Server.Engine
                             ScoreShare = 1f - shareA
                         });
                     }
+
+                    // Modul: Guild War scoreboard sync. The clearing pass.
+                    // Without it a finished war stayed on every member's screen
+                    // with its final score frozen in place, indistinguishable
+                    // from a live one, until they logged out and back in.
+                    foreach (long endedGuildId in _guildsAtWarLastCycle)
+                    {
+                        if (guildsAtWarThisCycle.Contains(endedGuildId))
+                        {
+                            continue;
+                        }
+
+                        _playerRegistry.GuildWarScoreboardQueue.Enqueue(new GuildWarScoreboardNotification
+                        {
+                            GuildId = endedGuildId,
+                            WarEnded = true
+                        });
+                    }
+
+                    _guildsAtWarLastCycle = guildsAtWarThisCycle;
+
                 }
                 catch (Exception ex)
                 {

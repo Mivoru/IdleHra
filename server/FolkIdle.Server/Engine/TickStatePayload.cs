@@ -401,6 +401,13 @@ namespace FolkIdle.Server.Engine
         public uint ActiveChallengeSeed;
         public long ActiveChallengeIssuedAtMs;
         public byte ActiveChallengeAnswered;
+
+        // Modul: challenge response policy. Consecutive unanswered integrity
+        // challenges. Reset to zero the moment one is answered, so only a
+        // sustained run of misses escalates - a single hitch, a backgrounded
+        // frame or one slow round trip does not. See
+        // AntiCheatTelemetryEngine.ConsecutiveChallengeMissLimit.
+        public int ConsecutiveChallengeMisses;
         public bool IsQuarantined;
         public byte ActiveLanguageState;
         public byte WorldBossAttemptCount;

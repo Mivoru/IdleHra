@@ -33,9 +33,46 @@ env:
   UNITY_VERSION: "6000.5.2f1"
 
 jobs:
+  # Modul: CI licence gate. game-ci/unity-test-runner and unity-builder both
+  # require a real Unity licence, supplied through the UNITY_LICENSE secret.
+  # Without it they do not skip or warn - they fail the step outright, so every
+  # single push touching client/** turned this workflow red for a reason that
+  # has nothing to do with the code being pushed.
+  #
+  # A permanently failing pipeline is worse than no pipeline: it trains everyone
+  # to ignore the red mark, and a genuine regression then arrives looking
+  # exactly like the noise. This job publishes whether the licence exists so the
+  # Unity jobs below can skip cleanly (reported as skipped, never as passed)
+  # until the secret is configured.
+  #
+  # The `secrets` context is not available in a job-level `if`, which is why
+  # this is a job producing an output rather than a condition written inline.
+  # The S3 upload step further down already guards on its own secret this way.
+  licence-check:
+    name: Check Unity Licence Availability
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.probe.outputs.configured }}
+    steps:
+      - name: Probe for UNITY_LICENSE
+        id: probe
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          if [ -n "$UNITY_LICENSE" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+            echo "UNITY_LICENSE is configured - Unity test and build jobs will run."
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "UNITY_LICENSE is not configured - skipping the Unity test and build jobs."
+            echo "Add a UNITY_LICENSE repository secret (plus UNITY_EMAIL and UNITY_PASSWORD for a Pro seat) to enable them."
+          fi
+
   test:
     name: Unity Test Suite (${{ matrix.testMode }})
     runs-on: ubuntu-latest
+    needs: licence-check
+    if: needs.licence-check.outputs.configured == 'true'
     strategy:
       fail-fast: false
       matrix:

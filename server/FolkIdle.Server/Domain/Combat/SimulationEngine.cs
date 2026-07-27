@@ -882,6 +882,25 @@ namespace FolkIdle.Server.Domain.Combat
                             continue;
                         }
 
+                        // Modul: Guild War scoreboard sync. A concluded war
+                        // clears rather than freezing its final score on screen.
+                        // The client decides "a war is on" from
+                        // ActiveGuildWarId > 0, so that has to go to zero too or
+                        // the panel keeps rendering a finished match as live.
+                        if (warScoreboard.WarEnded)
+                        {
+                            memberPayload.ActiveGuildWarId = 0L;
+                            memberPayload.GuildCombatVanguardPoints = 0;
+                            memberPayload.GuildProductionLogisticsPoints = 0;
+                            memberPayload.GuildGatheringSupplyChainPoints = 0;
+                            memberPayload.EnemyCombatVanguardPoints = 0;
+                            memberPayload.EnemyProductionLogisticsPoints = 0;
+                            memberPayload.EnemyGatheringSupplyChainPoints = 0;
+                            memberPayload.CachedWarMultiplier = 0f;
+                            memberPayload.IsDirty = true;
+                            continue;
+                        }
+
                         memberPayload.GuildCombatVanguardPoints = warScoreboard.OurCombatVanguardPoints;
                         memberPayload.GuildProductionLogisticsPoints = warScoreboard.OurProductionLogisticsPoints;
                         memberPayload.GuildGatheringSupplyChainPoints = warScoreboard.OurGatheringSupplyChainPoints;
@@ -1501,6 +1520,11 @@ namespace FolkIdle.Server.Domain.Combat
                         {
                             currentPayload.ActiveChallengeAnswered = 1;
                             currentPayload.ActiveChallengeSeed = 0;
+
+                            // Modul: challenge response policy. Any answered
+                            // challenge clears the run, so misses have to be
+                            // consecutive to escalate.
+                            currentPayload.ConsecutiveChallengeMisses = 0;
                         }
                     }
                     else if (cmd.Command == CommandType.MarketListItem || cmd.Command == CommandType.MarketBuyItem)
@@ -2600,14 +2624,29 @@ namespace FolkIdle.Server.Domain.Combat
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, kvp.Key);
                     if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload) && !currentPayload.IsSuspended)
                     {
+                        // Modul: challenge response policy. This used to
+                        // quarantine on the FIRST challenge that went unanswered
+                        // for 500ms - see AntiCheatTelemetryEngine for why that
+                        // was a latency detector rather than a cheat detector.
+                        // A miss now only advances a counter; the account is
+                        // only quarantined once the client has failed a run of
+                        // them, which a client that cannot compute the hash
+                        // still reaches within about a minute.
                         if (currentPayload.ActiveChallengeSeed != 0 &&
                             currentPayload.ActiveChallengeAnswered == 0 &&
-                            Environment.TickCount64 - currentPayload.ActiveChallengeIssuedAtMs > 500L)
+                            Environment.TickCount64 - currentPayload.ActiveChallengeIssuedAtMs > AntiCheatTelemetryEngine.ChallengeResponseWindowMs)
                         {
-                            currentPayload.IsQuarantined = true;
-                            currentPayload.Quarantine_Active = true;
+                            // Marked answered so the next broadcast issues a
+                            // fresh challenge rather than re-counting this one.
                             currentPayload.ActiveChallengeAnswered = 1;
-                            _antiCheatTelemetryEngine?.RequestShadowBan(currentPayload.PlayerId, 54, 4);
+                            currentPayload.ConsecutiveChallengeMisses++;
+
+                            if (currentPayload.ConsecutiveChallengeMisses >= AntiCheatTelemetryEngine.ConsecutiveChallengeMissLimit)
+                            {
+                                currentPayload.IsQuarantined = true;
+                                currentPayload.Quarantine_Active = true;
+                                _antiCheatTelemetryEngine?.RequestShadowBan(currentPayload.PlayerId, 54, 4);
+                            }
                         }
 
                         if (_liveSessionContexts.TryGetValue(kvp.Key, out var sessionContext))

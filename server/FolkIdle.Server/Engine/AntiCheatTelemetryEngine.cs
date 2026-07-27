@@ -45,6 +45,27 @@ namespace FolkIdle.Server.Engine
         //    The gap across a night offline sat in the sample set as one
         //    enormous interval, and the twenty commands after a relogin mixed
         //    with the twenty before it.
+        // Modul: challenge response policy. The integrity challenge asks the
+        // client to prove it can compute ComputeChallengeHash. That is a test of
+        // KNOWLEDGE, not of speed - a cheat client either has the algorithm or
+        // it does not, and it answers just as fast either way.
+        //
+        // The window was 500ms of wall clock, and a single miss quarantined the
+        // account outright. That is not a cheat detector, it is a latency
+        // detector: a mobile client on a 300ms round trip that hits one GC pause
+        // or a backgrounded frame misses it through no fault of its own, and a
+        // quarantine is irreversible without an operator running
+        // --lift-quarantine. Automated Play Mode harnesses, whose frames only
+        // advance when the driver pumps them, missed it every single time.
+        //
+        // Two changes, the same pair the macro detector needed: give the answer
+        // a window that reflects real-world latency rather than LAN latency, and
+        // require a RUN of misses before escalating. A client that genuinely
+        // cannot answer misses every challenge and still trips the limit within
+        // a minute; a client that is merely slow now survives.
+        public const long ChallengeResponseWindowMs = 15000L;
+        public const int ConsecutiveChallengeMissLimit = 4;
+
         private const double MacroCoefficientOfVariationThreshold = 0.05;
         private const int MinimumSampleCount = 20;
 

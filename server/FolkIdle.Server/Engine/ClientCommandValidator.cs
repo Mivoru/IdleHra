@@ -308,7 +308,11 @@ namespace FolkIdle.Server.Engine
             }
 
             long now = Environment.TickCount64;
-            if (payload.ActiveChallengeSeed == 0 || payload.ActiveChallengeAnswered != 0 || now - payload.ActiveChallengeIssuedAtMs > 500L)
+            // Modul: challenge response policy. Shares the issue-side window
+            // constant rather than repeating a literal - a validator stricter
+            // than the issuer would reject answers the engine still considers
+            // in time, which is how a correct client gets told it is wrong.
+            if (payload.ActiveChallengeSeed == 0 || payload.ActiveChallengeAnswered != 0 || now - payload.ActiveChallengeIssuedAtMs > AntiCheatTelemetryEngine.ChallengeResponseWindowMs)
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 31, Value2 = 2, Timestamp = now });
                 return false;

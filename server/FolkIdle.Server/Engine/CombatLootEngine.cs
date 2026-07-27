@@ -147,6 +147,14 @@ namespace FolkIdle.Server.Engine
         // GuildWarEngine.RunScoreboardSyncLoopAsync for why the previously
         // undefined CachedWarMultiplier field carries this.
         public float ScoreShare;
+
+        // Modul: Guild War scoreboard sync. Set when the guild's war has ENDED.
+        // The sync loop only ever published for matches with IsActive, and
+        // nothing anywhere cleared ActiveGuildWarId or the six point totals when
+        // a war finished - so the payload kept the final score forever and the
+        // client, which decides "a war is on" from ActiveGuildWarId > 0, went on
+        // showing a concluded war as live until the player relogged.
+        public bool WarEnded;
     }
 
     // Modul: Deploy activation fix. Carries a committed activity change from

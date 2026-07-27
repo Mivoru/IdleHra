@@ -7689,6 +7689,62 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        // Modul: challenge response policy. The integrity challenge asks a client
+        // to prove it can compute ComputeChallengeHash - a test of knowledge,
+        // not of speed. It was enforced with a 500ms wall-clock budget and a
+        // single miss quarantined the account, which made it a latency detector:
+        // a mobile client on a 300ms round trip that hit one GC pause was
+        // permanently shadowbanned, and every automated Play Mode harness (whose
+        // frames only advance when the driver pumps them) tripped it on every
+        // run.
+        [Fact]
+        public void Test_AntiCheatChallenge_WindowToleratesRealLatencyAndOneMissDoesNotBan()
+        {
+            // Wide enough for a slow mobile round trip plus a frame hitch, where
+            // 500ms was not.
+            Assert.True(AntiCheatTelemetryEngine.ChallengeResponseWindowMs >= 5000L,
+                "The response window is still tight enough to punish ordinary mobile latency.");
+
+            // And a run is required before anything irreversible happens.
+            Assert.True(AntiCheatTelemetryEngine.ConsecutiveChallengeMissLimit >= 2,
+                "A single missed challenge still quarantines the account.");
+
+            // The validator must not be stricter than the issuer, or a correct
+            // answer arriving inside the engine's window is rejected as wrong.
+            var payload = new TickStatePayload
+            {
+                PlayerId = 970004901L,
+                ActiveChallengeSeed = 12345u,
+                ActiveChallengeAnswered = 0,
+                ActiveChallengeIssuedAtMs = Environment.TickCount64 - 1000L
+            };
+
+            var packet = new ClientCommandPacket
+            {
+                Command = CommandType.AntiCheatChallengeResponse,
+                ChallengeId = payload.ActiveChallengeSeed,
+                ChallengeVerificationHash = AntiCheatTelemetryEngine.ComputeChallengeHash(
+                    payload.ActiveChallengeSeed, payload.PlayerId, payload.LogicEpochCounter)
+            };
+
+            // One second late - comfortably rejected under the old 500ms rule,
+            // and the whole point of the change.
+            Assert.True(ClientCommandValidator.ValidateAntiCheatChallengeResponse(ref payload, ref packet),
+                "A correct answer one second after issue was rejected.");
+
+            // Still rejected once genuinely stale, so the window is a window and
+            // not an removal of the check.
+            payload.ActiveChallengeIssuedAtMs = Environment.TickCount64 - (AntiCheatTelemetryEngine.ChallengeResponseWindowMs + 5000L);
+            Assert.False(ClientCommandValidator.ValidateAntiCheatChallengeResponse(ref payload, ref packet));
+
+            // And a wrong hash is still refused regardless of timing - the
+            // knowledge test itself is untouched.
+            payload.ActiveChallengeIssuedAtMs = Environment.TickCount64;
+            var wrongPacket = packet;
+            wrongPacket.ChallengeVerificationHash = packet.ChallengeVerificationHash + 1u;
+            Assert.False(ClientCommandValidator.ValidateAntiCheatChallengeResponse(ref payload, ref wrongPacket));
+        }
+
         // Modul: activity id bands. THE bug this pass exists to close. Monster
         // ids and gathering node ids share one activity space, and Region 3's
         // five monsters (101-105: Desert Crab, Ashen Basilisk, Ember Elemental,
