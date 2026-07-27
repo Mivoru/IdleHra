@@ -25,7 +25,11 @@ new region-completion view: a cache component that mirrors
 `CompletedAreaFlags` from the inbound `StateUpdatePacket`, a list/grid
 binder, and a bonus-summary binder analogous to `UiCodexBonusBinder`.
 
-### 2. Market Order-Book Browser UI (listings cannot currently be browsed)
+### 2. Market Order-Book Browser UI - SHIPPED, item retained for reference
+
+Resolved. `UiMarketBrowserWindow`, `UiMarketDataBinder`, `UiMarketListingRow`,
+`UiMarketBuyOrderPanel` and `UiMarketSellPanel` all exist and are constructed
+by `MainSceneBuilder.BuildMarketBankWindow`. Original description follows.
 
 `UI/UiCommandDispatcher.cs` already exposes `DispatchMarketListItem()` and
 `DispatchMarketBuyItem()`, which send real `MarketListItem`/`MarketBuyItem`
@@ -118,3 +122,71 @@ every forge-fusion affix roll regardless of the item's actual region tier.
 Fix: use `ContentRegistry.TryGetItemDefinitionByBaseId(targetItem.BaseItemId, out var definition)`
 (added this pass for the market fallback-price feature, see
 `GAME_DESIGN_SPEC.md` Section 3.1) to get the real `RegionTier` instead.
+
+## Content and Balance
+
+### 8. Region 3-5 gear and materials are authored but untuned
+
+Every recipe ingredient is now obtainable and every gathering node drops
+something (`Test_ContentRegistry_EveryRecipeIngredientIsObtainableFromSomeSource`
+and `Test_ActivityIdBands_EveryRekeyedNodeKeptItsLootTable` both pin this).
+What has NOT been done is any balance pass over the numbers: node tick
+thresholds, drop weights, and the 103 recipes' material costs were authored to
+be reachable, not to be paced. Nobody has played a full progression curve end
+to end, so the shape of the mid-game is unmeasured.
+
+### 9. Set bonuses still collapse four armour slots into one set id
+
+`EquipmentSlotEngine.ComputeEquippedTotalsAsync` returns a weapon/armour/
+leggings SetId triple because that is what `SetBonusEngine.Evaluate` consumes.
+With six equip slots, the four armour pieces all fold onto the single armour
+set id, taking the first one found. Widening set bonuses to six slots is a
+balance change rather than a refactor and was deliberately left out of the
+equipment pass.
+
+### 10. Helper/offhand slot is modelled but not equippable
+
+`AffixRegistry.EquipmentSlotMask` includes `Shield`, and
+`AffixRegistry.ResolveSlot` matches the `_helper_offhand_` BaseId marker, so
+helper items already roll slot-correct affixes. There is no seventh equip
+slot, so they cannot be worn - the same shape as the helmet/gloves/boots gap
+that the six-slot pass closed. Adding it is one entry in
+`EquipmentSlotEngine`'s slot constants plus one column.
+
+## Client UI Hook Points (continued)
+
+### 11. Per-character equipment loadouts for slots 2 and 3
+
+The wire carries the ACTIVE character's six equipment slots only. Gear changes
+on a button press rather than at 10Hz, so the other characters' loadouts are
+deliberately left to `/api/v1/player/inventory` rather than costing 96 bytes a
+frame. The Roster screen currently shows each character's activity and status
+but not what they are wearing; wiring the REST snapshot into a per-character
+equipment view is the remaining piece.
+
+### 12. Race unlock has no player-facing feedback
+
+`PlayerRaceUnlocks` is written and a male/female pair is granted on a region
+boss's first kill, but nothing tells the player it happened - no toast, no
+entry on the Roster or Race Mastery screens. The unlock is currently only
+visible as two new characters appearing in the roster.
+
+## Tooling
+
+### 13. Unity CI is skipped until a licence secret exists
+
+`.github/workflows/unity_client.yml` now gates its test and build jobs on a
+`licence-check` job that probes for `UNITY_LICENSE`. Without the secret the
+Unity jobs report as skipped rather than failing the whole workflow. They are
+genuinely not running: add `UNITY_LICENSE` (plus `UNITY_EMAIL` and
+`UNITY_PASSWORD` for a Pro seat) as repository secrets to turn them on. Until
+then, client-side verification is manual through the MCP Play Mode harness.
+
+### 14. Play Mode harness needs a seeded fixture account
+
+Verifying multi-character, equipment and progression behaviour in Play Mode
+currently requires hand-seeding the database (Town Hall level, roster,
+equipment) with a throwaway console app. A committed, idempotent dev-seed
+entry point - alongside `--migrate` and `--lift-quarantine` - would make the
+audit repeatable instead of improvised. Note it must stay clearly
+non-production, guarded the way `--lift-quarantine` is.

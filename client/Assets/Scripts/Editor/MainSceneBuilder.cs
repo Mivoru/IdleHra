@@ -340,6 +340,16 @@ namespace FolkIdle.Client.Editor
             UiLoginWindow loginWindow = BuildLoginWindow(canvas.transform, networkClient);
             loginWindow.TutorialController = tutorialController;
 
+            // Modul: full-game audit. SyncProxy was never assigned, and
+            // UiLoginWindow gates the first-time tutorial on
+            // "TutorialController != null && SyncProxy != null &&
+            // SyncProxy.VisualIsFreshAccount" - with the proxy null that whole
+            // condition was permanently false, so no new player has ever been
+            // shown the tutorial. The one unwired network reference left in the
+            // scene, found by sweeping all 90 UI components for null
+            // WebSocketClient/VisualSyncProxy fields.
+            loginWindow.SyncProxy = syncProxy;
+
             // Modul: Email/Password Auth. Settings/Profile's Log Off button
             // was built long before UiLoginWindow existed (LoginWindow is
             // deliberately built last for z-order - see its own comment

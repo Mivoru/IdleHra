@@ -8,11 +8,13 @@ do not let it drift into aspirational/planned content - that belongs in
 ## 1. Solution Layout
 
 - `server/FolkIdle.Server/` - the ASP.NET-hosted game server (single
-  process, `Program.cs` entry point). `Engine/` currently holds 71 source
-  files (all gameplay/simulation/background-worker logic); `Models/` holds
-  57 source files (EF Core entities, DTOs, and `FolkIdleDbContext`). Both
-  directories are flat (no domain sub-namespaces) - see Section 7 for the
-  deliberate decision not to restructure this in the current pass.
+  process, `Program.cs` entry point). `Engine/` holds 86 source files
+  (gameplay/simulation/background-worker logic); `Models/` holds 64 (EF Core
+  entities, DTOs, and `FolkIdleDbContext`); `Migrations/` holds 36 applied
+  migrations. `Domain/` has since been split into five sub-namespaces -
+  `Combat`, `Economy`, `Progression`, `Social`, `Shared` - so the "both
+  directories are flat" note that used to sit here no longer holds; the
+  remaining flatness is inside `Engine/` only.
 - `server/FolkIdle.Server.Tests/` - xUnit integration test project, uses
   Testcontainers to spin up a real Postgres 16 instance per test collection
   (`PostgresTestFixture`).
@@ -138,7 +140,8 @@ on top of the primary key.
 
 Binary, fixed-layout packet structs shared in spirit (not in code) between
 client and server: `AuthHandshakePacket` (530 bytes), `ClientCommandPacket`
-(384 bytes), `StateUpdatePacket` (654 bytes). Both sides validate their own
+(352 bytes), `StateUpdatePacket` (686 bytes, against a hard ceiling of 700
+that `Test_StateUpdatePacket_StructuralSizeIsStrictlyUnder700Bytes` pins). Both sides validate their own
 compiled struct size at startup against these constants
 (`server/FolkIdle.Server/Network/NetworkPacketLayoutGuard.cs` /
 `client/Assets/Scripts/Network/NetworkPacketLayoutGuard.cs`, the latter
@@ -217,3 +220,133 @@ were deferred by explicit user decision after review, because:
 
 See `NEXT_STEPS_BACKLOG.md` items 3, 4, and 5 for the recommended,
 non-contradictory way to revisit each of these.
+
+## 12. Character Roster, Equipment and Activity Model
+
+Three systems that were partly present but unreachable have been completed;
+this section is the current truth for all three.
+
+### 12.1 Multi-character slots
+
+A player fields up to `CharacterSlotEngine.MaxCharacterSlots` (3) characters
+at once. Slot 2 unlocks at Town Hall level 3, slot 3 at level 5 - the Town
+Hall is raised only with `raw_log` and `copper_ore`, which puts extra
+characters on the gathering critical path rather than on a level timer.
+
+`TickStatePayload`'s flat activity fields (`ActiveActivityId`, `PlayerHp`,
+`CurrentMonsterId`, the `Slot1_*` identity fields, equipment, cached affix
+totals) double as the tick's **active-character register**. Each tick,
+`SimulationEngine.SwapSlotIntoActiveRegister` swaps a slot's parked
+`CharacterActivityState` into that register, runs the ordinary per-activity
+tick, and swaps it back. The swap is its own inverse and the loop always
+finishes with slot 1 loaded, so the outbound packet, the checkpoint flush and
+the offline extrapolation all keep seeing the main character exactly as they
+did before multi-slot existed.
+
+`ProcessAccountTick` holds the once-per-tick work that is NOT per character -
+character aging, mana regeneration, potion countdowns, child maturation. It
+must never move back inside `ProcessSubTick`: running it per slot would age
+every character three times as fast and expire potions three times quicker
+the moment a second slot was assigned.
+
+Two characters may never run the same activity
+(`CharacterSlotEngine.IsActivityOccupiedByAnotherSlot`). Any character may do
+anything otherwise - combat, gathering, fishing - so long as no two do the
+same thing.
+
+`StateCheckpointManager.LoadPlayerState` orders characters by `SlotIndex`.
+This is load-bearing: everything downstream indexes the list by position
+(`characters[0]` is the main character whose gear hydrates the register)
+while the unlock gate and occupancy mutex key off `SlotIndex`.
+
+### 12.2 Per-character equipment
+
+Equipment lives on `CharacterRecord`, not `PlayerRecord`, in six slots:
+Weapon, Helmet, Chest, Gloves, Leggings, Boots (`EquipmentSlotEngine`'s
+`Slot*` constants, mirrored by `UiEquipmentSlotsPanel`). The old single
+"Armor" slot became Chest, which is where the generic `_armor_slot_` BaseId
+fallback still resolves.
+
+Inventory stays account-wide - one backpack, one Village Chest, one larder -
+so the player manages a single bag while each character carries its own gear.
+
+Anything that destroys, transfers or re-points an `EquipmentInstances` row
+(market listing, forge fusion, mail, seasonal wipe, the inventory screen's
+"is equipped" flag, the backpack census) must ask
+`EquipmentSlotEngine.IsEquippedAnywhereAsync`, which spans every character
+the player owns. Checking one character would let a player sell gear another
+is wearing and leave a dangling equip pointer.
+
+Both equip paths run inside `Database.CreateExecutionStrategy().ExecuteAsync`
+on a retry-configured context, because rapid equips contend for the same
+character row's `FOR UPDATE` lock. The delegate is re-runnable: it clears the
+change tracker on entry and returns an outcome rather than enqueuing
+anything, so the command result and slot-update notification are published
+exactly once, after the strategy settles.
+
+### 12.3 Activity id bands
+
+Combat targets and gathering nodes share one activity id space. They are kept
+apart by band (`Engine/ActivityIdBands.cs`):
+
+| Band | Contents |
+| --- | --- |
+| 1 - 90 | Legacy monsters (not canonical progression content) |
+| 91 - 115 | The five canonical regions, four monsters plus a boss each |
+| 1001 - 1005 | Woodcutting nodes |
+| 2001 - 2005 | Mining nodes |
+| 3001 - 3009 | Fishing spots |
+| 4001 - 4012 | Herbalism nodes |
+| 9999 | World Boss sentinel |
+
+`ProcessSubTick` resolves an activity by checking `TryGetGatheringNode`
+first, so any overlap silently makes combat unreachable for the shared ids.
+Before the re-key, Region 3's monsters (101-105) sat on top of Woodcutting
+101-105: the whole region could not be fought, and the Kobold race unlock
+that hangs off the Magma Wyrm's first kill was unobtainable.
+`Test_ActivityIdBands_MonsterAndGatheringSpacesCannotOverlap` asserts the
+spaces are disjoint outright, so re-introducing an overlap fails there rather
+than silently deleting a region.
+
+## 13. Races, Breeding and Sustain
+
+Six races exist (`RaceIds`). Every account starts with a **male/female Human
+pair**; `BreedingEngine` requires a male paternal and female maternal parent
+of the same race, so a lone character is a genetic dead end and a pair is a
+founding population. Each of the five region bosses' first kill unlocks one
+further race and grants a male/female pair of it
+(`RaceUnlockRegistry`, `CharacterGrantEngine`, detection in `CodexEngine`'s
+kill batch, which is the only place that knows a monster's prior kill count).
+
+The auto-eat larder is three persisted slots on `PlayerRecord`, filled with
+`CommandType.StockFoodSlot` (65) through `LarderEngine`. `FoodRegistry` holds
+the GDD's ten cooked-food heal payouts (40 to 82,000 flat HP); food is
+classified by the `_food` BaseId marker, since the ten real cooked foods
+(items 194-203) never carried the older `_food_consumable` marker.
+
+The Village Chest (`VillageStashInstances`) is unbounded - unlimited stacks
+and unlimited stack height - and every consumption path reads Backpack +
+Chest, so stored materials stay spendable at the workbench, forge and market
+without being carried back out.
+
+## 14. Anti-Cheat Posture
+
+Two detectors, both deliberately tolerant of slow-but-honest clients after
+each was found permanently banning real players:
+
+- **Macro detection** uses the coefficient of variation of inter-command
+  intervals, plus a minimum observation window and minimum mean interval.
+  Absolute variance cannot distinguish "very regular" from "very fast", so
+  it banned anyone clicking quickly. Timer-driven client traffic
+  (`PingNetworkDiagnostics`, `AntiCheatChallengeResponse`) is excluded, and
+  profiles are discarded on session end.
+- **Integrity challenge** asks the client to prove it can compute
+  `ComputeChallengeHash`. That is a test of knowledge, not speed, so the
+  response window is 15s and escalation needs
+  `ConsecutiveChallengeMissLimit` (4) consecutive misses, cleared by any
+  answer. It was 500ms with a single-miss ban, which punished mobile latency
+  and made automated Play Mode runs impossible.
+
+A quarantine is otherwise irreversible in-game, so
+`Program.cs --lift-quarantine <playerId>` exists as an operator path; it also
+releases the account's frozen market listings.
