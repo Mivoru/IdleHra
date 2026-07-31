@@ -125,7 +125,23 @@ Fix: use `ContentRegistry.TryGetItemDefinitionByBaseId(targetItem.BaseItemId, ou
 
 ## Content and Balance
 
-### 8. Region 3-5 gear and materials are authored but untuned
+### 8. Region 3-5 balance - SHIPPED, item retained for reference
+
+Resolved. The curve is now measured rather than merely reachable, and
+`Test_Progression_EveryRegionClearsInsideThePlayableTimeBand` fails if any
+region leaves the playable band. Three compounding defects were found:
+
+1. Item base `FlatAttackPower` reached `StatsCalculator` from nowhere, so all
+   five gear tiers were identical in combat.
+2. The level curve grew `1.15^level` (16.4x per region) against 3x more player
+   power per region. Level 100 was ~59 days of uninterrupted combat.
+3. Region bosses sat at 17-29x their own region's strongest regular.
+
+Modelled clear time per region, using weapon base power alone and ignoring
+affixes/STR/set bonuses (a floor, not an estimate): 76 / 127 / 169 / 199 / 222
+minutes, ~13.2 hours total. Gathering is a steady 9-11% of each region, so the
+31 node thresholds and the 103 recipe costs were measured and deliberately left
+unchanged. Original description follows.
 
 Every recipe ingredient is now obtainable and every gathering node drops
 something (`Test_ContentRegistry_EveryRecipeIngredientIsObtainableFromSomeSource`
@@ -144,7 +160,15 @@ set id, taking the first one found. Widening set bonuses to six slots is a
 balance change rather than a refactor and was deliberately left out of the
 equipment pass.
 
-### 10. Helper/offhand slot is modelled but not equippable
+### 10. Helper/offhand slot - SHIPPED, item retained for reference
+
+Resolved. `EquipmentSlotEngine.SlotOffhand` (index 6, `SlotCount` 7),
+`CharacterRecord.EquippedOffhandId` plus migration
+`20260731182136_AddCharacterOffhandSlot`, the `StateUpdatePacket` field, and the
+client slot row. Note the estimate below understated it: the change touched 13
+mirror sites, including `SeasonalRotationEngine`'s era wipe - missing that one
+would have re-opened the cross-player equipped-id leak for offhand items.
+Original description follows.
 
 `AffixRegistry.EquipmentSlotMask` includes `Shield`, and
 `AffixRegistry.ResolveSlot` matches the `_helper_offhand_` BaseId marker, so
@@ -164,7 +188,12 @@ frame. The Roster screen currently shows each character's activity and status
 but not what they are wearing; wiring the REST snapshot into a per-character
 equipment view is the remaining piece.
 
-### 12. Race unlock has no player-facing feedback
+### 12. Race unlock feedback - SHIPPED, item retained for reference
+
+Resolved. `UiRaceUnlockToast`, fed by `StateUpdatePacket.UnlockedRaceBitmask`.
+Carried as a monotonic ownership mask rather than a one-shot event so the
+announcement survives a reconnect and cannot fire twice; the first mask seen in
+a session is a baseline, never an announcement. Original description follows.
 
 `PlayerRaceUnlocks` is written and a male/female pair is granted on a region
 boss's first kill, but nothing tells the player it happened - no toast, no
@@ -181,6 +210,38 @@ Unity jobs report as skipped rather than failing the whole workflow. They are
 genuinely not running: add `UNITY_LICENSE` (plus `UNITY_EMAIL` and
 `UNITY_PASSWORD` for a Pro seat) as repository secrets to turn them on. Until
 then, client-side verification is manual through the MCP Play Mode harness.
+
+### 15. No audio clips exist
+
+The audio trigger layer is built and wired (`GameAudioDirector`,
+`GameAudioEventRelay`, `UiButtonClickSfx` on every button, plus combat, loot,
+crafting, level-up, race-unlock and error triggers), but
+`client/Assets/Resources/Audio/` is empty, so the game is silent. This is
+deliberate and safe - a missing clip resolves to null, `Play` returns
+immediately, and nothing logs - and it is verified: all ten effects fire with
+zero clips present and no exception. Dropping correctly named files into that
+folder starts them playing with no code change and no scene rebuild. See that
+folder's README for the names and their trigger sites. Nothing registers a
+music track either, so `AmbientAudioEngine`'s crossfade has no bed to fade.
+
+### 16. Test_MarketEscrow_ConcurrentListings is a load-dependent flake
+
+`Test_MarketEscrow_ConcurrentListings_ExactReplicaNoSerializationDrift` fires
+six concurrent `Serializable` listings for one player and asserts all six
+commit. Under full-suite load against the shared Postgres container, five
+routinely lose the serialization race and `ListItemAsync` returns false after
+catching the transient failure rather than retrying; in isolation it passes
+every time. Confirmed pre-existing by stashing an unrelated working tree and
+reproducing the identical failure on the untouched baseline - do not chase it
+as a regression. The real fix is to wrap `MarketEscrowEngine.ListItemAsync` in
+a retrying execution strategy the way the equip path already is (commit
+`7a95764`), rather than weakening the test.
+
+### 17. Set bonuses and the offhand slot
+
+`SetBonusEngine.Evaluate` still consumes a weapon/armour/leggings SetId triple,
+so the four armour pieces collapse onto one armour set id (item 9) and the new
+seventh slot contributes its base stats and affixes but no set id at all.
 
 ### 14. Play Mode harness needs a seeded fixture account
 
