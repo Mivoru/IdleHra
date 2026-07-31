@@ -227,6 +227,14 @@ namespace FolkIdle.Client.UI
             // and which nothing has ever actually sent.
             NetworkClient.SendCraftingCommandZeroAlloc(18, resultItemId);
 
+            // Modul: audio pipeline. Sounded on dispatch rather than on
+            // completion: the server grants the output inside its own
+            // transaction and reports back only as a refreshed snapshot, so
+            // there is no discrete "craft succeeded" packet to hang this on. A
+            // rejected craft still raises the error toast, which has its own
+            // sound, so a failure is audibly distinct.
+            GameAudioDirector.Play(GameSfx.CraftingCompleted);
+
             if (StatusText != null)
             {
                 StatusText.text = "Crafting " + ClientContentRegistry.GetItemDisplayName(ResolveBaseId(resultItemId)) + "...";

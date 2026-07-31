@@ -20,24 +20,27 @@ namespace FolkIdle.Client.UI
     public class UiEquipmentSlotsPanel : MonoBehaviour
     {
         // Index order matches EquipmentSlotEngine's server-side constants
-        // exactly: 0 Weapon, 1 Helmet, 2 Chest, 3 Gloves, 4 Leggings, 5 Boots.
-        // The unequip command sends this index straight through, so the two
-        // orderings must never drift.
+        // exactly: 0 Weapon, 1 Helmet, 2 Chest, 3 Gloves, 4 Leggings, 5 Boots,
+        // 6 Offhand. The unequip command sends this index straight through, so
+        // the two orderings must never drift.
         public const int SlotWeapon = 0;
         public const int SlotHelmet = 1;
         public const int SlotChest = 2;
         public const int SlotGloves = 3;
         public const int SlotLeggings = 4;
         public const int SlotBoots = 5;
-        public const int SlotCount = 6;
+        // Modul: offhand slot. Exactly the one array entry the comment above
+        // this class predicted the seventh slot would cost.
+        public const int SlotOffhand = 6;
+        public const int SlotCount = 7;
 
-        public static readonly string[] SlotDisplayNames = { "Weapon", "Helmet", "Chest", "Gloves", "Leggings", "Boots" };
+        public static readonly string[] SlotDisplayNames = { "Weapon", "Helmet", "Chest", "Gloves", "Leggings", "Boots", "Offhand" };
 
         public VisualSyncProxy SyncProxy;
         public EquipmentInventoryCache InventoryCache;
         public WebSocketClient NetworkClient;
 
-        [Header("Slots (index order: Weapon, Helmet, Chest, Gloves, Leggings, Boots)")]
+        [Header("Slots (index order: Weapon, Helmet, Chest, Gloves, Leggings, Boots, Offhand)")]
         public TextMeshProUGUI[] SlotTexts = new TextMeshProUGUI[SlotCount];
         public Button[] UnequipButtons = new Button[SlotCount];
         public GameObject[] EmptyIndicators = new GameObject[SlotCount];
@@ -134,6 +137,7 @@ namespace FolkIdle.Client.UI
                 case SlotGloves: return SyncProxy.VisualEquippedGlovesId;
                 case SlotLeggings: return SyncProxy.VisualEquippedLeggingsId;
                 case SlotBoots: return SyncProxy.VisualEquippedBootsId;
+                case SlotOffhand: return SyncProxy.VisualEquippedOffhandId;
                 default: return 0L;
             }
         }

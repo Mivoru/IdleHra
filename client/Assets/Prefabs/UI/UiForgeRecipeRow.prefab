@@ -224,6 +224,7 @@ GameObject:
   - component: {fileID: 5495282339705782544}
   - component: {fileID: 1995357169797425664}
   - component: {fileID: 8938158033057383759}
+  - component: {fileID: 3045423162211077420}
   - component: {fileID: 8568801983617694006}
   m_Layer: 0
   m_Name: UiForgeRecipeRow
@@ -335,6 +336,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &3045423162211077420
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7069276239284008859}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50685e49abdb2554fa01e8526fc50461, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FolkIdle.Client::FolkIdle.Client.UI.UiButtonClickSfx
 --- !u!114 &8568801983617694006
 MonoBehaviour:
   m_ObjectHideFlags: 0

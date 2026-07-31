@@ -77,6 +77,14 @@ namespace FolkIdle.Server.Models
         public long? EquippedLeggingsId { get; set; }
         public long? EquippedBootsId { get; set; }
 
+        // Modul: offhand slot. The seventh slot, added for exactly the reason
+        // the six-slot widening above describes: AffixRegistry.EquipmentSlotMask
+        // already included Shield and ResolveSlot already matched the
+        // "_helper_offhand_" marker, so the five authored helper items
+        // (buckler / quiver / aegis / bulwark, one per region tier) rolled
+        // slot-correct affixes with nowhere to be worn.
+        public long? EquippedOffhandId { get; set; }
+
         // Modul 13.4.3: Breeding Grounds cooldown gate. Set on both parents by
         // BreedingEngine after a successful breed; ExecuteBreedingAsync rejects
         // a new attempt while BreedingCooldownEndEpoch is still in the future.

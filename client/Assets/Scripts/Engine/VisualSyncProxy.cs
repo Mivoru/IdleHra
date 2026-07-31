@@ -78,6 +78,10 @@ namespace FolkIdle.Client.Engine
         public long VisualEquippedHelmetId { get; private set; }
         public long VisualEquippedGlovesId { get; private set; }
         public long VisualEquippedBootsId { get; private set; }
+        public long VisualEquippedOffhandId { get; private set; }
+
+        // Modul: race unlock feedback. Bit (raceId - 1) per owned race.
+        public byte VisualUnlockedRaceBitmask { get; private set; }
 
         // Modul: roster registers. What characters 2 and 3 are doing. Slot 1 is
         // not mirrored here - it is VisualActiveActivityId, and a second copy
@@ -550,6 +554,8 @@ namespace FolkIdle.Client.Engine
                     VisualEquippedHelmetId = packet.EquippedHelmetId;
                     VisualEquippedGlovesId = packet.EquippedGlovesId;
                     VisualEquippedBootsId = packet.EquippedBootsId;
+                    VisualEquippedOffhandId = packet.EquippedOffhandId;
+                    VisualUnlockedRaceBitmask = packet.UnlockedRaceBitmask;
                     VisualSlot2ActivityId = packet.Slot2ActivityId;
                     VisualSlot3ActivityId = packet.Slot3ActivityId;
                     VisualSlot2ActivityHaltReason = packet.Slot2ActivityHaltReason;
@@ -704,6 +710,8 @@ namespace FolkIdle.Client.Engine
             VisualEquippedHelmetId = _snapshotB.Packet.EquippedHelmetId;
             VisualEquippedGlovesId = _snapshotB.Packet.EquippedGlovesId;
             VisualEquippedBootsId = _snapshotB.Packet.EquippedBootsId;
+            VisualEquippedOffhandId = _snapshotB.Packet.EquippedOffhandId;
+            VisualUnlockedRaceBitmask = _snapshotB.Packet.UnlockedRaceBitmask;
             VisualSlot2ActivityId = _snapshotB.Packet.Slot2ActivityId;
             VisualSlot3ActivityId = _snapshotB.Packet.Slot3ActivityId;
             VisualSlot2ActivityHaltReason = _snapshotB.Packet.Slot2ActivityHaltReason;
@@ -1022,6 +1030,7 @@ namespace FolkIdle.Client.Engine
                 || packet.EquippedHelmetId != VisualEquippedHelmetId
                 || packet.EquippedGlovesId != VisualEquippedGlovesId
                 || packet.EquippedBootsId != VisualEquippedBootsId
+                || packet.EquippedOffhandId != VisualEquippedOffhandId
                 || packet.EquippedLeggingsId != VisualEquippedLeggingsId;
 
             if (!changed) return;
@@ -1035,6 +1044,7 @@ namespace FolkIdle.Client.Engine
             VisualEquippedHelmetId = packet.EquippedHelmetId;
             VisualEquippedGlovesId = packet.EquippedGlovesId;
             VisualEquippedBootsId = packet.EquippedBootsId;
+            VisualEquippedOffhandId = packet.EquippedOffhandId;
             VisualEquippedLeggingsId = packet.EquippedLeggingsId;
 
             OnCharacterStateUpdated?.Invoke();

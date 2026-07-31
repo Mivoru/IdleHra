@@ -449,12 +449,12 @@ namespace FolkIdle.Server.Engine
             payload.CurrentXp += xpGained;
             while (true)
             {
-                // Modul: mirrors ProgressionEngine.ProcessMonsterDeath's GDD
-                // exponential curve exactly (100 * 1.15^level) - must stay
-                // identical to the live-tick formula, or a player's level-up
-                // pace would silently diverge depending on whether the XP
-                // was earned online or projected while offline.
-                long requiredXp = (long)Math.Ceiling(100.0 * Math.Pow(1.15, payload.CurrentLevel));
+                // Modul: must stay identical to the live-tick formula, or a
+                // player's level-up pace would silently diverge depending on
+                // whether the XP was earned online or projected while offline.
+                // Calls the one authority rather than mirroring it - see
+                // ProgressionEngine.GetRequiredXpForLevel.
+                long requiredXp = ProgressionEngine.GetRequiredXpForLevel(payload.CurrentLevel);
                 if (payload.CurrentXp >= requiredXp)
                 {
                     payload.CurrentXp -= requiredXp;

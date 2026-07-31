@@ -433,8 +433,25 @@ namespace FolkIdle.Client.Editor
             syncProxy.NetworkClient = networkClient;
 
             managers.AddComponent<EquipmentInventoryCache>();
-            managers.AddComponent<SfxPoolEngine>();
+            SfxPoolEngine sfxPoolEngine = managers.AddComponent<SfxPoolEngine>();
             managers.AddComponent<AssetLifecycleCoordinator>();
+
+            // Modul: audio pipeline. The registry and volume control that sat
+            // between SfxPoolEngine and the game and never existed: the pool
+            // took an AudioClip as a parameter, so it had no idea what sounds
+            // the game has, and only two panels in the whole client ever handed
+            // it one. GameAudioDirector owns the named clip table, the SFX and
+            // music volumes, and drives AmbientAudioEngine.Tick(), which had no
+            // per-frame driver at all - a music crossfade would latch and never
+            // advance.
+            GameAudioDirector audioDirector = managers.AddComponent<GameAudioDirector>();
+            audioDirector.SfxEngine = sfxPoolEngine;
+
+            // Turns server state edges (combat hits, level-ups) into effects.
+            // On Managers rather than the Combat screen so a level-up earned
+            // while the player is reading the Guild roster is still heard.
+            GameAudioEventRelay audioEventRelay = managers.AddComponent<GameAudioEventRelay>();
+            audioEventRelay.SyncProxy = syncProxy;
 
             // Modul: UI rework. Single drain point for the inbound chat
             // stream, feeding all three chat windows (World/Guild/Whisper).
@@ -742,10 +759,20 @@ namespace FolkIdle.Client.Editor
             // Modul: Map Hub. Shifted further down to also clear the new
             // persistent top-right CurrencyDisplay (y -120 to -166).
             panelRect.anchoredPosition = new Vector2(-20f, -176f);
-            // Modul: 6-slot equipment. Six 44px rows plus 6px spacing and 10px
-            // padding top and bottom. Left at the old 140 this clipped four of
-            // the six rows straight off the bottom.
-            panelRect.sizeDelta = new Vector2(280f, 314f);
+            // Modul: offhand slot. DERIVED from SlotCount rather than hardcoded.
+            // This was a literal 314 (six 44px rows + five 6px gaps + 10px
+            // padding top and bottom), and before that a literal 140 that
+            // clipped four of the six rows straight off the bottom. Adding the
+            // seventh slot would have silently clipped it the same way, so the
+            // arithmetic now lives next to the constant it depends on.
+            const float slotRowHeight = 44f;
+            const float slotRowSpacing = 6f;
+            const float slotPanelVerticalPadding = 10f;
+            float slotPanelHeight =
+                (UiEquipmentSlotsPanel.SlotCount * slotRowHeight)
+                + ((UiEquipmentSlotsPanel.SlotCount - 1) * slotRowSpacing)
+                + (slotPanelVerticalPadding * 2f);
+            panelRect.sizeDelta = new Vector2(280f, slotPanelHeight);
 
             Image panelBackground = panelObject.AddComponent<Image>();
             panelBackground.color = new Color(0f, 0f, 0f, 0.35f);
@@ -2017,6 +2044,7 @@ namespace FolkIdle.Client.Editor
             // the real, network-wired replacement).
             BuildCodexBonusOverlay(overlaysRoot.transform, syncProxy);
             BuildCommandResultToast(overlaysRoot.transform, syncProxy);
+            BuildRaceUnlockToast(overlaysRoot.transform, syncProxy);
             BuildOfflineSummaryModal(overlaysRoot.transform, syncProxy);
         }
 
@@ -2106,26 +2134,69 @@ namespace FolkIdle.Client.Editor
             binder.DraugrBonusText = draugrText;
         }
 
+        // Modul: toast host fix. The component lives on a permanently-active
+        // HOST and its visual root is a CHILD.
+        //
+        // Both toasts used to put the component on the same GameObject they
+        // then hid: UiCommandResultToast.OnEnable subscribes and immediately
+        // calls ToastRoot.SetActive(false) on its own GameObject. That
+        // deactivation fires OnDisable, which unsubscribes it, and an inactive
+        // GameObject runs no Update - so the component killed itself on the
+        // first frame and no command rejection was ever displayed. This is the
+        // exact trap already documented on UiOfflineSummaryWindow below, which
+        // was given a child WindowRoot for the same reason.
         private static void BuildCommandResultToast(Transform parent, VisualSyncProxy syncProxy)
         {
-            GameObject toastRootObject = new GameObject("CommandResultToast", typeof(RectTransform));
-            toastRootObject.transform.SetParent(parent, false);
-            RectTransform rect = (RectTransform)toastRootObject.transform;
-            rect.anchorMin = new Vector2(0.5f, 0f);
-            rect.anchorMax = new Vector2(0.5f, 0f);
-            rect.pivot = new Vector2(0.5f, 0f);
-            rect.sizeDelta = new Vector2(500f, 50f);
-            rect.anchoredPosition = new Vector2(0f, 110f);
+            (GameObject host, GameObject visualRoot, TextMeshProUGUI text) =
+                BuildToastHost(parent, "CommandResultToast", new Color(0.6f, 0.1f, 0.1f, 0.9f), 110f);
 
-            toastRootObject.AddComponent<Image>().color = new Color(0.6f, 0.1f, 0.1f, 0.9f);
-
-            TextMeshProUGUI text = CreateText(rect, "ToastText", string.Empty, 16f, TextAlignmentOptions.Center);
-            StretchFull((RectTransform)text.transform);
-
-            UiCommandResultToast toast = toastRootObject.AddComponent<UiCommandResultToast>();
+            UiCommandResultToast toast = host.AddComponent<UiCommandResultToast>();
             toast.SyncProxy = syncProxy;
             toast.ToastText = text;
-            toast.ToastRoot = toastRootObject;
+            toast.ToastRoot = visualRoot;
+        }
+
+        // Modul: race unlock feedback. Killing a region boss for the first time
+        // grants a breeding pair of a new playable race and nothing told the
+        // player - the only evidence was two unexplained characters appearing
+        // in the roster. Sits above the command-result toast so the two can be
+        // on screen together without overlapping.
+        private static void BuildRaceUnlockToast(Transform parent, VisualSyncProxy syncProxy)
+        {
+            (GameObject host, GameObject visualRoot, TextMeshProUGUI text) =
+                BuildToastHost(parent, "RaceUnlockToast", new Color(0.35f, 0.15f, 0.5f, 0.94f), 170f);
+
+            UiRaceUnlockToast toast = host.AddComponent<UiRaceUnlockToast>();
+            toast.SyncProxy = syncProxy;
+            toast.ToastText = text;
+            toast.ToastRoot = visualRoot;
+        }
+
+        // Returns a permanently-active host to hang the component on, plus the
+        // child visual root it is safe to hide - see BuildCommandResultToast.
+        private static (GameObject host, GameObject visualRoot, TextMeshProUGUI text) BuildToastHost(
+            Transform parent, string toastName, Color backgroundColor, float anchoredY)
+        {
+            GameObject hostObject = new GameObject(toastName, typeof(RectTransform));
+            hostObject.transform.SetParent(parent, false);
+            RectTransform hostRect = (RectTransform)hostObject.transform;
+            hostRect.anchorMin = new Vector2(0.5f, 0f);
+            hostRect.anchorMax = new Vector2(0.5f, 0f);
+            hostRect.pivot = new Vector2(0.5f, 0f);
+            hostRect.sizeDelta = new Vector2(500f, 50f);
+            hostRect.anchoredPosition = new Vector2(0f, anchoredY);
+
+            GameObject visualRootObject = new GameObject("VisualRoot", typeof(RectTransform));
+            visualRootObject.transform.SetParent(hostRect, false);
+            RectTransform visualRect = (RectTransform)visualRootObject.transform;
+            StretchFull(visualRect);
+
+            visualRootObject.AddComponent<Image>().color = backgroundColor;
+
+            TextMeshProUGUI text = CreateText(visualRect, "ToastText", string.Empty, 16f, TextAlignmentOptions.Center);
+            StretchFull((RectTransform)text.transform);
+
+            return (hostObject, visualRootObject, text);
         }
 
         // Modul: the UiOfflineSummaryWindow component must live on a
@@ -2981,6 +3052,8 @@ namespace FolkIdle.Client.Editor
             Image background = root.AddComponent<Image>();
             background.color = new Color(1f, 1f, 1f, 0.04f);
             Button rowButton = root.AddComponent<Button>();
+            // Modul: audio pipeline. Pooled list rows build their own Button.
+            root.AddComponent<UiButtonClickSfx>();
             rowButton.targetGraphic = background;
 
             GameObject selectedHighlight = new GameObject("SelectedHighlight", typeof(RectTransform));
@@ -3021,6 +3094,8 @@ namespace FolkIdle.Client.Editor
             Image background = root.AddComponent<Image>();
             background.color = new Color(1f, 1f, 1f, 0.04f);
             Button rowButton = root.AddComponent<Button>();
+            // Modul: audio pipeline. Pooled list rows build their own Button.
+            root.AddComponent<UiButtonClickSfx>();
             rowButton.targetGraphic = background;
 
             GameObject selectedHighlight = new GameObject("SelectedHighlight", typeof(RectTransform));
@@ -3545,6 +3620,8 @@ namespace FolkIdle.Client.Editor
             Image background = root.AddComponent<Image>();
             background.color = new Color(1f, 1f, 1f, 0.04f);
             Button rowButton = root.AddComponent<Button>();
+            // Modul: audio pipeline. Pooled list rows build their own Button.
+            root.AddComponent<UiButtonClickSfx>();
             rowButton.targetGraphic = background;
 
             GameObject rowIconObject = new GameObject("RowIcon", typeof(RectTransform));
@@ -4473,6 +4550,17 @@ namespace FolkIdle.Client.Editor
             panel.CharacterCountText = CreateStatRow(contentAreaRect, "Characters: 0");
             panel.SkillPointsText = CreateStatRow(contentAreaRect, "Unspent Skill Points: 0");
             panel.GuildText = CreateStatRow(contentAreaRect, "Guild: None");
+
+            // Modul: lifetime statistics. The five career numbers a player
+            // actually asks about. Total Kills and Bosses Slain are summed
+            // server-side from the codex, so they are correct retroactively for
+            // accounts that predate this pass; the other three start from zero
+            // because nothing in the server counted them until now.
+            panel.TotalKillsText = CreateStatRow(contentAreaRect, "Total Kills: 0");
+            panel.BossesSlainText = CreateStatRow(contentAreaRect, "Bosses Slain: 0");
+            panel.ItemsCraftedText = CreateStatRow(contentAreaRect, "Items Crafted: 0");
+            panel.DeathsText = CreateStatRow(contentAreaRect, "Deaths: 0");
+            panel.TimePlayedText = CreateStatRow(contentAreaRect, "Time Played: 0m");
 
             return windowObject;
         }
@@ -5462,6 +5550,10 @@ namespace FolkIdle.Client.Editor
             zoneImage.color = zoneColor;
             Button zoneButton = zoneObject.AddComponent<Button>();
             zoneButton.targetGraphic = zoneImage;
+            // Modul: audio pipeline. Map zones build their own Button rather
+            // than going through CreateButton, so they need the click sound
+            // attached explicitly.
+            zoneObject.AddComponent<UiButtonClickSfx>();
 
             TextMeshProUGUI zoneLabel = CreateText(zoneRect, "ZoneLabel", label, 18f, TextAlignmentOptions.Center);
             StretchFull((RectTransform)zoneLabel.transform);
@@ -5855,6 +5947,8 @@ namespace FolkIdle.Client.Editor
             Image background = root.AddComponent<Image>();
             background.color = new Color(0.17f, 0.17f, 0.22f, 1f);
             Button selectButton = root.AddComponent<Button>();
+            // Modul: audio pipeline. Pooled list rows build their own Button.
+            root.AddComponent<UiButtonClickSfx>();
             selectButton.targetGraphic = background;
 
             GameObject highlightObject = new GameObject("SelectedHighlight", typeof(RectTransform));
@@ -6300,7 +6394,106 @@ namespace FolkIdle.Client.Editor
             autoEatPanel.DecreaseButton = autoEatDecreaseButton;
             autoEatPanel.IncreaseButton = autoEatIncreaseButton;
 
+            // Modul: audio pipeline / settings. Audio and graphics controls.
+            // The window's content area is absolutely positioned and roughly
+            // 1590px tall at the 1080x1920 reference, and the auto-eat row above
+            // ends at about -388, so there is ample room below it - nothing here
+            // needs the window to scroll.
+            TextMeshProUGUI audioHeaderText = CreateText(contentAreaRect, "AudioHeaderText", "Audio", 18f, TextAlignmentOptions.MidlineLeft);
+            RectTransform audioHeaderRect = (RectTransform)audioHeaderText.transform;
+            audioHeaderRect.anchorMin = new Vector2(0f, 1f);
+            audioHeaderRect.anchorMax = new Vector2(1f, 1f);
+            audioHeaderRect.pivot = new Vector2(0.5f, 1f);
+            audioHeaderRect.sizeDelta = new Vector2(0f, 30f);
+            audioHeaderRect.anchoredPosition = new Vector2(0f, -404f);
+
+            (TextMeshProUGUI sfxLabel, Slider sfxSlider) = BuildSettingsSliderRow(contentAreaRect, "Sfx", "SFX: 70%", -438f);
+            (TextMeshProUGUI musicLabel, Slider musicSlider) = BuildSettingsSliderRow(contentAreaRect, "Music", "Music: 70%", -486f);
+
+            TextMeshProUGUI graphicsHeaderText = CreateText(contentAreaRect, "GraphicsHeaderText", "Graphics", 18f, TextAlignmentOptions.MidlineLeft);
+            RectTransform graphicsHeaderRect = (RectTransform)graphicsHeaderText.transform;
+            graphicsHeaderRect.anchorMin = new Vector2(0f, 1f);
+            graphicsHeaderRect.anchorMax = new Vector2(1f, 1f);
+            graphicsHeaderRect.pivot = new Vector2(0.5f, 1f);
+            graphicsHeaderRect.sizeDelta = new Vector2(0f, 30f);
+            graphicsHeaderRect.anchoredPosition = new Vector2(0f, -534f);
+
+            // Three highlighted buttons rather than a TMP_Dropdown. It matches
+            // the language picker directly above on the same screen, and it
+            // sidesteps the dropdown-clipping class of bug this UI has already
+            // had to be repaired for once.
+            UiSettingsPanel settingsPanel = windowObject.AddComponent<UiSettingsPanel>();
+            settingsPanel.SfxVolumeSlider = sfxSlider;
+            settingsPanel.SfxVolumeLabel = sfxLabel;
+            settingsPanel.MusicVolumeSlider = musicSlider;
+            settingsPanel.MusicVolumeLabel = musicLabel;
+            settingsPanel.QualityButtons = new Button[UiSettingsPanel.QualityOptionCount];
+            settingsPanel.QualityActiveHighlights = new GameObject[UiSettingsPanel.QualityOptionCount];
+
+            string[] qualityLabels = { "Low", "Medium", "High" };
+            for (int qualityIndex = 0; qualityIndex < UiSettingsPanel.QualityOptionCount; qualityIndex++)
+            {
+                (Button qualityButton, GameObject qualityHighlight) =
+                    BuildSettingsOptionRow(contentAreaRect, qualityLabels[qualityIndex] + "Quality", qualityLabels[qualityIndex], -568f - (qualityIndex * 44f));
+                settingsPanel.QualityButtons[qualityIndex] = qualityButton;
+                settingsPanel.QualityActiveHighlights[qualityIndex] = qualityHighlight;
+            }
+
             return (windowObject, logOffButton);
+        }
+
+        // Modul: audio pipeline / settings. A label on the left and a slider on
+        // the right, both on one 40px row.
+        private static (TextMeshProUGUI label, Slider slider) BuildSettingsSliderRow(RectTransform contentAreaRect, string namePrefix, string labelText, float anchoredY)
+        {
+            TextMeshProUGUI rowLabel = CreateText(contentAreaRect, namePrefix + "VolumeLabel", labelText, 16f, TextAlignmentOptions.MidlineLeft);
+            RectTransform labelRect = (RectTransform)rowLabel.transform;
+            labelRect.anchorMin = new Vector2(0f, 1f);
+            labelRect.anchorMax = new Vector2(0.35f, 1f);
+            labelRect.pivot = new Vector2(0.5f, 1f);
+            labelRect.sizeDelta = new Vector2(0f, 40f);
+            labelRect.anchoredPosition = new Vector2(0f, anchoredY);
+
+            Slider slider = CreateHorizontalSlider(contentAreaRect, namePrefix + "VolumeSlider");
+            RectTransform sliderRect = (RectTransform)slider.transform;
+            sliderRect.anchorMin = new Vector2(0.37f, 1f);
+            sliderRect.anchorMax = new Vector2(1f, 1f);
+            sliderRect.pivot = new Vector2(0.5f, 1f);
+            // Explicit height as well as the anchors: CreateHorizontalSlider is
+            // normally consumed by a layout group that sets one via
+            // SetFixedLayoutHeight, and this content area has no layout group at
+            // all - a RectTransform created in code starts at height 0.
+            sliderRect.sizeDelta = new Vector2(0f, 32f);
+            sliderRect.anchoredPosition = new Vector2(0f, anchoredY - 4f);
+
+            return (rowLabel, slider);
+        }
+
+        // Modul: audio pipeline / settings. Same shape as
+        // BuildLanguageOptionRow - a full-width button with an active-state
+        // highlight behind it - kept as its own method so the language picker's
+        // row helper stays owned by the language picker.
+        private static (Button button, GameObject highlight) BuildSettingsOptionRow(RectTransform contentAreaRect, string objectName, string label, float anchoredY)
+        {
+            Button button = CreateButton(contentAreaRect, objectName + "Button", label, out TextMeshProUGUI _);
+            RectTransform buttonRect = (RectTransform)button.transform;
+            buttonRect.anchorMin = new Vector2(0f, 1f);
+            buttonRect.anchorMax = new Vector2(1f, 1f);
+            buttonRect.pivot = new Vector2(0.5f, 1f);
+            buttonRect.sizeDelta = new Vector2(0f, 40f);
+            buttonRect.anchoredPosition = new Vector2(0f, anchoredY);
+
+            GameObject highlightObject = new GameObject(objectName + "ActiveHighlight", typeof(RectTransform));
+            highlightObject.transform.SetParent(button.transform, false);
+            RectTransform highlightRect = (RectTransform)highlightObject.transform;
+            highlightRect.anchorMin = new Vector2(0f, 0f);
+            highlightRect.anchorMax = new Vector2(0.04f, 1f);
+            highlightRect.offsetMin = Vector2.zero;
+            highlightRect.offsetMax = Vector2.zero;
+            highlightObject.AddComponent<Image>().color = new Color(1f, 0.85f, 0.2f, 0.9f);
+            highlightObject.SetActive(false);
+
+            return (button, highlightObject);
         }
 
         private static (Button button, GameObject highlight) BuildLanguageOptionRow(RectTransform contentAreaRect, string label, float anchoredY)
@@ -7081,6 +7274,13 @@ namespace FolkIdle.Client.Editor
             buttonObject.transform.SetParent(parent, false);
             buttonObject.AddComponent<Image>().color = new Color(0.2f, 0.5f, 0.9f, 1f);
             Button button = buttonObject.AddComponent<Button>();
+
+            // Modul: audio pipeline. Every button this factory produces gets a
+            // click sound. Attached as a component rather than an onClick
+            // lambda because this builder runs in the editor - a lambda added
+            // here would never be serialised into the scene. See
+            // UiButtonClickSfx's own comment.
+            buttonObject.AddComponent<UiButtonClickSfx>();
 
             if (!string.IsNullOrEmpty(label))
             {

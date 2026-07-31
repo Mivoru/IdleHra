@@ -286,6 +286,7 @@ GameObject:
   - component: {fileID: 3789094206079216238}
   - component: {fileID: 4928041788508172658}
   - component: {fileID: 777503569005666445}
+  - component: {fileID: 878707203476807865}
   m_Layer: 0
   m_Name: WithdrawButton
   m_TagString: Untagged
@@ -395,6 +396,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &878707203476807865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5781403478665991792}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50685e49abdb2554fa01e8526fc50461, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FolkIdle.Client::FolkIdle.Client.UI.UiButtonClickSfx
 --- !u!1 &7974331780801885812
 GameObject:
   m_ObjectHideFlags: 0

@@ -759,6 +759,7 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.EquippedGlovesId = equipUpdate.EquippedGlovesId;
                         currentPayload.EquippedLeggingsId = equipUpdate.EquippedLeggingsId;
                         currentPayload.EquippedBootsId = equipUpdate.EquippedBootsId;
+                        currentPayload.EquippedOffhandId = equipUpdate.EquippedOffhandId;
                         currentPayload.CachedAffixTotals = equipUpdate.AffixTotals;
                         currentPayload.CachedWeaponSetId = equipUpdate.EquippedWeaponSetId;
                         currentPayload.CachedArmorSetId = equipUpdate.EquippedArmorSetId;
@@ -787,6 +788,24 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         currentPayload.CompletedAreaFlags |= regionCompletionUpdate.CompletedRegionFlags;
                         currentPayload.IsDirty = true;
+                    }
+                }
+
+                // Modul: race unlock feedback. ORs the newly granted race into
+                // the live mask so the next outbound packet carries it and the
+                // client can announce it. An offline player needs nothing here:
+                // the row is already committed and login hydrates the mask from
+                // it.
+                while (_playerRegistry.RaceUnlockQueue.TryDequeue(out var raceUnlock))
+                {
+                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, raceUnlock.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                    {
+                        if (raceUnlock.RaceId >= 1 && raceUnlock.RaceId <= 8)
+                        {
+                            currentPayload.UnlockedRaceBitmask |= (byte)(1 << (raceUnlock.RaceId - 1));
+                            currentPayload.IsDirty = true;
+                        }
                     }
                 }
 
@@ -2899,6 +2918,8 @@ namespace FolkIdle.Server.Domain.Combat
                                 EquippedHelmetId = currentPayload.EquippedHelmetId,
                                 EquippedGlovesId = currentPayload.EquippedGlovesId,
                                 EquippedBootsId = currentPayload.EquippedBootsId,
+                                EquippedOffhandId = currentPayload.EquippedOffhandId,
+                                UnlockedRaceBitmask = currentPayload.UnlockedRaceBitmask,
 
                                 // Modul: roster registers. Characters 2 and 3
                                 // read straight from their parked slot state -
@@ -3590,10 +3611,10 @@ namespace FolkIdle.Server.Domain.Combat
             int levelsGained = 0;
             while (payload.CurrentLevel > 0)
             {
-                // Modul: mirrors ProgressionEngine.ProcessMonsterDeath's GDD
-                // exponential curve exactly (100 * 1.15^level) - this warp
-                // path must stay identical to the live-tick formula.
-                long requiredXp = (long)System.Math.Ceiling(100.0 * System.Math.Pow(1.15, payload.CurrentLevel));
+                // Modul: the warp path must stay identical to the live-tick
+                // formula, so it calls the one authority rather than mirroring
+                // it - see ProgressionEngine.GetRequiredXpForLevel.
+                long requiredXp = ProgressionEngine.GetRequiredXpForLevel(payload.CurrentLevel);
                 if (payload.CurrentXp < requiredXp)
                 {
                     break;
@@ -4325,6 +4346,7 @@ namespace FolkIdle.Server.Domain.Combat
             Swap(ref payload.EquippedGlovesId, ref parked.EquippedGlovesId);
             Swap(ref payload.EquippedLeggingsId, ref parked.EquippedLeggingsId);
             Swap(ref payload.EquippedBootsId, ref parked.EquippedBootsId);
+            Swap(ref payload.EquippedOffhandId, ref parked.EquippedOffhandId);
             Swap(ref payload.EquippedWeaponAffixLocked, ref parked.EquippedWeaponAffixLocked);
             Swap(ref payload.EquippedArmorAffixLocked, ref parked.EquippedArmorAffixLocked);
             Swap(ref payload.EquippedLeggingsAffixLocked, ref parked.EquippedLeggingsAffixLocked);
@@ -4862,6 +4884,12 @@ namespace FolkIdle.Server.Domain.Combat
                     // Modul: halt reasons. A full-HP character sitting idle
                     // looked exactly like one that had never been deployed.
                     payload.ActivityHaltReason = Network.ActivityHaltReason.Died;
+                    // Modul: lifetime statistics. The only place in the server
+                    // where a player death is recognised, so the only place
+                    // this can be counted. Intercepted lethal damage (the Death
+                    // Ward branch above) is not a death and is not counted.
+                    payload.LifetimeDeaths++;
+                    payload.IsDirty = true;
                     return;
                 }
             }

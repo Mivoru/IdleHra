@@ -1440,10 +1440,11 @@ namespace FolkIdle.Server.Tests
             int expectedLevel = 1;
             while (true)
             {
-                // Modul: mirrors the GDD exponential level-up curve (Phase 2
-                // Part 2.1) - 100 * 1.15^level, replacing the old quadratic
-                // 100 * level^2.
-                long requiredXp = (long)Math.Ceiling(100.0 * Math.Pow(1.15, expectedLevel));
+                // Modul: balance pass. Was a fourth inline copy of the level
+                // curve. Calls the one authority so this projection cannot
+                // drift from the engine it is asserting against - which is
+                // exactly what it did do, silently, until the curve changed.
+                long requiredXp = ProgressionEngine.GetRequiredXpForLevel(expectedLevel);
                 if (expectedXp >= requiredXp)
                 {
                     expectedXp -= requiredXp;
@@ -5493,16 +5494,35 @@ namespace FolkIdle.Server.Tests
         // Modul: Phase - Full-Stack Production Polish Phase 2, Part 2.1.
         // Directly exercises ProgressionEngine.ProcessMonsterDeath's
         // level-up threshold at several levels, asserting it matches the
-        // GDD exponential curve (100 * 1.15^level) exactly at both sides
-        // of the boundary - baseExpReward=0 means this call never adds any
-        // XP of its own, only evaluates the level-up check against
-        // whatever CurrentXp was set to beforehand.
+        // curve exactly at both sides of the boundary - baseExpReward=0 means
+        // this call never adds any XP of its own, only evaluates the level-up
+        // check against whatever CurrentXp was set to beforehand.
+        //
+        // Modul: balance pass. This used to re-derive 100 * 1.15^level inline,
+        // which made it a fourth copy of a formula that already had three. It
+        // now calls the one authority, so the test verifies that
+        // ProcessMonsterDeath honours the published curve rather than
+        // re-asserting a literal; the curve's own shape is pinned separately
+        // below by its growth ratio.
         [Fact]
         public void Test_ProgressionEngine_LevelUpCost_ScalesExponentially()
         {
+            // The growth ratio is the balance-critical property: it must track
+            // the 3x-per-region gear power curve (3^(1/20) = 1.0565) rather
+            // than outrunning it. At the old 1.15 the XP requirement grew 16.4x
+            // per region against 3x more player power, which made regions 3-5
+            // arithmetically unreachable.
+            Assert.Equal(1.06, ProgressionEngine.LevelCurveGrowth, 3);
             for (int level = 1; level <= 8; level++)
             {
-                long requiredXp = (long)Math.Ceiling(100.0 * Math.Pow(1.15, level));
+                double ratio = ProgressionEngine.GetRequiredXpForLevel(level)
+                    / (double)ProgressionEngine.GetRequiredXpForLevel(level - 1);
+                Assert.InRange(ratio, 1.05, 1.07);
+            }
+
+            for (int level = 1; level <= 8; level++)
+            {
+                long requiredXp = ProgressionEngine.GetRequiredXpForLevel(level);
 
                 var belowThreshold = new TickStatePayload { CurrentLevel = level, CurrentXp = requiredXp - 1 };
                 ProgressionEngine.ProcessMonsterDeath(ref belowThreshold, baseExpReward: 0, xpMultiplier: 100, activeGlobalEventId: 0);
@@ -6604,7 +6624,15 @@ namespace FolkIdle.Server.Tests
 
                 (EquippedAffixTotals totals, _, _, _) =
                     await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verifyDb, character);
-                Assert.Equal(45, totals.FlatDefense);
+
+                // Modul: balance pass. 45 -> 53. The affix payload contributes
+                // 45, and the item's OWN authored FlatDefenseRating - 8 for
+                // tier-1 steel greaves - now contributes the other 8. It used
+                // to contribute nothing: base item power reached
+                // StatsCalculator from nowhere, which is why a tier-5 weapon
+                // hit exactly as hard as a tier-1 one. This assertion moving is
+                // the fix being observed, not a regression.
+                Assert.Equal(53, totals.FlatDefense);
                 Assert.Equal(0, totals.FlatAttack);
             }
 
@@ -6742,6 +6770,179 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(0L, after - before);
         }
 
+        // Modul: balance pass. Pins the progression curve's continuity, which
+        // regressed badly before this pass: every region boss sat at 17-29x the
+        // HP and 15-28x the ATK of the strongest regular monster in its OWN
+        // region, and 10-12x the opening monster of the NEXT region. At the
+        // level-1 baseline (10 DPS / 100 effective HP, both derived in
+        // Test_OfflineSimulation_* below) that made the Alpha Wolf a 20-minute
+        // kill that one-shot the player, and made the region immediately after
+        // each boss trivial. The invariants asserted here are what keeps the
+        // five regions readable as one curve rather than five walls.
+        [Fact]
+        public void Test_Content_RegionBossesAreContinuousWithTheirRegionCurve()
+        {
+            // The canonical progression set is exactly five regions of four
+            // regular monsters plus one boss - ids 91-115, EnemyId m_01_*..m_05_*.
+            // The legacy ids 1-90 are deliberately excluded; they are a different
+            // (and much larger) scale that is not part of progression.
+            for (int region = 1; region <= 5; region++)
+            {
+                int firstId = 91 + (region - 1) * 5;
+                var regulars = new MonsterDefinition[4];
+                for (int i = 0; i < 4; i++)
+                {
+                    regulars[i] = ContentRegistry.Monsters[firstId + i - 1];
+                }
+                var boss = ContentRegistry.Monsters[firstId + 4 - 1];
+
+                // Regular monsters inside a region must be strictly increasing,
+                // so "the strongest regular" is unambiguously the fourth.
+                for (int i = 1; i < 4; i++)
+                {
+                    Assert.True(regulars[i].MaxHp > regulars[i - 1].MaxHp,
+                        $"Region {region} regular {i} must be tougher than regular {i - 1}.");
+                }
+
+                var strongestRegular = regulars[3];
+
+                // A boss is a capstone, not a wall: hard enough to be a real
+                // gate, not so hard that it dwarfs everything around it.
+                double hpRatio = (double)boss.MaxHp / strongestRegular.MaxHp;
+                Assert.True(hpRatio >= 4.0 && hpRatio <= 6.5,
+                    $"Region {region} boss HP is {hpRatio:F1}x its strongest regular; expected 4.0-6.5x.");
+
+                double atkRatio = (double)boss.AttackPower / strongestRegular.AttackPower;
+                Assert.True(atkRatio >= 2.0 && atkRatio <= 3.5,
+                    $"Region {region} boss ATK is {atkRatio:F1}x its strongest regular; expected 2.0-3.5x.");
+
+                // Clearing a region must not drop the player into content that
+                // is easier than what they just beat.
+                if (region < 5)
+                {
+                    var nextRegionOpener = ContentRegistry.Monsters[firstId + 5 - 1];
+                    Assert.True(boss.MaxHp > nextRegionOpener.MaxHp,
+                        $"Region {region} boss must be tougher than region {region + 1}'s opening monster.");
+                    Assert.True(nextRegionOpener.MaxHp > strongestRegular.MaxHp,
+                        $"Region {region + 1}'s opener must be tougher than region {region}'s strongest regular.");
+                }
+
+                // Rewards are a flat function of HP across the whole file, so no
+                // single monster is a strictly better grind than any other.
+                // XP is exact; gold is within one because the authored data
+                // rounds MaxHp/20 rather than flooring it (m_02_vine is 48, not
+                // 47), and matching that rounding is not worth pinning.
+                foreach (var monster in new[] { regulars[0], regulars[1], regulars[2], regulars[3], boss })
+                {
+                    Assert.Equal(monster.MaxHp / 5, monster.BaseXpReward);
+                    Assert.InRange(monster.BaseGoldReward, (monster.MaxHp / 20) - 1, (monster.MaxHp / 20) + 1);
+                }
+            }
+        }
+
+        // Modul: balance pass. Makes the progression curve MEASURED rather than
+        // merely reachable. Every recipe ingredient being obtainable was already
+        // pinned elsewhere; what nobody had ever computed is how long clearing a
+        // region actually takes, which is what let three independent defects sit
+        // undetected at once:
+        //   1. Item base FlatAttackPower reached StatsCalculator from nowhere,
+        //      so gear power was flat across all five tiers.
+        //   2. The level curve grew 1.15^level (16.4x per region) against 3x
+        //      more player power per region.
+        //   3. Region bosses sat at 17-29x their own region's regular monsters.
+        // Together those made level 100 roughly 59 days of uninterrupted
+        // combat. This test computes clear time per region from the real
+        // registry data and fails if any region leaves the playable band.
+        //
+        // The DPS model is deliberately a FLOOR: base attack plus the region's
+        // weapon only, no affixes, no STR growth, no set bonus, no potions, no
+        // codex multipliers, no attack-speed bonuses. Real play is faster, so a
+        // region passing here has headroom, and a region failing here is
+        // genuinely unreachable rather than merely slow.
+        [Fact]
+        public void Test_Progression_EveryRegionClearsInsideThePlayableTimeBand()
+        {
+            // Mirrors SimulationEngine's combat model: 15000 milli base attack,
+            // 1500ms base swing, and the flat XP = MaxHp / 5 reward rate that
+            // makes XP-per-second a pure function of DPS (monster HP cancels
+            // out, so which monster is farmed does not change pacing).
+            const double BaseAttackDamage = 15.0;
+            const double BaseAttackIntervalMs = 1500.0;
+            const double XpPerDamagePoint = 1.0 / 5.0;
+
+            double previousCumulativeXp = 0.0;
+
+            for (int regionTier = 1; regionTier <= 5; regionTier++)
+            {
+                // The best weapon authored for this region tier.
+                int weaponAttackPower = 0;
+                foreach (var item in ContentRegistry.ItemDefinitions)
+                {
+                    if (item.RegionTier == regionTier && item.FlatAttackPower > weaponAttackPower)
+                    {
+                        weaponAttackPower = item.FlatAttackPower;
+                    }
+                }
+
+                Assert.True(weaponAttackPower > 0,
+                    $"Region {regionTier} must have at least one weapon with real base attack power. " +
+                    "A zero here means items.json power is not reaching the combat model.");
+
+                double damagePerHit = BaseAttackDamage + weaponAttackPower;
+                double dps = damagePerHit * (1000.0 / BaseAttackIntervalMs);
+
+                // A region spans 20 levels.
+                int levelAtRegionEnd = regionTier * 20;
+                double cumulativeXp = 0.0;
+                for (int level = 0; level < levelAtRegionEnd; level++)
+                {
+                    cumulativeXp += ProgressionEngine.GetRequiredXpForLevel(level);
+                }
+
+                double regionXp = cumulativeXp - previousCumulativeXp;
+                previousCumulativeXp = cumulativeXp;
+
+                double combatSeconds = regionXp / (dps * XpPerDamagePoint);
+                double combatMinutes = combatSeconds / 60.0;
+
+                // A full six-slot loadout for the tier: one weapon at 8 bars and
+                // five armour pieces at 6 bars each, where a bar is 3 ore plus 1
+                // coal (the smelting recipes' shape, ContentRegistry._recipes).
+                const int BarsForFullLoadout = 8 + (5 * 6);
+                const int OrePerBar = 3;
+                const int CoalPerBar = 1;
+                int gatheringUnits = BarsForFullLoadout * (OrePerBar + CoalPerBar);
+
+                // Gathering nodes are authored one tier-band per region; the
+                // threshold is in 10Hz ticks. Mastery and tool bonuses only
+                // reduce this, so base threshold is the slow end.
+                int nodeThreshold = 0;
+                foreach (var node in ContentRegistry.GatheringNodes)
+                {
+                    // Node ids run <profession><tier>, e.g. 1001-1005 woodcutting.
+                    if ((node.ActivityId % 1000) == regionTier)
+                    {
+                        nodeThreshold = Math.Max(nodeThreshold, node.BaseTickThreshold);
+                    }
+                }
+                Assert.True(nodeThreshold > 0, $"Region {regionTier} must have a gathering node band.");
+
+                double gatheringMinutes = (gatheringUnits * nodeThreshold / 10.0) / 60.0;
+                double totalMinutes = combatMinutes + gatheringMinutes;
+
+                // The playable band. The floor stops a region from being over
+                // before it is introduced; the ceiling is what actually
+                // regressed - at the old curve region 5 modelled at roughly
+                // 85,000 minutes.
+                Assert.InRange(totalMinutes, 45.0, 260.0);
+
+                // Gathering must be a real cost but never the dominant one, or
+                // the crafting tree turns into the progression bottleneck.
+                double gatheringShare = gatheringMinutes / totalMinutes;
+                Assert.InRange(gatheringShare, 0.02, 0.40);
+            }
+        }
+
         // Modul: Full-Stack Expansion, Part 2/7. The 25 new regional
         // monsters and their material loot tables are live content: the
         // registry resolves the new monsters, every new monster id has a
@@ -6755,11 +6956,11 @@ namespace FolkIdle.Server.Tests
 
             var alphaWolf = ContentRegistry.Monsters[95 - 1];
             Assert.Equal(95, alphaWolf.Id);
-            Assert.Equal(12000, alphaWolf.MaxHp);
+            Assert.Equal(3500, alphaWolf.MaxHp);
             Assert.Equal(1, alphaWolf.RegionTier);
 
             var malakor = ContentRegistry.Monsters[115 - 1];
-            Assert.Equal(15000000, malakor.MaxHp);
+            Assert.Equal(3000000, malakor.MaxHp);
             Assert.Equal(5, malakor.RegionTier);
 
             // Tables live at 501-525 (not the monster ids) - see the
@@ -7533,6 +7734,86 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(10, checkedNodes);
         }
 
+        // Modul: balance pass + offhand slot. Two defects in one path, both
+        // invisible without actually equipping something and reading the totals
+        // back:
+        //
+        //   1. ComputeEquippedTotalsAsync read only AffixPayload and SetId, so
+        //      an item's OWN FlatAttackPower never reached StatsCalculator. A
+        //      tier-5 weapon (972) hit exactly as hard as a tier-1 one (12) and
+        //      the whole gear progression was cosmetic.
+        //   2. Helper/offhand items resolved to slot -1, so the five authored
+        //      bucklers/quivers/aegises could not be worn at all.
+        //
+        // Asserting through EquipItemAsync rather than by calling the totals
+        // helper directly is deliberate: the bug was in the seam between the
+        // registry and the equip path, and only the full path crosses it.
+        [Fact]
+        public async Task Test_Equipment_ItemBasePowerAndOffhandSlotReachCombatStats()
+        {
+            const long testPlayerId = 970004702L;
+            var characterId = Guid.NewGuid();
+            long tierOneWeaponId, tierFiveWeaponId, offhandId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = characterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 0 });
+
+                // Real BaseIds out of items.json: tier 1 AP 12, tier 5 AP 972.
+                var tierOneWeapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "eq_steel_claymore_melee_weapon_slot_base", QualityTier = 0, AffixPayload = "{}" };
+                var tierFiveWeapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "eq_doom_edge_melee_weapon_slot_base", QualityTier = 0, AffixPayload = "{}" };
+                var offhand = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "eq_linen_buckler_helper_offhand_base", QualityTier = 0, AffixPayload = "{}" };
+                db.EquipmentInstances.AddRange(tierOneWeapon, tierFiveWeapon, offhand);
+                await db.SaveChangesAsync();
+
+                tierOneWeaponId = tierOneWeapon.Id;
+                tierFiveWeaponId = tierFiveWeapon.Id;
+                offhandId = offhand.Id;
+            }
+
+            var slotEngine = new EquipmentSlotEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            await slotEngine.EquipItemAsync(testPlayerId, tierOneWeaponId, characterId);
+            int tierOneAttack;
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var character = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == characterId);
+                (EquippedAffixTotals totals, _, _, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verify, character);
+                tierOneAttack = totals.FlatAttack;
+            }
+
+            // The affix payload is empty, so every point here is the item's own
+            // authored base power. Zero means the registry lookup is not wired.
+            Assert.Equal(12, tierOneAttack);
+
+            await slotEngine.EquipItemAsync(testPlayerId, tierFiveWeaponId, characterId);
+            await slotEngine.EquipItemAsync(testPlayerId, offhandId, characterId);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var character = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == characterId);
+
+                // The offhand went into its own slot rather than displacing the
+                // weapon or falling into the chest fallback.
+                Assert.Equal(offhandId, character.EquippedOffhandId);
+                Assert.Equal(tierFiveWeaponId, character.EquippedWeaponId);
+                Assert.Null(character.EquippedChestId);
+
+                (EquippedAffixTotals totals, _, _, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verify, character);
+
+                // Tier 5 must be dramatically stronger than tier 1, and the
+                // offhand's own base power must be counted too.
+                Assert.Equal(972, totals.FlatAttack);
+                Assert.True(totals.FlatAttack > tierOneAttack * 50,
+                    "Tier-5 weapon base power must dwarf tier-1; equal values mean item power is not reaching the totals.");
+
+                // The account-wide worn check has to see the offhand, or the
+                // market/forge/mail could consume an item the character wears.
+                Assert.True(await EquipmentSlotEngine.IsEquippedAnywhereAsync(verify, testPlayerId, offhandId));
+            }
+        }
+
         // Modul: per-character equipment. The account-wide lock. Equipment moved
         // from PlayerRecord to CharacterRecord, so "is this item equipped?"
         // stopped being a three-field comparison on one row and became a
@@ -7594,6 +7875,15 @@ namespace FolkIdle.Server.Tests
                 Assert.Equal(EquipmentSlotEngine.SlotHelmet, EquipmentSlotEngine.ResolveSlotIndex("eq_iron_helm_helmet_armor_slot_base"));
                 Assert.Equal(EquipmentSlotEngine.SlotGloves, EquipmentSlotEngine.ResolveSlotIndex("eq_iron_gauntlets_gloves_armor_slot_base"));
                 Assert.Equal(EquipmentSlotEngine.SlotChest, EquipmentSlotEngine.ResolveSlotIndex("iron_breastplate_chest_armor_slot_base"));
+
+                // Modul: offhand slot. The five authored helper items resolved
+                // to -1 (unequippable) until the seventh slot existed, despite
+                // AffixRegistry rolling Shield-slot affixes onto them all along.
+                Assert.Equal(EquipmentSlotEngine.SlotOffhand, EquipmentSlotEngine.ResolveSlotIndex("eq_linen_buckler_helper_offhand_base"));
+                Assert.Equal(EquipmentSlotEngine.SlotOffhand, EquipmentSlotEngine.ResolveSlotIndex("eq_hunter_quiver_helper_offhand_base"));
+                Assert.Equal(EquipmentSlotEngine.SlotOffhand, EquipmentSlotEngine.ResolveSlotIndex("eq_obsidian_aegis_helper_offhand_base"));
+                Assert.Equal(EquipmentSlotEngine.SlotOffhand, EquipmentSlotEngine.ResolveSlotIndex("eq_brawler_buckler_helper_offhand_base"));
+                Assert.Equal(EquipmentSlotEngine.SlotOffhand, EquipmentSlotEngine.ResolveSlotIndex("eq_dread_bulwark_helper_offhand_base"));
 
                 // The account-wide lock sees BOTH characters' gear, which is
                 // what stops the market/forge/mail from consuming worn items.

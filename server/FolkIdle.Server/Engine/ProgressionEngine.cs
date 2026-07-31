@@ -18,6 +18,40 @@ namespace FolkIdle.Server.Engine
 
     public static class ProgressionEngine
     {
+        // Modul: balance pass. THE single authority for the level-up curve.
+        //
+        // This formula used to be copy-pasted into three call sites
+        // (ProgressionEngine below, SimulationEngine's Chrono XP warp and
+        // OfflineSimulationEngine's catch-up projection), each carrying a
+        // "must stay in sync" comment and no mechanism to enforce it. It is
+        // now defined once and called from all three.
+        //
+        // The curve was 100 * 1.15^level. That is 15% growth PER LEVEL, i.e.
+        // 16.4x per 20-level region. Player power grows 3x per region (weapon
+        // FlatAttackPower is 12/36/108/324/972 across the five tiers), so the
+        // XP requirement outran the power curve by ~5x every region and
+        // compounded: reaching level 100 needed 718 million XP against an
+        // achievable ~658 DPS, which at the game's flat XP=MaxHp/5 reward rate
+        // is roughly 59 days of uninterrupted combat. Regions 3-5 were not
+        // slow, they were unreachable.
+        //
+        // 1.06 per level is 3.2x per region, which tracks the 3x gear curve, so
+        // time-per-region stays flat instead of exploding. The base is raised
+        // 100 -> 400 to keep the early game from being over in minutes now that
+        // the exponent no longer carries it. Modelled result, using weapon base
+        // power alone and ignoring affixes/STR/set bonuses (so a floor, not an
+        // estimate): roughly 72 / 123 / 163 / 190 / 209 minutes for regions 1-5.
+        //
+        // Pure floating-point intrinsics, no managed allocation - safe on the
+        // ProcessMonsterDeath tick path this is called from.
+        public const double LevelCurveBase = 400.0;
+        public const double LevelCurveGrowth = 1.06;
+
+        public static long GetRequiredXpForLevel(int currentLevel)
+        {
+            return (long)Math.Ceiling(LevelCurveBase * Math.Pow(LevelCurveGrowth, currentLevel));
+        }
+
         // Static read-only span of available lineages
         public static readonly LineageDefinition[] Lineages = new LineageDefinition[]
         {
@@ -54,16 +88,7 @@ namespace FolkIdle.Server.Engine
 
             while (true)
             {
-                // Modul: GDD-mandated exponential curve - Cost = 100 *
-                // 1.15^level - replacing the previous quadratic
-                // 100 * level^2, which grew far too slowly at high levels
-                // to remain a meaningful gold/time sink relative to the
-                // rest of this game's exponential economy (forge, village
-                // production, legacy perks all scale geometrically).
-                // Math.Pow is a pure floating-point intrinsic - no managed
-                // heap allocation - so this stays safe on the same
-                // ProcessMonsterDeath call path the old formula ran on.
-                long requiredXp = (long)Math.Ceiling(100.0 * Math.Pow(1.15, payload.CurrentLevel));
+                long requiredXp = GetRequiredXpForLevel(payload.CurrentLevel);
 
                 if (payload.CurrentXp >= requiredXp)
                 {

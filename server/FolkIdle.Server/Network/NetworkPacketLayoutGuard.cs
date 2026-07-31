@@ -55,8 +55,14 @@ namespace FolkIdle.Server.Network
         // CraftingEngineStatus and NotificationQueueStateLength. See
         // StateUpdatePacket's own comment for why each one went.
         //
-        // Headroom under the 700-byte ceiling the tests pin: 14 bytes.
-        public const int ExpectedStateUpdateSize = 686;
+        // Modul: offhand slot. 686 -> 694: EquippedOffhandId (8 bytes, long),
+        // the seventh equip slot. Headroom under the 700-byte ceiling the tests
+        // pin is now 6 bytes. The client's copy of this constant must be
+        // changed in the same commit - it silently drifted last time and threw
+        // on every client startup until this pass; see that file's comment.
+        // Modul: race unlock feedback. 694 -> 695: UnlockedRaceBitmask (1 byte).
+        // Headroom under the 700-byte ceiling the tests pin: 5 bytes.
+        public const int ExpectedStateUpdateSize = 695;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

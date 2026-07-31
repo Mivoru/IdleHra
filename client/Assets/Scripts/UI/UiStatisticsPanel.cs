@@ -23,6 +23,13 @@ namespace FolkIdle.Client.UI
         public TextMeshProUGUI SkillPointsText;
         public TextMeshProUGUI GuildText;
 
+        // Modul: lifetime statistics.
+        public TextMeshProUGUI TotalKillsText;
+        public TextMeshProUGUI BossesSlainText;
+        public TextMeshProUGUI ItemsCraftedText;
+        public TextMeshProUGUI DeathsText;
+        public TextMeshProUGUI TimePlayedText;
+
         // Sized for the longest label ("Achievements Claimed: ") plus a
         // full-length long value, and separately reused for the Guild row
         // (label plus up to GuildRecord.Name's 100-char max).
@@ -51,12 +58,42 @@ namespace FolkIdle.Client.UI
             WriteStat(CharacterCountText, "Characters: ", data.CharacterCount);
             WriteStat(SkillPointsText, "Unspent Skill Points: ", data.AvailableSkillPoints);
 
+            WriteStat(TotalKillsText, "Total Kills: ", data.TotalKills);
+            WriteStat(BossesSlainText, "Bosses Slain: ", data.BossesSlain);
+            WriteStat(ItemsCraftedText, "Items Crafted: ", data.TotalItemsCrafted);
+            WriteStat(DeathsText, "Deaths: ", data.TotalDeaths);
+            WriteTimePlayed(TimePlayedText, data.TotalPlayTimeSeconds);
+
             if (GuildText != null)
             {
                 int offset = WriteTextToBuffer(_statBuffer, 0, "Guild: ");
                 offset = WriteTextToBuffer(_statBuffer, offset, string.IsNullOrEmpty(data.GuildName) ? "None" : data.GuildName);
                 GuildText.SetCharArray(_statBuffer, 0, offset);
             }
+        }
+
+        // Modul: lifetime statistics. Seconds are useless to a player past the
+        // first hour, so this renders "12h 34m" (or "34m" under an hour).
+        // Written through the same shared buffer as every other row - no
+        // string.Format, no interpolation, nothing that allocates per refresh.
+        private void WriteTimePlayed(TextMeshProUGUI target, long totalSeconds)
+        {
+            if (target == null) return;
+
+            if (totalSeconds < 0L) totalSeconds = 0L;
+            long hours = totalSeconds / 3600L;
+            long minutes = (totalSeconds % 3600L) / 60L;
+
+            int offset = WriteTextToBuffer(_statBuffer, 0, "Time Played: ");
+            if (hours > 0L)
+            {
+                offset = WriteLongToBuffer(_statBuffer, offset, hours);
+                offset = WriteTextToBuffer(_statBuffer, offset, "h ");
+            }
+            offset = WriteLongToBuffer(_statBuffer, offset, minutes);
+            offset = WriteTextToBuffer(_statBuffer, offset, "m");
+
+            target.SetCharArray(_statBuffer, 0, offset);
         }
 
         private void WriteStat(TextMeshProUGUI target, string label, long value)

@@ -47,7 +47,15 @@ namespace FolkIdle.Server.Domain.Combat
         public const int SlotGloves = 3;
         public const int SlotLeggings = 4;
         public const int SlotBoots = 5;
-        public const int SlotCount = 6;
+        // Modul: offhand slot. The seventh slot, closing the same gap the
+        // six-slot pass closed for helmets/gloves/boots. AffixRegistry's
+        // EquipmentSlotMask has always included Shield and ResolveSlot has
+        // always matched the "_helper_offhand_" marker, so the five authored
+        // helper items (eq_linen_buckler, eq_brawler_buckler, eq_hunter_quiver,
+        // eq_obsidian_aegis, eq_dread_bulwark) already rolled slot-correct
+        // affixes - there was simply nowhere to put them on.
+        public const int SlotOffhand = 6;
+        public const int SlotCount = 7;
 
         // Which slot a BaseItemId belongs in, or -1 if it is not equippable.
         //
@@ -70,6 +78,10 @@ namespace FolkIdle.Server.Domain.Combat
             if (baseItemId.Contains("_boots_")) return SlotBoots;
             if (baseItemId.Contains("_leggings_")) return SlotLeggings;
             if (baseItemId.Contains("_chest_")) return SlotChest;
+            // Must precede the weapon and generic-armour checks: the helper
+            // BaseIds carry neither marker today, so they used to fall through
+            // to -1 and were silently unequippable.
+            if (baseItemId.Contains("_helper_offhand_")) return SlotOffhand;
             if (baseItemId.Contains("_weapon_slot_")) return SlotWeapon;
             if (baseItemId.Contains("_armor_slot_")) return SlotChest;
 
@@ -84,6 +96,7 @@ namespace FolkIdle.Server.Domain.Combat
             SlotGloves => character.EquippedGlovesId,
             SlotLeggings => character.EquippedLeggingsId,
             SlotBoots => character.EquippedBootsId,
+            SlotOffhand => character.EquippedOffhandId,
             _ => null
         };
 
@@ -97,6 +110,7 @@ namespace FolkIdle.Server.Domain.Combat
                 case SlotGloves: character.EquippedGlovesId = itemInstanceId; break;
                 case SlotLeggings: character.EquippedLeggingsId = itemInstanceId; break;
                 case SlotBoots: character.EquippedBootsId = itemInstanceId; break;
+                case SlotOffhand: character.EquippedOffhandId = itemInstanceId; break;
             }
         }
 
@@ -124,7 +138,8 @@ namespace FolkIdle.Server.Domain.Combat
                     c.EquippedChestId == itemInstanceId ||
                     c.EquippedGlovesId == itemInstanceId ||
                     c.EquippedLeggingsId == itemInstanceId ||
-                    c.EquippedBootsId == itemInstanceId));
+                    c.EquippedBootsId == itemInstanceId ||
+                    c.EquippedOffhandId == itemInstanceId));
         }
 
         // Three-item variant for ForgeSplicingEngine, which locks a target and
@@ -140,7 +155,8 @@ namespace FolkIdle.Server.Domain.Combat
                     (c.EquippedChestId != null && (c.EquippedChestId == firstItemId || c.EquippedChestId == secondItemId || c.EquippedChestId == thirdItemId)) ||
                     (c.EquippedGlovesId != null && (c.EquippedGlovesId == firstItemId || c.EquippedGlovesId == secondItemId || c.EquippedGlovesId == thirdItemId)) ||
                     (c.EquippedLeggingsId != null && (c.EquippedLeggingsId == firstItemId || c.EquippedLeggingsId == secondItemId || c.EquippedLeggingsId == thirdItemId)) ||
-                    (c.EquippedBootsId != null && (c.EquippedBootsId == firstItemId || c.EquippedBootsId == secondItemId || c.EquippedBootsId == thirdItemId))));
+                    (c.EquippedBootsId != null && (c.EquippedBootsId == firstItemId || c.EquippedBootsId == secondItemId || c.EquippedBootsId == thirdItemId)) ||
+                    (c.EquippedOffhandId != null && (c.EquippedOffhandId == firstItemId || c.EquippedOffhandId == secondItemId || c.EquippedOffhandId == thirdItemId))));
         }
 
         // Modul: per-character equipment. characterId names WHICH of the
@@ -382,6 +398,7 @@ namespace FolkIdle.Server.Domain.Combat
                 EquippedGlovesId = character.EquippedGlovesId ?? 0L,
                 EquippedLeggingsId = character.EquippedLeggingsId ?? 0L,
                 EquippedBootsId = character.EquippedBootsId ?? 0L,
+                EquippedOffhandId = character.EquippedOffhandId ?? 0L,
                 AffixTotals = totals,
                 EquippedWeaponSetId = weaponSetId,
                 EquippedArmorSetId = armorSetId,
@@ -409,21 +426,44 @@ namespace FolkIdle.Server.Domain.Combat
             long glovesId = character.EquippedGlovesId ?? 0L;
             long leggingsId = character.EquippedLeggingsId ?? 0L;
             long bootsId = character.EquippedBootsId ?? 0L;
+            long offhandId = character.EquippedOffhandId ?? 0L;
 
-            if (weaponId == 0L && helmetId == 0L && chestId == 0L && glovesId == 0L && leggingsId == 0L && bootsId == 0L)
+            if (weaponId == 0L && helmetId == 0L && chestId == 0L && glovesId == 0L && leggingsId == 0L && bootsId == 0L && offhandId == 0L)
             {
                 return (totals, 0, 0, 0);
             }
 
             var worn = await db.EquipmentInstances
                 .AsNoTracking()
-                .Where(e => e.Id == weaponId || e.Id == helmetId || e.Id == chestId || e.Id == glovesId || e.Id == leggingsId || e.Id == bootsId)
+                .Where(e => e.Id == weaponId || e.Id == helmetId || e.Id == chestId || e.Id == glovesId || e.Id == leggingsId || e.Id == bootsId || e.Id == offhandId)
                 .ToListAsync();
 
             for (int i = 0; i < worn.Count; i++)
             {
                 var piece = worn[i];
                 AddAffixTotals(piece.AffixPayload, ref totals);
+
+                // Modul: balance pass. An item's OWN base power - the
+                // FlatAttackPower/FlatDefenseRating authored in items.json,
+                // which triples every region tier (weapons 12/36/108/324/972,
+                // chest armour 8/24/72/216/648) - used to be read by nothing at
+                // all. Only affixes and the set bonus reached StatsCalculator,
+                // so a tier-5 Doom Edge hit exactly as hard as a tier-1 Steel
+                // Claymore and the entire gear progression was cosmetic. This is
+                // the same "the output side was never wired" shape as the
+                // crafting-grants-nothing and loot-table bugs; it is the single
+                // largest instance because it silently flattened the whole
+                // power curve, which in turn made the exponential XP curve
+                // unreachable from region 3 onward.
+                //
+                // Base power folds into the SAME totals the affixes use, so
+                // StatsCalculator needs no new parameter and the value rides
+                // the existing notification/payload path unchanged.
+                if (ContentRegistry.TryGetItemDefinitionByBaseId(piece.BaseItemId, out var itemDefinition))
+                {
+                    totals.FlatAttack += itemDefinition.FlatAttackPower;
+                    totals.FlatDefense += itemDefinition.FlatDefenseRating;
+                }
 
                 // Set ids stay a weapon/armour/leggings triple because that is
                 // what SetBonusEngine.Evaluate consumes. The four armour slots

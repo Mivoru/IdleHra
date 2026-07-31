@@ -228,6 +228,16 @@ namespace FolkIdle.Client.Network
         public long EquippedGlovesId;
         public long EquippedBootsId;
 
+        // Modul: offhand slot. The seventh slot rides the same active-character
+        // path as the six above, for the same reason: the character HUD has to
+        // show what is worn right now, and it changes on a button press.
+        public long EquippedOffhandId;
+
+        // Modul: race unlock feedback. Bit (raceId - 1) per owned race. A mask
+        // rather than a one-shot event so the announcement survives a
+        // reconnect and cannot fire twice - see UiRaceUnlockToast.
+        public byte UnlockedRaceBitmask;
+
         // Modul: roster registers. What characters 2 and 3 are doing, so the
         // roster screen can show three live characters rather than one.
         //

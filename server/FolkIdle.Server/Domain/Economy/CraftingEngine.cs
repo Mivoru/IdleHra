@@ -226,6 +226,15 @@ namespace FolkIdle.Server.Domain.Economy
                 // to eat materials and then fail to pay out.
                 await GrantCraftedOutputAsync(context, playerId, recipe, quantityProduced);
 
+                // Modul: lifetime statistics. Counted inside the same
+                // transaction as the grant, so the counter cannot disagree with
+                // what the player actually received - a craft that rolls back
+                // rolls this back with it.
+                if (player != null)
+                {
+                    player.TotalItemsCrafted += quantityProduced;
+                }
+
                 await context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 return (true, quantityProduced);
@@ -409,6 +418,15 @@ namespace FolkIdle.Server.Domain.Economy
                 item.AffixPayload = System.Text.Json.JsonSerializer.Serialize(affixes);
 
                 context.EquipmentInstances.Add(item);
+
+                // Modul: lifetime statistics. The equipment-crafting path is a
+                // separate method from the material path above and always has
+                // been; counting in only one of them would silently under-report
+                // exactly the crafts a player is most likely to remember making.
+                if (player != null)
+                {
+                    player.TotalItemsCrafted += 1;
+                }
 
                 // Modul 06/26: Guild War Production Logistics front (WP = 50 *
                 // ItemRarityTier) for items scaling above Tier 5 (Epic), crafted

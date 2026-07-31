@@ -120,6 +120,9 @@ namespace FolkIdle.Server.Engine
                     // mean either a second per-kill DB read on the hot path or a
                     // duplicate first-kill ledger.
                     var newlyUnlockedRaces = new System.Collections.Generic.List<(long PlayerId, byte RaceId, int MonsterId)>();
+                    // Modul: race unlock feedback. Staged before the commit,
+                    // published after it - see the enqueue site below.
+                    var pendingUnlockNotifications = new System.Collections.Generic.List<RaceUnlockNotification>();
 
                     foreach (var group in killsToProcess.GroupBy(k => new { k.PlayerId, k.MonsterId }))
                     {
@@ -259,6 +262,17 @@ namespace FolkIdle.Server.Engine
                             // unlocked race is a founding population rather than
                             // a single character the player can never propagate.
                             await CharacterGrantEngine.GrantRacePairAsync(dbContext, unlockPlayerId, unlockRaceId, stoppingToken);
+
+                            // Modul: race unlock feedback. Staged here, published
+                            // only after the transaction below commits - a player
+                            // must never be told they unlocked a race that a
+                            // rollback then took away. Same ordering rule
+                            // CombatLootEngine follows for loot drops.
+                            pendingUnlockNotifications.Add(new RaceUnlockNotification
+                            {
+                                PlayerId = unlockPlayerId,
+                                RaceId = unlockRaceId
+                            });
                         }
                     }
 
@@ -322,6 +336,13 @@ namespace FolkIdle.Server.Engine
                             PlayerId = regionCompletionKvp.Key,
                             CompletedRegionFlags = regionCompletionKvp.Value
                         });
+                    }
+
+                    // Modul: race unlock feedback. Post-commit, so the client is
+                    // only ever told about a race that is durably granted.
+                    for (int i = 0; i < pendingUnlockNotifications.Count; i++)
+                    {
+                        _playerRegistry.RaceUnlockQueue.Enqueue(pendingUnlockNotifications[i]);
                     }
                 }
                 catch (Exception ex)

@@ -1087,7 +1087,19 @@ namespace FolkIdle.Server.Network
             public int CharacterCount { get; set; }
             public int AvailableSkillPoints { get; set; }
             public string GuildName { get; set; } = string.Empty;
+
+            // Modul: lifetime statistics.
+            public long TotalKills { get; set; }
+            public long BossesSlain { get; set; }
+            public long TotalItemsCrafted { get; set; }
+            public long TotalDeaths { get; set; }
+            public long TotalPlayTimeSeconds { get; set; }
         }
+
+        // Modul: lifetime statistics. The five canonical region bosses, one per
+        // region across monster ids 91-115. A static array rather than an
+        // inline literal so the "every fifth id from 95" rule is stated once.
+        private static readonly int[] CanonicalBossMonsterIds = { 95, 100, 105, 110, 115 };
 
         private sealed class GuildCreateResponse
         {
@@ -2617,6 +2629,7 @@ namespace FolkIdle.Server.Network
                     if (rosterCharacter.EquippedGlovesId.HasValue) wornItemIds.Add(rosterCharacter.EquippedGlovesId.Value);
                     if (rosterCharacter.EquippedLeggingsId.HasValue) wornItemIds.Add(rosterCharacter.EquippedLeggingsId.Value);
                     if (rosterCharacter.EquippedBootsId.HasValue) wornItemIds.Add(rosterCharacter.EquippedBootsId.Value);
+                    if (rosterCharacter.EquippedOffhandId.HasValue) wornItemIds.Add(rosterCharacter.EquippedOffhandId.Value);
                 }
 
                 var response = new PlayerInventorySnapshotResponse
@@ -2989,7 +3002,10 @@ namespace FolkIdle.Server.Network
                         p.PremiumDiamonds,
                         p.LoginStreakDays,
                         p.GuildId,
-                        p.AvailableSkillPoints
+                        p.AvailableSkillPoints,
+                        p.TotalItemsCrafted,
+                        p.TotalDeaths,
+                        p.TotalPlayTimeSeconds
                     })
                     .SingleOrDefaultAsync();
 
@@ -3029,6 +3045,25 @@ namespace FolkIdle.Server.Network
                         .FirstOrDefaultAsync() ?? string.Empty;
                 }
 
+                // Modul: lifetime statistics. Kills come from the codex rather
+                // than a dedicated counter: monster_codex_entries has recorded a
+                // per-monster KillCount since the codex shipped, so summing it
+                // is retroactively correct for every existing player and cannot
+                // drift from a second source of truth.
+                long totalKills = await db.MonsterCodexEntries
+                    .AsNoTracking()
+                    .Where(e => e.PlayerId == playerId)
+                    .SumAsync(e => (long)e.KillCount);
+
+                // The five canonical region bosses. Ids 91-115 are the five
+                // regions of four regulars plus a boss, so every fifth id
+                // starting at 95 is a boss - see ContentRegistry's monster
+                // block and Test_Content_RegionBossesAreContinuousWithTheirRegionCurve.
+                long bossesSlain = await db.MonsterCodexEntries
+                    .AsNoTracking()
+                    .Where(e => e.PlayerId == playerId && CanonicalBossMonsterIds.Contains(e.MonsterId))
+                    .SumAsync(e => (long)e.KillCount);
+
                 await transaction.CommitAsync();
 
                 var response = new PlayerStatisticsResponse
@@ -3042,7 +3077,19 @@ namespace FolkIdle.Server.Network
                     RegionsCompletedCount = regionsCompletedCount,
                     CharacterCount = characterCount,
                     AvailableSkillPoints = player.AvailableSkillPoints,
-                    GuildName = guildName
+                    GuildName = guildName,
+
+                    // Modul: lifetime statistics. Playtime is reported as of the
+                    // last checkpoint rather than including the live session's
+                    // current stretch: the authoritative session start lives on
+                    // the tick thread's payload, and reaching across to it from
+                    // an HTTP handler to gain sub-checkpoint precision on a
+                    // number displayed in whole hours is not worth the coupling.
+                    TotalKills = totalKills,
+                    BossesSlain = bossesSlain,
+                    TotalItemsCrafted = player.TotalItemsCrafted,
+                    TotalDeaths = player.TotalDeaths,
+                    TotalPlayTimeSeconds = player.TotalPlayTimeSeconds
                 };
 
                 context.Response.StatusCode = 200;

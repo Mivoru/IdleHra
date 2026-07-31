@@ -133,6 +133,22 @@ namespace FolkIdle.Server.Models
         // remaining, unspent balance).
         public int AvailableSkillPoints { get; set; }
 
+        // Modul: lifetime statistics. Three counters the Statistics screen
+        // needs and that nothing in this codebase tracked.
+        //
+        // Total kills and bosses slain are deliberately NOT here: they are
+        // summed from monster_codex_entries.KillCount, which has recorded every
+        // kill per monster since the codex shipped. Adding columns for them
+        // would start every existing player back at zero and give two sources
+        // of truth that could drift.
+        //
+        // These three have no such existing source. All are monotonic and
+        // survive the seasonal era rollover on purpose - they describe the
+        // account's whole history, not the current era's progress.
+        public long TotalItemsCrafted { get; set; }
+        public long TotalDeaths { get; set; }
+        public long TotalPlayTimeSeconds { get; set; }
+
         // Modul: Prestige (Legacy Shard) permanent perk tree - purchased
         // through LegacyStoreEngine.PurchaseLegacyPerkAsync, distinct from
         // CitizenMultiSlotsUnlocked (a per-era ledger field). Bitmask: each

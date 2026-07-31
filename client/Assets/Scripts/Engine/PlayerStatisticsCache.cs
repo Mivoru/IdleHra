@@ -19,6 +19,15 @@ namespace FolkIdle.Client.Engine
         public int CharacterCount { get; set; }
         public int AvailableSkillPoints { get; set; }
         public string GuildName { get; set; } = string.Empty;
+
+        // Modul: lifetime statistics. Kills and bosses are summed server-side
+        // from monster_codex_entries; the other three are real persisted
+        // counters on PlayerRecords that nothing tracked before this pass.
+        public long TotalKills { get; set; }
+        public long BossesSlain { get; set; }
+        public long TotalItemsCrafted { get; set; }
+        public long TotalDeaths { get; set; }
+        public long TotalPlayTimeSeconds { get; set; }
     }
 
     // Modul: UI audit follow-up. On-demand snapshot cache for the player's

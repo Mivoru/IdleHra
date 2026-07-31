@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 7946583250396961248}
   - component: {fileID: 7472061576301182616}
   - component: {fileID: 7686170849866429126}
+  - component: {fileID: 5085321540923402005}
   - component: {fileID: 4775519076266576290}
   m_Layer: 0
   m_Name: ApproveButton
@@ -32,7 +33,7 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 2569837329694097583}
+  - {fileID: 1611461645006010339}
   m_Father: {fileID: 1900255960749695361}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
@@ -122,6 +123,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &5085321540923402005
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1673879307053846788}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50685e49abdb2554fa01e8526fc50461, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FolkIdle.Client::FolkIdle.Client.UI.UiButtonClickSfx
 --- !u!114 &4775519076266576290
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -142,7 +155,7 @@ MonoBehaviour:
   m_FlexibleWidth: -1
   m_FlexibleHeight: -1
   m_LayoutPriority: 1
---- !u!1 &4937288796399122789
+--- !u!1 &4963161042405773356
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -150,9 +163,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 2569837329694097583}
-  - component: {fileID: 7792040683228907207}
-  - component: {fileID: 5417353014999862767}
+  - component: {fileID: 6415708090489657372}
+  - component: {fileID: 8437753280323122008}
+  - component: {fileID: 5797991794979165307}
   m_Layer: 0
   m_Name: Text
   m_TagString: Untagged
@@ -160,40 +173,40 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!224 &2569837329694097583
+--- !u!224 &6415708090489657372
 RectTransform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4937288796399122789}
+  m_GameObject: {fileID: 4963161042405773356}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 7588845555103458006}
+  m_Father: {fileID: 6345616876965935461}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!222 &7792040683228907207
+--- !u!222 &8437753280323122008
 CanvasRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4937288796399122789}
+  m_GameObject: {fileID: 4963161042405773356}
   m_CullTransparentMesh: 1
---- !u!114 &5417353014999862767
+--- !u!114 &5797991794979165307
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4937288796399122789}
+  m_GameObject: {fileID: 4963161042405773356}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f4688fdb7df04437aeb418b961361dc5, type: 3}
@@ -207,7 +220,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Approve
+  m_text: Reject
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -309,7 +322,7 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 6345616876965935461}
+  m_Father: {fileID: 7588845555103458006}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
@@ -344,7 +357,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Reject
+  m_text: Approve
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -428,6 +441,7 @@ GameObject:
   - component: {fileID: 8135973171244537927}
   - component: {fileID: 8047238940089911727}
   - component: {fileID: 4097601873183690189}
+  - component: {fileID: 2288081957794681714}
   - component: {fileID: 1256999454761958568}
   m_Layer: 0
   m_Name: RejectButton
@@ -448,7 +462,7 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1611461645006010339}
+  - {fileID: 6415708090489657372}
   m_Father: {fileID: 1900255960749695361}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
@@ -538,6 +552,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &2288081957794681714
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5506949610835704679}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50685e49abdb2554fa01e8526fc50461, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FolkIdle.Client::FolkIdle.Client.UI.UiButtonClickSfx
 --- !u!114 &1256999454761958568
 MonoBehaviour:
   m_ObjectHideFlags: 0

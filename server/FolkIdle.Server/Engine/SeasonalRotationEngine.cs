@@ -242,7 +242,7 @@ namespace FolkIdle.Server.Engine
                 // off "PlayerRecords" onto "characters", so the seasonal wipe
                 // needs a second statement or every character would come out of
                 // the rollover still pointing at gear the wipe deleted.
-                await db.Database.ExecuteSqlRawAsync("UPDATE \"characters\" SET \"EquippedWeaponId\" = NULL, \"EquippedHelmetId\" = NULL, \"EquippedChestId\" = NULL, \"EquippedGlovesId\" = NULL, \"EquippedLeggingsId\" = NULL, \"EquippedBootsId\" = NULL", stoppingToken);
+                await db.Database.ExecuteSqlRawAsync("UPDATE \"characters\" SET \"EquippedWeaponId\" = NULL, \"EquippedHelmetId\" = NULL, \"EquippedChestId\" = NULL, \"EquippedGlovesId\" = NULL, \"EquippedLeggingsId\" = NULL, \"EquippedBootsId\" = NULL, \"EquippedOffhandId\" = NULL", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("UPDATE \"CommodityRecords\" SET \"Quantity\" = 0 WHERE \"ItemId\" = 'gold'", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"CommodityRecords\" WHERE \"ItemId\" <> 'gold'", stoppingToken);
 

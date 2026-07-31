@@ -149,6 +149,7 @@ GameObject:
   - component: {fileID: 1185526899300057888}
   - component: {fileID: 6768293990728501054}
   - component: {fileID: 4793765583424246101}
+  - component: {fileID: 5841274947782971312}
   m_Layer: 0
   m_Name: BuyButton
   m_TagString: Untagged
@@ -258,6 +259,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &5841274947782971312
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6301994802576031694}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50685e49abdb2554fa01e8526fc50461, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FolkIdle.Client::FolkIdle.Client.UI.UiButtonClickSfx
 --- !u!1 &7195825468357295889
 GameObject:
   m_ObjectHideFlags: 0

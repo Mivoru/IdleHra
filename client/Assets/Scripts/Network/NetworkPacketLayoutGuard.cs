@@ -10,10 +10,18 @@ namespace FolkIdle.Client.Network
         // comment for the byte-count breakdown.
         public const int ExpectedClientCommandSize = 352;
 
-        // Modul: Play Mode audit fix. 689 -> 691: TownHallLevel +
-        // CraftingWorkshopLevel (1 byte each) - mirrors server
-        // NetworkPacketLayoutGuard exactly.
-        public const int ExpectedStateUpdateSize = 699;
+        // Modul: offhand slot. 686 -> 694: EquippedOffhandId (8 bytes, long).
+        //
+        // This constant was STALE at 699 and had been since the wire compaction
+        // (698 -> 686) landed: that commit updated the client packet struct and
+        // the server's copy of this guard, but not this file. Validate() is
+        // called unguarded from WebSocketClient.Start(), so it threw
+        // "byte layout mismatch. Expected 699, got 686" on every startup,
+        // before FlightRecorder.Initialize() and ClientContentRegistry.
+        // Initialize() on the two lines after it ever ran. Mirrors server
+        // NetworkPacketLayoutGuard exactly - the two must be changed together.
+        // Modul: race unlock feedback. 694 -> 695: UnlockedRaceBitmask (1 byte).
+        public const int ExpectedStateUpdateSize = 695;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

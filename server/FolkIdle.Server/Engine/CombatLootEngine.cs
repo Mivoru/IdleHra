@@ -227,7 +227,8 @@ namespace FolkIdle.Server.Engine
                     c.EquippedChestId,
                     c.EquippedGlovesId,
                     c.EquippedLeggingsId,
-                    c.EquippedBootsId
+                    c.EquippedBootsId,
+                    c.EquippedOffhandId
                 })
                 .ToListAsync();
 
@@ -241,6 +242,7 @@ namespace FolkIdle.Server.Engine
                 if (character.EquippedGlovesId.HasValue) wornCount++;
                 if (character.EquippedLeggingsId.HasValue) wornCount++;
                 if (character.EquippedBootsId.HasValue) wornCount++;
+                if (character.EquippedOffhandId.HasValue) wornCount++;
             }
 
             int backpackEquipment = ownedEquipment - wornCount;

@@ -224,6 +224,7 @@ GameObject:
   - component: {fileID: 1391218572532270573}
   - component: {fileID: 1424899031807506216}
   - component: {fileID: 5785262913423331134}
+  - component: {fileID: 3222941659949914207}
   - component: {fileID: 8620366087671373539}
   m_Layer: 0
   m_Name: UiCodexListRow
@@ -335,6 +336,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &3222941659949914207
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8928260994796417518}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50685e49abdb2554fa01e8526fc50461, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FolkIdle.Client::FolkIdle.Client.UI.UiButtonClickSfx
 --- !u!114 &8620366087671373539
 MonoBehaviour:
   m_ObjectHideFlags: 0

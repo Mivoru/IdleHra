@@ -200,6 +200,10 @@ namespace FolkIdle.Server.Domain.Shared
 
                         player.CurrentLevel = state.CurrentLevel;
                         player.CurrentXp = state.CurrentXp;
+                        // Modul: lifetime statistics. Absolute assignment, not
+                        // +=, so re-flushing the same snapshot is a no-op -
+                        // see TickStatePayload.LifetimeDeaths.
+                        ApplyLifetimeStatistics(player, state);
                         player.SelectedLineageId = state.SelectedLineageId;
                         player.LastLogoutTimestamp = state.LastLogoutTimestamp;
                         player.AccumulatedTimeBankSeconds = (int)(state.AccumulatedTimeBankMs / 1000L);
@@ -643,6 +647,27 @@ namespace FolkIdle.Server.Domain.Shared
             // Defensive/Food assignments in the payload build below).
             long nowEpochSeconds = questLoadEpochSeconds;
 
+            // Modul: race unlock feedback. Rebuilt from the durable rows rather
+            // than persisted as its own column: PlayerRaceUnlocks is already the
+            // authority on which races an account owns, and a second copy could
+            // disagree with it. Human (race 1) is owned by every account without
+            // an unlock row, so its bit is set unconditionally - otherwise the
+            // client would announce "Human unlocked" on a brand new account.
+            byte unlockedRaceBitmask = 1 << (RaceIds.Human - 1);
+            var unlockedRaceIds = await dbContext.PlayerRaceUnlocks
+                .AsNoTracking()
+                .Where(u => u.PlayerId == playerId)
+                .Select(u => u.RaceId)
+                .ToListAsync();
+            for (int i = 0; i < unlockedRaceIds.Count; i++)
+            {
+                int raceId = unlockedRaceIds[i];
+                if (raceId >= 1 && raceId <= 8)
+                {
+                    unlockedRaceBitmask |= (byte)(1 << (raceId - 1));
+                }
+            }
+
             var payload = new TickStatePayload
             {
                 CachedCodexYieldMultiplier = codexYieldMultiplier,
@@ -721,6 +746,18 @@ namespace FolkIdle.Server.Domain.Shared
                 EquippedGlovesId = mainCharacterRecord?.EquippedGlovesId ?? 0L,
                 EquippedLeggingsId = mainCharacterRecord?.EquippedLeggingsId ?? 0L,
                 EquippedBootsId = mainCharacterRecord?.EquippedBootsId ?? 0L,
+                EquippedOffhandId = mainCharacterRecord?.EquippedOffhandId ?? 0L,
+
+                // Modul: lifetime statistics. Hydrated so the tick thread can
+                // keep an absolute running total - see TickStatePayload.
+                LifetimeDeaths = player.TotalDeaths,
+                // Modul: race unlock feedback. Rebuilt from the durable
+                // PlayerRaceUnlocks rows, so the mask is correct after a
+                // reconnect and for accounts that unlocked races before this
+                // field existed.
+                UnlockedRaceBitmask = unlockedRaceBitmask,
+                PlayTimeSecondsAtLogin = player.TotalPlayTimeSeconds,
+                SessionStartEpochSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 XpPenaltyExpiresEpoch = player.XpPenaltyExpiresEpoch,
 
                 // Modul: Deferred Part 5 Implementation, Part 2. Durable
@@ -867,6 +904,29 @@ namespace FolkIdle.Server.Domain.Shared
             return payload;
         }
 
+        // Modul: lifetime statistics. Folds the session's running totals back
+        // onto the row, shared by the single-flush and batch-flush paths.
+        //
+        // A method rather than two copies of three lines specifically because
+        // those two paths exist: this codebase has repeatedly shipped bugs
+        // where one of a pair of mirrored branches was updated and the other
+        // was not (the VisualSyncProxy first-packet vs steady-state fields, the
+        // two level-curve mirrors). One call site each is one thing to keep
+        // right instead of two.
+        //
+        // Playtime is recomputed from the session start rather than
+        // accumulated, so a checkpoint that fires twice in one second cannot
+        // inflate it, and a session that never checkpoints loses at most the
+        // time since its last one.
+        private static void ApplyLifetimeStatistics(PlayerRecord player, TickStatePayload state)
+        {
+            player.TotalDeaths = state.LifetimeDeaths;
+
+            long sessionSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - state.SessionStartEpochSeconds;
+            if (sessionSeconds < 0L) sessionSeconds = 0L;
+            player.TotalPlayTimeSeconds = state.PlayTimeSecondsAtLogin + sessionSeconds;
+        }
+
         // Modul: per-character equipment. Loads one non-main character's gear
         // and the stat totals derived from it into its parked slot state.
         //
@@ -885,6 +945,7 @@ namespace FolkIdle.Server.Domain.Shared
             slot.EquippedGlovesId = character.EquippedGlovesId ?? 0L;
             slot.EquippedLeggingsId = character.EquippedLeggingsId ?? 0L;
             slot.EquippedBootsId = character.EquippedBootsId ?? 0L;
+            slot.EquippedOffhandId = character.EquippedOffhandId ?? 0L;
 
             (EquippedAffixTotals totals, int weaponSetId, int armorSetId, int leggingsSetId) =
                 await EquipmentSlotEngine.ComputeEquippedTotalsAsync(dbContext, character);
@@ -1151,6 +1212,10 @@ namespace FolkIdle.Server.Domain.Shared
 
                         player.CurrentLevel = state.CurrentLevel;
                         player.CurrentXp = state.CurrentXp;
+                        // Modul: lifetime statistics. Absolute assignment, not
+                        // +=, so re-flushing the same snapshot is a no-op -
+                        // see TickStatePayload.LifetimeDeaths.
+                        ApplyLifetimeStatistics(player, state);
                         player.SelectedLineageId = state.SelectedLineageId;
                         player.LastLogoutTimestamp = state.LastLogoutTimestamp;
                         player.AccumulatedTimeBankSeconds = (int)(state.AccumulatedTimeBankMs / 1000L);

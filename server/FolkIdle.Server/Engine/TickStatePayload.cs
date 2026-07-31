@@ -146,6 +146,37 @@ namespace FolkIdle.Server.Engine
         public long EquippedHelmetId;
         public long EquippedGlovesId;
         public long EquippedBootsId;
+        public long EquippedOffhandId;
+
+        // Modul: lifetime statistics. Deliberately ABSOLUTE running totals
+        // hydrated from PlayerRecords at login, not deltas accumulated since
+        // the last flush.
+        //
+        // The checkpoint writes these with plain assignment, so flushing the
+        // same snapshot twice - which the batch and single-flush paths can both
+        // do, and which a retried transaction does by definition - lands on the
+        // same value instead of double counting. A "+= pending, then clear"
+        // design would need the clear to happen back on the tick thread after a
+        // successful off-thread commit, which is exactly the kind of seam that
+        // has produced silent data bugs in this codebase before.
+        public long LifetimeDeaths;
+
+        // Modul: race unlock feedback. Which playable races this account owns,
+        // as bit (raceId - 1). Six races fit one byte with two to spare.
+        //
+        // A monotonic MASK rather than a one-shot "you just unlocked X" field.
+        // A one-shot needs the server to know the client saw it before clearing
+        // it, and gets lost entirely on a disconnect between the grant and the
+        // next packet. A mask lets the client diff against the last value it
+        // saw, so the toast survives a reconnect and cannot fire twice.
+        public byte UnlockedRaceBitmask;
+
+        // Playtime is derived rather than ticked: the value at login plus the
+        // wall-clock seconds since. Counting it on the 10Hz tick would drift
+        // against real time and cost an add per player per frame for a number
+        // nothing reads more than once a session.
+        public long PlayTimeSecondsAtLogin;
+        public long SessionStartEpochSeconds;
 
         public int CachedMiningMonolithLevel;
         public int CachedWoodcuttingMonolithLevel;

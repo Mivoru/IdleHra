@@ -37,6 +37,15 @@ namespace FolkIdle.Server.Engine
     // background Task.Run thread with no ref access to the live TickStatePayload,
     // so the resulting slot state (plus pre-computed, allocation-free-to-read
     // affix totals for StatsCalculator) is reported back through this queue.
+    // Modul: race unlock feedback. One newly granted race for one player.
+    // Unmanaged, like every other notification on these queues, so draining it
+    // on the tick thread allocates nothing.
+    public struct RaceUnlockNotification
+    {
+        public long PlayerId;
+        public byte RaceId;
+    }
+
     public struct EquipmentSlotUpdateNotification
     {
         public long PlayerId;
@@ -54,6 +63,7 @@ namespace FolkIdle.Server.Engine
         public long EquippedGlovesId;
         public long EquippedLeggingsId;
         public long EquippedBootsId;
+        public long EquippedOffhandId;
         // Modul: Affix System Unification. Was four loose ints, which could
         // only carry four of the GDD's twelve affixes - the other eight had
         // nowhere to go and silently contributed nothing.
@@ -305,6 +315,11 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<AchievementClaimRequest> AchievementClaimQueue { get; } = new();
         public ConcurrentQueue<ForgeUpgradeNotification> ForgeUpgradeQueue { get; } = new();
         public ConcurrentQueue<EquipmentSlotUpdateNotification> EquipmentSlotUpdateQueue { get; } = new();
+
+        // Modul: race unlock feedback. CodexEngine grants races from a
+        // background loop, off the tick thread, so the live payload learns
+        // about it the same way it learns about every other off-thread result.
+        public ConcurrentQueue<RaceUnlockNotification> RaceUnlockQueue { get; } = new();
         public ConcurrentQueue<MailClaimRequest> MailClaimRequestQueue { get; } = new();
         public ConcurrentQueue<BankWithdrawRequest> BankWithdrawRequestQueue { get; } = new();
         public ConcurrentQueue<BirthNotification> BirthNotificationQueue { get; } = new();

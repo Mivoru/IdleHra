@@ -108,6 +108,11 @@ namespace FolkIdle.Client.UI
             if (ToastText == null) return;
             if (!TryResolveLocalizationKey((CommandResultCode)resultCode, out LocalizationKey key)) return;
 
+            // Modul: audio pipeline. Every code that reaches this point is a
+            // rejection or a blocked action - the success path never raises a
+            // toast - so one sound covers all of them.
+            GameAudioDirector.Play(GameSfx.Error);
+
             byte activeLanguage = SyncProxy.VisualActiveLanguageState == 0 ? (byte)1 : SyncProxy.VisualActiveLanguageState;
             int offset = LocalizationMatrix.WriteToCharBuffer(activeLanguage, key, _lineBuffer, 0);
             ToastText.SetCharArray(_lineBuffer, 0, offset);

@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 5748182516837965169}
   - component: {fileID: 1570776476448960192}
   - component: {fileID: 7983962117415974083}
+  - component: {fileID: 2877185682312083508}
   m_Layer: 0
   m_Name: SelectButton
   m_TagString: Untagged
@@ -121,6 +122,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &2877185682312083508
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 817432679243133945}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50685e49abdb2554fa01e8526fc50461, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FolkIdle.Client::FolkIdle.Client.UI.UiButtonClickSfx
 --- !u!1 &2035109567002378053
 GameObject:
   m_ObjectHideFlags: 0

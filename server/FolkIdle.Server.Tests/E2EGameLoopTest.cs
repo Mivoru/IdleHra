@@ -216,7 +216,10 @@ namespace FolkIdle.Server.Tests
             {
                 // Modul: Phase 5, Part 1. Seeded 15 XP short of the Level 1
                 // threshold rather than starting at 0 - ProgressionEngine.
-                // ProcessMonsterDeath requires 100 XP (100 * 1.15^0) to reach
+                // ProcessMonsterDeath requires 400 XP (the balance pass moved
+                // the curve from 100 * 1.15^level to 400 * 1.06^level, so the
+                // level-0 threshold went 100 -> 400; see
+                // ProgressionEngine.GetRequiredXpForLevel) to reach
                 // Level 1, but a single Forest Rat (activity 55) kill only
                 // grants 21 XP (BaseXpReward in monsters.json). Starting from
                 // 0 XP would require roughly 5 full kills to level up, which
@@ -227,12 +230,12 @@ namespace FolkIdle.Server.Tests
                 // merely an under-provisioned wait window: the original
                 // fixed 9-second delay was never long enough for even one
                 // full leveling cycle, regardless of CI scheduling variance.
-                // Seeding to 85 XP means exactly one real kill (85 + 21 = 106
-                // >= 100) proves the same real, end-to-end
+                // Seeding to 385 XP means exactly one real kill (385 + 21 = 406
+                // >= 400) proves the same real, end-to-end
                 // combat/XP/level-up pipeline this test exists to verify,
                 // without requiring several minutes of simulated grinding
                 // per test run.
-                db.PlayerRecords.Add(new PlayerRecord { Id = 1L, PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 0, CurrentXp = 85L });
+                db.PlayerRecords.Add(new PlayerRecord { Id = 1L, PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 0, CurrentXp = 385L });
                 await db.SaveChangesAsync();
             }
 

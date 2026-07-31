@@ -141,6 +141,7 @@ namespace FolkIdle.Client.UI
                     || item.Id == SyncProxy.VisualEquippedHelmetId
                     || item.Id == SyncProxy.VisualEquippedGlovesId
                     || item.Id == SyncProxy.VisualEquippedBootsId
+                    || item.Id == SyncProxy.VisualEquippedOffhandId
                     || item.Id == SyncProxy.VisualEquippedLeggingsId);
                 UiForgeEquipmentRow row = _rowPool.Spawn();
                 row.Bind(item.Id, item.BaseItemId, item.QualityTier, item.IsAffixLocked, item.Id == _selectedItemId, HandleItemSelected, isEquipped, HandleItemEquipClicked);

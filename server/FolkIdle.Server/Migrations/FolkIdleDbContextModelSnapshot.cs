@@ -201,6 +201,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<long?>("EquippedLeggingsId")
                         .HasColumnType("bigint");
 
+                    b.Property<long?>("EquippedOffhandId")
+                        .HasColumnType("bigint");
+
                     b.Property<long?>("EquippedWeaponId")
                         .HasColumnType("bigint");
 
@@ -1415,6 +1418,15 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<int>("SelectedLineageId")
                         .HasColumnType("integer");
+
+                    b.Property<long>("TotalDeaths")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TotalItemsCrafted")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TotalPlayTimeSeconds")
+                        .HasColumnType("bigint");
 
                     b.Property<string>("Username")
                         .HasColumnType("text");

@@ -162,6 +162,7 @@ GameObject:
   - component: {fileID: 243695059344959932}
   - component: {fileID: 2903318913915364283}
   - component: {fileID: 8669246189514785798}
+  - component: {fileID: 7862805757746513175}
   - component: {fileID: 3535043487553979955}
   m_Layer: 0
   m_Name: UiCombatMonsterRow
@@ -277,6 +278,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &7862805757746513175
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3841478750115975122}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50685e49abdb2554fa01e8526fc50461, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FolkIdle.Client::FolkIdle.Client.UI.UiButtonClickSfx
 --- !u!114 &3535043487553979955
 MonoBehaviour:
   m_ObjectHideFlags: 0

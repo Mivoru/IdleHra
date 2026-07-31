@@ -338,6 +338,7 @@ GameObject:
   - component: {fileID: 9140705670135613489}
   - component: {fileID: 1397730563697727295}
   - component: {fileID: 6945993794159978544}
+  - component: {fileID: 68368184323409595}
   m_Layer: 0
   m_Name: ClaimButton
   m_TagString: Untagged
@@ -447,3 +448,15 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &68368184323409595
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6661560172552196483}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50685e49abdb2554fa01e8526fc50461, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: FolkIdle.Client::FolkIdle.Client.UI.UiButtonClickSfx

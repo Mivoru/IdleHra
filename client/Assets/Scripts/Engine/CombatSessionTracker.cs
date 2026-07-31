@@ -156,9 +156,21 @@ namespace FolkIdle.Client.Engine
             }
         }
 
+        // Modul: audio pipeline. Quality tier at or above this reads as a
+        // "rare" drop and gets the louder sting instead of the common one.
+        // Matches the rarity bands in CraftingEngine's tier table.
+        private const byte RareDropQualityTier = 7;
+
         private void AccumulateDrop(ResponseLootDropPacket drop)
         {
             if (drop.ItemId <= 0 || drop.Quantity <= 0) return;
+
+            // Sounded here rather than in the dequeue loop above so a drop that
+            // arrives with no active session stays fully silent, exactly as it
+            // stays out of the tally.
+            GameAudioDirector.Play(drop.QualityTier >= RareDropQualityTier
+                ? GameSfx.LootRareDropped
+                : GameSfx.LootDropped);
 
             TotalItemsDropped += drop.Quantity;
 
