@@ -25,13 +25,84 @@ namespace FolkIdle.Server.Domain.Economy
             _playerRegistry = playerRegistry;
         }
 
+        // Modul: retryable listing. The outcome of ONE attempt. The delegate
+        // handed to an execution strategy may run more than once, so anything
+        // that must happen exactly once - pushing a command result to the
+        // player, writing a log line - has to sit outside it, keyed off this.
+        // Same shape as EquipmentSlotEngine.EquipAttemptOutcome, and for the
+        // same reason.
+        private readonly struct ListAttemptOutcome
+        {
+            public readonly bool Listed;
+            public readonly byte? ResultCode;
+            public readonly string? LogMessage;
+
+            public ListAttemptOutcome(bool listed, byte? resultCode, string? logMessage)
+            {
+                Listed = listed;
+                ResultCode = resultCode;
+                LogMessage = logMessage;
+            }
+
+            public static ListAttemptOutcome Rejected(string logMessage, byte? resultCode = null)
+                => new ListAttemptOutcome(false, resultCode, logMessage);
+        }
+
+        // Modul: retryable listing. Wrapped in an execution strategy because
+        // this is a Serializable transaction that several callers can run
+        // concurrently for the same player, and losing the serialization race
+        // is normal and recoverable - not a reason to tell the player their
+        // listing failed.
+        //
+        // Before this, a 40001 surfaced as "An exception has been raised that
+        // is likely due to a transient failure", was swallowed by the catch-all
+        // below, and returned false. Under real concurrent load that meant five
+        // of six simultaneous listings were silently dropped;
+        // Test_MarketEscrow_ConcurrentListings_ExactReplicaNoSerializationDrift
+        // has been failing on that for as long as it has existed, and it was
+        // right to.
+        //
+        // Uses RetryingDbContextOptions rather than the scoped context for the
+        // reason EquipmentSlotEngine documents: EF refuses user-initiated
+        // transactions under a retrying strategy unless the context was built
+        // with one.
         public async Task<bool> ListItemAsync(long playerId, long instanceId, long limitPrice)
         {
-            using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            await using var db = new FolkIdleDbContext(_serviceProvider.GetRequiredService<RetryingDbContextOptions>().Options);
+            var strategy = db.Database.CreateExecutionStrategy();
 
-            using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            ListAttemptOutcome outcome;
             try
+            {
+                outcome = await strategy.ExecuteAsync(async () =>
+                {
+                    // A retry must not inherit a half-applied graph from the
+                    // attempt that just lost the race.
+                    db.ChangeTracker.Clear();
+                    return await AttemptListAsync(db, playerId, instanceId, limitPrice);
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"MarketListItem failed: {ex.Message}");
+                return false;
+            }
+
+            if (outcome.LogMessage != null)
+            {
+                Console.WriteLine(outcome.LogMessage);
+            }
+            if (outcome.ResultCode.HasValue)
+            {
+                _playerRegistry.EnqueueCommandResult(playerId, outcome.ResultCode.Value);
+            }
+
+            return outcome.Listed;
+        }
+
+        private async Task<ListAttemptOutcome> AttemptListAsync(FolkIdleDbContext db, long playerId, long instanceId, long limitPrice)
+        {
+            using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             {
                 var player = await db.PlayerRecords
                     .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
@@ -40,8 +111,7 @@ namespace FolkIdle.Server.Domain.Economy
                 if (player == null)
                 {
                     await transaction.RollbackAsync();
-                    Console.WriteLine("MarketListItem failed: Player not found.");
-                    return false;
+                    return ListAttemptOutcome.Rejected("MarketListItem failed: Player not found.");
                 }
 
                 // Modul: Advanced Economy Refactoring, Part 2.1. Trade
@@ -51,9 +121,9 @@ namespace FolkIdle.Server.Domain.Economy
                 if (player.GuildId <= 0)
                 {
                     await transaction.RollbackAsync();
-                    Console.WriteLine("MarketListItem failed: Player has no guild trade license.");
-                    _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.NoGuildLicense);
-                    return false;
+                    return ListAttemptOutcome.Rejected(
+                        "MarketListItem failed: Player has no guild trade license.",
+                        (byte)FolkIdle.Server.Network.CommandResultCode.NoGuildLicense);
                 }
 
                 var equipQuery = "SELECT * FROM \"EquipmentInstances\" WHERE \"Id\" = {0} FOR UPDATE";
@@ -62,9 +132,9 @@ namespace FolkIdle.Server.Domain.Economy
                 if (equip == null || equip.PlayerId != playerId)
                 {
                     await transaction.RollbackAsync();
-                    Console.WriteLine("MarketListItem failed: Item unavailable.");
-                    _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
-                    return false;
+                    return ListAttemptOutcome.Rejected(
+                        "MarketListItem failed: Item unavailable.",
+                        (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                 }
 
                 // Modul 04/40: an item currently equipped on the character
@@ -78,9 +148,9 @@ namespace FolkIdle.Server.Domain.Economy
                 if (await EquipmentSlotEngine.IsEquippedAnywhereAsync(db, playerId, equip.Id))
                 {
                     await transaction.RollbackAsync();
-                    Console.WriteLine("MarketListItem failed: Item is currently equipped.");
-                    _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.ItemEquipped);
-                    return false;
+                    return ListAttemptOutcome.Rejected(
+                        "MarketListItem failed: Item is currently equipped.",
+                        (byte)FolkIdle.Server.Network.CommandResultCode.ItemEquipped);
                 }
 
                 // Modul 40/51: strict 20%-to-300% volatility corridor against
@@ -96,9 +166,9 @@ namespace FolkIdle.Server.Domain.Economy
                     if (limitPrice < minPrice || limitPrice > maxPrice)
                     {
                         await transaction.RollbackAsync();
-                        Console.WriteLine($"MarketListItem rejected: price {limitPrice} outside volatility corridor [{minPrice}, {maxPrice}] for {equip.BaseItemId} T{equip.QualityTier}.");
-                        _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InvalidPrice);
-                        return false;
+                        return ListAttemptOutcome.Rejected(
+                            $"MarketListItem rejected: price {limitPrice} outside volatility corridor [{minPrice}, {maxPrice}] for {equip.BaseItemId} T{equip.QualityTier}.",
+                            (byte)FolkIdle.Server.Network.CommandResultCode.InvalidPrice);
                     }
                 }
 
@@ -135,15 +205,10 @@ namespace FolkIdle.Server.Domain.Economy
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                Console.WriteLine($"Direct Listing: Item {instanceId} listed by Player {playerId} for {limitPrice}g.");
-                _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                Console.WriteLine($"MarketListItem failed: {ex.Message}");
-                return false;
+                return new ListAttemptOutcome(
+                    true,
+                    (byte)FolkIdle.Server.Network.CommandResultCode.Success,
+                    $"Direct Listing: Item {instanceId} listed by Player {playerId} for {limitPrice}g.");
             }
         }
 

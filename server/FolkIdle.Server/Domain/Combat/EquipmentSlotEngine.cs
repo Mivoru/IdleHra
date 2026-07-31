@@ -386,7 +386,7 @@ namespace FolkIdle.Server.Domain.Combat
         // of which single slot just changed.
         private static async Task<EquipmentSlotUpdateNotification> BuildNotificationAsync(FolkIdleDbContext db, CharacterRecord character)
         {
-            (EquippedAffixTotals totals, int weaponSetId, int armorSetId, int leggingsSetId) = await ComputeEquippedTotalsAsync(db, character);
+            (EquippedAffixTotals totals, EquippedSetIds setIds) = await ComputeEquippedTotalsAsync(db, character);
 
             return new EquipmentSlotUpdateNotification
             {
@@ -400,9 +400,7 @@ namespace FolkIdle.Server.Domain.Combat
                 EquippedBootsId = character.EquippedBootsId ?? 0L,
                 EquippedOffhandId = character.EquippedOffhandId ?? 0L,
                 AffixTotals = totals,
-                EquippedWeaponSetId = weaponSetId,
-                EquippedArmorSetId = armorSetId,
-                EquippedLeggingsSetId = leggingsSetId
+                SetIds = setIds
             };
         }
 
@@ -415,10 +413,10 @@ namespace FolkIdle.Server.Domain.Combat
         // One query for all six slots instead of one per slot - six sequential
         // round trips per character, times three characters, on every login was
         // not worth the marginally simpler code.
-        public static async Task<(EquippedAffixTotals Totals, int WeaponSetId, int ArmorSetId, int LeggingsSetId)> ComputeEquippedTotalsAsync(FolkIdleDbContext db, CharacterRecord character)
+        public static async Task<(EquippedAffixTotals Totals, EquippedSetIds SetIds)> ComputeEquippedTotalsAsync(FolkIdleDbContext db, CharacterRecord character)
         {
             EquippedAffixTotals totals = default;
-            int weaponSetId = 0, armorSetId = 0, leggingsSetId = 0;
+            EquippedSetIds setIds = default;
 
             long weaponId = character.EquippedWeaponId ?? 0L;
             long helmetId = character.EquippedHelmetId ?? 0L;
@@ -430,7 +428,7 @@ namespace FolkIdle.Server.Domain.Combat
 
             if (weaponId == 0L && helmetId == 0L && chestId == 0L && glovesId == 0L && leggingsId == 0L && bootsId == 0L && offhandId == 0L)
             {
-                return (totals, 0, 0, 0);
+                return (totals, setIds);
             }
 
             var worn = await db.EquipmentInstances
@@ -465,17 +463,32 @@ namespace FolkIdle.Server.Domain.Combat
                     totals.FlatDefense += itemDefinition.FlatDefenseRating;
                 }
 
-                // Set ids stay a weapon/armour/leggings triple because that is
-                // what SetBonusEngine.Evaluate consumes. The four armour slots
-                // collapse onto the single armour set id, taking the first one
-                // found - widening set bonuses to six slots is a balance change,
-                // not a refactor, and does not belong in this pass.
-                if (piece.Id == weaponId) weaponSetId = piece.SetId;
-                else if (piece.Id == leggingsId) leggingsSetId = piece.SetId;
-                else if (armorSetId == 0) armorSetId = piece.SetId;
+                // Modul: seven-slot set bonuses. Every worn piece now reports its
+                // own SetId. This used to be a weapon/armour/leggings triple
+                // that folded helmet, chest, gloves and boots onto ONE "armor"
+                // id, taking whichever was seen first and discarding the other
+                // three - so SetBonusEngine, which awards its tiers by counting
+                // how many equipped pieces share a set, could never see a count
+                // above 3 and no 4-piece bonus in the game was reachable.
+                // Resolved by slot rather than by guessing, so a matching set
+                // counts once per piece actually worn.
+                int pieceSlotIndex =
+                      piece.Id == weaponId ? SlotWeapon
+                    : piece.Id == helmetId ? SlotHelmet
+                    : piece.Id == chestId ? SlotChest
+                    : piece.Id == glovesId ? SlotGloves
+                    : piece.Id == leggingsId ? SlotLeggings
+                    : piece.Id == bootsId ? SlotBoots
+                    : piece.Id == offhandId ? SlotOffhand
+                    : -1;
+
+                if (pieceSlotIndex >= 0)
+                {
+                    setIds.SetBySlotIndex(pieceSlotIndex, piece.SetId);
+                }
             }
 
-            return (totals, weaponSetId, armorSetId, leggingsSetId);
+            return (totals, setIds);
         }
 
         // Modul: Affix System Unification. Reads GDD affix ids

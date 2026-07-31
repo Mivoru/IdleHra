@@ -68,9 +68,7 @@ namespace FolkIdle.Server.Engine
         public bool EquippedArmorAffixLocked;
         public bool EquippedLeggingsAffixLocked;
         public EquippedAffixTotals CachedAffixTotals;
-        public int CachedWeaponSetId;
-        public int CachedArmorSetId;
-        public int CachedLeggingsSetId;
+        public EquippedSetIds CachedSetIds;
 
         // Identity. Kept alongside the activity state rather than left behind
         // in the payload's Slot1_*/Slot2_*/Slot3_* fields, because combat stats

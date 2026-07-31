@@ -6622,7 +6622,7 @@ namespace FolkIdle.Server.Tests
                 Assert.Null(character.EquippedChestId);
                 Assert.Null(character.EquippedWeaponId);
 
-                (EquippedAffixTotals totals, _, _, _) =
+                (EquippedAffixTotals totals, _) =
                     await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verifyDb, character);
 
                 // Modul: balance pass. 45 -> 53. The affix payload contributes
@@ -7779,7 +7779,7 @@ namespace FolkIdle.Server.Tests
             await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 var character = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == characterId);
-                (EquippedAffixTotals totals, _, _, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verify, character);
+                (EquippedAffixTotals totals, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verify, character);
                 tierOneAttack = totals.FlatAttack;
             }
 
@@ -7800,7 +7800,7 @@ namespace FolkIdle.Server.Tests
                 Assert.Equal(tierFiveWeaponId, character.EquippedWeaponId);
                 Assert.Null(character.EquippedChestId);
 
-                (EquippedAffixTotals totals, _, _, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verify, character);
+                (EquippedAffixTotals totals, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verify, character);
 
                 // Tier 5 must be dramatically stronger than tier 1, and the
                 // offhand's own base power must be counted too.
@@ -9407,13 +9407,19 @@ namespace FolkIdle.Server.Tests
 
             // End-to-end through the combat feedback profile: 100 CON gives
             // a known FlatPhysicalArmor baseline (100) that the 2-piece
-            // +15% multiplier must scale deterministically. Calculate only
-            // exposes the 3 real equip slots that exist in production
-            // today (Weapon/Armor/Leggings), so the 2-piece tier is what
-            // is provable end to end here - the 4-piece proof above already
-            // covers the evaluator directly.
+            // +15% multiplier must scale deterministically.
+            //
+            // Modul: seven-slot set bonuses. This used to note that Calculate
+            // "only exposes the 3 real equip slots that exist in production
+            // today (Weapon/Armor/Leggings)". That was the bug, not a
+            // constraint: all seven slots existed, three were being reported.
             CombatStats naked = StatsCalculator.Calculate(str: 0, dex: 0, con: 100, lck: 0);
-            CombatStats withTwoPieceSet = StatsCalculator.Calculate(str: 0, dex: 0, con: 100, lck: 0, equippedWeaponSetId: SetBonusEngine.EternalDreadnoughtSetId, equippedArmorSetId: SetBonusEngine.EternalDreadnoughtSetId);
+            CombatStats withTwoPieceSet = StatsCalculator.Calculate(str: 0, dex: 0, con: 100, lck: 0,
+                equippedSetIds: new EquippedSetIds
+                {
+                    Weapon = SetBonusEngine.EternalDreadnoughtSetId,
+                    Chest = SetBonusEngine.EternalDreadnoughtSetId
+                });
 
             Assert.Equal((int)(naked.FlatPhysicalArmor * 1.15f), withTwoPieceSet.FlatPhysicalArmor);
             Assert.False(withTwoPieceSet.SetThornsReflectionActive);
@@ -9465,13 +9471,97 @@ namespace FolkIdle.Server.Tests
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
             var setBonusCharacter = await verifyDb.CharacterRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId);
 
-            (_, int weaponSetId, int armorSetId, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verifyDb, setBonusCharacter);
+            (_, EquippedSetIds setIds) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verifyDb, setBonusCharacter);
 
-            Assert.Equal(SetBonusEngine.ChimingSteelSetId, weaponSetId);
-            Assert.Equal(SetBonusEngine.ChimingSteelSetId, armorSetId);
+            // Modul: seven-slot set bonuses. The chest piece lands in its OWN
+            // slot now. Under the old weapon/armour/leggings triple it went
+            // into a generic "armor" slot that also stood in for helmet, gloves
+            // and boots.
+            Assert.Equal(SetBonusEngine.ChimingSteelSetId, setIds.Weapon);
+            Assert.Equal(SetBonusEngine.ChimingSteelSetId, setIds.Chest);
 
-            var result = SetBonusEngine.Evaluate(stackalloc int[] { weaponSetId, armorSetId, 0 });
+            int[] setIdSpan = new int[EquippedSetIds.SlotCount];
+            setIds.CopyTo(setIdSpan);
+            var result = SetBonusEngine.Evaluate(setIdSpan);
             Assert.Equal(10, result.FlatAttackPowerBonus);
+        }
+
+        // Modul: seven-slot set bonuses. The regression this pass fixed: the
+        // 4-piece tier was unreachable for anyone, ever.
+        //
+        // SetBonusEngine awards its tiers by counting how many equipped pieces
+        // share a SetId, and it was always sized for this (MaxTrackedSlots is
+        // 8, and its own comment names all seven slots). But its only caller
+        // handed it three ids - weapon, ONE "armor" standing in for helmet,
+        // chest, gloves and boots together, and leggings - so a player in a
+        // full matching set produced a count of at most 3 and the >= 4 branch
+        // could never be taken.
+        [Fact]
+        public async Task Test_SetBonusEngine_FourMatchingArmourPiecesReachTheFourPieceTier()
+        {
+            const long testPlayerId = 970009202L;
+            var characterId = Guid.NewGuid();
+
+            // Real BaseIds from items.json (the tier-2 Sentry armour set), not
+            // marker-shaped placeholders - so this also proves the four pieces
+            // resolve through the registry, not just through the slug suffix.
+            var pieces = new[]
+            {
+                "eq_sentry_helm_helmet_armor_slot_base",
+                "eq_sentry_cuirass_chest_armor_slot_base",
+                "eq_sentry_gauntlets_gloves_armor_slot_base",
+                "eq_sentry_sabatons_boots_armor_slot_base"
+            };
+
+            var instanceIds = new long[pieces.Length];
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = characterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, Level = 60, AgePhase = 1, SlotIndex = 0 });
+
+                for (int i = 0; i < pieces.Length; i++)
+                {
+                    var piece = new EquipmentInstance
+                    {
+                        PlayerId = testPlayerId,
+                        BaseItemId = pieces[i],
+                        QualityTier = 0,
+                        AffixPayload = "{}",
+                        SetId = SetBonusEngine.ChimingSteelSetId
+                    };
+                    db.EquipmentInstances.Add(piece);
+                    await db.SaveChangesAsync();
+                    instanceIds[i] = piece.Id;
+                }
+            }
+
+            var slotEngine = new EquipmentSlotEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            for (int i = 0; i < instanceIds.Length; i++)
+            {
+                await slotEngine.EquipItemAsync(testPlayerId, instanceIds[i]);
+            }
+
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var character = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId);
+
+            (_, EquippedSetIds setIds) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verify, character);
+
+            // All four landed in distinct slots rather than overwriting one.
+            Assert.Equal(SetBonusEngine.ChimingSteelSetId, setIds.Helmet);
+            Assert.Equal(SetBonusEngine.ChimingSteelSetId, setIds.Chest);
+            Assert.Equal(SetBonusEngine.ChimingSteelSetId, setIds.Gloves);
+            Assert.Equal(SetBonusEngine.ChimingSteelSetId, setIds.Boots);
+
+            int[] setIdSpan = new int[EquippedSetIds.SlotCount];
+            setIds.CopyTo(setIdSpan);
+            var result = SetBonusEngine.Evaluate(setIdSpan);
+
+            // The 2-piece core, plus the 4-piece tier that was previously
+            // impossible to reach.
+            Assert.Equal(10, result.FlatAttackPowerBonus);
+            Assert.True(result.BurnApplicationActive,
+                "Four matching pieces must reach the 4-piece tier; a false here means the set ids collapsed again.");
         }
     }
 }

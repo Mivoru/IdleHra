@@ -1013,6 +1013,11 @@ namespace FolkIdle.Server.Network
             public int QualityTier { get; set; }
             public bool IsEquipped { get; set; }
 
+            // Modul: roster loadouts. Which character slot (0-2) wears this,
+            // or -1 if it is carried. IsEquipped stays because the Inventory
+            // screen only cares whether an item is available at all.
+            public int EquippedByCharacterSlot { get; set; } = -1;
+
             // Modul: Affix System Unification. Without these the Inventory
             // screen could name an item and its rarity but say nothing about
             // what it actually does, which is the entire point of a rarity
@@ -2620,16 +2625,31 @@ namespace FolkIdle.Server.Network
                 // account-wide question for the inventory screen - an item worn
                 // by the second character is just as unavailable as one worn by
                 // the first, and showing it as free to sell would be a lie.
-                var wornItemIds = new System.Collections.Generic.HashSet<long>();
+                // Modul: roster loadouts. Maps each worn item to the SLOT INDEX
+                // of the character wearing it, rather than only recording that
+                // somebody wears it. The wire deliberately carries only the
+                // active character's gear (gear changes on a button press, not
+                // at 10Hz), so this snapshot is the only place the Roster screen
+                // can learn what characters 2 and 3 are actually wearing.
+                //
+                // -1 means "not worn". Slot index rather than character Guid
+                // because the Roster screen is laid out by slot and would only
+                // have to map the Guid back anyway.
+                var wornItemSlotIndices = new Dictionary<long, int>();
                 foreach (var rosterCharacter in await db.CharacterRecords.AsNoTracking().Where(c => c.PlayerId == playerId).ToListAsync())
                 {
-                    if (rosterCharacter.EquippedWeaponId.HasValue) wornItemIds.Add(rosterCharacter.EquippedWeaponId.Value);
-                    if (rosterCharacter.EquippedHelmetId.HasValue) wornItemIds.Add(rosterCharacter.EquippedHelmetId.Value);
-                    if (rosterCharacter.EquippedChestId.HasValue) wornItemIds.Add(rosterCharacter.EquippedChestId.Value);
-                    if (rosterCharacter.EquippedGlovesId.HasValue) wornItemIds.Add(rosterCharacter.EquippedGlovesId.Value);
-                    if (rosterCharacter.EquippedLeggingsId.HasValue) wornItemIds.Add(rosterCharacter.EquippedLeggingsId.Value);
-                    if (rosterCharacter.EquippedBootsId.HasValue) wornItemIds.Add(rosterCharacter.EquippedBootsId.Value);
-                    if (rosterCharacter.EquippedOffhandId.HasValue) wornItemIds.Add(rosterCharacter.EquippedOffhandId.Value);
+                    void RecordWorn(long? itemId)
+                    {
+                        if (itemId.HasValue) wornItemSlotIndices[itemId.Value] = rosterCharacter.SlotIndex;
+                    }
+
+                    RecordWorn(rosterCharacter.EquippedWeaponId);
+                    RecordWorn(rosterCharacter.EquippedHelmetId);
+                    RecordWorn(rosterCharacter.EquippedChestId);
+                    RecordWorn(rosterCharacter.EquippedGlovesId);
+                    RecordWorn(rosterCharacter.EquippedLeggingsId);
+                    RecordWorn(rosterCharacter.EquippedBootsId);
+                    RecordWorn(rosterCharacter.EquippedOffhandId);
                 }
 
                 var response = new PlayerInventorySnapshotResponse
@@ -2674,7 +2694,9 @@ namespace FolkIdle.Server.Network
                         Id = item.Id,
                         BaseItemId = item.BaseItemId,
                         QualityTier = item.QualityTier,
-                        IsEquipped = wornItemIds.Contains(item.Id),
+                        IsEquipped = wornItemSlotIndices.ContainsKey(item.Id),
+                        // Modul: roster loadouts. -1 when carried rather than worn.
+                        EquippedByCharacterSlot = wornItemSlotIndices.TryGetValue(item.Id, out int wearerSlotIndex) ? wearerSlotIndex : -1,
                         Affixes = affixes,
                         IsAffixLocked = item.IsAffixLocked || payloadLockFlag
                     });

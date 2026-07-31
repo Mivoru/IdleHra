@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -22,7 +22,9 @@ namespace FolkIdle.Client.UI
     // takes a guild name to join, not a player name to invite.
     public class UiGuildCreatePanel : MonoBehaviour
     {
-        public string ServerBaseUrl = "http://localhost:8080";
+        // Modul: server config. Reads the one configured server address rather
+        // than owning a copy - see ClientServerConfig.
+        public string ServerBaseUrl => FolkIdle.Client.Network.ClientServerConfig.BaseUrl;
 
         public TMP_InputField CreateGuildNameInputField;
         public Button CreateGuildButton;

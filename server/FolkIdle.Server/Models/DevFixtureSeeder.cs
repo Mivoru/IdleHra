@@ -1,0 +1,259 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using FolkIdle.Server.Engine;
+using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Progression;
+using Microsoft.EntityFrameworkCore;
+
+namespace FolkIdle.Server.Models
+{
+    // Modul: dev fixture. A repeatable, fully-provisioned account for driving
+    // the client by hand or through the MCP Play Mode harness.
+    //
+    // DbSeeder already creates a login-capable dev account, but only on a
+    // completely empty database (`if (!await db.PlayerRecords.AnyAsync())`) and
+    // with nothing on it: no characters, no equipment, no Town Hall level. So
+    // every attempt to verify the things most likely to be broken - multiple
+    // character slots, the seven equip slots, region progression - started with
+    // hand-writing rows through a throwaway console app, which is not
+    // repeatable and not reviewable.
+    //
+    // This is deliberately NOT wired into normal startup. It runs only from the
+    // --seed-dev flag, which additionally refuses to do anything unless
+    // FOLKIDLE_ALLOW_DEV_SEED is set - see Program.cs. It writes a known
+    // account with a known password, so it must never be reachable in
+    // production by accident.
+    //
+    // Idempotent: re-running it updates the same account in place rather than
+    // creating a second one or throwing on the unique Email index.
+    public static class DevFixtureSeeder
+    {
+        public const string Email = "dev@folkidle.local";
+        public const string Username = "dev";
+        public const string Password = "FolkIdleDev123!";
+
+        private const long Gold = 5_000_000L;
+        private const int Diamonds = 5_000;
+        private const int PlayerLevel = 40;
+
+        // Town Hall 5 unlocks all three character slots (slot 2 at level 3,
+        // slot 3 at level 5 - see CharacterSlotEngine), which is the whole
+        // point of the fixture.
+        private const int TownHallLevel = 5;
+        private const int WorkshopLevel = 5;
+        private const int ForgeLevel = 5;
+
+        public static async Task<long> SeedAsync(FolkIdleDbContext db)
+        {
+            string normalizedEmail = Email.ToLowerInvariant();
+
+            var player = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Email == normalizedEmail);
+            if (player == null)
+            {
+                player = new PlayerRecord
+                {
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid(),
+                    Email = normalizedEmail,
+                    Username = Username,
+                    SelectedLineageId = 1
+                };
+                db.PlayerRecords.Add(player);
+                await db.SaveChangesAsync();
+            }
+
+            player.PasswordHash = PasswordHasher.Hash(Password);
+            player.CurrentLevel = PlayerLevel;
+            player.CurrentXp = 0;
+            player.PremiumDiamonds = Diamonds;
+            player.AvailableSkillPoints = PlayerLevel;
+
+            // A fixture account must never arrive quarantined - an automated
+            // session that drove the client hard enough to trip the anti-cheat
+            // heuristic once would otherwise be unusable forever after.
+            player.IsQuarantined = false;
+            player.Quarantine_Active = false;
+
+            // Modul: dev fixture. STOCK THE LARDER. Found the hard way: the
+            // first version of this seeder produced a character that halted
+            // with ActivityHaltReason.OutOfFood about a minute into the first
+            // fight, because auto-eat fires the moment HP crosses the threshold
+            // and an empty larder stops the activity outright. A fixture whose
+            // whole purpose is unattended playtesting must be able to run
+            // unattended, so it ships fed.
+            //
+            // Ids 194-203 are the ten real cooked foods; the three stocked here
+            // are mid-tier so healing is meaningful without being infinite.
+            player.LarderSlot1ItemId = 198; // cooked_steppe_salmon_t5_food
+            player.LarderSlot1Count = 999;
+            player.LarderSlot2ItemId = 197; // cooked_chasm_pike_t4_food
+            player.LarderSlot2Count = 999;
+            player.LarderSlot3ItemId = 196; // cooked_mud_carp_t3_food
+            player.LarderSlot3Count = 999;
+
+            // Eat at 50% rather than the default 0, which never triggers.
+            player.AutoEatThresholdPct = 50;
+
+            await db.SaveChangesAsync();
+            long playerId = player.Id;
+
+            await UpsertCommodityAsync(db, playerId, "gold", Gold);
+
+            // Enough of the tier-1/2 material spine to actually craft something
+            // without gathering first. Ids resolved through ContentRegistry so
+            // this cannot drift from the recipe table the way a hardcoded slug
+            // list would.
+            await UpsertCommodityAsync(db, playerId, ContentRegistry.GetMaterialString(1), 5_000L); // copper_ore
+            await UpsertCommodityAsync(db, playerId, ContentRegistry.GetMaterialString(2), 5_000L); // raw_log
+            await UpsertCommodityAsync(db, playerId, ContentRegistry.GetMaterialString(3), 5_000L); // iron_ore
+            await UpsertCommodityAsync(db, playerId, ContentRegistry.GetMaterialString(4), 5_000L); // oak_log
+
+            await UpsertBuildingAsync(db, playerId, VillageManagementEngine.TownHallBuildingId, TownHallLevel);
+            await UpsertBuildingAsync(db, playerId, VillageManagementEngine.CraftingWorkshopBuildingId, WorkshopLevel);
+            await UpsertBuildingAsync(db, playerId, VillageManagementEngine.ForgeBuildingId, ForgeLevel);
+            await UpsertBuildingAsync(db, playerId, VillageManagementEngine.InnBuildingId, 5);
+            await UpsertBuildingAsync(db, playerId, VillageManagementEngine.MentorshipAcademyBuildingId, 2);
+
+            await EnsureCharactersAsync(db, playerId);
+            await EnsureEquipmentAsync(db, playerId);
+
+            await db.SaveChangesAsync();
+            return playerId;
+        }
+
+        private static async Task UpsertCommodityAsync(FolkIdleDbContext db, long playerId, string itemId, long quantity)
+        {
+            if (string.IsNullOrEmpty(itemId)) return;
+
+            var row = await db.CommodityRecords.FirstOrDefaultAsync(c => c.PlayerId == playerId && c.ItemId == itemId);
+            if (row == null)
+            {
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = itemId, Quantity = quantity });
+                return;
+            }
+
+            // Set rather than add, so re-running does not inflate the balance.
+            row.Quantity = quantity;
+        }
+
+        private static async Task UpsertBuildingAsync(FolkIdleDbContext db, long playerId, int buildingId, int level)
+        {
+            var row = await db.VillageInfrastructures
+                .FirstOrDefaultAsync(v => v.PlayerId == playerId && v.BuildingId == buildingId);
+
+            if (row == null)
+            {
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = playerId,
+                    BuildingId = buildingId,
+                    CurrentLevel = level,
+                    UpgradeTargetLevel = 0,
+                    UpgradeCompletesAtEpoch = 0
+                });
+                return;
+            }
+
+            row.CurrentLevel = level;
+            row.UpgradeTargetLevel = 0;
+            row.UpgradeCompletesAtEpoch = 0;
+        }
+
+        // Three adult characters, one per unlocked slot.
+        private static async Task EnsureCharactersAsync(FolkIdleDbContext db, long playerId)
+        {
+            var existing = await db.CharacterRecords
+                .Where(c => c.PlayerId == playerId)
+                .ToListAsync();
+
+            for (int slotIndex = 0; slotIndex < CharacterSlotEngine.MaxCharacterSlots; slotIndex++)
+            {
+                if (existing.Any(c => c.SlotIndex == slotIndex)) continue;
+
+                db.CharacterRecords.Add(new CharacterRecord
+                {
+                    Id = Guid.NewGuid(),
+                    PlayerId = playerId,
+                    Level = PlayerLevel,
+                    AgePhase = 1,
+                    SlotIndex = slotIndex
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        // One item per equip slot, worn by the main character. Tier 2 so the
+        // base-power contribution is visibly non-zero without being endgame -
+        // a tier-1 set would make it hard to tell "base power reached stats"
+        // apart from "base power is still zero".
+        private static readonly string[] FixtureLoadout =
+        {
+            "eq_hunter_dagger_melee_weapon_slot_base",
+            "eq_sentry_helm_helmet_armor_slot_base",
+            "eq_sentry_cuirass_chest_armor_slot_base",
+            "eq_sentry_gauntlets_gloves_armor_slot_base",
+            "eq_sentry_leggings_leggings_armor_slot_base",
+            "eq_sentry_sabatons_boots_armor_slot_base",
+            "eq_hunter_quiver_helper_offhand_base"
+        };
+
+        private static async Task EnsureEquipmentAsync(FolkIdleDbContext db, long playerId)
+        {
+            var mainCharacter = await db.CharacterRecords
+                .Where(c => c.PlayerId == playerId)
+                .OrderBy(c => c.SlotIndex)
+                .FirstOrDefaultAsync();
+
+            if (mainCharacter == null) return;
+
+            // Already kitted out - leave it alone so a session's own equip
+            // changes survive a re-seed.
+            bool alreadyEquipped = mainCharacter.EquippedWeaponId.HasValue
+                || mainCharacter.EquippedChestId.HasValue
+                || mainCharacter.EquippedOffhandId.HasValue;
+            if (alreadyEquipped) return;
+
+            foreach (string baseItemId in FixtureLoadout)
+            {
+                // Skip anything not in items.json rather than creating an
+                // instance the registry cannot resolve - that would be an item
+                // with no stats, which is exactly the failure this fixture
+                // exists to make visible.
+                if (!ContentRegistry.TryGetItemDefinitionByBaseId(baseItemId, out _))
+                {
+                    Console.WriteLine($"Dev seed: skipping unknown BaseItemId '{baseItemId}'.");
+                    continue;
+                }
+
+                var instance = new EquipmentInstance
+                {
+                    PlayerId = playerId,
+                    BaseItemId = baseItemId,
+                    QualityTier = 3,
+                    AffixPayload = "{}"
+                };
+                db.EquipmentInstances.Add(instance);
+                await db.SaveChangesAsync();
+
+                int slotIndex = EquipmentSlotEngine.ResolveSlotIndex(baseItemId);
+                switch (slotIndex)
+                {
+                    case EquipmentSlotEngine.SlotWeapon: mainCharacter.EquippedWeaponId = instance.Id; break;
+                    case EquipmentSlotEngine.SlotHelmet: mainCharacter.EquippedHelmetId = instance.Id; break;
+                    case EquipmentSlotEngine.SlotChest: mainCharacter.EquippedChestId = instance.Id; break;
+                    case EquipmentSlotEngine.SlotGloves: mainCharacter.EquippedGlovesId = instance.Id; break;
+                    case EquipmentSlotEngine.SlotLeggings: mainCharacter.EquippedLeggingsId = instance.Id; break;
+                    case EquipmentSlotEngine.SlotBoots: mainCharacter.EquippedBootsId = instance.Id; break;
+                    case EquipmentSlotEngine.SlotOffhand: mainCharacter.EquippedOffhandId = instance.Id; break;
+                    default:
+                        Console.WriteLine($"Dev seed: '{baseItemId}' resolved to no equip slot.");
+                        break;
+                }
+            }
+
+            await db.SaveChangesAsync();
+        }
+    }
+}

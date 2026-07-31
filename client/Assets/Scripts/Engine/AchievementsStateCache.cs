@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text.Json;
 using System.Threading.Tasks;
 using UnityEngine.Networking;
@@ -24,7 +24,10 @@ namespace FolkIdle.Client.Engine
     // slow timer (see its own MetadataRefreshIntervalSeconds).
     public static class AchievementsStateCache
     {
-        public static string ServerBaseUrl = "http://localhost:8080";
+        // Modul: server config. Reads the one configured server address rather
+        // than owning a copy - see ClientServerConfig for why twenty-five
+        // independent copies of this made the client localhost-only.
+        public static string ServerBaseUrl => FolkIdle.Client.Network.ClientServerConfig.BaseUrl;
 
         public static event Action<AchievementsStateData> OnAchievementsStateUpdated;
 

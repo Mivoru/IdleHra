@@ -505,10 +505,10 @@ namespace FolkIdle.Server.Domain.Shared
             CharacterRecord? mainCharacterRecord = characters.Count > 0 ? characters[0] : null;
 
             EquippedAffixTotals equippedAffixTotals = default;
-            int equippedWeaponSetId = 0, equippedArmorSetId = 0, equippedLeggingsSetId = 0;
+            EquippedSetIds equippedSetIds = default;
             if (mainCharacterRecord != null)
             {
-                (equippedAffixTotals, equippedWeaponSetId, equippedArmorSetId, equippedLeggingsSetId) =
+                (equippedAffixTotals, equippedSetIds) =
                     await EquipmentSlotEngine.ComputeEquippedTotalsAsync(dbContext, mainCharacterRecord);
             }
 
@@ -772,9 +772,7 @@ namespace FolkIdle.Server.Domain.Shared
                 ActiveFoodBuffId = player.ActiveFoodExpiresEpoch > nowEpochSeconds ? player.ActiveFoodId : 0,
                 FoodBuffDurationMs = player.ActiveFoodExpiresEpoch > nowEpochSeconds ? (int)Math.Min(int.MaxValue, (player.ActiveFoodExpiresEpoch - nowEpochSeconds) * 1000L) : 0,
                 CachedAffixTotals = equippedAffixTotals,
-                CachedWeaponSetId = equippedWeaponSetId,
-                CachedArmorSetId = equippedArmorSetId,
-                CachedLeggingsSetId = equippedLeggingsSetId,
+                CachedSetIds = equippedSetIds,
                 LogicEpochCounter = player.LogicEpochCounter,
                 BankedChronoSeconds = accountChrono.BankedChronoSeconds,
                 IsChronoAccelerating = chronoAccelerationActive,
@@ -947,13 +945,11 @@ namespace FolkIdle.Server.Domain.Shared
             slot.EquippedBootsId = character.EquippedBootsId ?? 0L;
             slot.EquippedOffhandId = character.EquippedOffhandId ?? 0L;
 
-            (EquippedAffixTotals totals, int weaponSetId, int armorSetId, int leggingsSetId) =
+            (EquippedAffixTotals totals, EquippedSetIds setIds) =
                 await EquipmentSlotEngine.ComputeEquippedTotalsAsync(dbContext, character);
 
             slot.CachedAffixTotals = totals;
-            slot.CachedWeaponSetId = weaponSetId;
-            slot.CachedArmorSetId = armorSetId;
-            slot.CachedLeggingsSetId = leggingsSetId;
+            slot.CachedSetIds = setIds;
 
             return slot;
         }

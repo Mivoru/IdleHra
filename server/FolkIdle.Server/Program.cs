@@ -49,6 +49,40 @@ if (args.Length > 0 && args[0] == "--migrate")
     return;
 }
 
+// Modul: dev fixture. Provisions a known, fully-kitted account for driving the
+// client by hand or through the MCP Play Mode harness - three characters, all
+// seven equip slots filled, Town Hall 5, materials and gold.
+//
+// Double-guarded on purpose, because unlike --migrate and --lift-quarantine
+// this one WRITES A KNOWN PASSWORD: it needs the explicit flag AND
+// FOLKIDLE_ALLOW_DEV_SEED in the environment. A production host that somehow
+// received the flag still refuses. See DevFixtureSeeder.
+if (args.Length > 0 && args[0] == "--seed-dev")
+{
+    if (Environment.GetEnvironmentVariable("FOLKIDLE_ALLOW_DEV_SEED") != "1")
+    {
+        Console.WriteLine("--seed-dev refused: set FOLKIDLE_ALLOW_DEV_SEED=1 to confirm this is not a production database.");
+        return;
+    }
+
+    // The fixture references real BaseItemIds and material ids, so the content
+    // registry has to be live before it runs.
+    ContentRegistry.Initialize();
+
+    var seedConnectionString = Environment.GetEnvironmentVariable("FOLKIDLE_DB_CONN") ?? ConnectionStringDefaults.LocalDevelopmentFallback;
+    var seedOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+        .UseNpgsql(seedConnectionString)
+        .Options;
+
+    await using (var seedContext = new FolkIdleDbContext(seedOptions))
+    {
+        await seedContext.Database.MigrateAsync();
+        long seededPlayerId = await DevFixtureSeeder.SeedAsync(seedContext);
+        Console.WriteLine($"Dev fixture ready. PlayerId {seededPlayerId}, login {DevFixtureSeeder.Email} / {DevFixtureSeeder.Password}");
+    }
+    return;
+}
+
 // Modul: anti-cheat false positive. An operator path to lift a quarantine.
 //
 // AntiCheatTelemetryEngine sets Quarantine_Active on a heuristic verdict, and

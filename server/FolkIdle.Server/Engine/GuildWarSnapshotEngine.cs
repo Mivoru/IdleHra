@@ -217,9 +217,15 @@ namespace FolkIdle.Server.Engine
             // this snapshot has always meant - it just used to be stored on the
             // player row. A member with no character contributes bare stats.
             EquippedAffixTotals equippedAffixTotals = default;
+            // Modul: seven-slot set bonuses. The set ids used to be discarded
+            // here, so a member's guild-war strength ignored set bonuses
+            // entirely and disagreed with the same character's real combat
+            // stats. Now that they travel as one value there is no reason not
+            // to pass them through.
+            EquippedSetIds equippedSetIds = default;
             if (character != null)
             {
-                (equippedAffixTotals, _, _, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(db, character);
+                (equippedAffixTotals, equippedSetIds) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(db, character);
             }
 
             CombatStats stats = StatsCalculator.Calculate(
@@ -228,7 +234,7 @@ namespace FolkIdle.Server.Engine
                 activeAgePhase, completedAreaFlags, activeRaceId,
                 humanMastery, vilaMastery, draugrMastery,
                 equippedAffixTotals,
-                isEpicMutation, locusSpeed, locusCrit);
+                isEpicMutation, locusSpeed, locusCrit, equippedSetIds);
 
             int lineageIndex = player.SelectedLineageId;
             if (lineageIndex < 0 || lineageIndex >= ProgressionEngine.Lineages.Length) lineageIndex = 0;

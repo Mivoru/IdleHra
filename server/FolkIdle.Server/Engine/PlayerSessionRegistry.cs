@@ -72,9 +72,10 @@ namespace FolkIdle.Server.Engine
         // Modul: Architecture Overhaul, Part 4. Per-slot SetId, so the
         // tick thread can cache them onto TickStatePayload for
         // SetBonusEngine.Evaluate at recalculation time.
-        public int EquippedWeaponSetId;
-        public int EquippedArmorSetId;
-        public int EquippedLeggingsSetId;
+        //
+        // Modul: seven-slot set bonuses. Was three loose ints that collapsed
+        // four armour slots into one - see EquippedSetIds.
+        public EquippedSetIds SetIds;
     }
 
     // Modul: GuildManagementEngine's create/join/leave/kick handlers run on

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
@@ -23,7 +23,9 @@ namespace FolkIdle.Client.UI
     // guild create/join are already HTTP rather than wire commands).
     public class UiGuildApplicationsPanel : MonoBehaviour
     {
-        public string ServerBaseUrl = "http://localhost:8080";
+        // Modul: server config. Reads the one configured server address rather
+        // than owning a copy - see ClientServerConfig.
+        public string ServerBaseUrl => FolkIdle.Client.Network.ClientServerConfig.BaseUrl;
 
         [Header("Guild Applications HUD")]
         public Transform RowContainer;

@@ -8,7 +8,17 @@ commit messages/PRs).
 
 ## Client UI Hook Points
 
-### 1. Region-Completion Codex UI (no client visualization exists)
+### 1. Region-Completion Codex UI - ALREADY SHIPPED, item was stale
+
+Resolved, and had been for some time before anyone noticed this entry was
+out of date. `client/Assets/Scripts/Engine/CodexRegionsCache.cs` and
+`client/Assets/Scripts/UI/UiCodexRegionsWindow.cs` both exist, and
+`UiCombatLocationPanel` consumes the same cache. The description below,
+which asserts "there is no client-side reference to `RegionCompletion`
+anywhere under `client/Assets/Scripts/`", is simply no longer true.
+Original description follows.
+
+
 
 The server fully implements per-region completion tracking
 (`PlayerRegionCompletions` table, `TickStatePayload.CompletedAreaFlags`,
@@ -102,17 +112,50 @@ than as one mass move.
 
 ## Cleanup
 
-### 6. Remove or gate dead engine duplicates
+### 6. Dead engine duplicates - ENTIRELY STALE, do not act on this
 
-- `Engine/SeasonEraEngine.cs`: orphaned duplicate of
-  `Engine/SeasonalRotationEngine.cs` with a different, stale Legacy Shard
-  formula. Confirm it is truly unreferenced, then delete it (do not merge
-  it - `SeasonalRotationEngine` is the live, correct implementation).
-- `Engine/PlayerChronoRegistry.cs` and the unused second
-  `ChronoBufferEngine.ProcessLoginHandshake` overload: zero callers,
-  candidates for deletion after a final reference check.
+All three claims below were re-checked and every one is wrong. Kept only so
+nobody rediscovers the entry and "fixes" something that is either gone or
+load-bearing.
 
-### 7. Fix ForgeSplicingEngine's dead BaseItemId parse
+- `Engine/SeasonEraEngine.cs` **does not exist**. It was deleted in commit
+  `39d204c`; there is no file matching `*SeasonEra*` anywhere in `server/`.
+- `PlayerChronoRegistry` is **not dead code and is not an engine**. It is
+  `Models.PlayerChronoRegistry`, a live EF entity: all 22 references are
+  migration snapshots of the DbContext model. Removing it would need a real
+  migration, not a file deletion.
+- `ChronoBufferEngine.ProcessLoginHandshake` has **exactly one overload and
+  exactly one caller** (`StateCheckpointManager` line ~1022). There is no
+  unused second overload.
+
+The general lesson, which is worth more than the entry: a "delete this dead
+code" item is only as good as the day it was written. Re-verify before acting.
+
+### 6b. UpgradeTool is a real feature with no UI
+
+`CommandType.UpgradeTool = 21` is validated and implemented server-side, and
+tool tier is a substantial gathering multiplier - `GatheringToolEngine`
+grants +10% through +200% speed across its ten tool tiers, and the measured
+pacing model assumes tier 0. The only sender,
+`WebSocketClient.SendUpgradeCommandZeroAlloc`, is reachable exclusively from
+`UiCommandDispatcher.DispatchUpgradeTool`, which nothing wires up. So no
+player can ever upgrade a tool.
+
+Do NOT delete the sender - it is the wiring for a real feature, not dead
+code. It needs a button, most naturally on the Village or Workshop screen
+next to the other infrastructure upgrades.
+
+`SendPingCommandZeroAlloc` is the other unreferenced sender; that one is
+network diagnostics and is plausibly meant to be manual-only.
+
+### 7. ForgeSplicingEngine BaseItemId parse - SHIPPED, item retained for reference
+
+Resolved. The method already resolved the same definition a few lines above
+for the tier cap, so the affix roll now reuses that value instead of doing a
+second lookup that could never succeed. Note the file has moved to
+`Domain/Economy/ForgeSplicingEngine.cs`. Original description follows.
+
+
 
 `Engine/ForgeSplicingEngine.cs` line ~165 does
 `int.TryParse(targetItem.BaseItemId, out int baseId)`, but `BaseItemId` is
@@ -151,7 +194,20 @@ thresholds, drop weights, and the 103 recipes' material costs were authored to
 be reachable, not to be paced. Nobody has played a full progression curve end
 to end, so the shape of the mid-game is unmeasured.
 
-### 9. Set bonuses still collapse four armour slots into one set id
+### 9. Set bonuses collapsing four armour slots - SHIPPED, item retained for reference
+
+Resolved, and it was worse than this entry described. `SetBonusEngine` awards
+its tiers by counting how many worn pieces share a SetId, and it was always
+sized for seven slots (`MaxTrackedSlots` is 8). Its caller handed it three.
+So a player in a full matching set produced a count of at most 3 and **no
+4-piece bonus in the game was reachable by anyone, ever** - not a fidelity
+loss, a whole tier of content that could not fire. Fixed by replacing the
+weapon/armour/leggings triple with `EquippedSetIds` (all seven slots, one
+value type, same bundling rationale as `EquippedAffixTotals`).
+`Test_SetBonusEngine_FourMatchingArmourPiecesReachTheFourPieceTier` pins it.
+This also folded in item 17. Original description follows.
+
+
 
 `EquipmentSlotEngine.ComputeEquippedTotalsAsync` returns a weapon/armour/
 leggings SetId triple because that is what `SetBonusEngine.Evaluate` consumes.
@@ -179,7 +235,16 @@ that the six-slot pass closed. Adding it is one entry in
 
 ## Client UI Hook Points (continued)
 
-### 11. Per-character equipment loadouts for slots 2 and 3
+### 11. Per-character loadouts for slots 2 and 3 - SHIPPED, item retained for reference
+
+Resolved. The blocker was not the UI: `/api/v1/player/inventory` reported an
+account-wide `IsEquipped` flag, which can say an item is worn but never by
+WHICH character, so the Roster had no way to attribute gear even though it
+had the data in front of it. The snapshot now carries
+`EquippedByCharacterSlot` (-1 when carried) and `UiRosterPanel` renders a
+"Gear (n/7): ..." line per slot. Original description follows.
+
+
 
 The wire carries the ACTIVE character's six equipment slots only. Gear changes
 on a button press rather than at 10Hz, so the other characters' loadouts are
@@ -224,7 +289,16 @@ folder starts them playing with no code change and no scene rebuild. See that
 folder's README for the names and their trigger sites. Nothing registers a
 music track either, so `AmbientAudioEngine`'s crossfade has no bed to fade.
 
-### 16. Test_MarketEscrow_ConcurrentListings is a load-dependent flake
+### 16. Test_MarketEscrow_ConcurrentListings - SHIPPED, item retained for reference
+
+Resolved by fixing the engine rather than the test, exactly as this entry
+proposed: `MarketEscrowEngine.ListItemAsync` now runs under a retrying
+execution strategy built on `RetryingDbContextOptions`, with the command
+result and log line hoisted out of the retried delegate into a
+`ListAttemptOutcome` so a retry cannot enqueue a duplicate result. Original
+description follows.
+
+
 
 `Test_MarketEscrow_ConcurrentListings_ExactReplicaNoSerializationDrift` fires
 six concurrent `Serializable` listings for one player and asserts all six
@@ -237,13 +311,36 @@ as a regression. The real fix is to wrap `MarketEscrowEngine.ListItemAsync` in
 a retrying execution strategy the way the equip path already is (commit
 `7a95764`), rather than weakening the test.
 
-### 17. Set bonuses and the offhand slot
+### 17. Set bonuses and the offhand slot - SHIPPED, folded into item 9
 
-`SetBonusEngine.Evaluate` still consumes a weapon/armour/leggings SetId triple,
-so the four armour pieces collapse onto one armour set id (item 9) and the new
-seventh slot contributes its base stats and affixes but no set id at all.
+Resolved together with item 9: `EquippedSetIds` carries all seven slots, so
+the offhand now contributes its set id alongside its base stats and affixes.
 
-### 14. Play Mode harness needs a seeded fixture account
+### 18. Client server address is now configurable - SHIPPED, new item for the record
+
+Twenty-five classes each declared their own
+`ServerBaseUrl = "http://localhost:8080"` and **nothing anywhere ever assigned
+a different value to any of them**. Only `UiLoginWindow`'s copy affected
+authentication and the WebSocket handshake, so a build could authenticate
+against a real server and then have all twenty-two HTTP caches - inventory,
+market, guild roster, mailbox, leaderboard, codex - silently query localhost
+and come back empty. In practice the client only ever worked on the machine
+running the server, which made every non-shipped item above untestable
+anywhere else.
+
+Now one `ClientServerConfig.BaseUrl`, resolved from `FOLKIDLE_SERVER_URL`,
+then a saved preference, then the localhost default, with `UiLoginWindow` as
+the sole writer.
+
+### 14. Play Mode harness needs a seeded fixture account - SHIPPED, item retained for reference
+
+Resolved. `--seed-dev` provisions a repeatable account (three characters, all
+seven equip slots filled, Town Hall 5, materials, gold) and is double-guarded:
+the flag alone is not enough, `FOLKIDLE_ALLOW_DEV_SEED=1` must also be set,
+because unlike the other operator flags this one writes a known password. See
+`DevFixtureSeeder`. Original description follows.
+
+
 
 Verifying multi-character, equipment and progression behaviour in Play Mode
 currently requires hand-seeding the database (Town Hall level, roster,

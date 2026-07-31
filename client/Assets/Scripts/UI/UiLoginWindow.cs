@@ -31,7 +31,18 @@ namespace FolkIdle.Client.UI
         private const string DeviceIdPrefsKey = "folkidle_device_id";
 
         public WebSocketClient NetworkClient;
-        public string ServerBaseUrl = "http://localhost:8080";
+
+        // Modul: server config. This is the WRITER. Every other class that
+        // needs the server address now reads ClientServerConfig.BaseUrl; this
+        // field stays a real inspector-settable value because it is the one
+        // place a human ever supplies it, and Awake pushes it into the shared
+        // config so the twenty-two HTTP caches cannot disagree with the host
+        // this window authenticates against.
+        //
+        // Left blank in the inspector, the shared config's own resolution
+        // (FOLKIDLE_SERVER_URL, then the saved preference, then localhost)
+        // wins - see ClientServerConfig.
+        public string ServerBaseUrl = string.Empty;
 
         [Header("Blocking Panel")]
         public GameObject BlockingPanelRoot;
@@ -118,6 +129,15 @@ namespace FolkIdle.Client.UI
 
         private void Awake()
         {
+            // Modul: server config. Publish before anything else runs. The HTTP
+            // caches resolve their URL lazily on first request, but the
+            // WebSocket URL is derived during login, and a cache that fired
+            // early must not read a stale default.
+            if (!string.IsNullOrWhiteSpace(ServerBaseUrl))
+            {
+                ClientServerConfig.SetBaseUrl(ServerBaseUrl);
+            }
+
             if (BlockingPanelRoot != null) BlockingPanelRoot.SetActive(true);
 
             if (ShowLoginButton != null) ShowLoginButton.onClick.AddListener(HandleShowLoginClicked);
@@ -519,7 +539,11 @@ namespace FolkIdle.Client.UI
         private UnityWebRequest BuildJsonPostRequest(string path, string json)
         {
             byte[] bodyBytes = Encoding.UTF8.GetBytes(json);
-            UnityWebRequest request = new UnityWebRequest($"{ServerBaseUrl}{path}", "POST");
+            // Modul: server config. Reads the resolved value, not this
+            // component's own field - the field is an optional inspector
+            // override that is blank by default and is published to
+            // ClientServerConfig in Awake.
+            UnityWebRequest request = new UnityWebRequest($"{ClientServerConfig.BaseUrl}{path}", "POST");
             request.uploadHandler = new UploadHandlerRaw(bodyBytes);
             request.downloadHandler = new DownloadHandlerBuffer();
             request.SetRequestHeader("Content-Type", "application/json");
@@ -534,7 +558,7 @@ namespace FolkIdle.Client.UI
 
             if (NetworkClient != null)
             {
-                NetworkClient.ServerUrl = DeriveWebSocketUrl(ServerBaseUrl);
+                NetworkClient.ServerUrl = DeriveWebSocketUrl(ClientServerConfig.BaseUrl);
                 NetworkClient.Connect();
             }
         }

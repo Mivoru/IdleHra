@@ -154,9 +154,17 @@ namespace FolkIdle.Server.Domain.Economy
                 // Transcendent maximum, blocking affix-upgrading past the
                 // band limit server-side.
                 int effectiveTierCap = MaxQualityTier;
+                // Modul: forge region tier. Resolved ONCE here and reused by the
+                // affix roll further down, which used to do its own broken
+                // int.TryParse(BaseItemId) lookup. Two lookups of the same thing
+                // in one method, one of which could never succeed, is how the
+                // tier cap ended up correct while the affix scaling silently
+                // was not.
+                int targetRegionTier = 1;
                 if (ContentRegistry.TryGetItemDefinitionByBaseId(targetItem.BaseItemId, out var targetDefinition))
                 {
-                    effectiveTierCap = Math.Min(MaxQualityTier, CraftingEngine.GetMaxForgeTierForRegion(targetDefinition.RegionTier));
+                    targetRegionTier = targetDefinition.RegionTier;
+                    effectiveTierCap = Math.Min(MaxQualityTier, CraftingEngine.GetMaxForgeTierForRegion(targetRegionTier));
                 }
                 if (currentTier >= effectiveTierCap)
                 {
@@ -211,14 +219,19 @@ namespace FolkIdle.Server.Domain.Economy
                     JsonObject affixPayload = ParseAffixPayload(targetItem.AffixPayload);
                     string newAffixType = AffixEngine.GetRandomAffixKey();
                     int targetValue = 0;
-                    int regionTier = 1;
-                    if (int.TryParse(targetItem.BaseItemId, out int baseId) && baseId > 0)
-                    {
-                        if (ContentRegistry.ItemDefinitions.Length > baseId - 1)
-                        {
-                            regionTier = ContentRegistry.ItemDefinitions[baseId - 1].RegionTier;
-                        }
-                    }
+                    // Modul: forge region tier. This used to be
+                    // int.TryParse(targetItem.BaseItemId, ...), but BaseItemId
+                    // is ALWAYS a descriptive slug ("gilded_sabatons_boots_
+                    // armor_slot_base"), never a numeric string - every writer
+                    // of it goes through ContentRegistry.GetItemBaseId. So the
+                    // parse could never succeed, the lookup was dead code, and
+                    // every forge fusion in the game rolled its affix at region
+                    // tier 1 regardless of what was actually on the anvil.
+                    //
+                    // Seventh instance in this codebase of a numeric id being
+                    // used directly as a game-object identity. The value is now
+                    // the one already resolved for the tier cap above.
+                    int regionTier = targetRegionTier;
 
                     if (newAffixType == "flat_hp") targetValue = AffixEngine.CalculateFlatHp(regionTier, currentTier + 1);
                     else if (newAffixType == "flat_armor") targetValue = AffixEngine.CalculateFlatArmor(regionTier, currentTier + 1);

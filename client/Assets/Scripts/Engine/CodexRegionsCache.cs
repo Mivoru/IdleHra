@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -26,7 +26,10 @@ namespace FolkIdle.Client.Engine
     // UI must call RequestSnapshot() explicitly (e.g. on panel open).
     public static class CodexRegionsCache
     {
-        public static string ServerBaseUrl = "http://localhost:8080";
+        // Modul: server config. Reads the one configured server address rather
+        // than owning a copy - see ClientServerConfig for why twenty-five
+        // independent copies of this made the client localhost-only.
+        public static string ServerBaseUrl => FolkIdle.Client.Network.ClientServerConfig.BaseUrl;
 
         public static IReadOnlyList<RegionProgressData> Regions => _regions;
 

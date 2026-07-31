@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -41,7 +41,9 @@ namespace FolkIdle.Client.Engine
     // call RequestSnapshot() explicitly (e.g. on open); this never polls on its own.
     public class EquipmentInventoryCache : MonoBehaviour
     {
-        public string ServerBaseUrl = "http://localhost:8080";
+        // Modul: server config. Reads the one configured server address rather
+        // than owning a copy - see ClientServerConfig.
+        public string ServerBaseUrl => FolkIdle.Client.Network.ClientServerConfig.BaseUrl;
 
         public IReadOnlyList<ForgeEquipmentInstanceData> OwnedEquipment => _ownedEquipment;
         public IReadOnlyList<ForgeRecipeData> Recipes => _recipes;

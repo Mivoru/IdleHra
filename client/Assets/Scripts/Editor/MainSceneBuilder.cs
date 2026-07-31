@@ -4256,6 +4256,14 @@ namespace FolkIdle.Client.Editor
                 SetFixedLayoutHeight(status.gameObject, 24f);
                 panel.SlotStatusTexts[slotIndex] = status;
 
+                // Modul: roster loadouts. What this character is wearing, from
+                // the REST inventory snapshot - the 10Hz wire only carries the
+                // active character's gear.
+                TextMeshProUGUI gear = CreateText(contentAreaRect, "Slot" + slotIndex + "GearText", string.Empty, 13f, TextAlignmentOptions.MidlineLeft);
+                gear.color = new Color(1f, 1f, 1f, 0.65f);
+                SetFixedLayoutHeight(gear.gameObject, 22f);
+                panel.SlotGearTexts[slotIndex] = gear;
+
                 GameObject rowObject = new GameObject("Slot" + slotIndex + "Row", typeof(RectTransform));
                 rowObject.transform.SetParent(contentAreaRect, false);
                 SetFixedLayoutHeight(rowObject, 44f);

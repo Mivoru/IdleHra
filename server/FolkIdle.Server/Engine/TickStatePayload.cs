@@ -327,9 +327,9 @@ namespace FolkIdle.Server.Engine
         // equip/unequip and at login - fed into SetBonusEngine.Evaluate at
         // stat-recalculation time via a stack-allocated span, never a
         // heap array.
-        public int CachedWeaponSetId;
-        public int CachedArmorSetId;
-        public int CachedLeggingsSetId;
+        // Modul: seven-slot set bonuses. Was three loose ints that collapsed
+        // four armour slots into one - see EquippedSetIds.
+        public EquippedSetIds CachedSetIds;
 
         // Cached passive Codex multipliers. Recomputed only on login or Codex
         // level-up (see CodexEngine.RecalculateAndSyncMultipliersAsync); read as

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -13,6 +13,12 @@ namespace FolkIdle.Client.Engine
         public string BaseItemId { get; set; } = string.Empty;
         public int QualityTier { get; set; }
         public bool IsEquipped { get; set; }
+
+        // Modul: roster loadouts. Which character slot (0-2) wears this, or -1
+        // if carried. The 10Hz wire carries only the ACTIVE character's gear,
+        // so this snapshot is the only way the Roster screen can show what
+        // characters 2 and 3 are wearing.
+        public int EquippedByCharacterSlot { get; set; } = -1;
 
         // Modul: Affix System Unification. GDD affix id -> magnitude. Rendered
         // through ClientAffixRegistry.Describe, which knows which ids are
@@ -49,7 +55,10 @@ namespace FolkIdle.Client.Engine
     // otherwise - explicit RequestSnapshot(), never polls on its own.
     public static class PlayerInventoryCache
     {
-        public static string ServerBaseUrl = "http://localhost:8080";
+        // Modul: server config. Reads the one configured server address rather
+        // than owning a copy - see ClientServerConfig for why twenty-five
+        // independent copies of this made the client localhost-only.
+        public static string ServerBaseUrl => FolkIdle.Client.Network.ClientServerConfig.BaseUrl;
 
         public static event Action OnInventoryUpdated;
 

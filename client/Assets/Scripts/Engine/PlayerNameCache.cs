@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.Json;
@@ -29,7 +29,10 @@ namespace FolkIdle.Client.Engine
     // request, not fifteen.
     public static class PlayerNameCache
     {
-        public static string ServerBaseUrl = "http://localhost:8080";
+        // Modul: server config. Reads the one configured server address rather
+        // than owning a copy - see ClientServerConfig for why twenty-five
+        // independent copies of this made the client localhost-only.
+        public static string ServerBaseUrl => FolkIdle.Client.Network.ClientServerConfig.BaseUrl;
 
         private const int MaxIdsPerRequest = 64;
 

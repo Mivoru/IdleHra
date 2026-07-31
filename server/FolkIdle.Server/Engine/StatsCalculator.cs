@@ -74,7 +74,7 @@ namespace FolkIdle.Server.Engine
 
     public static class StatsCalculator
     {
-        public static CombatStats Calculate(int str, int dex, int con, int lck, int activeOffensivePotionId = 0, int activeDefensivePotionId = 0, int activeAgePhase = 1, int completedAreaFlags = 0, int activeRaceId = 0, int humanMastery = 0, int vilaMastery = 0, int draugrMastery = 0, EquippedAffixTotals equippedAffixTotals = default, bool isEpicMutation = false, int locusSpeed = 0, int locusCrit = 0, int equippedWeaponSetId = 0, int equippedArmorSetId = 0, int equippedLeggingsSetId = 0)
+        public static CombatStats Calculate(int str, int dex, int con, int lck, int activeOffensivePotionId = 0, int activeDefensivePotionId = 0, int activeAgePhase = 1, int completedAreaFlags = 0, int activeRaceId = 0, int humanMastery = 0, int vilaMastery = 0, int draugrMastery = 0, EquippedAffixTotals equippedAffixTotals = default, bool isEpicMutation = false, int locusSpeed = 0, int locusCrit = 0, EquippedSetIds equippedSetIds = default)
         {
             var stats = new CombatStats();
 
@@ -256,8 +256,14 @@ namespace FolkIdle.Server.Engine
             // etc. above) but before the age-phase falloff below, so set
             // bonuses are subject to the same age scaling as every other
             // external stat source, matching equipped gear's own placement.
-            Span<int> equippedSetIds = stackalloc int[3] { equippedWeaponSetId, equippedArmorSetId, equippedLeggingsSetId };
-            SetBonusEngine.SetBonusResult setBonus = SetBonusEngine.Evaluate(equippedSetIds);
+            // Modul: seven-slot set bonuses. Was a 3-element span built from
+            // weapon/armour/leggings, which meant SetBonusEngine - whose whole
+            // job is counting how many worn pieces share a set - could never
+            // count past 3 and no 4-piece tier was reachable. Still stackalloc,
+            // still zero allocation on the 10Hz path.
+            Span<int> setIdSpan = stackalloc int[EquippedSetIds.SlotCount];
+            equippedSetIds.CopyTo(setIdSpan);
+            SetBonusEngine.SetBonusResult setBonus = SetBonusEngine.Evaluate(setIdSpan);
             stats.FlatMeleeDamage += setBonus.FlatAttackPowerBonus;
             stats.FlatRangedDamage += setBonus.FlatAttackPowerBonus;
             if (setBonus.TotalArmorMultiplierPct > 0f)

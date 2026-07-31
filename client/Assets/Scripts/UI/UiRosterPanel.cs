@@ -44,6 +44,12 @@ namespace FolkIdle.Client.UI
         public Button[] SlotStopButtons = new Button[SlotCount];
         public GameObject[] SlotLockedOverlays = new GameObject[SlotCount];
 
+        // Modul: roster loadouts. What each character is wearing. Fed by
+        // PlayerInventoryCache rather than the 10Hz wire, which deliberately
+        // carries only the ACTIVE character's gear - so before this the Roster
+        // could say what a character was doing but not what it was holding.
+        public TMP_Text[] SlotGearTexts = new TMP_Text[SlotCount];
+
         [Header("Status")]
         public TMP_Text SummaryText;
 
@@ -77,6 +83,11 @@ namespace FolkIdle.Client.UI
         private void OnEnable()
         {
             BuildActivityOptionsOnce();
+            // Modul: roster loadouts. Gear comes from the REST snapshot, not
+            // the tick stream, so it has to be pulled when the screen opens.
+            // Cheap and on-demand - the cache no-ops a request already in
+            // flight.
+            PlayerInventoryCache.RequestSnapshot();
             Refresh();
         }
 
@@ -220,6 +231,11 @@ namespace FolkIdle.Client.UI
                     SlotStatusTexts[slotIndex].text = DescribeSlot(unlocked, occupied, activityId, haltReason);
                 }
 
+                if (SlotGearTexts != null && slotIndex < SlotGearTexts.Length && SlotGearTexts[slotIndex] != null)
+                {
+                    SlotGearTexts[slotIndex].text = DescribeSlotGear(slotIndex, unlocked, occupied);
+                }
+
                 bool interactable = unlocked && occupied;
                 if (SlotActivityDropdowns != null && slotIndex < SlotActivityDropdowns.Length && SlotActivityDropdowns[slotIndex] != null)
                 {
@@ -246,6 +262,45 @@ namespace FolkIdle.Client.UI
                 }
                 SummaryText.text = _labelBuilder.ToString();
             }
+        }
+
+        // Modul: roster loadouts. One line naming what this character wears.
+        //
+        // Reads PlayerInventoryCache, whose entries now carry
+        // EquippedByCharacterSlot - the account-wide "IsEquipped" flag alone
+        // could say an item was worn but never by WHICH character, which is
+        // exactly the question this row asks.
+        private string DescribeSlotGear(int slotIndex, bool unlocked, bool occupied)
+        {
+            if (!unlocked || !occupied) return string.Empty;
+
+            var equipment = PlayerInventoryCache.Equipment;
+            if (equipment == null || equipment.Count == 0) return "Gear: (loading)";
+
+            _labelBuilder.Clear();
+            int wornCount = 0;
+
+            for (int i = 0; i < equipment.Count; i++)
+            {
+                var item = equipment[i];
+                if (item.EquippedByCharacterSlot != slotIndex) continue;
+
+                if (wornCount > 0) _labelBuilder.Append(", ");
+                _labelBuilder.Append(ClientContentRegistry.GetItemDisplayName(item.BaseItemId));
+                wornCount++;
+            }
+
+            if (wornCount == 0) return "Gear: nothing equipped.";
+
+            // Prefixed with the count so a partially-kitted character reads as
+            // deliberately partial rather than as a truncated list.
+            string wornNames = _labelBuilder.ToString();
+            _labelBuilder.Clear();
+            _labelBuilder.Append("Gear (");
+            _labelBuilder.Append(wornCount);
+            _labelBuilder.Append("/7): ");
+            _labelBuilder.Append(wornNames);
+            return _labelBuilder.ToString();
         }
 
         private string DescribeSlot(bool unlocked, bool occupied, long activityId, byte haltReason)
