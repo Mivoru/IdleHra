@@ -32,6 +32,12 @@ namespace FolkIdle.Server.Domain.Economy
         private readonly PlayerSessionRegistry? _playerRegistry;
         private const long BaseGoldCost = 1000;
 
+        // Modul: Luck made real. Ceiling on the Luck-adjusted fusion success
+        // roll. The forge is meant to stay a gamble at high tiers - without a
+        // cap, enough Luck would eventually turn it into a guaranteed upgrade
+        // and remove the tier sink the gold curve above exists to create.
+        private const double MaxForgeSuccessProbability = 0.95;
+
         // Modul: GAME_DESIGN_SPEC.md/GDD's 14-tier geometric forge formula
         // requires exactly 3^13 = 1,594,323 Normal item bases to synthesize
         // one clean Transcendent-tier item, implying a hard ceiling at
@@ -205,6 +211,33 @@ namespace FolkIdle.Server.Domain.Economy
                 {
                     baseProbability += 0.05;
                 }
+
+                // Modul: Luck made real. StatsCalculator has always documented
+                // Luck as granting "+0.05% Forge Success" and has always
+                // computed CombatStats.ForgeSuccessPct - and nothing anywhere
+                // read it, so every point a player put into Luck for forge
+                // safety did exactly nothing. This is the only roll in the game
+                // that stat was ever meant to touch.
+                //
+                // Routed through StatsCalculator rather than multiplying
+                // BaseLuck here, so the coefficient stays defined in one place;
+                // the other arguments keep their defaults because none of them
+                // affect ForgeSuccessPct.
+                var forgePlayer = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => p.Id == playerId)
+                    .Select(p => new { p.BaseLuck })
+                    .SingleOrDefaultAsync();
+
+                if (forgePlayer != null)
+                {
+                    // Additive on the probability, expressed in percentage
+                    // points, and clamped so Luck can improve the odds without
+                    // ever making a fusion a certainty.
+                    float forgeSuccessPct = StatsCalculator.Calculate(0, 0, 0, forgePlayer.BaseLuck).ForgeSuccessPct;
+                    baseProbability = Math.Min(MaxForgeSuccessProbability, baseProbability + (forgeSuccessPct / 100.0));
+                }
+
                 double roll = Random.Shared.NextDouble();
 
                 if (roll <= baseProbability)

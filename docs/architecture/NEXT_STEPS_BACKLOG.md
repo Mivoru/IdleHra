@@ -131,7 +131,17 @@ load-bearing.
 The general lesson, which is worth more than the entry: a "delete this dead
 code" item is only as good as the day it was written. Re-verify before acting.
 
-### 6b. UpgradeTool is a real feature with no UI
+### 6b. UpgradeTool - SHIPPED, item retained for reference
+
+Resolved. The Village screen has a TOOLS section with an Upgrade Tools
+button and a line naming the current tier and its gathering speed bonus,
+which was previously invisible - the bonus is applied inside
+`GatheringToolEngine`'s tick threshold with nothing on screen attributing
+it. Note the server's `ExecuteUpgradeToolAsync` takes only a player id:
+there is a single account-wide tool tier, not a tier per tool type.
+Original description follows.
+
+
 
 `CommandType.UpgradeTool = 21` is validated and implemented server-side, and
 tool tier is a substantial gathering multiplier - `GatheringToolEngine`
@@ -332,7 +342,26 @@ Now one `ClientServerConfig.BaseUrl`, resolved from `FOLKIDLE_SERVER_URL`,
 then a saved preference, then the localhost default, with `UiLoginWindow` as
 the sole writer.
 
-### 19. The entire 4-piece set tier does nothing (URGENT - newly reachable)
+### 19. 4-piece set tier - SHIPPED, except one part deliberately not done
+
+Resolved for four of the five effects, all now consumed by the live combat
+tick: `FireDamageMultiplierPct` and `BurnApplicationActive` in the outgoing
+damage step, `ThornsReflectionActive` in the incoming one, and
+`CooldownReductionActive` at the skill-cast site. Burn is a deterministic
+fraction of the hit that applied it rather than a timed DoT - this combat
+loop has no per-target effect timers, and adding a scheduler for one effect
+would be a far larger change than the effect is worth.
+
+**`SetCcImmunityActive` remains deliberately unconsumed.** This game models
+no player-facing crowd control at all: the only status effects that exist
+(Vulnerable, Chilled, and the new Burning) are applied BY the player TO the
+monster, so there is nothing to be immune to. Implementing it would mean
+inventing a CC system, which is a design decision rather than a wiring fix.
+Either add player-facing CC and connect it, or give that slot in the Eternal
+Dreadnought 4-piece an effect that does something. Original description
+follows.
+
+
 
 `SetBonusEngine` produces five 4-piece effects and **not one is consumed by
 anything**: `ThornsReflectionActive`, `CooldownReductionActive`,
@@ -351,7 +380,17 @@ Either implement them in the combat tick or stop advertising them. Do not
 leave a tier that visibly qualifies and silently pays nothing - that is
 worse than not having it.
 
-### 20. Two attribute bonuses are advertised but never applied
+### 20. Luck and Constitution bonuses - SHIPPED, item retained for reference
+
+Resolved. `ForgeSuccessPct` is now added to the fusion roll in
+`ForgeSplicingEngine`, clamped at 95 percent so enough Luck can improve the
+odds without turning the forge into a guaranteed upgrade and removing the
+tier sink. `OutOfCombatHpRegen` is applied by an idle-only regen tick, gated
+on `ActiveActivityId == 0` on purpose: regenerating mid-fight would undercut
+the auto-eat larder, which is the intended sustain mechanic and the thing
+every halt reason is built around. Original description follows.
+
+
 
 `StatsCalculator` documents Luck as granting "+0.05% Forge Success" and
 Constitution as granting "+0.1 Out-of-Combat HP Regen/sec", computes both
@@ -363,7 +402,30 @@ So a player investing in Luck for forge safety, or Constitution for
 regeneration, gets nothing for it. Same class of defect as item 19 and as
 the item-base-power bug: the value is computed correctly and thrown away.
 
-### 21. Broadcast sends a full packet to every player every tick
+### 21. Broadcast dirty-checking - SHIPPED, but NOT as this entry proposed
+
+Resolved - and the approach suggested below would have been a real bug.
+
+This entry proposed gating on `TickStatePayload.IsDirty` and clearing it
+after dispatch. `IsDirty` is owned by `StateCheckpointManager`, which uses
+it to decide whether to persist to Postgres/Redis and resets it when it
+does. Consuming it in the broadcast would have silently skipped saves -
+trading data loss for bandwidth.
+
+Instead each packet is compared against the last one actually sent to that
+player, excluding `TicksSinceLastFlush` (which increments every tick, so
+including it would make every packet differ and the check would save
+nothing). Cache entries are dropped through `RemoveActivePlayer`, the
+existing single choke point for session cleanup.
+
+Verified live: an idle session receives no packets at all, while a session
+in combat receives one per tick.
+`Test_Broadcast_SuppressesIdenticalPacketsButStillKeepalives` pins both
+halves, including the 10-tick keepalive - which is the half that cannot be
+observed from the client and would starve interpolation if it silently
+stopped firing. Original description follows.
+
+
 
 `SimulationEngine`'s broadcast loop iterates all of `_activePlayers` and
 calls `SendToPlayer` unconditionally - there is no check against
@@ -382,7 +444,16 @@ interpolates between two snapshots (`VisualSyncProxy`), so the keepalive
 interval has to stay short enough not to make motion stutter - measure
 before picking it.
 
-### 22. The hottest per-player tables are indexed on the wrong column
+### 22. Hot-table indexes - SHIPPED, item retained for reference
+
+Resolved by migration `AddHotTableCompositeIndexes`. Verified against a real
+database that the planner now uses `IX_CommodityRecords_PlayerId_ItemId`
+with BOTH columns as the index condition for the gold lookup, rather than
+scanning the whole `ItemId` index. The pre-existing single-column indexes
+were kept: they still serve the market's cross-player searches, which
+genuinely do lead with the item. Original description follows.
+
+
 
 `FolkIdleDbContext` adds exactly three indexes for this family, and each is
 on the low-selectivity column rather than the one every query filters by:
@@ -411,7 +482,18 @@ many tables with a composite `(PlayerId, X)` key - codex entries, race
 masteries, region completions, village infrastructure, quests - are already
 covered by their primary key index.
 
-### 23. EvictVillager is implemented with no UI
+### 23. EvictVillager - SHIPPED, item retained for reference
+
+Resolved, and the real blocker was not the missing button. The client was
+never told WHICH village slots are occupied - the wire carries a population
+count and nothing else - so there was no way to name a target even with a
+button present. The player statistics snapshot now carries the villager
+slots, and the Village screen renders a roster with a per-villager Evict
+that sends the resident's real `SlotIndex` rather than its row position
+(slots go sparse after an eviction, so sending the row would evict the wrong
+resident). Original description follows.
+
+
 
 `CommandType.EvictVillager` is validated and implemented server-side and
 has no client reference outside the dead `UiCommandDispatcher`. Same shape

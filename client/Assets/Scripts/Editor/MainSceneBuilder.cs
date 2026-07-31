@@ -3341,7 +3341,83 @@ namespace FolkIdle.Client.Editor
             window.TownHallRow = townHallRow;
             window.CraftingWorkshopRow = craftingWorkshopRow;
 
+            // Modul: tool upgrade. CommandType.UpgradeTool was implemented and
+            // validated server-side with no way to reach it - the only sender
+            // lived in the dead UiCommandDispatcher. Tool tier is worth +10%
+            // through +200% gathering speed, so this was a whole progression
+            // axis no player could touch.
+            //
+            // Built as its own section rather than an eleventh building row:
+            // tools are not a VillageInfrastructure building, they have no
+            // level ceiling tied to the Town Hall, and BuildVillageBuildingRow
+            // is explicitly documented as a fixed roster of real building ids.
+            CreateGroupSectionLabel(content, "TOOLS");
+
+            TextMeshProUGUI toolTierText = CreateText(content, "ToolTierText",
+                "Tools: none. Upgrading grants a permanent gathering speed bonus.", 14f, TextAlignmentOptions.MidlineLeft);
+            toolTierText.color = new Color(1f, 1f, 1f, 0.75f);
+            SetFixedLayoutHeight(toolTierText.gameObject, 26f);
+
+            Button upgradeToolButton = CreateButton(content, "UpgradeToolButton", "Upgrade Tools", out TextMeshProUGUI _);
+            SetFixedLayoutHeight(upgradeToolButton.gameObject, 44f);
+
+            window.UpgradeToolButton = upgradeToolButton;
+            window.ToolTierText = toolTierText;
+
+            // Modul: villager roster. CommandType.EvictVillager was fully
+            // implemented server-side and unreachable, because the client was
+            // never told WHICH village slots are occupied - only how many. The
+            // rows start hidden and are revealed by
+            // UiVillageOverviewWindow.HandleStatisticsUpdated as the snapshot
+            // reports real residents.
+            CreateGroupSectionLabel(content, "VILLAGERS");
+
+            window.VillagerSlotTexts = new TextMeshProUGUI[UiVillageOverviewWindow.VillagerRowCount];
+            window.VillagerEvictButtons = new Button[UiVillageOverviewWindow.VillagerRowCount];
+            window.VillagerRowRoots = new GameObject[UiVillageOverviewWindow.VillagerRowCount];
+
+            for (int villagerRowIndex = 0; villagerRowIndex < UiVillageOverviewWindow.VillagerRowCount; villagerRowIndex++)
+            {
+                (GameObject villagerRowObject, TextMeshProUGUI villagerLabel, Button evictButton) =
+                    BuildVillagerRosterRow(content, "VillagerRow" + villagerRowIndex);
+
+                window.VillagerRowRoots[villagerRowIndex] = villagerRowObject;
+                window.VillagerSlotTexts[villagerRowIndex] = villagerLabel;
+                window.VillagerEvictButtons[villagerRowIndex] = evictButton;
+
+                villagerRowObject.SetActive(false);
+            }
+
             return windowObject;
+        }
+
+        // Modul: villager roster. One villager line: a description on the left
+        // and an Evict button on the right. Fixed rows rather than a pooled
+        // list, matching this window's building-row convention - the population
+        // cap is small and a fixed roster cannot collapse to zero height the
+        // way a pooled list under a mis-set layout group can.
+        private static (GameObject row, TextMeshProUGUI label, Button evictButton) BuildVillagerRosterRow(Transform parent, string rowName)
+        {
+            GameObject rowObject = new GameObject(rowName, typeof(RectTransform));
+            rowObject.transform.SetParent(parent, false);
+            SetFixedLayoutHeight(rowObject, 40f);
+
+            HorizontalLayoutGroup rowLayout = rowObject.AddComponent<HorizontalLayoutGroup>();
+            rowLayout.spacing = 8f;
+            rowLayout.childControlWidth = true;
+            rowLayout.childForceExpandWidth = true;
+            rowLayout.childControlHeight = true;
+            rowLayout.childForceExpandHeight = true;
+
+            TextMeshProUGUI label = CreateText(rowObject.transform, "VillagerLabel", "Villager", 14f, TextAlignmentOptions.MidlineLeft);
+            LayoutElement labelLayout = label.gameObject.AddComponent<LayoutElement>();
+            labelLayout.flexibleWidth = 3f;
+
+            Button evictButton = CreateButton(rowObject.transform, "EvictButton", "Evict", out TextMeshProUGUI _);
+            LayoutElement buttonLayout = evictButton.gameObject.AddComponent<LayoutElement>();
+            buttonLayout.flexibleWidth = 1f;
+
+            return (rowObject, label, evictButton);
         }
 
         // Fixed, uniquely-named building row - not pooled, matching

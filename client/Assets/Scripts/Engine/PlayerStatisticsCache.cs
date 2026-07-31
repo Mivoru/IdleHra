@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -28,6 +29,19 @@ namespace FolkIdle.Client.Engine
         public long TotalItemsCrafted { get; set; }
         public long TotalDeaths { get; set; }
         public long TotalPlayTimeSeconds { get; set; }
+
+        // Modul: villager roster. Which village slots are occupied. The wire
+        // carries a population COUNT but never which slots those are, so
+        // CommandType.EvictVillager had no way to name a target and was
+        // unreachable in practice.
+        public List<VillagerSlotData> Villagers { get; set; } = new List<VillagerSlotData>();
+    }
+
+    public class VillagerSlotData
+    {
+        public int SlotIndex { get; set; }
+        public bool IsActive { get; set; }
+        public double EfficiencyModifier { get; set; }
     }
 
     // Modul: UI audit follow-up. On-demand snapshot cache for the player's

@@ -61,10 +61,19 @@ namespace FolkIdle.Server.Engine
         public float EquipmentCritDamagePct { get; set; }
 
         // Modul: Architecture Overhaul, Part 4. Equipment set bonuses -
-        // see SetBonusEngine. FireDamageMultiplierPct/ThornsReflection/
-        // CooldownReduction/BurnApplication/CcImmunity are 4-piece
-        // mechanics computed here but not yet consumed by the live combat
-        // tick, matching CritMitigationPct's own precedent above.
+        // see SetBonusEngine.
+        //
+        // Modul: set bonuses made real. Four of these are now consumed by the
+        // live combat tick: FireDamageMultiplierPct and BurnApplicationActive
+        // in the outgoing damage step, ThornsReflectionActive in the incoming
+        // one, and CooldownReductionActive at the skill-cast site.
+        //
+        // SetCcImmunityActive remains unconsumed, and deliberately so: this
+        // game models no player-facing crowd control at all. The only status
+        // effects that exist (Vulnerable, Chilled, and now Burning) are applied
+        // BY the player TO the monster - there is nothing to be immune to.
+        // Implementing it would mean inventing a CC system, which is a design
+        // decision rather than a wiring fix. See NEXT_STEPS_BACKLOG item 19.
         public float SetFireDamageMultiplierPct { get; set; }
         public bool SetThornsReflectionActive { get; set; }
         public bool SetCooldownReductionActive { get; set; }

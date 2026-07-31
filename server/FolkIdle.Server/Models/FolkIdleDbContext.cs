@@ -333,6 +333,39 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<CommodityRecord>()
                 .HasIndex(c => c.ItemId);
+
+            // Modul: hot-path indexes. The three indexes above are all on the
+            // low-selectivity column, and every real query on these tables
+            // filters by PlayerId FIRST.
+            //
+            // CommodityRecords is the clearest case: indexed on ItemId, where
+            // ItemId = 'gold' matches exactly one row per player in the game.
+            // Reading a single player's gold balance - which happens on every
+            // login, kill reward, craft and purchase - had to walk that entire
+            // index. CharacterRecords had no secondary index at all despite
+            // being read on every login, equip and inventory snapshot.
+            //
+            // These are additive: the BaseItemId/ItemId indexes above still
+            // serve the market's cross-player searches, which genuinely do lead
+            // with the item.
+            //
+            // Tables keyed on a composite (PlayerId, X) primary key - codex
+            // entries, race masteries, region completions, quests, village
+            // infrastructure - already get this for free from the PK index and
+            // are deliberately not repeated here.
+            modelBuilder.Entity<CommodityRecord>()
+                .HasIndex(c => new { c.PlayerId, c.ItemId });
+
+            modelBuilder.Entity<EquipmentInstance>()
+                .HasIndex(e => e.PlayerId);
+
+            modelBuilder.Entity<CharacterRecord>()
+                .HasIndex(c => c.PlayerId);
+
+            // Ordered to match the order-book's own lookup: narrow by item,
+            // then quality, then open/filled status.
+            modelBuilder.Entity<MarketOrderRecord>()
+                .HasIndex(m => new { m.BaseItemId, m.QualityTier, m.Status });
         }
     }
 }

@@ -1,5 +1,7 @@
 using System;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 using FolkIdle.Client.Engine;
 using FolkIdle.Client.Network;
 
@@ -57,6 +59,34 @@ namespace FolkIdle.Client.UI
         public UiVillageBuildingRow TownHallRow;
         public UiVillageBuildingRow CraftingWorkshopRow;
 
+        // Modul: tool upgrade. CommandType.UpgradeTool has been implemented and
+        // validated server-side the whole time, and tool tier is one of the
+        // larger multipliers in the game - GatheringToolEngine grants +10%
+        // through +200% gathering speed across its ten tiers. Its only sender
+        // was reachable solely from the dead UiCommandDispatcher, so no player
+        // could ever upgrade a tool.
+        public Button UpgradeToolButton;
+        public TextMeshProUGUI ToolTierText;
+
+        // Modul: villager roster. CommandType.EvictVillager was implemented and
+        // validated server-side, and the client had no way to name a target:
+        // the wire carries a population COUNT but never which slots are
+        // occupied, so there was nothing to evict FROM. Slots are now read from
+        // the player statistics snapshot.
+        //
+        // A fixed row set rather than a pooled list, matching this window's own
+        // convention for the building rows - population is capped small by
+        // VillageManagementEngine.CalculatePopulationCapacity, so a fixed
+        // roster is simpler and cannot collapse the way a pooled list can.
+        public const int VillagerRowCount = 12;
+        public TextMeshProUGUI[] VillagerSlotTexts = new TextMeshProUGUI[VillagerRowCount];
+        public Button[] VillagerEvictButtons = new Button[VillagerRowCount];
+        public GameObject[] VillagerRowRoots = new GameObject[VillagerRowCount];
+
+        // Modul: villager roster. Maps each on-screen row to the real
+        // VillageResidents.SlotIndex it is showing; -1 means the row is unused.
+        private readonly int[] _villagerSlotIndices = new int[VillagerRowCount];
+
         private UiVillageBuildingRow[] _rows;
         private int _lastPendingBuildingId = -1;
         private long _pendingUpgradeTotalDurationSeconds;
@@ -77,6 +107,91 @@ namespace FolkIdle.Client.UI
                     _rows[i].Bind(HandleUpgradeClicked);
                 }
             }
+
+            if (UpgradeToolButton != null)
+            {
+                UpgradeToolButton.onClick.AddListener(HandleUpgradeToolClicked);
+            }
+
+            for (int rowIndex = 0; rowIndex < VillagerRowCount; rowIndex++)
+            {
+                if (VillagerEvictButtons == null || rowIndex >= VillagerEvictButtons.Length) break;
+                if (VillagerEvictButtons[rowIndex] == null) continue;
+
+                int capturedRow = rowIndex;
+                VillagerEvictButtons[rowIndex].onClick.AddListener(() => HandleEvictClicked(capturedRow));
+            }
+        }
+
+        // Modul: villager roster. Evicts by the villager's real SlotIndex, not
+        // by the row it happens to occupy on screen - slots can be sparse once
+        // anyone has been evicted, and sending the row index would evict the
+        // wrong resident.
+        private void HandleEvictClicked(int rowIndex)
+        {
+            if (NetworkClient == null) return;
+            if (rowIndex < 0 || rowIndex >= _villagerSlotIndices.Length) return;
+
+            int slotIndex = _villagerSlotIndices[rowIndex];
+            if (slotIndex < 0) return;
+
+            NetworkClient.SendVillagerEvictionCommandZeroAlloc((uint)slotIndex);
+
+            // The eviction resolves off the tick thread against the database,
+            // so re-pull rather than predicting the new roster locally.
+            PlayerStatisticsCache.RequestSnapshot();
+        }
+
+        private void HandleStatisticsUpdated(PlayerStatisticsData data)
+        {
+            int occupiedCount = 0;
+
+            if (data != null && data.Villagers != null)
+            {
+                for (int i = 0; i < data.Villagers.Count && occupiedCount < VillagerRowCount; i++)
+                {
+                    VillagerSlotData villager = data.Villagers[i];
+
+                    _villagerSlotIndices[occupiedCount] = villager.SlotIndex;
+
+                    if (VillagerRowRoots != null && occupiedCount < VillagerRowRoots.Length && VillagerRowRoots[occupiedCount] != null)
+                    {
+                        VillagerRowRoots[occupiedCount].SetActive(true);
+                    }
+
+                    if (VillagerSlotTexts != null && occupiedCount < VillagerSlotTexts.Length && VillagerSlotTexts[occupiedCount] != null)
+                    {
+                        VillagerSlotTexts[occupiedCount].text =
+                            "Villager " + (villager.SlotIndex + 1)
+                            + (villager.IsActive ? " - working" : " - idle")
+                            + " (efficiency " + villager.EfficiencyModifier.ToString("F2") + ")";
+                    }
+
+                    occupiedCount++;
+                }
+            }
+
+            // Hide the unused rows and clear their slot mapping, so a stale
+            // index can never be sent from a row that is no longer shown.
+            for (int rowIndex = occupiedCount; rowIndex < VillagerRowCount; rowIndex++)
+            {
+                _villagerSlotIndices[rowIndex] = -1;
+                if (VillagerRowRoots != null && rowIndex < VillagerRowRoots.Length && VillagerRowRoots[rowIndex] != null)
+                {
+                    VillagerRowRoots[rowIndex].SetActive(false);
+                }
+            }
+        }
+
+        // Modul: tool upgrade. CommandType.UpgradeTool = 21. The server's
+        // ExecuteUpgradeToolAsync takes only a player id - there is a single
+        // account-wide tool tier that accelerates whichever gathering
+        // profession is active, not a tier per tool - so the target id is 0.
+        private void HandleUpgradeToolClicked()
+        {
+            if (NetworkClient == null) return;
+
+            NetworkClient.SendUpgradeCommandZeroAlloc((byte)CommandType.UpgradeTool, 0);
         }
 
         private void OnEnable()
@@ -85,6 +200,12 @@ namespace FolkIdle.Client.UI
             {
                 SyncProxy.OnVillageStateUpdated += RefreshRows;
             }
+
+            // Modul: villager roster. Slots come from the REST snapshot, not
+            // the tick stream, so they have to be pulled when the screen opens.
+            PlayerStatisticsCache.OnStatisticsUpdated += HandleStatisticsUpdated;
+            PlayerStatisticsCache.RequestSnapshot();
+
             RefreshRows();
         }
 
@@ -94,6 +215,8 @@ namespace FolkIdle.Client.UI
             {
                 SyncProxy.OnVillageStateUpdated -= RefreshRows;
             }
+
+            PlayerStatisticsCache.OnStatisticsUpdated -= HandleStatisticsUpdated;
         }
 
         // Interpolates the ticking countdown/fill bar client-side between
@@ -121,9 +244,44 @@ namespace FolkIdle.Client.UI
             }
         }
 
+        // Modul: tool upgrade. Display-only mirror of
+        // GatheringToolEngine.GetToolSpeedBonusPct. The server stays
+        // authoritative - this exists so the button can say what the next tier
+        // is worth without inventing a second formula, and must be updated if
+        // that table ever changes.
+        private static int GetToolSpeedBonusPct(int toolTier)
+        {
+            switch (toolTier)
+            {
+                case 1: return 10;
+                case 2: return 20;
+                case 3: return 25;
+                case 4: return 40;
+                case 5: return 50;
+                case 6: return 75;
+                case 7: return 85;
+                case 8: return 120;
+                case 9: return 150;
+                case 10: return 200;
+                default: return 0;
+            }
+        }
+
         private void RefreshRows()
         {
             if (SyncProxy == null) return;
+
+            // Modul: tool upgrade. Names the current tier and what it is worth,
+            // because the speed bonus is otherwise invisible - it is applied
+            // inside GatheringToolEngine's tick threshold with nothing on
+            // screen attributing the change to the tool.
+            if (ToolTierText != null)
+            {
+                int toolTier = SyncProxy.VisualCurrentToolTier;
+                ToolTierText.text = toolTier <= 0
+                    ? "Tools: none. Upgrading grants a permanent gathering speed bonus."
+                    : "Tools: tier " + toolTier + " (+" + GetToolSpeedBonusPct(toolTier) + "% gathering speed)";
+            }
 
             SetRowLevel(ForgeRow, SyncProxy.VisualForgeLevel);
             SetRowLevel(InnRow, SyncProxy.VisualInnLevel);

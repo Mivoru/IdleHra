@@ -1093,6 +1093,14 @@ namespace FolkIdle.Server.Network
             public int AvailableSkillPoints { get; set; }
             public string GuildName { get; set; } = string.Empty;
 
+            // Modul: villager roster. Who actually lives in the village.
+            // Carried on the statistics snapshot rather than as its own route
+            // because it is small, read-only, and read at exactly the same
+            // moment - and because CommandType.EvictVillager was implemented
+            // and validated server-side with no way for a client to know WHICH
+            // slots are occupied, so the command was unreachable in practice.
+            public List<VillagerSlotResponse> Villagers { get; set; } = new List<VillagerSlotResponse>();
+
             // Modul: lifetime statistics.
             public long TotalKills { get; set; }
             public long BossesSlain { get; set; }
@@ -1105,6 +1113,14 @@ namespace FolkIdle.Server.Network
         // region across monster ids 91-115. A static array rather than an
         // inline literal so the "every fifth id from 95" rule is stated once.
         private static readonly int[] CanonicalBossMonsterIds = { 95, 100, 105, 110, 115 };
+
+        // Modul: villager roster. One occupied village slot.
+        private sealed class VillagerSlotResponse
+        {
+            public int SlotIndex { get; set; }
+            public bool IsActive { get; set; }
+            public double EfficiencyModifier { get; set; }
+        }
 
         private sealed class GuildCreateResponse
         {
@@ -3086,6 +3102,20 @@ namespace FolkIdle.Server.Network
                     .Where(e => e.PlayerId == playerId && CanonicalBossMonsterIds.Contains(e.MonsterId))
                     .SumAsync(e => (long)e.KillCount);
 
+                // Modul: villager roster. Ordered by slot so the client can
+                // render a stable list that does not reshuffle between polls.
+                var villagerRows = await db.VillageResidents
+                    .AsNoTracking()
+                    .Where(v => v.PlayerId == playerId)
+                    .OrderBy(v => v.SlotIndex)
+                    .Select(v => new VillagerSlotResponse
+                    {
+                        SlotIndex = v.SlotIndex,
+                        IsActive = v.IsActive,
+                        EfficiencyModifier = v.EfficiencyModifier
+                    })
+                    .ToListAsync();
+
                 await transaction.CommitAsync();
 
                 var response = new PlayerStatisticsResponse
@@ -3111,7 +3141,8 @@ namespace FolkIdle.Server.Network
                     BossesSlain = bossesSlain,
                     TotalItemsCrafted = player.TotalItemsCrafted,
                     TotalDeaths = player.TotalDeaths,
-                    TotalPlayTimeSeconds = player.TotalPlayTimeSeconds
+                    TotalPlayTimeSeconds = player.TotalPlayTimeSeconds,
+                    Villagers = villagerRows
                 };
 
                 context.Response.StatusCode = 200;

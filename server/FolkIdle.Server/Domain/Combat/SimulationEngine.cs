@@ -38,6 +38,20 @@ namespace FolkIdle.Server.Domain.Combat
     public class SimulationEngine
     {
         private const int TickIntervalMs = 100; // 10 Hz
+
+        // Modul: set bonuses made real. Magnitudes for the 4-piece effects,
+        // which had none because nothing consumed them. Chosen to be worth
+        // chasing without eclipsing the flat 2-piece core: a burn adding a
+        // quarter of the hit that applied it, and thorns returning a fifth of
+        // what actually landed. Both are deliberately fractions of a real
+        // number already computed on the same path, so neither needs its own
+        // scaling curve to stay relevant across the five regions.
+        private const float BurnDamageFraction = 0.25f;
+        private const float ThornsReflectionFraction = 0.20f;
+
+        // The Eternal Dreadnought 4-piece's cooldown reduction. Applied to the
+        // cooldown stamped after a successful cast.
+        private const float SetCooldownReductionFraction = 0.20f;
         private const double TickIntervalSeconds = TickIntervalMs / 1000.0;
         private readonly LootTableEngine _lootEngine;
         private readonly StateCheckpointManager _checkpointManager;
@@ -473,6 +487,15 @@ namespace FolkIdle.Server.Domain.Combat
             _activePlayers.Remove(playerId);
             _liveSessionContexts.TryRemove(playerId, out _);
             _playerRegistry.UnregisterPlayer(playerId);
+
+            // Modul: broadcast dirty-checking. Folded in here for exactly the
+            // reason this method exists: the last-sent-packet cache is one more
+            // per-session structure that would otherwise grow with total
+            // historical logins rather than concurrent players. Dropping it
+            // also guarantees a reconnecting client gets a full snapshot
+            // immediately instead of being compared against state it no longer
+            // holds.
+            RemoveBroadcastCacheEntry(playerId);
 
             // Modul: anti-cheat false positive. Command-timing profiles used to
             // outlive the session that produced them, so the ring buffer mixed
@@ -2614,7 +2637,20 @@ namespace FolkIdle.Server.Domain.Combat
                             if (isUnlocked && offCooldown && hasMana)
                             {
                                 currentPayload.CurrentMana -= castDef.ManaCost;
-                                ActiveSkillEngine.SetSkillCooldownExpiresAtMs(ref currentPayload, castSkillId, nowMs + castDef.CooldownMs);
+
+                                // Modul: set bonuses made real. The Eternal
+                                // Dreadnought 4-piece shortens the cooldown it
+                                // stamps here. Derived from the payload's
+                                // cached set ids rather than a duplicate flag,
+                                // so CachedSetIds stays the single source of
+                                // truth for what the character is wearing.
+                                int effectiveCooldownMs = castDef.CooldownMs;
+                                if (SetBonusEngine.Evaluate(in currentPayload.CachedSetIds).CooldownReductionActive)
+                                {
+                                    effectiveCooldownMs = (int)(effectiveCooldownMs * (1f - SetCooldownReductionFraction));
+                                }
+
+                                ActiveSkillEngine.SetSkillCooldownExpiresAtMs(ref currentPayload, castSkillId, nowMs + effectiveCooldownMs);
                                 float statusSynergyMultiplier = ActiveSkillEngine.ApplyStatusSynergy(ref currentPayload, castSkillId);
                                 currentPayload.PendingSkillDamageMultiplier = (castDef.DamageMultiplierPct / 100f) * statusSynergyMultiplier;
                                 currentPayload.LastSkillCastSuccess = 1;
@@ -3046,7 +3082,30 @@ namespace FolkIdle.Server.Domain.Combat
                             // socket send state well before chat's own,
                             // correctly-serialized broadcast ever got a
                             // chance to run cleanly.
-                            _networkSystem.SendToPlayer(currentPayload.PlayerId, ref packet);
+                            // Modul: broadcast dirty-checking. This used to send
+                            // unconditionally to every connected player, ten
+                            // times a second - 695 bytes x 10Hz is ~7 KB/s per
+                            // player whether or not a single field changed, or
+                            // about 55 Mbps at a thousand concurrent players
+                            // sitting idle.
+                            //
+                            // Deliberately NOT gated on TickStatePayload.IsDirty
+                            // despite that flag existing: IsDirty is owned by
+                            // StateCheckpointManager, which uses it to decide
+                            // whether to persist to Postgres/Redis and RESETS it
+                            // when it does. Consuming it here would silently
+                            // skip saves - real data loss to save bandwidth.
+                            //
+                            // Instead the packet is compared against the last
+                            // one actually sent to this player. That is correct
+                            // by construction (if the bytes match, the client
+                            // already has this exact state) and needs no new
+                            // flag threaded through the hundred sites that
+                            // mutate the payload.
+                            if (ShouldSendStateUpdate(currentPayload.PlayerId, ref packet))
+                            {
+                                _networkSystem.SendToPlayer(currentPayload.PlayerId, ref packet);
+                            }
                             currentPayload.NetworkDiagnosticsToken = 0; // Clear it so it only echoes once
 
                             long packetSerializationElapsedMicroseconds = (Stopwatch.GetTimestamp() - packetSerializationStartTimestamp) * 1_000_000L / Stopwatch.Frequency;
@@ -4227,6 +4286,101 @@ namespace FolkIdle.Server.Domain.Combat
             return false;
         }
 
+        // Modul: broadcast dirty-checking. The last StateUpdatePacket actually
+        // sent to each player, plus the tick it went out on.
+        //
+        // A struct value in a Dictionary, so a lookup and a store are copies
+        // rather than heap allocations - this runs once per player per tick.
+        // Entries are dropped in RemoveBroadcastCacheEntry when a session ends,
+        // so the dictionary tracks connected players rather than growing
+        // forever.
+        private struct LastBroadcast
+        {
+            public Network.StateUpdatePacket Packet;
+            public long TickIndex;
+        }
+
+        private readonly Dictionary<long, LastBroadcast> _lastBroadcastByPlayer = new Dictionary<long, LastBroadcast>();
+
+        // Forced resend interval. The client interpolates between the two most
+        // recent snapshots (see VisualSyncProxy), so it must never go long
+        // without one or motion stutters and the save-trust indicator starves.
+        // One second at 10Hz keeps a fully idle player at ~695 B/s instead of
+        // ~7 KB/s - a 90 percent reduction - while staying well inside the
+        // interpolation window.
+        private const int BroadcastKeepaliveTicks = 10;
+
+        // True when this packet differs from the last one sent to this player,
+        // or when the keepalive interval has elapsed. Records what it approves
+        // so the next call compares against it.
+        private bool ShouldSendStateUpdate(long playerId, ref Network.StateUpdatePacket packet)
+        {
+            long currentTick = _metrics.TotalTicksProcessed;
+
+            if (_lastBroadcastByPlayer.TryGetValue(playerId, out LastBroadcast previous))
+            {
+                if (!ShouldDispatchStateUpdate(ref packet, ref previous.Packet, currentTick - previous.TickIndex))
+                {
+                    return false;
+                }
+            }
+
+            _lastBroadcastByPlayer[playerId] = new LastBroadcast { Packet = packet, TickIndex = currentTick };
+            return true;
+        }
+
+        // The decision itself, as a pure function of the two packets and how
+        // long it has been since the last send.
+        //
+        // Split out from the dictionary bookkeeping above so it can be tested
+        // directly: the keepalive in particular is the kind of thing that
+        // silently does not fire and is invisible until a client's
+        // interpolation buffer starves in production.
+        public static bool ShouldDispatchStateUpdate(
+            ref Network.StateUpdatePacket current,
+            ref Network.StateUpdatePacket lastSent,
+            long ticksSinceLastSend)
+        {
+            if (ticksSinceLastSend >= BroadcastKeepaliveTicks)
+            {
+                return true;
+            }
+
+            return !StateUpdatePacketsAreEquivalent(ref current, ref lastSent);
+        }
+
+        // Byte-compares two packets while ignoring TicksSinceLastFlush.
+        //
+        // That field increments EVERY tick by design (it is the client's
+        // data-staleness indicator), so a naive comparison would find every
+        // packet different and the dirty check would save nothing at all. It is
+        // normalised to zero on both sides rather than excluded by offset,
+        // because an offset-based skip would silently break the moment anyone
+        // reorders the struct.
+        internal static bool StateUpdatePacketsAreEquivalent(ref Network.StateUpdatePacket left, ref Network.StateUpdatePacket right)
+        {
+            Network.StateUpdatePacket normalizedLeft = left;
+            Network.StateUpdatePacket normalizedRight = right;
+            normalizedLeft.TicksSinceLastFlush = 0;
+            normalizedRight.TicksSinceLastFlush = 0;
+
+            ReadOnlySpan<byte> leftBytes = System.Runtime.InteropServices.MemoryMarshal.AsBytes(
+                System.Runtime.InteropServices.MemoryMarshal.CreateReadOnlySpan(ref normalizedLeft, 1));
+            ReadOnlySpan<byte> rightBytes = System.Runtime.InteropServices.MemoryMarshal.AsBytes(
+                System.Runtime.InteropServices.MemoryMarshal.CreateReadOnlySpan(ref normalizedRight, 1));
+
+            return leftBytes.SequenceEqual(rightBytes);
+        }
+
+        // Modul: broadcast dirty-checking. Called when a session ends so the
+        // cache does not accumulate an entry per player who has ever connected.
+        // Also forces the next packet after a reconnect to be a full send,
+        // which is correct: a returning client has no snapshot at all.
+        public void RemoveBroadcastCacheEntry(long playerId)
+        {
+            _lastBroadcastByPlayer.Remove(playerId);
+        }
+
         // Modul: multi-slot simulation. Everything in the old ProcessSubTick
         // prologue that belongs to the ACCOUNT rather than to one character:
         // character aging, mana regeneration, potion/food buff countdowns, and
@@ -4264,6 +4418,43 @@ namespace FolkIdle.Server.Domain.Combat
             {
                 payload.CurrentMana += ActiveSkillEngine.ManaRegenPerTick;
                 if (payload.CurrentMana > maxMana) payload.CurrentMana = maxMana;
+            }
+
+            // Modul: Constitution made real. StatsCalculator has always
+            // documented CON as granting "+0.1 Out-of-Combat HP Regen/sec" and
+            // has always computed CombatStats.OutOfCombatHpRegen - and nothing
+            // anywhere read it, so the stat was pure decoration.
+            //
+            // OUT of combat means exactly that: only while no activity is
+            // running. Regenerating during a fight would silently undercut the
+            // auto-eat larder, which is the intended sustain mechanic and the
+            // thing every halt reason is built around.
+            //
+            // PlayerHp is milli-HP, and the stat is HP per SECOND at 10Hz, so
+            // one tick is stat * 1000 / 10 = stat * 100.
+            if (payload.ActiveActivityId == 0)
+            {
+                // Resolved the same way the combat path does it - slot 1 is the
+                // active character, and its race is the low byte of the
+                // genetic vector.
+                int regenAgePhase = payload.Slot1_AgePhase;
+                int regenRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
+
+                CombatStats regenStats = StatsCalculator.Calculate(
+                    payload.STR, payload.DEX, payload.CON, payload.LCK,
+                    payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId,
+                    regenAgePhase, payload.CompletedAreaFlags,
+                    regenRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel,
+                    payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation,
+                    payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
+
+                int regenMaxHp = 100000 + (regenStats.MaxHp * 1000);
+                if (payload.PlayerHp < regenMaxHp && regenStats.OutOfCombatHpRegen > 0f)
+                {
+                    payload.PlayerHp += (int)(regenStats.OutOfCombatHpRegen * 100f);
+                    if (payload.PlayerHp > regenMaxHp) payload.PlayerHp = regenMaxHp;
+                    payload.IsDirty = true;
+                }
             }
 
             // Modul: Deferred Part 5 Implementation, Part 2. The inline
@@ -4749,7 +4940,36 @@ namespace FolkIdle.Server.Domain.Combat
                     int netDamage = Math.Max(1000, rawDamage - (defenderArmor * 1000));
                     netDamage = (int)(netDamage * payload.CachedCodexDamageMultiplier);
 
+                    // Modul: set bonuses made real. The Chiming Steel 4-piece
+                    // grants FireDamageMultiplierPct, which reached CombatStats
+                    // and was read by nothing - so the whole 4-piece tier paid
+                    // out zero. Applied here rather than to rawDamage so it
+                    // scales the post-armour figure, matching how the codex
+                    // multiplier directly above it behaves.
+                    if (combatStats.SetFireDamageMultiplierPct > 0f)
+                    {
+                        netDamage = (int)(netDamage * (1f + (combatStats.SetFireDamageMultiplierPct / 100f)));
+                    }
+
                     payload.CurrentMonsterHp -= netDamage;
+
+                    // Modul: set bonuses made real. Burn - the Chiming Steel
+                    // 4-piece's damage-over-time half. Deliberately modelled as
+                    // a deterministic fraction of the hit that applied it,
+                    // resolved immediately, rather than as a timed DoT: this
+                    // combat loop has no per-target effect timers, and adding a
+                    // scheduler for one effect would be a much larger change
+                    // than the effect is worth. The player-visible result is
+                    // the same - a matching 4-piece set burns for extra damage.
+                    if (combatStats.SetBurnApplicationActive)
+                    {
+                        int burnDamage = (int)(netDamage * BurnDamageFraction);
+                        if (burnDamage > 0)
+                        {
+                            payload.CurrentMonsterHp -= burnDamage;
+                            payload.TargetStatusEffectBitmask |= ActiveSkillEngine.StatusFlagBurning;
+                        }
+                    }
 
                     // Sprint 38: Lifesteal
                     if (combatStats.LifestealPct > 0)
@@ -4809,6 +5029,24 @@ namespace FolkIdle.Server.Domain.Combat
 
                     payload.PlayerHp -= finalDamage;
 
+                    // Modul: set bonuses made real. Thorns - the Eternal
+                    // Dreadnought 4-piece. Reflects a fraction of what actually
+                    // landed (post-armour, post-block), so a heavily armoured
+                    // build reflects less rather than more; reflecting the raw
+                    // pre-mitigation figure would make stacking armour and
+                    // thorns together absurd.
+                    //
+                    // Only reflects while a monster is actually alive, so the
+                    // final blow cannot reflect into an already-dead target and
+                    // drive CurrentMonsterHp further negative.
+                    if (combatStats.SetThornsReflectionActive && payload.CurrentMonsterHp > 0)
+                    {
+                        int reflectedDamage = (int)(finalDamage * ThornsReflectionFraction);
+                        if (reflectedDamage > 0)
+                        {
+                            payload.CurrentMonsterHp -= reflectedDamage;
+                        }
+                    }
                 }
             }
 

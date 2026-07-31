@@ -6840,6 +6840,117 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        // Modul: broadcast dirty-checking. The broadcast used to send a full
+        // 695-byte packet to every connected player ten times a second whether
+        // or not anything changed - about 7 KB/s each, or 55 Mbps at a thousand
+        // idle players.
+        //
+        // Verified live that an idle session stops receiving packets, but the
+        // KEEPALIVE is the half that cannot be observed that way and is the
+        // dangerous half: if it silently never fires, a client's interpolation
+        // buffer starves and motion stutters, and nothing would point at this
+        // code. Pinned here directly.
+        [Fact]
+        public void Test_Broadcast_SuppressesIdenticalPacketsButStillKeepalives()
+        {
+            var packet = new StateUpdatePacket
+            {
+                PlayerId = 42L,
+                CurrentLevel = 10,
+                PlayerHp = 100000,
+                ActiveActivityId = 0
+            };
+
+            var identical = packet;
+
+            // Unchanged state inside the keepalive window: suppressed.
+            Assert.False(SimulationEngine.ShouldDispatchStateUpdate(ref identical, ref packet, ticksSinceLastSend: 1));
+            Assert.False(SimulationEngine.ShouldDispatchStateUpdate(ref identical, ref packet, ticksSinceLastSend: 9));
+
+            // The keepalive must fire even though nothing changed.
+            Assert.True(SimulationEngine.ShouldDispatchStateUpdate(ref identical, ref packet, ticksSinceLastSend: 10));
+            Assert.True(SimulationEngine.ShouldDispatchStateUpdate(ref identical, ref packet, ticksSinceLastSend: 40));
+
+            // A real change is sent immediately, without waiting for it.
+            var changed = packet;
+            changed.PlayerHp = 90000;
+            Assert.True(SimulationEngine.ShouldDispatchStateUpdate(ref changed, ref packet, ticksSinceLastSend: 1));
+
+            // TicksSinceLastFlush increments EVERY tick by design, so if it
+            // were part of the comparison no two packets would ever match and
+            // the whole dirty check would save nothing at all.
+            var onlyFlushCounterMoved = packet;
+            onlyFlushCounterMoved.TicksSinceLastFlush = packet.TicksSinceLastFlush + 7;
+            Assert.False(SimulationEngine.ShouldDispatchStateUpdate(ref onlyFlushCounterMoved, ref packet, ticksSinceLastSend: 1),
+                "TicksSinceLastFlush must be excluded from the comparison, or dirty-checking is a no-op.");
+        }
+
+        // Modul: set bonuses made real. Pins that the 4-piece effects reach
+        // CombatStats as usable values rather than being computed and dropped.
+        //
+        // Four of the five are now consumed by the combat tick. The fifth,
+        // SetCcImmunityActive, is asserted to be REACHABLE but is deliberately
+        // not consumed: this game models no player-facing crowd control, so
+        // there is nothing to be immune to, and implementing it would mean
+        // inventing a CC system rather than wiring an existing one.
+        [Fact]
+        public void Test_SetBonus_FourPieceEffectsReachCombatStats()
+        {
+            var noSet = StatsCalculator.Calculate(str: 10, dex: 10, con: 10, lck: 10);
+            Assert.False(noSet.SetBurnApplicationActive);
+            Assert.False(noSet.SetThornsReflectionActive);
+            Assert.Equal(0f, noSet.SetFireDamageMultiplierPct);
+
+            // Four Chiming Steel pieces - the tier that was unreachable until
+            // EquippedSetIds widened the caller from three slots to seven.
+            var chimingFourPiece = StatsCalculator.Calculate(str: 10, dex: 10, con: 10, lck: 10,
+                equippedSetIds: new EquippedSetIds
+                {
+                    Helmet = SetBonusEngine.ChimingSteelSetId,
+                    Chest = SetBonusEngine.ChimingSteelSetId,
+                    Gloves = SetBonusEngine.ChimingSteelSetId,
+                    Boots = SetBonusEngine.ChimingSteelSetId
+                });
+
+            Assert.True(chimingFourPiece.SetBurnApplicationActive);
+            Assert.True(chimingFourPiece.SetFireDamageMultiplierPct > 0f);
+
+            var dreadnoughtFourPiece = StatsCalculator.Calculate(str: 10, dex: 10, con: 10, lck: 10,
+                equippedSetIds: new EquippedSetIds
+                {
+                    Helmet = SetBonusEngine.EternalDreadnoughtSetId,
+                    Chest = SetBonusEngine.EternalDreadnoughtSetId,
+                    Gloves = SetBonusEngine.EternalDreadnoughtSetId,
+                    Boots = SetBonusEngine.EternalDreadnoughtSetId
+                });
+
+            Assert.True(dreadnoughtFourPiece.SetThornsReflectionActive);
+            Assert.True(dreadnoughtFourPiece.SetCooldownReductionActive);
+            Assert.True(dreadnoughtFourPiece.SetCcImmunityActive);
+        }
+
+        // Modul: Luck and Constitution made real. Both attributes documented a
+        // bonus, computed it into CombatStats, and had zero consumers - so
+        // every point spent on either did nothing. These assert the values are
+        // non-zero and scale, which is what the consumers now depend on.
+        [Fact]
+        public void Test_StatsCalculator_LuckAndConstitutionProduceUsableBonuses()
+        {
+            var lowLuck = StatsCalculator.Calculate(str: 0, dex: 0, con: 0, lck: 10);
+            var highLuck = StatsCalculator.Calculate(str: 0, dex: 0, con: 0, lck: 200);
+
+            Assert.True(lowLuck.ForgeSuccessPct > 0f,
+                "Luck must produce a non-zero forge success bonus - ForgeSplicingEngine now adds it to the fusion roll.");
+            Assert.True(highLuck.ForgeSuccessPct > lowLuck.ForgeSuccessPct);
+
+            var lowCon = StatsCalculator.Calculate(str: 0, dex: 0, con: 10, lck: 0);
+            var highCon = StatsCalculator.Calculate(str: 0, dex: 0, con: 200, lck: 0);
+
+            Assert.True(lowCon.OutOfCombatHpRegen > 0f,
+                "Constitution must produce a non-zero regen rate - the idle tick now applies it.");
+            Assert.True(highCon.OutOfCombatHpRegen > lowCon.OutOfCombatHpRegen);
+        }
+
         // Modul: balance pass. Makes the progression curve MEASURED rather than
         // merely reachable. Every recipe ingredient being obtainable was already
         // pinned elsewhere; what nobody had ever computed is how long clearing a

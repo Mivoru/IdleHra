@@ -47,6 +47,19 @@ namespace FolkIdle.Server.Domain.Combat
         // counts) replace what would otherwise be a Dictionary<int,int> -
         // with at most MaxTrackedSlots equipped items the O(n^2) linear
         // scan is trivially cheap and never touches the managed heap.
+        // Modul: set bonuses made real. Convenience overload for callers that
+        // hold the payload's cached EquippedSetIds and are not on a path where
+        // building the span themselves is convenient - notably the skill-cast
+        // command handler, which needs the cooldown-reduction flag and lives in
+        // an async method where stackalloc is unavailable. The span is
+        // allocated on THIS method's frame, so it still never touches the heap.
+        public static SetBonusResult Evaluate(in FolkIdle.Server.Engine.EquippedSetIds equippedSetIds)
+        {
+            Span<int> setIdSpan = stackalloc int[FolkIdle.Server.Engine.EquippedSetIds.SlotCount];
+            equippedSetIds.CopyTo(setIdSpan);
+            return Evaluate(setIdSpan);
+        }
+
         public static SetBonusResult Evaluate(ReadOnlySpan<int> equippedSetIds)
         {
             var result = new SetBonusResult();

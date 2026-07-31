@@ -190,6 +190,12 @@ namespace FolkIdle.Server.Engine
 
         public const byte StatusFlagVulnerable = 1 << 0;
         public const byte StatusFlagChilled = 1 << 1;
+
+        // Modul: set bonuses made real. Set by the Chiming Steel 4-piece burn
+        // in SimulationEngine's damage step. Lives here with the other two so
+        // the bitmask has one owner - the client reads all three off the same
+        // TargetStatusEffectBitmask byte.
+        public const byte StatusFlagBurning = 1 << 2;
         public const float StatusSynergyDamageMultiplier = 1.5f;
 
         // Modul: allocation-free combat skill status synergies. Skill 1
