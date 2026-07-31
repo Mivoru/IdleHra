@@ -332,6 +332,98 @@ Now one `ClientServerConfig.BaseUrl`, resolved from `FOLKIDLE_SERVER_URL`,
 then a saved preference, then the localhost default, with `UiLoginWindow` as
 the sole writer.
 
+### 19. The entire 4-piece set tier does nothing (URGENT - newly reachable)
+
+`SetBonusEngine` produces five 4-piece effects and **not one is consumed by
+anything**: `ThornsReflectionActive`, `CooldownReductionActive`,
+`BurnApplicationActive`, `CcImmunityActive` and `FireDamageMultiplierPct`
+are copied onto `CombatStats` by `StatsCalculator` (lines ~274-277) and
+read by zero call sites in the entire server.
+
+This was harmless while the 4-piece tier was unreachable. **Item 9 made it
+reachable**, so a player can now assemble four matching pieces, be told
+they have a set bonus, and receive only the 2-piece flat stat. Both
+authored sets are affected: Chiming Steel's 4-piece is Fire damage + Burn
+(both inert) and Eternal Dreadnought's is Thorns + CC immunity + cooldown
+reduction (all three inert).
+
+Either implement them in the combat tick or stop advertising them. Do not
+leave a tier that visibly qualifies and silently pays nothing - that is
+worse than not having it.
+
+### 20. Two attribute bonuses are advertised but never applied
+
+`StatsCalculator` documents Luck as granting "+0.05% Forge Success" and
+Constitution as granting "+0.1 Out-of-Combat HP Regen/sec", computes both
+into `ForgeSuccessPct` and `OutOfCombatHpRegen`, and **nothing anywhere
+reads either field**. The forge's success roll does not consult
+`ForgeSuccessPct`, and no regen tick exists.
+
+So a player investing in Luck for forge safety, or Constitution for
+regeneration, gets nothing for it. Same class of defect as item 19 and as
+the item-base-power bug: the value is computed correctly and thrown away.
+
+### 21. Broadcast sends a full packet to every player every tick
+
+`SimulationEngine`'s broadcast loop iterates all of `_activePlayers` and
+calls `SendToPlayer` unconditionally - there is no check against
+`TickStatePayload.IsDirty`, even though that flag exists, is maintained
+throughout the tick, and is exactly the signal needed.
+
+Cost: 695 bytes x 10 Hz = **~7 KB/s per connected player, whether or not
+anything changed**. About 55 Mbps sustained at 1,000 concurrent players and
+556 Mbps at 10,000 - for a game where an idle player's state is identical
+frame to frame.
+
+This is the single largest optimisation available. The obvious shape is to
+send on dirty, plus a forced keepalive every N ticks so the client's
+interpolation and save-trust indicator never starve. Note the client
+interpolates between two snapshots (`VisualSyncProxy`), so the keepalive
+interval has to stay short enough not to make motion stutter - measure
+before picking it.
+
+### 22. The hottest per-player tables are indexed on the wrong column
+
+`FolkIdleDbContext` adds exactly three indexes for this family, and each is
+on the low-selectivity column rather than the one every query filters by:
+
+| Table | Indexed on | Actually queried by |
+|---|---|---|
+| `CommodityRecords` | `ItemId` | `PlayerId` + `ItemId` |
+| `EquipmentInstances` | `BaseItemId` | `PlayerId` |
+| `MarketOrderRecords` | `BaseItemId` | `BaseItemId` + `QualityTier` + `Status` |
+| `CharacterRecords` | (nothing) | `PlayerId` |
+
+`CommodityRecords` is the worst case: the index is on `ItemId`, and
+`ItemId = "gold"` matches **one row per player in the game**. Reading a
+single player's gold balance - which happens on every login, every kill
+reward and every purchase - scans that entire index. `CharacterRecords` has
+no secondary index at all and is read on every login, equip and inventory
+snapshot.
+
+Fix: composite `(PlayerId, ItemId)` on `CommodityRecords`, `(PlayerId)` on
+`EquipmentInstances` and `CharacterRecords`, and
+`(BaseItemId, QualityTier, Status)` on `MarketOrderRecords`. Cheap, one
+migration, no behaviour change.
+
+Note this only affects tables using a conventional `Id` primary key. The
+many tables with a composite `(PlayerId, X)` key - codex entries, race
+masteries, region completions, village infrastructure, quests - are already
+covered by their primary key index.
+
+### 23. EvictVillager is implemented with no UI
+
+`CommandType.EvictVillager` is validated and implemented server-side and
+has no client reference outside the dead `UiCommandDispatcher`. Same shape
+as item 6b (`UpgradeTool`), smaller stakes. Do not delete the sender.
+
+### 24. OfflineStateEngine is genuinely dead
+
+Zero references anywhere, including `Program.cs` - unlike the phantom
+entries in item 6, this one was verified to exist and to be unreferenced.
+`OfflineSimulationEngine` is the live offline path. Safe to delete after a
+final check.
+
 ### 14. Play Mode harness needs a seeded fixture account - SHIPPED, item retained for reference
 
 Resolved. `--seed-dev` provisions a repeatable account (three characters, all

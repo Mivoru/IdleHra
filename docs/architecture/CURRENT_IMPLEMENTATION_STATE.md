@@ -140,8 +140,14 @@ on top of the primary key.
 
 Binary, fixed-layout packet structs shared in spirit (not in code) between
 client and server: `AuthHandshakePacket` (530 bytes), `ClientCommandPacket`
-(352 bytes), `StateUpdatePacket` (686 bytes, against a hard ceiling of 700
-that `Test_StateUpdatePacket_StructuralSizeIsStrictlyUnder700Bytes` pins). Both sides validate their own
+(352 bytes), `StateUpdatePacket` (695 bytes, against a hard ceiling of 700
+that `Test_StateUpdatePacket_StructuralSizeIsStrictlyUnder700Bytes` pins -
+686 plus `EquippedOffhandId` (8) and `UnlockedRaceBitmask` (1), leaving 5
+bytes of headroom). **Both layout guards must be changed in the same
+commit**: the client's copy silently drifted to a stale 699 once, and
+because `WebSocketClient.Start()` calls `Validate()` unguarded, it threw on
+every client startup before `ClientContentRegistry.Initialize()` on the next
+line ever ran. Both sides validate their own
 compiled struct size at startup against these constants
 (`server/FolkIdle.Server/Network/NetworkPacketLayoutGuard.cs` /
 `client/Assets/Scripts/Network/NetworkPacketLayoutGuard.cs`, the latter
@@ -173,14 +179,28 @@ state.
 
 ## 8. Test Suite State
 
-`FolkIdle.Server.Tests` currently has one long-standing, environment-specific
-failure unrelated to any application code:
-`E2EGameLoopTest.Test_E2E_ClosedLoopVerification` fails with a WebSocket
-503 in sandboxed dev environments where the `HttpListener`-based WS
-endpoint cannot bind/serve correctly; this is not reproduced in a normal
-deployment and is treated as a known baseline exception. Any new test run
-should be compared against "one known failure, N passing" rather than
-expecting a fully green suite in this environment.
+**182 tests, all passing** as of 2026-08-01, verified against a real
+Postgres via Testcontainers. Both previously-recorded exceptions are gone:
+
+- `E2EGameLoopTest.Test_E2E_ClosedLoopVerification` (the WebSocket 503 noted
+  below) now passes.
+- `Test_MarketEscrow_ConcurrentListings_ExactReplicaNoSerializationDrift`
+  was failing under full-suite load - six concurrent `Serializable` listings
+  where five lost the race and `ListItemAsync` swallowed the 40001 and
+  returned false. Fixed in the engine, not the test: that method now runs
+  under a retrying execution strategy.
+
+**A green suite requires a working Docker daemon.** Every test in
+`HardenedEngineIntegrationTests` belongs to the Postgres collection, so a
+Docker outage fails all 182 at once with
+`PostgresTestFixture.DisposeAsync` NullReferenceExceptions rather than with
+anything resembling a code error. Check Docker before debugging a mass
+failure.
+
+Historical note, retained because the condition may recur in other
+sandboxes: `Test_E2E_ClosedLoopVerification` used to fail with a WebSocket
+503 in sandboxed dev environments where the `HttpListener`-based WS endpoint
+could not bind/serve correctly.
 
 ## 9. Known Dead Code (not yet removed)
 
@@ -350,3 +370,83 @@ each was found permanently banning real players:
 A quarantine is otherwise irreversible in-game, so
 `Program.cs --lift-quarantine <playerId>` exists as an operator path; it also
 releases the account's frozen market listings.
+
+## 15. Progression Model (measured, not assumed)
+
+The pacing of this game is analytically solvable because of one invariant:
+**every monster grants `XP = MaxHp / 5` and `gold = MaxHp / 20`**. Monster HP
+therefore cancels out of any rate calculation, and XP-per-second is a pure
+function of the player's DPS - which monster is farmed does not change
+progression speed at all, only risk and loot table.
+
+Level cost is `ProgressionEngine.GetRequiredXpForLevel`, the single
+authority (it was previously copy-pasted into four places with "must stay in
+sync" comments and no enforcement): `400 * 1.06^level`. The exponent tracks
+gear power, which triples per region tier - weapon `FlatAttackPower` runs
+12 / 36 / 108 / 324 / 972 across the five tiers.
+
+Modelled clear time per region, using weapon base power alone and ignoring
+affixes, STR growth and set bonuses - deliberately a floor, not an estimate:
+**76 / 127 / 169 / 199 / 222 minutes**, about 13.2 hours total, with
+gathering a steady 9-11% throughout.
+`Test_Progression_EveryRegionClearsInsideThePlayableTimeBand` fails if any
+region leaves the playable band.
+
+Measured live on 2026-08-01 against a real stack: a level-40 character in
+tier-2 gear at quality tier 3 sustained **~20 XP/s (~100 DPS)** and levelled
+40 -> 41 in 150 seconds. That is roughly 3x the model's floor for that gear,
+which is the expected headroom.
+
+Region bosses sit at ~5x the HP and ~2.5x the ATK of their own region's
+strongest regular monster (the endgame boss at ~6x / 3x), and above the next
+region's opening monster.
+`Test_Content_RegionBossesAreContinuousWithTheirRegionCurve` pins the whole
+shape, including the reward invariants above.
+
+## 16. Known Value-Computed-But-Never-Consumed Defects
+
+This codebase has a recurring failure mode worth naming: a value is
+computed correctly, stored on a struct, threaded through the payload - and
+read by nothing. It has produced at least eight shipped bugs (crafting
+output, larder writes, loot census, item base power, the affix payload
+collision, and the three below). **When adding a stat or bonus, grep for a
+consumer before believing it works.**
+
+Currently outstanding, see `NEXT_STEPS_BACKLOG.md` items 19 and 20:
+
+- All five 4-piece set-bonus effects (`ThornsReflectionActive`,
+  `CooldownReductionActive`, `BurnApplicationActive`, `CcImmunityActive`,
+  `FireDamageMultiplierPct`) reach `CombatStats` and are read by zero call
+  sites. The 4-piece tier became reachable on 2026-08-01, so this is now a
+  live player-facing gap rather than a latent one.
+- `CombatStats.ForgeSuccessPct` (from Luck) and
+  `CombatStats.OutOfCombatHpRegen` (from Constitution) have zero consumers,
+  so both advertised attribute bonuses do nothing.
+
+## 17. Client Server Address
+
+`ClientServerConfig.BaseUrl` is the one place the client stores which server
+it talks to, resolved `FOLKIDLE_SERVER_URL` -> `PlayerPrefs` -> the
+`http://localhost:8080` default. `UiLoginWindow` is the **sole writer** and
+publishes in `Awake`; every other class reads a get-only property.
+
+This replaced twenty-five independent `ServerBaseUrl` fields that nothing
+ever assigned, which meant the client could authenticate against a real
+server while all twenty-two HTTP caches silently queried localhost. Do not
+reintroduce a local copy.
+
+## 18. Development Fixture
+
+`--seed-dev` provisions a repeatable playtest account
+(`dev@folkidle.local` / `FolkIdleDev123!`): three level-40 characters, all
+seven equip slots filled on the main one, Town Hall 5, materials, gold, and
+a stocked larder. It is double-guarded - the flag alone does nothing unless
+`FOLKIDLE_ALLOW_DEV_SEED=1` is also set - because unlike the other operator
+flags it writes a known password.
+
+**The stocked larder is load-bearing, not a convenience.** Auto-eat fires
+the moment HP crosses the threshold, and an empty larder stops the activity
+outright with `ActivityHaltReason.OutOfFood`. The first version of this
+fixture omitted it and produced a character that halted about a minute into
+its first fight, which defeats the purpose of an unattended-playtest
+account.
