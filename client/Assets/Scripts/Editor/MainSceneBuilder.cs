@@ -29,6 +29,7 @@ namespace FolkIdle.Client.Editor
         private const string BankDepositRowPrefabPath = PrefabDirectory + "/UiBankDepositCandidateRow.prefab";
         private const string AchievementRowPrefabPath = PrefabDirectory + "/UiAchievementRow.prefab";
         private const string LeaderboardRowPrefabPath = PrefabDirectory + "/UiLeaderboardEntryRow.prefab";
+        private const string GuildDirectoryRowPrefabPath = PrefabDirectory + "/UiGuildDirectoryRow.prefab";
         private const string MailboxRowPrefabPath = PrefabDirectory + "/UiMailboxEntryRow.prefab";
         private const string StoreRowPrefabPath = PrefabDirectory + "/UiStoreEntryRow.prefab";
         private const string SeasonPassRowPrefabPath = PrefabDirectory + "/UiSeasonPassMilestoneRow.prefab";
@@ -130,6 +131,7 @@ namespace FolkIdle.Client.Editor
             // Pass. All real, network-wired scripts.
             GameObject achievementsWindowObject = BuildAchievementsWindow(canvas.transform, networkClient);
             GameObject leaderboardWindowObject = BuildLeaderboardWindow(canvas.transform);
+            GameObject guildDirectoryWindowObject = BuildGuildDirectoryWindow(canvas.transform, syncProxy);
             GameObject mailboxWindowObject = BuildMailboxWindow(canvas.transform, syncProxy, networkClient);
             GameObject storeWindowObject = BuildStoreWindow(canvas.transform, syncProxy, networkClient);
             GameObject seasonPassWindowObject = BuildSeasonPassWindow(canvas.transform, syncProxy, networkClient);
@@ -5649,6 +5651,157 @@ namespace FolkIdle.Client.Editor
             if (!success)
             {
                 Debug.LogError("MainSceneBuilder: failed to save UiAchievementRow prefab asset.");
+            }
+            Object.DestroyImmediate(root);
+            return prefabAsset;
+        }
+
+        // Modul: guild discovery, 2026-08-01. The screen that makes
+        // /api/v1/guilds/list reachable. Joining previously required knowing a
+        // guild's exact name, so a player who had not been told one could not
+        // find any guild at all.
+        private static GameObject BuildGuildDirectoryWindow(Transform canvasTransform, VisualSyncProxy syncProxy)
+        {
+            GameObject windowObject = BuildSimpleListWindowShell("GuildDirectoryWindow", canvasTransform, "Find a Guild", out RectTransform contentAreaRect, out TextMeshProUGUI _);
+
+            // Search row across the top; the list takes what is left.
+            GameObject searchRow = new GameObject("SearchRow", typeof(RectTransform));
+            searchRow.transform.SetParent(contentAreaRect, false);
+            RectTransform searchRect = (RectTransform)searchRow.transform;
+            searchRect.anchorMin = new Vector2(0f, 1f);
+            searchRect.anchorMax = new Vector2(1f, 1f);
+            searchRect.pivot = new Vector2(0.5f, 1f);
+            searchRect.sizeDelta = new Vector2(0f, 40f);
+            searchRect.anchoredPosition = Vector2.zero;
+
+            TMP_InputField searchField = CreateInputField(searchRow.transform, "GuildSearchField", "Guild name...");
+            RectTransform searchFieldRect = (RectTransform)searchField.transform;
+            searchFieldRect.anchorMin = new Vector2(0f, 0f);
+            searchFieldRect.anchorMax = new Vector2(1f, 1f);
+            searchFieldRect.offsetMin = new Vector2(4f, 4f);
+            searchFieldRect.offsetMax = new Vector2(-110f, -4f);
+
+            Button searchButton = CreateButton(searchRow.transform, "GuildSearchButton", "Search", out TextMeshProUGUI _);
+            RectTransform searchButtonRect = (RectTransform)searchButton.transform;
+            searchButtonRect.anchorMin = new Vector2(1f, 0f);
+            searchButtonRect.anchorMax = new Vector2(1f, 1f);
+            searchButtonRect.pivot = new Vector2(1f, 0.5f);
+            searchButtonRect.sizeDelta = new Vector2(100f, 0f);
+            searchButtonRect.anchoredPosition = new Vector2(-4f, 0f);
+
+            // Paging row along the bottom, matching the leaderboard's layout.
+            GameObject pagingRow = new GameObject("PagingRow", typeof(RectTransform));
+            pagingRow.transform.SetParent(contentAreaRect, false);
+            RectTransform pagingRect = (RectTransform)pagingRow.transform;
+            pagingRect.anchorMin = new Vector2(0f, 0f);
+            pagingRect.anchorMax = new Vector2(1f, 0f);
+            pagingRect.pivot = new Vector2(0.5f, 0f);
+            pagingRect.sizeDelta = new Vector2(0f, 36f);
+            pagingRect.anchoredPosition = Vector2.zero;
+
+            Button prevButton = CreateButton(pagingRow.transform, "GuildPrevPageButton", "Prev", out TextMeshProUGUI _);
+            RectTransform prevRect = (RectTransform)prevButton.transform;
+            prevRect.anchorMin = new Vector2(0f, 0.5f);
+            prevRect.anchorMax = new Vector2(0f, 0.5f);
+            prevRect.pivot = new Vector2(0f, 0.5f);
+            prevRect.sizeDelta = new Vector2(80f, 28f);
+            prevRect.anchoredPosition = new Vector2(4f, 0f);
+
+            Button nextButton = CreateButton(pagingRow.transform, "GuildNextPageButton", "Next", out TextMeshProUGUI _);
+            RectTransform nextRect = (RectTransform)nextButton.transform;
+            nextRect.anchorMin = new Vector2(1f, 0.5f);
+            nextRect.anchorMax = new Vector2(1f, 0.5f);
+            nextRect.pivot = new Vector2(1f, 0.5f);
+            nextRect.sizeDelta = new Vector2(80f, 28f);
+            nextRect.anchoredPosition = new Vector2(-4f, 0f);
+
+            TextMeshProUGUI pageLabel = CreateText(pagingRow.transform, "GuildPageLabel", "Page 1", 14f, TextAlignmentOptions.Center);
+            RectTransform pageLabelRect = (RectTransform)pageLabel.transform;
+            pageLabelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            pageLabelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            pageLabelRect.sizeDelta = new Vector2(160f, 28f);
+            pageLabelRect.anchoredPosition = Vector2.zero;
+
+            TextMeshProUGUI statusText = CreateText(contentAreaRect, "GuildDirectoryStatus", string.Empty, 13f, TextAlignmentOptions.MidlineLeft);
+            RectTransform statusRect = (RectTransform)statusText.transform;
+            statusRect.anchorMin = new Vector2(0f, 0f);
+            statusRect.anchorMax = new Vector2(1f, 0f);
+            statusRect.pivot = new Vector2(0.5f, 0f);
+            statusRect.sizeDelta = new Vector2(0f, 22f);
+            statusRect.anchoredPosition = new Vector2(0f, 38f);
+            statusText.color = new Color(1f, 1f, 1f, 0.6f);
+
+            // Scroll area between the search row and the paging row.
+            GameObject scrollArea = new GameObject("GuildScrollArea", typeof(RectTransform));
+            scrollArea.transform.SetParent(contentAreaRect, false);
+            RectTransform scrollAreaRect = (RectTransform)scrollArea.transform;
+            scrollAreaRect.anchorMin = Vector2.zero;
+            scrollAreaRect.anchorMax = Vector2.one;
+            scrollAreaRect.offsetMin = new Vector2(0f, 62f);
+            scrollAreaRect.offsetMax = new Vector2(0f, -44f);
+
+            (ScrollRect _, RectTransform content) = ChatSceneBuilder.BuildScrollView(scrollAreaRect);
+
+            GameObject rowPrefabAsset = BuildAndSaveGuildDirectoryRowPrefab();
+
+            UiGuildDirectoryPanel panel = windowObject.AddComponent<UiGuildDirectoryPanel>();
+            panel.SyncProxy = syncProxy;
+            panel.RowContainer = content;
+            panel.RowPrefab = rowPrefabAsset.GetComponent<UiGuildDirectoryRow>();
+            panel.SearchField = searchField;
+            panel.SearchButton = searchButton;
+            panel.NextPageButton = nextButton;
+            panel.PrevPageButton = prevButton;
+            panel.PageLabelText = pageLabel;
+            panel.StatusText = statusText;
+
+            return windowObject;
+        }
+
+        private static GameObject BuildAndSaveGuildDirectoryRowPrefab()
+        {
+            EnsureFolder(PrefabDirectory);
+
+            GameObject root = new GameObject("UiGuildDirectoryRow", typeof(RectTransform));
+            ((RectTransform)root.transform).sizeDelta = new Vector2(0f, 46f);
+
+            Image background = root.AddComponent<Image>();
+            background.color = new Color(1f, 1f, 1f, 0.04f);
+
+            TextMeshProUGUI nameText = CreateText(root.transform, "NameText", "Guild", 15f, TextAlignmentOptions.MidlineLeft);
+            RectTransform nameRect = (RectTransform)nameText.transform;
+            nameRect.anchorMin = new Vector2(0f, 0.5f);
+            nameRect.anchorMax = new Vector2(1f, 1f);
+            nameRect.offsetMin = new Vector2(8f, 0f);
+            nameRect.offsetMax = new Vector2(-96f, -2f);
+
+            TextMeshProUGUI detailText = CreateText(root.transform, "DetailText", "Members 0/0", 11f, TextAlignmentOptions.MidlineLeft);
+            RectTransform detailRect = (RectTransform)detailText.transform;
+            detailRect.anchorMin = new Vector2(0f, 0f);
+            detailRect.anchorMax = new Vector2(1f, 0.5f);
+            detailRect.offsetMin = new Vector2(8f, 2f);
+            detailRect.offsetMax = new Vector2(-96f, 0f);
+            detailText.color = new Color(1f, 1f, 1f, 0.6f);
+
+            UiGuildDirectoryRow rowComponent = root.AddComponent<UiGuildDirectoryRow>();
+
+            Button joinButton = CreateButton(root.transform, "JoinButton", "Join", out TextMeshProUGUI _);
+            RectTransform joinRect = (RectTransform)joinButton.transform;
+            joinRect.anchorMin = new Vector2(1f, 0.5f);
+            joinRect.anchorMax = new Vector2(1f, 0.5f);
+            joinRect.pivot = new Vector2(1f, 0.5f);
+            joinRect.sizeDelta = new Vector2(84f, 30f);
+            joinRect.anchoredPosition = new Vector2(-6f, 0f);
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(joinButton.onClick, rowComponent.HandleJoinClicked);
+
+            rowComponent.NameText = nameText;
+            rowComponent.DetailText = detailText;
+            rowComponent.JoinButton = joinButton;
+
+            GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(root, GuildDirectoryRowPrefabPath, out bool success);
+            if (!success)
+            {
+                Debug.LogError("MainSceneBuilder: failed to save UiGuildDirectoryRow prefab asset.");
             }
             Object.DestroyImmediate(root);
             return prefabAsset;
