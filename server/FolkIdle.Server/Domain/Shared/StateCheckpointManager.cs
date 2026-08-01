@@ -751,6 +751,7 @@ namespace FolkIdle.Server.Domain.Shared
                 // Modul: lifetime statistics. Hydrated so the tick thread can
                 // keep an absolute running total - see TickStatePayload.
                 LifetimeDeaths = player.TotalDeaths,
+                LifetimeItemsCrafted = player.TotalItemsCrafted,
                 // Modul: race unlock feedback. Rebuilt from the durable
                 // PlayerRaceUnlocks rows, so the mask is correct after a
                 // reconnect and for accounts that unlocked races before this

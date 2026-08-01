@@ -6882,17 +6882,23 @@ namespace FolkIdle.Server.Tests
             Assert.True(chimingFourPiece.SetBurnApplicationActive);
             Assert.True(chimingFourPiece.SetFireDamageMultiplierPct > 0f);
 
+            var dreadnoughtSetIds = new EquippedSetIds
+            {
+                Helmet = SetBonusEngine.EternalDreadnoughtSetId,
+                Chest = SetBonusEngine.EternalDreadnoughtSetId,
+                Gloves = SetBonusEngine.EternalDreadnoughtSetId,
+                Boots = SetBonusEngine.EternalDreadnoughtSetId
+            };
+
             var dreadnoughtFourPiece = StatsCalculator.Calculate(str: 10, dex: 10, con: 10, lck: 10,
-                equippedSetIds: new EquippedSetIds
-                {
-                    Helmet = SetBonusEngine.EternalDreadnoughtSetId,
-                    Chest = SetBonusEngine.EternalDreadnoughtSetId,
-                    Gloves = SetBonusEngine.EternalDreadnoughtSetId,
-                    Boots = SetBonusEngine.EternalDreadnoughtSetId
-                });
+                equippedSetIds: dreadnoughtSetIds);
 
             Assert.True(dreadnoughtFourPiece.SetThornsReflectionActive);
-            Assert.True(dreadnoughtFourPiece.SetCooldownReductionActive);
+            // Cooldown reduction is asserted against SetBonusEngine rather than
+            // CombatStats: the skill-cast site is a command handler with no
+            // CombatStats in scope and reads the flag from here directly, so
+            // this is the value production actually consumes.
+            Assert.True(SetBonusEngine.Evaluate(in dreadnoughtSetIds).CooldownReductionActive);
             Assert.True(dreadnoughtFourPiece.SetDamageCapActive);
         }
 
@@ -9559,7 +9565,6 @@ namespace FolkIdle.Server.Tests
             Assert.Equal((int)(naked.FlatPhysicalArmor * 1.15f), withTwoPieceSet.FlatPhysicalArmor);
             Assert.False(withTwoPieceSet.SetThornsReflectionActive);
             Assert.False(withTwoPieceSet.SetDamageCapActive);
-            Assert.False(withTwoPieceSet.SetCooldownReductionActive);
 
             // Zero-allocation proof for the evaluator itself.
             SetBonusEngine.Evaluate(fourPiece);

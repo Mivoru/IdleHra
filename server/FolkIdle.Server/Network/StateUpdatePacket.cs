@@ -389,6 +389,13 @@ namespace FolkIdle.Server.Network
         public byte CurrentSimulationSpeedMultiplier;
         public uint PremiumCurrencyBalance;
         public byte ActiveAudioTrackId;
+        // Lifetime crafted-item count, hydrated at login from
+        // PlayerRecords."TotalItemsCrafted" and incremented on the tick thread as
+        // crafts complete. UiTutorialController detects a finished craft purely
+        // from this value rising, so it must keep moving within a session - it
+        // sat at a hardcoded zero until 2026-08-01 and that tutorial step could
+        // never complete. Clamped into uint at assembly; the durable column is
+        // long.
         public uint TotalItemsCraftedCount;
         public uint ActiveStatusEffectModifierBitmask;
         public uint RemainingBuffDurationTicks;

@@ -161,6 +161,18 @@ namespace FolkIdle.Server.Engine
         // has produced silent data bugs in this codebase before.
         public long LifetimeDeaths;
 
+        // Modul: crafted-item counter. Unlike LifetimeDeaths above, this one is
+        // hydrated and incremented for DISPLAY ONLY and is never written back by
+        // the checkpoint. CraftingEngine already persists TotalItemsCrafted
+        // inside the same transaction as the item grant, so it is the single
+        // author; a checkpoint writing an absolute snapshot on top of that would
+        // clobber any craft that committed between hydration and flush.
+        //
+        // The tick thread mirrors those increments here so the value the client
+        // sees moves in real time rather than only after a relog - the tutorial
+        // controller detects a completed craft purely from this counter rising.
+        public long LifetimeItemsCrafted;
+
         // Modul: race unlock feedback. Which playable races this account owns,
         // as bit (raceId - 1). Six races fit one byte with two to spare.
         //

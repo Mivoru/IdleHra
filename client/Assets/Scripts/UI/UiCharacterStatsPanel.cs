@@ -31,14 +31,14 @@ namespace FolkIdle.Client.UI
         public TextMeshProUGUI CritChanceText;
         public TextMeshProUGUI MaxHpText;
 
-        private readonly char[] _strBuffer = new char[16];
-        private readonly char[] _dexBuffer = new char[16];
-        private readonly char[] _conBuffer = new char[16];
-        private readonly char[] _lckBuffer = new char[16];
-        private readonly char[] _meleeBuffer = new char[16];
-        private readonly char[] _rangedBuffer = new char[16];
-        private readonly char[] _critBuffer = new char[16];
-        private readonly char[] _maxHpBuffer = new char[16];
+        private readonly char[] _strBuffer = new char[24];
+        private readonly char[] _dexBuffer = new char[24];
+        private readonly char[] _conBuffer = new char[24];
+        private readonly char[] _lckBuffer = new char[24];
+        private readonly char[] _meleeBuffer = new char[24];
+        private readonly char[] _rangedBuffer = new char[24];
+        private readonly char[] _critBuffer = new char[24];
+        private readonly char[] _maxHpBuffer = new char[24];
 
         private void OnEnable()
         {
@@ -65,27 +65,42 @@ namespace FolkIdle.Client.UI
             int con = SyncProxy.VisualCON;
             int lck = SyncProxy.VisualLCK;
 
+            // Modul: HUD stat labels. Every row used to write only the bare
+            // number, so the top-left HUD read as eight unlabelled values -
+            // "0 / 0 / 0 / 0 / 0 / 0 / 0.0% / 0" - with no way to tell which
+            // was which. The scene builder passes a placeholder like "STR: 0",
+            // which made the panel look correct in the Editor and in every
+            // structural check; the first refresh overwrote it. Only a Play
+            // Mode screenshot showed it.
+            //
+            // Buffers were grown from 16 to 24 chars to fit the prefixes:
+            // "Max HP: " plus a six-digit value is 14, and the old 16 left no
+            // margin before an IndexOutOfRangeException at runtime.
             if (StrText != null)
             {
-                int offset = WriteIntToBuffer(_strBuffer, 0, str);
+                int offset = WriteTextToBuffer(_strBuffer, 0, "STR: ");
+                offset = WriteIntToBuffer(_strBuffer, offset, str);
                 StrText.SetCharArray(_strBuffer, 0, offset);
             }
 
             if (DexText != null)
             {
-                int offset = WriteIntToBuffer(_dexBuffer, 0, dex);
+                int offset = WriteTextToBuffer(_dexBuffer, 0, "DEX: ");
+                offset = WriteIntToBuffer(_dexBuffer, offset, dex);
                 DexText.SetCharArray(_dexBuffer, 0, offset);
             }
 
             if (ConText != null)
             {
-                int offset = WriteIntToBuffer(_conBuffer, 0, con);
+                int offset = WriteTextToBuffer(_conBuffer, 0, "CON: ");
+                offset = WriteIntToBuffer(_conBuffer, offset, con);
                 ConText.SetCharArray(_conBuffer, 0, offset);
             }
 
             if (LckText != null)
             {
-                int offset = WriteIntToBuffer(_lckBuffer, 0, lck);
+                int offset = WriteTextToBuffer(_lckBuffer, 0, "LCK: ");
+                offset = WriteIntToBuffer(_lckBuffer, offset, lck);
                 LckText.SetCharArray(_lckBuffer, 0, offset);
             }
 
@@ -97,26 +112,30 @@ namespace FolkIdle.Client.UI
 
             if (MeleeDamageText != null)
             {
-                int offset = WriteIntToBuffer(_meleeBuffer, 0, meleeDamage);
+                int offset = WriteTextToBuffer(_meleeBuffer, 0, "Melee: ");
+                offset = WriteIntToBuffer(_meleeBuffer, offset, meleeDamage);
                 MeleeDamageText.SetCharArray(_meleeBuffer, 0, offset);
             }
 
             if (RangedDamageText != null)
             {
-                int offset = WriteIntToBuffer(_rangedBuffer, 0, rangedDamage);
+                int offset = WriteTextToBuffer(_rangedBuffer, 0, "Ranged: ");
+                offset = WriteIntToBuffer(_rangedBuffer, offset, rangedDamage);
                 RangedDamageText.SetCharArray(_rangedBuffer, 0, offset);
             }
 
             if (CritChanceText != null)
             {
-                int offset = WriteFloatOneDecimalToBuffer(_critBuffer, 0, critChancePct);
+                int offset = WriteTextToBuffer(_critBuffer, 0, "Crit: ");
+                offset = WriteFloatOneDecimalToBuffer(_critBuffer, offset, critChancePct);
                 offset = WriteTextToBuffer(_critBuffer, offset, "%");
                 CritChanceText.SetCharArray(_critBuffer, 0, offset);
             }
 
             if (MaxHpText != null)
             {
-                int offset = WriteIntToBuffer(_maxHpBuffer, 0, maxHp);
+                int offset = WriteTextToBuffer(_maxHpBuffer, 0, "Max HP: ");
+                offset = WriteIntToBuffer(_maxHpBuffer, offset, maxHp);
                 MaxHpText.SetCharArray(_maxHpBuffer, 0, offset);
             }
         }

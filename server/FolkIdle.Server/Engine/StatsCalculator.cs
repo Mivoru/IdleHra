@@ -75,7 +75,12 @@ namespace FolkIdle.Server.Engine
         // all five 4-piece effects do something.
         public float SetFireDamageMultiplierPct { get; set; }
         public bool SetThornsReflectionActive { get; set; }
-        public bool SetCooldownReductionActive { get; set; }
+        // Modul: cleanup. SetCooldownReductionActive was removed from here.
+        // The cooldown reduction is applied at the skill-cast site, which is a
+        // command handler with no CombatStats in scope - it reads the flag
+        // straight off SetBonusEngine.Evaluate(payload.CachedSetIds) instead.
+        // Mirroring it onto CombatStats as well left a property with no
+        // consumer, which invites a second, divergent code path.
         public bool SetBurnApplicationActive { get; set; }
         public bool SetDamageCapActive { get; set; }
     }
@@ -280,7 +285,6 @@ namespace FolkIdle.Server.Engine
             }
             stats.SetFireDamageMultiplierPct = setBonus.FireDamageMultiplierPct;
             stats.SetThornsReflectionActive = setBonus.ThornsReflectionActive;
-            stats.SetCooldownReductionActive = setBonus.CooldownReductionActive;
             stats.SetBurnApplicationActive = setBonus.BurnApplicationActive;
             stats.SetDamageCapActive = setBonus.DamageCapActive;
 

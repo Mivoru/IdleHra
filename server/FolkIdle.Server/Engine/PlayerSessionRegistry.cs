@@ -166,9 +166,9 @@ namespace FolkIdle.Server.Engine
     {
         public long PlayerId;
         public int CraftedItemId;
+        // Units produced by this craft. Commodity crafts batch (quantity N in one
+        // notification); equipment crafts are always 1.
         public int Quantity;
-        // if this was an equipment craft, maybe we give gold or something? The prompt says: "Enqueue output items into 'CraftingCompletionQueue'. The 10 Hz engine thread will pull these down and safely adjust inventory balances via 'CollectionsMarshal'".
-        // Wait, what if it's equipment? Usually commodities are stackable. Let's just say we pass the commodity update.
     }
 
     public struct InfrastructureUpdateNotification

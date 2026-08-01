@@ -993,6 +993,11 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         QuestEngine.IncrementProgress(ref currentPayload, QuestEngine.QuestTypeCraftItems, 1);
 
+                        // Mirrors the increment CraftingEngine already committed
+                        // to PlayerRecords, so the wire counter tracks the craft
+                        // instead of standing at its login value all session.
+                        currentPayload.LifetimeItemsCrafted += craftCompletion.Quantity;
+
                         if (currentPayload.ActiveGuildWarId > 0 && ContentRegistry.ItemDefinitions.Length >= craftCompletion.CraftedItemId)
                         {
                             var def = ContentRegistry.ItemDefinitions[craftCompletion.CraftedItemId - 1];
@@ -1869,7 +1874,6 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                     else if (cmd.Command == CommandType.AssignMentor)
                     {
-                        // TODO: Add validator check if needed, but the prompt says: ValidateMentorshipAssignment in ClientCommandValidator
                         if (!ClientCommandValidator.ValidateMentorshipAssignment(ref currentPayload, cmd.TargetGuid, (int)cmd.LimitPrice))
                         {
                             RemoveActivePlayer(routingPlayerId);
@@ -3030,6 +3034,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 ActiveChallengeSeed = currentPayload.ActiveChallengeSeed,
                                 ActiveLanguageState = currentPayload.ActiveLanguageState == 0 ? (byte)1 : currentPayload.ActiveLanguageState,
                                 ActiveAudioTrackId = audioTrackId,
+                                TotalItemsCraftedCount = (uint)Math.Clamp(currentPayload.LifetimeItemsCrafted, 0L, uint.MaxValue),
                                 NetworkDiagnosticsToken = currentPayload.NetworkDiagnosticsToken,
                                 Gold = currentPayload.CurrentGold,
                                 WorldBossAttemptCount = currentPayload.WorldBossAttemptCount,
