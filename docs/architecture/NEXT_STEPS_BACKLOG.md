@@ -917,3 +917,51 @@ These are placeholders, not authored audio.
 - **LFS history migration** - item 32. The audio is the first content actually
   routed through LFS (206 KB), which validates the `.gitattributes` but does
   not change the quota maths for the 472 MB of art history.
+
+### 41. Targeted sweep: dropped deltas and split currency stores, 2026-08-01
+
+Run after three bugs of the same family turned up in a row. Two invariants
+were swept exhaustively rather than subsystem by subsystem.
+
+**Invariant 1 - a notification dropped on the tick thread must not destroy
+value.** All 33 queue drains in `SimulationEngine` were classified. The
+distinguishing property is SNAPSHOT versus DELTA:
+
+- A notification carrying a snapshot (`LegacyStoreUpdate` new balance,
+  `BillingSync` balance, `InfrastructureUpdate` building levels) is SAFE to
+  drop. The database already holds the value and login re-hydrates it; only a
+  live display refresh is lost.
+- A notification carrying a delta is NOT safe. The producer has already
+  committed the cost, so dropping it destroys what the player paid for.
+
+Only three delta-carrying fields exist in the entire registry:
+`MarketMatchNotification.GoldDelta` (fixed - see the market commit),
+`ChronoAccelerationNotification.SecondsToAdd` (fixed here), and
+`DamageDelta` (guild raid, idempotent - the raid boss row is authoritative).
+
+`MailClaimRequestQueue` deserves note as the correct pattern already: if the
+payload is gone the drain does nothing, so `CommitMailClaimAsync` never runs
+and the mail simply stays unclaimed. Do-nothing equals no-loss by
+construction, rather than by a rescue path.
+
+`CraftingCompletionQueue` drops one quest-progress increment if the player
+logs out mid-craft. The item itself is committed by `CraftingEngine`, so this
+is a lost counter tick, not lost value. Left alone deliberately - a rescue
+path would cost more complexity than the defect.
+
+**Invariant 2 - every currency has exactly one authoritative store.**
+
+- Gold: `CommodityRecords["gold"]` in all ten engines that touch it, with
+  `TickStatePayload.CurrentGold` as an in-memory mirror flushed as a DELTA.
+  The checkpoint never writes it back as a snapshot, which is what makes a
+  direct database credit safe. No split.
+- Diamonds: `PlayerRecords."PremiumDiamonds"` only. Was split; fixed.
+- Legacy shards: `PlayerLegacyLedger.LegacyShardBalance` only, and the
+  checkpoint only READS it (summing ledgers), so there is no snapshot
+  write-back to clobber. No split.
+
+**The generalisation worth keeping:** gold is delta-persisted and diamonds
+are snapshot-persisted, and that difference decides whether an off-thread
+credit is safe or gets silently refunded by the next checkpoint. Anyone
+adding a currency should decide which of the two it is before writing the
+first spend path.

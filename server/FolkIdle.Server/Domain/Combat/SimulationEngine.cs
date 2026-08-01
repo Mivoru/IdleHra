@@ -1253,6 +1253,46 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.BankedChronoSeconds = newBanked;
                         currentPayload.IsDirty = true;
                     }
+                    else if (chronoNotif.SecondsToAdd > 0.0)
+                    {
+                        // Modul: chrono grant rescue, 2026-08-01.
+                        //
+                        // ChronoCoreEngine consumes the core and COMMITS before
+                        // posting here, so dropping this notification means the
+                        // player paid an item and received nothing. Unlike the
+                        // snapshot-style notifications around it - which merely
+                        // mirror a value the database already holds - this one
+                        // carries a DELTA, and a dropped delta is destroyed
+                        // value rather than a stale display.
+                        //
+                        // Latent rather than live today: command 24 is the only
+                        // producer and no Chrono Core item exists in the
+                        // catalogue yet, so this cannot currently fire. Fixed
+                        // now because it becomes live the moment that content is
+                        // authored, and nothing about authoring an item would
+                        // prompt anyone to re-examine this drain.
+                        long chronoPlayerId = chronoNotif.PlayerId;
+                        double chronoSeconds = chronoNotif.SecondsToAdd;
+
+                        SafeDispatchAsync("Chrono.GrantRescue", 0L, async () =>
+                        {
+                            await using var chronoDb = await _contextFactory.CreateDbContextAsync();
+
+                            var chronoOwner = await chronoDb.PlayerRecords
+                                .FirstOrDefaultAsync(p => p.Id == chronoPlayerId);
+
+                            if (chronoOwner == null) return;
+
+                            double rescued = chronoOwner.BankedChronoSeconds + chronoSeconds;
+                            if (rescued > ChronoBufferEngine.MaxBankedChronoSeconds)
+                            {
+                                rescued = ChronoBufferEngine.MaxBankedChronoSeconds;
+                            }
+
+                            chronoOwner.BankedChronoSeconds = rescued;
+                            await chronoDb.SaveChangesAsync();
+                        });
+                    }
                 }
 
                 while (_playerRegistry.LegacyStoreUpdateQueue.TryDequeue(out var legacyNotif))
