@@ -615,17 +615,28 @@ village population fields.
 Not every one of the 32 needs UI - some are genuinely internal. The point of
 the entry is that nobody has ever gone through the list and decided.
 
-### 26. StateUpdatePacket.TotalItemsCraftedCount is never assigned
+### 26. TotalItemsCraftedCount is never assigned - SHIPPED, and the audit was wrong about it
 
-The field exists on the wire and the client mirrors it into
-`VisualTotalItemsCraftedCount`, but no server code ever writes it, so it
-reads 0 forever. The Statistics screen shows a correct crafted count only
-because it reads the REST endpoint instead.
+This entry proposed "assign it or delete it and reclaim four bytes." Deleting
+it would have been a silent regression: `UiTutorialController` reads
+`VisualTotalItemsCraftedCount` and detects a completed craft purely from that
+value rising. The field was not unused - it had a consumer that could never
+fire. The removal compiled cleanly on the first attempt and was only caught
+by grepping for readers before trusting the audit.
 
-Four dead bytes on a packet with five bytes of headroom under the 700-byte
-ceiling. Either assign it from `PlayerRecord.TotalItemsCrafted` or delete it
-and reclaim the space - but do not leave a zero-valued field on the wire for
-the next person to bind a UI to.
+Shipped as the assign branch. `TickStatePayload.LifetimeItemsCrafted`
+hydrates at login from `PlayerRecords."TotalItemsCrafted"`, the tick thread
+increments it as `CraftingCompletionQueue` drains, and the packet clamps it
+into its uint.
+
+Deliberately NOT written back by `StateCheckpointManager`, unlike
+`LifetimeDeaths` directly above it in the payload. `CraftingEngine` persists
+the column inside the same transaction as the item grant, making it the
+single author; a checkpoint flushing an absolute snapshot on top would
+clobber any craft committed between hydration and flush.
+
+Lesson worth keeping: "no server code writes it" and "nothing reads it" are
+different claims. This audit checked the first and assumed the second.
 
 ### 27. Five commands remain unreachable from any UI
 
@@ -644,7 +655,7 @@ unreachable to grep and is NOT - it is wired through
 `UnityEventTools.AddPersistentListener` in `MainSceneBuilder`, which no text
 search can see. Always check the builder before believing a sender is dead.
 
-### 28. CombatStats.SetCooldownReductionActive is redundant
+### 28. CombatStats.SetCooldownReductionActive is redundant - SHIPPED (removed)
 
 The cooldown-reduction effect reads its flag straight off
 `SetBonusEngine.Evaluate(...)` at the skill-cast site, so the mirrored
@@ -661,7 +672,7 @@ it is the same shape as the numeric-id-as-identity bugs that have bitten
 this codebase repeatedly. Give it a named field if that packet is touched
 for any other reason.
 
-### 30. Stale TODO in the AssignMentor command branch
+### 30. Stale TODO in the AssignMentor command branch - SHIPPED (deleted)
 
 `SimulationEngine.cs` around line 1872 carries a TODO asking whether a
 validator check is needed. `ClientCommandValidator.ValidateMentorshipAssignment`
@@ -669,7 +680,7 @@ is called on the very next line. One line to delete. Noted only because it
 is the single TODO marker in the entire codebase and reads as a gap when it
 is not.
 
-### 31. Character stat rows render bare numbers with no labels
+### 31. Character stat rows render bare numbers with no labels - SHIPPED
 
 `UiCharacterStatsPanel` writes only the integer into each row's char buffer -
 `WriteIntToBuffer(_strBuffer, 0, str)` with no "STR: " prefix - so the
@@ -683,3 +694,41 @@ any structural check, since every row exists and is correctly wired.
 
 Fix is the same shape as `UiActivityStatusPanel.RefreshBackpack`: write the
 label into the buffer before the number.
+
+### 32. Art history is still 472 MB of plain git blobs
+
+`.gitattributes` now routes `*.png` and the other art formats through LFS,
+but forward-only. The 127 PNGs already committed - 472 MB across three
+commits (`a859802`, `885d87f`, `5d7ee3b`) - remain ordinary blobs, so every
+clone still pays for them.
+
+Migrating them is `git lfs migrate import --include="*.png" --everything`,
+which rewrites 76 commits and requires a force-push. That part is mechanical.
+The reason it is deferred is quota, not difficulty:
+
+- GitHub Free allows 1 GB LFS storage and 1 GB/month LFS bandwidth.
+- Migrating puts roughly 472 MB into storage, plus 124 MB of art currently
+  untracked on disk, for about 596 MB - already 60 percent of the storage
+  allowance with no room for future revisions of the same files.
+- `unity_client.yml` checks out with `lfs: true` in TWO jobs. One CI run
+  would therefore pull about 1.19 GB and exhaust the entire monthly
+  bandwidth allowance on its own.
+- LFS overage blocks pushes, not just fetches. The failure mode is the CI
+  that was unblocked in `6af382f` breaking again, plus an inability to push
+  until the next billing cycle or a paid data pack.
+
+So this is a billing decision before it is an engineering one. Three viable
+routes:
+
+1. Buy a data pack (50 GB storage + 50 GB bandwidth). Makes the migration
+   safe as specified and is the least invasive to the workflow.
+2. Migrate, but drop `lfs: true` from CI and have the Unity jobs build
+   against placeholder art. Free, but the build stops covering the real
+   asset pipeline, which is exactly what the Android build failure was about.
+3. Move art out of git entirely and serve it from the CDN already configured
+   via `FOLKIDLE_CDN_BASE_URL`, keeping only import settings in the repo.
+   Best long-term, largest change, and it interacts with how the client
+   loads sprites today.
+
+Until one is chosen, the forward-only `.gitattributes` is the correct state:
+it stops the growth without spending quota.
