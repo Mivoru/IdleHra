@@ -16,7 +16,7 @@ namespace FolkIdle.Client.UI
     [DisallowMultipleComponent]
     public class UiRarityGlow : MonoBehaviour
     {
-        public TextMeshProUGUI Target;
+        public TMP_Text Target;
         public Color GlowColor = Color.white;
 
         [Tooltip("Full pulse cycles per second.")]
@@ -32,7 +32,7 @@ namespace FolkIdle.Client.UI
 
         private void OnEnable()
         {
-            if (Target == null) Target = GetComponent<TextMeshProUGUI>();
+            if (Target == null) Target = GetComponent<TMP_Text>();
             EnsureInstanceMaterial();
         }
 

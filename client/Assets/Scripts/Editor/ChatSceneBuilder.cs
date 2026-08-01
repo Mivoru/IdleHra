@@ -331,8 +331,45 @@ namespace FolkIdle.Client.Editor
             rowButton.targetGraphic = rowText;
             UnityEditor.Events.UnityEventTools.AddPersistentListener(rowButton.onClick, rowComponent.HandleNameClicked);
 
+            // Modul: congratulate button, 2026-08-01. Anchored to the row's
+            // right edge and hidden by default - UiChatMessageRow.Bind switches
+            // it off for ordinary messages and BindAnnouncement switches it on,
+            // so a pooled row cannot carry a stale button into a plain line.
+            GameObject congratsObject = new GameObject("CongratulateButton", typeof(RectTransform));
+            congratsObject.transform.SetParent(rowObject.transform, false);
+            RectTransform congratsRect = (RectTransform)congratsObject.transform;
+            congratsRect.anchorMin = new Vector2(1f, 0.5f);
+            congratsRect.anchorMax = new Vector2(1f, 0.5f);
+            congratsRect.pivot = new Vector2(1f, 0.5f);
+            congratsRect.sizeDelta = new Vector2(56f, 24f);
+            congratsRect.anchoredPosition = new Vector2(-4f, 0f);
+
+            Image congratsBackground = congratsObject.AddComponent<Image>();
+            congratsBackground.color = new Color(0.85f, 0.72f, 0.45f, 0.85f);
+
+            GameObject congratsLabelObject = new GameObject("CongratulateLabel", typeof(RectTransform));
+            congratsLabelObject.transform.SetParent(congratsObject.transform, false);
+            TextMeshProUGUI congratsLabel = congratsLabelObject.AddComponent<TextMeshProUGUI>();
+            congratsLabel.text = "gz!";
+            congratsLabel.fontSize = 14f;
+            congratsLabel.alignment = TextAlignmentOptions.Center;
+            congratsLabel.color = new Color(0.08f, 0.07f, 0.05f, 1f);
+            congratsLabel.raycastTarget = false;
+
+            RectTransform congratsLabelRect = (RectTransform)congratsLabelObject.transform;
+            congratsLabelRect.anchorMin = Vector2.zero;
+            congratsLabelRect.anchorMax = Vector2.one;
+            congratsLabelRect.offsetMin = Vector2.zero;
+            congratsLabelRect.offsetMax = Vector2.zero;
+
+            Button congratsButton = congratsObject.AddComponent<Button>();
+            congratsButton.targetGraphic = congratsBackground;
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(congratsButton.onClick, rowComponent.HandleCongratulateClicked);
+            congratsObject.SetActive(false);
+
             SerializedObject rowSerialized = new SerializedObject(rowComponent);
             rowSerialized.FindProperty(nameof(UiChatMessageRow.RowText)).objectReferenceValue = rowText;
+            rowSerialized.FindProperty(nameof(UiChatMessageRow.CongratulateButton)).objectReferenceValue = congratsButton;
             rowSerialized.ApplyModifiedProperties();
 
             GameObject prefabAsset = PrefabUtility.SaveAsPrefabAsset(rowObject, RowPrefabPath, out bool saveSuccess);

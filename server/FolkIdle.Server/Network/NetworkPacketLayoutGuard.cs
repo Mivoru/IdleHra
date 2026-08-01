@@ -18,7 +18,11 @@ namespace FolkIdle.Server.Network
         // dead *Reserved* filler removed, offset by the +18 bytes the
         // Part 5 command-result ring buffer added replacing a 2-byte
         // scalar with 4 explicit byte+uint slot pairs).
-        public const int ExpectedClientCommandSize = 352;
+        // 352 -> 359: reroll operation kind (1), auto max attempts (4),
+        // stop min rarity (1), stop affix index (1). Both guards move in
+        // the same commit - the client copy silently drifted once before
+        // and threw on every startup.
+        public const int ExpectedClientCommandSize = 359;
 
         // Modul: Full-Stack Expansion, Part 1. 680 -> 689: the Leggings
         // equipment slot added EquippedLeggingsId (8 bytes) +

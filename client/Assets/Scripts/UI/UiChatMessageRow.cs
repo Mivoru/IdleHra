@@ -37,6 +37,17 @@ namespace FolkIdle.Client.UI
         public long BoundSenderPlayerId => _boundSenderPlayerId;
         public event System.Action<long> OnNameClicked;
 
+        // Modul: high-rarity announcements, 2026-08-01. Shown only on
+        // announcement rows; hidden on every ordinary message so the log does
+        // not sprout a button per line.
+        public UnityEngine.UI.Button CongratulateButton;
+        public event System.Action OnCongratulateClicked;
+
+        public void HandleCongratulateClicked()
+        {
+            OnCongratulateClicked?.Invoke();
+        }
+
         public void HandleNameClicked()
         {
             if (_boundSenderPlayerId != 0)
@@ -55,6 +66,13 @@ namespace FolkIdle.Client.UI
         public void Bind(long senderPlayerId, string senderDisplayName, bool isOwnMessage, string messageText)
         {
             _boundSenderPlayerId = senderPlayerId;
+
+            // Rows are pooled and rebound, so an ordinary message reusing a slot
+            // that last held an announcement must actively clear both the button
+            // and any glow the rarity styling left behind.
+            if (CongratulateButton != null) CongratulateButton.gameObject.SetActive(false);
+            ClearRarityStyling();
+
             if (RowText == null) return;
 
             RowText.color = isOwnMessage ? OwnMessageColor : OtherMessageColor;
@@ -141,5 +159,69 @@ namespace FolkIdle.Client.UI
             }
             return endOffset;
         }
+        // Modul: high-rarity announcements, 2026-08-01.
+        //
+        // Payload is "playerId|rarity|affixId|magnitude" as built by
+        // AffixRerollEngine.FormatRarityAnnouncement. Parsed rather than
+        // displayed raw so the client can colour by rarity and localise the
+        // wording later without a server change.
+        //
+        // A malformed payload falls back to a plain message rather than
+        // throwing - a chat row is not worth crashing the window over, and the
+        // server could be a version ahead during a rollout.
+        public void BindAnnouncement(string payload, string senderDisplayName)
+        {
+            if (RowText == null) return;
+
+            if (!TryParseAnnouncement(payload, out long playerId, out int rarity, out string affixId, out int magnitude))
+            {
+                Bind(0L, senderDisplayName, false, payload);
+                return;
+            }
+
+            _boundSenderPlayerId = playerId;
+
+            string who = string.IsNullOrEmpty(senderDisplayName) ? ("Player #" + playerId) : senderDisplayName;
+            string rarityName = UiRarityPalette.GetAffixRarityName(rarity);
+            string statLabel = FolkIdle.Client.Network.ClientAffixRegistry.Describe(affixId, magnitude);
+
+            RowText.text = who + " rerolled " + statLabel + " to " + rarityName + "!";
+            UiRarityPalette.ApplyAffixRarity(RowText, rarity);
+
+            if (CongratulateButton != null) CongratulateButton.gameObject.SetActive(true);
+        }
+
+        private void ClearRarityStyling()
+        {
+            if (RowText == null) return;
+
+            UiRarityGlow glow = RowText.GetComponent<UiRarityGlow>();
+            if (glow != null)
+            {
+                glow.enabled = false;
+                glow.ResetToPlain();
+            }
+        }
+
+        private static bool TryParseAnnouncement(string payload, out long playerId, out int rarity, out string affixId, out int magnitude)
+        {
+            playerId = 0L;
+            rarity = 1;
+            affixId = string.Empty;
+            magnitude = 0;
+
+            if (string.IsNullOrEmpty(payload)) return false;
+
+            string[] parts = payload.Split('|');
+            if (parts.Length != 4) return false;
+
+            if (!long.TryParse(parts[0], out playerId)) return false;
+            if (!int.TryParse(parts[1], out rarity)) return false;
+            affixId = parts[2];
+            if (!int.TryParse(parts[3], out magnitude)) return false;
+
+            return true;
+        }
+
     }
 }

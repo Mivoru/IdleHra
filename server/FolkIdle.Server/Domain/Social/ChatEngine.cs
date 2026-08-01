@@ -106,6 +106,36 @@ namespace FolkIdle.Server.Domain.Social
 
         public readonly ConcurrentQueue<ChatDispatchItem> OutboundDispatchQueue = new();
 
+        // Modul: high-rarity announcements, 2026-08-01.
+        //
+        // A third channel type alongside Global(0) and Guild(1). The client
+        // needs to tell an announcement apart from an ordinary global message
+        // to colour it by rarity and attach the congratulate button, and a
+        // dedicated channel byte does that without parsing message text.
+        public const byte AnnouncementChannelType = 3;
+
+        // STATIC on purpose. ChatEngine is constructed inside
+        // NetworkBroadcastSystem rather than registered in DI, so an engine
+        // like AffixRerollEngine has no way to resolve an instance. Threading a
+        // reference through every engine that might announce something would
+        // couple half the server to chat; a queue keeps the dependency
+        // one-directional, matching how every other cross-thread hand-off in
+        // this codebase works.
+        //
+        // Bounded: an announcement is a nice-to-have, so under a flood it is
+        // correct to drop rather than to grow without limit or to block the
+        // engine that produced it.
+        public const int MaxQueuedAnnouncements = 256;
+        public static readonly ConcurrentQueue<string> SystemAnnouncementQueue = new();
+
+        public static void EnqueueSystemAnnouncement(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+            if (SystemAnnouncementQueue.Count >= MaxQueuedAnnouncements) return;
+
+            SystemAnnouncementQueue.Enqueue(text);
+        }
+
         // Modul: the network layer (NetworkBroadcastSystem) owns the
         // WebSocket connections ChatEngine never touches directly - this
         // event is how the dispatch worker below hands a queued item back
@@ -130,6 +160,21 @@ namespace FolkIdle.Server.Domain.Social
         {
             while (true)
             {
+                // Drained here rather than on the producing thread so the
+                // packet build and the send both stay on this worker.
+                // SenderPlayerId 0 marks it as system-authored - no real player
+                // has id 0, so the client can trust the distinction.
+                while (SystemAnnouncementQueue.TryDequeue(out string? announcement))
+                {
+                    ResponseChatMessagePacket announcementPacket = BuildResponsePacket(
+                        senderPlayerId: 0L,
+                        timestampEpochMs: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                        messageText: announcement,
+                        channelType: AnnouncementChannelType);
+
+                    OutboundDispatchQueue.Enqueue(new ChatDispatchItem(announcementPacket, DispatchModeGlobal, guildId: 0, targetPlayerId: 0));
+                }
+
                 if (OutboundDispatchQueue.TryDequeue(out ChatDispatchItem item))
                 {
                     if (OnDispatchReady != null)

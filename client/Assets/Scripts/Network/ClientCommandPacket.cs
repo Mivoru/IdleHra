@@ -149,5 +149,28 @@ namespace FolkIdle.Client.Network
         public System.Guid TargetMatchUuid;
         public uint TelemetryEventCount;
         public uint NetworkDiagnosticsToken;
+
+        // Modul: reroll operations, 2026-08-01. NAMED fields rather than
+        // smuggling these through LimitPrice, which is a market price field and
+        // already carries an affix index for this same command - the pattern
+        // logged as backlog item 29 and the shape of several past identity
+        // bugs. Adding 7 bytes to a 352-byte packet is cheaper than another
+        // overloaded field.
+        //
+        // RerollOperationKind: 0 = Value, 1 = StatType, 2 = UpgradeRarity.
+        public byte RerollOperationKind;
+
+        // 0 means "one reroll". Anything higher runs auto-reroll, clamped
+        // server-side by AutoRerollPlanner.MaxAttemptsPerRequest - the client
+        // number is a request, never a trusted bound.
+        public uint RerollAutoMaxAttempts;
+
+        // Auto-reroll stop condition. Rarity is a FLOOR (1-5); 1 means "any".
+        public byte RerollStopMinRarity;
+
+        // 1-based index into AffixRegistry.Definitions; 0 means "any stat".
+        // An index rather than a string because the packet is fixed-layout, and
+        // the registry order is the same authority on both sides.
+        public byte RerollStopAffixIndex;
     }
 }

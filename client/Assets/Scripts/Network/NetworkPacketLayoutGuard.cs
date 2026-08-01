@@ -8,7 +8,11 @@ namespace FolkIdle.Client.Network
         // Modul: Full-Stack Production Hardening Phase 3, Part 4. Mirrors
         // server NetworkPacketLayoutGuard exactly - see that file's own
         // comment for the byte-count breakdown.
-        public const int ExpectedClientCommandSize = 352;
+        // 352 -> 359: reroll operation kind (1), auto max attempts (4),
+        // stop min rarity (1), stop affix index (1). Both guards move in
+        // the same commit - the client copy silently drifted once before
+        // and threw on every startup.
+        public const int ExpectedClientCommandSize = 359;
 
         // Modul: offhand slot. 686 -> 694: EquippedOffhandId (8 bytes, long).
         //

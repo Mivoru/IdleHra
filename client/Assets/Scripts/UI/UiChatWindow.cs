@@ -68,6 +68,12 @@ namespace FolkIdle.Client.UI
             public long ConversationPartnerId;
             public long TimestampEpochMs;
             public string MessageText;
+
+            // Modul: high-rarity announcements. Stored per entry rather than
+            // re-derived at bind time: the channel byte is not kept in history,
+            // and re-parsing MessageText to guess would misclassify any ordinary
+            // message that happened to contain pipes.
+            public bool IsAnnouncement;
         }
 
         // Fixed-size circular buffer - message data only, never GameObjects.
@@ -217,6 +223,11 @@ namespace FolkIdle.Client.UI
                     // bound to it at click time (see
                     // UiChatMessageRow.HandleNameClicked).
                     row.OnNameClicked += HandlePlayerNameClicked;
+
+                    // Modul: congratulate button. Subscribed once per fixed row
+                    // slot, exactly like OnNameClicked above - the row reports
+                    // whichever announcement is bound to it at click time.
+                    row.OnCongratulateClicked += HandleCongratulateClicked;
                 }
             }
 
@@ -238,7 +249,20 @@ namespace FolkIdle.Client.UI
         // ------------------------------------------------------------
         private void HandleRelayMessage(byte channelType, long senderPlayerId, long conversationPartnerId, long timestampEpochMs, string messageText)
         {
-            if (channelType != Channel) return;
+            // Modul: high-rarity announcements, 2026-08-01. Server-authored
+            // announcements are routed into the World window alongside global
+            // chat - they are a global event, and giving them their own tab
+            // would hide the thing they exist to show off. Guild and Whisper
+            // windows ignore them.
+            bool isAnnouncement = channelType == (byte)ChatChannelType.Announcement;
+            if (isAnnouncement)
+            {
+                if (Channel != (byte)ChatChannelType.Global) return;
+            }
+            else if (channelType != Channel)
+            {
+                return;
+            }
 
             long globalIndex = _totalMessagesAccepted;
             _history[globalIndex % HistoryCapacity] = new ChatHistoryEntry
@@ -246,7 +270,8 @@ namespace FolkIdle.Client.UI
                 SenderPlayerId = senderPlayerId,
                 ConversationPartnerId = conversationPartnerId,
                 TimestampEpochMs = timestampEpochMs,
-                MessageText = messageText
+                MessageText = messageText,
+                IsAnnouncement = isAnnouncement
             };
             _totalMessagesAccepted++;
 
@@ -411,7 +436,17 @@ namespace FolkIdle.Client.UI
                 bool isOwnMessage = NetworkClient != null && entry.SenderPlayerId == NetworkClient.LocalPlayerId;
                 string senderName = PlayerNameCache.GetOrRequest(entry.SenderPlayerId);
 
-                _rows[slot]?.Bind(entry.SenderPlayerId, senderName, isOwnMessage, entry.MessageText);
+                if (entry.IsAnnouncement)
+                {
+                    // The announcement payload carries the ACTING player's id,
+                    // not the sender's - the server sends these as id 0 - so the
+                    // name is resolved inside BindAnnouncement after parsing.
+                    _rows[slot]?.BindAnnouncement(entry.MessageText, null);
+                }
+                else
+                {
+                    _rows[slot]?.Bind(entry.SenderPlayerId, senderName, isOwnMessage, entry.MessageText);
+                }
                 _rowBoundVisibleIndex[slot] = visibleIndex;
             }
         }
@@ -546,6 +581,20 @@ namespace FolkIdle.Client.UI
         // player's context-menu selection resolves to.
         private long _pendingContextTargetPlayerId;
         public long PendingContextTargetPlayerId => _pendingContextTargetPlayerId;
+
+        // Modul: congratulate button, 2026-08-01. Sends a fixed "gz!" to World
+        // chat on the clicking player's behalf.
+        //
+        // Deliberately routed through the ordinary send path rather than a
+        // dedicated command: it is a normal chat message, so it inherits the
+        // server's existing rate limiting, profanity handling and mute checks
+        // for free. A bespoke path would have quietly bypassed all three.
+        private void HandleCongratulateClicked()
+        {
+            if (NetworkClient == null) return;
+
+            NetworkClient.SendChatMessageZeroAlloc("gz!", ChatChannelType.Global);
+        }
 
         private void HandlePlayerNameClicked(long senderPlayerId)
         {

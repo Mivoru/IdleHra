@@ -33,6 +33,22 @@ namespace FolkIdle.Server.Engine
         public AffixRarity LastRerollResultRarity { get; private set; }
         public string LastRerollResultAffixId { get; private set; } = string.Empty;
 
+        // Held between the mutation and the commit so a rolled-back reroll is
+        // never announced. Not thread-shared: one engine instance handles one
+        // request at a time.
+        private string? _pendingAnnouncement;
+
+        // "Player 4711 rerolled Critical Damage to LEGENDARY (+18.5%)".
+        // Deliberately carries no player NAME - PlayerRecord has no display
+        // name column, and inventing one here would put a second, wrong answer
+        // next to whatever the social layer eventually uses. The client
+        // resolves the id against its own roster cache.
+        private static string FormatRarityAnnouncement(long playerId, AffixRarity rarity, string affixId, int magnitude)
+        {
+            return string.Create(System.Globalization.CultureInfo.InvariantCulture,
+                $"{playerId}|{(int)rarity}|{affixId}|{magnitude}");
+        }
+
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry? _playerRegistry;
 
@@ -350,15 +366,48 @@ namespace FolkIdle.Server.Engine
                 LastRerollResultRarity = resultRarity;
                 LastRerollResultAffixId = resultDefinition.Id;
 
+                // Modul: high-rarity announcements. Epic and above only - the
+                // same threshold UiRarityPalette uses to decide what glows, so
+                // "it glowed" and "it was announced" never disagree.
+                //
+                // Enqueued AFTER the mutation but BEFORE the commit is
+                // deliberate: the queue is drained by a different thread, and
+                // announcing a reroll that then rolled back would put a lie in
+                // global chat that nothing could retract. The commit follows
+                // immediately below, and a failure there throws past this point
+                // without the dispatch worker having anything to send yet.
+                if (resultRarity >= AffixRarity.Epic)
+                {
+                    _pendingAnnouncement = FormatRarityAnnouncement(playerId, resultRarity, resultDefinition.Id, resultMagnitude);
+                }
+
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
-                
+
+                // Announced only once the transaction is durable. The queue is
+                // drained by the chat dispatch worker on another thread, so
+                // announcing before the commit could put a claim in global chat
+                // that a rollback then silently contradicts - and nothing can
+                // retract a chat line.
+                if (!string.IsNullOrEmpty(_pendingAnnouncement))
+                {
+                    Domain.Social.ChatEngine.EnqueueSystemAnnouncement(_pendingAnnouncement);
+                    _pendingAnnouncement = null;
+                }
+
                 Console.WriteLine($"Reroll success: {affixKeyToReroll} -> {newAffixKey} ({resultRarity})");
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+
+                // Discard any announcement staged before the failure. The
+                // engine instance is reused across an auto-reroll run, so a
+                // leftover here would be broadcast by the NEXT attempt and
+                // credit the player with a roll that never committed.
+                _pendingAnnouncement = null;
+
                 Console.WriteLine($"Reroll transaction aborted: {ex.Message}");
             }
         }

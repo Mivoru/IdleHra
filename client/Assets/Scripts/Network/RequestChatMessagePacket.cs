@@ -11,7 +11,14 @@ namespace FolkIdle.Client.Network
     {
         Global = 0,
         Guild = 1,
-        Whisper = 2
+        Whisper = 2,
+
+        // Modul: high-rarity announcements, 2026-08-01. Server-authored, never
+        // sent BY a client - the send paths all take Global/Guild/Whisper. It
+        // exists so the World window can tell an announcement apart from an
+        // ordinary message and render it with rarity colour and a congratulate
+        // button, without parsing message text to find out.
+        Announcement = 3
     }
 
     // Client to server chat send. A dedicated, exact-size binary WS message

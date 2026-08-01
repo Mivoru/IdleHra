@@ -76,7 +76,7 @@ namespace FolkIdle.Client.UI
         // it needs no asset import and survives a scene rebuild - the scene is
         // reconstructed entirely from MainSceneBuilder, so anything requiring a
         // hand-assigned material would be lost on the next rebuild.
-        public static void ApplyAffixRarity(TextMeshProUGUI target, int affixRarity)
+        public static void ApplyAffixRarity(TMP_Text target, int affixRarity)
         {
             if (target == null) return;
 
