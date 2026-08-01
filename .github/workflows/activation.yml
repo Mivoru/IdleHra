@@ -1,0 +1,26 @@
+name: Acquire Unity License
+
+on:
+  workflow_dispatch:
+
+jobs:
+  activation:
+    name: Request manual license file
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request manual license file
+        uses: game-ci/unity-request-activation-file@v2
+        id: get-alf
+
+      - name: Register license
+        uses: game-ci/unity-activate@v2
+        with:
+          version: 6000.5.2f1
+          username: ${{ secrets.UNITY_EMAIL }}
+          password: ${{ secrets.UNITY_PASSWORD }}
+          activationFile: ${{ steps.get-alf.outputs.filePath }}
+
+      - name: Save license secret
+        run: |
+          echo "Licence získána!"
+          echo "${{ env.UNITY_LICENSE }}"
