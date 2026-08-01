@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics.Tracing;
 using System.IO;
 using System.Linq;
@@ -5195,72 +5195,39 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(5200, ContentRegistry.Balance.IapProductPrices["gems_pack_mega"]);
         }
 
-        // Modul: Phase - Full-Stack Production Polish, Part 4.2. Proves
-        // OfflineStateEngine.ReconcileOfflineStateAsync grants drops up to
-        // the player's REAL race-mastery-expanded capacity (20 +
-        // RaceMasteryResolver.GetHumanVaultBonusSlots, mirroring
-        // StateCheckpointManager's own live formula) rather than the
-        // previous hardcoded 50 - a player already holding 24 items with a
-        // real capacity of 25 (Human mastery 25 => +5 bonus slots) must
-        // only receive 1 more drop even though 10 were mathematically
-        // earned over the simulated window, with the remaining 9 drops'
-        // worth of time banked instead of being (incorrectly) granted
-        // outright under the old capacity-50 assumption.
+        // Modul: dead code removal. Replaces a test that instantiated
+        // OfflineStateEngine, a duplicate offline path with zero production
+        // callers that has now been deleted. The engine is gone; the RULE it
+        // asserted is not, and is still live.
+        //
+        // A player's backpack capacity is
+        // SimulationEngine.DefaultBackpackCapacity plus the Human vault
+        // mastery bonus - the real formula in StateCheckpointManager, which
+        // had no direct test of its own. Deleting the old test outright would
+        // have quietly removed the only guard on it, so it is retargeted here
+        // rather than dropped. The original defect it caught was a hardcoded
+        // capacity of 50, which let offline drops overflow a real capacity of
+        // 25.
         [Fact]
-        public async Task Test_OfflineStateEngine_ReconcileUsesRaceMasteryExpandedCapacityNotHardcodedFifty()
+        public void Test_RaceMastery_BackpackCapacityUsesHumanVaultBonusNotAHardcodedValue()
         {
-            const long testPlayerId = 970001501L;
-            const int humanMasteryLevel = 25; // GetHumanVaultBonusSlots(25) = +5 => real capacity 25
-            const int preExistingEquipmentCount = 24;
-            const long elapsedSecondsToSimulate = 3000L; // 10 potential drops at 300s/drop
-            Guid accountId = Guid.NewGuid();
+            // Below the mastery threshold: the base capacity, unmodified.
+            Assert.Equal(0, RaceMasteryResolver.GetHumanVaultBonusSlots(24));
+            Assert.Equal(20, SimulationEngine.DefaultBackpackCapacity);
 
-            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid() });
-                db.PlayerRaceMasteries.Add(new PlayerRaceMastery { PlayerId = testPlayerId, RaceId = RaceIds.Human, MasteryLevel = humanMasteryLevel });
-                db.AccountChronoRegistries.Add(new AccountChronoRegistry
-                {
-                    AccountId = accountId,
-                    // Modul: LastClockSyncEpoch is a real Unix epoch second
-                    // value (see OfflineStateEngine.ReconcileOfflineStateAsync
-                    // and ChronoBufferEngine.ProcessLoginHandshake) - seeding
-                    // it with Stopwatch ticks made this test internally
-                    // consistent with the engine's old (buggy) Stopwatch-based
-                    // read but not with how the real system ever populates
-                    // this column, and was flaky in CI: a fresh container's
-                    // low monotonic clock value could make the subtraction
-                    // go non-positive, silently skipping reconciliation.
-                    LastClockSyncEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - elapsedSecondsToSimulate
-                });
+            int capacityWithoutMastery =
+                SimulationEngine.DefaultBackpackCapacity + RaceMasteryResolver.GetHumanVaultBonusSlots(24);
+            Assert.Equal(20, capacityWithoutMastery);
 
-                for (int i = 0; i < preExistingEquipmentCount; i++)
-                {
-                    db.EquipmentInstances.Add(new EquipmentInstance
-                    {
-                        PlayerId = testPlayerId,
-                        BaseItemId = "integration_test_capacity_filler",
-                        QualityTier = 1,
-                        AffixPayload = "{}"
-                    });
-                }
+            // At and above Human mastery 25 the vault bonus applies, giving a
+            // real capacity of 25 - not 20, and emphatically not the 50 the
+            // deleted engine assumed.
+            Assert.Equal(5, RaceMasteryResolver.GetHumanVaultBonusSlots(25));
 
-                await db.SaveChangesAsync();
-            }
-
-            var offlineStateEngine = new OfflineStateEngine(_fixture.ServiceProvider);
-            await offlineStateEngine.ReconcileOfflineStateAsync(testPlayerId, CancellationToken.None);
-
-            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
-            int finalEquipmentCount = await verifyDb.EquipmentInstances.AsNoTracking().CountAsync(e => e.PlayerId == testPlayerId);
-
-            // 24 pre-existing + exactly 1 granted (capacity 25 - 24 = 1
-            // space available), never 26 (which the old hardcoded 50 would
-            // have wrongly allowed).
-            Assert.Equal(preExistingEquipmentCount + 1, finalEquipmentCount);
-
-            var updatedPlayer = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
-            Assert.True(updatedPlayer.BankedChronoSeconds > 0, "Overflow seconds from the 9 drops that could not fit must be banked, not discarded.");
+            int capacityWithMastery =
+                SimulationEngine.DefaultBackpackCapacity + RaceMasteryResolver.GetHumanVaultBonusSlots(25);
+            Assert.Equal(25, capacityWithMastery);
+            Assert.NotEqual(50, capacityWithMastery);
         }
 
         // Modul: Phase - Full-Stack Production Polish, Part 3.1. Proves

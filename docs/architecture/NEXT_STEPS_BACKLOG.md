@@ -514,7 +514,26 @@ resident). Original description follows.
 has no client reference outside the dead `UiCommandDispatcher`. Same shape
 as item 6b (`UpgradeTool`), smaller stakes. Do not delete the sender.
 
-### 24. OfflineStateEngine is genuinely dead
+### 24. OfflineStateEngine - SHIPPED (deleted), with one correction
+
+Deleted. But the entry below was not quite right, and the correction is the
+useful part: it had zero PRODUCTION references, not zero references. One
+integration test instantiated it directly. The first sweep missed that
+because it was scoped to `server/FolkIdle.Server/` and did not include the
+test project.
+
+Deleting the test along with the engine would have silently dropped the only
+guard on a rule that is still live: backpack capacity is
+`SimulationEngine.DefaultBackpackCapacity` plus the Human vault mastery
+bonus, which `StateCheckpointManager` uses for real and which had no direct
+test of its own. The test was therefore retargeted at the live formula
+rather than deleted -
+`Test_RaceMastery_BackpackCapacityUsesHumanVaultBonusNotAHardcodedValue`.
+
+Reinforces item 6's lesson from the other direction: verify the scope of a
+"no references" claim, not just its result. Original description follows.
+
+
 
 Zero references anywhere, including `Program.cs` - unlike the phantom
 entries in item 6, this one was verified to exist and to be unreferenced.
