@@ -582,3 +582,89 @@ equipment) with a throwaway console app. A committed, idempotent dev-seed
 entry point - alongside `--migrate` and `--lift-quarantine` - would make the
 audit repeatable instead of improvised. Note it must stay clearly
 non-production, guarded the way `--lift-quarantine` is.
+
+## Audit Findings, 2026-08-01
+
+Logged from a full sweep across server, tests and client. Grouped because
+they share a cause: the wire and the command surface both grew faster than
+the UI that was meant to consume them.
+
+### 25. Thirty-two VisualSyncProxy properties have no reader
+
+The client mirrors 32 wire values into `VisualSyncProxy` properties that
+nothing in `client/Assets/Scripts/` reads. Most are harmless mirroring, but
+several are live server features with no player-facing surface at all. The
+two worth doing first:
+
+- **`VisualInventorySpaceRemaining` / `VisualInventoryCapacity`.** The
+  backpack "13/20" readout. `InventoryCapacity` was added to the wire
+  specifically so this could exist - see the inventory census work - and the
+  display was never built. A player has no way to see how full their
+  backpack is until loot starts being silently discarded.
+- **`VisualGatheringProgress` / `VisualProgressTicks`.** There is no
+  gathering progress indicator anywhere in the client. In an idle game whose
+  gathering loop is 9-11 percent of total playtime, the player watches
+  nothing happen.
+
+Also unread, lower priority: `VisualMentorCount` (the Academy XP bonus,
+previously fixed for being "invisible client-side" and still not shown),
+`VisualSlot1/2/3AgePhase` and `VisualChildMaturationMs` (character aging and
+breeding maturation), `VisualMaxMana`, `VisualGlobalEventId`, and the three
+village population fields.
+
+Not every one of the 32 needs UI - some are genuinely internal. The point of
+the entry is that nobody has ever gone through the list and decided.
+
+### 26. StateUpdatePacket.TotalItemsCraftedCount is never assigned
+
+The field exists on the wire and the client mirrors it into
+`VisualTotalItemsCraftedCount`, but no server code ever writes it, so it
+reads 0 forever. The Statistics screen shows a correct crafted count only
+because it reads the REST endpoint instead.
+
+Four dead bytes on a packet with five bytes of headroom under the 700-byte
+ceiling. Either assign it from `PlayerRecord.TotalItemsCrafted` or delete it
+and reclaim the space - but do not leave a zero-valued field on the wire for
+the next person to bind a UI to.
+
+### 27. Five commands remain unreachable from any UI
+
+Implemented and validated server-side with no client path:
+`ConsumeChronoCore`, `SubmitShardAttack`, `RegisterWorldBossDamage`,
+`InitiateNodeMigration`, `PingNetworkDiagnostics`.
+
+Two are real player features. `ConsumeChronoCore` is **not** covered by
+`UiChronoBankPanel`, which sends `ActivateChronoBoost` and
+`ConsumeTimeWarpCore` - different commands. `SubmitShardAttack` is mentioned
+only in a comment in `UiGuildWarPanel`. The last two are plausibly
+ops/diagnostics and may be fine to retire formally rather than wire.
+
+When checking this yourself: `SendWorldBossAttackCommandZeroAlloc` looks
+unreachable to grep and is NOT - it is wired through
+`UnityEventTools.AddPersistentListener` in `MainSceneBuilder`, which no text
+search can see. Always check the builder before believing a sender is dead.
+
+### 28. CombatStats.SetCooldownReductionActive is redundant
+
+The cooldown-reduction effect reads its flag straight off
+`SetBonusEngine.Evaluate(...)` at the skill-cast site, so the mirrored
+`CombatStats` property has no consumer. The effect works; the property is
+dead weight that invites someone to "fix" it by wiring a second path.
+Delete the property or switch the cast site to read it - one or the other,
+not both.
+
+### 29. AssignMentor carries a slot index in the LimitPrice field
+
+`CommandType.AssignMentor` reads its mentor slot index out of
+`cmd.LimitPrice`, a market price field. It works, and it is not urgent - but
+it is the same shape as the numeric-id-as-identity bugs that have bitten
+this codebase repeatedly. Give it a named field if that packet is touched
+for any other reason.
+
+### 30. Stale TODO in the AssignMentor command branch
+
+`SimulationEngine.cs` around line 1872 carries a TODO asking whether a
+validator check is needed. `ClientCommandValidator.ValidateMentorshipAssignment`
+is called on the very next line. One line to delete. Noted only because it
+is the single TODO marker in the entire codebase and reads as a gap when it
+is not.
