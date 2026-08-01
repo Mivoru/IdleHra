@@ -277,14 +277,29 @@ visible as two new characters appearing in the roster.
 
 ## Tooling
 
-### 13. Unity CI is skipped until a licence secret exists
+### 13. Unity CI - licence RESOLVED, release build needs one variable
 
-`.github/workflows/unity_client.yml` now gates its test and build jobs on a
-`licence-check` job that probes for `UNITY_LICENSE`. Without the secret the
-Unity jobs report as skipped rather than failing the whole workflow. They are
-genuinely not running: add `UNITY_LICENSE` (plus `UNITY_EMAIL` and
-`UNITY_PASSWORD` for a Pro seat) as repository secrets to turn them on. Until
-then, client-side verification is manual through the MCP Play Mode harness.
+`UNITY_LICENSE` is configured and the Unity jobs run. As of 2026-08-01 the
+licence check passes and **both the EditMode and PlayMode suites are green** -
+client-side verification is no longer manual-only.
+
+The jobs now run under a GitHub Environment named `Unity`, so secrets and
+variables must be defined there rather than at repository level.
+
+**Still outstanding: the Android release build.** It fails because no
+`FOLKIDLE_CDN_BASE_URL` variable is set. `BuildPipelineController` creates the
+`Production` Addressables profile from it on first run and fails loudly when
+it is absent, deliberately refusing to default it - Production content built
+against a placeholder URL would ship and then fail to load, which is the exact
+failure the surrounding code exists to prevent. Add
+`FOLKIDLE_CDN_BASE_URL` to the `Unity` environment, set to the CDN root that
+will serve the remote catalog and bundles.
+
+Note this is the FIRST time the release build has ever been exercised - it
+previously required an Addressables profile that only existed in a
+developer's local settings asset, so it could never have passed on a clean
+checkout. Expect further genuine failures on the first successful run past
+the profile stage; nothing downstream of it has been proven yet.
 
 ### 15. No audio clips exist
 
