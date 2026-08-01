@@ -3284,6 +3284,85 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        // Modul: combat arithmetic overflow guard. Written after a live audit
+        // found that Malakor - the authored region 5 boss, ordinary progression
+        // content - spawned at -1,294,967,296 milli-HP: 3,000,000 * 1000 wraps
+        // int, the engine's "monster is dead" check is CurrentMonsterHp <= 0,
+        // and the kill branch respawned it at the same negative value. That is
+        // one full kill reward per tick, forever: 6,000,000 XP and 1,500,000
+        // gold per second, with no cheating involved.
+        //
+        // The mirror-image defect existed on the damage side: AttackPower *
+        // 1000 * 1.5 overflowed for the four strongest monsters, the wrapped
+        // negative hit the Math.Max(1000, ...) floor, and the deadliest monster
+        // in the game dealt exactly 1 HP per swing.
+        //
+        // This test asserts the two invariants directly against every authored
+        // monster rather than against a hardcoded ceiling, so authoring a new
+        // monster above the safe bound fails here instead of shipping.
+        [Fact]
+        public void Test_MonsterCombatArithmetic_NeverOverflowsOrGoesNegative()
+        {
+            ContentRegistry.Initialize();
+
+            int monsterCount = ContentRegistry.Monsters.Length;
+            Assert.True(monsterCount > 0, "content registry loaded no monsters");
+
+            // The invariant that actually prevents the regression. Asserting
+            // that correctly-widened arithmetic stays positive is circular - it
+            // would pass against the broken code too, because the test would do
+            // the widening the engine forgot. What broke was the STORAGE type:
+            // milli-HP in an int. Pin it directly.
+            var monsterHpField = typeof(TickStatePayload).GetField(nameof(TickStatePayload.CurrentMonsterHp));
+            Assert.NotNull(monsterHpField);
+            Assert.Equal(typeof(long), monsterHpField!.FieldType);
+
+            var parkedHpField = typeof(CharacterActivityState).GetField(nameof(CharacterActivityState.CurrentMonsterHp));
+            Assert.NotNull(parkedHpField);
+            Assert.Equal(typeof(long), parkedHpField!.FieldType);
+
+            for (int monsterId = 1; monsterId <= monsterCount; monsterId++)
+            {
+                int scaledMaxHp = ContentRegistry.GetScaledMonsterMaxHp(monsterId);
+                Assert.True(scaledMaxHp > 0, $"monster {monsterId} scaled MaxHp is {scaledMaxHp}");
+
+                // Exactly how SimulationEngine spawns a monster. A negative or
+                // zero result here means it spawns already dead.
+                long spawnMilliHp = (long)scaledMaxHp * 1000L;
+                Assert.True(spawnMilliHp > 0, $"monster {monsterId} spawns at {spawnMilliHp} milli-HP");
+
+                // Exactly how ProcessSubTick derives incoming damage, at the
+                // maximum crit multiplier the monster crit roll can produce.
+                int scaledAttack = ContentRegistry.GetScaledMonsterAttackPower(monsterId);
+                Assert.True(scaledAttack >= 0, $"monster {monsterId} scaled AttackPower is {scaledAttack}");
+
+                long rawDamageLong = (long)(scaledAttack * 1000L * 1.5f);
+                Assert.True(rawDamageLong >= 0L, $"monster {monsterId} raw crit damage is {rawDamageLong}");
+
+                int rawDamage = rawDamageLong >= int.MaxValue ? int.MaxValue : (int)rawDamageLong;
+                Assert.True(rawDamage >= 0, $"monster {monsterId} saturated crit damage is {rawDamage}");
+            }
+        }
+
+        // The endgame scaling multiplier compounds at 1.25 per region tier past
+        // 10 with no upper bound, so the cast inside GetScaledMonster* must
+        // saturate rather than wrap. Tier 200 is far past anything reachable and
+        // is chosen precisely because it drives the double well beyond int range.
+        [Fact]
+        public void Test_EndgameScaling_SaturatesInsteadOfWrapping()
+        {
+            ContentRegistry.Initialize();
+
+            Assert.Equal(1.0, ContentRegistry.GetEndgameScalingMultiplier(ContentRegistry.MaxAuthoredRegionTier));
+            Assert.True(ContentRegistry.GetEndgameScalingMultiplier(200) > 1e18);
+
+            for (int monsterId = 1; monsterId <= ContentRegistry.Monsters.Length; monsterId++)
+            {
+                Assert.True(ContentRegistry.GetScaledMonsterMaxHp(monsterId) > 0);
+                Assert.True(ContentRegistry.GetScaledMonsterAttackPower(monsterId) >= 0);
+            }
+        }
+
         // Modul: Content Pipeline fast-fail coverage. ContentRegistry.Initialize/
         // ActiveSkillEngine.Initialize are deliberately parameterized to accept
         // an explicit directory (rather than always resolving AppContext.

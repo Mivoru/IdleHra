@@ -58,6 +58,14 @@ namespace FolkIdle.Client.Engine
         private const float CriticalHitFraction = 0.20f;
         public float VisualWoodcuttingXp;
         public float VisualMiningXp;
+
+        // Modul: gathering mastery display. The levels were on the wire but
+        // mirrored nowhere, so even the XP fields above - which ARE mirrored -
+        // had no panel that could show what they counted toward. Discrete, not
+        // interpolated: a mastery level is a step function, and lerping it would
+        // render fractional levels during the tick a level-up lands on.
+        public int VisualWoodcuttingMasteryLevel { get; private set; }
+        public int VisualMiningMasteryLevel { get; private set; }
         public float VisualGatheringProgress;
         public float VisualVillagePopulation;
         public float VisualAccumulatedTimeBankMs;
@@ -574,6 +582,8 @@ namespace FolkIdle.Client.Engine
                     VisualSlot2CharacterId = packet.Slot2_CharacterId;
                     VisualSlot3CharacterId = packet.Slot3_CharacterId;
                     VisualTownHallLevel = packet.TownHallLevel;
+                    VisualWoodcuttingMasteryLevel = packet.WoodcuttingMasteryLevel;
+                    VisualMiningMasteryLevel = packet.MiningMasteryLevel;
                     VisualPlayerAccuracyRating = packet.PlayerAccuracyRating;
                     VisualPlayerArmorRating = packet.PlayerArmorRating;
                     VisualPlayerBlockStrengthPct = packet.PlayerBlockStrengthPct;
@@ -731,6 +741,8 @@ namespace FolkIdle.Client.Engine
             VisualSlot2CharacterId = _snapshotB.Packet.Slot2_CharacterId;
             VisualSlot3CharacterId = _snapshotB.Packet.Slot3_CharacterId;
             VisualTownHallLevel = _snapshotB.Packet.TownHallLevel;
+            VisualWoodcuttingMasteryLevel = _snapshotB.Packet.WoodcuttingMasteryLevel;
+            VisualMiningMasteryLevel = _snapshotB.Packet.MiningMasteryLevel;
             VisualPlayerAccuracyRating = _snapshotB.Packet.PlayerAccuracyRating;
             VisualPlayerArmorRating = _snapshotB.Packet.PlayerArmorRating;
             VisualPlayerBlockStrengthPct = _snapshotB.Packet.PlayerBlockStrengthPct;

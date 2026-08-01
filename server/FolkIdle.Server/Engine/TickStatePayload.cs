@@ -53,7 +53,11 @@ namespace FolkIdle.Server.Engine
 
         // Combat mechanics
         public int CurrentMonsterId;
-        public int CurrentMonsterHp;
+        // Milli-HP (1 HP = 1000). MUST be long: authored content already
+        // ships a 3,000,000 HP boss, and 3,000,000 * 1000 exceeds int.MaxValue,
+        // which wrapped negative and made the monster spawn already dead - see
+        // the regression note in ContentRegistry.GetScaledMonsterMaxHp.
+        public long CurrentMonsterHp;
         public int PlayerHp;
         public int CombatTargetTickAccumulator;
         

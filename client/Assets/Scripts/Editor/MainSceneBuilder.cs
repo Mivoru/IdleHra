@@ -661,9 +661,27 @@ namespace FolkIdle.Client.Editor
             activityStatus.ProgressBarFill = progressFill;
             progressBarRoot.SetActive(false);
 
-            // Two stat rows plus the bar, added to a panel whose height was
-            // sized for eight rows.
-            panelRect.sizeDelta = new Vector2(260f, 220f + (22f * 2f) + 14f);
+            // Modul: gathering mastery display. Woodcutting and mining mastery
+            // are earned by three server paths and consumed for gathering yield,
+            // but had no column and no UI - so they reset every logout and the
+            // player could not see they existed. Persistence is fixed
+            // server-side; these two rows are the visible half.
+            UiGatheringMasteryPanel masteryPanel = panelObject.AddComponent<UiGatheringMasteryPanel>();
+            masteryPanel.SyncProxy = syncProxy;
+
+            masteryPanel.WoodcuttingLevelText = CreateStatRow(panelObject.transform, "Woodcutting Lv 0  (0/50)");
+            (GameObject woodBarRoot, Image woodFill) = BuildActivityProgressBar(panelObject.transform);
+            masteryPanel.WoodcuttingProgressFill = woodFill;
+            woodBarRoot.SetActive(true);
+
+            masteryPanel.MiningLevelText = CreateStatRow(panelObject.transform, "Mining Lv 0  (0/50)");
+            (GameObject miningBarRoot, Image miningFill) = BuildActivityProgressBar(panelObject.transform);
+            masteryPanel.MiningProgressFill = miningFill;
+            miningBarRoot.SetActive(true);
+
+            // Eight stat rows, then two activity rows plus its bar, then two
+            // mastery rows each with their own bar.
+            panelRect.sizeDelta = new Vector2(260f, 220f + (22f * 4f) + (14f * 3f));
         }
 
         // Modul: activity status HUD. A filled-Image progress bar, matching
@@ -1665,6 +1683,22 @@ namespace FolkIdle.Client.Editor
             TextMeshProUGUI text = CreateText(parent, objectName, body, 12f, TextAlignmentOptions.TopLeft);
             text.color = new Color(1f, 1f, 1f, 0.55f);
             text.raycastTarget = false;
+
+            // Modul: help-text overflow. These bodies are pinned to a fixed
+            // layout height, so any string longer than the caller estimated
+            // rendered straight out of its panel and over whatever sat below -
+            // measured at 25 texts across the scene by comparing
+            // GetPreferredValues against the rect height.
+            //
+            // Auto-sizing rather than TextOverflowModes.Ellipsis on purpose:
+            // these are explanatory strings whose whole value is being read, so
+            // shrinking to fit keeps the content where truncating would discard
+            // exactly the part the player had not read yet. The floor of 9 is
+            // where this UI's font stops being legible at the target resolution.
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 9f;
+            text.fontSizeMax = 12f;
+
             SetFixedLayoutHeight(text.gameObject, preferredHeight);
             return text;
         }
@@ -3358,9 +3392,13 @@ namespace FolkIdle.Client.Editor
             // screenshot, which is the only way this class of collision shows
             // up (both panels report correct sizes individually).
             //
-            // CharacterStatsPanel sits at y -72 and is 278 tall, so it ends at
-            // -350; this leaves a 10px gap below it.
-            panelRect.anchoredPosition = new Vector2(20f, -360f);
+            // CharacterStatsPanel sits at y -72. It has since grown twice - the
+            // two activity rows plus a bar, then the two gathering-mastery rows
+            // each with their own bar - so it is now 350 tall and ends at -422.
+            // This keeps the same 10px gap below it. Any further row added to
+            // that panel must move this strip again; the collision is invisible
+            // to structural checks because both panels report correct sizes.
+            panelRect.anchoredPosition = new Vector2(20f, -432f);
             panelRect.sizeDelta = new Vector2(260f, 76f);
 
             panelObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.35f);

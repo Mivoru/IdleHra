@@ -145,6 +145,17 @@ namespace FolkIdle.Server.Models
         // These three have no such existing source. All are monotonic and
         // survive the seasonal era rollover on purpose - they describe the
         // account's whole history, not the current era's progress.
+        // Modul: gathering mastery persistence. Woodcutting and mining
+        // mastery were tracked on TickStatePayload, earned by three separate
+        // code paths, and CONSUMED for gathering yield - but had no column, so
+        // every logout silently reset both professions to level 0. The tick
+        // thread is the sole author of these, so unlike TotalItemsCrafted they
+        // are safe to write back as an absolute snapshot.
+        public int WoodcuttingMasteryXp { get; set; }
+        public int WoodcuttingMasteryLevel { get; set; }
+        public int MiningMasteryXp { get; set; }
+        public int MiningMasteryLevel { get; set; }
+
         public long TotalItemsCrafted { get; set; }
         public long TotalDeaths { get; set; }
         public long TotalPlayTimeSeconds { get; set; }

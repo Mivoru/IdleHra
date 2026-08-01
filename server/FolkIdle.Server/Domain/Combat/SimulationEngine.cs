@@ -1432,8 +1432,15 @@ namespace FolkIdle.Server.Domain.Combat
                                 using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
                                 try
                                 {
-                                    var itemIdStr = itemId.ToString();
-                                    var items = await context.EquipmentInstances.FromSqlInterpolated($"SELECT * FROM equipment_instances WHERE PlayerId = {pId} AND BaseItemId = {itemIdStr} FOR UPDATE").ToListAsync();
+                                    // Identifiers must be double-quoted: the table is
+                                    // "EquipmentInstances", and an unquoted identifier folds
+                                    // to lowercase in Postgres, so this queried a relation
+                                    // that does not exist. itemId is also bound as an int
+                                    // rather than via ToString(), which compared text against
+                                    // an integer column. Either fault threw, and this
+                                    // lambda's failure handler force-disconnects the player.
+                                    int consumableBaseItemId = (int)itemId;
+                                    var items = await context.EquipmentInstances.FromSqlInterpolated($"SELECT * FROM \"EquipmentInstances\" WHERE \"PlayerId\" = {pId} AND \"BaseItemId\" = {consumableBaseItemId} FOR UPDATE").ToListAsync();
                                     if (items.Count > 0)
                                     {
                                         var targetItem = items[0];
@@ -2886,7 +2893,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 ActivityHaltReason = currentPayload.ActivityHaltReason,
 
                                 CurrentMonsterId = currentPayload.CurrentMonsterId,
-                                CurrentMonsterHp = currentPayload.CurrentMonsterHp / 1000,
+                                CurrentMonsterHp = (int)(currentPayload.CurrentMonsterHp / 1000L),
                                 PlayerHp = currentPayload.PlayerHp / 1000,
                                 Quarantine_Active = currentPayload.Quarantine_Active ? (byte)1 : (byte)0,
                                 CurrentLevel = currentPayload.CurrentLevel,
@@ -3465,7 +3472,7 @@ namespace FolkIdle.Server.Domain.Combat
             if (completedKills <= 0)
             {
                 payload.CurrentMonsterId = monsterId;
-                payload.CurrentMonsterHp = ContentRegistry.GetScaledMonsterMaxHp(monsterId) * 1000;
+                payload.CurrentMonsterHp = (long)ContentRegistry.GetScaledMonsterMaxHp(monsterId) * 1000L;
                 return;
             }
 
@@ -3522,7 +3529,7 @@ namespace FolkIdle.Server.Domain.Combat
             payload.InventorySpaceRemaining -= warpEquipmentDropsToGrant;
 
             payload.CurrentMonsterId = monsterId;
-            payload.CurrentMonsterHp = ContentRegistry.GetScaledMonsterMaxHp(monsterId) * 1000;
+            payload.CurrentMonsterHp = (long)ContentRegistry.GetScaledMonsterMaxHp(monsterId) * 1000L;
         }
 
         // Modul: drains Food1-3 in a fixed order, mirroring
@@ -4885,7 +4892,7 @@ namespace FolkIdle.Server.Domain.Combat
             if (payload.CurrentMonsterId <= 0)
             {
                 payload.CurrentMonsterId = fallbackId;
-                payload.CurrentMonsterHp = ContentRegistry.GetScaledMonsterMaxHp(payload.CurrentMonsterId) * 1000;
+                payload.CurrentMonsterHp = (long)ContentRegistry.GetScaledMonsterMaxHp(payload.CurrentMonsterId) * 1000L;
                 payload.CombatTargetTickAccumulator = 0;
             }
 
@@ -5025,7 +5032,16 @@ namespace FolkIdle.Server.Domain.Combat
                         monsterCritMult = Math.Max(1.0f, 1.5f - (combatStats.CritMitigationPct / 100f));
                     }
 
-                    int rawDamage = (int)(ContentRegistry.GetScaledMonsterAttackPower(payload.CurrentMonsterId) * 1000 * monsterCritMult);
+                    // Computed in long, then saturated. AttackPower * 1000 * 1.5
+                    // overflows int for the highest-tier authored monsters
+                    // (Perun's Shattered Aspect sits at 5,368,903 AP, which
+                    // reaches 8.05e9 on a crit against an int ceiling of
+                    // 2.15e9). The wrapped value went negative, the Math.Max
+                    // floor below caught it, and the deadliest monster in the
+                    // game dealt exactly 1 HP per hit - the inverse of the
+                    // spawn-already-dead bug on the HP side.
+                    long rawDamageLong = (long)(ContentRegistry.GetScaledMonsterAttackPower(payload.CurrentMonsterId) * 1000L * monsterCritMult);
+                    int rawDamage = rawDamageLong >= int.MaxValue ? int.MaxValue : (int)rawDamageLong;
 
                     // Step 3+4 (Armor then Block, combined): armor subtracts
                     // flat milli-damage, BlockStrengthPct (CON-derived, see
@@ -5320,7 +5336,7 @@ namespace FolkIdle.Server.Domain.Combat
                 }
 
                 payload.CurrentMonsterId = fallbackId;
-                payload.CurrentMonsterHp = ContentRegistry.GetScaledMonsterMaxHp(payload.CurrentMonsterId) * 1000;
+                payload.CurrentMonsterHp = (long)ContentRegistry.GetScaledMonsterMaxHp(payload.CurrentMonsterId) * 1000L;
                 payload.CombatTargetTickAccumulator = 0;
             }
         }

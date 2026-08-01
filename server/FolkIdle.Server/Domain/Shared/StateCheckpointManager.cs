@@ -752,6 +752,10 @@ namespace FolkIdle.Server.Domain.Shared
                 // keep an absolute running total - see TickStatePayload.
                 LifetimeDeaths = player.TotalDeaths,
                 LifetimeItemsCrafted = player.TotalItemsCrafted,
+                WoodcuttingMasteryXp = player.WoodcuttingMasteryXp,
+                WoodcuttingMasteryLevel = player.WoodcuttingMasteryLevel,
+                MiningMasteryXp = player.MiningMasteryXp,
+                MiningMasteryLevel = player.MiningMasteryLevel,
                 // Modul: race unlock feedback. Rebuilt from the durable
                 // PlayerRaceUnlocks rows, so the mask is correct after a
                 // reconnect and for accounts that unlocked races before this
@@ -920,6 +924,13 @@ namespace FolkIdle.Server.Domain.Shared
         private static void ApplyLifetimeStatistics(PlayerRecord player, TickStatePayload state)
         {
             player.TotalDeaths = state.LifetimeDeaths;
+
+            // Gathering mastery. Tick thread is the sole author, so an absolute
+            // snapshot is correct here.
+            player.WoodcuttingMasteryXp = state.WoodcuttingMasteryXp;
+            player.WoodcuttingMasteryLevel = state.WoodcuttingMasteryLevel;
+            player.MiningMasteryXp = state.MiningMasteryXp;
+            player.MiningMasteryLevel = state.MiningMasteryLevel;
 
             long sessionSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - state.SessionStartEpochSeconds;
             if (sessionSeconds < 0L) sessionSeconds = 0L;

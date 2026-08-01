@@ -33,7 +33,8 @@ namespace FolkIdle.Server.Engine
 
         // Combat
         public int CurrentMonsterId;
-        public int CurrentMonsterHp;
+        // Milli-HP. Long for the same reason as TickStatePayload's copy.
+        public long CurrentMonsterHp;
         public int PlayerHp;
         public int CombatTargetTickAccumulator;
         public byte TargetStatusEffectBitmask;

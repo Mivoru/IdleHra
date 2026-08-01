@@ -764,6 +764,17 @@ namespace FolkIdle.Server.Engine
         // own field types and every existing call site's arithmetic
         // (* 1000 for milli-hp, etc.) - the scaled result is floored, never
         // rounded up, so it never exceeds the exact mathematical value.
+        //
+        // SATURATING, not wrapping. The endgame multiplier compounds without
+        // bound (1.25 per tier past 10), so an unchecked (int) cast was
+        // guaranteed to wrap negative for any player who progressed far
+        // enough - and a monster with negative scaled HP spawns already dead,
+        // handing out full kill rewards every tick. Saturating at int.MaxValue
+        // makes the worst case "absurdly tough" instead of "free loot".
+        //
+        // The paired call sites must still widen before multiplying: milli-HP
+        // is (long)GetScaledMonsterMaxHp(id) * 1000L, because even a legitimate
+        // authored 3,000,000 HP boss overflows int once scaled to milli.
         public static int GetScaledMonsterMaxHp(int monsterId)
         {
             if (monsterId < 1 || monsterId > _monsters.Length)
@@ -773,7 +784,9 @@ namespace FolkIdle.Server.Engine
 
             int baseMaxHp = _monsters[monsterId - 1].MaxHp;
             int regionTier = GetMonsterRegionTier(monsterId);
-            return regionTier <= MaxAuthoredRegionTier ? baseMaxHp : (int)(baseMaxHp * GetEndgameScalingMultiplier(regionTier));
+            return regionTier <= MaxAuthoredRegionTier
+                ? baseMaxHp
+                : SaturateToInt(baseMaxHp * GetEndgameScalingMultiplier(regionTier));
         }
 
         public static int GetScaledMonsterAttackPower(int monsterId)
@@ -785,7 +798,19 @@ namespace FolkIdle.Server.Engine
 
             int baseAttackPower = _monsters[monsterId - 1].AttackPower;
             int regionTier = GetMonsterRegionTier(monsterId);
-            return regionTier <= MaxAuthoredRegionTier ? baseAttackPower : (int)(baseAttackPower * GetEndgameScalingMultiplier(regionTier));
+            return regionTier <= MaxAuthoredRegionTier
+                ? baseAttackPower
+                : SaturateToInt(baseAttackPower * GetEndgameScalingMultiplier(regionTier));
+        }
+
+        // Floors toward zero and clamps into int range. A double-to-int cast
+        // outside range is undefined behaviour in an unchecked context and in
+        // practice yields int.MinValue on x64 - the exact sign flip this guards.
+        private static int SaturateToInt(double value)
+        {
+            if (double.IsNaN(value) || value <= 0.0) return 0;
+            if (value >= int.MaxValue) return int.MaxValue;
+            return (int)value;
         }
 
         private static Dictionary<string, int> _baseIdToItemDefinitionIndex = new();
