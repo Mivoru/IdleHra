@@ -5,21 +5,30 @@ on:
 
 jobs:
   activation:
-    name: Request manual license file
+    name: Generate ALF File
     runs-on: ubuntu-latest
+    container:
+      image: unityci/editor:ubuntu-6000.0.0f1-base-3.0.0
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Request manual license file
-        uses: game-ci/unity-builder@v4
-        id: get-alf
-        with:
-          projectPath: client
-          targetPlatform: StandaloneLinux64
-          version: 6000.5.2f1
-          buildMethod: UnityBuilderAction.Authentication.CreateManualActivationFile
-          customParameters: -batchmode -createManualActivationFile
+      - name: Create ALF file
+        run: |
+          unity-editor \
+            -batchmode \
+            -nographics \
+            -createManualActivationFile \
+            -logfile /dev/stdout || true
+          
+          # Najde a přejmenuje vygenerovaný .alf soubor pro artefakt
+          ALF_FILE=$(ls *.alf 2>/dev/null | head -n 1)
+          if [ -n "$ALF_FILE" ]; then
+            echo "Vygenerován soubor: $ALF_FILE"
+          else
+            echo "Při generování ALF nastala chyba!"
+            exit 1
+          fi
 
       - name: Upload ALF file
         uses: actions/upload-artifact@v4
