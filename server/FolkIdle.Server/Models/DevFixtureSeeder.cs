@@ -227,12 +227,29 @@ namespace FolkIdle.Server.Models
                     continue;
                 }
 
+                // Modul: fixture affixes, 2026-08-01. Was a literal "{}", so
+                // every seeded item had NO affixes and the reroll, affix and
+                // rarity UI could not be exercised from the fixture at all - a
+                // live test had to hand-write a payload into the database first.
+                //
+                // Rolled through AffixRegistry exactly as a drop would, so the
+                // fixture exercises the same code path players do, including
+                // slot legality and the per-affix rarity roll.
+                const int fixtureRarityTier = 3;
+                var seededAffixes = new Dictionary<string, int>();
+                AffixRegistry.RollAffixes(
+                    baseItemId,
+                    regionTier: 3,
+                    itemRarityTier: fixtureRarityTier,
+                    affixCount: RarityTier.GetAffixCount(fixtureRarityTier),
+                    destination: seededAffixes);
+
                 var instance = new EquipmentInstance
                 {
                     PlayerId = playerId,
                     BaseItemId = baseItemId,
-                    QualityTier = 3,
-                    AffixPayload = "{}"
+                    QualityTier = fixtureRarityTier,
+                    AffixPayload = System.Text.Json.JsonSerializer.Serialize(seededAffixes)
                 };
                 db.EquipmentInstances.Add(instance);
                 await db.SaveChangesAsync();

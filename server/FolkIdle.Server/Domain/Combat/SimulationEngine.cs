@@ -4809,9 +4809,24 @@ namespace FolkIdle.Server.Domain.Combat
                     continue;
                 }
 
+                // Modul: slot register hardening, 2026-08-01.
+                //
+                // The swap-back is in a finally so it cannot be skipped. The
+                // pair is what keeps the active register consistent with what
+                // the payload believes it holds; if ProcessSubTick threw, the
+                // second swap was lost and the register kept the WRONG slot's
+                // character, gear and combat state while every later reader
+                // assumed slot 0. That corruption would outlive the exception
+                // and be attributed to something else entirely.
                 SwapSlotIntoActiveRegister(ref payload, slotIndex);
-                ProcessSubTick(ref payload, localXpMultiplier, localDropMultiplier, guildWarPointQueue, liveSessionContexts);
-                SwapSlotIntoActiveRegister(ref payload, slotIndex);
+                try
+                {
+                    ProcessSubTick(ref payload, localXpMultiplier, localDropMultiplier, guildWarPointQueue, liveSessionContexts);
+                }
+                finally
+                {
+                    SwapSlotIntoActiveRegister(ref payload, slotIndex);
+                }
             }
         }
 

@@ -1188,3 +1188,34 @@ a second implementation, which is the right shape. Add/remove/invite flows
 and online-status accuracy were NOT verified in this pass - recorded as
 uncovered rather than claimed, since context ran out before they could be
 exercised live.
+
+
+### 49b. Item 49 follow-ups - SHIPPED
+
+- **Slot register hardened.** The swap-back around `ProcessSubTick` is now in
+  a `finally`, so an exception cannot leave the active register holding one
+  slot's character while every later reader assumes slot 0. The corruption
+  would have outlived the exception and been blamed on something else.
+- **Dev fixture rolls real affixes.** Was a literal `{}` on every seeded item,
+  so the reroll, affix and rarity UI could not be exercised without
+  hand-writing a payload into the database first - which is exactly what the
+  2026-08-01 live session had to do. Now goes through
+  `AffixRegistry.RollAffixes` like a real drop. Verified: the fixture produced
+  `attack_speed_pct@1` on a weapon, `crit_chance_pct@2` on a helmet and
+  `flat_hp@3` on a chest - slot-legal, with per-affix rarities.
+- **Guild discovery now exists.** `GET /api/v1/guilds/list` with `skip`/`take`
+  and an optional case-insensitive `name` filter, ordered by active members.
+  Paging deliberately mirrors the leaderboard's shape rather than inventing a
+  second convention. Returns enough per guild - members, tier, MMR, tax, join
+  type, minimum level - to decide whether to apply without a second
+  round-trip. Verified live: 401 unauthenticated, and a genuinely unmatched
+  path still 400s, so the route is real rather than a catch-all.
+
+**Still open from item 49:** the client has no UI for the new endpoint yet -
+this pass added the capability, not the screen. And the friendlist
+add/remove/invite and online-status flows remain unaudited.
+
+**Noted while testing, not a product bug:** deleting `EquipmentInstances` rows
+leaves `characters.Equipped*Id` pointing at them, and the fixture's
+"already equipped" guard then refuses to re-seed. Only reachable by editing
+the database by hand, but worth knowing before the next fixture reset.

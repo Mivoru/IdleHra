@@ -736,6 +736,12 @@ namespace FolkIdle.Server.Network
                     // through SimulationEngine's tick thread, matching
                     // GuildManagementEngine's own header comment that it
                     // "never touches SimulationEngine state directly."
+                    if (requestPath == "/api/v1/guilds/list" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleGuildList(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/guilds/create" && context.Request.HttpMethod == "POST")
                     {
                         await HandleGuildCreate(context);
@@ -1144,6 +1150,23 @@ namespace FolkIdle.Server.Network
         private sealed class GuildApplicationActionResponse
         {
             public bool Success { get; set; }
+        }
+
+        // Modul: guild discovery, 2026-08-01. Everything a player needs to
+        // decide whether a guild is worth applying to, without a second
+        // round-trip: how full it is, how strong, what it taxes, and whether
+        // they even meet the level requirement.
+        private sealed class GuildDirectoryEntryResponse
+        {
+            public long GuildId { get; set; }
+            public string Name { get; set; } = string.Empty;
+            public int CurrentTier { get; set; }
+            public int ActiveMembers { get; set; }
+            public int MaxMembers { get; set; }
+            public int GuildMMR { get; set; }
+            public int TaxRatePct { get; set; }
+            public int JoinType { get; set; }
+            public int MinApplicationLevel { get; set; }
         }
 
         private sealed class LeaderboardEntryResponse
@@ -2886,6 +2909,90 @@ namespace FolkIdle.Server.Network
         // chat log legitimately contains ids of players that no longer
         // exist.
         private const int NameLookupBatchLimit = 64;
+
+        // Modul: guild discovery, 2026-08-01.
+        //
+        // Joining was by EXACT NAME with nothing to browse, so a player who had
+        // not been told a guild's precise spelling had no way to find one at
+        // all. Create, join, roster and the application flow all existed; only
+        // the ability to discover a guild was missing.
+        //
+        // Paging deliberately mirrors the leaderboard's skip/take shape, which
+        // was audited correct on 2026-08-01 - same validation, same clamping,
+        // rather than a second convention to keep in sync.
+        private const int GuildListMaxTake = 50;
+
+        private async Task HandleGuildList(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+
+                int skip = 0;
+                int take = 25;
+                if (int.TryParse(query["skip"], out int parsedSkip)) skip = parsedSkip;
+                if (int.TryParse(query["take"], out int parsedTake)) take = parsedTake;
+
+                // Clamped rather than rejected: an out-of-range page is a
+                // client bug, not an attack, and returning a usable first page
+                // beats a 400 the UI has to special-case.
+                if (skip < 0) skip = 0;
+                if (take < 1) take = 1;
+                if (take > GuildListMaxTake) take = GuildListMaxTake;
+
+                string nameFilter = (query["name"] ?? string.Empty).Trim();
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var guildQuery = db.GuildRecords.AsNoTracking();
+
+                if (nameFilter.Length > 0)
+                {
+                    // Case-insensitive contains, so a half-remembered name still
+                    // finds the guild - the entire point of this endpoint.
+                    string lowered = nameFilter.ToLowerInvariant();
+                    guildQuery = guildQuery.Where(g => g.Name.ToLower().Contains(lowered));
+                }
+
+                var rows = await guildQuery
+                    .OrderByDescending(g => g.ActiveMembers)
+                    .ThenBy(g => g.Id)
+                    .Skip(skip)
+                    .Take(take)
+                    .Select(g => new GuildDirectoryEntryResponse
+                    {
+                        GuildId = g.Id,
+                        Name = g.Name,
+                        CurrentTier = g.CurrentTier,
+                        ActiveMembers = g.ActiveMembers,
+                        MaxMembers = g.MaxMembers,
+                        GuildMMR = g.GuildMMR,
+                        TaxRatePct = g.TaxRatePct,
+                        JoinType = g.JoinType,
+                        MinApplicationLevel = g.MinApplicationLevel
+                    })
+                    .ToListAsync();
+
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, rows);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild list lookup error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
 
         private async Task HandlePlayerNames(HttpListenerContext context)
         {
