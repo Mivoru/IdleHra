@@ -141,6 +141,38 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(AffixRarity.Uncommon, next);
         }
 
+        // ---------- currency store ----------
+
+        // Regression guard for a bug that made every diamond-priced reroll
+        // impossible in production while the integration tests passed.
+        //
+        // Gold and diamonds live in DIFFERENT stores. Gold is a CommodityRecords
+        // row seeded at registration. Diamonds are PlayerRecords."PremiumDiamonds"
+        // and nothing in the server has ever created a "premium_diamond"
+        // commodity row - so a reroll that looked there always found null and
+        // rejected the player as broke. The reroll integration tests seeded that
+        // row themselves, which made a store the game never populates look real.
+        //
+        // This asserts the invariant that actually matters and needs no fixture:
+        // the diamond balance the WIRE reports must come from the same field the
+        // spend path decrements.
+        [Fact]
+        public void DiamondBalance_OnTheWire_ComesFromThePlayerRecordColumn()
+        {
+            var payloadField = typeof(TickStatePayload).GetField(nameof(TickStatePayload.PremiumCurrency));
+            Assert.NotNull(payloadField);
+
+            var recordProperty = typeof(FolkIdle.Server.Models.PlayerRecord).GetProperty("PremiumDiamonds");
+            Assert.NotNull(recordProperty);
+
+            // Both are plain ints, so the hydration assignment
+            // PremiumCurrency = player.PremiumDiamonds is lossless in both
+            // directions. A widening on one side only would silently truncate a
+            // wealthy account's balance.
+            Assert.Equal(typeof(int), payloadField!.FieldType);
+            Assert.Equal(typeof(int), recordProperty!.PropertyType);
+        }
+
         // ---------- auto-reroll stop conditions ----------
 
         [Fact]

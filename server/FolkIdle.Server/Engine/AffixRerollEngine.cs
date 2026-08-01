@@ -38,6 +38,11 @@ namespace FolkIdle.Server.Engine
         // request at a time.
         private string? _pendingAnnouncement;
 
+        // Staged like _pendingAnnouncement and for the same reason: the payload
+        // must not be told about a balance the transaction then rolls back.
+        // -1 means "no diamond spend in this attempt".
+        private int _pendingDiamondBalance = -1;
+
         // "Player 4711 rerolled Critical Damage to LEGENDARY (+18.5%)".
         // Deliberately carries no player NAME - PlayerRecord has no display
         // name column, and inventing one here would put a second, wrong answer
@@ -300,20 +305,63 @@ namespace FolkIdle.Server.Engine
                         consecutiveAttempts,
                         operation == RerollOperation.StatType);
 
-                string currencyItemId = payWithDiamonds ? "premium_diamond" : "gold";
-
-                var currencyQuery = $"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = '{currencyItemId}' FOR UPDATE";
-                var currencyRecord = await db.CommodityRecords.FromSqlRaw(currencyQuery).SingleOrDefaultAsync();
-
-                if (currencyRecord == null || currencyRecord.Quantity < cost)
+                // Modul: diamond store correction, 2026-08-01.
+                //
+                // Diamonds and gold live in DIFFERENT places, and this method
+                // used to spend both from CommodityRecords. Gold genuinely does
+                // live there - AuthenticationEngine seeds ItemId="gold" at
+                // registration and every gold path reads that row. Diamonds do
+                // NOT: PlayerRecords."PremiumDiamonds" is the only store, it is
+                // what every producer credits (achievements, daily login,
+                // chronicle pass, billing verification), and it is what the wire
+                // and the UI show via TickStatePayload.PremiumCurrency.
+                //
+                // Nothing in the server has ever created a "premium_diamond"
+                // CommodityRecords row, so the lookup always returned null and
+                // every diamond-priced reroll was rejected as unaffordable no
+                // matter how many diamonds the player held. The integration
+                // tests missed it because they seed that row explicitly, which
+                // made a store the game never populates look real.
+                if (payWithDiamonds)
                 {
-                    Console.WriteLine($"Reroll failed: insufficient {currencyItemId} (need {cost}).");
-                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
-                    await transaction.RollbackAsync();
-                    return;
-                }
+                    var diamondOwner = await db.PlayerRecords
+                        .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
+                        .SingleOrDefaultAsync();
 
-                currencyRecord.Quantity -= cost;
+                    if (diamondOwner == null || diamondOwner.PremiumDiamonds < cost)
+                    {
+                        Console.WriteLine($"Reroll failed: insufficient diamonds (need {cost}).");
+                        _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
+                        await transaction.RollbackAsync();
+                        return;
+                    }
+
+                    diamondOwner.PremiumDiamonds -= (int)cost;
+
+                    // The live payload owns PremiumCurrency, and the checkpoint
+                    // writes it back with plain assignment - so deducting only
+                    // in the database would be silently refunded by the next
+                    // flush. BillingSyncNotification exists for exactly this
+                    // hand-off: it carries the DB-authoritative balance onto the
+                    // tick-owned payload, which is the only thread allowed to
+                    // touch it.
+                    _pendingDiamondBalance = diamondOwner.PremiumDiamonds;
+                }
+                else
+                {
+                    var currencyQuery = $"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = 'gold' FOR UPDATE";
+                    var currencyRecord = await db.CommodityRecords.FromSqlRaw(currencyQuery).SingleOrDefaultAsync();
+
+                    if (currencyRecord == null || currencyRecord.Quantity < cost)
+                    {
+                        Console.WriteLine($"Reroll failed: insufficient gold (need {cost}).");
+                        _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
+                        await transaction.RollbackAsync();
+                        return;
+                    }
+
+                    currencyRecord.Quantity -= cost;
+                }
 
                 AffixDefinition resultDefinition = currentDefinition;
                 AffixRarity resultRarity = currentRarity;
@@ -395,6 +443,16 @@ namespace FolkIdle.Server.Engine
                     _pendingAnnouncement = null;
                 }
 
+                if (_pendingDiamondBalance >= 0)
+                {
+                    _playerRegistry?.BillingSyncQueue.Enqueue(new BillingSyncNotification
+                    {
+                        PlayerId = playerId,
+                        PremiumDiamondsBalance = _pendingDiamondBalance
+                    });
+                    _pendingDiamondBalance = -1;
+                }
+
                 Console.WriteLine($"Reroll success: {affixKeyToReroll} -> {newAffixKey} ({resultRarity})");
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
             }
@@ -407,6 +465,7 @@ namespace FolkIdle.Server.Engine
                 // leftover here would be broadcast by the NEXT attempt and
                 // credit the player with a roll that never committed.
                 _pendingAnnouncement = null;
+                _pendingDiamondBalance = -1;
 
                 Console.WriteLine($"Reroll transaction aborted: {ex.Message}");
             }
