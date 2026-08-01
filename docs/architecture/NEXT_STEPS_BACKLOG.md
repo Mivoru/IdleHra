@@ -668,3 +668,18 @@ validator check is needed. `ClientCommandValidator.ValidateMentorshipAssignment`
 is called on the very next line. One line to delete. Noted only because it
 is the single TODO marker in the entire codebase and reads as a gap when it
 is not.
+
+### 31. Character stat rows render bare numbers with no labels
+
+`UiCharacterStatsPanel` writes only the integer into each row's char buffer -
+`WriteIntToBuffer(_strBuffer, 0, str)` with no "STR: " prefix - so the
+top-left HUD shows eight unlabelled values reading `0 / 0 / 0 / 0 / 0 / 0 /
+0.0% / 0`. The placeholder text passed by the scene builder ("STR: 0") is
+overwritten on the first refresh.
+
+Confirmed in a Play Mode screenshot. Pre-existing, unrelated to the activity
+status work that sits directly below it in the same panel - and invisible to
+any structural check, since every row exists and is correctly wired.
+
+Fix is the same shape as `UiActivityStatusPanel.RefreshBackpack`: write the
+label into the buffer before the number.

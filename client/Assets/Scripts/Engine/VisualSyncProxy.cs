@@ -127,6 +127,15 @@ namespace FolkIdle.Client.Engine
         public int VisualInventorySpaceRemaining { get; private set; }
         public int VisualInventoryCapacity { get; private set; }
 
+        // Modul: activity status HUD. The denominator for the activity progress
+        // bar. CurrentProgressTicks was already mirrored and interpolated; the
+        // value it is a fraction OF was on the wire and mirrored nowhere, so a
+        // progress bar was not actually buildable from the proxy.
+        //
+        // Discrete, not interpolated: it changes when the activity changes, and
+        // lerping a denominator would make the bar jump during the transition.
+        public int VisualRequiredProgressTicks { get; private set; }
+
         public int VisualPlayerAccuracyRating { get; private set; }
         public int VisualPlayerArmorRating { get; private set; }
         public float VisualPlayerBlockStrengthPct { get; private set; }
@@ -551,6 +560,7 @@ namespace FolkIdle.Client.Engine
                     VisualActiveActivityId = packet.ActiveActivityId;
                     VisualInventorySpaceRemaining = packet.InventorySpaceRemaining;
                     VisualInventoryCapacity = packet.InventoryCapacity;
+                    VisualRequiredProgressTicks = packet.RequiredProgressTicks;
                     VisualEquippedHelmetId = packet.EquippedHelmetId;
                     VisualEquippedGlovesId = packet.EquippedGlovesId;
                     VisualEquippedBootsId = packet.EquippedBootsId;
@@ -707,6 +717,7 @@ namespace FolkIdle.Client.Engine
             VisualActiveActivityId = _snapshotB.Packet.ActiveActivityId;
             VisualInventorySpaceRemaining = _snapshotB.Packet.InventorySpaceRemaining;
             VisualInventoryCapacity = _snapshotB.Packet.InventoryCapacity;
+            VisualRequiredProgressTicks = _snapshotB.Packet.RequiredProgressTicks;
             VisualEquippedHelmetId = _snapshotB.Packet.EquippedHelmetId;
             VisualEquippedGlovesId = _snapshotB.Packet.EquippedGlovesId;
             VisualEquippedBootsId = _snapshotB.Packet.EquippedBootsId;

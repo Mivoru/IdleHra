@@ -642,6 +642,79 @@ namespace FolkIdle.Client.Editor
             statsPanel.RangedDamageText = CreateStatRow(panelObject.transform, "Ranged: 0");
             statsPanel.CritChanceText = CreateStatRow(panelObject.transform, "Crit: 0.0%");
             statsPanel.MaxHpText = CreateStatRow(panelObject.transform, "Max HP: 0");
+
+            // Modul: activity status HUD. Backpack occupancy and an activity
+            // progress bar - both values have been on the wire and mirrored
+            // into VisualSyncProxy with no reader at all.
+            //
+            // Appended to this panel for placement only; the behaviour lives in
+            // its own component because it must refresh per frame (progress is
+            // interpolated) while UiCharacterStatsPanel refreshes on discrete
+            // character-state events.
+            UiActivityStatusPanel activityStatus = panelObject.AddComponent<UiActivityStatusPanel>();
+            activityStatus.SyncProxy = syncProxy;
+
+            activityStatus.BackpackText = CreateStatRow(panelObject.transform, "Backpack: 0/0");
+            activityStatus.ProgressLabelText = CreateStatRow(panelObject.transform, "Progress");
+
+            (GameObject progressBarRoot, Image progressFill) = BuildActivityProgressBar(panelObject.transform);
+            activityStatus.ProgressBarFill = progressFill;
+            progressBarRoot.SetActive(false);
+
+            // Two stat rows plus the bar, added to a panel whose height was
+            // sized for eight rows.
+            panelRect.sizeDelta = new Vector2(260f, 220f + (22f * 2f) + 14f);
+        }
+
+        // Modul: activity status HUD. A filled-Image progress bar, matching
+        // UiVillageBuildingRow.ProgressBarFill's construction (Image with
+        // Type.Filled driven via fillAmount) rather than
+        // BuildAnchoredProgressBar's anchorMax.x pattern - the component drives
+        // fillAmount.
+        // Modul: filled-bar rendering fix. Every Image in this scene using
+        // Image.Type.Filled MUST have a sprite, or Unity silently ignores
+        // fillAmount and draws the bar permanently full.
+        //
+        // Unity's Image.OnPopulateMesh short-circuits to a plain quad when
+        // sprite is null - the Type switch is never reached - so a
+        // null-sprite filled bar renders at 100 percent no matter what
+        // fillAmount is set to. Nothing errors and nothing warns.
+        //
+        // Proven live: with fillAmount forced to 0 the bar still rendered
+        // solid; assigning this sprite made the same bar render a correct
+        // partial fill. This affected every filled bar in the game, including
+        // the combat HealthBarFill, which therefore always showed full HP.
+        //
+        // UISprite is Unity's stock built-in UI sprite - no project asset is
+        // required and nothing needs importing.
+        private static void ApplyFilledBarSprite(Image filledImage)
+        {
+            if (filledImage == null) return;
+
+            filledImage.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        }
+
+        private static (GameObject root, Image fill) BuildActivityProgressBar(Transform parent)
+        {
+            GameObject trackObject = new GameObject("ActivityProgressTrack", typeof(RectTransform));
+            trackObject.transform.SetParent(parent, false);
+            SetFixedLayoutHeight(trackObject, 10f);
+            trackObject.AddComponent<Image>().color = new Color(1f, 1f, 1f, 0.15f);
+
+            GameObject fillObject = new GameObject("ActivityProgressFill", typeof(RectTransform));
+            fillObject.transform.SetParent(trackObject.transform, false);
+            RectTransform fillRect = (RectTransform)fillObject.transform;
+            StretchFull(fillRect);
+
+            Image fillImage = fillObject.AddComponent<Image>();
+            fillImage.color = new Color(0.35f, 0.8f, 0.45f, 0.95f);
+            fillImage.type = Image.Type.Filled;
+            ApplyFilledBarSprite(fillImage);
+            fillImage.fillMethod = Image.FillMethod.Horizontal;
+            fillImage.fillOrigin = (int)Image.OriginHorizontal.Left;
+            fillImage.fillAmount = 0f;
+
+            return (trackObject, fillImage);
         }
 
         private static TextMeshProUGUI CreateStatRow(Transform parent, string placeholderText)
@@ -718,6 +791,7 @@ namespace FolkIdle.Client.Editor
             Image cooldownImage = cooldownObject.AddComponent<Image>();
             cooldownImage.color = new Color(0f, 0f, 0f, 0.6f);
             cooldownImage.type = Image.Type.Filled;
+            ApplyFilledBarSprite(cooldownImage);
             cooldownImage.fillMethod = Image.FillMethod.Radial360;
             cooldownImage.fillAmount = 1f;
 
@@ -939,6 +1013,7 @@ namespace FolkIdle.Client.Editor
             Image healthFillImage = healthBarFillObject.AddComponent<Image>();
             healthFillImage.color = new Color(0.2f, 0.85f, 0.2f, 1f);
             healthFillImage.type = Image.Type.Filled;
+            ApplyFilledBarSprite(healthFillImage);
             healthFillImage.fillMethod = Image.FillMethod.Horizontal;
             healthFillImage.fillAmount = 1f;
 
@@ -3275,7 +3350,17 @@ namespace FolkIdle.Client.Editor
             // Modul: below SaveTrustIndicator, which the builder now
             // positions at (20,-300) with a 20px-tall label (bottom edge at
             // y=-320) - this strip starts at -330 to leave a clean gap.
-            panelRect.anchoredPosition = new Vector2(20f, -330f);
+            // Modul: activity status HUD. Pushed down from -330 to clear
+            // CharacterStatsPanel, which grew from 220 to 278 tall when the
+            // backpack readout and activity progress bar were added to it.
+            // At -330 the two overlapped by 20px and the resource rows drew
+            // straight through the progress bar - confirmed in a Play Mode
+            // screenshot, which is the only way this class of collision shows
+            // up (both panels report correct sizes individually).
+            //
+            // CharacterStatsPanel sits at y -72 and is 278 tall, so it ends at
+            // -350; this leaves a 10px gap below it.
+            panelRect.anchoredPosition = new Vector2(20f, -360f);
             panelRect.sizeDelta = new Vector2(260f, 76f);
 
             panelObject.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.35f);
@@ -3499,6 +3584,7 @@ namespace FolkIdle.Client.Editor
             Image fillImage = fillImageObject.AddComponent<Image>();
             fillImage.color = new Color(0.9f, 0.7f, 0.2f, 1f);
             fillImage.type = Image.Type.Filled;
+            ApplyFilledBarSprite(fillImage);
             fillImage.fillMethod = Image.FillMethod.Horizontal;
             fillImage.fillAmount = 0f;
 
@@ -3793,6 +3879,7 @@ namespace FolkIdle.Client.Editor
             Image fillImage = fillImageObject.AddComponent<Image>();
             fillImage.color = new Color(0.4f, 0.8f, 1f, 1f);
             fillImage.type = Image.Type.Filled;
+            ApplyFilledBarSprite(fillImage);
             fillImage.fillMethod = Image.FillMethod.Horizontal;
             fillImage.fillAmount = 0f;
 
@@ -3970,6 +4057,7 @@ namespace FolkIdle.Client.Editor
             Image fillImage = barFillObject.AddComponent<Image>();
             fillImage.color = fillColor;
             fillImage.type = Image.Type.Filled;
+            ApplyFilledBarSprite(fillImage);
             fillImage.fillMethod = Image.FillMethod.Horizontal;
             fillImage.fillAmount = 0f;
 
