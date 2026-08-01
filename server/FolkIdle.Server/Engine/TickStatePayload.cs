@@ -447,6 +447,19 @@ namespace FolkIdle.Server.Engine
         public long ObfuscationSessionKey;
         public uint ActiveChallengeSeed;
         public long ActiveChallengeIssuedAtMs;
+
+        // Modul: challenge epoch pinning, 2026-08-01.
+        //
+        // The epoch that was current when the challenge was ISSUED. The client
+        // hashes the epoch it saw in the broadcast, so validating against
+        // whatever LogicEpochCounter happens to be when the answer arrives
+        // rejects correct answers whenever a checkpoint flush lands in between -
+        // and a flush is triggered by ordinary play, including every reroll.
+        //
+        // The effect was a correct client accumulating challenge misses until
+        // it was quarantined and shadow-banned, with latency making it worse.
+        // Observed on the dev account during a normal session.
+        public long ActiveChallengeIssuedEpoch;
         public byte ActiveChallengeAnswered;
 
         // Modul: challenge response policy. Consecutive unanswered integrity

@@ -318,7 +318,11 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
-            uint expected = AntiCheatTelemetryEngine.ComputeChallengeHash(payload.ActiveChallengeSeed, payload.PlayerId, payload.LogicEpochCounter);
+            // Against the epoch the challenge was ISSUED under, not the current
+            // one - see TickStatePayload.ActiveChallengeIssuedEpoch. Using the
+            // live counter made every checkpoint flush between broadcast and
+            // reply turn a correct answer into a recorded miss.
+            uint expected = AntiCheatTelemetryEngine.ComputeChallengeHash(payload.ActiveChallengeSeed, payload.PlayerId, payload.ActiveChallengeIssuedEpoch);
             if (packet.ChallengeId != payload.ActiveChallengeSeed || packet.ChallengeVerificationHash != expected)
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 31, Value2 = 3, Timestamp = now });

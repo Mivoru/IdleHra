@@ -1120,3 +1120,33 @@ was used to restore the fixture, but nothing surfaces that a player needs it.
 Highest-priority item to investigate next: compare the client's hash
 computation against the server's verifier directly, with a single challenge
 round-trip logged on both sides.
+
+### 48b. Anti-cheat challenge race - ROOT-CAUSED AND FIXED
+
+Item 48 left two possibilities open. It was neither a hash mismatch nor slow
+responses: `ComputeChallengeHash` and `XorShift32` are byte-identical on both
+sides. The inputs disagreed.
+
+The client hashes the epoch it saw in the broadcast. The server validated
+against `payload.LogicEpochCounter` as it stood when the ANSWER arrived. That
+counter advances on every successful checkpoint flush - and ordinary play
+flushes constantly, including an explicit flush on every reroll command. So
+any flush landing between broadcast and reply turned a correct answer into a
+recorded miss, and enough misses meant quarantine plus `RequestShadowBan`,
+invisible to the player and with no appeal.
+
+Latency made it strictly worse, so the players most likely to be banned were
+the ones with the worst connections - and the most active, since activity is
+what drives flushes.
+
+Fixed by pinning `ActiveChallengeIssuedEpoch` when the challenge is issued and
+validating against that, so the answer is judged against the state the client
+was actually shown.
+
+Verified live: a session driving repeated rerolls advanced the epoch 18 times
+- the exact condition that previously banned the account - and the account
+stayed clean with zero challenge rejections. The same activity pattern
+quarantined it before the fix.
+
+A regression test asserts the hash genuinely depends on the epoch, which is
+why pinning is required rather than optional.

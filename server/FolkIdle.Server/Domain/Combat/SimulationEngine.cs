@@ -2998,6 +2998,10 @@ namespace FolkIdle.Server.Domain.Combat
                             {
                                 currentPayload.ActiveChallengeSeed = AntiCheatTelemetryEngine.GenerateChallengeSeed(currentPayload.PlayerId, currentPayload.LogicEpochCounter, _metrics.TotalTicksProcessed);
                                 currentPayload.ActiveChallengeIssuedAtMs = Environment.TickCount64;
+
+                                // Pinned so the answer is judged against the
+                                // state the client was actually shown.
+                                currentPayload.ActiveChallengeIssuedEpoch = currentPayload.LogicEpochCounter;
                                 currentPayload.ActiveChallengeAnswered = 0;
                             }
 

@@ -141,6 +141,44 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(AffixRarity.Uncommon, next);
         }
 
+        // ---------- anti-cheat challenge ----------
+
+        // Regression guard for a bug that shadow-banned correct clients.
+        //
+        // The client hashes the epoch it saw in the broadcast; the server used
+        // to validate against whatever LogicEpochCounter was current when the
+        // answer arrived. Ordinary play advances that counter - every
+        // checkpoint flush does, including the one every reroll triggers - so a
+        // correct answer became a recorded miss whenever a flush landed in
+        // between, and enough misses meant quarantine plus a shadow ban with
+        // nothing visible to the player.
+        //
+        // This asserts the property that makes the two sides agree: the hash
+        // must depend on the epoch, so validating against a DIFFERENT epoch
+        // than the client used cannot possibly match. That dependence is
+        // exactly why the epoch has to be pinned at issue time.
+        [Fact]
+        public void ChallengeHash_DependsOnEpoch_SoTheIssuedEpochMustBePinned()
+        {
+            const uint seed = 0x1234ABCDu;
+            const long playerId = 4711L;
+
+            uint atEpoch7 = AntiCheatTelemetryEngine.ComputeChallengeHash(seed, playerId, 7L);
+            uint atEpoch8 = AntiCheatTelemetryEngine.ComputeChallengeHash(seed, playerId, 8L);
+
+            Assert.NotEqual(atEpoch7, atEpoch8);
+
+            // Same inputs must be reproducible, or nothing could ever validate.
+            Assert.Equal(atEpoch7, AntiCheatTelemetryEngine.ComputeChallengeHash(seed, playerId, 7L));
+
+            // The payload must carry somewhere to pin it. Without this field the
+            // validator has nothing to compare against except the live counter,
+            // which is the bug.
+            var pinned = typeof(TickStatePayload).GetField(nameof(TickStatePayload.ActiveChallengeIssuedEpoch));
+            Assert.NotNull(pinned);
+            Assert.Equal(typeof(long), pinned!.FieldType);
+        }
+
         // ---------- currency store ----------
 
         // Regression guard for a bug that made every diamond-priced reroll
