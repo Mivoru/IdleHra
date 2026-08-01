@@ -1026,3 +1026,45 @@ reroll and affix UI cannot be exercised from the fixture at all - this
 session had to write a payload in by hand. `DevFixtureSeeder` should roll a
 real affix set through `AffixRegistry.RollAffixes`, exactly as a drop would,
 so the fixture exercises the same path players do.
+
+### 46. World Boss audit, 2026-08-01
+
+Audited because it combines the two categories this codebase repeatedly gets
+wrong: currency (rewards) and timers (respawn). Most of it holds up.
+
+**Verified correct:**
+
+- Reward delivery goes through the mailbox, whose claim path is already
+  safe-by-construction: if the payload is gone the claim never commits and
+  the mail is simply still there next login.
+- No duplicate reward distribution. `ProcessDefeatedBossAsync` has an
+  interlocked re-entry guard, takes the snapshot row `FOR UPDATE`, re-checks
+  `CurrentHp > 0`, and on completion sets `EventState = 2` so the scheduler's
+  `IsEventActive` check stops re-firing it. HP is reset to `BaseHp` in the
+  same transaction, so the next window starts a fresh boss.
+- The lifecycle is a recurring date-window poll (1st-7th, 15th-22nd UTC), not
+  a one-shot equality check, so downtime spanning a boundary self-heals on the
+  next tick. This is NOT the guild war bug shape.
+- The 3-attempt cap reads `PlayerWorldBossAttempts` inside the transaction, so
+  it cannot be bypassed by relogging - unlike the payload mirror, which is
+  display only.
+
+**Fixed: a full mailbox silently destroyed the whole reward.**
+`existingMail.Count >= 50` did a bare `continue`, so a player who fought the
+boss and placed in any bracket received nothing - no tokens, no gold, no log,
+no telemetry, nothing visible to them or to ops. Now logged and streamed as a
+telemetry event.
+
+**Open design question, deliberately not decided here:** should an earned,
+non-repeatable reward bypass the 50-item mailbox cap, or be held and
+delivered when space frees up? Force-inserting would quietly break an
+invariant that exists for a reason, and holding needs a retry store. Both are
+design calls rather than bug fixes, which is why this pass only made the loss
+visible.
+
+**Not covered:** live end-to-end verification of a full kill. The event window
+is date-gated (day 1-7 or 15-22 UTC) and today falls outside it, so exercising
+a real defeat requires either clock manipulation or forcing the snapshot's
+EventState - neither of which tests the scheduler that would run in
+production. Static audit plus the reward-path reasoning above is what this
+pass could honestly establish.

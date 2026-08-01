@@ -219,6 +219,32 @@ namespace FolkIdle.Server.Engine
 
                         if (existingMail.Count >= 50)
                         {
+                            // Modul: world boss reward visibility, 2026-08-01.
+                            //
+                            // A full mailbox silently destroyed the player's
+                            // ENTIRE world boss reward - tokens and gold - after
+                            // they had fought for it, with no log, no telemetry
+                            // and nothing the player could see. They simply
+                            // never received anything.
+                            //
+                            // Still skipped rather than force-inserted, because
+                            // the 50 cap is a real invariant and overflowing it
+                            // here would be a design decision this fix should
+                            // not smuggle in. But it is no longer invisible: see
+                            // NEXT_STEPS_BACKLOG for the open question of
+                            // whether earned, non-repeatable rewards should
+                            // bypass the cap or be held for later delivery.
+                            Console.WriteLine(
+                                $"World boss reward SKIPPED for player {participantId}: mailbox full ({existingMail.Count} items). Reward lost.");
+
+                            TelemetryStreamer.TryWrite(new TelemetryEvent
+                            {
+                                PlayerId = participantId,
+                                EventType = 3,
+                                Value1 = 19,
+                                Value2 = existingMail.Count,
+                                Timestamp = Environment.TickCount64
+                            });
                             continue;
                         }
 
