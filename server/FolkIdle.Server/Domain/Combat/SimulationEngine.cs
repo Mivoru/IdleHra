@@ -1835,7 +1835,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 // AffixRegistry.Definitions rather than a string,
                                 // because the packet is fixed-layout. 0 means
                                 // "any stat".
-                                string requiredAffixId = null;
+                                string? requiredAffixId = null;
                                 if (stopAffixIndex > 0 && stopAffixIndex <= Engine.AffixRegistry.Definitions.Length)
                                 {
                                     requiredAffixId = Engine.AffixRegistry.Definitions[stopAffixIndex - 1].Id;

@@ -65,6 +65,51 @@ namespace FolkIdle.Client.Network
         // of bug that made the original affix payload disagreement invisible.
         public const char RaritySeparator = '@';
 
+        // Modul: auto-reroll stop conditions, 2026-08-01.
+        //
+        // ORDER IS A WIRE CONTRACT. The packet carries a stop-affix target as a
+        // 1-based index into the server's AffixRegistry.Definitions array, so
+        // this list must match that array's ORDER exactly - not merely contain
+        // the same ids. A reordering here silently retargets the stop condition
+        // onto a different stat, which the player would experience as
+        // auto-reroll ignoring what they asked for.
+        //
+        // An index rather than a string because ClientCommandPacket is
+        // fixed-layout and cannot carry a variable-length affix id.
+        private static readonly string[] _orderedAffixIds =
+        {
+            "flat_hp",
+            "flat_armor",
+            "melee_dmg_pct",
+            "range_dmg_pct",
+            "magic_dmg_pct",
+            "attack_speed_pct",
+            "crit_chance_pct",
+            "crit_dmg_pct",
+            "lifesteal_pct",
+            "armor_pen_flat",
+            "dodge_chance_pct",
+            "block_chance_pct"
+        };
+
+        public static int DefinitionCount => _orderedAffixIds.Length;
+
+        public static string GetAffixId(int zeroBasedIndex)
+        {
+            if (zeroBasedIndex < 0 || zeroBasedIndex >= _orderedAffixIds.Length) return string.Empty;
+            return _orderedAffixIds[zeroBasedIndex];
+        }
+
+        // Display label for a definition index - "Critical Damage" rather than
+        // "crit_dmg_pct".
+        public static string GetAffixLabel(int zeroBasedIndex)
+        {
+            string id = GetAffixId(zeroBasedIndex);
+            if (id.Length == 0) return "Any stat";
+
+            return _displays.TryGetValue(id, out AffixDisplay display) ? display.Label : id;
+        }
+
         public static string StripStackSuffix(string payloadKey)
         {
             if (string.IsNullOrEmpty(payloadKey)) return string.Empty;
@@ -138,6 +183,43 @@ namespace FolkIdle.Client.Network
         // Modul: GDD Module 03 section 5.3 - Diamond_Cost = floor(5 * 1.35^(N-1)).
         // Mirrors AffixRegistry.CalculateRerollDiamondCost so the price shown
         // is the price charged.
+        // Modul: reroll economy mirror, 2026-08-01. These duplicate
+        // AffixRegistry's curves so the panel can quote a price before the
+        // player commits. The SERVER remains authoritative - it recomputes and
+        // charges independently, and a client that quoted low would simply see
+        // the command rejected rather than get a discount.
+        //
+        // GetRerollDiamondCost below is retained ONLY for the rarity-upgrade
+        // path; value and stat rerolls moved to gold.
+        public const long RerollGoldBase = 250L;
+        public const long RerollGoldMaxCost = 100_000_000L;
+
+        public static long GetRerollGoldCost(int itemRarityTier, int consecutiveAttempts, bool rerollStatType)
+        {
+            if (itemRarityTier < 1) itemRarityTier = 1;
+            if (consecutiveAttempts < 0) consecutiveAttempts = 0;
+
+            double cost = RerollGoldBase
+                * Math.Pow(1.9, itemRarityTier - 1)
+                * Math.Pow(1.35, consecutiveAttempts);
+
+            if (rerollStatType) cost *= 2.5;
+
+            if (double.IsNaN(cost) || cost <= 0.0) return RerollGoldBase;
+            if (cost >= RerollGoldMaxCost) return RerollGoldMaxCost;
+            return (long)Math.Floor(cost);
+        }
+
+        // Keyed on the AFFIX's current rarity (1-5), not the item's tier.
+        // Legendary is terminal and costs nothing because it cannot be bought.
+        public static long GetRarityUpgradeDiamondCost(int currentAffixRarity)
+        {
+            if (currentAffixRarity >= 5) return 0L;
+            if (currentAffixRarity < 1) currentAffixRarity = 1;
+
+            return (long)Math.Floor(5.0 * Math.Pow(3.4, currentAffixRarity - 1));
+        }
+
         public static long GetRerollDiamondCost(int rarityTier)
         {
             if (rarityTier < 1) rarityTier = 1;

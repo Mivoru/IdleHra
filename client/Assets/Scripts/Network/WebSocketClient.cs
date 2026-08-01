@@ -591,7 +591,21 @@ namespace FolkIdle.Client.Network
                 SendPacket(ref packet);
             }
         }
-        public void SendRerollCommandZeroAlloc(long instanceId, int affixIndex)
+        // Modul: reroll operations, 2026-08-01. The full form. The two-argument
+        // overload below stays for callers that only want a plain value reroll,
+        // and forwards here rather than duplicating the packet build - a second
+        // copy would be free to drift on the new fields.
+        //
+        // autoMaxAttempts of 0 means a single reroll; anything higher asks for
+        // auto-reroll, which the SERVER clamps. stopAffixIndex is a 1-based
+        // index into the affix registry, 0 meaning "any stat".
+        public void SendRerollCommandZeroAlloc(
+            long instanceId,
+            int affixIndex,
+            byte operationKind,
+            uint autoMaxAttempts,
+            byte stopMinRarity,
+            byte stopAffixIndex)
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)
             {
@@ -603,11 +617,20 @@ namespace FolkIdle.Client.Network
                     TertiaryId = 0,
                     LimitPrice = affixIndex,
                     IsBuy = 0,
-                    QualityTier = 0
+                    QualityTier = 0,
+                    RerollOperationKind = operationKind,
+                    RerollAutoMaxAttempts = autoMaxAttempts,
+                    RerollStopMinRarity = stopMinRarity,
+                    RerollStopAffixIndex = stopAffixIndex
                 };
 
                 SendPacket(ref packet);
             }
+        }
+
+        public void SendRerollCommandZeroAlloc(long instanceId, int affixIndex)
+        {
+            SendRerollCommandZeroAlloc(instanceId, affixIndex, operationKind: 0, autoMaxAttempts: 0u, stopMinRarity: 1, stopAffixIndex: 0);
         }
 
         public void SendGuildContributionCommandZeroAlloc(int itemDefinitionId, int quantity)

@@ -3137,7 +3137,65 @@ namespace FolkIdle.Client.Editor
                 affixHighlights[i] = highlightObject;
             }
 
+            // Added before the controls below because AddPersistentListener
+            // needs a live component instance to bind against - the listener
+            // stores an object reference, not a type.
+            UiEquipmentRerollPanel rerollPanelForEvents = groupObject.AddComponent<UiEquipmentRerollPanel>();
+
             TextMeshProUGUI rerollCostText = CreateStatRow(textStackObject.transform, "Cost: -");
+
+            // Modul: reroll operations, 2026-08-01. Three operations as three
+            // buttons rather than a dropdown - they cost different currencies
+            // and do different things, so hiding two of them behind a click
+            // would hide the choice itself.
+            TextMeshProUGUI operationDescriptionText = CreateStatRow(textStackObject.transform, "Reroll the value. Stat and rarity are kept.");
+
+            GameObject operationRow = new GameObject("OperationRow", typeof(RectTransform));
+            operationRow.transform.SetParent(textStackObject.transform, false);
+            SetFixedLayoutHeight(operationRow, 40f);
+            HorizontalLayoutGroup operationLayout = operationRow.AddComponent<HorizontalLayoutGroup>();
+            operationLayout.spacing = 6f;
+            operationLayout.childControlWidth = true;
+            operationLayout.childForceExpandWidth = true;
+            operationLayout.childControlHeight = true;
+            operationLayout.childForceExpandHeight = true;
+
+            Button operationValueButton = CreateButton(operationRow.transform, "OperationValueButton", "Value", out TextMeshProUGUI _);
+            Button operationStatButton = CreateButton(operationRow.transform, "OperationStatTypeButton", "Stat", out TextMeshProUGUI _);
+            Button operationUpgradeButton = CreateButton(operationRow.transform, "OperationUpgradeRarityButton", "Rarity+", out TextMeshProUGUI _);
+
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(operationValueButton.onClick, rerollPanelForEvents.HandleSelectOperationValue);
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(operationStatButton.onClick, rerollPanelForEvents.HandleSelectOperationStatType);
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(operationUpgradeButton.onClick, rerollPanelForEvents.HandleSelectOperationUpgradeRarity);
+
+            GameObject[] operationHighlights =
+            {
+                BuildSelectionHighlight(operationValueButton.transform),
+                BuildSelectionHighlight(operationStatButton.transform),
+                BuildSelectionHighlight(operationUpgradeButton.transform)
+            };
+
+            // Auto-reroll. The stop-condition controls are hidden until the
+            // toggle is on, so the panel does not present four settings for a
+            // feature the player has not asked for.
+            GameObject autoRow = new GameObject("AutoRerollRow", typeof(RectTransform));
+            autoRow.transform.SetParent(textStackObject.transform, false);
+            SetFixedLayoutHeight(autoRow, 36f);
+            HorizontalLayoutGroup autoLayout = autoRow.AddComponent<HorizontalLayoutGroup>();
+            autoLayout.spacing = 6f;
+            autoLayout.childControlWidth = true;
+            autoLayout.childForceExpandWidth = true;
+            autoLayout.childControlHeight = true;
+            autoLayout.childForceExpandHeight = true;
+
+            Toggle autoRerollToggle = BuildLabelledToggle(autoRow.transform, "AutoRerollToggle", "Auto");
+            Button stopRarityButton = CreateButton(autoRow.transform, "StopRarityCycleButton", "Stop at Epic+", out TextMeshProUGUI stopRarityText);
+            Button stopAffixButton = CreateButton(autoRow.transform, "StopAffixCycleButton", "Any stat", out TextMeshProUGUI stopAffixText);
+
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(stopRarityButton.onClick, rerollPanelForEvents.HandleCycleStopRarity);
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(stopAffixButton.onClick, rerollPanelForEvents.HandleCycleStopAffix);
+
+            TextMeshProUGUI autoEstimateText = CreateStatRow(textStackObject.transform, "");
 
             Button rerollButton = CreateButton(textStackObject.transform, "RerollButton", "Reroll", out TextMeshProUGUI _);
             SetFixedLayoutHeight(rerollButton.gameObject, 44f);
@@ -3151,13 +3209,13 @@ namespace FolkIdle.Client.Editor
                 "Rarity sets the affix count: Normal to Uncommon 1, Rare to Epic 2, Legendary to Relic 3, Ancient to Demonic 4, Godly and Transcendent 5.",
                 46f);
             CreateHelpText(textStackObject.transform, "RerollCostRulesText",
-                "A reroll costs floor(5 x 1.35 ^ (rarity - 1)) Diamonds, so 5 at Normal and 247 at Transcendent. It replaces one affix with another that is legal for this item's slot, and never returns the same affix.",
-                58f);
+                "Value and Stat rerolls cost gold, rising with item tier and with each consecutive try on the same item. Rarity+ costs Diamonds and raises one affix a single step, up to Legendary. Affix rarity sets how strong an affix is; Legendary is about 6.5 times Common.",
+                72f);
             CreateHelpText(textStackObject.transform, "RerollLockRulesText",
                 "An affix locked by a failed Forge fusion can never be rerolled again.",
                 28f);
 
-            UiEquipmentRerollPanel rerollPanel = groupObject.AddComponent<UiEquipmentRerollPanel>();
+            UiEquipmentRerollPanel rerollPanel = rerollPanelForEvents;
             rerollPanel.InventoryCache = inventoryCache;
             rerollPanel.NetworkClient = networkClient;
             rerollPanel.SyncProxy = syncProxy;
@@ -3170,6 +3228,17 @@ namespace FolkIdle.Client.Editor
             rerollPanel.RerollCostText = rerollCostText;
             rerollPanel.RerollButton = rerollButton;
             rerollPanel.ItemViewer = rerollItemViewer;
+            rerollPanel.OperationValueButton = operationValueButton;
+            rerollPanel.OperationStatTypeButton = operationStatButton;
+            rerollPanel.OperationUpgradeRarityButton = operationUpgradeButton;
+            rerollPanel.OperationSelectedHighlights = operationHighlights;
+            rerollPanel.OperationDescriptionText = operationDescriptionText;
+            rerollPanel.AutoRerollToggle = autoRerollToggle;
+            rerollPanel.StopRarityCycleButton = stopRarityButton;
+            rerollPanel.StopRarityText = stopRarityText;
+            rerollPanel.StopAffixCycleButton = stopAffixButton;
+            rerollPanel.StopAffixText = stopAffixText;
+            rerollPanel.AutoRerollEstimateText = autoEstimateText;
             rerollPanel.AffordableCostColor = Color.white;
             rerollPanel.UnaffordableCostColor = new Color(1f, 0.35f, 0.35f, 1f);
 
@@ -7509,6 +7578,64 @@ namespace FolkIdle.Client.Editor
             text.alignment = alignment;
             text.color = Color.white;
             return text;
+        }
+
+        // Modul: reroll operations, 2026-08-01. A selection overlay matching
+        // the affix-slot highlights already used in this panel, so "which
+        // operation is active" reads the same way as "which affix is selected".
+        private static GameObject BuildSelectionHighlight(Transform parent)
+        {
+            GameObject highlight = new GameObject("SelectedHighlight", typeof(RectTransform));
+            highlight.transform.SetParent(parent, false);
+            StretchFull((RectTransform)highlight.transform);
+
+            Image image = highlight.AddComponent<Image>();
+            image.color = new Color(0.3f, 0.7f, 1f, 0.3f);
+
+            // Must not eat the click meant for the button underneath it.
+            image.raycastTarget = false;
+
+            highlight.SetActive(false);
+            return highlight;
+        }
+
+        // A checkbox with a label. Unity's Toggle needs an explicit graphic for
+        // its on-state or it renders as an invisible hit area - the same class
+        // of silent-nothing bug as a filled Image with no sprite.
+        private static Toggle BuildLabelledToggle(Transform parent, string objectName, string label)
+        {
+            GameObject root = new GameObject(objectName, typeof(RectTransform));
+            root.transform.SetParent(parent, false);
+
+            Image background = root.AddComponent<Image>();
+            background.color = new Color(1f, 1f, 1f, 0.10f);
+
+            GameObject checkObject = new GameObject("Checkmark", typeof(RectTransform));
+            checkObject.transform.SetParent(root.transform, false);
+            RectTransform checkRect = (RectTransform)checkObject.transform;
+            checkRect.anchorMin = new Vector2(0f, 0.5f);
+            checkRect.anchorMax = new Vector2(0f, 0.5f);
+            checkRect.pivot = new Vector2(0f, 0.5f);
+            checkRect.sizeDelta = new Vector2(18f, 18f);
+            checkRect.anchoredPosition = new Vector2(6f, 0f);
+
+            Image checkImage = checkObject.AddComponent<Image>();
+            checkImage.color = new Color(0.45f, 0.85f, 0.40f, 1f);
+
+            TextMeshProUGUI labelText = CreateText(root.transform, "Label", label, 14f, TextAlignmentOptions.MidlineLeft);
+            RectTransform labelRect = (RectTransform)labelText.transform;
+            labelRect.anchorMin = new Vector2(0f, 0f);
+            labelRect.anchorMax = new Vector2(1f, 1f);
+            labelRect.offsetMin = new Vector2(30f, 0f);
+            labelRect.offsetMax = Vector2.zero;
+            labelText.raycastTarget = false;
+
+            Toggle toggle = root.AddComponent<Toggle>();
+            toggle.targetGraphic = background;
+            toggle.graphic = checkImage;
+            toggle.isOn = false;
+
+            return toggle;
         }
 
         private static Button CreateButton(Transform parent, string objectName, string label, out TextMeshProUGUI labelText)

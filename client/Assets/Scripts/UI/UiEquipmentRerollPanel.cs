@@ -43,6 +43,45 @@ namespace FolkIdle.Client.UI
         public TextMeshProUGUI RerollCostText;
         public Button RerollButton;
 
+        // Modul: reroll operations, 2026-08-01.
+        //
+        // Three buttons rather than a dropdown: the operations are not variants
+        // of one action, they cost different currencies and do different things,
+        // and a dropdown would hide two thirds of that behind a click.
+        [Header("Operation")]
+        public Button OperationValueButton;
+        public Button OperationStatTypeButton;
+        public Button OperationUpgradeRarityButton;
+        public GameObject[] OperationSelectedHighlights;
+        public TextMeshProUGUI OperationDescriptionText;
+
+        [Header("Auto-Reroll")]
+        public Toggle AutoRerollToggle;
+        public Button StopRarityCycleButton;
+        public TextMeshProUGUI StopRarityText;
+        public Button StopAffixCycleButton;
+        public TextMeshProUGUI StopAffixText;
+        public TextMeshProUGUI AutoRerollEstimateText;
+
+        // Requested attempts. The server clamps this to
+        // AutoRerollPlanner.MaxAttemptsPerRequest regardless of what is sent.
+        public int AutoRerollAttempts = 25;
+
+        // 0 = Value, 1 = StatType, 2 = UpgradeRarity. Matches
+        // RerollOperation server-side and the packet's RerollOperationKind.
+        private int _operationKind;
+
+        // Stop condition. Rarity is a FLOOR (1-5); affix index is 1-based into
+        // the registry with 0 meaning "any stat".
+        private int _stopMinRarity = 4;
+        private int _stopAffixIndex;
+
+        // Consecutive attempts on this item, driving the escalating gold price.
+        // Client-side only and advisory - the server owns the real counter, so
+        // this exists purely so the quoted price does not lie between rerolls.
+        private int _consecutiveAttempts;
+        private long _costStreakItemId = -1;
+
         [Header("Cost Color - Insufficient Funds Indicator")]
         public Color AffordableCostColor = Color.white;
         public Color UnaffordableCostColor = Color.red;
@@ -224,18 +263,19 @@ namespace FolkIdle.Client.UI
 
             RefreshAffixSelectionHighlights();
 
-            long cost = ClientAffixRegistry.GetRerollDiamondCost(selected.QualityTier);
-            uint balance = SyncProxy != null ? SyncProxy.VisualPremiumCurrencyBalance : 0u;
-            bool canAfford = balance >= cost;
+            (long cost, bool payWithDiamonds) = ResolveCost(selected);
+            bool canAfford = HasFunds(cost, payWithDiamonds);
 
             if (RerollCostText != null)
             {
                 int offset = WriteLongToBuffer(_costBuffer, 0, cost);
-                offset = WriteTextToBuffer(_costBuffer, offset, " Premium Diamonds");
+                offset = WriteTextToBuffer(_costBuffer, offset, payWithDiamonds ? " Diamonds" : " Gold");
                 RerollCostText.SetCharArray(_costBuffer, 0, offset);
                 RerollCostText.color = canAfford ? AffordableCostColor : UnaffordableCostColor;
             }
 
+            RefreshOperationUi();
+            RefreshAutoRerollUi(selected);
             RefreshRerollAvailability();
         }
 
@@ -250,9 +290,157 @@ namespace FolkIdle.Client.UI
                 return;
             }
 
-            long cost = ClientAffixRegistry.GetRerollDiamondCost(selected.QualityTier);
-            uint balance = SyncProxy != null ? SyncProxy.VisualPremiumCurrencyBalance : 0u;
-            RerollButton.interactable = balance >= cost;
+            (long cost, bool payWithDiamonds) = ResolveCost(selected);
+
+            // A Legendary affix cannot be upgraded, so the button must be dead
+            // rather than charging for a no-op - the server rejects it, but the
+            // player should never get far enough to be rejected.
+            if (_operationKind == OperationUpgradeRarity && GetSelectedAffixRarity() >= 5)
+            {
+                RerollButton.interactable = false;
+                return;
+            }
+
+            RerollButton.interactable = HasFunds(cost, payWithDiamonds);
+        }
+
+        private const int OperationValue = 0;
+        private const int OperationStatType = 1;
+        private const int OperationUpgradeRarity = 2;
+
+        private int GetSelectedAffixRarity()
+        {
+            if (_selectedAffixIndex < 0 || _selectedAffixIndex >= _selectedAffixKeys.Count) return 1;
+            return ClientAffixRegistry.ParseAffixRarity(_selectedAffixKeys[_selectedAffixIndex]);
+        }
+
+        // Value/stat rerolls are gold; only a rarity upgrade costs Diamonds.
+        private (long Cost, bool PayWithDiamonds) ResolveCost(ForgeEquipmentInstanceData selected)
+        {
+            if (_operationKind == OperationUpgradeRarity)
+            {
+                return (ClientAffixRegistry.GetRarityUpgradeDiamondCost(GetSelectedAffixRarity()), true);
+            }
+
+            long gold = ClientAffixRegistry.GetRerollGoldCost(
+                selected.QualityTier,
+                _consecutiveAttempts,
+                _operationKind == OperationStatType);
+
+            return (gold, false);
+        }
+
+        private bool HasFunds(long cost, bool payWithDiamonds)
+        {
+            if (SyncProxy == null) return false;
+
+            return payWithDiamonds
+                ? SyncProxy.VisualPremiumCurrencyBalance >= (ulong)cost
+                : SyncProxy.GetGoldBalance() >= cost;
+        }
+
+        public void HandleSelectOperationValue() => SetOperation(OperationValue);
+        public void HandleSelectOperationStatType() => SetOperation(OperationStatType);
+        public void HandleSelectOperationUpgradeRarity() => SetOperation(OperationUpgradeRarity);
+
+        private void SetOperation(int operationKind)
+        {
+            if (_operationKind == operationKind) return;
+
+            _operationKind = operationKind;
+
+            // Switching operation resets the escalating gold streak: the price
+            // curve is per run of the same action, and carrying a value-reroll
+            // streak into a stat reroll would quote a number the server will
+            // not charge.
+            _consecutiveAttempts = 0;
+            RefreshSelectedItemDetail();
+        }
+
+        // Cycles the rarity FLOOR. Starts at Epic because that is where the
+        // announcement and glow thresholds sit - stopping below it is possible
+        // but is rarely what someone turns auto-reroll on for.
+        public void HandleCycleStopRarity()
+        {
+            _stopMinRarity++;
+            if (_stopMinRarity > 5) _stopMinRarity = 2;
+            RefreshSelectedItemDetail();
+        }
+
+        // Cycles through "any stat" plus every affix LEGAL for this item's
+        // slot. Offering illegal affixes would let the player pick a target the
+        // server will reject as unreachable.
+        public void HandleCycleStopAffix()
+        {
+            _stopAffixIndex++;
+            if (_stopAffixIndex > ClientAffixRegistry.DefinitionCount) _stopAffixIndex = 0;
+            RefreshSelectedItemDetail();
+        }
+
+        private void RefreshOperationUi()
+        {
+            if (OperationSelectedHighlights != null)
+            {
+                for (int i = 0; i < OperationSelectedHighlights.Length; i++)
+                {
+                    if (OperationSelectedHighlights[i] != null)
+                    {
+                        OperationSelectedHighlights[i].SetActive(i == _operationKind);
+                    }
+                }
+            }
+
+            if (OperationDescriptionText != null)
+            {
+                OperationDescriptionText.text = _operationKind switch
+                {
+                    OperationStatType => "Reroll the stat type. Rarity is kept.",
+                    OperationUpgradeRarity => "Raise this affix one rarity step.",
+                    _ => "Reroll the value. Stat and rarity are kept."
+                };
+            }
+        }
+
+        private void RefreshAutoRerollUi(ForgeEquipmentInstanceData selected)
+        {
+            bool autoEnabled = AutoRerollToggle != null && AutoRerollToggle.isOn;
+
+            if (StopRarityText != null)
+            {
+                StopRarityText.text = "Stop at " + UiRarityPalette.GetAffixRarityName(_stopMinRarity) + "+";
+                StopRarityText.color = UiRarityPalette.GetAffixRarityColor(_stopMinRarity);
+            }
+
+            if (StopAffixText != null)
+            {
+                StopAffixText.text = _stopAffixIndex == 0
+                    ? "Any stat"
+                    : ClientAffixRegistry.GetAffixLabel(_stopAffixIndex - 1);
+            }
+
+            if (AutoRerollEstimateText != null)
+            {
+                if (!autoEnabled || selected == null)
+                {
+                    AutoRerollEstimateText.text = string.Empty;
+                }
+                else
+                {
+                    // Worst case, summed over the escalating curve - the number
+                    // that matters before committing, not the first attempt's
+                    // price which is always the cheapest one.
+                    long worstCase = 0L;
+                    for (int i = 0; i < AutoRerollAttempts; i++)
+                    {
+                        worstCase += ClientAffixRegistry.GetRerollGoldCost(
+                            selected.QualityTier, i, _operationKind == OperationStatType);
+                    }
+                    AutoRerollEstimateText.text = "Up to " + AutoRerollAttempts + " tries, max " + worstCase + " gold";
+                }
+            }
+
+            if (StopRarityCycleButton != null) StopRarityCycleButton.gameObject.SetActive(autoEnabled);
+            if (StopAffixCycleButton != null) StopAffixCycleButton.gameObject.SetActive(autoEnabled);
         }
 
         private void BindAffixSlots(ForgeEquipmentInstanceData selected)
@@ -278,6 +466,10 @@ namespace FolkIdle.Client.UI
                 slotText.gameObject.SetActive(true);
                 string key = _selectedAffixKeys[i];
                 int magnitude = selected.Affixes[key];
+
+                // Colour and glow the row by the affix's own rarity, through the
+                // same palette the chat announcements and item names use.
+                UiRarityPalette.ApplyAffixRarity(slotText, ClientAffixRegistry.ParseAffixRarity(key));
 
                 // Describe applies the flat-versus-percentage distinction, so a
                 // crit_dmg_pct magnitude of 75 renders "+7.5%" rather than "75".
@@ -338,7 +530,26 @@ namespace FolkIdle.Client.UI
         {
             if (NetworkClient == null || _selectedItemId < 0 || _selectedAffixIndex < 0) return;
 
-            NetworkClient.SendRerollCommandZeroAlloc(_selectedItemId, _selectedAffixIndex);
+            bool auto = AutoRerollToggle != null && AutoRerollToggle.isOn;
+
+            NetworkClient.SendRerollCommandZeroAlloc(
+                _selectedItemId,
+                _selectedAffixIndex,
+                (byte)_operationKind,
+                auto ? (uint)Mathf.Max(1, AutoRerollAttempts) : 0u,
+                (byte)_stopMinRarity,
+                (byte)_stopAffixIndex);
+
+            // The escalating gold price is per consecutive attempt on the same
+            // item. Tracked here only so the quoted number stays honest between
+            // clicks; the server keeps its own count and is authoritative.
+            if (_costStreakItemId != _selectedItemId)
+            {
+                _costStreakItemId = _selectedItemId;
+                _consecutiveAttempts = 0;
+            }
+            _consecutiveAttempts++;
+
             Invoke(nameof(RefreshAfterDispatch), 0.5f);
         }
 
