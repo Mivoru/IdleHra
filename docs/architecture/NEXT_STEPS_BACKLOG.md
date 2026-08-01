@@ -847,3 +847,73 @@ called it "a landmine, not a live outage" on the strength of
 or potion use force-disconnected the player**. Both are now fixed, but the
 severity call was wrong for the same reason item 35 documents - one wiring
 mechanism checked out of several.
+
+## Affix Rarity, Reroll and Social Layer, 2026-08-01
+
+### 37. Affix rarity system - SHIPPED
+
+A second rarity axis, deliberately smaller than the GDD's 14 item tiers.
+Items keep those tiers and keep deciding affix COUNT (GDD 5.2's 1/2/3/4/5,
+cap 5, unchanged); affixes gained their own Common..Legendary scale deciding
+MAGNITUDE at `floor(base * region * 1.6^(rarity-1))`.
+
+Region keeps the growth term it always had, so progression through the five
+regions still drives raw power on its own. Legendary is 6.55x Common. Rolled
+values vary +/-20% around that centre, deliberately narrower than one rarity
+step so a lucky Common can never beat an unlucky Uncommon - rarity stays
+strictly dominant over luck, which is what keeps the Diamond upgrade
+worth buying. A test asserts that ordering directly.
+
+Affix count is NOT redefined in AffixRegistry. `RarityTier.GetAffixCount`
+already implements GDD 5.2 and every drop path calls it.
+
+Payload keys became `id`, `id@rarity`, `id#stack@rarity`. Both
+`AffixRegistry.StripStackSuffix` and `ClientAffixRegistry.StripStackSuffix`
+strip the marker; a key either side failed to strip would resolve to no
+definition and contribute silently nothing.
+
+### 38. Reroll economy and auto-reroll - SHIPPED
+
+Three operations, two currencies. Value and stat rerolls cost GOLD, escalating
+1.35x per consecutive attempt and saturating at a documented ceiling; only a
+rarity upgrade costs Diamonds. Auto-reroll burns attempts in bulk, so pricing
+it in premium currency would have made the headline convenience feature a
+pay-to-win treadmill - and gold needed an endgame sink.
+
+Auto-reroll checks reachability BEFORE spending. Targeting a shield-only
+affix on a sword, or asking a value reroll to raise rarity, are rejected up
+front rather than discovered by burning the budget. Rarity is a floor, not an
+equality, so "stop at Epic" is satisfied by a Legendary. The logic is a pure
+evaluator in `AutoRerollPlanner` - no database, no async - so it is testable
+without Testcontainers.
+
+Operation and stop condition travel as NAMED packet fields (352 -> 359),
+deliberately not smuggled through `LimitPrice` - see item 29.
+
+### 39. Announcements, congratulate button, generated audio - SHIPPED
+
+Epic and above announce to global chat on channel type 3, at the same
+threshold `UiRarityPalette` uses for glow so the two cannot disagree.
+Enqueued only AFTER the transaction commits and cleared on rollback: the
+queue drains on another thread, and nothing can retract a chat line.
+
+The congratulate button sends through the ordinary chat path, inheriting the
+server's rate limiting, mute and profanity handling. A dedicated command
+would have bypassed all three.
+
+All ten SFX are synthesised from code by `ProceduralSfxGenerator` -
+oscillators, filtered noise and ADSR into 16-bit PCM. **Item 15 is closed.**
+216 KB total, deterministically seeded so regeneration is byte-identical.
+These are placeholders, not authored audio.
+
+### 40. Still open after this work
+
+- **Legendary voice line.** Not possible from here - the synthesiser produces
+  tones and noise, not speech. Needs a recording or an external TTS.
+- **Font restyle.** TMP needs a font asset built from a TTF/OTF. Sizes,
+  weights and colour can be restyled against a supplied face; choosing or
+  authoring the typeface cannot be done from code.
+- **`ConsumeChronoCore` still has no item** - see item 27b. Unchanged.
+- **LFS history migration** - item 32. The audio is the first content actually
+  routed through LFS (206 KB), which validates the `.gitattributes` but does
+  not change the quota maths for the 472 MB of art history.
