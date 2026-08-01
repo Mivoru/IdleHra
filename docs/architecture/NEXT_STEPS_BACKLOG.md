@@ -1068,3 +1068,55 @@ a real defeat requires either clock manipulation or forcing the snapshot's
 EventState - neither of which tests the scheduler that would run in
 production. Static audit plus the reward-path reasoning above is what this
 pass could honestly establish.
+
+### 47. Leaderboard audit, 2026-08-01
+
+**Fixed: every entry was named "Player".** The global leaderboard hardcoded
+`DisplayName = "Player"` for all fifty rows, making it impossible to tell
+anyone apart - while `PlayerRecords."Username"` sat on the very record already
+loaded into the lookup dictionary two lines above. Now uses the real username,
+falling back to `Player #id` because the column is nullable for accounts
+created before it existed. The guild leaderboard was already correct
+(`g.Name`), and the `"LocalRank"` string is a deliberate offline-fallback
+placeholder, not a defect.
+
+**Paging is correct.** `skip`/`take` are validated, the Redis call is
+`SortedSetRangeByRankWithScoresAsync(key, skip, skip + take - 1, Descending)`,
+and rank is `skip + i + 1` derived from the Redis index rather than the
+filtered list - so a player id present in Redis but missing from Postgres
+(deleted account, drift) shortens the page without corrupting the ranks below
+it.
+
+**Not a cold-start gap.** `SyncLeaderboardsAsync` runs BEFORE the 5-minute
+delay, so a freshly booted server populates immediately. I initially misread
+the loop order and recorded the opposite; corrected here.
+
+### 48. Anti-cheat quarantined the dev account during a normal headless session
+
+The live leaderboard test returned nothing, and the cause was that player 1
+had `IsQuarantined` and `Quarantine_Active` both true - the leaderboard query
+excludes quarantined accounts. `DevFixtureSeeder` explicitly sets both false,
+so this happened AT RUNTIME during the session.
+
+Source is the integrity-challenge path: `ConsecutiveChallengeMisses >=
+AntiCheatTelemetryEngine.ConsecutiveChallengeMissLimit` sets both flags and
+calls `RequestShadowBan`. The client DOES answer challenges
+(`WebSocketClient.cs:269` responds on packet receipt), so this is not simply
+an unimplemented responder.
+
+That leaves two possibilities, and this pass could not distinguish them:
+
+1. The verification hash disagrees between client and server, in which case
+   every real player accumulates misses and is eventually shadow-banned.
+2. The responses are correct but too slow under some conditions, in which case
+   a laggy or backgrounded client is punished for its connection.
+
+Either would be severe: quarantine silently removes a player from
+leaderboards, and `RequestShadowBan` is not something a player can see or
+appeal. This echoes the earlier anti-cheat finding about irreversible
+penalties needing a reversal path - `--lift-quarantine <playerId>` exists and
+was used to restore the fixture, but nothing surfaces that a player needs it.
+
+Highest-priority item to investigate next: compare the client's hash
+computation against the server's verifier directly, with a single challenge
+round-trip logged on both sides.

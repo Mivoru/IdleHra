@@ -1296,7 +1296,19 @@ namespace FolkIdle.Server.Network
                             {
                                 Rank = skip + i + 1,
                                 PlayerId = p.Id,
-                                DisplayName = "Player",
+
+                                // Modul: leaderboard names, 2026-08-01. Was the
+                                // literal string "Player" for every row, so the
+                                // entire global leaderboard read as fifty
+                                // identical entries and could not tell anyone
+                                // apart - while PlayerRecords."Username" sat on
+                                // the very record already loaded into this
+                                // dictionary two lines up.
+                                //
+                                // Username is nullable (accounts created before
+                                // it existed), so it falls back to the id rather
+                                // than rendering an empty row.
+                                DisplayName = string.IsNullOrWhiteSpace(p.Username) ? $"Player #{p.Id}" : p.Username!,
                                 Level = p.CurrentLevel,
                                 Xp = p.CurrentXp
                             });
