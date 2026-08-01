@@ -107,10 +107,27 @@ namespace FolkIdle.Server.Engine
                 {
                     // Batch ZADD
                     await dbRedis.SortedSetAddAsync(stagingKey, entries);
-                }
 
-                // 3. Atomic RENAME
-                await dbRedis.KeyRenameAsync(stagingKey, prodKey);
+                    // 3. Atomic RENAME
+                    await dbRedis.KeyRenameAsync(stagingKey, prodKey);
+                }
+                else
+                {
+                    // Modul: leaderboard empty-set fix, 2026-08-01.
+                    //
+                    // RENAME on a key that does not exist throws "ERR no such
+                    // key", and with zero qualifying players the staging key was
+                    // never created - it had just been deleted a few lines up.
+                    // So an empty result set did not produce an empty
+                    // leaderboard, it threw and aborted the whole sync pass,
+                    // taking the guild leaderboard below down with it. Seen on
+                    // every boot of a fresh database.
+                    //
+                    // Deleting the production key is the correct empty state:
+                    // no players ranked means no ranking, not last cycle's
+                    // ranking kept alive forever.
+                    await dbRedis.KeyDeleteAsync(prodKey);
+                }
 
                 // Modul: Comprehensive Game System Audit, Part 3.2. Global
                 // guild leaderboard - previously nothing anywhere ranked
@@ -174,9 +191,15 @@ namespace FolkIdle.Server.Engine
             if (entries.Length > 0)
             {
                 await dbRedis.SortedSetAddAsync(stagingKey, entries);
+                await dbRedis.KeyRenameAsync(stagingKey, prodKey);
             }
-
-            await dbRedis.KeyRenameAsync(stagingKey, prodKey);
+            else
+            {
+                // Same empty-set fault as the player leaderboard above - see
+                // that comment. A server with no guilds yet hit this on every
+                // sync pass.
+                await dbRedis.KeyDeleteAsync(prodKey);
+            }
         }
     }
 }

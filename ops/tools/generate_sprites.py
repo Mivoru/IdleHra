@@ -2,6 +2,10 @@
 into transparent-background sprites under client/Assets/Images/Sprites.
 
 Usage: python ops/tools/generate_sprites.py [--force]
+
+Every PNG under the source root is processed, at any nesting depth. Only
+Characters/ is special-cased, because those sources are male/female pairs
+that get split rather than converted one-to-one.
   --force reprocesses files even if the destination already exists.
 
 Requires: pip install pillow numpy
@@ -126,32 +130,26 @@ def main():
         split_x, lsize, rsize = process_character_pair(f, out_dir, stem)
         report.append(f"[char] {f.name}: split@{split_x} Male={lsize} Female={rsize}")
 
-    locations_dir = SRC_ROOT / "Locations"
-    if locations_dir.is_dir():
-        for loc_dir in sorted(locations_dir.iterdir()):
-            if not loc_dir.is_dir():
-                continue
-            for sub in ("Monsters", "Materials&rest"):
-                sub_dir = loc_dir / sub
-                if not sub_dir.is_dir():
-                    continue
-                for f in sorted(sub_dir.glob("*.png")):
-                    rel = f.relative_to(SRC_ROOT)
-                    dst = DST_ROOT / rel
-                    if not force and dst.exists():
-                        continue
-                    size = process_single(f, dst)
-                    report.append(f"[loc] {rel}: {size}")
+    # Everything that is not a character pair. Deliberately a generic walk
+    # rather than a list of known folders: the original version named
+    # Locations/*/Monsters, Locations/*/Materials&rest and Others explicitly,
+    # so when Tools&Equipment appeared, 108 files were silently skipped and the
+    # script still reported success. A new art folder must not require editing
+    # this file to be seen.
+    #
+    # Characters are excluded because they are not single sprites - each source
+    # is a male/female pair that process_character_pair splits, handled above.
+    for f in sorted(SRC_ROOT.rglob("*.png")):
+        rel = f.relative_to(SRC_ROOT)
+        if rel.parts[0] == "Characters":
+            continue
 
-    others_dir = SRC_ROOT / "Others"
-    if others_dir.is_dir():
-        for f in sorted(others_dir.glob("*.png")):
-            rel = f.relative_to(SRC_ROOT)
-            dst = DST_ROOT / rel
-            if not force and dst.exists():
-                continue
-            size = process_single(f, dst)
-            report.append(f"[other] {rel}: {size}")
+        dst = DST_ROOT / rel
+        if not force and dst.exists():
+            continue
+
+        size = process_single(f, dst)
+        report.append(f"[{rel.parts[0]}] {rel}: {size}")
 
     if not report:
         print("Nothing new to process (use --force to reprocess existing outputs).")

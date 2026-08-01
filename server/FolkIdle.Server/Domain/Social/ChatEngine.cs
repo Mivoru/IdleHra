@@ -272,22 +272,133 @@ namespace FolkIdle.Server.Domain.Social
             StartDispatchWorker();
 
             var redis = _serviceProvider.GetService<IConnectionMultiplexer>();
-            if (redis == null || !redis.IsConnected)
+            if (redis == null)
             {
+                // No multiplexer registered at all - single-pod mode. The
+                // local-loopback path above already delivers this pod's own
+                // messages, so there is nothing to retry against.
                 return;
             }
 
-            var subscriber = redis.GetSubscriber();
-            ChannelMessageQueue queue = subscriber.Subscribe(RedisChannel.Literal(GlobalChatChannel));
-            queue.OnMessage(HandleRedisMessageAsync);
+            // Modul: chat resilience, 2026-08-01.
+            //
+            // This used to be `if (!redis.IsConnected) return;` with no retry.
+            // A server that booted while Redis was still starting - which
+            // container start order makes routine - skipped all three
+            // subscriptions and had permanently dead global, guild and whisper
+            // chat for the lifetime of the process, with no error logged
+            // anywhere. Confirmed live on 2026-08-01: zero messages delivered,
+            // and starting Redis afterwards did not help; only a server restart
+            // did.
+            //
+            // Two independent recovery paths now, because they cover different
+            // failures. ConnectionRestored handles a Redis that goes away and
+            // comes back under a running server. The retry loop handles a Redis
+            // that was never reachable at boot, where no "restored" event ever
+            // fires because there was never a connection to restore.
+            redis.ConnectionRestored += (_, _) =>
+            {
+                // Fires per-endpoint and can fire repeatedly; TrySubscribeAll is
+                // idempotent so a storm of these costs one interlocked read.
+                TrySubscribeAll(redis);
+            };
 
-            ChannelMessageQueue guildQueue = subscriber.Subscribe(RedisChannel.Literal(GuildChatChannel));
-            guildQueue.OnMessage(HandleGuildRedisMessageAsync);
+            if (!TrySubscribeAll(redis))
+            {
+                _ = RetrySubscribeUntilConnectedAsync(redis);
+            }
+        }
 
-            ChannelMessageQueue whisperQueue = subscriber.Subscribe(RedisChannel.Literal(WhisperChatChannel));
-            whisperQueue.OnMessage(HandleWhisperRedisMessageAsync);
+        // 0 = not yet subscribed, 1 = subscribed. Guards against the boot call,
+        // the ConnectionRestored handler and the retry loop all racing to
+        // subscribe the same three channels.
+        private int _redisSubscribed;
 
-            StartDispatchWorker();
+        // Modul: chat resilience, 2026-08-01. These MUST be held as fields.
+        //
+        // ChannelMessageQueue is what actually pumps messages to the OnMessage
+        // handler; leaving the three of them as locals lets the GC collect them
+        // and delivery stops silently - the subscription still shows up in
+        // Redis PUBSUB CHANNELS, so it looks healthy from the outside while no
+        // message is ever handled.
+        //
+        // Observed exactly that during the live test: the retry path logged a
+        // successful subscribe, redis-cli confirmed the publish reached
+        // chat:global with the server as a subscriber, and the client received
+        // nothing. The boot path appeared to work only because its locals
+        // happened to survive long enough.
+        private ChannelMessageQueue? _globalQueue;
+        private ChannelMessageQueue? _guildQueue;
+        private ChannelMessageQueue? _whisperQueue;
+
+        private bool TrySubscribeAll(IConnectionMultiplexer redis)
+        {
+            if (!redis.IsConnected)
+            {
+                return false;
+            }
+
+            if (Interlocked.Exchange(ref _redisSubscribed, 1) != 0)
+            {
+                return true;
+            }
+
+            try
+            {
+                var subscriber = redis.GetSubscriber();
+
+                _globalQueue = subscriber.Subscribe(RedisChannel.Literal(GlobalChatChannel));
+                _globalQueue.OnMessage(HandleRedisMessageAsync);
+
+                _guildQueue = subscriber.Subscribe(RedisChannel.Literal(GuildChatChannel));
+                _guildQueue.OnMessage(HandleGuildRedisMessageAsync);
+
+                _whisperQueue = subscriber.Subscribe(RedisChannel.Literal(WhisperChatChannel));
+                _whisperQueue.OnMessage(HandleWhisperRedisMessageAsync);
+
+                StartDispatchWorker();
+                Console.WriteLine("ChatEngine: Redis chat channels subscribed.");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                // Release the guard so a later attempt can genuinely retry -
+                // leaving it set would make one transient failure permanent,
+                // which is the whole bug this method exists to fix.
+                Interlocked.Exchange(ref _redisSubscribed, 0);
+                Console.WriteLine($"ChatEngine: chat subscribe failed, will retry: {ex.Message}");
+                return false;
+            }
+        }
+
+        // Bounded retry rather than forever: if Redis is still unreachable
+        // after this long, the deployment is broken in a way a background loop
+        // cannot fix, and a silently spinning task would hide that. Chat still
+        // works pod-locally throughout via the loopback path.
+        private const int SubscribeRetryDelayMs = 5000;
+        private const int SubscribeRetryAttempts = 60;
+
+        private async Task RetrySubscribeUntilConnectedAsync(IConnectionMultiplexer redis)
+        {
+            for (int attempt = 0; attempt < SubscribeRetryAttempts; attempt++)
+            {
+                await Task.Delay(SubscribeRetryDelayMs);
+
+                if (Volatile.Read(ref _redisSubscribed) != 0)
+                {
+                    // ConnectionRestored got there first.
+                    return;
+                }
+
+                if (TrySubscribeAll(redis))
+                {
+                    return;
+                }
+            }
+
+            Console.WriteLine(
+                $"ChatEngine: Redis chat channels still unsubscribed after {SubscribeRetryAttempts} attempts. " +
+                "Cross-pod chat is unavailable; pod-local chat continues to work.");
         }
 
         private Task HandleRedisMessageAsync(ChannelMessage message)
