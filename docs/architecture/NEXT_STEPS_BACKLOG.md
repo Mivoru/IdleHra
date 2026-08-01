@@ -965,3 +965,64 @@ are snapshot-persisted, and that difference decides whether an off-thread
 credit is safe or gets silently refunded by the next checkpoint. Anyone
 adding a currency should decide which of the two it is before writing the
 first spend path.
+
+## Live Play Mode session, 2026-08-01
+
+Ran against the dev fixture (`--seed-dev`, player 1) with Postgres and Redis
+in Docker and a real WebSocket session. Everything below was measured against
+the database, not inferred.
+
+### 42. Verified working end to end
+
+- **Diamond rarity upgrade.** Uncommon -> Rare -> Epic -> Legendary, costing
+  17, 57 and 196 Diamonds - matching `5 * 3.4^(rarity-1)` exactly. This is the
+  path that was impossible before the store fix, and the balance survived a
+  relog (client read 5186 after reconnect, matching the row).
+- **Gold value reroll.** Cost 902 on a tier-3 item, matching
+  `250 * 1.9^(tier-1)`. Diamonds unchanged, proving the currency split holds.
+  Rarity preserved, magnitude moved 177 -> 151, inside the +/-20% band.
+- **Legendary announcement.** Reached the client as
+  `1|5|crit_dmg_pct|177` with `IsAnnouncement = true` on channel 3.
+
+### 43. ChatEngine subscribes to Redis once at boot and never retries
+
+Found by accident: the server was started before Redis, and chat was
+completely dead - zero messages delivered, no error anywhere. Starting Redis
+afterwards did not help. Only restarting the server fixed it, after which the
+identical test delivered immediately.
+
+`InitializeAsync` checks `redis == null || !redis.IsConnected` and returns
+early, skipping all three channel subscriptions. There is no reconnect
+handler and no retry, so a server that boots while Redis is unavailable has
+permanently dead global, guild and whisper chat for the lifetime of the
+process.
+
+This is a realistic production failure, not a lab artefact: container start
+order is not guaranteed, and Redis restarting under a running server produces
+the same silent outcome. Same shape as the guild war bug - a condition
+observed once and assumed to hold forever.
+
+Fix direction: subscribe on the multiplexer's `ConnectionRestored` event as
+well as at boot, and make the subscribe path idempotent (it already is for
+the dispatch worker).
+
+### 44. Chat rows are Addressables-only, so chat renders nothing in the Editor
+
+`UiChatWindow.RowPrefabAddressableKey = "UiChatMessageRow"` resolves through
+`AssetManager.LoadAsync`. Without built Addressables content the load fails
+silently, `_rows` stays entirely null, and the window shows nothing even
+while messages arrive correctly (verified: `_totalMessagesAccepted` reached 2
+with zero rows instantiated).
+
+So chat is untestable in Play Mode without an Addressables build, and if a
+player build ever ships without that content, chat is invisible with no error.
+Worth either bundling the row prefab as a direct reference like every other
+pooled row in the project, or failing loudly when the key does not resolve.
+
+### 45. The dev fixture seeds gear with empty affix payloads
+
+All four seeded `EquipmentInstances` carry `AffixPayload = '{}'`, so the
+reroll and affix UI cannot be exercised from the fixture at all - this
+session had to write a payload in by hand. `DevFixtureSeeder` should roll a
+real affix set through `AffixRegistry.RollAffixes`, exactly as a drop would,
+so the fixture exercises the same path players do.
