@@ -732,3 +732,69 @@ routes:
 
 Until one is chosen, the forward-only `.gitattributes` is the correct state:
 it stops the growth without spending quota.
+
+## Audit Findings, 2026-08-01 (second pass)
+
+### 33. Monster milli-HP overflowed int - SHIPPED, and it was a self-inflicted regression
+
+`CurrentMonsterHp` held milli-HP in an `int`, capping monster HP at
+2,147,483. The pacing rebalance set region bosses to
+3500/14000/82000/440000/**3000000** without checking that ceiling, so
+Malakor wrapped to -1,294,967,296, satisfied the `CurrentMonsterHp <= 0`
+death check on spawn, and paid a full kill reward every tick: 6,000,000 XP
+and 1,500,000 gold per second from ordinary progression content.
+
+41 of 115 monsters were affected. The mirror defect on the damage side made
+the four strongest monsters deal exactly 1 HP per hit.
+
+Fixed by widening to `long` and making the endgame scaling cast saturate.
+The scaling fix matters independently of the data: the multiplier compounds
+at 1.25 per tier without bound, so wrapping was guaranteed eventually.
+
+The lesson is not "check for overflow." It is that a balance change and a
+representation limit lived in two files that nobody cross-checked, and
+neither the test suite nor a playtest could reach the region-5 boss to
+notice. The guard that now prevents recurrence is the type system - the
+`int` revert fails compilation in 10 places - not a test.
+
+### 34. Gathering mastery was never persisted - SHIPPED
+
+Woodcutting/mining mastery was earned by three code paths, consumed for
+gathering yield, and carried on the wire, but had no database column, no
+hydration, and no UI. Every logout reset both professions to zero, and
+nothing on screen could reveal it. Now has columns, hydration, write-back,
+proxy mirrors for the levels, and `UiGatheringMasteryPanel`.
+
+### 35. Corrections to the first audit pass
+
+Three findings from the earlier report did not survive verification. Logged
+because the wrong methods are worth remembering:
+
+- **"155 dead buttons"** - false. Buttons are wired by serialized field
+  reference and runtime `AddListener`, not `AddPersistentListener` (6 vs 56
+  files). Cross-checking every button against BOTH mechanisms gives **0
+  unwired of 190**. A persistent-listener scan alone is meaningless here.
+- **"Command rejections are never surfaced"** - false. `VisualLastCommandResultCode`
+  has no reader by design; `VisualSyncProxy` documents that UI must subscribe
+  to `OnCommandResultReceived`, which `UiCommandResultToast` does correctly.
+  An unread property is not automatically an unwired feature.
+- **"UiChatWindow leaks an event subscription"** - false.
+  `HandleRowPrefabLoaded` fires exactly once and pools rows for the window's
+  lifetime, so the subscription never accumulates.
+
+Also corrected: `AccumulatedWood/Stone/Iron` are sub-1.0 fractional carries,
+so their absence from login hydration is by design, not lost state.
+
+Standing methodological note: for this codebase, "X has no reference" is only
+a finding once it has been checked against every wiring mechanism the
+codebase actually uses. Three of the four false positives above came from
+checking exactly one.
+
+### 36. Remaining known gaps
+
+- 27 `VisualSyncProxy` members still have no reader. `VisualMiningXp`/
+  `VisualWoodcuttingXp` are now consumed; the rest need triage into "wire a
+  UI" or "delete", individually rather than as a batch.
+- 8 scene texts still overflow their rect. All come from creators other than
+  `CreateHelpText`, which now auto-sizes.
+- The art history migration to LFS remains open - see item 32.
