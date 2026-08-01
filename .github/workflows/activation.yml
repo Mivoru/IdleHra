@@ -21,12 +21,11 @@ jobs:
             -createManualActivationFile \
             -logfile /dev/stdout || true
           
-          # Najde a přejmenuje vygenerovaný .alf soubor pro artefakt
           ALF_FILE=$(ls *.alf 2>/dev/null | head -n 1)
           if [ -n "$ALF_FILE" ]; then
             echo "Vygenerován soubor: $ALF_FILE"
           else
-            echo "Při generování ALF nastala chyba!"
+            echo "Soubor ALF nebyl nalezen!"
             exit 1
           fi
 
