@@ -986,6 +986,41 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
+                while (_playerRegistry.ShardAttackResultQueue.TryDequeue(out var shardAttackResult))
+                {
+                    // Security statuses are resolved here rather than in the
+                    // dispatching lambda - see the SubmitShardAttack handler.
+                    if (shardAttackResult.ProcessingStatus == 1U
+                        || shardAttackResult.ProcessingStatus == 2U
+                        || shardAttackResult.ProcessingStatus == 4U)
+                    {
+                        TelemetryStreamer.TryWrite(new TelemetryEvent
+                        {
+                            PlayerId = shardAttackResult.PlayerId,
+                            EventType = 3,
+                            Value1 = 50,
+                            Value2 = (int)shardAttackResult.ProcessingStatus,
+                            Timestamp = Environment.TickCount64
+                        });
+                        TerminateSessionForSecurity(shardAttackResult.PlayerId);
+                        continue;
+                    }
+
+                    if (shardAttackResult.ProcessingStatus != 0U)
+                    {
+                        continue;
+                    }
+
+                    ref var shardPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, shardAttackResult.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref shardPayload))
+                    {
+                        shardPayload.ActiveCrossShardMatchId = shardAttackResult.MatchUuid;
+                        shardPayload.GlobalNodeRemainingHp = shardAttackResult.GlobalNodeRemainingHp;
+                        shardPayload.ActiveMatchMmr = shardAttackResult.ActiveMatchMmr;
+                        shardPayload.IsDirty = true;
+                    }
+                }
+
                 while (_playerRegistry.CraftingCompletionQueue.TryDequeue(out var craftCompletion))
                 {
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, craftCompletion.PlayerId);
@@ -2143,40 +2178,46 @@ namespace FolkIdle.Server.Domain.Combat
                             continue;
                         }
 
-                        // HAZARD - blocks the 10 Hz tick thread on a
-                        // cross-shard round trip. Every other database or mesh
-                        // command in this loop uses SafeDispatchAsync; this one
-                        // cannot trivially follow, because it writes the result
-                        // back into currentPayload and would need the
-                        // notification-queue pattern to do that off-thread.
+                        // Dispatched off-thread, result threaded back through
+                        // ShardAttackResultQueue and applied at the drain below.
                         //
-                        // It is currently unreachable - no client path sends
-                        // command 50 - which is the only reason this has not
-                        // caused a production stall. DO NOT wire a UI to this
-                        // until the call is restructured. See NEXT_STEPS_BACKLOG.
-                        var attackResult = SubmitShardAttackAsync(currentPayload.GuildId, currentPayload.GlobalNodeRemainingHp, cmd.TargetMatchUuid, cmd.ClientPredictedDamage, cmd.IsBuy != 0).GetAwaiter().GetResult();
-                        var meshResult = attackResult.Response;
-                        if (meshResult.ProcessingStatus == 1U || meshResult.ProcessingStatus == 2U || meshResult.ProcessingStatus == 4U)
-                        {
-                            TelemetryStreamer.TryWrite(new TelemetryEvent
-                            {
-                                PlayerId = currentPayload.PlayerId,
-                                EventType = 3,
-                                Value1 = 50,
-                                Value2 = (int)meshResult.ProcessingStatus,
-                                Timestamp = Environment.TickCount64
-                            });
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
+                        // This was the last GetAwaiter().GetResult() in the tick
+                        // loop: a cross-shard network round trip executed
+                        // synchronously, which would have stalled every player's
+                        // simulation on one player's request. It could not follow
+                        // the plain fire-and-forget shape the other commands use,
+                        // because it writes three fields back into the payload -
+                        // and only the tick thread may touch a payload.
+                        //
+                        // The security-violation statuses (1, 2, 4) are carried
+                        // back rather than acted on in the lambda for the same
+                        // reason: TerminateSessionForSecurity mutates tick-owned
+                        // state, so the drain performs it.
+                        long shardPlayerId = currentPayload.PlayerId;
+                        long shardGuildId = currentPayload.GuildId;
+                        long shardNodeHp = currentPayload.GlobalNodeRemainingHp;
+                        System.Guid shardMatchUuid = cmd.TargetMatchUuid;
+                        uint shardPredictedDamage = cmd.ClientPredictedDamage;
+                        bool shardIsFinalBlow = cmd.IsBuy != 0;
 
-                        if (meshResult.ProcessingStatus == 0U)
+                        SafeDispatchAsync("GuildWar.SubmitShardAttack", shardPlayerId, async () =>
                         {
-                            currentPayload.ActiveCrossShardMatchId = cmd.TargetMatchUuid;
-                            currentPayload.GlobalNodeRemainingHp = meshResult.GlobalNodeRemainingHp;
-                            currentPayload.ActiveMatchMmr = attackResult.ActiveMatchMmr;
-                            currentPayload.IsDirty = true;
-                        }
+                            var attackResult = await SubmitShardAttackAsync(
+                                shardGuildId,
+                                shardNodeHp,
+                                shardMatchUuid,
+                                shardPredictedDamage,
+                                shardIsFinalBlow);
+
+                            _playerRegistry.ShardAttackResultQueue.Enqueue(new ShardAttackResultNotification
+                            {
+                                PlayerId = shardPlayerId,
+                                ProcessingStatus = attackResult.Response.ProcessingStatus,
+                                MatchUuid = shardMatchUuid,
+                                GlobalNodeRemainingHp = attackResult.Response.GlobalNodeRemainingHp,
+                                ActiveMatchMmr = attackResult.ActiveMatchMmr
+                            });
+                        });
                     }
                     else if (cmd.Command == CommandType.ReportTelemetryBurst)
                     {

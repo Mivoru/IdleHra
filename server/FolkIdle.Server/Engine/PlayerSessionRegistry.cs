@@ -229,6 +229,23 @@ namespace FolkIdle.Server.Engine
         public double SecondsToAdd;
     }
 
+    // Modul: cross-shard guild war. Carries the result of a shard attack back
+    // to the tick thread. The mesh call is a network round trip and used to run
+    // synchronously inside the 10 Hz loop, blocking every player's simulation
+    // on one player's request.
+    //
+    // SecurityViolationStatus is threaded back rather than acted on off-thread:
+    // terminating a session is tick-thread work, and the drain is the only place
+    // that can safely touch the payload. 0 means the attack was accepted.
+    public struct ShardAttackResultNotification
+    {
+        public long PlayerId;
+        public uint ProcessingStatus;
+        public System.Guid MatchUuid;
+        public long GlobalNodeRemainingHp;
+        public int ActiveMatchMmr;
+    }
+
     public struct LegacyStoreUpdateNotification
     {
         public long PlayerId;
@@ -333,6 +350,7 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<MentorshipUpdateNotification> MentorshipUpdateQueue { get; } = new();
         public ConcurrentQueue<QuarantineNotification> QuarantineNotificationQueue { get; } = new();
         public ConcurrentQueue<ChronoAccelerationNotification> ChronoAccelerationQueue { get; } = new();
+        public ConcurrentQueue<ShardAttackResultNotification> ShardAttackResultQueue { get; } = new();
         public ConcurrentQueue<LegacyStoreUpdateNotification> LegacyStoreUpdateQueue { get; } = new();
         public ConcurrentQueue<GuildLogisticsDepotUpdateNotification> GuildLogisticsDepotUpdateQueue { get; } = new();
         public ConcurrentQueue<GuildCombatSimulationUpdateNotification> GuildCombatSimulationUpdateQueue { get; } = new();

@@ -1512,7 +1512,13 @@ namespace FolkIdle.Client.Editor
             // which read as a screen that had failed to load.
             GameObject noActiveWarRoot = new GameObject("NoActiveWarRoot", typeof(RectTransform));
             noActiveWarRoot.transform.SetParent(groupObject.transform, false);
-            SetFixedLayoutHeight(noActiveWarRoot, 96f);
+            // 96 -> 160. Measured live: the banner needs 45px and the help
+            // string needs 96px at this width, against 30 and 32 allocated, so
+            // both rendered outside the panel. These two are anchored rather
+            // than laid out, so the auto-fit added to SetFixedLayoutHeight does
+            // not reach them - and shrinking a 3x overflow to fit would have
+            // taken the help text below legible size. Give it the room instead.
+            SetFixedLayoutHeight(noActiveWarRoot, 160f);
             noActiveWarRoot.AddComponent<Image>().color = new Color(0f, 0f, 0f, 0.35f);
 
             TextMeshProUGUI noWarBannerText = CreateText(noActiveWarRoot.transform, "NoActiveWarBannerText", "No Active Guild War", 20f, TextAlignmentOptions.Center);
@@ -1520,7 +1526,7 @@ namespace FolkIdle.Client.Editor
             noWarBannerRect.anchorMin = new Vector2(0f, 1f);
             noWarBannerRect.anchorMax = new Vector2(1f, 1f);
             noWarBannerRect.pivot = new Vector2(0.5f, 1f);
-            noWarBannerRect.sizeDelta = new Vector2(0f, 30f);
+            noWarBannerRect.sizeDelta = new Vector2(0f, 46f);
             noWarBannerRect.anchoredPosition = new Vector2(0f, -8f);
 
             TextMeshProUGUI noWarHelpText = CreateText(noActiveWarRoot.transform, "NoActiveWarHelpText", "Matchmaking runs weekly. Your guild is paired automatically - there is nothing to queue for.", 12f, TextAlignmentOptions.Center);
@@ -1529,8 +1535,8 @@ namespace FolkIdle.Client.Editor
             noWarHelpRect.anchorMin = new Vector2(0f, 1f);
             noWarHelpRect.anchorMax = new Vector2(1f, 1f);
             noWarHelpRect.pivot = new Vector2(0.5f, 1f);
-            noWarHelpRect.sizeDelta = new Vector2(-16f, 32f);
-            noWarHelpRect.anchoredPosition = new Vector2(0f, -38f);
+            noWarHelpRect.sizeDelta = new Vector2(-16f, 98f);
+            noWarHelpRect.anchoredPosition = new Vector2(0f, -56f);
 
             TextMeshProUGUI countdownText = CreateText(noActiveWarRoot.transform, "MatchmakingCountdownText", string.Empty, 14f, TextAlignmentOptions.Center);
             RectTransform countdownRect = (RectTransform)countdownText.transform;
@@ -1675,6 +1681,26 @@ namespace FolkIdle.Client.Editor
 
             RectTransform rect = (RectTransform)target.transform;
             rect.sizeDelta = new Vector2(rect.sizeDelta.x, height);
+
+            // Modul: text overflow sweep. Pinning a height is exactly what
+            // creates the overflow condition - TMP's default overflowMode is
+            // Overflow, so any string longer than the caller estimated renders
+            // straight out of the slot and over whatever sits below it. Fixing
+            // it here rather than at each call site means it holds for callers
+            // added later, which is what let 25 of these accumulate.
+            //
+            // Auto-size rather than ellipsis: these are values and labels whose
+            // whole point is being read, so shrinking to fit keeps the content
+            // where truncating would hide it. Only applied when a caller has not
+            // already opted into its own sizing policy.
+            TextMeshProUGUI text = target.GetComponent<TextMeshProUGUI>();
+            if (text != null && !text.enableAutoSizing && text.overflowMode == TextOverflowModes.Overflow)
+            {
+                text.enableAutoSizing = true;
+                text.fontSizeMax = text.fontSize;
+                text.fontSizeMin = Mathf.Max(8f, text.fontSize * 0.6f);
+            }
+
             return layoutElement;
         }
 
@@ -4016,6 +4042,13 @@ namespace FolkIdle.Client.Editor
             SetFixedLayoutHeight(hatchingRoot, 20f);
             TextMeshProUGUI hatchingText = CreateText(hatchingRoot.transform, "HatchingText", "A new creature has been born!", 13f, TextAlignmentOptions.Center);
             StretchFull((RectTransform)hatchingText.transform);
+            // Stretched to a 20px root while the string needs 29 at 13pt, so it
+            // rendered outside the announcement strip. Auto-fit rather than a
+            // taller root: this sits inside a fixed animation frame whose height
+            // is part of the layout above it.
+            hatchingText.enableAutoSizing = true;
+            hatchingText.fontSizeMax = 13f;
+            hatchingText.fontSizeMin = 9f;
 
             UiBreedingLabWindow labWindow = windowObject.AddComponent<UiBreedingLabWindow>();
             labWindow.NetworkClient = networkClient;
