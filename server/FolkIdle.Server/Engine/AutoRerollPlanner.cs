@@ -98,7 +98,7 @@ namespace FolkIdle.Server.Engine
                 return string.Equals(condition.RequiredAffixId, currentAffixId, StringComparison.Ordinal);
             }
 
-            if (!AffixRegistry.TryGetDefinition(condition.RequiredAffixId, out var required))
+            if (!AffixRegistry.TryGetDefinition(condition.RequiredAffixId!, out var required))
             {
                 return false;
             }

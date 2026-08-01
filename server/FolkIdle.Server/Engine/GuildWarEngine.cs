@@ -102,6 +102,13 @@ namespace FolkIdle.Server.Engine
         // costs one small indexed query each per interval.
         private const int ScoreboardSyncIntervalMs = 5000;
 
+        // One guild war cycle. Matchmaking runs weekly and resolution is
+        // scheduled for Sunday 23:30 UTC, so a match still active a full week
+        // after it was created has missed its window and is overdue - see the
+        // catch-up branch in RunMatchmakingLoopAsync for why that has to be
+        // detectable rather than assumed impossible.
+        private const int MatchCycleSeconds = 7 * 24 * 60 * 60;
+
         private async Task RunScoreboardSyncLoopAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
@@ -353,7 +360,38 @@ namespace FolkIdle.Server.Engine
             while (!stoppingToken.IsCancellationRequested)
             {
                 var now = DateTime.UtcNow;
-                if (now.DayOfWeek == DayOfWeek.Sunday && now.Hour == 23 && now.Minute == 30)
+
+                // Modul: guild war resolution catch-up, 2026-08-01.
+                //
+                // This used to fire ONLY on exact-minute equality with Sunday
+                // 23:30. The loop sleeps 60 seconds, so any downtime spanning
+                // that single minute - a deploy, a restart, a long transaction
+                // delaying the tick - meant the window was simply never
+                // observed. Active matches then stayed IsActive = TRUE forever:
+                // never resolved, no victory tokens distributed, and because a
+                // guild with an active match cannot be rematched (see the
+                // matchmaking query below), both guilds were locked out of guild
+                // wars permanently with no error anywhere.
+                //
+                // Resolution is now driven by whether a match is OVERDUE rather
+                // than by what minute it happens to be. MatchEpoch is the
+                // creation timestamp, so a match older than one full cycle is
+                // resolvable whenever the loop next runs - which makes a missed
+                // window self-healing instead of terminal.
+                int overdueCutoffEpoch = (int)DateTimeOffset.UtcNow.AddSeconds(-MatchCycleSeconds).ToUnixTimeSeconds();
+                bool hasOverdueMatch;
+
+                using (var probeScope = _serviceProvider.CreateScope())
+                {
+                    var probeDb = probeScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                    hasOverdueMatch = await probeDb.GuildWarMatches
+                        .AsNoTracking()
+                        .AnyAsync(m => m.IsActive && m.MatchEpoch <= overdueCutoffEpoch, stoppingToken);
+                }
+
+                bool isScheduledWindow = now.DayOfWeek == DayOfWeek.Sunday && now.Hour == 23 && now.Minute == 30;
+
+                if (isScheduledWindow || hasOverdueMatch)
                 {
                     using var scope = _serviceProvider.CreateScope();
                     var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
