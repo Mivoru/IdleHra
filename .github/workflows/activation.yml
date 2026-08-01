@@ -18,6 +18,7 @@ jobs:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
+          projectPath: client
           targetPlatform: StandaloneLinux64
           version: 6000.5.2f1
           customParameters: -batchmode -createManualActivationFile
