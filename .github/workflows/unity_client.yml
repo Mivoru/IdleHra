@@ -107,6 +107,14 @@ jobs:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          # The CDN root that will serve the remote catalog and bundles.
+          # BuildPipelineController creates the "Production" Addressables
+          # profile from this on first run; it fails the build loudly when
+          # unset rather than defaulting, because Production content built
+          # against a placeholder URL ships and then cannot load. Add a
+          # FOLKIDLE_CDN_BASE_URL repository variable (or secret) to enable
+          # the release build.
+          FOLKIDLE_CDN_BASE_URL: ${{ vars.FOLKIDLE_CDN_BASE_URL }}
         with:
           projectPath: client
           unityVersion: ${{ env.UNITY_VERSION }}

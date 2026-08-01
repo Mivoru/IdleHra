@@ -21,6 +21,18 @@ namespace FolkIdle.Client.Editor
     public static class BuildPipelineController
     {
         private const string ProductionProfileName = "Production";
+        private const string DefaultProfileName = "Default";
+
+        // Modul: CI release build. Deployment configuration, supplied by the CI
+        // environment rather than committed - see EnsureProductionProfile for
+        // why it is deliberately not defaulted.
+        private const string CdnBaseUrlEnvironmentVariable = "FOLKIDLE_CDN_BASE_URL";
+
+        // Addressables profile variable names, exactly as they appear in
+        // AddressableAssetSettings.asset's m_ProfileEntryNames.
+        private const string RemoteBuildPathVariable = "Remote.BuildPath";
+        private const string RemoteLoadPathVariable = "Remote.LoadPath";
+        private const string RemoteBuildPathValue = "ServerData/[BuildTarget]";
         private const string DefaultApkOutputPath = "build_output/client.apk";
         private const string CdnStagingDirectory = "build_output/cdn";
 
@@ -71,10 +83,9 @@ namespace FolkIdle.Client.Editor
                 return false;
             }
 
-            string productionProfileId = settings.profileSettings.GetProfileId(ProductionProfileName);
+            string productionProfileId = EnsureProductionProfile(settings);
             if (string.IsNullOrEmpty(productionProfileId))
             {
-                Console.WriteLine($"[BuildPipeline] Error: no Addressables profile named '{ProductionProfileName}' exists - create it in the Addressables Profiles window before running a release build.");
                 return false;
             }
 
@@ -104,6 +115,66 @@ namespace FolkIdle.Client.Editor
                 Console.WriteLine($"[BuildPipeline] Addressables content build threw an exception: {ex}");
                 return false;
             }
+        }
+
+        // Modul: CI release build. Resolves the "Production" Addressables
+        // profile, creating it from the environment if it does not exist yet.
+        //
+        // This used to simply fail with "create it in the Addressables Profiles
+        // window", which is an instruction a headless CI agent cannot follow -
+        // the profile lived only in whatever a developer had clicked into their
+        // local AddressableAssetSettings.asset, and the committed asset has
+        // only "Default". So the Android release job could never have passed on
+        // a clean checkout, and did not.
+        //
+        // The CDN host is deliberately NOT hardcoded or defaulted. The whole
+        // point of this method's caller failing loudly is that building
+        // Production content against the wrong URLs silently ships a broken OTA
+        // update - inventing a placeholder would defeat exactly the check it is
+        // guarding. It therefore comes from FOLKIDLE_CDN_BASE_URL, which is
+        // deployment configuration and belongs in CI secrets, and its absence
+        // is still a hard failure.
+        private static string EnsureProductionProfile(AddressableAssetSettings settings)
+        {
+            string existingProfileId = settings.profileSettings.GetProfileId(ProductionProfileName);
+            if (!string.IsNullOrEmpty(existingProfileId))
+            {
+                return existingProfileId;
+            }
+
+            string cdnBaseUrl = Environment.GetEnvironmentVariable(CdnBaseUrlEnvironmentVariable);
+            if (string.IsNullOrWhiteSpace(cdnBaseUrl))
+            {
+                Console.WriteLine($"[BuildPipeline] Error: no Addressables profile named '{ProductionProfileName}' exists and {CdnBaseUrlEnvironmentVariable} is not set, so one cannot be created.");
+                Console.WriteLine($"[BuildPipeline] Set {CdnBaseUrlEnvironmentVariable} to the CDN base URL that will serve the remote catalog and bundles (for example https://cdn.example.com/folkidle).");
+                Console.WriteLine("[BuildPipeline] This is deliberately not defaulted: building Production content against a placeholder URL would produce bundles that ship and then fail to load.");
+                return string.Empty;
+            }
+
+            cdnBaseUrl = cdnBaseUrl.TrimEnd('/');
+
+            // Inherit from the Default profile so the local build/load paths and
+            // BuildTarget variable keep their standard values, and only the
+            // remote pair is overridden below.
+            string defaultProfileId = settings.profileSettings.GetProfileId(DefaultProfileName);
+            string createdProfileId = settings.profileSettings.AddProfile(ProductionProfileName, defaultProfileId);
+            if (string.IsNullOrEmpty(createdProfileId))
+            {
+                Console.WriteLine($"[BuildPipeline] Error: failed to create the '{ProductionProfileName}' Addressables profile.");
+                return string.Empty;
+            }
+
+            // [BuildTarget] is an Addressables profile variable, expanded per
+            // platform at build time - so one CDN root serves every platform
+            // without a profile each.
+            settings.profileSettings.SetValue(createdProfileId, RemoteBuildPathVariable, RemoteBuildPathValue);
+            settings.profileSettings.SetValue(createdProfileId, RemoteLoadPathVariable, $"{cdnBaseUrl}/[BuildTarget]");
+
+            EditorUtility.SetDirty(settings);
+            AssetDatabase.SaveAssets();
+
+            Console.WriteLine($"[BuildPipeline] Created Addressables profile '{ProductionProfileName}' with remote load path '{cdnBaseUrl}/[BuildTarget]'.");
+            return createdProfileId;
         }
 
         private static void StageRemoteBundles(AddressableAssetSettings settings, AddressablesPlayerBuildResult result)
