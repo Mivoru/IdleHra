@@ -52,6 +52,13 @@ namespace FolkIdle.Server.Domain.Combat
         // The Eternal Dreadnought 4-piece's cooldown reduction. Applied to the
         // cooldown stamped after a successful cast.
         private const float SetCooldownReductionFraction = 0.20f;
+
+        // The Eternal Dreadnought 4-piece's per-hit damage ceiling, as a share
+        // of effective max HP. At 20 percent a wearer always survives at least
+        // five consecutive hits from full, which is the point: it buys the
+        // auto-eat larder the window it needs to respond, without making the
+        // wearer immortal against sustained damage.
+        private const float SetDamageCapMaxHpFraction = 0.20f;
         private const double TickIntervalSeconds = TickIntervalMs / 1000.0;
         private readonly LootTableEngine _lootEngine;
         private readonly StateCheckpointManager _checkpointManager;
@@ -5026,6 +5033,30 @@ namespace FolkIdle.Server.Domain.Combat
                     float blockStrengthFraction = Math.Clamp(combatStats.BlockStrengthPct / 100f, 0f, 0.75f);
                     int armorMitigatedDamage = rawDamage - (combatStats.FlatPhysicalArmor * 1000);
                     int finalDamage = Math.Max(1000, (int)(armorMitigatedDamage * (1f - blockStrengthFraction)));
+
+                    // Modul: set effect rework. The Eternal Dreadnought 4-piece
+                    // caps any single hit at a share of max HP.
+                    //
+                    // This replaced CcImmunityActive, which could never fire
+                    // because the game has no player-facing crowd control. The
+                    // cap targets the failure mode this game actually has:
+                    // burst. Region bosses sit at ~2.5x the attack power of
+                    // their region's regular monsters, so what ends a run is one
+                    // large hit, not accumulated chip damage - and the auto-eat
+                    // larder can only respond BETWEEN hits, never during one.
+                    //
+                    // Applied after armour and block so it is a true ceiling
+                    // rather than another mitigation term, and before the
+                    // subtraction so thorns below reflects the capped figure -
+                    // the set cannot turn its own defence into extra offence.
+                    if (combatStats.SetDamageCapActive)
+                    {
+                        int damageCeiling = (int)(effectiveMaxHp * SetDamageCapMaxHpFraction);
+                        if (damageCeiling > 0 && finalDamage > damageCeiling)
+                        {
+                            finalDamage = damageCeiling;
+                        }
+                    }
 
                     payload.PlayerHp -= finalDamage;
 

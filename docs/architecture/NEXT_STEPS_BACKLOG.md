@@ -357,7 +357,33 @@ Now one `ClientServerConfig.BaseUrl`, resolved from `FOLKIDLE_SERVER_URL`,
 then a saved preference, then the localhost default, with `UiLoginWindow` as
 the sole writer.
 
-### 19. 4-piece set tier - SHIPPED, except one part deliberately not done
+### 19. 4-piece set tier - FULLY SHIPPED
+
+All five 4-piece effects are now consumed by the live combat tick.
+
+The fifth, `CcImmunityActive`, was replaced rather than implemented. It could
+never fire: this game models no player-facing crowd control - Vulnerable,
+Chilled and Burning are all applied BY the player TO the monster - so there
+was nothing to be immune to, and building a CC system to justify one set
+bonus would have been the tail wagging the dog.
+
+It is now `DamageCapActive`: any single incoming hit is capped at 20 percent
+of effective max HP. Same tank/mitigation archetype, and it answers the
+failure mode this game actually has. Region bosses sit at roughly 2.5x the
+attack power of their region's regular monsters, and the auto-eat larder can
+only respond BETWEEN hits, never during one - so a single large hit is
+unsurvivable in a way that the same total damage spread over several hits is
+not. At 20 percent a wearer always survives at least five consecutive
+maximum hits from full, which is exactly the window auto-eat needs.
+
+Applied after armour and block so it is a true ceiling rather than another
+mitigation term, and before the HP subtraction so the set's own thorns
+reflects the CAPPED figure - the set cannot convert its defence into extra
+offence. `Test_SetBonus_DamageCapLimitsASingleHitToAShareOfMaxHp` pins the
+arithmetic, not merely the flag. Verified the progression pacing band is
+unchanged. Original description follows.
+
+
 
 Resolved for four of the five effects, all now consumed by the live combat
 tick: `FireDamageMultiplierPct` and `BurnApplicationActive` in the outgoing

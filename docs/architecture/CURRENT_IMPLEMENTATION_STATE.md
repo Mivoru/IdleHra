@@ -412,16 +412,22 @@ output, larder writes, loot census, item base power, the affix payload
 collision, and the three below). **When adding a stat or bonus, grep for a
 consumer before believing it works.**
 
-Currently outstanding, see `NEXT_STEPS_BACKLOG.md` items 19 and 20:
+**As of 2026-08-01 there are no known outstanding instances.** Every one
+listed here has been closed, which is worth recording because the pattern is
+easy to reintroduce:
 
-- All five 4-piece set-bonus effects (`ThornsReflectionActive`,
-  `CooldownReductionActive`, `BurnApplicationActive`, `CcImmunityActive`,
-  `FireDamageMultiplierPct`) reach `CombatStats` and are read by zero call
-  sites. The 4-piece tier became reachable on 2026-08-01, so this is now a
-  live player-facing gap rather than a latent one.
-- `CombatStats.ForgeSuccessPct` (from Luck) and
-  `CombatStats.OutOfCombatHpRegen` (from Constitution) have zero consumers,
-  so both advertised attribute bonuses do nothing.
+- All five 4-piece set-bonus effects are consumed by the combat tick.
+  `FireDamageMultiplierPct` and `BurnApplicationActive` in the outgoing damage
+  step, `ThornsReflectionActive` and `DamageCapActive` in the incoming one,
+  `CooldownReductionActive` at the skill-cast site. The fifth was
+  `CcImmunityActive`, which could never fire - this game has no player-facing
+  crowd control - and was replaced with the damage cap rather than having a CC
+  system invented to justify it. See `NEXT_STEPS_BACKLOG.md` item 19.
+- `CombatStats.ForgeSuccessPct` (Luck) modifies the forge fusion roll and
+  `CombatStats.OutOfCombatHpRegen` (Constitution) drives an idle regen tick.
+
+The check that matters when adding the next stat: **grep for a consumer.** A
+value that compiles, is stored, and rides the payload is not thereby used.
 
 ## 17. Client Server Address
 

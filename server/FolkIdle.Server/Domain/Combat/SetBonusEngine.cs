@@ -39,7 +39,19 @@ namespace FolkIdle.Server.Domain.Combat
             public bool ThornsReflectionActive;
             public bool CooldownReductionActive;
             public bool BurnApplicationActive;
-            public bool CcImmunityActive;
+            // Modul: set effect rework. Was CcImmunityActive, which could never
+            // do anything: this game models no player-facing crowd control at
+            // all - Vulnerable, Chilled and Burning are applied BY the player
+            // TO the monster - so there was nothing to be immune to, and a
+            // quarter of the Eternal Dreadnought 4-piece paid out nothing.
+            //
+            // Replaced with a per-hit damage cap rather than by inventing a CC
+            // system for one set bonus. It fits the same tank/mitigation
+            // archetype, and it answers the failure mode this game actually
+            // has: burst. Region bosses sit at roughly 2.5x the attack power of
+            // their region's regular monsters, so a single boss hit is what
+            // ends runs, not sustained chip damage.
+            public bool DamageCapActive;
         }
 
         // Zero-allocation occurrence count + threshold evaluation. Two
@@ -133,7 +145,7 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         // 4-Piece: bulwark mechanics.
                         result.ThornsReflectionActive = true;
-                        result.CcImmunityActive = true;
+                        result.DamageCapActive = true;
                         result.CooldownReductionActive = true;
                     }
                     break;

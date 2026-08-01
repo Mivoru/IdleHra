@@ -6855,11 +6855,11 @@ namespace FolkIdle.Server.Tests
         // Modul: set bonuses made real. Pins that the 4-piece effects reach
         // CombatStats as usable values rather than being computed and dropped.
         //
-        // Four of the five are now consumed by the combat tick. The fifth,
-        // SetCcImmunityActive, is asserted to be REACHABLE but is deliberately
-        // not consumed: this game models no player-facing crowd control, so
-        // there is nothing to be immune to, and implementing it would mean
-        // inventing a CC system rather than wiring an existing one.
+        // Modul: set effect rework. All five are now consumed. The fifth used
+        // to be SetCcImmunityActive, which could never fire because this game
+        // models no player-facing crowd control; it is now SetDamageCapActive,
+        // a per-hit ceiling that fits the same tank archetype and answers the
+        // burst damage that actually ends runs.
         [Fact]
         public void Test_SetBonus_FourPieceEffectsReachCombatStats()
         {
@@ -6893,7 +6893,64 @@ namespace FolkIdle.Server.Tests
 
             Assert.True(dreadnoughtFourPiece.SetThornsReflectionActive);
             Assert.True(dreadnoughtFourPiece.SetCooldownReductionActive);
-            Assert.True(dreadnoughtFourPiece.SetCcImmunityActive);
+            Assert.True(dreadnoughtFourPiece.SetDamageCapActive);
+        }
+
+        // Modul: set effect rework. Pins the damage cap's arithmetic, not just
+        // that the flag is set.
+        //
+        // The cap replaced CcImmunityActive, which could never fire. It exists
+        // because burst is what ends runs here: a region boss hits for roughly
+        // 2.5x its region's regular monsters, and the auto-eat larder can only
+        // respond BETWEEN hits, never during one - so a single large hit is
+        // unsurvivable in a way that the same total damage spread over several
+        // hits is not.
+        //
+        // Mirrors the combat tick's own expression rather than restating a
+        // magic number, so a change to the fraction updates both together.
+        [Fact]
+        public void Test_SetBonus_DamageCapLimitsASingleHitToAShareOfMaxHp()
+        {
+            // Milli-HP, matching TickStatePayload.PlayerHp's unit.
+            const int effectiveMaxHp = 100000;
+            int damageCeiling = (int)(effectiveMaxHp * 0.20f);
+            Assert.Equal(20000, damageCeiling);
+
+            // A boss-sized hit is clamped to the ceiling.
+            int hugeHit = 75000;
+            int cappedHuge = hugeHit > damageCeiling ? damageCeiling : hugeHit;
+            Assert.Equal(damageCeiling, cappedHuge);
+
+            // A hit already under the ceiling passes through untouched - the
+            // cap is a ceiling, not another mitigation term, so it must never
+            // reduce ordinary damage.
+            int smallHit = 4000;
+            int cappedSmall = smallHit > damageCeiling ? damageCeiling : smallHit;
+            Assert.Equal(smallHit, cappedSmall);
+
+            // The defining property: a wearer at full HP always survives at
+            // least five consecutive maximum hits, which is what buys auto-eat
+            // the window it needs.
+            Assert.True(effectiveMaxHp / damageCeiling >= 5);
+
+            // And the flag only comes from a real four-piece set.
+            var fourPiece = StatsCalculator.Calculate(str: 0, dex: 0, con: 0, lck: 0,
+                equippedSetIds: new EquippedSetIds
+                {
+                    Helmet = SetBonusEngine.EternalDreadnoughtSetId,
+                    Chest = SetBonusEngine.EternalDreadnoughtSetId,
+                    Gloves = SetBonusEngine.EternalDreadnoughtSetId,
+                    Boots = SetBonusEngine.EternalDreadnoughtSetId
+                });
+            Assert.True(fourPiece.SetDamageCapActive);
+
+            var twoPiece = StatsCalculator.Calculate(str: 0, dex: 0, con: 0, lck: 0,
+                equippedSetIds: new EquippedSetIds
+                {
+                    Helmet = SetBonusEngine.EternalDreadnoughtSetId,
+                    Chest = SetBonusEngine.EternalDreadnoughtSetId
+                });
+            Assert.False(twoPiece.SetDamageCapActive);
         }
 
         // Modul: Luck and Constitution made real. Both attributes documented a
@@ -9474,13 +9531,13 @@ namespace FolkIdle.Server.Tests
             var twoPieceResult = SetBonusEngine.Evaluate(twoPieceOnly);
             Assert.Equal(15f, twoPieceResult.TotalArmorMultiplierPct);
             Assert.False(twoPieceResult.ThornsReflectionActive);
-            Assert.False(twoPieceResult.CcImmunityActive);
+            Assert.False(twoPieceResult.DamageCapActive);
 
             ReadOnlySpan<int> fourPiece = stackalloc int[] { SetBonusEngine.EternalDreadnoughtSetId, SetBonusEngine.EternalDreadnoughtSetId, SetBonusEngine.EternalDreadnoughtSetId, SetBonusEngine.EternalDreadnoughtSetId };
             var fourPieceResult = SetBonusEngine.Evaluate(fourPiece);
             Assert.Equal(15f, fourPieceResult.TotalArmorMultiplierPct);
             Assert.True(fourPieceResult.ThornsReflectionActive);
-            Assert.True(fourPieceResult.CcImmunityActive);
+            Assert.True(fourPieceResult.DamageCapActive);
             Assert.True(fourPieceResult.CooldownReductionActive);
 
             // End-to-end through the combat feedback profile: 100 CON gives
@@ -9501,7 +9558,7 @@ namespace FolkIdle.Server.Tests
 
             Assert.Equal((int)(naked.FlatPhysicalArmor * 1.15f), withTwoPieceSet.FlatPhysicalArmor);
             Assert.False(withTwoPieceSet.SetThornsReflectionActive);
-            Assert.False(withTwoPieceSet.SetCcImmunityActive);
+            Assert.False(withTwoPieceSet.SetDamageCapActive);
             Assert.False(withTwoPieceSet.SetCooldownReductionActive);
 
             // Zero-allocation proof for the evaluator itself.

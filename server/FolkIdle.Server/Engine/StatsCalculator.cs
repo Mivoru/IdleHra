@@ -68,17 +68,16 @@ namespace FolkIdle.Server.Engine
         // in the outgoing damage step, ThornsReflectionActive in the incoming
         // one, and CooldownReductionActive at the skill-cast site.
         //
-        // SetCcImmunityActive remains unconsumed, and deliberately so: this
-        // game models no player-facing crowd control at all. The only status
-        // effects that exist (Vulnerable, Chilled, and now Burning) are applied
-        // BY the player TO the monster - there is nothing to be immune to.
-        // Implementing it would mean inventing a CC system, which is a design
-        // decision rather than a wiring fix. See NEXT_STEPS_BACKLOG item 19.
+        // Modul: set effect rework. The fifth was SetCcImmunityActive, which
+        // could never do anything - this game has no player-facing crowd
+        // control, so there was nothing to be immune to. It is now
+        // SetDamageCapActive, consumed in the same incoming-damage step, and
+        // all five 4-piece effects do something.
         public float SetFireDamageMultiplierPct { get; set; }
         public bool SetThornsReflectionActive { get; set; }
         public bool SetCooldownReductionActive { get; set; }
         public bool SetBurnApplicationActive { get; set; }
-        public bool SetCcImmunityActive { get; set; }
+        public bool SetDamageCapActive { get; set; }
     }
 
     public static class StatsCalculator
@@ -283,7 +282,7 @@ namespace FolkIdle.Server.Engine
             stats.SetThornsReflectionActive = setBonus.ThornsReflectionActive;
             stats.SetCooldownReductionActive = setBonus.CooldownReductionActive;
             stats.SetBurnApplicationActive = setBonus.BurnApplicationActive;
-            stats.SetCcImmunityActive = setBonus.CcImmunityActive;
+            stats.SetDamageCapActive = setBonus.DamageCapActive;
 
             // Age penalties: 0=Child, 1=Adult, 2=Senior, 3=Old
             if (activeAgePhase == 2)
