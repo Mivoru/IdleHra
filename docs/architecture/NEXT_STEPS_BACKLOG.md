@@ -1150,3 +1150,41 @@ quarantined it before the fix.
 
 A regression test asserts the hash genuinely depends on the epoch, which is
 why pinning is required rather than optional.
+
+### 49. Remaining subsystems: multitasking, friendlist, guild discovery, 2026-08-01
+
+**Multitasking - audited clean.** The concern was resource duplication or
+state lockout across concurrent character slots. `ProcessMultiSlotTick` swaps
+a slot into the active register, runs `ProcessSubTick`, and swaps back - a
+symmetric pair, so the register is always restored. Account-wide work
+(`ProcessAccountTick`) runs once per tick OUTSIDE the slot loop, so it cannot
+be applied three times. Slots 2 and 3 are skipped unless a real character
+occupies them, with slot 0 deliberately exempt so injected virtual players
+still run. Per-slot gold and loot accrue into account-wide fields, which is
+the intended behaviour of multitasking rather than duplication.
+
+One latent fragility worth noting rather than fixing: if `ProcessSubTick`
+ever threw, the second swap would not run and the register would keep the
+wrong slot's data while the payload believed it held slot 0. A try/finally
+around the pair would make the restore unconditional. Not urgent - an
+exception on the tick thread is already catastrophic - but it is a cheap
+guarantee.
+
+**Guild discovery - does not exist.** This is a feature gap, not a bug, and
+the spec's "search functionality for players/guilds" has no implementation on
+either side. The server exposes create, join, roster and the three
+application endpoints; there is no guild list, browse or search endpoint
+anywhere. Joining is BY EXACT NAME, so a player who has not been told a
+guild's precise name has no way to find one at all. The application/approval
+half is complete and works; only discovery is missing.
+
+Smallest useful addition would be a paged `/api/v1/guilds/list` with an
+optional name filter, mirroring the leaderboard's skip/take shape which is
+already proven correct.
+
+**Friendlist - only partially audited.** `/api/v1/friends/list` exists and
+name resolution goes through the shared `HandlePlayerNames` path rather than
+a second implementation, which is the right shape. Add/remove/invite flows
+and online-status accuracy were NOT verified in this pass - recorded as
+uncovered rather than claimed, since context ran out before they could be
+exercised live.
