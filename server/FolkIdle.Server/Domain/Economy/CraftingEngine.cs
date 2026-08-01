@@ -280,7 +280,7 @@ namespace FolkIdle.Server.Domain.Economy
                 for (int i = 0; i < quantityProduced; i++)
                 {
                     var rolled = new Dictionary<string, int>();
-                    AffixRegistry.RollAffixes(resultBaseId, regionTier, rarityTier: RarityTier.Normal, affixCount: RarityTier.GetAffixCount(RarityTier.Normal), destination: rolled);
+                    AffixRegistry.RollAffixes(resultBaseId, regionTier, itemRarityTier: RarityTier.Normal, affixCount: RarityTier.GetAffixCount(RarityTier.Normal), destination: rolled);
 
                     context.EquipmentInstances.Add(new EquipmentInstance
                     {

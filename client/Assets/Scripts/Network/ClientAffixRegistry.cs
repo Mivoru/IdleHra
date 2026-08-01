@@ -57,12 +57,44 @@ namespace FolkIdle.Client.Network
             { "5", new AffixDisplay("Health", false) }
         };
 
+        // Modul: affix rarity, 2026-08-01. Payload keys now carry "@N" after
+        // any stack suffix. This mirror MUST strip it exactly as the server's
+        // AffixRegistry does - a key it fails to strip resolves to no display
+        // entry, and the affix silently vanishes from the item tooltip while
+        // still counting in combat. That client/server drift is the same class
+        // of bug that made the original affix payload disagreement invisible.
+        public const char RaritySeparator = '@';
+
         public static string StripStackSuffix(string payloadKey)
         {
             if (string.IsNullOrEmpty(payloadKey)) return string.Empty;
 
+            int end = payloadKey.Length;
+
+            int rarityIndex = payloadKey.LastIndexOf(RaritySeparator);
+            if (rarityIndex >= 0) end = rarityIndex;
+
             int separatorIndex = payloadKey.IndexOf(StackSeparator);
-            return separatorIndex < 0 ? payloadKey : payloadKey.Substring(0, separatorIndex);
+            if (separatorIndex >= 0 && separatorIndex < end) end = separatorIndex;
+
+            return end == payloadKey.Length ? payloadKey : payloadKey.Substring(0, end);
+        }
+
+        // Mirrors AffixRegistry.ParseRarity, including its legacy default of
+        // Rare (3) for keys written before affix rarity existed.
+        public static int ParseAffixRarity(string payloadKey)
+        {
+            const int legacyRarity = 3;
+            if (string.IsNullOrEmpty(payloadKey)) return legacyRarity;
+
+            int at = payloadKey.LastIndexOf(RaritySeparator);
+            if (at < 0 || at == payloadKey.Length - 1) return legacyRarity;
+
+            if (!int.TryParse(payloadKey.Substring(at + 1), out int parsed)) return legacyRarity;
+
+            if (parsed < 1) return 1;
+            if (parsed > 5) return 5;
+            return parsed;
         }
 
         // "Critical Damage +7.5%" / "Health +240". Percentage magnitudes are

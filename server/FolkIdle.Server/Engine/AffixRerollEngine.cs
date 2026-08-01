@@ -14,8 +14,25 @@ using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Engine
 {
+    public enum RerollOperation
+    {
+        // Same stat, same rarity, new magnitude inside the rarity's band.
+        Value = 0,
+        // New stat, rarity preserved. Costs 2.5x - it can convert a dead
+        // affix into the one a build actually wants.
+        StatType = 1,
+        // One rarity step up. The only operation priced in Diamonds.
+        UpgradeRarity = 2
+    }
+
     public class AffixRerollEngine
     {
+        // Result of the most recent successful reroll, so the pass-2
+        // announcement layer can broadcast an Epic or Legendary outcome
+        // without re-reading the row.
+        public AffixRarity LastRerollResultRarity { get; private set; }
+        public string LastRerollResultAffixId { get; private set; } = string.Empty;
+
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry? _playerRegistry;
 
@@ -45,7 +62,124 @@ namespace FolkIdle.Server.Engine
             return 1;
         }
 
-        public async Task ExecuteRerollAsync(long playerId, long targetItemGuid, int affixIndex)
+        // Modul: reroll rework, 2026-08-01. Three distinct operations, two
+        // currencies. See AffixRegistry for the cost curves and why value/stat
+        // rerolls are gold while a rarity upgrade is Diamonds.
+        //
+        // consecutiveAttempts drives the escalating gold price. The caller owns
+        // that counter because "consecutive" means "on this item without an
+        // accepted result", which only the session knows - the database row has
+        // no memory of a player rerolling, walking away, and coming back.
+        // Modul: auto-reroll, 2026-08-01.
+        //
+        // Loops ExecuteRerollAsync until the stop condition is met, the attempt
+        // limit is hit, or the player runs out of currency. Every guard that
+        // can be decided without touching the database lives in
+        // AutoRerollPlanner so it is unit-testable without a Postgres fixture.
+        //
+        // Reachability is checked BEFORE the first attempt rather than being
+        // discovered by burning gold: asking a sword to roll block_chance_pct
+        // (shield-only) or asking a Value reroll to raise rarity are both
+        // conditions that can never be met, and the naive loop would happily
+        // spend the entire budget finding that out.
+        public async Task<AutoRerollStopReason> ExecuteAutoRerollAsync(
+            long playerId,
+            long targetItemGuid,
+            int affixIndex,
+            RerollOperation operation,
+            AutoRerollStopCondition stopCondition,
+            int maxAttempts)
+        {
+            if (stopCondition.IsTriviallySatisfied)
+            {
+                // Would accept the very first roll, so the player would pay for
+                // a reroll whose outcome was guaranteed acceptable anyway.
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                return AutoRerollStopReason.RejectedTrivialCondition;
+            }
+
+            maxAttempts = AutoRerollPlanner.ClampAttempts(maxAttempts);
+
+            (string currentAffixId, AffixRarity currentRarity, string baseItemId, bool found) = await ReadAffixStateAsync(playerId, targetItemGuid, affixIndex);
+            if (!found)
+            {
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
+                return AutoRerollStopReason.RejectedUnreachableCondition;
+            }
+
+            if (!AutoRerollPlanner.IsConditionReachable(stopCondition, baseItemId, operation, currentAffixId)
+                || !AutoRerollPlanner.IsRarityTargetReachable(stopCondition, operation, currentRarity))
+            {
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                return AutoRerollStopReason.RejectedUnreachableCondition;
+            }
+
+            // Already good enough before spending anything.
+            if (AutoRerollPlanner.IsSatisfied(stopCondition, currentRarity, currentAffixId))
+            {
+                return AutoRerollStopReason.ConditionMet;
+            }
+
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                LastRerollResultAffixId = string.Empty;
+
+                await ExecuteRerollAsync(playerId, targetItemGuid, affixIndex, operation, attempt);
+
+                if (string.IsNullOrEmpty(LastRerollResultAffixId))
+                {
+                    // The attempt did not commit - insufficient currency, a
+                    // locked item, or a validation rejection. Stop rather than
+                    // hammering the same failing transaction to the limit.
+                    return AutoRerollStopReason.BudgetExhausted;
+                }
+
+                if (AutoRerollPlanner.IsSatisfied(stopCondition, LastRerollResultRarity, LastRerollResultAffixId))
+                {
+                    return AutoRerollStopReason.ConditionMet;
+                }
+            }
+
+            return AutoRerollStopReason.AttemptLimitReached;
+        }
+
+        // Reads the current stat and rarity of one affix without mutating it,
+        // so the reachability guards above can run before any spend.
+        private async Task<(string AffixId, AffixRarity Rarity, string BaseItemId, bool Found)> ReadAffixStateAsync(long playerId, long targetItemGuid, int affixIndex)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+            var item = await db.EquipmentInstances
+                .AsNoTracking()
+                .FirstOrDefaultAsync(e => e.Id == targetItemGuid && e.PlayerId == playerId);
+
+            if (item == null || string.IsNullOrWhiteSpace(item.AffixPayload))
+            {
+                return (string.Empty, AffixRarity.Common, string.Empty, false);
+            }
+
+            if (JsonNode.Parse(item.AffixPayload) is not JsonObject payload)
+            {
+                return (string.Empty, AffixRarity.Common, string.Empty, false);
+            }
+
+            int index = 0;
+            foreach (var entry in payload)
+            {
+                if (entry.Key == "is_affix_locked" || entry.Value == null) continue;
+
+                if (index == affixIndex)
+                {
+                    return (AffixRegistry.StripStackSuffix(entry.Key), AffixRegistry.ParseRarity(entry.Key), item.BaseItemId, true);
+                }
+                index++;
+            }
+
+            return (string.Empty, AffixRarity.Common, string.Empty, false);
+        }
+
+        public async Task ExecuteRerollAsync(long playerId, long targetItemGuid, int affixIndex, RerollOperation operation = RerollOperation.Value, int consecutiveAttempts = 0)
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -96,78 +230,130 @@ namespace FolkIdle.Server.Engine
 
                 string affixKeyToReroll = rerollableKeys[affixIndex];
 
-                // Modul: Affix System Unification. Same GDD Module 03 section
-                // 5.3 formula as before, now sourced from AffixRegistry so client
-                // and server quote one number - see that method's note on the
-                // GDD's own illustrative prices disagreeing with its formula.
-                long cost = AffixRegistry.CalculateRerollDiamondCost(targetItem.QualityTier);
+                string affixIdToReroll = AffixRegistry.StripStackSuffix(affixKeyToReroll);
+                AffixRarity currentRarity = AffixRegistry.ParseRarity(affixKeyToReroll);
 
-                var premiumCurrencyQuery = $"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = 'premium_diamond' FOR UPDATE";
-                var premiumRecord = await db.CommodityRecords.FromSqlRaw(premiumCurrencyQuery).SingleOrDefaultAsync();
-
-                if (premiumRecord == null || premiumRecord.Quantity < cost)
+                if (!AffixRegistry.TryGetDefinition(affixIdToReroll, out var currentDefinition))
                 {
-                    Console.WriteLine("Reroll failed: Insufficient premium currency (premium_diamond).");
-                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
+                    Console.WriteLine("Reroll failed: affix id is not in the registry.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                    await transaction.RollbackAsync();
                     return;
                 }
 
-                premiumRecord.Quantity -= cost;
-
-                // Modul: Affix System Unification. Three separate bugs lived
-                // in this block.
-                //
-                // 1. The replacement affix came from AffixEngine.GetRandomAffixKey,
-                //    which picked uniformly from all twelve ids with no regard
-                //    for slot legality - a shield-only block_chance_pct could
-                //    land on a sword.
-                // 2. regionTier was resolved by int.TryParse on BaseItemId,
-                //    but BaseItemId is a slug like
-                //    "eq_steel_claymore_melee_weapon_slot_base", so the parse
-                //    ALWAYS failed and every rerolled affix was scaled as
-                //    though it came from region 1.
-                // 3. Every percentage affix was valued with one hardcoded
-                //    base/growth pair (5, 2), ignoring the per-affix numbers
-                //    the GDD actually specifies.
-                //
-                // On top of that the new key carried a random hex suffix
-                // ("flat_hp_a3f2") that no reader recognised, so a reroll
-                // silently deleted the old stat and added nothing readable in
-                // its place - the player paid diamonds to make the item
-                // strictly worse. Keys are now plain GDD affix ids.
-                string replacedAffixId = AffixRegistry.StripStackSuffix(affixKeyToReroll);
-
-                if (!AffixRegistry.TryRollReplacement(targetItem.BaseItemId, replacedAffixId, out var replacement))
+                // A Legendary affix has nowhere to go. Rejected rather than
+                // charged for a no-op - the engine this replaced had a bug of
+                // exactly that shape, where the player paid to make an item worse.
+                if (operation == RerollOperation.UpgradeRarity && currentRarity >= AffixRarity.Legendary)
                 {
-                    Console.WriteLine("Reroll failed: no affix is legal for this item's slot.");
+                    Console.WriteLine("Reroll failed: affix is already Legendary.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                // An item whose BaseItemId carries no recognisable slot suffix
+                // has no legal affix pool. Refuse before charging anything.
+                //
+                // Restored after the three-operation rework briefly lost it:
+                // only the StatType branch calls TryRollReplacement, so a Value
+                // or UpgradeRarity reroll on a malformed slug would have skipped
+                // the check entirely and happily charged for it. The guard
+                // belongs ahead of the payment, not inside one branch.
+                // Heap array rather than stackalloc: this method is async, and
+                // C# does not permit stackalloc there. A cold path that runs
+                // once per reroll request, so the allocation is irrelevant -
+                // unlike the 10 Hz tick, which is where the stackalloc
+                // convention in AffixRegistry actually matters.
+                int[] legalProbe = new int[16];
+                if (AffixRegistry.GetLegalAffixIndices(AffixRegistry.ResolveSlot(targetItem.BaseItemId), legalProbe) == 0)
+                {
+                    Console.WriteLine("Reroll failed: item slot is unrecognisable, so it has no legal affix pool.");
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                     await transaction.RollbackAsync();
                     return;
                 }
 
                 int regionTier = ResolveRegionTier(targetItem.BaseItemId);
-                int targetValue = AffixRegistry.CalculateMagnitude(replacement, regionTier, targetItem.QualityTier);
+
+                bool payWithDiamonds = operation == RerollOperation.UpgradeRarity;
+                long cost = payWithDiamonds
+                    ? AffixRegistry.CalculateRarityUpgradeDiamondCost(currentRarity)
+                    : AffixRegistry.CalculateRerollGoldCost(
+                        targetItem.QualityTier,
+                        consecutiveAttempts,
+                        operation == RerollOperation.StatType);
+
+                string currencyItemId = payWithDiamonds ? "premium_diamond" : "gold";
+
+                var currencyQuery = $"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = '{currencyItemId}' FOR UPDATE";
+                var currencyRecord = await db.CommodityRecords.FromSqlRaw(currencyQuery).SingleOrDefaultAsync();
+
+                if (currencyRecord == null || currencyRecord.Quantity < cost)
+                {
+                    Console.WriteLine($"Reroll failed: insufficient {currencyItemId} (need {cost}).");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                currencyRecord.Quantity -= cost;
+
+                AffixDefinition resultDefinition = currentDefinition;
+                AffixRarity resultRarity = currentRarity;
+
+                switch (operation)
+                {
+                    case RerollOperation.UpgradeRarity:
+                        AffixRegistry.TryGetNextRarity(currentRarity, out resultRarity);
+                        break;
+
+                    case RerollOperation.StatType:
+                        // Stat type changes; RARITY IS PRESERVED. Rerolling the
+                        // type is already the more expensive operation, and
+                        // dropping it back to Common would make it a downgrade
+                        // the player paid extra for.
+                        if (!AffixRegistry.TryRollReplacement(targetItem.BaseItemId, affixIdToReroll, out resultDefinition))
+                        {
+                            Console.WriteLine("Reroll failed: no affix is legal for this item's slot.");
+                            _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
+                            await transaction.RollbackAsync();
+                            return;
+                        }
+                        break;
+
+                    case RerollOperation.Value:
+                    default:
+                        // Same stat, same rarity - only the magnitude moves,
+                        // inside AffixRegistry's +/-20% band.
+                        break;
+                }
+
+                int resultMagnitude = AffixRegistry.RollMagnitude(resultDefinition, regionTier, resultRarity);
 
                 affixPayload.Remove(affixKeyToReroll);
 
                 // Preserve the stack shape: if the item already carries this
-                // affix, the replacement becomes a further stacked instance
-                // rather than overwriting the existing one.
-                string newAffixKey = replacement.Id;
-                int stackIndex = 2;
+                // affix, the result becomes a further stacked instance rather
+                // than overwriting the existing one.
+                int stackIndex = 1;
+                string newAffixKey = AffixRegistry.BuildPayloadKey(resultDefinition.Id, stackIndex, resultRarity);
                 while (affixPayload.ContainsKey(newAffixKey))
                 {
-                    newAffixKey = replacement.Id + AffixRegistry.StackSeparator + stackIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
                     stackIndex++;
+                    newAffixKey = AffixRegistry.BuildPayloadKey(resultDefinition.Id, stackIndex, resultRarity);
                 }
 
-                affixPayload[newAffixKey] = targetValue;
+                affixPayload[newAffixKey] = resultMagnitude;
                 targetItem.AffixPayload = affixPayload.ToJsonString();
+
+                LastRerollResultRarity = resultRarity;
+                LastRerollResultAffixId = resultDefinition.Id;
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
                 
-                Console.WriteLine($"Reroll Success: {affixKeyToReroll} -> {newAffixKey}");
+                Console.WriteLine($"Reroll success: {affixKeyToReroll} -> {newAffixKey} ({resultRarity})");
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
             }
             catch (Exception ex)

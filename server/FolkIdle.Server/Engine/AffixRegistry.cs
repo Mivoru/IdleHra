@@ -50,13 +50,35 @@ namespace FolkIdle.Server.Engine
     // Which scaling law from GDD 1.1/1.2 produces this affix's magnitude.
     public enum AffixScalingLaw
     {
-        // floor(15 * R * 1.22^(N-1)) - region and rarity.
+        // floor(15 * R * rarityMultiplier) - region and AFFIX rarity.
         FlatHp = 0,
-        // floor(2 * R * 1.18^(N-1)) - region and rarity.
+        // floor(2 * R * rarityMultiplier) - region and AFFIX rarity.
         FlatStat = 1,
-        // BaseValue + Growth * (N-1) - rarity only, deliberately region
+        // BaseValue + Growth * (A-1) - affix rarity only, deliberately region
         // independent so early regions cannot roll out-of-bounds percentages.
         Percentage = 2
+    }
+
+    // Modul: affix rarity. A second, deliberately SMALLER rarity axis than the
+    // 14 item tiers in GDD Module 03.
+    //
+    // The split, decided 2026-08-01: the ITEM's rarity tier (1-14) decides HOW
+    // MANY affixes it carries - GDD 5.2's 1/2/3/4/5 table is unchanged, and 5
+    // remains the hard cap. This AFFIX rarity decides HOW STRONG each of those
+    // affixes is. So a Transcendent drop is still the best item in the game
+    // because it rolls five affixes, but a Rare item whose two affixes both
+    // came up Legendary can compete - which is what makes rerolling worth
+    // spending on at every tier rather than only at the top.
+    //
+    // Region tier still multiplies flat magnitudes, so progression through the
+    // five regions keeps driving raw power independently of both rarity axes.
+    public enum AffixRarity
+    {
+        Common = 1,
+        Uncommon = 2,
+        Rare = 3,
+        Epic = 4,
+        Legendary = 5
     }
 
     public readonly struct AffixDefinition
@@ -147,12 +169,120 @@ namespace FolkIdle.Server.Engine
         // must strip the suffix before looking the definition up.
         public const char StackSeparator = '#';
 
+        // Modul: affix rarity. Encoded in the payload key as "@N" AFTER any
+        // stack suffix, so "flat_hp", "flat_hp@4", "flat_hp#2@4" are all valid
+        // and every existing reader that only strips '#' still resolves the
+        // definition correctly once it also strips '@'.
+        //
+        // A key with no "@" is a legacy affix rolled before this system existed.
+        // Those are reported as Rare - the middle of the scale - deliberately:
+        // the stored magnitude is left untouched (payload values are absolute,
+        // not recomputed on read), so calling them Common would misrepresent
+        // strong old gear as junk and calling them Legendary would misrepresent
+        // junk as trophies. Neither the totals nor combat change either way.
+        public const char RaritySeparator = '@';
+        public const AffixRarity LegacyAffixRarity = AffixRarity.Rare;
+
+        public const int MinAffixCount = 1;
+
+        // GDD 5.2 caps affix count at 5 (Godly/Transcendent). Reaffirmed as the
+        // hard ceiling on 2026-08-01 when affix rarity was added - the extra
+        // power budget went into per-affix rarity instead of more affix slots.
+        public const int MaxAffixCount = 5;
+
+        // Multiplier applied to flat magnitudes by affix rarity: 1.6^(A-1).
+        //
+        // Chosen so Legendary is 6.55x Common - a spread big enough that a
+        // Legendary roll is visibly a trophy, small enough that a full set of
+        // Common affixes is still a functioning item rather than dead weight.
+        // A steeper curve made unrerolled drops worthless; a flatter one made
+        // rerolling pointless.
+        private const double AffixRarityGrowth = 1.6;
+
+        public static double GetAffixRarityMultiplier(AffixRarity rarity)
+        {
+            int index = (int)rarity;
+            if (index < 1) index = 1;
+            if (index > (int)AffixRarity.Legendary) index = (int)AffixRarity.Legendary;
+            return Math.Pow(AffixRarityGrowth, index - 1);
+        }
+
+        // Drop weights for a freshly rolled affix, out of 1000. Legendary at
+        // 1.5% means a five-affix item averages roughly one Legendary per
+        // thirteen items, so the reroll system - not the drop table - is the
+        // realistic path to a full Legendary set.
+        private static readonly int[] _rarityWeightsPerMille = { 520, 280, 150, 40, 10 };
+
+        public static AffixRarity RollAffixRarity()
+        {
+            int roll = Random.Shared.Next(1000);
+            int cumulative = 0;
+            for (int i = 0; i < _rarityWeightsPerMille.Length; i++)
+            {
+                cumulative += _rarityWeightsPerMille[i];
+                if (roll < cumulative)
+                {
+                    return (AffixRarity)(i + 1);
+                }
+            }
+            return AffixRarity.Common;
+        }
+
+        // Splits a payload key into its definition id and affix rarity.
+        public static AffixRarity ParseRarity(string payloadKey)
+        {
+            if (string.IsNullOrEmpty(payloadKey)) return LegacyAffixRarity;
+
+            int at = payloadKey.LastIndexOf(RaritySeparator);
+            if (at < 0 || at == payloadKey.Length - 1) return LegacyAffixRarity;
+
+            if (!int.TryParse(payloadKey.AsSpan(at + 1), System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture, out int parsed))
+            {
+                return LegacyAffixRarity;
+            }
+
+            if (parsed < 1) parsed = 1;
+            if (parsed > (int)AffixRarity.Legendary) parsed = (int)AffixRarity.Legendary;
+            return (AffixRarity)parsed;
+        }
+
+        public static string BuildPayloadKey(string affixId, int stackIndex, AffixRarity rarity)
+        {
+            string key = stackIndex <= 1
+                ? affixId
+                : affixId + StackSeparator + stackIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+            return key + RaritySeparator + ((int)rarity).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        // Affix COUNT by item rarity is NOT redefined here. RarityTier
+        // .GetAffixCount (CombatLootEngine.cs) already implements GDD 5.2's
+        // 1/2/3/4/5 table and every drop path calls it. A second copy here
+        // would be a second authority over the same rule, which is precisely
+        // the failure this file's own history documents - three namespaces
+        // once disagreed about affix payload keys. MaxAffixCount above is a
+        // ceiling assertion, not a parallel implementation.
+
+        // Strips BOTH the stack suffix and the affix-rarity marker, so
+        // "flat_hp#2@4" resolves to "flat_hp". Every payload reader goes
+        // through here; missing the '@' case would have made every
+        // rarity-tagged affix fail definition lookup and silently contribute
+        // nothing to combat totals - the exact failure mode that made the
+        // original three-way payload disagreement so hard to see.
         public static string StripStackSuffix(string payloadKey)
         {
             if (string.IsNullOrEmpty(payloadKey)) return string.Empty;
 
+            int end = payloadKey.Length;
+
+            int rarityIndex = payloadKey.LastIndexOf(RaritySeparator);
+            if (rarityIndex >= 0) end = rarityIndex;
+
             int separatorIndex = payloadKey.IndexOf(StackSeparator);
-            return separatorIndex < 0 ? payloadKey : payloadKey.Substring(0, separatorIndex);
+            if (separatorIndex >= 0 && separatorIndex < end) end = separatorIndex;
+
+            return end == payloadKey.Length ? payloadKey : payloadKey.Substring(0, end);
         }
 
         public static bool TryGetDefinition(string affixId, out AffixDefinition definition)
@@ -230,19 +360,30 @@ namespace FolkIdle.Server.Engine
         // GDD 1.1/1.2. Percentage results are returned in tenths of a percent,
         // flat results in whole points, so the caller must know which law an
         // affix uses to interpret the number - hence Law being public.
-        public static int CalculateMagnitude(in AffixDefinition definition, int regionTier, int rarityTier)
+        // Magnitude is a function of REGION and AFFIX rarity - not of the
+        // item's 14-tier rarity, which now only decides how many affixes the
+        // item gets (GetAffixCountForItemRarity).
+        //
+        // Region keeps the growth term it always had, so progressing through
+        // the five regions still raises raw power on its own. What changed is
+        // that the second growth term is the affix's own rarity, which is the
+        // thing a reroll can actually move.
+        public static int CalculateMagnitude(in AffixDefinition definition, int regionTier, AffixRarity affixRarity)
         {
             if (regionTier < 1) regionTier = 1;
-            if (rarityTier < 1) rarityTier = 1;
+
+            double rarityMultiplier = GetAffixRarityMultiplier(affixRarity);
+            int rarityIndex = (int)affixRarity;
+            if (rarityIndex < 1) rarityIndex = 1;
 
             switch (definition.Law)
             {
                 case AffixScalingLaw.FlatHp:
-                    return (int)Math.Floor(15.0 * regionTier * Math.Pow(1.22, rarityTier - 1));
+                    return (int)Math.Floor(15.0 * regionTier * rarityMultiplier);
                 case AffixScalingLaw.FlatStat:
-                    return (int)Math.Floor(2.0 * regionTier * Math.Pow(1.18, rarityTier - 1));
+                    return (int)Math.Floor(2.0 * regionTier * rarityMultiplier);
                 default:
-                    return definition.BaseValueTenthsPct + definition.GrowthTenthsPctPerTier * (rarityTier - 1);
+                    return definition.BaseValueTenthsPct + definition.GrowthTenthsPctPerTier * (rarityIndex - 1);
             }
         }
 
@@ -259,6 +400,110 @@ namespace FolkIdle.Server.Engine
             return (long)Math.Floor(5.0 * Math.Pow(1.35, rarityTier - 1));
         }
 
+        // Modul: magnitude variance. A reroll that keeps both the stat and the
+        // rarity has to be able to change SOMETHING, or "reroll this affix's
+        // value" would be a no-op the player pays for. CalculateMagnitude is
+        // deterministic, so it defines the CENTRE of a band and rolls land
+        // anywhere within +/-20% of it.
+        //
+        // The band is deliberately narrower than one rarity step (1.6x), so a
+        // lucky Common roll can never beat an unlucky Uncommon - rarity stays
+        // strictly dominant over luck, and upgrading rarity is always the
+        // bigger lever than rerolling value.
+        private const double MagnitudeVariance = 0.20;
+
+        public static (int Min, int Max) CalculateMagnitudeRange(in AffixDefinition definition, int regionTier, AffixRarity affixRarity)
+        {
+            int centre = CalculateMagnitude(definition, regionTier, affixRarity);
+            int min = (int)Math.Floor(centre * (1.0 - MagnitudeVariance));
+            int max = (int)Math.Ceiling(centre * (1.0 + MagnitudeVariance));
+            if (min < 1) min = 1;
+            if (max < min) max = min;
+            return (min, max);
+        }
+
+        public static int RollMagnitude(in AffixDefinition definition, int regionTier, AffixRarity affixRarity)
+        {
+            (int min, int max) = CalculateMagnitudeRange(definition, regionTier, affixRarity);
+            return min >= max ? min : Random.Shared.Next(min, max + 1);
+        }
+
+        // Modul: reroll economy, decided 2026-08-01.
+        //
+        // Value and stat rerolls cost GOLD; only a rarity UPGRADE costs
+        // Diamonds. The reason is auto-reroll: it burns attempts in bulk, and
+        // pricing that in premium currency would have made the headline
+        // quality-of-life feature a pay-to-win treadmill. Gold also badly
+        // needed an endgame sink - combat income measured around 1500 gold per
+        // minute with nothing at the top of the curve to spend it on.
+        //
+        // Base cost scales on the ITEM's rarity tier, so rerolling a
+        // Transcendent is meaningfully expensive, and multiplies by 1.35 per
+        // consecutive attempt on the same item so a run of failures escalates
+        // rather than grinding flat. The streak resets on success or when the
+        // player switches items - tracked by the caller, not here.
+        public const long RerollGoldBase = 250L;
+        private const double RerollGoldItemTierGrowth = 1.9;
+        private const double RerollGoldStreakGrowth = 1.35;
+
+        // Rerolling the stat TYPE is strictly more powerful than rerolling its
+        // value - it can convert a dead affix into the one the build wants - so
+        // it is priced at 2.5x.
+        private const double RerollStatTypeMultiplier = 2.5;
+
+        // Hard ceiling so the streak curve cannot overflow or price a reroll
+        // beyond what any player could hold. Reached after ~28 consecutive
+        // attempts at item tier 14.
+        public const long RerollGoldMaxCost = 100_000_000L;
+
+        public static long CalculateRerollGoldCost(int itemRarityTier, int consecutiveAttempts, bool rerollStatType)
+        {
+            if (itemRarityTier < 1) itemRarityTier = 1;
+            if (consecutiveAttempts < 0) consecutiveAttempts = 0;
+
+            double cost = RerollGoldBase
+                * Math.Pow(RerollGoldItemTierGrowth, itemRarityTier - 1)
+                * Math.Pow(RerollGoldStreakGrowth, consecutiveAttempts);
+
+            if (rerollStatType) cost *= RerollStatTypeMultiplier;
+
+            if (double.IsNaN(cost) || cost <= 0.0) return RerollGoldBase;
+            if (cost >= RerollGoldMaxCost) return RerollGoldMaxCost;
+            return (long)Math.Floor(cost);
+        }
+
+        // Upgrading an affix one rarity step. Priced in Diamonds on the GDD's
+        // own curve, but keyed on the AFFIX's current rarity rather than the
+        // item's - upgrading Epic to Legendary should cost the same whatever it
+        // is sitting on, since the resulting magnitude gain is the same.
+        //
+        // Legendary is terminal and returns 0; callers must reject the request
+        // rather than charging for a no-op.
+        public static long CalculateRarityUpgradeDiamondCost(AffixRarity currentRarity)
+        {
+            if (currentRarity >= AffixRarity.Legendary) return 0L;
+
+            int step = (int)currentRarity;
+            if (step < 1) step = 1;
+
+            // 5, 18, 61, 205 diamonds for Common->Uncommon->Rare->Epic->Legendary.
+            return (long)Math.Floor(5.0 * Math.Pow(3.4, step - 1));
+        }
+
+        public static bool TryGetNextRarity(AffixRarity current, out AffixRarity next)
+        {
+            if (current >= AffixRarity.Legendary)
+            {
+                next = AffixRarity.Legendary;
+                return false;
+            }
+
+            int index = (int)current;
+            if (index < 1) index = 1;
+            next = (AffixRarity)(index + 1);
+            return true;
+        }
+
         // Rolls a full affix set for a freshly dropped or crafted item.
         //
         // Duplicates are permitted, and have to be: GDD 5.2 grants up to 5
@@ -268,7 +513,7 @@ namespace FolkIdle.Server.Engine
         // power curve for armour, so a slot whose legal pool is exhausted
         // stacks another instance of an affix it already has instead. Stacked
         // instances are keyed "id#2", "id#3" and summed by every reader.
-        public static void RollAffixes(string baseItemId, int regionTier, int rarityTier, int affixCount, IDictionary<string, int> destination)
+        public static void RollAffixes(string baseItemId, int regionTier, int itemRarityTier, int affixCount, IDictionary<string, int> destination)
         {
             if (destination == null || affixCount <= 0) return;
 
@@ -281,7 +526,7 @@ namespace FolkIdle.Server.Engine
                 // An unrecognised slot suffix should not produce a silently
                 // affix-less item; fall back to the two universal flat
                 // affixes so the item still scales with rarity.
-                AddOrStack(destination, _definitions[0], regionTier, rarityTier);
+                AddOrStack(destination, _definitions[0], regionTier, RollAffixRarity());
                 return;
             }
 
@@ -317,17 +562,18 @@ namespace FolkIdle.Server.Engine
                 if (chosen < 0) chosen = 0;
 
                 stackCounts[chosen]++;
-                AddOrStack(destination, _definitions[legal[chosen]], regionTier, rarityTier, stackCounts[chosen]);
+                // Each affix rolls its OWN rarity independently, so a single
+                // item can carry a Legendary next to a Common. That variance is
+                // the point: it gives the reroll system per-affix targets
+                // instead of one item-wide verdict.
+                AddOrStack(destination, _definitions[legal[chosen]], regionTier, RollAffixRarity(), stackCounts[chosen]);
             }
         }
 
-        private static void AddOrStack(IDictionary<string, int> destination, in AffixDefinition definition, int regionTier, int rarityTier, int stackIndex = 1)
+        private static void AddOrStack(IDictionary<string, int> destination, in AffixDefinition definition, int regionTier, AffixRarity affixRarity, int stackIndex = 1)
         {
-            string key = stackIndex <= 1
-                ? definition.Id
-                : definition.Id + StackSeparator + stackIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
-
-            destination[key] = CalculateMagnitude(definition, regionTier, rarityTier);
+            string key = BuildPayloadKey(definition.Id, stackIndex, affixRarity);
+            destination[key] = RollMagnitude(definition, regionTier, affixRarity);
         }
 
         // Picks a replacement affix for a reroll: legal for the slot, and

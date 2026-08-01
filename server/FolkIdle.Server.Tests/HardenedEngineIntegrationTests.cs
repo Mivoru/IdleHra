@@ -1663,6 +1663,8 @@ namespace FolkIdle.Server.Tests
                     AuthenticatorToken = Guid.NewGuid()
                 });
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "premium_diamond", Quantity = initialPremiumCurrency });
+                // Value rerolls are paid in gold since 2026-08-01.
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 50_000_000L });
 
                 // Modul: Affix System Unification. This used to seed
                 // BaseItemId = "1" and an affix key "flat_hp_aaaa" - both
@@ -1686,13 +1688,22 @@ namespace FolkIdle.Server.Tests
             }
 
             var rerollEngine = new AffixRerollEngine(_fixture.ServiceProvider);
-            await rerollEngine.ExecuteRerollAsync(testPlayerId, equipmentId, affixIndex: 0);
+            // Modul: reroll rework, 2026-08-01. This test is about REPLACING the
+            // stat, which is now an explicit operation - the default (Value)
+            // deliberately keeps the stat and only moves its magnitude, so
+            // asserting flat_hp becomes flat_armor requires StatType.
+            await rerollEngine.ExecuteRerollAsync(testPlayerId, equipmentId, affixIndex: 0, RerollOperation.StatType);
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
 
+            // Diamonds are untouched by a value reroll; gold pays for it.
             var commodity = await verifyDb.CommodityRecords.AsNoTracking()
                 .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "premium_diamond");
-            Assert.Equal(initialPremiumCurrency - AffixRegistry.CalculateRerollDiamondCost(1), commodity.Quantity);
+            Assert.Equal(initialPremiumCurrency, commodity.Quantity);
+
+            var goldRow = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "gold");
+            Assert.Equal(50_000_000L - AffixRegistry.CalculateRerollGoldCost(1, 0, rerollStatType: true), goldRow.Quantity);
 
             var updatedEquipment = await verifyDb.EquipmentInstances.AsNoTracking()
                 .SingleAsync(e => e.Id == equipmentId);
@@ -1702,9 +1713,17 @@ namespace FolkIdle.Server.Tests
             Assert.Single(affixPayload);
 
             // A chest has exactly two legal affixes, so the replacement is
-            // necessarily flat_armor - and it must be a readable, plain GDD id.
-            Assert.False(affixPayload!.ContainsKey("flat_hp"));
-            Assert.True(affixPayload.ContainsKey("flat_armor"));
+            // necessarily flat_armor. Payload keys now carry an "@rarity"
+            // suffix, so compare on the stripped definition id rather than the
+            // raw key - the suffix is exactly what StripStackSuffix exists for.
+            var rolledIds = new List<string>();
+            foreach (var kvp in affixPayload!)
+            {
+                if (kvp.Key == "is_affix_locked") continue;
+                rolledIds.Add(AffixRegistry.StripStackSuffix(kvp.Key));
+            }
+            Assert.DoesNotContain("flat_hp", rolledIds);
+            Assert.Contains("flat_armor", rolledIds);
         }
 
         // Modul: Affix System Unification. An item whose BaseItemId carries no
@@ -1721,6 +1740,8 @@ namespace FolkIdle.Server.Tests
             {
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "premium_diamond", Quantity = initialPremiumCurrency });
+                // Value rerolls are paid in gold since 2026-08-01.
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 50_000_000L });
 
                 var equipment = new EquipmentInstance
                 {
@@ -1748,6 +1769,8 @@ namespace FolkIdle.Server.Tests
             var untouched = await verifyDb.EquipmentInstances.AsNoTracking().SingleAsync(e => e.Id == equipmentId);
             var payload = JsonNode.Parse(untouched.AffixPayload) as JsonObject;
             Assert.NotNull(payload);
+            // Untouched means the ORIGINAL unsuffixed key survives verbatim - a
+            // rewritten key would prove the refusal still mutated the item.
             Assert.True(payload!.ContainsKey("flat_hp"));
         }
 
@@ -4829,9 +4852,15 @@ namespace FolkIdle.Server.Tests
                 var equipment = new EquipmentInstance
                 {
                     PlayerId = testPlayerId,
-                    BaseItemId = "integration_test_command_result_reroll_sword",
+                    // Modul: reroll rework, 2026-08-01. Was a nonsense slug with
+                    // a nonsense affix key, so it now trips the id and slot
+                    // guards - which run BEFORE payment, deliberately, so a
+                    // malformed request is never charged for. This test is about
+                    // the CURRENCY path, so the item must be otherwise valid and
+                    // the only missing thing must be the gold.
+                    BaseItemId = "eq_steel_claymore_melee_weapon_slot_base",
                     QualityTier = 1,
-                    AffixPayload = "{\"flat_hp_aaaa\":10}"
+                    AffixPayload = "{\"crit_dmg_pct@2\":10}"
                 };
                 db.EquipmentInstances.Add(equipment);
                 await db.SaveChangesAsync();
@@ -9101,7 +9130,7 @@ namespace FolkIdle.Server.Tests
         {
             // A weapon must never receive an armour-or-shield affix.
             var weaponAffixes = new Dictionary<string, int>();
-            AffixRegistry.RollAffixes("eq_steel_claymore_melee_weapon_slot_base", regionTier: 3, rarityTier: 14, affixCount: 5, weaponAffixes);
+            AffixRegistry.RollAffixes("eq_steel_claymore_melee_weapon_slot_base", regionTier: 3, itemRarityTier: 14, affixCount: 5, weaponAffixes);
 
             Assert.NotEmpty(weaponAffixes);
             foreach (var key in weaponAffixes.Keys)
@@ -9118,7 +9147,7 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(EquipmentSlotMask.Shield, block.AllowedSlots);
 
             var chestAffixes = new Dictionary<string, int>();
-            AffixRegistry.RollAffixes("eq_linen_shroud_chest_armor_slot_base", regionTier: 1, rarityTier: 1, affixCount: 1, chestAffixes);
+            AffixRegistry.RollAffixes("eq_linen_shroud_chest_armor_slot_base", regionTier: 1, itemRarityTier: 1, affixCount: 1, chestAffixes);
             Assert.Single(chestAffixes);
             foreach (var key in chestAffixes.Keys)
             {
@@ -9150,7 +9179,7 @@ namespace FolkIdle.Server.Tests
             // five payload entries via stacked "#n" keys rather than silently
             // collapsing to two.
             var chestAffixes = new Dictionary<string, int>();
-            AffixRegistry.RollAffixes("eq_linen_shroud_chest_armor_slot_base", regionTier: 2, rarityTier: 14, affixCount: 5, chestAffixes);
+            AffixRegistry.RollAffixes("eq_linen_shroud_chest_armor_slot_base", regionTier: 2, itemRarityTier: 14, affixCount: 5, chestAffixes);
             Assert.Equal(5, chestAffixes.Count);
         }
 
@@ -9159,26 +9188,34 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void Test_AffixRegistry_ScalingLawsAndRerollCostMatchTheSpec()
         {
+            // Modul: affix rarity, 2026-08-01. The second growth term in these
+            // laws is now the AFFIX's own rarity (1-5), not the item's 14-tier
+            // rarity - the item tier decides affix COUNT instead. Region is
+            // unchanged and still multiplies both flat laws.
             Assert.True(AffixRegistry.TryGetDefinition("flat_hp", out var flatHp));
-            // floor(15 * R * 1.22^(N-1)); R=1, N=1 -> 15.
-            Assert.Equal(15, AffixRegistry.CalculateMagnitude(flatHp, 1, 1));
-            // R=3, N=5 -> floor(15*3*1.22^4) = floor(45 * 2.21533...) = 99.
-            Assert.Equal(99, AffixRegistry.CalculateMagnitude(flatHp, 3, 5));
+            // floor(15 * R * 1.6^(A-1)); R=1, Common -> 15. Unchanged from the
+            // old law at its base point, which is deliberate: existing gear
+            // rolled at the bottom of the curve keeps the value it had.
+            Assert.Equal(15, AffixRegistry.CalculateMagnitude(flatHp, 1, AffixRarity.Common));
+            // R=3, Legendary -> floor(45 * 6.5536) = 294.
+            Assert.Equal(294, AffixRegistry.CalculateMagnitude(flatHp, 3, AffixRarity.Legendary));
 
             Assert.True(AffixRegistry.TryGetDefinition("flat_armor", out var flatArmor));
-            // floor(2 * R * 1.18^(N-1)); R=1, N=1 -> 2.
-            Assert.Equal(2, AffixRegistry.CalculateMagnitude(flatArmor, 1, 1));
+            // floor(2 * R * 1.6^(A-1)); R=1, Common -> 2.
+            Assert.Equal(2, AffixRegistry.CalculateMagnitude(flatArmor, 1, AffixRarity.Common));
 
-            // Percentage law in tenths: crit_dmg_pct is 5.0% base, +2.5%/tier,
-            // so tier 1 is 50 tenths and tier 3 is 50 + 2*25 = 100 tenths (10%).
+            // Percentage law in tenths, still linear in the rarity index:
+            // crit_dmg_pct is 5.0% base, +2.5% per step, so Common is 50 tenths
+            // and Rare is 50 + 2*25 = 100 tenths (10%).
             Assert.True(AffixRegistry.TryGetDefinition("crit_dmg_pct", out var critDamage));
-            Assert.Equal(50, AffixRegistry.CalculateMagnitude(critDamage, 1, 1));
-            Assert.Equal(100, AffixRegistry.CalculateMagnitude(critDamage, 1, 3));
+            Assert.Equal(50, AffixRegistry.CalculateMagnitude(critDamage, 1, AffixRarity.Common));
+            Assert.Equal(100, AffixRegistry.CalculateMagnitude(critDamage, 1, AffixRarity.Rare));
 
-            // Diamond_Cost = floor(5 * 1.35^(N-1)).
-            Assert.Equal(5L, AffixRegistry.CalculateRerollDiamondCost(1));
-            Assert.Equal(30L, AffixRegistry.CalculateRerollDiamondCost(7));
-            Assert.Equal(247L, AffixRegistry.CalculateRerollDiamondCost(14));
+            // Rarity UPGRADE keeps a Diamond price; value and stat rerolls moved
+            // to gold so auto-reroll could not drain premium currency. See
+            // AffixRegistry for the full reasoning.
+            Assert.Equal(5L, AffixRegistry.CalculateRarityUpgradeDiamondCost(AffixRarity.Common));
+            Assert.Equal(0L, AffixRegistry.CalculateRarityUpgradeDiamondCost(AffixRarity.Legendary));
         }
 
         // Modul: Affix System Unification. THE bug this work existed to fix.
@@ -9200,7 +9237,7 @@ namespace FolkIdle.Server.Tests
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
 
                 var rolled = new Dictionary<string, int>();
-                AffixRegistry.RollAffixes(baseItemId, regionTier: 1, rarityTier: rarityTier, affixCount: RarityTier.GetAffixCount(rarityTier), rolled);
+                AffixRegistry.RollAffixes(baseItemId, regionTier: 1, itemRarityTier: rarityTier, affixCount: RarityTier.GetAffixCount(rarityTier), rolled);
 
                 var instance = new EquipmentInstance
                 {
@@ -9213,6 +9250,10 @@ namespace FolkIdle.Server.Tests
                 db.EquipmentInstances.Add(instance);
 
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "premium_diamond", Quantity = 500L });
+                // Modul: reroll economy, 2026-08-01. A value reroll is paid in
+                // GOLD now, so the account needs a gold row or the reroll is
+                // rejected for insufficient funds before it mutates anything.
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 50_000_000L });
                 await db.SaveChangesAsync();
                 itemId = instance.Id;
             }
@@ -9251,11 +9292,18 @@ namespace FolkIdle.Server.Tests
                         $"Reroll put '{affixId}' on a weapon, where it is not legal.");
                 }
 
-                // The diamonds actually left the account, at the GDD price.
-                long remaining = await db.CommodityRecords.AsNoTracking()
+                // Gold actually left the account, at the value-reroll price -
+                // and Diamonds did NOT, which is the whole point of splitting
+                // the currencies so auto-reroll cannot drain premium currency.
+                long goldRemaining = await db.CommodityRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == testPlayerId && c.ItemId == "gold")
+                    .Select(c => c.Quantity).FirstAsync();
+                Assert.Equal(50_000_000L - AffixRegistry.CalculateRerollGoldCost(rarityTier, 0, rerollStatType: false), goldRemaining);
+
+                long diamondsRemaining = await db.CommodityRecords.AsNoTracking()
                     .Where(c => c.PlayerId == testPlayerId && c.ItemId == "premium_diamond")
                     .Select(c => c.Quantity).FirstAsync();
-                Assert.Equal(500L - AffixRegistry.CalculateRerollDiamondCost(rarityTier), remaining);
+                Assert.Equal(500L, diamondsRemaining);
             }
         }
 
