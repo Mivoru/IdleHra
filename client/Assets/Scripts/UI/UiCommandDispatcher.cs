@@ -210,18 +210,8 @@ namespace FolkIdle.Client.UI
         }
 
         [Header("World Boss Context")]
-        public long WorldBossDamageAmount;
         public uint TargetedBossId = 1;
         public uint ClientPredictedBossDamage = 1000;
-
-        public void DispatchRegisterWorldBossDamage()
-        {
-            if (NetworkClient != null)
-            {
-                // 19 = RegisterWorldBossDamage
-                NetworkClient.SendWorldBossDamageCommandZeroAlloc(WorldBossDamageAmount);
-            }
-        }
 
         public void DispatchAttackWorldBoss()
         {
@@ -305,6 +295,12 @@ namespace FolkIdle.Client.UI
             }
         }
 
+        // Chrono Core. Retained but deliberately NOT bound to any button: the
+        // server handler consumes a CommodityRecords row for this item id and
+        // grants 4 hours of banked chrono time, but no Chrono Core item exists
+        // in the 379-entry catalogue, so every send would fail the
+        // "core == null || Quantity <= 0" check. This needs content authored
+        // before it needs a button. See NEXT_STEPS_BACKLOG.
         [Header("Chrono Core Context")]
         public long ChronoCoreItemId;
 
@@ -384,24 +380,14 @@ namespace FolkIdle.Client.UI
             }
         }
 
-        [Header("Sprint 68 - Cross-Shard Guild War")]
-        public string TargetMatchUuidText;
-        public uint ShardAttackDamage;
-        public bool IsFinalShardBlow;
-
+        // Cross-shard guild war. The SubmitShardAttack half was removed - its
+        // server handler blocks the tick thread on a cross-shard round trip and
+        // must not be reachable from a button until that is restructured.
         public void DispatchRegisterGuildDefense()
         {
             if (NetworkClient != null)
             {
                 NetworkClient.SendRegisterGuildDefenseCommandZeroAlloc();
-            }
-        }
-
-        public void DispatchSubmitShardAttack()
-        {
-            if (NetworkClient != null && System.Guid.TryParse(TargetMatchUuidText, out System.Guid matchUuid))
-            {
-                NetworkClient.SendSubmitShardAttackCommandZeroAlloc(matchUuid, ShardAttackDamage, IsFinalShardBlow);
             }
         }
 
@@ -448,29 +434,5 @@ namespace FolkIdle.Client.UI
             }
         }
 
-        [Header("Node Migration")]
-        public uint MigrationToken;
-
-        public void DispatchInitiateNodeMigration()
-        {
-            if (NetworkClient != null)
-            {
-                // Bypass new struct allocation overhead by directly writing to a scratch buffer if needed, 
-                // but NetworkClient already abstracts this. We will just pass the token.
-                NetworkClient.SendMigrationCommandZeroAlloc(MigrationToken);
-            }
-        }
-
-        [Header("Sprint 70 - Network Diagnostics")]
-        public uint NetworkDiagnosticsToken;
-
-        public void DispatchPingNetworkDiagnostics()
-        {
-            if (NetworkClient != null)
-            {
-                // 52 = PingNetworkDiagnostics
-                NetworkClient.SendPingCommandZeroAlloc(NetworkDiagnosticsToken);
-            }
-        }
     }
 }

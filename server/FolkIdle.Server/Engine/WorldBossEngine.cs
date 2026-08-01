@@ -91,17 +91,6 @@ namespace FolkIdle.Server.Engine
             return Volatile.Read(ref _bossIsAlive) == 0 || BossCurrentHp <= 0;
         }
 
-        public void RegisterDamage(long playerId, long damage, bool autoEatFoodDepleted = false)
-        {
-            if (damage <= 0)
-            {
-                return;
-            }
-
-            uint predictedDamage = damage > MaxClientPredictedDamage ? MaxClientPredictedDamage : (uint)damage;
-            QueueAttack(playerId, ActiveBossInstanceId, predictedDamage, autoEatFoodDepleted);
-        }
-
         public void QueueAttack(long playerId, uint bossId, uint clientPredictedDamage, bool autoEatFoodDepleted = false)
         {
             _ = Task.Run(async () => await ExecuteAttackAsync(playerId, bossId, clientPredictedDamage, autoEatFoodDepleted));

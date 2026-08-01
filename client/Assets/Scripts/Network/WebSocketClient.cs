@@ -415,20 +415,6 @@ namespace FolkIdle.Client.Network
             }
         }
 
-        public void SendPingCommandZeroAlloc(uint token)
-        {
-            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
-            {
-                ClientCommandPacket packet = new ClientCommandPacket
-                {
-                    Command = (CommandType)52,
-                    NetworkDiagnosticsToken = token
-                };
-                
-                SendPacket(ref packet);
-            }
-        }
-
         public void SendFusionCommandZeroAlloc(long targetId, long sacId1, long sacId2)
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)
@@ -662,25 +648,6 @@ namespace FolkIdle.Client.Network
             }
         }
 
-        public void SendWorldBossDamageCommandZeroAlloc(long damage)
-        {
-            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
-            {
-                ClientCommandPacket packet = new ClientCommandPacket
-                {
-                    Command = (CommandType)19,
-                    TargetId = damage,
-                    SecondaryId = 0,
-                    TertiaryId = 0,
-                    LimitPrice = 0,
-                    IsBuy = 0,
-                    QualityTier = 0
-                };
-
-                SendPacket(ref packet);
-            }
-        }
-
         public void SendWorldBossAttackCommandZeroAlloc(uint targetedBossId, uint clientPredictedDamage)
         {
             if (_webSocket != null && _webSocket.State == WebSocketState.Open)
@@ -860,20 +827,6 @@ namespace FolkIdle.Client.Network
                     LimitPrice = 0,
                     IsBuy = 0,
                     QualityTier = 0
-                };
-
-                SendPacket(ref packet);
-            }
-        }
-
-        public void SendMigrationCommandZeroAlloc(uint migrationToken)
-        {
-            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
-            {
-                ClientCommandPacket packet = new ClientCommandPacket
-                {
-                    Command = CommandType.InitiateNodeMigration,
-                    MigrationToken = migrationToken
                 };
 
                 SendPacket(ref packet);
@@ -1228,27 +1181,6 @@ namespace FolkIdle.Client.Network
                     IsBuy = 0,
                     QualityTier = 0,
                     TargetMatchUuid = Guid.Empty
-                };
-
-                SendPacket(ref packet);
-            }
-        }
-
-        public void SendSubmitShardAttackCommandZeroAlloc(Guid matchUuid, uint damage, bool isFinalBlow)
-        {
-            if (_webSocket != null && _webSocket.State == WebSocketState.Open)
-            {
-                ClientCommandPacket packet = new ClientCommandPacket
-                {
-                    Command = CommandType.SubmitShardAttack,
-                    TargetId = 0,
-                    SecondaryId = 0,
-                    TertiaryId = 0,
-                    LimitPrice = 0,
-                    IsBuy = isFinalBlow ? (byte)1 : (byte)0,
-                    QualityTier = 0,
-                    TargetMatchUuid = matchUuid,
-                    ClientPredictedDamage = damage
                 };
 
                 SendPacket(ref packet);

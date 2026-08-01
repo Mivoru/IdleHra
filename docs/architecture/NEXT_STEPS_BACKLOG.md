@@ -798,3 +798,52 @@ checking exactly one.
 - 8 scene texts still overflow their rect. All come from creators other than
   `CreateHelpText`, which now auto-sizes.
 - The art history migration to LFS remains open - see item 32.
+
+### 27b. Unreachable-command triage - RESOLVED, and it surfaced a live server stall
+
+Worked through the five commands in item 27 plus `ConsumeConsumableAsset`.
+The triage mattered less than what it uncovered.
+
+**Live defect found: `RegisterGuildDefense` blocked the tick thread.**
+`SimulationEngine` ran `RegisterGuildDefenseAsync(...).GetAwaiter().GetResult()`
+inline in the 10 Hz loop - a Serializable transaction taking two `FOR UPDATE`
+row locks, executed synchronously, for every player. `UiGuildWarPanel` sends
+it from a button, so any player could stall the entire simulation for as long
+as those locks took, and blocking the tick thread while EF holds locks is a
+deadlock shape as well as a latency one. Converted to `SafeDispatchAsync`.
+
+**`SubmitShardAttack` (50) has the same shape and is NOT fixed.** It writes
+its result back into `currentPayload`, so it needs the notification-queue
+pattern rather than a straight `SafeDispatchAsync`. It is unreachable, which
+is the only reason it has never stalled production. The call site now carries
+a DO-NOT-WIRE warning. Restructuring it belongs with item 3.
+
+**`RegisterWorldBossDamage` (19) - RETIRED.** A second entry point into the
+same `WorldBossEngine.QueueAttack` that `AttackWorldBoss` already reaches,
+but with weaker validation: it took the damage figure straight from
+`cmd.TargetId` and merely clamped it, where `AttackWorldBoss` validates the
+boss instance id, that the event is live, and that the boss is not dead. No
+client path sent it. Removed the handler, `WorldBossEngine.RegisterDamage`,
+`ValidateWorldBossRegistration`, and the client sender.
+
+**`ConsumeChronoCore` (24) - cannot be wired; it has no content.** The
+handler consumes a `CommodityRecords` row and grants 4 hours of banked chrono
+time, but no Chrono Core item exists in the 379-entry catalogue, so every
+send would fail the `core == null` check. This is a content gap, not a wiring
+gap. The dispatcher method is retained with that explanation.
+
+**`InitiateNodeMigration` (44) and `PingNetworkDiagnostics` (52) - client
+halves removed.** Migration is server-orchestrated (item 3); the ping handler
+echoes a token into `StateUpdatePacket.NetworkDiagnosticsToken` that no client
+code reads, so the round trip measured nothing. Server handlers retained for
+ops use. Fully retiring 52 would additionally reclaim 4 wire bytes and remove
+an unconsumed field - worth doing next time the packet is touched.
+
+**`ConsumeConsumableAsset` (45) was never unreachable.** The earlier audit
+called it "a landmine, not a live outage" on the strength of
+`DispatchConsumeConsumableAsset` having no builder binding. That was wrong:
+`UiCombatLocationPanel` sends opcode 45 directly from `UseFoodButton` and
+`UsePotionButton`. Combined with the broken SQL in that handler, **every food
+or potion use force-disconnected the player**. Both are now fixed, but the
+severity call was wrong for the same reason item 35 documents - one wiring
+mechanism checked out of several.

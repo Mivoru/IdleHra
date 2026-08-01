@@ -2115,7 +2115,25 @@ namespace FolkIdle.Server.Domain.Combat
                             continue;
                         }
 
-                        RegisterGuildDefenseAsync(currentPayload.GuildId).GetAwaiter().GetResult();
+                        // Dispatched off-thread like every other database
+                        // command. This previously ran as
+                        // RegisterGuildDefenseAsync(...).GetAwaiter().GetResult(),
+                        // which blocked the 10 Hz tick - for EVERY player - on a
+                        // Serializable transaction taking two FOR UPDATE row
+                        // locks. UiGuildWarPanel sends this from a button, so any
+                        // player could stall the whole simulation for as long as
+                        // those locks took to acquire, and blocking the tick
+                        // thread while EF holds locks is a deadlock shape as well
+                        // as a latency one.
+                        //
+                        // Safe to fire and forget: it returns nothing and mutates
+                        // no payload state, so there is no result to thread back
+                        // through a notification queue.
+                        long guildDefenseGuildId = currentPayload.GuildId;
+                        SafeDispatchAsync("GuildWar.RegisterDefense", currentPayload.PlayerId, async () =>
+                        {
+                            await RegisterGuildDefenseAsync(guildDefenseGuildId);
+                        });
                     }
                     else if (cmd.Command == CommandType.SubmitShardAttack)
                     {
@@ -2125,6 +2143,17 @@ namespace FolkIdle.Server.Domain.Combat
                             continue;
                         }
 
+                        // HAZARD - blocks the 10 Hz tick thread on a
+                        // cross-shard round trip. Every other database or mesh
+                        // command in this loop uses SafeDispatchAsync; this one
+                        // cannot trivially follow, because it writes the result
+                        // back into currentPayload and would need the
+                        // notification-queue pattern to do that off-thread.
+                        //
+                        // It is currently unreachable - no client path sends
+                        // command 50 - which is the only reason this has not
+                        // caused a production stall. DO NOT wire a UI to this
+                        // until the call is restructured. See NEXT_STEPS_BACKLOG.
                         var attackResult = SubmitShardAttackAsync(currentPayload.GuildId, currentPayload.GlobalNodeRemainingHp, cmd.TargetMatchUuid, cmd.ClientPredictedDamage, cmd.IsBuy != 0).GetAwaiter().GetResult();
                         var meshResult = attackResult.Response;
                         if (meshResult.ProcessingStatus == 1U || meshResult.ProcessingStatus == 2U || meshResult.ProcessingStatus == 4U)
@@ -2465,18 +2494,14 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.ActiveLanguageState = cmd.TargetLanguageId;
                         currentPayload.IsDirty = true;
                     }
-                    else if (cmd.Command == CommandType.RegisterWorldBossDamage)
-                    {
-                        if (!ClientCommandValidator.ValidateWorldBossRegistration(ref currentPayload, cmd.TargetId))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        bool registerAutoEatDepleted = currentPayload.Food1_Count <= 0 && currentPayload.Food2_Count <= 0 && currentPayload.Food3_Count <= 0;
-                        _worldBossEngine.RegisterDamage(currentPayload.PlayerId, cmd.TargetId, registerAutoEatDepleted);
-                    }
+                    // CommandType.RegisterWorldBossDamage (19) was retired here.
+                    // It was a second entry point into the same
+                    // WorldBossEngine.QueueAttack that AttackWorldBoss already
+                    // reaches, but with weaker validation: it took the damage
+                    // figure straight out of cmd.TargetId and only clamped it,
+                    // where AttackWorldBoss validates the boss instance id, that
+                    // the event is live and that the boss is not already dead.
+                    // No client path ever sent it, so it was pure attack surface.
                     else if (cmd.Command == CommandType.Logout)
                     {
                         currentPayload.LastLogoutTimestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();

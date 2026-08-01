@@ -816,17 +816,6 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
-        public static bool ValidateWorldBossRegistration(ref TickStatePayload payload, long damage)
-        {
-            // Simple sanity check for one-shot damage injections
-            if (damage > 10000000 || damage <= 0) // arbitrarily large limit
-            {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 19, Value2 = 1, Timestamp = Environment.TickCount64 });
-                return false;
-            }
-            return true;
-        }
-
         public static bool ValidateWorldBossAttackRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet, uint activeBossId, bool bossIsDead, bool eventActive)
         {
             if (packet.Command != FolkIdle.Server.Network.CommandType.AttackWorldBoss)
