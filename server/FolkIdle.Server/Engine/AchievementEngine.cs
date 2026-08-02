@@ -132,6 +132,31 @@ namespace FolkIdle.Server.Engine
                             }
 
                             await transaction.CommitAsync(stoppingToken);
+
+                            // Modul: achievement reward sync, 2026-08-02.
+                            //
+                            // Writing PlayerRecords."PremiumDiamonds" is not
+                            // enough for an ONLINE player. The live payload owns
+                            // PremiumCurrency and StateCheckpointManager writes
+                            // it back with plain assignment
+                            // (player.PremiumDiamonds = state.PremiumCurrency),
+                            // so the next flush overwrote the reward with the
+                            // payload's stale balance and the diamonds silently
+                            // vanished. Offline players were unaffected, which is
+                            // exactly what made it hard to notice.
+                            //
+                            // Identical shape to the reroll diamond bug fixed on
+                            // 2026-08-01, and fixed the same way: hand the
+                            // authoritative balance to the tick thread, which is
+                            // the only thread allowed to touch the payload.
+                            if (diamondsToAward > 0)
+                            {
+                                _registry?.BillingSyncQueue.Enqueue(new BillingSyncNotification
+                                {
+                                    PlayerId = player.Id,
+                                    PremiumDiamondsBalance = player.PremiumDiamonds
+                                });
+                            }
                         });
                     }
                 }

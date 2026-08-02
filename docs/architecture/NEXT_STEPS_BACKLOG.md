@@ -1251,3 +1251,52 @@ were audited by reading, not by running two accounts against each other. The
 mechanics are simple and the validation is visibly correct, but "looks right"
 and "works" have diverged three times in this project within two days, so this
 is recorded as unverified rather than passed.
+
+### 51. Achievement rewards were silently refunded for online players, 2026-08-02
+
+Same shape as the reroll diamond bug from 2026-08-01, found by looking for it
+deliberately rather than by accident.
+
+`AchievementEngine` credits `PlayerRecords."PremiumDiamonds"` and stops there.
+For an ONLINE player the live payload owns `PremiumCurrency`, and
+`StateCheckpointManager` writes it back with plain assignment
+(`player.PremiumDiamonds = state.PremiumCurrency`), so the next flush
+overwrote the reward with the payload's stale balance. The diamonds simply
+disappeared.
+
+Offline players were unaffected, since no payload existed to overwrite them -
+which is precisely what made this hard to notice, and why the earlier session
+saw an achievement grant survive while a different one would not have.
+
+Fixed by enqueuing `BillingSyncNotification`, the same hand-off the reroll fix
+uses: the tick thread is the only thread allowed to touch the payload.
+
+**Checked and NOT affected:** `DailyLoginRewardEngine` grants at
+`/api/v1/auth/login` and `/api/v1/auth/register`, both of which run before the
+session payload is hydrated - so hydration reads the already-updated column.
+Verified rather than assumed.
+
+**Unresolved:** `StateCheckpointManager.EvaluateAndAwardTierAsync` also does
+`player.PremiumDiamonds += diamondsAwarded`. It runs inside the checkpoint
+itself and is a static method with no payload reference, so whether its award
+survives the next flush depends on ordering this pass could not trace safely.
+Recorded as open rather than guessed at. It is the last known instance of this
+pattern.
+
+### 52. Registration needs the backend running - not a bug
+
+The user could not register from a self-launched Unity session. Cause: no
+backend. The client alone cannot register; it needs Postgres, and the server
+process listening on 8080. Verified working once started - POST
+/api/v1/auth/register returned 200 with a JWT.
+
+To play locally:
+1. `docker start folk-idle-db folk-idle-redis` (Redis is optional but chat and
+   leaderboards need it - and the server must start AFTER Redis, or see item
+   43, now fixed by the retry loop).
+2. `FOLKIDLE_DB_CONN="Host=localhost;Database=folkidle_dev;Username=postgres;Password=postgres" dotnet run --project server/FolkIdle.Server/FolkIdle.Server.csproj`
+3. Then enter Play Mode.
+
+Worth considering a startup check in the client that says "cannot reach
+server" plainly, since the current failure gives no indication that the
+backend is simply absent.
