@@ -6,6 +6,10 @@
   import Character from './routes/Character.svelte';
   import Inventory from './routes/Inventory.svelte';
   import Larder from './routes/Larder.svelte';
+  import Market from './routes/Market.svelte';
+  import Bank from './routes/Bank.svelte';
+  import Crafting from './routes/Crafting.svelte';
+  import Forge from './routes/Forge.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
   import { startSession, endSession, connectionStatus, playerState } from './lib/stores/game';
@@ -23,6 +27,10 @@
     { key: 'character', label: 'Character' },
     { key: 'inventory', label: 'Inventory' },
     { key: 'larder', label: 'Larder' },
+    { key: 'crafting', label: 'Crafting' },
+    { key: 'forge', label: 'Forge' },
+    { key: 'market', label: 'Market' },
+    { key: 'bank', label: 'Bank' },
   ] as const;
 
   type ScreenKey = (typeof SCREENS)[number]['key'];
@@ -106,6 +114,14 @@
       <Inventory />
     {:else if screen === 'larder'}
       <Larder />
+    {:else if screen === 'crafting'}
+      <Crafting />
+    {:else if screen === 'forge'}
+      <Forge />
+    {:else if screen === 'market'}
+      <Market />
+    {:else if screen === 'bank'}
+      <Bank />
     {/if}
 
     <OfflineSummary />

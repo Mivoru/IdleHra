@@ -1,11 +1,12 @@
 # client_web
 
-The browser client. Phases 1-2 of `docs/architecture/WEB_CLIENT_PORT_PLAN.md`:
-combat, gathering, character sheet with seven equipment slots and the roster,
-inventory with equip/unequip, larder and auto-eat. Nine screens of forty-nine.
+The browser client, and **the direction this project is going** - the decision
+gate was taken on 2026-08-02. Phases 1-3 of
+`docs/architecture/WEB_CLIENT_PORT_PLAN.md`: combat, gathering, character sheet,
+inventory, larder, crafting, forge, market and bank.
 
-**The Unity client in `client/` is still the shipping client.** Nothing here
-may break it, and nothing here is a reason to change it.
+The Unity client in `client/` is in **feature freeze** - bug fixes only - but is
+still the shipping client until the web build genuinely surpasses it.
 
 ## Running it
 
@@ -123,6 +124,21 @@ reading. They are listed because the failure mode in every case was silence.
 | `UpdateAutoEatThreshold` rides on `LimitPrice` | Not `TargetId`. And `LimitPrice` defaults to 0, so getting it wrong does not merely fail - it silently sets the threshold to zero. Out-of-range values DISCONNECT rather than clamp. |
 | `resolveSlotIndex` test ORDER is the contract | 60 real items carry the generic `_armor_slot_` marker as well as their specific one. Testing the generic first files every helmet, glove, boot and legging into the chest slot. |
 | Gathering ids are 1000-4999 | 101-412 was the pre-move numbering and those are MONSTERS now, because the two id spaces once collided and gathering moved. |
+| `ProfessionType` is TWO different enums | Gathering: 0 Woodcutting…3 Herbalism. Crafting: 2 Smelting…5 Alchemy. Values 2 and 3 are valid in both and mean different things, so sharing a lookup labels a Copper Bar "Fishing". |
+| `LimitPrice` carries THREE unrelated things | A market price, the auto-eat threshold, and the reroll's affix index. |
+
+## The guarded command layer
+
+`src/lib/net/commands.ts` exists because **the server's answer to an invalid
+economy command is to disconnect you** - `TerminateSessionForSecurity`, not a
+rejection code. A mis-typed price or two dropdowns defaulting to the same item
+would end the session with no explanation.
+
+So every Phase 3 command goes through a function that checks the server's own
+precondition first and refuses to send. Screens never call `connection.send`
+for these. The most dangerous is fusion: `ValidateFusionCommand` disconnects if
+*any two of the three item ids match*, which is exactly what a naive
+three-dropdown UI produces on first use.
 
 ## Command results
 

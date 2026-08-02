@@ -141,6 +141,33 @@ export function professionName(professionType: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Crafting professions - A DIFFERENT ENUM FROM GATHERING'S
+// ---------------------------------------------------------------------------
+
+// Modul: `RecipeDefinition.ProfessionType` and `GatheringNodeDefinition.
+// ProfessionType` share a field NAME and nothing else. Gathering runs
+// 0 Woodcutting / 1 Mining / 2 Fishing / 3 Herbalism; crafting runs
+// 2 Smelting / 3 Equipment / 4 Cooking / 5 Alchemy, and the authority for that
+// is CraftingEngine.GrantCraftedOutputAsync, which routes the output by it -
+// profession 3 becomes a real EquipmentInstance while the rest are stackables.
+//
+// The overlap is what makes this dangerous rather than merely untidy: values 2
+// and 3 are valid in BOTH enums and mean different things, so reusing the
+// gathering names labelled a Copper Bar recipe "Fishing" and an equipment
+// recipe "Herbalism". Two enums that look alike is the same trap as two
+// sources of truth, and it reads as plausible right up until someone notices.
+export const CRAFTING_PROFESSIONS: Record<number, string> = {
+  2: 'Smelting',
+  3: 'Equipment',
+  4: 'Cooking',
+  5: 'Alchemy',
+};
+
+export function craftingProfessionName(professionType: number): string {
+  return CRAFTING_PROFESSIONS[professionType] ?? `Profession ${professionType}`;
+}
+
+// ---------------------------------------------------------------------------
 // Halt reasons
 // ---------------------------------------------------------------------------
 

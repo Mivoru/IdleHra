@@ -11,6 +11,8 @@ import {
   isCombatActivity,
   isGatheringActivity,
   ACTIVITY_BANDS,
+  professionName,
+  craftingProfessionName,
 } from '../src/lib/ui/slots';
 
 // Modul: resolveSlotIndex is a port of EquipmentSlotEngine.ResolveSlotIndex,
@@ -93,5 +95,30 @@ describe('activity id bands', () => {
   it('treats idle (0) as neither', () => {
     expect(isCombatActivity(0)).toBe(false);
     expect(isGatheringActivity(0)).toBe(false);
+  });
+});
+
+// Modul: RecipeDefinition.ProfessionType and GatheringNodeDefinition.
+// ProfessionType share a field NAME and nothing else, and values 2 and 3 are
+// valid in BOTH with different meanings. Reusing the gathering names labelled
+// a Copper Bar recipe "Fishing" - plausible-looking and completely wrong.
+describe('profession enums do not overlap in meaning', () => {
+  it('names gathering professions', () => {
+    expect(professionName(0)).toBe('Woodcutting');
+    expect(professionName(1)).toBe('Mining');
+    expect(professionName(2)).toBe('Fishing');
+    expect(professionName(3)).toBe('Herbalism');
+  });
+
+  it('names crafting professions from the OTHER enum', () => {
+    expect(craftingProfessionName(2)).toBe('Smelting');
+    expect(craftingProfessionName(3)).toBe('Equipment');
+    expect(craftingProfessionName(4)).toBe('Cooking');
+    expect(craftingProfessionName(5)).toBe('Alchemy');
+  });
+
+  it('disagrees on the two values both enums define - which is the whole point', () => {
+    expect(craftingProfessionName(2)).not.toBe(professionName(2));
+    expect(craftingProfessionName(3)).not.toBe(professionName(3));
   });
 });

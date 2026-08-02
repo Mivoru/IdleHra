@@ -152,6 +152,29 @@ export function dismissCommandResult(id: number): void {
   commandResults.update((entries) => entries.filter((e) => e.id !== id));
 }
 
+let localNoticeSequence = -1;
+
+/**
+ * Shows a message through the same toast channel the server's command results
+ * use, for refusals this CLIENT made - see net/commands.ts, which declines to
+ * send values the server would answer with a disconnect.
+ *
+ * Deliberately shares the channel: from the player's side "the server said no"
+ * and "we did not ask because it would have been no" are the same event, and
+ * splitting them across two notification styles would only make the UI harder
+ * to read. Negative ids so they can never collide with a server result.
+ */
+export function pushLocalNotice(message: string): void {
+  const entry: CommandResultEntry = {
+    id: localNoticeSequence--,
+    code: -1,
+    tick: 0,
+    message,
+    atMs: performance.timeOrigin + performance.now(),
+  };
+  commandResults.update((entries) => [...entries, entry]);
+}
+
 // ---------------------------------------------------------------------------
 // Offline summary
 // ---------------------------------------------------------------------------

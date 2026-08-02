@@ -1,6 +1,7 @@
 # Web Client Port Plan
 
-Status: **Phase 0 complete, Phase 1 built**, decision gate not yet taken. Written 2026-08-02.
+Status: **Decision gate TAKEN 2026-08-02 - the web client is the direction.**
+Phases 0-2 built, Phase 3 in progress. **The Unity client is in feature freeze.**
 
 Target: a browser-first client (Svelte + TypeScript), packaged for Android and
 iOS with Capacitor later. The existing Unity client stays untouched and
@@ -402,9 +403,21 @@ Two more things the build surfaced:
    never deployed. So a zero-earning catch-up still surfaces, phrased as the
    problem it is, once the window is long enough not to be a page refresh.
 
-**The decision question - "is iterating on this materially faster than
-Unity" - is not answered by this document.** That is the user's call, and
-taking the gate is the next step, not more building.
+#### The gate was taken on 2026-08-02: continue on web
+
+The owner's call, made after Phases 1 and 2 were playable. Consequences, which
+are the whole reason the gate exists:
+
+- **The Unity client enters feature freeze now, not at the end of Phase 3.**
+  The plan put the freeze at the start of Phase 3 precisely because dual
+  maintenance is the dominant cost from here on. Only bug fixes land in
+  `client/` from this point.
+- The web client is not yet ahead of Unity in coverage - nine screens of
+  forty-nine - so **Unity remains the shipping client** until a phase boundary
+  where the web build genuinely surpasses it. Freezing features is not the
+  same as switching over.
+- Every server change stays additive. Nothing in the port may break the Unity
+  client while it is still what players run.
 
 #### Original plan for this phase
 
