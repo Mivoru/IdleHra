@@ -425,6 +425,7 @@
   .price {
     font-variant-numeric: tabular-nums;
     font-weight: 700;
+    color: var(--gold);
   }
 
   .tiny-btn {

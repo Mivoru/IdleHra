@@ -14,6 +14,7 @@
   import { claimAchievement } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import Bar from '../lib/ui/Bar.svelte';
+  import Money from '../lib/ui/Money.svelte';
 
   const client = useQueryClient();
   const achievements = createQuery(() => ({ queryKey: queryKeys.achievements, queryFn: fetchAchievements }));
@@ -149,12 +150,14 @@
         {#each loginBonus.data.WeeklyGoldSchedule as gold, index}
           <li class:current={index + 1 === loginBonus.data.CurrentStreakDay}>
             <span class="dim tiny">Day {index + 1}</span>
-            <strong>{gold.toLocaleString()}g</strong>
+            <strong><Money amount={gold} /></strong>
           </li>
         {/each}
       </ol>
       {#if loginBonus.data.Day7DiamondBonus > 0}
-        <p class="dim tiny">Day 7 also grants {loginBonus.data.Day7DiamondBonus} diamonds.</p>
+        <p class="dim tiny">
+          Day 7 also grants <Money amount={loginBonus.data.Day7DiamondBonus} kind="diamond" />.
+        </p>
       {/if}
     {:else}
       <p class="dim">Loading...</p>
@@ -209,8 +212,8 @@
       {@const st = statistics.data}
       <dl class="stats">
         <div><dt>Level</dt><dd>{st.Level}</dd></div>
-        <div><dt>Gold</dt><dd>{st.Gold.toLocaleString()}</dd></div>
-        <div><dt>Diamonds</dt><dd>{st.PremiumDiamonds.toLocaleString()}</dd></div>
+        <div><dt>Gold</dt><dd><Money amount={st.Gold} /></dd></div>
+        <div><dt>Diamonds</dt><dd><Money amount={st.PremiumDiamonds} kind="diamond" /></dd></div>
         <div><dt>Login streak</dt><dd>{st.LoginStreakDays}</dd></div>
         <div><dt>Kills</dt><dd>{st.TotalKills.toLocaleString()}</dd></div>
         <div><dt>Bosses</dt><dd>{st.BossesSlain.toLocaleString()}</dd></div>

@@ -243,9 +243,11 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Gold has its own token; borrowing rarity 12 here was a coincidence of the
+     palette that broke the moment a tier 12 item sat next to a price. */
   .gold {
     font-size: 0.8rem;
-    color: var(--rarity-12);
+    color: var(--gold);
     font-variant-numeric: tabular-nums;
   }
 

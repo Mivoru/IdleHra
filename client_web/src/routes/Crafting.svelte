@@ -94,7 +94,13 @@
             </div>
 
             <div class="dim tiny meta">
-              {craftingProfessionName(recipe.ProfessionType)}
+              <!-- A colour chip on the profession, because this list is 103
+                   rows long and the profession is what a player scans it by.
+                   The name is still written out - the colour narrows the
+                   search, it does not replace the label. -->
+              <span class="prof" data-prof={recipe.ProfessionType}>
+                {craftingProfessionName(recipe.ProfessionType)}
+              </span>
               &middot; level {recipe.RequiredLevel}
               {#if !isUnlocked(recipe)}<span class="blocked">(locked)</span>{/if}
               &middot; {(recipe.CraftingTimeMs / 1000).toFixed(1)}s
@@ -215,6 +221,26 @@
 
   .blocked {
     color: var(--danger);
+  }
+
+  /* CRAFTING_PROFESSIONS ids 2-5. Hues are picked to be distinguishable from
+     each other rather than to mean anything - there is no natural ordering
+     between Smelting and Alchemy. */
+  .prof {
+    font-weight: 600;
+  }
+
+  .prof[data-prof='2'] {
+    color: var(--rarity-11);
+  }
+  .prof[data-prof='3'] {
+    color: var(--accent);
+  }
+  .prof[data-prof='4'] {
+    color: var(--good);
+  }
+  .prof[data-prof='5'] {
+    color: var(--rarity-7);
   }
 
   .mats {

@@ -26,6 +26,7 @@
   import Toasts from './lib/ui/Toasts.svelte';
   import MailBadge from './lib/ui/MailBadge.svelte';
   import EventBanner from './lib/ui/EventBanner.svelte';
+  import Money from './lib/ui/Money.svelte';
   import { startSession, endSession, connectionStatus, playerState } from './lib/stores/game';
   import { storedToken, clearToken } from './lib/net/auth';
   import { queryClient } from './lib/net/queryClient';
@@ -161,7 +162,15 @@
       {/if}
 
       {#if snap}
-        <span class="money" title="Gold">{Number(snap.Gold).toLocaleString()}g</span>
+        <!-- Diamonds are PremiumCurrencyBalance on the hot path; the REST
+             statistics snapshot calls the same number PremiumDiamonds. Two
+             names for one balance, and only this one is live. -->
+        <span class="wallet">
+          <Money amount={snap.Gold} />
+          {#if Number(snap.PremiumCurrencyBalance) > 0}
+            <Money amount={snap.PremiumCurrencyBalance} kind="diamond" />
+          {/if}
+        </span>
       {/if}
 
       <span class="phase" data-phase={$connectionStatus.phase}>
@@ -319,11 +328,12 @@
     padding: 0.1rem 0.5rem;
   }
 
-  .money {
+  .wallet {
     margin-left: auto;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.6rem;
     font-size: 0.85rem;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-dim);
   }
 
   .phase {

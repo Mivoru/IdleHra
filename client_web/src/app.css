@@ -36,10 +36,29 @@
   --accent: #4aa3df;
   --danger: #e0553f;
   --good: #7bc96f;
+  --warn: #e8a33a;
+
+  /* Modul: the two currencies get names of their own rather than borrowing a
+     rarity tier. They appear on nine screens and a player scanning for "can I
+     afford this" should find the same colour every time - gold reading as
+     rarity 12 was a coincidence of the palette, not a decision, and it broke
+     the moment a tier 12 item sat next to a price. */
+  --gold: #e8c13a;
+  --diamond: #8fd3ff;
 
   --radius: 8px;
 }
 
+/* Modul: light mode needs its OWN rarity ramp, not the dark one.
+ *
+ * These were previously defined once and inherited by both themes, which meant
+ * that on a white panel #b7c0c8 (tier 2) sat at about 1.8:1 contrast and
+ * #6fe8d8 (tier 13) at about 1.5:1 - legible as a shape, unreadable as text.
+ * Rarity is the one colour in this UI that carries information no word repeats,
+ * so it is the one that must not wash out.
+ *
+ * Hue is preserved tier for tier so the two themes stay recognisably the same
+ * ladder; only lightness moves. */
 @media (prefers-color-scheme: light) {
   :root {
     color-scheme: light;
@@ -49,6 +68,29 @@
     --border: #d5dae3;
     --text: #1b1f27;
     --text-dim: #5b6474;
+
+    --rarity-1: #737980;
+    --rarity-2: #5c6670;
+    --rarity-3: #3d8b32;
+    --rarity-4: #1f6ea3;
+    --rarity-5: #2f52a8;
+    --rarity-6: #5a3aa8;
+    --rarity-7: #7a2fa8;
+    --rarity-8: #9c2fa8;
+    --rarity-9: #a82f70;
+    --rarity-10: #b83a25;
+    --rarity-11: #a85f1c;
+    --rarity-12: #8a6d0e;
+    --rarity-13: #17897c;
+    --rarity-14: #c22d9c;
+
+    --accent: #1f6ea3;
+    --danger: #c0392b;
+    --good: #3d8b32;
+    --warn: #a06612;
+
+    --gold: #8a6d0e;
+    --diamond: #1a6a99;
   }
 }
 
