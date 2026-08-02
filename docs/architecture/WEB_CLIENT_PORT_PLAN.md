@@ -94,31 +94,84 @@ answer:
 
 ### 3.2 The protocol decision - this is the critical one
 
-Today the wire is fixed-layout C# structs: `StateUpdatePacket` at 695 bytes
-with 151 fields, `ClientCommandPacket` at 359. It works because both ends are
-C# and `Marshal.SizeOf` verifies both sides agree in one test.
+The wire is fixed-layout C# structs. **There are six, not two** - an earlier
+draft of this document covered only the first two, which would have produced a
+JSON mode that silently omitted chat and loot:
 
-A TypeScript client cannot share that. Three options:
+| Packet | Bytes | Direction | Role |
+|---|---|---|---|
+| `AuthHandshakePacket` | 530 | client to server | Session establishment |
+| `ClientCommandPacket` | 359 | client to server | All 64 opcodes |
+| `StateUpdatePacket` | 695 | server to client | 151 fields, ~10/sec |
+| `RequestChatMessagePacket` | 139 | client to server | Outgoing chat |
+| `ResponseChatMessagePacket` | 147 | server to client | Incoming chat and announcements |
+| `ResponseLootDropPacket` | 22 | server to client | Individual loot events |
 
-1. **Hand-write a DataView parser.** Rejected. 151 fields of manual offsets,
-   maintained in parallel with the C# struct. This is precisely the drift that
-   has produced this project's worst bugs.
-2. **Generate the TypeScript parser from the C# structs** at build time.
-   Workable, keeps the binary format, but needs a code generator and a CI step
-   to prove they still match.
+The client distinguishes them **by exact byte length** in its receive loop.
+That is workable in C# where `Marshal.SizeOf` proves both sides agree, but it
+is a trap for any other language: two packets of equal size would be
+indistinguishable, and `NetworkPacketLayoutGuard` exists specifically to
+assert no two sizes collide.
+
+Three options for a TypeScript client:
+
+1. **Hand-write a DataView parser.** Rejected. Six structs, 151 fields in the
+   largest, maintained in parallel with C#. This is exactly the drift that
+   produced this project's worst bugs.
+2. **Generate the TypeScript parser from the C# structs.** Workable, keeps the
+   binary format, needs a generator plus a CI step proving they still match.
 3. **Add a JSON WebSocket mode server-side.** Recommended.
 
-**Recommendation: option 3.** The binary format exists to save bandwidth, but
-the actual load is one player receiving roughly 10 packets per second. 695
-bytes versus perhaps 2 KB of JSON is irrelevant over a browser WebSocket.
+**Recommendation: option 3**, covering all six packet types with an explicit
+`type` discriminator field rather than relying on length. The binary format
+exists to save bandwidth, but the real load is one player receiving roughly 10
+packets per second - 695 bytes versus perhaps 2 KB of JSON is irrelevant over
+a browser WebSocket.
 
-Crucially it is **additive**: the Unity path keeps the binary format untouched,
-and the server gains a per-connection mode flag chosen at handshake. No shared
-code, no dual maintenance of a parser, and the JSON shape can be generated
-from the same struct by serialisation rather than by hand.
+Crucially it is **additive**: the Unity path keeps binary untouched, and the
+server gains a per-connection mode chosen at handshake. The broadcast
+dirty-checking in `SimulationEngine.ShouldDispatchStateUpdate` applies
+unchanged, since it decides *whether* to send, not *how* to encode.
 
-The broadcast dirty-checking already in `SimulationEngine` (`ShouldDispatchStateUpdate`)
-applies unchanged - it decides *whether* to send, not *how* to encode.
+### 3.2b The rest of the network layer
+
+`Network/` holds 17 scripts. Beyond the six packets:
+
+| Script | Lines | Disposition |
+|---|---|---|
+| `WebSocketClient` | 1398 | **Reimplement.** The largest single piece of client infrastructure: connect, reconnect, auth, packet dispatch, all 64 send methods, challenge responses. |
+| `ClientContentRegistry` | 502 | **Port.** Loads monsters/items/skills/gathering JSON from StreamingAssets. Web serves the same files over HTTP. |
+| `ClientAffixRegistry` | 242 | **Port.** Display mirror of the server affix registry, including the ordered id list that is a wire contract. |
+| `UnsafePacketParser` | - | **Delete.** Superseded by JSON parsing. |
+| `NetworkPacketLayoutGuard` | - | **Delete client-side**, keep server-side. |
+| `ObfuscatedValues` | - | **Delete.** See 3.3. |
+| `FlightRecorder` | - | **Optional.** Diagnostic ring buffer; browsers have devtools. Port only if the telemetry burst command is kept. |
+| `ClientInputProxy` | - | **Delete.** Unity Input System; the DOM handles this. |
+| `ProductIdHasher` | - | **Port** if store purchases ship; needed for receipt validation. |
+| `PushDeviceTokenProvider` | - | **Replace.** See 3.2c. |
+
+### 3.2c Push notifications - a platform feature the first draft missed entirely
+
+The server has `PushNotificationTriggerEngine` and the client has
+`PushDeviceTokenProvider`, wired through the `RegisterPushToken` command
+(opcode 33). This matters more for an idle game than for most genres: the
+whole retention loop is "come back when something finished", and the server
+already schedules triggers for the world boss window opening and the daily
+reset.
+
+Web is not a straight swap:
+
+- **Browser**: Web Push via a service worker and VAPID keys. Requires HTTPS,
+  a permission prompt, and a push subscription rather than an FCM token. iOS
+  Safari supports it only for installed PWAs, and only since 16.4.
+- **Capacitor**: `@capacitor/push-notifications` gives native FCM and APNs, so
+  the token shape matches what the server already expects.
+
+**Plan**: skip push entirely until Phase 6. The `RegisterPushToken` opcode
+carries an opaque 64-byte token, so a Web Push subscription can be encoded
+into it without a protocol change - but the server's sender would need a Web
+Push implementation alongside FCM. Treat that as its own scoped task, not a
+line item.
 
 ### 3.3 What NOT to port
 
@@ -146,70 +199,115 @@ Being explicit here saves weeks:
 
 ## 4. Phased plan
 
-### Phase 0 - Enabler (server only, no client work)
+Estimates are in focused working days for one developer already familiar with
+the domain. They assume the server is not changing underneath, and they
+exclude art, copy and balancing.
 
-1. Add a JSON mode to the WebSocket handshake. Per-connection flag; binary
-   remains the default so Unity is unaffected.
-2. Serialise `StateUpdatePacket` and accept `ClientCommandPacket` as JSON on
-   that connection.
-3. Add a contract test asserting the JSON shape carries every field the binary
-   struct does, so a new field cannot land in one and not the other. This test
-   is the whole defence against the drift this document warns about.
+### Phase 0 - Enabler (server only, ~3-5 days)
 
-Deliverable: `wscat` can log in and receive readable state. Nothing visual.
+No client work. Nothing visual.
 
-### Phase 1 - Vertical slice (the decision gate)
+1. Add a `mode` field to the auth handshake: `binary` (default, Unity) or
+   `json`. Per connection, never global.
+2. JSON serialisation for all six packet types, each carrying an explicit
+   `type` discriminator so the client never dispatches on byte length.
+3. A contract test asserting the JSON shape carries every field the binary
+   struct declares, for all six. **This test is the entire defence** against
+   the drift this document warns about - without it, the port becomes the
+   project's fourth two-sources-of-truth bug and the largest one.
+4. Serve `StreamingAssets/GameData/*.json` over HTTP so the web client can
+   load the same content files.
 
-Target: **login, pick a monster, fight it, see HP, loot and progress.** Four
-screens out of 49.
+Exit: `wscat` logs in and receives readable state.
 
-1. Vite + Svelte + TypeScript project under `web/`.
-2. Auth: register, login, token storage. Endpoints already exist.
-3. WebSocket client with reconnect, feeding a `playerState` store.
-4. Combat screen: monster list, selection, HP bars, floating damage, loot log
-   with rarity in brackets.
-5. Rarity palette as CSS variables plus a glow animation.
+### Phase 1 - Vertical slice and DECISION GATE (~8-12 days)
 
-**Stop here and decide.** The question this answers is not "does it work" - it
-will - but "is iterating on this materially faster than Unity". If the honest
-answer is no, stop and keep Unity. Nothing is lost.
+Target: log in, pick a monster, fight it, watch HP, loot and progress.
+Four screens of 49.
 
-### Phase 2 - Core loop
+1. Vite + Svelte 5 + TypeScript under `web/`.
+2. Auth: register, login, token persistence. Endpoints already exist.
+3. WebSocket client with reconnect and a `playerState` store - the reduced
+   descendant of `WebSocketClient` (1398 lines) and `VisualSyncProxy`
+   (1100 lines). Expect roughly 400 lines of TypeScript for the subset the
+   slice needs.
+4. Snapshot interpolation. `VisualSyncProxy` lerps between two server
+   snapshots so bars move smoothly at 10 Hz. **Do not skip this** - without
+   it the UI visibly steps and feels worse than Unity, which would poison the
+   decision this phase exists to inform.
+5. Combat screen: monster list, selection, HP bars, floating damage, loot log
+   with rarity in brackets, and the drop preview from
+   `/api/v1/monsters/loot`.
+6. Rarity palette as CSS custom properties; glow as a keyframe animation.
 
-Inventory, equipment slots, character stats, larder and auto-eat, activity
-status, gathering, offline summary.
+**STOP. Decide.** The question is not "does it work" - it will. It is
+"is iterating on this materially faster than Unity". If the honest answer is
+no, stop here and keep Unity. Roughly two weeks spent, nothing lost, and the
+Phase 0 JSON mode remains useful for tooling and tests regardless.
 
-### Phase 3 - Economy
+### Phase 2 - Core loop (~10-15 days)
 
-Market browse/buy/sell/cancel, bank vault deposit and withdraw, crafting tree,
-forge crafting and fusion, affix reroll including auto-reroll.
+Inventory, equipment slots, character stats, larder and auto-eat thresholds,
+activity status and halt reasons, gathering, offline summary, roster.
 
-### Phase 4 - Social
+Dependency: none beyond Phase 1. This is the point at which the web client
+becomes genuinely playable rather than a demo.
 
-Chat with all three channels plus announcements and the congratulate button,
+### Phase 3 - Economy (~15-20 days)
+
+Market browse/buy/sell/cancel, bank vault deposit and withdraw, crafting tree
+(104 recipes), forge crafting and fusion, affix reroll including auto-reroll
+and its stop conditions.
+
+`UiEquipmentRerollPanel` is 607 lines and among the most intricate screens in
+the project - three operations, two currencies, escalating costs, stop
+conditions. Budget for it accordingly.
+
+**Feature freeze on the Unity client starts here.** Past this point, dual
+maintenance is the main cost driver, and only bug fixes should land in Unity.
+
+### Phase 4 - Social (~12-18 days)
+
+Chat across all three channels plus announcements and the congratulate button,
 friends, guild create/join/directory/roster/applications, guild war, raids,
 mentorship.
 
-### Phase 5 - Meta and progression
+`UiChatWindow` is 627 lines with pooled rows, three channels and history. In
+the web version most of that shrinks to a virtual list plus a store.
 
-Achievements, statistics, leaderboards, codex, season pass, login bonus, race
-mastery, skill tree, village and breeding.
+### Phase 5 - Meta and progression (~15-20 days)
 
-### Phase 6 - Monetisation and packaging
+Achievements, statistics, leaderboards, codex (excluding the 3D viewer), season
+pass, login bonus, race mastery, skill tree, village overview and buildings,
+breeding lab and gene vectors.
 
-Store, legacy shop, chrono bank, billing verification. Then Capacitor for
-Android, then iOS - which needs a Mac either way, exactly as Unity does.
+Largest phase by screen count, but the screens are mostly read-only lists -
+fast per screen.
 
-### Phase 7 - Parity close-out
+### Phase 6 - Monetisation and packaging (~10-15 days)
 
-Tutorial, localisation, audio, accessibility, telemetry.
+Store, legacy shop, chrono bank, billing verification and receipt validation.
+Then Capacitor for Android; then iOS, which needs a Mac exactly as Unity does.
+Push notifications land here (see 3.2c).
 
-**Ordering rationale:** each phase is independently playable. Phase 1 alone is
-a real game loop; Phase 3 makes it an economy. Nothing here requires a big-bang
-switchover, and the Unity client remains the shipping client until a phase
-boundary where the web version is genuinely ahead.
+### Phase 7 - Parity close-out (~10-15 days)
 
----
+Tutorial (`TutorialStateMachine` plus highlight and interaction gate),
+localisation (`LocalizationMatrix`, 239 lines, plus the existing
+`localizations.json`), audio via Howler with the ten generated WAVs,
+accessibility, telemetry.
+
+### Totals and honesty about them
+
+Phases 1 through 7 land somewhere around **80-115 focused days** for one
+developer. That is a real number, not a discouraging one - but it is months,
+and it is why the decision gate exists after roughly two weeks rather than
+after six months.
+
+**Ordering rationale**: every phase is independently playable, so there is
+never a big-bang switchover. Unity remains the shipping client until a phase
+boundary where the web build is genuinely ahead. If work stops at any phase
+boundary, what exists is coherent rather than half-wired.
 
 ## 5. System-by-system mapping
 
