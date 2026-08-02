@@ -1005,6 +1005,45 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
+                // Modul: THE FULL-BACKPACK DEAD END.
+                //
+                // InventorySpaceRemaining was refreshed from exactly two
+                // places: the session load, and a loot drop carrying a census.
+                // ProcessSubTick's first line returns when it is 0, so a full
+                // backpack stopped combat, which stopped loot, which stopped
+                // the only thing that could recount - while depositing to the
+                // bank, claiming mail or selling on the market all changed the
+                // database without touching the live payload. The player freed
+                // slots, watched the number stay at 0, and had no way back
+                // short of reconnecting.
+                //
+                // Found by driving the real UI: the dev fixture at 20/20
+                // accepted ChangeActivity, set ActiveActivityId to 91, and
+                // CurrentMonsterId never left 0.
+                while (_playerRegistry.InventoryCensusQueue.TryDequeue(out var census))
+                {
+                    ref var censusPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, census.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref censusPayload))
+                    {
+                        int capacity = censusPayload.InventoryCapacity > 0 ? censusPayload.InventoryCapacity : DefaultBackpackCapacity;
+                        int remaining = capacity - census.OccupiedSlots;
+                        censusPayload.InventorySpaceRemaining = remaining > 0 ? remaining : 0;
+
+                        // Clearing the halt here as well as recomputing the
+                        // number: the tick that follows only clears it when an
+                        // activity is running, and a player who just made room
+                        // should not keep reading "everything is stopped"
+                        // until the next kill lands.
+                        if (censusPayload.InventorySpaceRemaining > 0 &&
+                            censusPayload.ActivityHaltReason == Network.ActivityHaltReason.InventoryFull)
+                        {
+                            censusPayload.ActivityHaltReason = Network.ActivityHaltReason.None;
+                        }
+
+                        censusPayload.IsDirty = true;
+                    }
+                }
+
                 while (_playerRegistry.CombatLootDropQueue.TryDequeue(out var combatLootDrop))
                 {
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, combatLootDrop.PlayerId);

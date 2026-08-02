@@ -135,6 +135,30 @@ namespace FolkIdle.Server.Engine
         public long BankId;
     }
 
+    /// <summary>
+    /// A recount of how many backpack slots a player occupies, handed to the
+    /// tick thread after an operation that changed it.
+    ///
+    /// THIS EXISTS BECAUSE A FULL BACKPACK WAS UNRECOVERABLE.
+    ///
+    /// InventorySpaceRemaining was only ever refreshed from two places: the
+    /// session load, and a loot drop carrying a census. ProcessSubTick returns
+    /// immediately when the value is 0, so no combat ran, so no loot dropped,
+    /// so no census arrived - and depositing to the bank, claiming mail or
+    /// selling on the market all changed the database without touching the
+    /// live payload. The player freed slots, watched the count stay at 0, and
+    /// had no way back except reconnecting.
+    ///
+    /// Every path that adds or removes a backpack item now enqueues one of
+    /// these. Same hand-off shape as CombatLootDropQueue: an unmanaged struct
+    /// in a lock-free queue, drained by the thread that owns the payload.
+    /// </summary>
+    public struct InventoryCensusNotification
+    {
+        public long PlayerId;
+        public int OccupiedSlots;
+    }
+
     public struct BirthNotification
     {
         public long PlayerId;
@@ -359,6 +383,11 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<CodexMultiplierUpdateNotification> CodexMultiplierUpdateQueue { get; } = new();
         public ConcurrentQueue<RegionCompletionNotification> RegionCompletionUpdateQueue { get; } = new();
         public ConcurrentQueue<CombatLootDropNotification> CombatLootDropQueue { get; } = new();
+
+        // Modul: see InventoryCensusNotification. A full backpack used to be a
+        // dead end, because the only thing that recomputed free space was a
+        // loot drop and loot drops need free space.
+        public ConcurrentQueue<InventoryCensusNotification> InventoryCensusQueue { get; } = new();
 
         // Modul: Deploy activation fix. ChangeCharacterActivityAsync runs on
         // a background dispatch task (it does real DB work inside a

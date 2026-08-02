@@ -14,6 +14,7 @@
   } from '../lib/net/content';
   import { authedGet } from '../lib/net/auth';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
+  import { HALT_REASONS } from '../lib/ui/slots';
   import Bar from '../lib/ui/Bar.svelte';
   import FloatingDamage from '../lib/ui/FloatingDamage.svelte';
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
@@ -32,17 +33,10 @@
     }
   });
 
-  // Modul: halt reasons, mirrored from ActivityHaltReason. Naming the cause is
-  // the entire point of the field - every one of these states used to look
-  // identical to "idle by choice", which is what made a stopped character
-  // impossible to explain to a player.
-  const HALT_REASONS: Record<number, string> = {
-    0: '',
-    1: 'Out of food - the larder is empty, so auto-eat stopped the activity.',
-    2: 'Your character died and respawned. Combat activities stop on death.',
-    3: 'Backpack full - drops are being discarded. Still running, still losing loot.',
-    4: 'No eligible character - the only one may be lent out as an Academy mentor.',
-  };
+  // Modul: this screen used to carry its OWN copy of the halt-reason strings,
+  // which had already drifted from lib/ui/slots.ts by two entries. One table,
+  // imported - the header badge and this panel must never disagree about why a
+  // character stopped.
 
   const snap = $derived($playerState);
   const visual = $derived($visualState);
@@ -50,6 +44,23 @@
     snap && snap.CurrentMonsterId > 0 ? (registry?.monsters.get(snap.CurrentMonsterId) ?? null) : null,
   );
   const haltMessage = $derived(snap ? (HALT_REASONS[snap.ActivityHaltReason] ?? '') : '');
+
+  // Modul: DEPLOYED IS NOT THE SAME AS FIGHTING, and conflating them made a
+  // real fault look like a no-op button.
+  //
+  // ActiveActivityId is what the player asked for; CurrentMonsterId is what
+  // the simulation is actually doing. They diverge whenever a tick cannot run
+  // - a full backpack returns from ProcessSubTick before anything spawns - and
+  // this screen only ever read the second one. So clicking Fight set the
+  // activity server-side, no monster appeared, and the screen said "Not in
+  // combat", which reads as "the button did nothing".
+  //
+  // Named as its own state so the player is told they ARE deployed and what is
+  // blocking them, instead of being shown the idle screen.
+  const deployedTo = $derived(
+    snap && snap.ActiveActivityId > 0 ? (registry?.monsters.get(Number(snap.ActiveActivityId)) ?? null) : null,
+  );
+  const stalled = $derived(deployedTo !== null && activeMonster === null);
 
   async function selectMonster(monster: MonsterDefinition) {
     selectedMonsterId = monster.Id;
@@ -142,6 +153,14 @@
           </div>
         </div>
         <button onclick={stop}>Stop fighting</button>
+      {:else if stalled}
+        <!-- Deployed, but the simulation is not running. Saying "not in
+             combat" here is what made the Fight button look broken. -->
+        <p class="stalled">
+          Deployed to {deployedTo?.Name ?? `activity ${snap.ActiveActivityId}`}, but nothing is
+          happening. See below for why.
+        </p>
+        <button onclick={stop}>Stand down</button>
       {:else}
         <p class="dim">Not in combat.</p>
       {/if}
@@ -348,6 +367,14 @@
     background: rgba(224, 85, 63, 0.12);
     border-left: 3px solid var(--danger);
     border-radius: 4px;
+  }
+
+  /* Warn, not danger: the player did the right thing and something is in the
+     way, which is a different message from "this failed". */
+  .stalled {
+    margin: 0 0 0.6rem;
+    color: var(--warn);
+    font-size: 0.88rem;
   }
 
   .error {

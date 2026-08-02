@@ -173,11 +173,30 @@ export function craftingProfessionName(professionType: number): string {
 // Mirrors ActivityHaltReason. Naming the cause is the entire point of the
 // field: every one of these states used to be indistinguishable from "idle by
 // choice", which is what made a stopped character impossible to explain.
+// Modul: REASON 3 SAID THE OPPOSITE OF WHAT HAPPENS, and the server's own
+// comment is where the wrong version came from.
+//
+// SimulationEngine says, next to where it raises this reason, that "a full
+// backpack does not stop the activity - it keeps running and throws every drop
+// away". That is not what the code does. ProcessSubTick's first line is
+// `if (payload.ActiveActivityId <= 0 || payload.InventorySpaceRemaining <= 0)
+// return;`, so a full backpack returns before combat, before gathering, before
+// XP - everything stops.
+//
+// Verified on the wire rather than by reading: with the dev fixture at 20/20,
+// ChangeActivity sets ActiveActivityId to 91 and CurrentMonsterId never leaves
+// 0, because no tick reaches the spawn.
+//
+// Telling a player they are "still running, still losing loot" while they earn
+// nothing at all is worse than telling them nothing, because it is the one
+// message that makes them NOT go and fix it. Whether the server should behave
+// the way its comment claims is a gameplay decision; saying what it actually
+// does is not.
 export const HALT_REASONS: Record<number, string> = {
   0: '',
   1: 'Out of food - the larder is empty, so auto-eat stopped the activity.',
   2: 'Died and respawned. Combat activities stop on death; gathering does not.',
-  3: 'Backpack full - drops are being discarded. Still running, still losing loot.',
+  3: 'Backpack full - EVERYTHING IS STOPPED. No combat, no gathering, no XP. Free a slot to start again.',
   4: 'No eligible character - the only one may be lent out as an Academy mentor.',
 };
 

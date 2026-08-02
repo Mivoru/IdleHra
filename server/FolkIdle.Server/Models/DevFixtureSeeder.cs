@@ -192,6 +192,23 @@ namespace FolkIdle.Server.Models
         // an equipment recipe) are stocked too, because they appear as some
         // other recipe's Mat1Id/Mat2Id - which is exactly what makes deriving
         // this better than listing the "raw" ones by hand.
+        //
+        // Modul: THESE GO IN THE VILLAGE STASH, NOT THE BACKPACK, and that is
+        // the difference between a playable fixture and a bricked one.
+        //
+        // CountOccupiedBackpackSlotsAsync counts one slot per CommodityRecords
+        // ROW - a thousand Iron Ore is one slot, but fifty different materials
+        // are fifty slots, against a capacity of 20 (25 with Human mastery).
+        // ProcessSubTick returns immediately when no space remains, so seeding
+        // every recipe material into the backpack put the fixture at 58/20 and
+        // it could never fight or gather again: ChangeActivity was accepted,
+        // ActiveActivityId became 91, and CurrentMonsterId never left 0.
+        //
+        // VillageStashInstances is a separate table that the census does not
+        // count, and crafting spends the UNIFIED balance across both. So the
+        // stash gives the fixture everything it needs to craft while leaving
+        // the backpack empty enough to play with. Found by driving the real UI
+        // and then probing the wire, not by reading.
         private static async Task UpsertEveryCraftingMaterialAsync(FolkIdleDbContext db, long playerId)
         {
             foreach (int materialId in CollectRecipeMaterialIds())
@@ -202,8 +219,23 @@ namespace FolkIdle.Server.Models
                     continue;
                 }
 
-                await UpsertCommodityAsync(db, playerId, baseId, CraftingMaterialStock);
+                await UpsertStashAsync(db, playerId, baseId, CraftingMaterialStock);
             }
+        }
+
+        private static async Task UpsertStashAsync(FolkIdleDbContext db, long playerId, string itemId, long quantity)
+        {
+            if (string.IsNullOrEmpty(itemId)) return;
+
+            var row = await db.VillageStashInstances.FirstOrDefaultAsync(s => s.PlayerId == playerId && s.ItemId == itemId);
+            if (row == null)
+            {
+                db.VillageStashInstances.Add(new VillageStashInstance { PlayerId = playerId, ItemId = itemId, Quantity = quantity });
+                return;
+            }
+
+            // Set rather than add, so re-running does not inflate the balance.
+            row.Quantity = quantity;
         }
 
         private const long CraftingMaterialStock = 2_000L;

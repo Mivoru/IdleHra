@@ -217,6 +217,10 @@ namespace FolkIdle.Server.Engine
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                // Claiming mail can put an equipment instance in the backpack,
+                // so the live count has to learn about it.
+                await EnqueueInventoryCensusAsync(db, mail.PlayerId);
             }
             catch (Exception)
             {
@@ -310,6 +314,16 @@ namespace FolkIdle.Server.Engine
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                // Modul: hand the tick thread a fresh backpack count.
+                //
+                // Without this, a deposit freed a slot in the database and the
+                // live payload never learned - and because ProcessSubTick
+                // returns while InventorySpaceRemaining is 0, a player whose
+                // backpack filled up could not play their way out of it. The
+                // only other thing that recounts is a loot drop, which needs
+                // the space that is not there.
+                await EnqueueInventoryCensusAsync(db, playerId);
             }
             catch (Exception)
             {
@@ -321,6 +335,32 @@ namespace FolkIdle.Server.Engine
                 // step) - the pending flag is always cleared right here,
                 // on every exit path.
                 EndPendingTransaction(playerId);
+            }
+        }
+
+        /// <summary>
+        /// Recounts occupied backpack slots and hands the number to the tick
+        /// thread, which owns the live payload and must never be written from
+        /// a background dispatch task.
+        ///
+        /// Deliberately best-effort: a failure here costs a stale count that
+        /// the next loot drop or reconnect corrects, and must never roll back
+        /// the transaction that already committed.
+        /// </summary>
+        private async Task EnqueueInventoryCensusAsync(FolkIdleDbContext db, long playerId)
+        {
+            try
+            {
+                int occupied = await CombatLootEngine.CountOccupiedBackpackSlotsAsync(db, playerId);
+                _playerRegistry.InventoryCensusQueue.Enqueue(new InventoryCensusNotification
+                {
+                    PlayerId = playerId,
+                    OccupiedSlots = occupied
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Inventory census enqueue failed for {playerId}: {ex.Message}");
             }
         }
 
@@ -402,6 +442,12 @@ namespace FolkIdle.Server.Engine
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                // A withdrawal CONSUMES a slot, so the count has to move in
+                // this direction too - otherwise a player who withdraws into a
+                // nearly-full backpack keeps a stale, too-generous number and
+                // the next drop is discarded with no explanation.
+                await EnqueueInventoryCensusAsync(db, playerId);
             }
             catch (Exception)
             {

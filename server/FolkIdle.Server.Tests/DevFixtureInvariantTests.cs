@@ -2,6 +2,8 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using FolkIdle.Server.Models;
+using FolkIdle.Server.Engine;
+using FolkIdle.Server.Domain.Combat;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -146,6 +148,45 @@ namespace FolkIdle.Server.Tests
 
             int characterCount = await db.CharacterRecords.CountAsync(c => c.PlayerId == first);
             Assert.Equal(3, characterCount);
+        }
+
+        /// <summary>
+        /// THE FIXTURE MUST BE ABLE TO PLAY.
+        ///
+        /// It could not. Stocking every recipe material put 46 rows in
+        /// CommodityRecords, and CountOccupiedBackpackSlotsAsync counts one
+        /// backpack slot per ROW - so the fixture sat at 58 occupied against a
+        /// capacity of 20. ProcessSubTick returns immediately when no space
+        /// remains, so ChangeActivity was accepted, ActiveActivityId became 91,
+        /// and CurrentMonsterId never left 0: the fixture could never fight or
+        /// gather, and no amount of depositing could dig it out.
+        ///
+        /// The materials now go to VillageStashInstances, which the census does
+        /// not count and which crafting still spends from. This test pins that,
+        /// because "seed everything the recipes need" is a reasonable-sounding
+        /// change to make again and it silently bricks the account.
+        /// </summary>
+        [Fact]
+        public async Task Seeder_LeavesTheBackpackUnderCapacitySoTheFixtureCanActuallyPlay()
+        {
+            await using var db = NewContext();
+            long playerId = await DevFixtureSeeder.SeedAsync(db);
+            db.ChangeTracker.Clear();
+
+            int occupied = await CombatLootEngine.CountOccupiedBackpackSlotsAsync(db, playerId);
+
+            // The default capacity, without any race-mastery bonus - the
+            // fixture must fit in a plain backpack, not a lucky one.
+            Assert.True(
+                occupied < SimulationEngine.DefaultBackpackCapacity,
+                $"fixture occupies {occupied} of {SimulationEngine.DefaultBackpackCapacity} backpack slots, " +
+                "so ProcessSubTick will return before combat or gathering can run");
+
+            // And it must still be able to craft, which is the whole reason the
+            // materials are seeded at all. Stash + backpack is what a recipe
+            // spends from.
+            int stashRows = await db.VillageStashInstances.CountAsync(s => s.PlayerId == playerId);
+            Assert.True(stashRows > 20, $"only {stashRows} crafting materials stashed");
         }
     }
 }
