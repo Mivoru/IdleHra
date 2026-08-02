@@ -4702,6 +4702,26 @@ namespace FolkIdle.Server.Domain.Combat
         // offline extrapolation all assume.
         //
         // Pure unmanaged field exchanges: no allocation, no boxing.
+        // True when the tick that just elapsed carried the combat clock across
+        // a multiple of intervalMs. Each tick is TickIntervalMs of game time, so
+        // "how many attacks should have happened by now" is elapsed/interval,
+        // and an attack is due whenever that count increases.
+        //
+        // Exact for any interval, unlike the modulo test it replaces, which
+        // silently required the interval to divide a multiple of the tick.
+        private const int TickDurationMs = 100;
+
+        private static bool HasCrossedInterval(int tickAccumulator, int intervalMs)
+        {
+            if (intervalMs <= 0) return false;
+            if (tickAccumulator <= 0) return false;
+
+            long elapsedMs = (long)tickAccumulator * TickDurationMs;
+            long previousMs = elapsedMs - TickDurationMs;
+
+            return (elapsedMs / intervalMs) > (previousMs / intervalMs);
+        }
+
         private static void SwapSlotIntoActiveRegister(ref TickStatePayload payload, int slotIndex)
         {
             if (slotIndex == 0)
@@ -5112,7 +5132,20 @@ namespace FolkIdle.Server.Domain.Combat
             int playerAttackSpeedMs = (int)(1500 * (1.0f - combatStats.AttackSpeedPct));
             if (playerAttackSpeedMs < 200) playerAttackSpeedMs = 200; // Hard cap attack speed
 
-            if ((payload.CombatTargetTickAccumulator * 100) % playerAttackSpeedMs == 0)
+            // Modul: attack cadence fix, 2026-08-02.
+            //
+            // Was `(accumulator * 100) % intervalMs == 0`, which only fires when
+            // elapsed time lands EXACTLY on the interval - so any interval that
+            // is not a divisor of a multiple of 100 fired at the least common
+            // multiple instead. Attack speed bonuses therefore made the player
+            // attack SLOWER: +5% meant 1425ms intended but 5700ms actual (4x
+            // slower), +10% was 2x, +33% was 25x. Only bonuses landing on a
+            // multiple of 100 behaved. attack_speed_pct is a rerollable affix,
+            // so players were paying gold and diamonds to get worse.
+            //
+            // Now fires when an interval BOUNDARY was crossed during this tick,
+            // which is exact for any interval and needs no extra payload state.
+            if (HasCrossedInterval(payload.CombatTargetTickAccumulator, playerAttackSpeedMs))
             {
                 // Step 1 (Hit Determination). AccuracyRating (DEX-derived,
                 // see StatsCalculator) and the monster's content-authored
@@ -5210,7 +5243,10 @@ namespace FolkIdle.Server.Domain.Combat
             }
 
             // Monster attacks player
-            if (payload.CurrentMonsterHp > 0 && (payload.CombatTargetTickAccumulator * 100) % activeMonster.AttackIntervalMs == 0)
+            // Same boundary-crossing test as the player above - monster
+            // AttackIntervalMs values are content-authored and equally free to
+            // be non-multiples of the 100ms tick.
+            if (payload.CurrentMonsterHp > 0 && HasCrossedInterval(payload.CombatTargetTickAccumulator, activeMonster.AttackIntervalMs))
             {
                 // Step 1 (Hit Determination). Monsters have no authored
                 // accuracy stat (their content data only defines DodgeRating

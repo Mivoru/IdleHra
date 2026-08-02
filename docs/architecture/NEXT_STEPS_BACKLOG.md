@@ -1300,3 +1300,54 @@ To play locally:
 Worth considering a startup check in the client that says "cannot reach
 server" plainly, since the current failure gives no indication that the
 backend is simply absent.
+
+### 53. Combat audit, 2026-08-02
+
+**CRITICAL, FIXED: attack speed bonuses made the player attack SLOWER.**
+
+Both attack timers used `(tickAccumulator * 100) % intervalMs == 0`, which
+only fires when elapsed time lands EXACTLY on the interval. Any interval that
+is not a divisor of a multiple of the 100ms tick therefore fired at the least
+common multiple instead:
+
+| bonus | intended | actual  | effect      |
+|-------|----------|---------|-------------|
+| 0%    | 1500ms   | 1500ms  | correct     |
+| 5%    | 1425ms   | 5700ms  | 4x slower   |
+| 10%   | 1350ms   | 2700ms  | 2x slower   |
+| 20%   | 1200ms   | 1200ms  | correct     |
+| 33%   | 1004ms   | 25100ms | 25x slower  |
+
+Only bonuses landing on a multiple of 100 worked. `attack_speed_pct` is one of
+the twelve rerollable affixes, so players were spending gold and diamonds to
+make their character worse - and the same fault applied to any monster whose
+authored `AttackIntervalMs` was not a multiple of 100.
+
+Replaced with a boundary-crossing test (`HasCrossedInterval`): an attack is due
+when elapsed/interval increases across the tick. Exact for any interval and
+needs no extra payload state.
+
+**Combat is NOT turn-based alternating.** Player and monster run independent
+cadences off the same tick clock, which is the right model for an idle game -
+attack speed only means something if the two sides are not locked in
+lockstep - but it is worth stating plainly since the request assumed
+alternation.
+
+**Already working, verified:** session loot appears under the monster with
+rarity in square brackets exactly as requested (`Iron Ore x3`,
+`Doomblade [Legendary]`), skipping tier-0 materials. Inventory
+(`UiInventoryPanel`), the village bank vault (`UiBankVaultWindow`,
+`UiBankDepositCandidateRow`) and `WithdrawFromBank` all exist.
+
+**Missing: per-monster drop preview.** Selecting a monster does not show what
+it drops or the chance. The data cannot reach the client today: loot tables
+are a hardcoded `_lootEntries` array inside the server's `ContentRegistry`,
+and while monsters carry a `LootTableId` client-side, no loot table file ships
+in StreamingAssets. Needs either a `/api/v1/monsters/{id}/loot` endpoint or a
+generated `loot_tables.json` alongside the other content files. The endpoint is
+probably better - drop rates are balance data and should not be a client asset
+that can drift from the server's table.
+
+**Not verified this pass:** that the bank vault round-trip actually works end
+to end - deposit from inventory, then market or equip straight from the vault.
+The screens and the command exist; the flow was not exercised.
