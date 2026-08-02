@@ -75,10 +75,15 @@ namespace FolkIdle.Server.Network
         public const string TypeResponseChatMessage = "ResponseChatMessage";
         public const string TypeResponseLootDrop = "ResponseLootDrop";
 
-        // Every packet on this wire. Exposed (rather than kept private) so
-        // the contract test can enumerate the protocol instead of restating
-        // it - a seventh packet type added without a discriminator here
-        // fails the test rather than shipping as an unsendable hole.
+        // Every packet on this wire.
+        //
+        // Exposed through Discriminators below so the contract test can
+        // cross-check this set against its OWN independently-restated list of
+        // the six packet types. Deliberately a cross-check rather than the
+        // test reading its list from here: a test that enumerated the
+        // protocol from the codec would silently follow the codec anywhere it
+        // went, including into forgetting a packet type. Two lists that must
+        // agree catch an addition to either side.
         private static readonly Dictionary<Type, string> DiscriminatorsByType = new()
         {
             { typeof(AuthHandshakePacket), TypeAuthHandshake },

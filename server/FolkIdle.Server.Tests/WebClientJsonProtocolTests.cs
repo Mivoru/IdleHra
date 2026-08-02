@@ -173,6 +173,25 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(PacketJsonCodec.DiscriminatorFor(packetType), type.GetString());
         }
 
+        // The cross-check between this file's independently-restated list of
+        // the six packet types and the codec's own registry. Adding a seventh
+        // packet to either side without the other fails here, which is the
+        // only reason both lists exist rather than one reading the other.
+        [Fact]
+        public void TheCodecsPacketRegistryMatchesThisFilesIndependentList()
+        {
+            var declaredHere = AllPacketTypes().Select(row => (Type)row[0]).ToHashSet();
+            var registeredInCodec = PacketJsonCodec.Discriminators.Keys.ToHashSet();
+
+            var missingFromCodec = declaredHere.Except(registeredInCodec).Select(t => t.Name).ToArray();
+            var missingFromTest = registeredInCodec.Except(declaredHere).Select(t => t.Name).ToArray();
+
+            Assert.True(missingFromCodec.Length == 0,
+                $"packet type(s) this test knows about but PacketJsonCodec cannot serialize: {string.Join(", ", missingFromCodec)}");
+            Assert.True(missingFromTest.Length == 0,
+                $"packet type(s) PacketJsonCodec serializes but this test never checks: {string.Join(", ", missingFromTest)}");
+        }
+
         [Fact]
         public void DiscriminatorsAreDistinctAcrossAllSixPacketTypes()
         {

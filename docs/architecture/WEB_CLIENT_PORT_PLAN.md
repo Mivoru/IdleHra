@@ -1,6 +1,6 @@
 # Web Client Port Plan
 
-Status: PROPOSAL, not started. Written 2026-08-02.
+Status: **Phase 0 complete**, Phase 1 in progress. Written 2026-08-02.
 
 Target: a browser-first client (Svelte + TypeScript), packaged for Android and
 iOS with Capacitor later. The existing Unity client stays untouched and
@@ -268,19 +268,60 @@ byte offset.
 #### Two undocumented wire obligations, found by building a client
 
 Neither is in any document; both were found by writing a non-Unity client and
-watching it get disconnected. Any web client must implement both, and they
-belong in the Phase 1 estimate.
+watching it die. **Both failure modes look identical**: WebSocket close code
+1008 "Violent termination", with no server log line of any kind. That shared,
+silent, undiagnosable failure is the reason this section exists.
 
-| Obligation | What happens without it |
-|---|---|
-| **Every `ClientCommand` must echo `LogicEpochCounter` from the most recent `StateUpdate`.** | `ValidateEpochSynchronization`'s "epoch interception gate" calls `TerminateSessionForSecurity` - the socket closes with 1008 "Violent termination" and no diagnostic anywhere. This is the single hardest failure to diagnose on this wire. |
-| **The server issues anti-cheat challenges (`ActiveChallengeSeed`) that the client must answer with opcode 31.** | Shadow-ban request. `WebSocketClient`'s challenge handling exists for this and is easy to miss when reading it as "just a send method". |
+Both are measured, not read off the source.
 
-A related trap for testing, not for the client: the `--seed-dev` fixture
-account is disconnected on login by `ValidateLoginTime` (its
-`LastLogoutTimestamp` is ahead of now). This reproduces identically over the
-binary protocol, so it is pre-existing and unrelated to the JSON mode - but
-it makes that account useless for driving either client until it is fixed.
+**1. Every `ClientCommand` must echo `LogicEpochCounter` from the most recent
+`StateUpdate`.** Otherwise `ValidateEpochSynchronization`'s epoch interception
+gate calls `TerminateSessionForSecurity`. A fresh account survives briefly by
+luck - its counter is still 0, which is what an unaware client sends - so this
+bug hides until the account has played a little. A level-40 account
+(`LogicEpochCounter = 23`) is killed on its **first** command.
+
+**2. The server issues an anti-cheat challenge on the broadcast path
+(`ActiveChallengeSeed` on `StateUpdate`) and the client must answer it with
+opcode 31 (`AntiCheatChallengeResponse`).** The window is 15 s
+(`ChallengeResponseWindowMs`) and 4 consecutive misses
+(`ConsecutiveChallengeMissLimit`) quarantines the account - measured at
+**about 60 seconds** for a client that never answers. A 25 s session survives
+and looks perfectly healthy, which is precisely how this gets missed. The
+account is left with `IsQuarantined = true` persisted, so it stays broken
+after reconnecting until the flag is cleared.
+
+The answer is computable client-side; the client needs
+`AntiCheatTelemetryEngine.ComputeChallengeHash`, over uint32 arithmetic:
+
+```text
+xorshift32(v): v ^= v<<13; v ^= v>>17; v ^= v<<5; return v == 0 ? 0x6D2B79F5 : v
+
+hash = seed
+hash ^= (uint32)playerId
+hash  = xorshift32(hash)
+hash ^= (uint32)(playerId >> 32)
+hash  = xorshift32(hash + (uint32)logicEpochCounter)
+hash ^= 0xC2B2AE35
+hash  = xorshift32(hash)
+```
+
+Reply with `ChallengeId = ActiveChallengeSeed` and
+`ChallengeVerificationHash = hash`, using the `LogicEpochCounter` **from the
+same `StateUpdate` that carried the seed** - the server judges against the
+epoch the challenge was issued under, not the live one. The response packet
+must additionally leave `TargetId`, `SecondaryId`, `TertiaryId`, `LimitPrice`,
+`IsBuy`, `QualityTier`, both Guids and the eight `*Id`/`*Index` fields at
+zero, or it is rejected as a malformed answer.
+
+**Correction to an earlier draft of this section:** it claimed the
+`--seed-dev` fixture account is force-disconnected on login by
+`ValidateLoginTime`. That was wrong. Its `LastLogoutTimestamp` is in the past,
+not the future, so that validator passes. The fixture disconnects for
+obligation 1 alone, immediately, because it is a played-in account with a
+non-zero epoch counter. With the epoch echoed correctly it runs indefinitely -
+verified at 2934 XP and a continuous stream of loot drops. **There is exactly
+one root cause here, not two, and the fixture is not broken.**
 
 #### Notes on the JSON encoding
 
