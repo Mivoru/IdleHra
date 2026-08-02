@@ -4,6 +4,7 @@
   import {
     queryKeys,
     fetchAchievements,
+    fetchAchievementsState,
     fetchLoginBonus,
     fetchLeaderboard,
     fetchGuildLeaderboard,
@@ -18,6 +19,16 @@
 
   const client = useQueryClient();
   const achievements = createQuery(() => ({ queryKey: queryKeys.achievements, queryFn: fetchAchievements }));
+
+  // Modul: /achievements/state and /achievements/snapshot are DIFFERENT
+  // endpoints answering different questions. The snapshot above says how far
+  // along each achievement is; this says how many rewards have actually been
+  // taken, across the account's whole lifetime rather than the current set.
+  // Neither is derivable from the other.
+  const achievementsState = createQuery(() => ({
+    queryKey: [...queryKeys.achievements, 'state'] as const,
+    queryFn: fetchAchievementsState,
+  }));
   const loginBonus = createQuery(() => ({ queryKey: queryKeys.loginBonus, queryFn: fetchLoginBonus }));
   const leaderboard = createQuery(() => ({ queryKey: queryKeys.leaderboard, queryFn: fetchLeaderboard }));
   const guildBoard = createQuery(() => ({ queryKey: queryKeys.guildLeaderboard, queryFn: fetchGuildLeaderboard }));
@@ -88,7 +99,12 @@
   <section class="panel">
     <div class="head">
       <h2>Achievements</h2>
-      <span class="dim tiny">{claimable.length} ready to claim</span>
+      <span class="dim tiny">
+        {claimable.length} ready to claim
+        {#if achievementsState.data}
+          &middot; {achievementsState.data.TotalAchievementsClaimedCount} claimed for good
+        {/if}
+      </span>
     </div>
 
     {#if quarantined}

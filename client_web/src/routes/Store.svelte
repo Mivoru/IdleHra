@@ -1,7 +1,8 @@
 <script lang="ts">
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
-  import { queryKeys, fetchStoreCatalog } from '../lib/net/rest';
+  import { queryKeys, fetchStoreCatalog, fetchStorefront } from '../lib/net/rest';
+  import Money from '../lib/ui/Money.svelte';
   import {
     purchaseLegacyUnlock,
     consumeChronoCore,
@@ -10,6 +11,17 @@
   import { prettifyBaseId } from '../lib/net/content';
 
   const catalog = createQuery(() => ({ queryKey: queryKeys.storeCatalog, queryFn: fetchStoreCatalog }));
+
+  // Fetching the storefront has a SIDE EFFECT server-side - it upserts this
+  // player's segmentation profile - so it is pinned to one fetch per session
+  // rather than left on the default refetch behaviour. A cohort that changes
+  // because someone alt-tabbed would be a real bug in the pricing data.
+  const storefront = createQuery(() => ({
+    queryKey: queryKeys.storefront,
+    queryFn: fetchStorefront,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  }));
 
   const snap = $derived($playerState);
   const quarantined = $derived(snap ? snap.Quarantine_Active !== 0 : false);
@@ -87,6 +99,44 @@
         price - real-money purchase needs a platform store SDK and receipt
         verification, which arrives with the mobile packaging.
       </p>
+
+      <h3>Your storefront</h3>
+
+      <!-- Modul: this list is NOT the same for every player.
+           Requesting it runs StorefrontSegmentationEngine, which sorts the
+           account into a cohort by lifetime spend, account age and days since
+           the last purchase, and returns only that cohort's listings. Two
+           players comparing screens will legitimately see different prices, so
+           nothing here may be described as "the" price.
+
+           Fetching it also WRITES - it upserts a PlayerSegmentationProfile row
+           - so it must never be polled or refetched on window focus. And any
+           query string on the URL force-disconnects the player's session. -->
+      {#if storefront.isPending}
+        <p class="dim tiny">Loading...</p>
+      {:else if storefront.isError}
+        <p class="dim tiny">Could not load your storefront.</p>
+      {:else if (storefront.data ?? []).length === 0}
+        <p class="dim tiny">No listings are offered to your account right now.</p>
+      {:else}
+        <ul class="rows">
+          {#each storefront.data ?? [] as listing (listing.ListingId)}
+            <li>
+              <span class="name">{prettifyBaseId(listing.ProductIdentifier)}</span>
+              <span class="amount">
+                <Money amount={listing.DiamondPackageYield} kind="diamond" />
+              </span>
+              <span class="cash">{(listing.PriceInCents / 100).toFixed(2)}</span>
+            </li>
+          {/each}
+        </ul>
+        <p class="dim tiny">
+          Prices are shown without a currency symbol because the server sends
+          cents with no currency code - guessing one would be wrong for most
+          players. These listings are chosen for your account specifically and
+          may differ from another player's.
+        </p>
+      {/if}
     </section>
 
     <section class="panel">
@@ -210,6 +260,15 @@
     font-size: 0.85rem;
     border-bottom: 1px solid var(--border);
     padding-bottom: 0.28rem;
+  }
+
+  /* Real money, so deliberately NOT coloured like an in-game currency - the
+     distinction between "spend diamonds" and "spend money" is the one this
+     screen must never blur. */
+  .cash {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--text);
   }
 
   .name {
