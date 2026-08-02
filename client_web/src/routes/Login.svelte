@@ -1,5 +1,13 @@
 <script lang="ts">
   import { loginWithDevice, loginWithEmail, register, AuthError } from '../lib/net/auth';
+  import { configurationProblem } from '../lib/net/config';
+  import { isNativePlatform } from '../lib/net/platform';
+
+  // Modul: a misconfigured native build fails as a connection timeout, which
+  // reads like the server being down. Said plainly here instead - this is the
+  // first screen, and it is the only place the difference can be explained
+  // before the player concludes the game is broken.
+  const configError = configurationProblem(isNativePlatform());
 
   interface Props {
     onAuthenticated: (token: string) => void;
@@ -37,6 +45,10 @@
 
 <div class="shell">
   <h1>FolkIdle</h1>
+
+  {#if configError}
+    <p class="config" role="alert">{configError}</p>
+  {/if}
 
   {#if mode === 'choose'}
     <p class="hint">Play instantly, or sign in to an account you can keep.</p>
@@ -105,6 +117,18 @@
   .hint {
     margin: 0 0 0.5rem;
     color: var(--text-dim);
+  }
+
+  /* A build problem, not a gameplay one - phrased and styled as something the
+     player cannot fix, so they stop trying to. */
+  .config {
+    margin: 0 0 0.8rem;
+    padding: 0.6rem 0.7rem;
+    font-size: 0.82rem;
+    color: var(--warn);
+    border: 1px solid var(--warn);
+    border-radius: var(--radius);
+    text-align: left;
   }
 
   label {

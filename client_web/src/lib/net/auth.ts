@@ -16,11 +16,37 @@
 // This is a deliberate, revisitable choice, not an accident - if a persistent
 // login is wanted later, the right move is a refresh token with a short-lived
 // JWT, not upgrading this to localStorage.
+//
+// THE NATIVE BUILD REVISITS IT, because the reasoning above does not survive
+// the move to a phone. "Dies with the tab" is a sensible lifetime for a
+// browser session the player chose to close; on Android and iOS the OS
+// suspends and kills apps on its own schedule, so the same rule logs the
+// player out at moments they did not cause and cannot predict. A native shell
+// also has no other origin sharing its storage, which is most of what made
+// sessionStorage the safer of the two in the first place.
+//
+// So: sessionStorage on the web, localStorage under Capacitor. Same key, one
+// branch, stated here rather than discovered later.
 
 import { api } from './config';
+import { isNativePlatform } from './platform';
 
 const TOKEN_KEY = 'folkidle.token';
 const DEVICE_KEY = 'folkidle.deviceId';
+
+/**
+ * Where the bearer token lives.
+ *
+ * Deliberately synchronous, and therefore localStorage rather than Capacitor
+ * Preferences: `storedToken()` is called from `authedGet` on every request and
+ * from the app's own startup path, and making those async would ripple through
+ * the whole client for no gain. Preferences' only advantage here is surviving
+ * a WebView data clear, which also destroys the device id and forces a
+ * re-login anyway.
+ */
+function tokenStore(): Storage {
+  return isNativePlatform() ? localStorage : sessionStorage;
+}
 
 export interface AuthSession {
   token: string;
@@ -35,15 +61,20 @@ export class AuthError extends Error {
 }
 
 export function storedToken(): string | null {
-  return sessionStorage.getItem(TOKEN_KEY);
+  return tokenStore().getItem(TOKEN_KEY);
 }
 
 export function storeToken(token: string): void {
-  sessionStorage.setItem(TOKEN_KEY, token);
+  tokenStore().setItem(TOKEN_KEY, token);
 }
 
 export function clearToken(): void {
+  // Cleared from BOTH, not just the active one. A build that switches
+  // platforms - or a developer testing the native path in a browser - would
+  // otherwise leave a token behind in the store that is no longer being read,
+  // and signing out would not actually sign out.
   sessionStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_KEY);
 }
 
 /**

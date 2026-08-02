@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FolkIdle</string>
+    <string name="title_activity_main">FolkIdle</string>
+    <string name="package_name">com.folkidle.game</string>
+    <string name="custom_url_scheme">com.folkidle.game</string>
+</resources>

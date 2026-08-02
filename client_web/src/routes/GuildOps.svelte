@@ -1,12 +1,13 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { playerState, pushLocalNotice } from '../lib/stores/game';
+  import { playerState, pushLocalNotice, typicalHit } from '../lib/stores/game';
   import {
     queryKeys,
     fetchGuildRoster,
     fetchPlayerNames,
     fetchStatistics,
     fetchGuildLogistics,
+    fetchGuildShardMatch,
     fetchInventory,
   } from '../lib/net/rest';
   import {
@@ -19,6 +20,7 @@
     contributeToGuildStock,
     registerGuildDefense,
     executeCombatTurn,
+    submitShardAttack,
   } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import { loadContent, prettifyBaseId, type ContentRegistry } from '../lib/net/content';
@@ -196,6 +198,40 @@
     const outcome = registerGuildDefense(hasGuild, quarantined);
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
     pushLocalNotice('Your roster is registered as the guild defence.', 'info');
+  }
+
+  // Modul: the match id SubmitShardAttack has to agree with.
+  //
+  // The validator refuses an attack aimed at any other match by DISCONNECTING,
+  // and this id used to live only in the server's tick state - which is why
+  // this screen previously said the button could not be shipped. The
+  // /api/v1/guild/shard-match endpoint exists specifically to close that.
+  //
+  // Refetched on an interval because the match rolls over server-side without
+  // anything this client does, and attacking a stale id is the failure this is
+  // meant to prevent.
+  const shardMatch = createQuery(() => ({
+    queryKey: queryKeys.guildShardMatch,
+    queryFn: fetchGuildShardMatch,
+    enabled: hasGuild,
+    refetchInterval: 30_000,
+  }));
+
+  const EMPTY_UUID = '00000000-0000-0000-0000-000000000000';
+  const matchUuid = $derived(shardMatch.data?.MatchUuid ?? '');
+
+  function attackShard() {
+    const outcome = submitShardAttack({
+      matchUuid,
+      predictedDamage: Math.max($typicalHit ?? 0, 1000),
+      hasGuild,
+      quarantined,
+      // The server compares against its own committed id; passing the same
+      // value here means the guard checks exactly what the validator will.
+      activeMatchUuid: matchUuid || EMPTY_UUID,
+    });
+    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.guildShardMatch }), 900);
   }
 
   // --- guild battle turns ---------------------------------------------------
@@ -403,15 +439,42 @@
         {/if}
 
         <h3>Attacking another shard</h3>
-        <!-- An honest gap rather than a dangerous button. See below. -->
-        <p class="dim small">
-          Not available from this client. The server refuses an attack aimed at
-          any match other than the one you are already committed to - and it
-          refuses it by <em>disconnecting you</em> - but the match id it checks
-          against lives only in the server's own tick state and is not carried
-          on any packet or endpoint this client can read. Shipping the button
-          would mean guessing, and a wrong guess ends the session.
-        </p>
+
+        {#if shardMatch.isPending}
+          <p class="dim">Checking for a match...</p>
+        {:else if !shardMatch.data}
+          <p class="dim">
+            Your guild is not in a cross-shard match. One appears here when
+            matchmaking pairs you with another guild.
+          </p>
+        {:else}
+          {@const match = shardMatch.data}
+          <dl class="stats">
+            <div><dt>Side</dt><dd>{match.IsAttacker ? 'Attacking' : 'Defending'}</dd></div>
+            <div><dt>Match MMR</dt><dd>{match.ActiveMatchMmr.toLocaleString()}</dd></div>
+          </dl>
+
+          {#if match.GlobalNodeRemainingHp > 0}
+            <div class="axis">
+              <span class="dim tiny">Global node</span>
+              <Bar
+                value={match.GlobalNodeRemainingHp}
+                max={Math.max(1, match.GlobalNodeRemainingHp)}
+                color="var(--rarity-10)"
+                label={match.GlobalNodeRemainingHp.toLocaleString()}
+              />
+            </div>
+          {/if}
+
+          <button disabled={quarantined || !matchUuid} onclick={attackShard}>Attack</button>
+
+          <p class="dim tiny">
+            The attack is aimed at the match id the server already has you
+            committed to, re-read every 30 seconds. Aiming at any other match
+            is refused by disconnecting you, which is why this button follows
+            the server rather than a value chosen here.
+          </p>
+        {/if}
       {/if}
     </section>
 

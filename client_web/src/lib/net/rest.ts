@@ -42,6 +42,7 @@ export const queryKeys = {
     ['market', 'listings', baseItemId, qualityTier, pageIndex] as const,
   mailbox: ['player', 'mailbox'] as const,
   guildLogistics: ['social', 'guild', 'logistics'] as const,
+  guildShardMatch: ['social', 'guild', 'shardMatch'] as const,
   codexRegions: ['meta', 'codex', 'regions'] as const,
   storefront: ['shop', 'storefront'] as const,
 };
@@ -367,6 +368,34 @@ export interface GuildLogisticsEntry {
 
 export function fetchGuildLogistics(): Promise<GuildLogisticsEntry[]> {
   return authedGet<GuildLogisticsEntry[]>('/api/v1/guild/logistics/snapshot');
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/guild/shard-match
+// ---------------------------------------------------------------------------
+
+/**
+ * The cross-shard match this guild is committed to, or null.
+ *
+ * This exists for one reason: `SubmitShardAttack` is refused - BY
+ * DISCONNECTING - when its TargetMatchUuid disagrees with the match the server
+ * already has the player committed to, and that id lived only in the server's
+ * tick state. Without this endpoint the only way to send the command was to
+ * guess, so the web client shipped the screen with the button missing.
+ *
+ * Null is a NORMAL answer, not an error: no guild, or a guild with no running
+ * match, both return 200 with a null body.
+ */
+export interface GuildShardMatch {
+  MatchUuid: string;
+  ActiveMatchMmr: number;
+  GlobalNodeRemainingHp: number;
+  /** False means this guild is defending rather than attacking. */
+  IsAttacker: boolean;
+}
+
+export function fetchGuildShardMatch(): Promise<GuildShardMatch | null> {
+  return authedGet<GuildShardMatch | null>('/api/v1/guild/shard-match');
 }
 
 // ---------------------------------------------------------------------------

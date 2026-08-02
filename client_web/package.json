@@ -5,14 +5,25 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run generate:protocol && svelte-check --tsconfig ./tsconfig.json && vite build",
+    "build": "npm run generate:protocol && npm run generate:sprites && svelte-check --tsconfig ./tsconfig.json && vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "generate:protocol": "node scripts/generate-protocol.mjs"
+    "generate:protocol": "node scripts/generate-protocol.mjs",
+    "generate:sprites": "node scripts/generate-sprites.mjs",
+    "smoke:screens": "node scripts/smoke-screens.mjs",
+    "cap:add:android": "cap add android",
+    "cap:add:ios": "cap add ios",
+    "sync": "npm run build && cap sync",
+    "build:android": "npm run sync && cap build android",
+    "open:android": "cap open android",
+    "open:ios": "cap open ios"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
     "@tsconfig/svelte": "^5.0.4",
     "@types/node": "^26.1.2",
@@ -24,6 +35,8 @@
     "vitest": "^3.0.5"
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/preferences": "^8.0.1",
     "@tanstack/svelte-query": "^6.1.38"
   }
 }

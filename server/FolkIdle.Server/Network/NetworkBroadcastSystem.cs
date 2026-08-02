@@ -719,6 +719,12 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/guild/shard-match" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleGuildShardMatch(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/guild/logistics/snapshot" && context.Request.HttpMethod == "GET")
                     {
                         await HandleGuildLogisticsSnapshot(context);
@@ -1628,6 +1634,95 @@ namespace FolkIdle.Server.Network
             }
 
             return entries;
+        }
+
+        private sealed class GuildShardMatchResponse
+        {
+            public string MatchUuid { get; set; } = string.Empty;
+            public long ActiveMatchMmr { get; set; }
+            public long GlobalNodeRemainingHp { get; set; }
+            public bool IsAttacker { get; set; }
+        }
+
+        // Modul: the committed cross-shard match, exposed so a client can
+        // actually send SubmitShardAttack.
+        //
+        // ValidateGuildWarAction refuses an attack aimed at any match other
+        // than payload.ActiveCrossShardMatchId - and refuses it by
+        // DISCONNECTING - but that Guid lived only in the server's own tick
+        // state. No packet and no endpoint carried it, so the only way for a
+        // client to send the command was to guess, and a wrong guess ended the
+        // session. The web client shipped the screen with the button missing
+        // and a paragraph explaining why; this is the fix that paragraph
+        // needed.
+        //
+        // It is a REST read rather than a new StateUpdatePacket field because
+        // that packet is 695 bytes against a 700-byte ceiling the tests pin,
+        // and a Guid is 16. Spending 16 bytes on every broadcast to every
+        // player, for a value only the guild-war screen reads and only while
+        // it is open, would be the wrong trade even if the room existed.
+        //
+        // The query deliberately mirrors StateCheckpointManager's own, so the
+        // id a client attacks with is the id the validator will compare it
+        // against - a second, subtly different query here would produce
+        // exactly the disconnect this endpoint exists to prevent.
+        private async Task HandleGuildShardMatch(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                long guildId = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => p.Id == playerId)
+                    .Select(p => p.GuildId)
+                    .FirstOrDefaultAsync();
+
+                GuildShardMatchResponse? payload = null;
+
+                if (guildId > 0)
+                {
+                    var match = await db.GuildMatchmakingSnapshots
+                        .AsNoTracking()
+                        .Where(m => !m.IsComplete && (m.AttackerGuildId == guildId || m.DefenderGuildId == guildId))
+                        .OrderBy(m => m.TournamentGroupIndex)
+                        .FirstOrDefaultAsync();
+
+                    if (match != null)
+                    {
+                        payload = new GuildShardMatchResponse
+                        {
+                            MatchUuid = match.MatchUuid.ToString(),
+                            ActiveMatchMmr = match.ActiveMatchMmr,
+                            GlobalNodeRemainingHp = match.GlobalNodeRemainingHp,
+                            IsAttacker = match.AttackerGuildId == guildId
+                        };
+                    }
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                // A player with no guild, or a guild with no running match,
+                // gets `null` rather than a 404 - "there is no match" is a
+                // normal answer to this question, not a failure to answer it.
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, payload);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild shard match error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
         }
 
         private async Task HandleGuildLogisticsSnapshot(HttpListenerContext context)

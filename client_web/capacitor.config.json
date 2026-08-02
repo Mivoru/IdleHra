@@ -1,0 +1,12 @@
+{
+  "appId": "com.folkidle.game",
+  "appName": "FolkIdle",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "capacitor"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
