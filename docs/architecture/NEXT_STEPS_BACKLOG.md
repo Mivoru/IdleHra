@@ -1351,3 +1351,34 @@ that can drift from the server's table.
 **Not verified this pass:** that the bank vault round-trip actually works end
 to end - deposit from inventory, then market or equip straight from the vault.
 The screens and the command exist; the flow was not exercised.
+
+### 54. Monster drop preview endpoint - SHIPPED (server half)
+
+`GET /api/v1/monsters/loot?monsterId=N` returns what a monster can drop and
+the REAL per-kill probability of each entry.
+
+An endpoint rather than a shipped content file, deliberately: drop rates are
+balance data, and as a client asset they would drift from the server table and
+show players odds the server does not honour. For the same reason the rates
+are read from `CombatLootEngine`'s own constants, which were made public
+rather than copied - a second set of numbers in the API layer is exactly the
+split that has produced three currency bugs this week.
+
+ChancePct is the true probability, combining the 35% material roll with the
+entry's share of its table's weight. Raw weights would be meaningless to a
+player without the total. Equipment is reported separately because it does not
+come from the weighted table at all - it rolls flat per-slot chances (melee
+0.5%, ranged 0.4%, magic 0.4%, helper 0.33%), so omitting it would have
+claimed monsters drop no gear.
+
+Verified live against Malakor: `mat_demon_heart` at 35% (single-entry table,
+so the full material share) plus the four equipment lines. Invalid ids 400.
+
+**Client UI still to build.** The data is reachable; nothing consumes it yet.
+The natural home is the monster selection list in `UiCombatLocationPanel`,
+shown on select.
+
+**Flaky test noted:** `Test_BreedingPair_GrantedRacePairCanBreedAndSameSexIsRefused`
+failed once in a full run and passed both in isolation and on the next full
+run. Unrelated to this change. Worth watching - an intermittently failing test
+erodes trust in the suite faster than a consistently failing one.

@@ -736,6 +736,12 @@ namespace FolkIdle.Server.Network
                     // through SimulationEngine's tick thread, matching
                     // GuildManagementEngine's own header comment that it
                     // "never touches SimulationEngine state directly."
+                    if (requestPath == "/api/v1/monsters/loot" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleMonsterLoot(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/guilds/list" && context.Request.HttpMethod == "GET")
                     {
                         await HandleGuildList(context);
@@ -1164,6 +1170,23 @@ namespace FolkIdle.Server.Network
         // decide whether a guild is worth applying to, without a second
         // round-trip: how full it is, how strong, what it taxes, and whether
         // they even meet the level requirement.
+        // Modul: drop preview, 2026-08-02. What a monster can drop and how
+        // likely each entry is, so the combat screen can answer "is this worth
+        // farming" before the player commits.
+        //
+        // ChancePct is the REAL probability per kill, already combining the
+        // 35% material roll with the entry's share of its table's weight -
+        // not the raw weight, which is meaningless without the total.
+        private sealed class MonsterLootEntryResponse
+        {
+            public int ItemId { get; set; }
+            public string BaseItemId { get; set; } = string.Empty;
+            public double ChancePct { get; set; }
+            public int MinQuantity { get; set; }
+            public int MaxQuantity { get; set; }
+            public bool IsEquipment { get; set; }
+        }
+
         private sealed class GuildDirectoryEntryResponse
         {
             public long GuildId { get; set; }
@@ -2943,6 +2966,118 @@ namespace FolkIdle.Server.Network
         // was audited correct on 2026-08-01 - same validation, same clamping,
         // rather than a second convention to keep in sync.
         private const int GuildListMaxTake = 50;
+
+        // Modul: drop preview, 2026-08-02.
+        //
+        // An endpoint rather than a shipped content file on purpose. Drop rates
+        // are balance data; as a client asset they would drift from the server
+        // table and show players odds the server does not honour. The rates are
+        // read from CombatLootEngine's own constants for the same reason.
+        private Task HandleMonsterLoot(HttpListenerContext context)
+        {
+            try
+            {
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                if (!int.TryParse(query["monsterId"], out int monsterId) || monsterId <= 0)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return Task.CompletedTask;
+                }
+
+                var rows = new System.Collections.Generic.List<MonsterLootEntryResponse>();
+
+                ReadOnlySpan<MonsterDefinition> monsters = ContentRegistry.Monsters;
+                if (monsterId > monsters.Length)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return Task.CompletedTask;
+                }
+
+                int lootTableId = monsters[monsterId - 1].LootTableId;
+                ReadOnlySpan<LootTableEntry> table = ContentRegistry.GetLootTable(lootTableId);
+
+                // Total weight first: an entry's odds are its share of the
+                // table, and quoting raw weights would be unreadable.
+                long totalWeight = 0;
+                for (int i = 0; i < table.Length; i++)
+                {
+                    if (table[i].Weight > 0) totalWeight += table[i].Weight;
+                }
+
+                for (int i = 0; i < table.Length; i++)
+                {
+                    if (table[i].Weight <= 0 || totalWeight <= 0) continue;
+
+                    double share = table[i].Weight / (double)totalWeight;
+
+                    rows.Add(new MonsterLootEntryResponse
+                    {
+                        ItemId = table[i].ItemId,
+                        BaseItemId = ContentRegistry.GetItemBaseId(table[i].ItemId),
+                        ChancePct = CombatLootEngine.MaterialDropChance * share * 100.0,
+                        // Legacy entries carry 0 here, which would render as
+                        // "0-1" and read as "might drop nothing" when the entry
+                        // already succeeded its roll. One is the real floor.
+                        MinQuantity = table[i].MinQuantity > 0 ? table[i].MinQuantity : 1,
+
+                        // MaxQuantity <= 0 is the documented legacy "one unit
+                        // per successful roll" shape - see LootTableEntry.
+                        MaxQuantity = table[i].MaxQuantity > 0 ? table[i].MaxQuantity : 1,
+                        IsEquipment = false
+                    });
+                }
+
+                // Equipment does not come from the weighted table at all - it
+                // rolls on its own flat per-slot chances, so it has to be
+                // reported separately or the screen would claim a monster
+                // drops no gear.
+                rows.Add(new MonsterLootEntryResponse
+                {
+                    BaseItemId = "any_melee_weapon",
+                    ChancePct = CombatLootEngine.MeleeWeaponDropChance * 100.0,
+                    MinQuantity = 1,
+                    MaxQuantity = 1,
+                    IsEquipment = true
+                });
+                rows.Add(new MonsterLootEntryResponse
+                {
+                    BaseItemId = "any_ranged_weapon",
+                    ChancePct = CombatLootEngine.RangedWeaponDropChance * 100.0,
+                    MinQuantity = 1,
+                    MaxQuantity = 1,
+                    IsEquipment = true
+                });
+                rows.Add(new MonsterLootEntryResponse
+                {
+                    BaseItemId = "any_magic_weapon",
+                    ChancePct = CombatLootEngine.MagicWeaponDropChance * 100.0,
+                    MinQuantity = 1,
+                    MaxQuantity = 1,
+                    IsEquipment = true
+                });
+                rows.Add(new MonsterLootEntryResponse
+                {
+                    BaseItemId = "any_helper_offhand",
+                    ChancePct = CombatLootEngine.HelperDropChance * 100.0,
+                    MinQuantity = 1,
+                    MaxQuantity = 1,
+                    IsEquipment = true
+                });
+
+                context.Response.ContentType = "application/json";
+                return JsonSerializer.SerializeAsync(context.Response.OutputStream, rows)
+                    .ContinueWith(_ => context.Response.Close());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Monster loot lookup error: {ex}");
+                context.Response.StatusCode = 500;
+                context.Response.Close();
+                return Task.CompletedTask;
+            }
+        }
 
         private async Task HandleGuildList(HttpListenerContext context)
         {

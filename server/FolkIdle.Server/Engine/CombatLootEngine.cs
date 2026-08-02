@@ -292,11 +292,15 @@ namespace FolkIdle.Server.Engine
         // or none at all. Baselines sit in the GDD's stated 0.33%-0.50%
         // band; materials roll far more often since they are the common
         // case the crafting economy depends on.
-        private const double MaterialDropChance = 0.35;
-        private const double MeleeWeaponDropChance = 0.0050;
-        private const double RangedWeaponDropChance = 0.0040;
-        private const double MagicWeaponDropChance = 0.0040;
-        private const double HelperDropChance = 0.0033;
+        // Modul: drop preview, 2026-08-02. Public so the loot endpoint quotes
+        // the SAME numbers the roller uses. A copy in the API layer would be a
+        // second source of truth about drop rates, and players would eventually
+        // be shown chances the server does not honour.
+        public const double MaterialDropChance = 0.35;
+        public const double MeleeWeaponDropChance = 0.0050;
+        public const double RangedWeaponDropChance = 0.0040;
+        public const double MagicWeaponDropChance = 0.0040;
+        public const double HelperDropChance = 0.0033;
 
         // Modul: approximate backpack capacity used purely to decide
         // whether an equipment drop must be redirected to overflow
