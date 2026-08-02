@@ -47,6 +47,16 @@ namespace FolkIdle.Server.Tests
         // observe real publish/subscribe behavior end to end.
         private RedisContainer _redisContainer = null!;
 
+        // Modul: exposed so tests that MUTATE a well-known account can create
+        // their own throwaway database on this same container instead of
+        // disturbing the shared seed data. DevFixtureSeeder is the motivating
+        // case: it keys off dev@folkidle.local, which DbSeeder also assigns to
+        // PlayerLowId, so running it against the shared database silently
+        // rewrites that player's gold and level and breaks whichever
+        // tax-bracket test happens to run afterwards. An order-dependent
+        // failure is worse than an outright one.
+        public string ConnectionString { get; private set; } = string.Empty;
+
         public IDbContextFactory<FolkIdleDbContext> DbContextFactory { get; private set; } = null!;
         public RetryingDbContextOptions RetryingOptions { get; private set; } = null!;
         public IServiceProvider ServiceProvider { get; private set; } = null!;
@@ -72,6 +82,8 @@ namespace FolkIdle.Server.Tests
             _redisContainer = new RedisBuilder("redis:7-alpine").Build();
 
             await Task.WhenAll(_container.StartAsync(), _redisContainer.StartAsync());
+
+            ConnectionString = _container.GetConnectionString();
 
             var services = new ServiceCollection();
             services.AddDbContextFactory<FolkIdleDbContext>(options => options.UseNpgsql(_container.GetConnectionString()));

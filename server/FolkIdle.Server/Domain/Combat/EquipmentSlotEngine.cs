@@ -182,7 +182,23 @@ namespace FolkIdle.Server.Domain.Combat
                 Notification = notification;
             }
 
-            public static EquipAttemptOutcome Rejected(byte? resultCode = null) => new(false, resultCode, default);
+            // Modul: a rejection with no code reported NOTHING to the client -
+            // PublishOutcome only enqueues a result when ResultCode has a
+            // value - so three of the four rejection paths in EquipItemAsync
+            // (unknown item, unequippable BaseItemId, unresolvable character)
+            // were completely silent: the button did nothing, no toast, and no
+            // server log line either. That is this codebase's most-repeated
+            // bug shape, and it cost a full debugging session on 2026-08-02
+            // before the real cause turned out to be a fixture whose main
+            // character Id did not match its PlayerGuid.
+            //
+            // GenericValidationFailure is deliberately vague - these paths
+            // genuinely do not know more than "that was not valid" - but vague
+            // is enormously better than silent, and it is the difference
+            // between a player reporting "equip is broken" and reporting
+            // nothing at all because nothing appeared to happen.
+            public static EquipAttemptOutcome Rejected(byte? resultCode = null) =>
+                new(false, resultCode ?? (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure, default);
             public static EquipAttemptOutcome Success(EquipmentSlotUpdateNotification notification) => new(true, null, notification);
         }
 

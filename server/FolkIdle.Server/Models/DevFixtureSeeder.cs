@@ -161,11 +161,36 @@ namespace FolkIdle.Server.Models
         }
 
         // Three adult characters, one per unlocked slot.
+        //
+        // Modul: THE MAIN CHARACTER'S Id MUST BE THE PLAYER'S PlayerGuid, 2026-08-02.
+        //
+        // That is a real invariant of this schema, not a coincidence:
+        // EquipmentSlotEngine.ResolveCharacterForUpdateAsync resolves
+        // Guid.Empty ("the main character", which is what every equip and
+        // unequip command sends) by looking up the character whose Id equals
+        // PlayerRecords.PlayerGuid, and StateCheckpointManager hydrates the
+        // same row into slot 1. Normal account provisioning establishes it.
+        //
+        // This seeder used Guid.NewGuid() for all three slots, so the fixture
+        // had no character matching its own PlayerGuid - and EVERY equip and
+        // unequip on it was silently rejected. Silently in the strongest
+        // sense: that rejection path logs nothing and, before the companion
+        // fix in EquipAttemptOutcome.Rejected, reported no result code either,
+        // so the button did nothing and no diagnostic existed anywhere.
+        //
+        // Worth the emphasis because this is the account that exists
+        // specifically for driving the client by hand, so the one thing it
+        // must not do is behave differently from a real one.
         private static async Task EnsureCharactersAsync(FolkIdleDbContext db, long playerId)
         {
             var existing = await db.CharacterRecords
                 .Where(c => c.PlayerId == playerId)
                 .ToListAsync();
+
+            Guid playerGuid = await db.PlayerRecords.AsNoTracking()
+                .Where(p => p.Id == playerId)
+                .Select(p => p.PlayerGuid)
+                .FirstAsync();
 
             for (int slotIndex = 0; slotIndex < CharacterSlotEngine.MaxCharacterSlots; slotIndex++)
             {
@@ -173,11 +198,35 @@ namespace FolkIdle.Server.Models
 
                 db.CharacterRecords.Add(new CharacterRecord
                 {
-                    Id = Guid.NewGuid(),
+                    Id = slotIndex == 0 ? playerGuid : Guid.NewGuid(),
                     PlayerId = playerId,
                     Level = PlayerLevel,
                     AgePhase = 1,
                     SlotIndex = slotIndex
+                });
+            }
+
+            // Repairs a fixture seeded before this was fixed. The seeder is
+            // documented as idempotent and re-runnable, so a fixture that
+            // predates the fix has to be brought into line rather than left
+            // permanently unable to equip anything.
+            var mainSlot = existing.FirstOrDefault(c => c.SlotIndex == 0);
+            if (mainSlot != null && mainSlot.Id != playerGuid)
+            {
+                // The Id is the primary key, so this is a delete-and-reinsert
+                // rather than an update. Safe here because the fixture's
+                // characters carry no history worth preserving - and an
+                // unequippable main character is worth less than none.
+                db.CharacterRecords.Remove(mainSlot);
+                await db.SaveChangesAsync();
+
+                db.CharacterRecords.Add(new CharacterRecord
+                {
+                    Id = playerGuid,
+                    PlayerId = playerId,
+                    Level = PlayerLevel,
+                    AgePhase = 1,
+                    SlotIndex = 0
                 });
             }
 
