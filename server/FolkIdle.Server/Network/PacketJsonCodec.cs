@@ -186,6 +186,120 @@ namespace FolkIdle.Server.Network
             return names;
         }
 
+        // Modul: web client port, Phase 1. Emits the whole wire contract as
+        // JSON so the TypeScript client's types can be GENERATED from it
+        // rather than hand-written.
+        //
+        // This is the port plan's single most important rule made mechanical:
+        // "every feature must exist in exactly one place per layer". A
+        // hand-written TypeScript mirror of 151 `StateUpdatePacket` fields
+        // would be the largest two-sources-of-truth surface this project has
+        // ever had. The schema comes from the same reflected field plan the
+        // encoder uses, so the generated types cannot describe a packet the
+        // server does not actually send.
+        //
+        // Deliberately a CLI dump (Program.cs `--dump-protocol`) rather than
+        // an HTTP endpoint: type generation is a build-time concern and must
+        // work in CI with no database, no Redis and no listening socket.
+        // Chosen to exercise what a JavaScript port is most likely to get
+        // wrong: the sign bit of a uint32 (0x80000000 and above), a value that
+        // overflows int32 when added, a playerId whose HIGH word is non-zero
+        // (real ids never are, so an implementation that ignores it would pass
+        // in production and fail only if the id space grew), and the trivial
+        // all-small case that must still not be zero.
+        private static readonly (uint Seed, long PlayerId, long Epoch)[] ChallengeVectorInputs =
+        {
+            (1u, 1L, 0L),
+            (0xA341316Cu, 9L, 23L),
+            (0xFFFFFFFFu, 1042L, 1L),
+            (0x80000000u, 7L, 0xFFFFFFFFL),
+            (0x12345678u, 0x1_0000_0002L, 5L),
+            (0x6D2B79F5u, 2147483647L, 2147483647L),
+        };
+
+        public static string ExportSchemaJson()
+        {
+            var buffer = new ArrayBufferWriter<byte>(16 * 1024);
+            using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = true }))
+            {
+                writer.WriteStartObject();
+                writer.WriteString("typeProperty", TypePropertyName);
+                writer.WriteString("modeProperty", ModePropertyName);
+
+                writer.WriteStartArray("packets");
+                foreach (KeyValuePair<Type, string> entry in DiscriminatorsByType)
+                {
+                    PacketField[] plan = BuildPlanChecked(entry.Key, Marshal.SizeOf(entry.Key));
+
+                    writer.WriteStartObject();
+                    writer.WriteString("name", entry.Key.Name);
+                    writer.WriteString("discriminator", entry.Value);
+                    writer.WriteNumber("byteSize", Marshal.SizeOf(entry.Key));
+
+                    writer.WriteStartArray("fields");
+                    foreach (PacketField field in plan)
+                    {
+                        writer.WriteStartObject();
+                        writer.WriteString("name", field.Name);
+                        writer.WriteString("kind", field.Kind.ToString());
+                        writer.WriteNumber("offset", field.Offset);
+                        writer.WriteNumber("size", field.Size);
+                        writer.WriteEndObject();
+                    }
+                    writer.WriteEndArray();
+
+                    writer.WriteEndObject();
+                }
+                writer.WriteEndArray();
+
+                // The 64 opcodes, so the client's CommandType union is
+                // generated too - the alternative is a second copy of an enum
+                // whose numbering already has deliberate gaps (20, 36, 37).
+                writer.WriteStartArray("commandTypes");
+                foreach (CommandType value in Enum.GetValues<CommandType>())
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("name", value.ToString());
+                    writer.WriteNumber("value", (byte)value);
+                    writer.WriteEndObject();
+                }
+                writer.WriteEndArray();
+
+                // Modul: anti-cheat challenge vectors.
+                //
+                // These belong in the wire contract as much as the field list
+                // does. The server issues a challenge on the broadcast path
+                // and quarantines an account after four unanswered ones, so a
+                // client that cannot reproduce ComputeChallengeHash is not
+                // merely missing a feature - it gets the player's account
+                // flagged as a cheater within about a minute, persistently.
+                //
+                // A wrong answer is worse than none, and the hash is uint32
+                // arithmetic, which is the single thing JavaScript is most
+                // likely to get subtly wrong. So the server publishes known
+                // answers and the TypeScript client tests against them: if
+                // the two implementations ever disagree, the test says so
+                // instead of a player getting banned for it.
+                writer.WriteStartArray("challengeVectors");
+                foreach ((uint seed, long playerId, long epoch) in ChallengeVectorInputs)
+                {
+                    writer.WriteStartObject();
+                    writer.WriteNumber("seed", seed);
+                    writer.WriteNumber("playerId", playerId);
+                    writer.WriteNumber("logicEpochCounter", epoch);
+                    writer.WriteNumber(
+                        "expectedHash",
+                        FolkIdle.Server.Engine.AntiCheatTelemetryEngine.ComputeChallengeHash(seed, playerId, epoch));
+                    writer.WriteEndObject();
+                }
+                writer.WriteEndArray();
+
+                writer.WriteEndObject();
+            }
+
+            return System.Text.Encoding.UTF8.GetString(buffer.WrittenSpan);
+        }
+
         private static PacketField[] BuildPlan(Type type, int structSize)
         {
             FieldInfo[] fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);

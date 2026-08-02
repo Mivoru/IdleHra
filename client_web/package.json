@@ -1,0 +1,26 @@
+{
+  "name": "folkidle-web",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run generate:protocol && svelte-check --tsconfig ./tsconfig.json && vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "generate:protocol": "node scripts/generate-protocol.mjs"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "@tsconfig/svelte": "^5.0.4",
+    "@types/node": "^26.1.2",
+    "playwright": "^1.62.1",
+    "svelte": "^5.19.0",
+    "svelte-check": "^4.1.4",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.11",
+    "vitest": "^3.0.5"
+  }
+}

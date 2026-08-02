@@ -14,6 +14,23 @@ using FolkIdle.Server.Domain.Social;
 using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Domain.Shared;
 
+// Modul: web client port, Phase 1. Dumps the wire contract as JSON on stdout
+// so client_web can GENERATE its TypeScript types instead of mirroring 151
+// StateUpdatePacket fields by hand - see PacketJsonCodec.ExportSchemaJson and
+// client_web/scripts/generate-protocol.mjs.
+//
+// FIRST statement in the program, above even the startup banner, because the
+// generator consumes raw stdout - one stray Console.WriteLine ahead of it and
+// the JSON no longer parses. It must also run with no database, no Redis and
+// no content registry: type generation happens in CI and on a fresh checkout,
+// where none of those exist.
+if (args.Length > 0 && args[0] == "--dump-protocol")
+{
+    NetworkPacketLayoutGuard.Validate();
+    Console.Out.Write(PacketJsonCodec.ExportSchemaJson());
+    return;
+}
+
 Console.WriteLine("Initializing FolkIdle Server Engine...");
 
 NetworkPacketLayoutGuard.Validate();

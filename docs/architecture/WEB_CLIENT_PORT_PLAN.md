@@ -343,7 +343,48 @@ one root cause here, not two, and the fixture is not broken.**
   is not part of the client's StreamingAssets mirror. Same reasoning as
   `/api/v1/monsters/loot` being an endpoint rather than a shipped file.
 
-### Phase 1 - Vertical slice and DECISION GATE (~8-12 days)
+### Phase 1 - Vertical slice and DECISION GATE - **BUILT, gate not yet taken**
+
+Built in `client_web/` (Vite + Svelte 5 + TypeScript). Login, live WebSocket
+session, all 25 canonical monsters across 5 regions, combat with interpolated
+health bars, drop preview, loot feed with rarity colours, halt-reason banner,
+reconnect UI. 62 KB of JavaScript, 23 KB gzipped.
+
+**The protocol types are generated, not written.** `--dump-protocol` emits the
+server's own reflected field plan; `client_web/scripts/generate-protocol.mjs`
+turns it into `protocol.generated.ts` (6 packets, 232 fields, 61 opcodes).
+`--check` mode fails CI if a struct changed without regenerating. This is the
+port plan's central rule made mechanical rather than aspirational.
+
+Three things the build found that no amount of reading would have:
+
+1. **The "~10/sec" figure in this document is wrong**, and it broke the
+   interpolation. 10 Hz is the tick rate; `SimulationEngine` dirty-checks
+   before dispatching. Measured in a real browser with a `MutationObserver` on
+   the health bar, gaps between monster-HP changes were 2183, 1100, 2183,
+   1084, 2182, 1100 ms - mean **1637 ms**. A fixed 100 ms render delay pinned
+   the lerp factor at 1 so nothing interpolated at all, and a fixed 1000 ms
+   "reconnect" threshold then classified ordinary combat as a disconnect and
+   discarded the previous snapshot anyway. The unit tests passed and the bar
+   stepped. The delay is now estimated from observed arrivals; measured after
+   the fix, 122 distinct bar widths over 4 seconds against 3 before.
+
+   **This is the concrete argument for the Playwright line in 3.1.** The bug
+   was invisible to every test that did not render.
+
+2. **A quarantined account silently suppresses loot.** Any client run that
+   never answers an anti-cheat challenge sets `IsQuarantined` *persistently*,
+   and the account then produces no drops with no error anywhere. It cost real
+   time to diagnose, so the integration test now asserts the flag and says so.
+
+3. Drop-preview rows for equipment carry `ItemId = 0` and are identified by
+   `BaseItemId` alone, which rendered four of five rows as "Item #0".
+
+**Still open before the gate can honestly be taken:** floating damage text,
+and the offline-summary path. The decision question - "is iterating on this
+materially faster than Unity" - is not answered by this document.
+
+#### Original plan for this phase
 
 Target: log in, pick a monster, fight it, watch HP, loot and progress.
 Four screens of 49.

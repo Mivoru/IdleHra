@@ -1,0 +1,146 @@
+/* Modul: the rarity palette as CSS custom properties, replacing UiRarityPalette,
+   and the glow as a keyframe animation replacing UiRarityGlow's TMP shader.
+
+   The Unity version needed a per-instance material for the glow, which leaked;
+   here it is one animation on one class and there is nothing to leak.
+
+   14 tiers, because item rarity in this game is the 14 GDD quality tiers - NOT
+   the separate five-tier affix rarity that drives magnitude. Those two are
+   different axes and conflating them has already caused bugs, so the names
+   here are deliberately the quality-tier names. */
+
+:root {
+  color-scheme: dark;
+
+  --rarity-1: #9aa0a6;
+  --rarity-2: #b7c0c8;
+  --rarity-3: #7bc96f;
+  --rarity-4: #4aa3df;
+  --rarity-5: #4f7fe0;
+  --rarity-6: #7a5cd6;
+  --rarity-7: #9b4fd6;
+  --rarity-8: #c44fd6;
+  --rarity-9: #d64f9b;
+  --rarity-10: #e0553f;
+  --rarity-11: #e8863a;
+  --rarity-12: #e8c13a;
+  --rarity-13: #6fe8d8;
+  --rarity-14: #ff5edb;
+
+  --bg: #12141a;
+  --bg-panel: #1a1e27;
+  --bg-raised: #232833;
+  --border: #2f3542;
+  --text: #e6e9ef;
+  --text-dim: #949cad;
+  --accent: #4aa3df;
+  --danger: #e0553f;
+  --good: #7bc96f;
+
+  --radius: 8px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: light;
+    --bg: #f4f6fa;
+    --bg-panel: #ffffff;
+    --bg-raised: #eef1f6;
+    --border: #d5dae3;
+    --text: #1b1f27;
+    --text-dim: #5b6474;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+input {
+  font: inherit;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.45rem 0.6rem;
+  width: 100%;
+}
+
+/* Replaces Image.Type.Filled, and with it an entire class of bug: a filled
+   Image silently ignores fillAmount when its sprite is null, which left all 33
+   bars in the Unity client rendering permanently full. A div's width cannot
+   fail that way. */
+.bar {
+  position: relative;
+  height: 1.25rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: none; /* the interpolator already smooths this; CSS would double it */
+}
+
+.bar-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Replaces UiRarityGlow. */
+@keyframes rarity-glow {
+  0%,
+  100% {
+    text-shadow: 0 0 4px currentColor;
+  }
+  50% {
+    text-shadow: 0 0 10px currentColor, 0 0 18px currentColor;
+  }
+}
+
+.rarity-glow {
+  animation: rarity-glow 2.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rarity-glow {
+    animation: none;
+    text-shadow: 0 0 4px currentColor;
+  }
+}
