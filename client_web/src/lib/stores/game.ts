@@ -8,7 +8,7 @@
 // from a value that is a rendering artefact rather than a fact. Anything that
 // decides reads `playerState`; anything that animates reads `visualState`.
 
-import { writable, derived, get, type Readable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import { connection, fromBase64, type ConnectionStatus } from '../net/connection';
 import {
   SnapshotInterpolator,
@@ -28,11 +28,6 @@ export const connectionStatus = writable<ConnectionStatus>({
   detail: '',
   attempt: 0,
 });
-
-export const isLive: Readable<boolean> = derived(
-  connectionStatus,
-  ($status) => $status.phase === 'live',
-);
 
 // ---------------------------------------------------------------------------
 // Authoritative state

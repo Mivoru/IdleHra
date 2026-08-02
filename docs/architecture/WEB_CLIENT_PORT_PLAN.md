@@ -452,11 +452,34 @@ activity status and halt reasons, gathering, offline summary, roster.
 Dependency: none beyond Phase 1. This is the point at which the web client
 becomes genuinely playable rather than a demo.
 
-### Phase 3 - Economy (~15-20 days)
+### Phase 3 - Economy (~15-20 days) - **BUILT**
 
-Market browse/buy/sell/cancel, bank vault deposit and withdraw, crafting tree
-(104 recipes), forge crafting and fusion, affix reroll including auto-reroll
+Market browse/buy/sell, bank vault deposit and withdraw, crafting tree
+(103 recipes), forge crafting and fusion, affix reroll including auto-reroll
 and its stop conditions.
+
+**Correction: there is no market CANCEL.** An earlier draft listed it, but no
+opcode, engine method or Unity screen for it exists anywhere - the capability
+has never been in this game. Listing it as port work invented a gap.
+
+Two things this phase found that no amount of reading the endpoint list would
+have:
+
+- **The server DISCONNECTS on an invalid economy command** rather than
+  answering with a rejection code - `TerminateSessionForSecurity`, which the
+  player sees as close 1008 with no explanation. A mis-typed price ends the
+  session. Hence `client_web/src/lib/net/commands.ts`: every economy command
+  checks the server's own precondition and refuses to send. The sharpest case
+  is `ValidateFusionCommand`, which disconnects when *any two of the three item
+  ids match* - exactly what three dropdowns defaulting to the same item produce.
+- **There are TWO recipe tables and two commands, named the opposite way round
+  from what you would guess.** `ContentRegistry.Recipes` (the 103-recipe tree,
+  `/api/v1/crafting/recipes`) is driven by `InitializeCrafting` with the RESULT
+  item id on `TargetId`. `CraftingReceptuary` (the Forge's own,
+  `/api/v1/forge/inventory`) is driven by `CraftItem` with a RECIPE id on
+  `TargetRecipeId`. So `CraftItem` does not craft from the crafting tree.
+  Wiring the tree to it disconnects on ids the Forge does not know and
+  *silently crafts the wrong recipe* where the two id spaces overlap.
 
 `UiEquipmentRerollPanel` is 607 lines and among the most intricate screens in
 the project - three operations, two currencies, escalating costs, stop

@@ -100,14 +100,37 @@ namespace FolkIdle.Server.Models
 
             await UpsertCommodityAsync(db, playerId, "gold", Gold);
 
-            // Enough of the tier-1/2 material spine to actually craft something
-            // without gathering first. Ids resolved through ContentRegistry so
-            // this cannot drift from the recipe table the way a hardcoded slug
-            // list would.
+            // Modul: THERE ARE TWO MATERIAL NAMESPACES and the fixture needs
+            // both, 2026-08-02.
+            //
+            //   GetMaterialString(1-6) - the original six gathering slugs
+            //     ("copper_ore", "raw_log", ...). Produced by gathering nodes,
+            //     consumed by VillageManagementEngine's building upgrades.
+            //   GetItemBaseId(id)      - the full items.json catalogue
+            //     ("iron_ore_crafting_material", "coal_node_crafting_material",
+            //     ...). Produced by combat loot, consumed by every crafting
+            //     recipe.
+            //
+            // Both are legitimate and both have real producers and consumers,
+            // but they are DIFFERENT CommodityRecords rows. The fixture stocked
+            // only the first four gathering slugs under a comment claiming it
+            // was "enough to actually craft something without gathering first",
+            // which was simply untrue: no recipe consumes those slugs, so the
+            // fixture could craft exactly none of the 103 recipes. The Crafting
+            // screen showed "0 of 103 craftable" on an account with five
+            // million gold, which is how this surfaced.
+            //
+            // Gathering slugs stay, because village upgrades spend them.
             await UpsertCommodityAsync(db, playerId, ContentRegistry.GetMaterialString(1), 5_000L); // copper_ore
             await UpsertCommodityAsync(db, playerId, ContentRegistry.GetMaterialString(2), 5_000L); // raw_log
             await UpsertCommodityAsync(db, playerId, ContentRegistry.GetMaterialString(3), 5_000L); // iron_ore
             await UpsertCommodityAsync(db, playerId, ContentRegistry.GetMaterialString(4), 5_000L); // oak_log
+
+            // And every material any recipe actually asks for, derived FROM the
+            // recipe table rather than listed by hand - a hardcoded slug list
+            // is precisely what went stale above, and it would go stale again
+            // the first time a recipe changed its inputs.
+            await UpsertEveryCraftingMaterialAsync(db, playerId);
 
             await UpsertBuildingAsync(db, playerId, VillageManagementEngine.TownHallBuildingId, TownHallLevel);
             await UpsertBuildingAsync(db, playerId, VillageManagementEngine.CraftingWorkshopBuildingId, WorkshopLevel);
@@ -158,6 +181,46 @@ namespace FolkIdle.Server.Models
             row.CurrentLevel = level;
             row.UpgradeTargetLevel = 0;
             row.UpgradeCompletesAtEpoch = 0;
+        }
+
+        // Every distinct material any recipe consumes, stocked deep enough that
+        // a few crafts of anything do not exhaust it.
+        //
+        // Derived from ContentRegistry.Recipes so it cannot drift: a recipe
+        // that changes its inputs, or a new one added to the table, is covered
+        // without touching this method. Intermediate outputs (a bar that feeds
+        // an equipment recipe) are stocked too, because they appear as some
+        // other recipe's Mat1Id/Mat2Id - which is exactly what makes deriving
+        // this better than listing the "raw" ones by hand.
+        private static async Task UpsertEveryCraftingMaterialAsync(FolkIdleDbContext db, long playerId)
+        {
+            foreach (int materialId in CollectRecipeMaterialIds())
+            {
+                string baseId = ContentRegistry.GetItemBaseId(materialId);
+                if (string.IsNullOrEmpty(baseId))
+                {
+                    continue;
+                }
+
+                await UpsertCommodityAsync(db, playerId, baseId, CraftingMaterialStock);
+            }
+        }
+
+        private const long CraftingMaterialStock = 2_000L;
+
+        // Split out of the async method above: ContentRegistry.Recipes is a
+        // ReadOnlySpan, whose enumerator is a ref struct and therefore cannot
+        // live across an await. Collecting first keeps the derivation next to
+        // the recipe table rather than pushing it back into a hand-written list.
+        private static SortedSet<int> CollectRecipeMaterialIds()
+        {
+            var materialIds = new SortedSet<int>();
+            foreach (ContentRegistry.RecipeDefinition recipe in ContentRegistry.Recipes)
+            {
+                if (recipe.Mat1Id > 0) materialIds.Add(recipe.Mat1Id);
+                if (recipe.Mat2Id > 0) materialIds.Add(recipe.Mat2Id);
+            }
+            return materialIds;
         }
 
         // Three adult characters, one per unlocked slot.

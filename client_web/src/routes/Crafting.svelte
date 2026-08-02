@@ -2,7 +2,7 @@
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { queryKeys, fetchRecipes, type CraftingRecipe } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
-  import { craftItem } from '../lib/net/commands';
+  import { startTreeCraft } from '../lib/net/commands';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import { craftingProfessionName } from '../lib/ui/slots';
 
@@ -52,7 +52,7 @@
   );
 
   function craft(recipe: CraftingRecipe) {
-    const outcome = craftItem(recipe.ResultItemId);
+    const outcome = startTreeCraft(recipe.ResultItemId);
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
     setTimeout(() => {
       client.invalidateQueries({ queryKey: queryKeys.recipes });

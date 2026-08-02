@@ -2,7 +2,7 @@
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { queryKeys, fetchForge, type ForgeEquipment } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
-  import { executeForgeFusion, rerollAffix, REROLL_OPERATIONS } from '../lib/net/commands';
+  import { executeForgeFusion, rerollAffix, craftForgeRecipe, REROLL_OPERATIONS } from '../lib/net/commands';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { toDisplayAffixes, AFFIX_RARITY_NAMES, KNOWN_AFFIX_IDS } from '../lib/ui/affixes';
@@ -24,6 +24,16 @@
 
   function label(item: ForgeEquipment): string {
     return `${prettifyBaseId(item.BaseItemId)} [${rarityName(item.QualityTier)}] #${item.Id}`;
+  }
+
+  // --- forge crafting -------------------------------------------------------
+  // These ids come from /api/v1/forge/inventory, which returns real
+  // CraftingReceptuary ids - the only source this client has. An invented one
+  // disconnects the session rather than being rejected.
+  function craftRecipe(recipeId: number) {
+    const outcome = craftForgeRecipe(recipeId);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    refresh();
   }
 
   // --- fusion ---------------------------------------------------------------
@@ -243,12 +253,16 @@
       <p class="dim small">{owned.length} items available to the Forge.</p>
       <ul class="stock">
         {#each (forge.data?.Recipes ?? []) as recipe (recipe.RecipeId)}
+          {@const affordable = recipe.CurrentMaterialStock >= recipe.MaterialCost}
           <li>
             <span>{prettifyBaseId(recipe.ResultBaseItemId)}</span>
-            <span class="dim tiny" class:short={recipe.CurrentMaterialStock < recipe.MaterialCost}>
+            <span class="dim tiny" class:short={!affordable}>
               {recipe.MaterialName}
               {recipe.CurrentMaterialStock.toLocaleString()}/{recipe.MaterialCost.toLocaleString()}
             </span>
+            <button class="tiny-btn" disabled={!affordable} onclick={() => craftRecipe(recipe.RecipeId)}>
+              Forge
+            </button>
           </li>
         {/each}
       </ul>
@@ -373,9 +387,10 @@
   }
 
   .stock li {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.75rem;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 0.6rem;
     font-size: 0.82rem;
     border-bottom: 1px solid var(--border);
     padding-bottom: 0.22rem;

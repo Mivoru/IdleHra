@@ -18,7 +18,6 @@ import { authedGet } from './auth';
 // kept producing.
 export const queryKeys = {
   inventory: ['player', 'inventory'] as const,
-  mastery: ['player', 'mastery'] as const,
   statistics: ['player', 'statistics'] as const,
   monsterLoot: (monsterId: number) => ['monsters', 'loot', monsterId] as const,
   bank: ['player', 'bank'] as const,
@@ -61,21 +60,6 @@ export interface InventorySnapshot {
 
 export function fetchInventory(): Promise<InventorySnapshot> {
   return authedGet<InventorySnapshot>('/api/v1/player/inventory');
-}
-
-// ---------------------------------------------------------------------------
-// /api/v1/mastery/snapshot
-// ---------------------------------------------------------------------------
-
-export interface RaceMasteryEntry {
-  RaceId: number;
-  Level: number;
-  Experience: number;
-  NextLevelExperience: number;
-}
-
-export function fetchMastery(): Promise<RaceMasteryEntry[]> {
-  return authedGet<RaceMasteryEntry[]>('/api/v1/mastery/snapshot');
 }
 
 // ---------------------------------------------------------------------------

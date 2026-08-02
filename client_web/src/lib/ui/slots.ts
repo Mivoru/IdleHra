@@ -26,7 +26,6 @@ export const SLOT_GLOVES = 3;
 export const SLOT_LEGGINGS = 4;
 export const SLOT_BOOTS = 5;
 export const SLOT_OFFHAND = 6;
-export const SLOT_COUNT = 7;
 
 export interface EquipmentSlot {
   index: number;

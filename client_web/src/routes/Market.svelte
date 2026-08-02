@@ -170,7 +170,11 @@
       <input type="number" min="1" step="1" bind:value={sellPrice} />
     </label>
 
-    <button onclick={sell} disabled={sellInstanceId === 0 || sellPrice < 1}>
+    <!-- Disabled without a licence for the same reason the fusion dropdowns
+         exclude each other: not offering a choice the server will refuse beats
+         offering it and explaining afterwards. NoGuildLicense is a rejection
+         code rather than a disconnect, so this is UX rather than safety. -->
+    <button onclick={sell} disabled={!hasGuildLicense || sellInstanceId === 0 || sellPrice < 1}>
       List for {Math.max(1, sellPrice).toLocaleString()}g
     </button>
 

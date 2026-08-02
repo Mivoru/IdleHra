@@ -17,7 +17,8 @@ const {
   buyMarketListing,
   depositToBank,
   withdrawFromBank,
-  craftItem,
+  startTreeCraft,
+  craftForgeRecipe,
   executeForgeFusion,
   rerollAffix,
 } = await import('../src/lib/net/commands');
@@ -80,21 +81,48 @@ describe('bank', () => {
   });
 });
 
-describe('crafting', () => {
-  it('uses the dedicated recipe and slot fields, never TargetId', () => {
-    expect(craftItem(17, 1).ok).toBe(true);
+// Modul: TWO recipe tables, two commands, names pointing the opposite way from
+// what you would guess. The crafting TREE runs on InitializeCrafting;
+// CraftItem is the FORGE's. This was wired backwards first, and the
+// consequences are worse than "nothing happens": ValidateCraftingRequest
+// DISCONNECTS on a TargetRecipeId that is not a CraftingReceptuary recipe, and
+// where the two id spaces overlap the request silently crafts something else.
+describe('crafting tree vs forge crafting', () => {
+  it('sends tree crafts as InitializeCrafting with the RESULT item on TargetId', () => {
+    expect(startTreeCraft(184).ok).toBe(true);
+    expect(sent[0]).toMatchObject({
+      Command: CommandType.InitializeCrafting,
+      TargetId: 184,
+    });
+    expect(sent[0].TargetRecipeId).toBeUndefined();
+  });
+
+  it('sends forge crafts as CraftItem with the RECIPE id on TargetRecipeId', () => {
+    expect(craftForgeRecipe(17, 1).ok).toBe(true);
     expect(sent[0]).toMatchObject({
       Command: CommandType.CraftItem,
       TargetRecipeId: 17,
       CraftingSlotIndex: 1,
     });
-    // Sending TargetId here would be reading the wrong field entirely - the
-    // dispatcher never looks at it for this command.
+    // The dispatcher never reads TargetId for this command.
     expect(sent[0].TargetId).toBeUndefined();
   });
 
-  it('refuses a non-positive recipe id', () => {
-    expect(craftItem(0).ok).toBe(false);
+  it('never routes a tree recipe down the forge command', () => {
+    // The whole bug in one assertion.
+    startTreeCraft(184);
+    expect(sent[0].Command).not.toBe(CommandType.CraftItem);
+  });
+
+  it('refuses a crafting slot the validator would disconnect for', () => {
+    expect(craftForgeRecipe(17, 5).ok).toBe(false);
+    expect(craftForgeRecipe(17, -1).ok).toBe(false);
+    expect(sent).toHaveLength(0);
+  });
+
+  it('refuses non-positive recipe ids on both paths', () => {
+    expect(startTreeCraft(0).ok).toBe(false);
+    expect(craftForgeRecipe(0).ok).toBe(false);
     expect(sent).toHaveLength(0);
   });
 });

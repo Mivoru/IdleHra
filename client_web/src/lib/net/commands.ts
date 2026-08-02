@@ -99,19 +99,47 @@ export function withdrawFromBank(bankRowId: number): CommandOutcome {
 }
 
 // ---------------------------------------------------------------------------
-// Crafting
+// Crafting - TWO SEPARATE SYSTEMS WITH CONFUSABLE NAMES
 // ---------------------------------------------------------------------------
 
-/**
- * Crafting does NOT use TargetId. The recipe rides on TargetRecipeId and the
- * queue slot on CraftingSlotIndex - both dedicated fields.
- */
-export function craftItem(recipeId: number, craftingSlotIndex = 0): CommandOutcome {
-  if (!Number.isInteger(recipeId) || recipeId <= 0) {
+// Modul: there are two recipe tables and two commands, and the names point the
+// opposite way from what you would guess:
+//
+//   ContentRegistry.Recipes  (103 entries, /api/v1/crafting/recipes)
+//     -> CommandType.InitializeCrafting (18), RESULT ITEM ID on TargetId
+//   CraftingReceptuary       (the Forge's own, /api/v1/forge/inventory)
+//     -> CommandType.CraftItem (42), RECIPE ID on TargetRecipeId
+//
+// So `CraftItem` does NOT craft from the crafting tree, despite the name.
+// Wiring the tree to it is not merely broken, it is dangerous:
+// ValidateCraftingRequest DISCONNECTS when TargetRecipeId is not a
+// CraftingReceptuary recipe, and where the two id spaces happen to overlap the
+// request silently addresses a completely different recipe instead. Both
+// failure modes were reachable from one wrong line, and neither says anything.
+
+/** Crafting tree. `resultItemId` is ContentRegistry's ResultItemId. */
+export function startTreeCraft(resultItemId: number): CommandOutcome {
+  if (!Number.isInteger(resultItemId) || resultItemId <= 0) {
     return refuse('Pick a recipe.');
   }
-  if (!Number.isInteger(craftingSlotIndex) || craftingSlotIndex < 0) {
-    return refuse('Invalid crafting slot.');
+
+  connection.send({ Command: CommandType.InitializeCrafting, TargetId: resultItemId });
+  return OK;
+}
+
+/**
+ * Forge equipment crafting. `recipeId` MUST come from /api/v1/forge/inventory -
+ * that endpoint returns CraftingReceptuary ids and is the only way this client
+ * can know one is real. There is no client-side recipe table to check against,
+ * and an unknown id disconnects rather than being rejected.
+ */
+export function craftForgeRecipe(recipeId: number, craftingSlotIndex = 0): CommandOutcome {
+  if (!Number.isInteger(recipeId) || recipeId <= 0) {
+    return refuse('Pick a forge recipe.');
+  }
+  // ValidateCraftingRequest disconnects at >= 5.
+  if (!Number.isInteger(craftingSlotIndex) || craftingSlotIndex < 0 || craftingSlotIndex >= 5) {
+    return refuse('Crafting slot must be 0-4.');
   }
 
   connection.send({
