@@ -5,6 +5,7 @@
   import { playerState } from '../lib/stores/game';
   import { queryKeys, fetchInventory } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
+  import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import { resolveSlotIndex, EQUIPMENT_SLOTS } from '../lib/ui/slots';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import Affixes from '../lib/ui/Affixes.svelte';
@@ -80,7 +81,13 @@
           {@const slot = resolveSlotIndex(item.BaseItemId)}
           <li>
             <div class="line">
+              <ItemIcon
+                baseItemId={item.BaseItemId}
+                name={prettifyBaseId(item.BaseItemId)}
+                qualityTier={item.QualityTier}
+              />
               <span
+                class="grow"
                 style="color: {rarityColor(item.QualityTier)}"
                 class:rarity-glow={shouldGlow(item.QualityTier)}
               >
@@ -126,7 +133,16 @@
         <tbody>
           {#each stacks as stack (stack.ItemId)}
             <tr>
-              <td>{prettifyBaseId(stack.ItemId)}</td>
+              <td class="matcell">
+                <!-- Materials carry no quality tier, so the icon frame stays
+                     neutral rather than claiming a rarity they do not have. -->
+                <ItemIcon
+                  baseItemId={stack.ItemId}
+                  name={prettifyBaseId(stack.ItemId)}
+                  size="sm"
+                />
+                <span>{prettifyBaseId(stack.ItemId)}</span>
+              </td>
               <td class="num">{stack.BackpackQuantity.toLocaleString()}</td>
               <td class="num">{stack.StashQuantity.toLocaleString()}</td>
             </tr>
@@ -199,9 +215,21 @@
 
   .line {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     gap: 0.6rem;
+  }
+
+  /* The name absorbs the slack so the action button stays flush right now
+     that an icon leads the row. */
+  .grow {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .matcell {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
   }
 
   .tiny-btn {

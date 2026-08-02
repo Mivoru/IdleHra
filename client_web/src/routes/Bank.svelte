@@ -5,6 +5,7 @@
   import { depositToBank, withdrawFromBank } from '../lib/net/commands';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
+  import ItemIcon from '../lib/ui/ItemIcon.svelte';
 
   const client = useQueryClient();
   const bank = createQuery(() => ({ queryKey: queryKeys.bank, queryFn: fetchBank }));
@@ -58,6 +59,12 @@
       <ul class="items">
         {#each depositable as item (item.Id)}
           <li>
+            <ItemIcon
+              baseItemId={item.BaseItemId}
+              name={prettifyBaseId(item.BaseItemId)}
+              qualityTier={item.QualityTier}
+              size="sm"
+            />
             <span
               style="color: {rarityColor(item.QualityTier)}"
               class:rarity-glow={shouldGlow(item.QualityTier)}
@@ -89,6 +96,12 @@
       <ul class="items">
         {#each bank.data ?? [] as entry (entry.Id)}
           <li>
+            <ItemIcon
+              baseItemId={entry.BaseItemId}
+              name={prettifyBaseId(entry.BaseItemId)}
+              qualityTier={entry.QualityTier}
+              size="sm"
+            />
             <span
               style="color: {rarityColor(entry.QualityTier)}"
               class:rarity-glow={shouldGlow(entry.QualityTier)}
@@ -160,7 +173,7 @@
 
   .items li {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: auto 1fr auto auto;
     gap: 0.5rem;
     align-items: center;
     font-size: 0.85rem;

@@ -5,6 +5,7 @@
   import { loadContent, REGION_COUNT, type ContentRegistry } from '../lib/net/content';
   import { playerState } from '../lib/stores/game';
   import Bar from '../lib/ui/Bar.svelte';
+  import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
 
   const codex = createQuery(() => ({ queryKey: queryKeys.codex, queryFn: fetchCodex }));
 
@@ -124,6 +125,15 @@
             {@const entry = byMonster.get(monster.Id)}
             <li class:unseen={!entry || entry.Kills === 0}>
               <div class="line">
+                <!-- Unencountered monsters render as a silhouette, so the
+                     codex reads as "something is here you have not met"
+                     rather than as an empty row. -->
+                <MonsterPortrait
+                  monsterId={monster.Id}
+                  name={monster.Name}
+                  size="sm"
+                  unknown={!entry || entry.Kills === 0}
+                />
                 <span class="name">{monster.Name}</span>
                 <span class="dim tiny">
                   {#if entry && entry.Kills > 0}
@@ -264,10 +274,16 @@
 
   .line {
     display: flex;
-    justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
     gap: 0.5rem;
     margin-bottom: 0.2rem;
+  }
+
+  /* The name takes the slack so the stats stay right-aligned now that a
+     portrait sits at the start of the row. */
+  .line .name {
+    flex: 1;
+    min-width: 0;
   }
 
   .name {

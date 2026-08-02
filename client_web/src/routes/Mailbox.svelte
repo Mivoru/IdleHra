@@ -12,6 +12,7 @@
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import { play } from '../lib/ui/audio';
+  import ItemIcon from '../lib/ui/ItemIcon.svelte';
 
   const client = useQueryClient();
   const mailbox = createQuery(() => ({ queryKey: queryKeys.mailbox, queryFn: fetchMailbox }));
@@ -110,6 +111,13 @@
           <li>
             <div class="what">
               {#if entry.BaseItemId}
+                <ItemIcon
+                  baseItemId={entry.BaseItemId}
+                  name={prettifyBaseId(entry.BaseItemId)}
+                  qualityTier={entry.QualityTier}
+                  quantity={entry.Quantity}
+                  size="sm"
+                />
                 <span
                   class="name"
                   style="color: {rarityColor(entry.QualityTier)}"

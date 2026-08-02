@@ -41,4 +41,20 @@
     </None>
   </ItemGroup>
 
+  <!-- Modul: the generated 2D artwork, linked for exactly the same reason as
+       the audio above - one copy, shared, so the two clients cannot drift on
+       what a Magma Wyrm looks like. `.meta` files are Unity's own bookkeeping
+       and are excluded; the directory structure is preserved because the
+       filenames are only unique within a location folder.
+
+       206 PNGs is a few megabytes, which is fine to copy on build. If this
+       grows into hundreds of megabytes, move it behind a CDN rather than
+       making the build slower. -->
+  <ItemGroup>
+    <None Include="../../client/Assets/Images/Sprites/**/*.png" Exclude="../../client/Assets/Images/Sprites/**/*.meta">
+      <Link>Sprites/%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

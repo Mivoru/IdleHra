@@ -578,6 +578,18 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath.StartsWith("/sprites/", StringComparison.Ordinal) && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleSpriteFile(context, requestPath.Substring("/sprites/".Length));
+                        continue;
+                    }
+
+                    if (requestPath == "/sprites" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleSpriteManifest(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/assets/handshake" && context.Request.HttpMethod == "POST")
                     {
                         string expectedHash = Environment.GetEnvironmentVariable("ExpectedCatalogHash") ?? string.Empty;
@@ -3276,6 +3288,126 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Audio file error for '{fileName}': {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: the generated 2D artwork, served the same way the audio is.
+        //
+        // Unlike audio, the sprite tree is NESTED and its filenames contain
+        // spaces and ampersands ("Tools&Equipment/Melee weapons/Doom Edge.png"),
+        // because they were authored for a Unity import rather than for a URL.
+        // Renaming them would break the Unity-side AssetRegistryBuilder, so the
+        // path is validated segment by segment instead.
+        //
+        // The pattern below permits exactly the characters those names actually
+        // use and nothing else. A ".." segment cannot match it, so path
+        // traversal is impossible by construction rather than by sanitisation -
+        // the same reasoning HandleAudioFile uses, extended to a subpath.
+        private static readonly System.Text.RegularExpressions.Regex SpriteSegmentPattern =
+            new(@"^[A-Za-z0-9 _\-&'.]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        private static string SpritesDirectory => System.IO.Path.Combine(AppContext.BaseDirectory, "Sprites");
+
+        private async Task HandleSpriteFile(HttpListenerContext context, string relativePath)
+        {
+            try
+            {
+                string decoded = Uri.UnescapeDataString(relativePath);
+
+                if (!decoded.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                string[] segments = decoded.Split('/');
+                foreach (string segment in segments)
+                {
+                    // An empty segment ("a//b"), a dot segment, or anything
+                    // outside the permitted set is refused rather than cleaned.
+                    if (segment.Length == 0 || segment == "." || segment == ".." || !SpriteSegmentPattern.IsMatch(segment))
+                    {
+                        context.Response.StatusCode = 404;
+                        context.Response.Close();
+                        return;
+                    }
+                }
+
+                string fullPath = System.IO.Path.Combine(SpritesDirectory, System.IO.Path.Combine(segments));
+
+                // Belt and braces: even with the segment check above, the
+                // resolved path is confirmed to still be inside the sprite
+                // root before anything is read.
+                string resolved = System.IO.Path.GetFullPath(fullPath);
+                string root = System.IO.Path.GetFullPath(SpritesDirectory);
+                if (!resolved.StartsWith(root, StringComparison.OrdinalIgnoreCase) || !System.IO.File.Exists(resolved))
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                var info = new System.IO.FileInfo(resolved);
+                string etag = $"\"{info.Length:x}-{info.LastWriteTimeUtc.Ticks:x}\"";
+                if (string.Equals(context.Request.Headers["If-None-Match"], etag, StringComparison.Ordinal))
+                {
+                    context.Response.StatusCode = 304;
+                    context.Response.Headers["ETag"] = etag;
+                    context.Response.Close();
+                    return;
+                }
+
+                byte[] payload = await System.IO.File.ReadAllBytesAsync(resolved);
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "image/png";
+                context.Response.Headers["ETag"] = etag;
+                // Art changes only on a deploy, and a screen can ask for fifty
+                // of these at once, so a long cache matters more here than it
+                // does for the ten sound effects.
+                context.Response.Headers["Cache-Control"] = "public, max-age=604800";
+                context.Response.ContentLength64 = payload.Length;
+                await context.Response.OutputStream.WriteAsync(payload, 0, payload.Length);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Sprite file error for '{relativePath}': {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Lists every sprite as a forward-slashed relative path, so the web
+        // client's generator can build its lookup tables from what actually
+        // shipped rather than from a checked-in list that drifts.
+        private async Task HandleSpriteManifest(HttpListenerContext context)
+        {
+            try
+            {
+                var files = new System.Collections.Generic.List<string>();
+                if (System.IO.Directory.Exists(SpritesDirectory))
+                {
+                    string root = System.IO.Path.GetFullPath(SpritesDirectory);
+                    foreach (string path in System.IO.Directory.EnumerateFiles(root, "*.png", System.IO.SearchOption.AllDirectories))
+                    {
+                        string relative = System.IO.Path.GetRelativePath(root, path).Replace('\\', '/');
+                        if (relative.Split('/').All(s => SpriteSegmentPattern.IsMatch(s))) files.Add(relative);
+                    }
+                }
+
+                files.Sort(StringComparer.Ordinal);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new GameDataManifestResponse { Files = files });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Sprite manifest error: {ex.Message}");
                 context.Response.StatusCode = 500;
             }
 

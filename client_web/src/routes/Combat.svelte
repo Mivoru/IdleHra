@@ -16,6 +16,7 @@
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import Bar from '../lib/ui/Bar.svelte';
   import FloatingDamage from '../lib/ui/FloatingDamage.svelte';
+  import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
 
   let registry = $state<ContentRegistry | null>(null);
   let contentError = $state('');
@@ -128,14 +129,17 @@
 
       {#if activeMonster}
         <FloatingDamage />
-        <div class="hpblock">
-          <span class="dim">Fighting {activeMonster.Name}</span>
-          <Bar
-            value={visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp}
-            max={activeMonster.MaxHp}
-            color="var(--danger)"
-            label={`${Math.round(visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp).toLocaleString()} / ${activeMonster.MaxHp.toLocaleString()}`}
-          />
+        <div class="fighting">
+          <MonsterPortrait monsterId={activeMonster.Id} name={activeMonster.Name} size="lg" />
+          <div class="hpblock grow">
+            <span class="dim">Fighting {activeMonster.Name}</span>
+            <Bar
+              value={visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp}
+              max={activeMonster.MaxHp}
+              color="var(--danger)"
+              label={`${Math.round(visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp).toLocaleString()} / ${activeMonster.MaxHp.toLocaleString()}`}
+            />
+          </div>
         </div>
         <button onclick={stop}>Stop fighting</button>
       {:else}
@@ -159,6 +163,7 @@
           {#each region as monster}
             <li class:selected={selectedMonsterId === monster.Id}>
               <button class="row" onclick={() => selectMonster(monster)}>
+                <MonsterPortrait monsterId={monster.Id} name={monster.Name} size="sm" />
                 <span class="name">{monster.Name}</span>
                 <span class="dim">{monster.MaxHp.toLocaleString()} HP</span>
                 <span class="dim">{monster.BaseXpReward.toLocaleString()} XP</span>
@@ -302,10 +307,24 @@
 
   .row {
     display: grid;
-    grid-template-columns: 1fr auto auto;
+    grid-template-columns: auto 1fr auto auto;
     gap: 0.6rem;
+    align-items: center;
     text-align: left;
     font-size: 0.85rem;
+  }
+
+  /* The portrait sits beside the health bar rather than above it, so the
+     fight reads as one thing at a glance. */
+  .fighting {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+
+  .grow {
+    flex: 1;
+    min-width: 0;
   }
 
   .name {
