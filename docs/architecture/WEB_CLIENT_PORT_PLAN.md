@@ -1,7 +1,7 @@
 # Web Client Port Plan
 
 Status: **Decision gate TAKEN 2026-08-02 - the web client is the direction.**
-Phases 0-5 built, Phase 6 partial. **The Unity client is in feature freeze.**
+Phases 0-5 and 7 built, Phase 6 partial. **The Unity client is in feature freeze.**
 
 Target: a browser-first client (Svelte + TypeScript), packaged for Android and
 iOS with Capacitor later. The existing Unity client stays untouched and
@@ -566,12 +566,32 @@ validation, and push notifications (see 3.2c). Receipt verification is one of
 the nine endpoints the Unity client never called, and the plan already records
 it as a real revenue risk rather than cosmetics.
 
-### Phase 7 - Parity close-out (~10-15 days)
+### Phase 7 - Parity close-out (~10-15 days) - **BUILT**
 
-Tutorial (`TutorialStateMachine` plus highlight and interaction gate),
-localisation (`LocalizationMatrix`, 239 lines, plus the existing
-`localizations.json`), audio via Howler with the ten generated WAVs,
-accessibility, telemetry.
+Tutorial, localisation, audio and a Settings screen carrying the accessibility
+notes. Telemetry is not wired - `ReportUiContextSwitch` and
+`ReportTelemetryBurst` exist, but nothing consumes their output that this port
+needs, so adding calls would be motion without a reader.
+
+- **Audio is served, not copied.** The ten WAVs are LINKED out of
+  `client/Assets/Resources/Audio` by the server csproj - the same technique
+  that shares `TutorialStateMachine.cs` with the test project - and served from
+  `/audio`. Both clients play the same bytes and there is no second copy to
+  drift. Plain Web Audio rather than Howler: ten one-shot clips need decode,
+  gain and play, and a dependency whose value is format fallbacks we do not use
+  is not worth 30 kB.
+- **The tutorial is a port, and that makes it a second source of truth.**
+  `TutorialStateMachine.cs` is pure C# precisely so the server's xUnit suite
+  can compile it verbatim; the TypeScript version mirrors its rules and is
+  covered by tests that mirror the server's own, including the ones that matter
+  most - out-of-order signals are DROPPED not queued, and Settings is never
+  blocked so a tutorial cannot trap a player away from sign-out.
+- **The language index and the wire id are different numbers.**
+  `LocalizationMatrix` indexes 0-3 (En, Cs, De, Pl) while
+  `SwitchLanguage`'s `TargetLanguageId` is 1-4, and 0 is rejected outright.
+- **Localisation covers 28 keys**, so most of this client's text is not
+  translated at all. The Settings screen says so rather than letting a language
+  picker imply full coverage.
 
 ### Totals and honesty about them
 

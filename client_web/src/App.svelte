@@ -18,12 +18,19 @@
   import Codex from './routes/Codex.svelte';
   import Breeding from './routes/Breeding.svelte';
   import Store from './routes/Store.svelte';
+  import Settings from './routes/Settings.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
   import { startSession, endSession, connectionStatus, playerState } from './lib/stores/game';
   import { storedToken, clearToken } from './lib/net/auth';
   import { queryClient } from './lib/net/queryClient';
   import { HALT_REASON_SHORT } from './lib/ui/slots';
+  import { initLanguage, loadTranslations } from './lib/ui/i18n';
+  import { unlockAudio, play } from './lib/ui/audio';
+  import { tutorialStep, currentPrompt, TutorialStep } from './lib/stores/tutorial';
+
+  initLanguage();
+  void loadTranslations();
 
   // 49 screens are modal panels, not URLs, so this is a screen store rather
   // than a router - closer to the existing design and one dependency fewer.
@@ -47,6 +54,7 @@
     { key: 'codex', label: 'Codex' },
     { key: 'breeding', label: 'Breeding' },
     { key: 'store', label: 'Store' },
+    { key: 'settings', label: 'Settings' },
   ] as const;
 
   type ScreenKey = (typeof SCREENS)[number]['key'];
@@ -57,6 +65,19 @@
       startSession(token);
       return () => endSession();
     }
+  });
+
+  // Browsers refuse to start an AudioContext before a user gesture, so the
+  // first click anywhere arms it. Registered once and then left alone - a
+  // context that never got a gesture plays nothing and says nothing.
+  function armAudioOnFirstGesture() {
+    unlockAudio();
+    play('buttonClick');
+    window.removeEventListener('pointerdown', armAudioOnFirstGesture);
+  }
+  $effect(() => {
+    window.addEventListener('pointerdown', armAudioOnFirstGesture);
+    return () => window.removeEventListener('pointerdown', armAudioOnFirstGesture);
   });
 
   function signOut() {
@@ -154,6 +175,16 @@
       <Breeding />
     {:else if screen === 'store'}
       <Store />
+    {:else if screen === 'settings'}
+      <Settings />
+    {/if}
+
+    {#if $tutorialStep > TutorialStep.Inactive && $tutorialStep < TutorialStep.Completed}
+      <div class="tutorial" role="status">
+        <strong>Step {$tutorialStep} of 3</strong>
+        <span>{currentPrompt()}</span>
+        <button onclick={() => (screen = 'settings')}>Skip</button>
+      </div>
     {/if}
 
     <OfflineSummary />
@@ -225,6 +256,23 @@
   .phase[data-phase='reconnecting'],
   .phase[data-phase='failed'] {
     color: var(--danger);
+  }
+
+  .tutorial {
+    position: fixed;
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.55rem 0.9rem;
+    background: var(--bg-raised);
+    border: 1px solid var(--accent);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    z-index: 40;
   }
 
   .banner {

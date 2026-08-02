@@ -26,4 +26,19 @@
     </None>
   </ItemGroup>
 
+  <!-- Modul: web client port, Phase 7. The ten generated sound effects are
+       LINKED from the Unity client's Resources folder rather than copied into
+       a second location, exactly as TutorialStateMachine.cs is linked into the
+       test project. Both clients then play the same bytes, and there is no
+       second copy to drift.
+
+       Serving them over HTTP is what lets the browser build have audio at all;
+       Unity reads the same files off disk. -->
+  <ItemGroup>
+    <None Include="../../client/Assets/Resources/Audio/*.wav">
+      <Link>Audio/%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

@@ -560,6 +560,24 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: web client port, Phase 7. The same ten sound
+                    // effects the Unity client loads from Resources/Audio,
+                    // linked into this project's output by the csproj rather
+                    // than copied - see that link's own comment. Unauthenticated
+                    // for the same reason the content files are: they ship
+                    // inside the Unity app bundle already.
+                    if (requestPath.StartsWith("/audio/", StringComparison.Ordinal) && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleAudioFile(context, requestPath.Substring("/audio/".Length));
+                        continue;
+                    }
+
+                    if (requestPath == "/audio" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleAudioManifest(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/assets/handshake" && context.Request.HttpMethod == "POST")
                     {
                         string expectedHash = Environment.GetEnvironmentVariable("ExpectedCatalogHash") ?? string.Empty;
@@ -3208,6 +3226,91 @@ namespace FolkIdle.Server.Network
         // of hardcoding the list - the Unity client hardcodes it, and that
         // hardcoded list is exactly the kind of second copy the port plan
         // says must not be created.
+        private static readonly System.Text.RegularExpressions.Regex AudioFileNamePattern =
+            new(@"^[A-Za-z0-9_\-]+\.wav$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        private static string AudioDirectory => System.IO.Path.Combine(AppContext.BaseDirectory, "Audio");
+
+        // Same shape as HandleGameDataFile: the name is validated rather than
+        // sanitized, so a request that is not exactly "word.wav" is rejected
+        // outright and path traversal never needs reasoning about.
+        private async Task HandleAudioFile(HttpListenerContext context, string fileName)
+        {
+            try
+            {
+                if (!AudioFileNamePattern.IsMatch(fileName))
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                string fullPath = System.IO.Path.Combine(AudioDirectory, fileName);
+                if (!System.IO.File.Exists(fullPath))
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                var info = new System.IO.FileInfo(fullPath);
+                string etag = $"\"{info.Length:x}-{info.LastWriteTimeUtc.Ticks:x}\"";
+                if (string.Equals(context.Request.Headers["If-None-Match"], etag, StringComparison.Ordinal))
+                {
+                    context.Response.StatusCode = 304;
+                    context.Response.Headers["ETag"] = etag;
+                    context.Response.Close();
+                    return;
+                }
+
+                byte[] payload = await System.IO.File.ReadAllBytesAsync(fullPath);
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "audio/wav";
+                context.Response.Headers["ETag"] = etag;
+                // Sound effects change only on a deploy and are fetched once
+                // per session, so a long cache is safe and saves ten requests.
+                context.Response.Headers["Cache-Control"] = "public, max-age=86400";
+                context.Response.ContentLength64 = payload.Length;
+                await context.Response.OutputStream.WriteAsync(payload, 0, payload.Length);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Audio file error for '{fileName}': {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private async Task HandleAudioManifest(HttpListenerContext context)
+        {
+            try
+            {
+                var files = new System.Collections.Generic.List<string>();
+                if (System.IO.Directory.Exists(AudioDirectory))
+                {
+                    foreach (string path in System.IO.Directory.EnumerateFiles(AudioDirectory, "*.wav"))
+                    {
+                        string name = System.IO.Path.GetFileName(path);
+                        if (AudioFileNamePattern.IsMatch(name)) files.Add(name);
+                    }
+                }
+
+                files.Sort(StringComparer.Ordinal);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new GameDataManifestResponse { Files = files });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Audio manifest error: {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
         private async Task HandleGameDataManifest(HttpListenerContext context)
         {
             try

@@ -17,6 +17,8 @@ import {
 } from '../net/interpolation';
 import { DamageFeed, type DamageEvent } from './damage';
 import { CommandResultFeed, COMMAND_RESULT_SUCCESS, type CommandResultEntry } from './commandResults';
+import { initTutorial, notifyItemLooted, notifyItemCrafted, notifyCombatWon } from './tutorial';
+import { play } from '../ui/audio';
 import type { StateUpdate, ResponseChatMessage, ResponseLootDrop } from '../net/protocol.generated';
 
 // ---------------------------------------------------------------------------
@@ -57,6 +59,13 @@ const interpolator = new SnapshotInterpolator();
 export const visualState = writable<InterpolatedFields | null>(null);
 
 let animationHandle = 0;
+
+// Tutorial and audio edge detection. -1 / 0 mean "no baseline yet", so the
+// first packet of a session never fires a cue for progress made while away.
+let tutorialArmed = false;
+let lastCraftedCount = -1;
+let lastLevel = 0;
+let lastMonsterHp = 0;
 
 // ---------------------------------------------------------------------------
 // Floating damage
@@ -220,6 +229,10 @@ export function startSession(token: string): void {
   // A different account has a different maximum; carrying the old one over
   // would scale the new player's bar against a stranger's health.
   observedMaxPlayerHp.set(1);
+  tutorialArmed = false;
+  lastCraftedCount = -1;
+  lastLevel = 0;
+  lastMonsterHp = 0;
   commandResultFeed.reset();
   commandResults.set([]);
   visualState.set(null);
@@ -261,6 +274,15 @@ export function startSession(token: string): void {
       // Fed from the AUTHORITATIVE packet, never the interpolated value - the
       // smoothed number passes through every intermediate value on its way,
       // which would turn one hit into a blizzard of fictional tiny ones.
+      // A monster's health reaching zero on a snapshot that still names it is
+      // the only "you won" signal available - see damage.ts for why this wire
+      // carries no combat events at all.
+      if (lastMonsterHp > 0 && packet.CurrentMonsterHp <= 0 && packet.CurrentMonsterId > 0) {
+        notifyCombatWon();
+        play('monsterDefeated');
+      }
+      lastMonsterHp = packet.CurrentMonsterHp;
+
       const hit = damageFeed.push({
         monsterId: packet.CurrentMonsterId,
         monsterHp: packet.CurrentMonsterHp,
@@ -277,6 +299,28 @@ export function startSession(token: string): void {
         arrivedAtMs,
       );
       if (results.length > 0) commandResults.update((entries) => [...entries, ...results]);
+
+      // Modul: the tutorial arms from IsFreshAccount - the server's own signal
+      // that this account's first character has never aged - which is the same
+      // thing UiTutorialController keys off. Armed once, on the first packet.
+      if (!tutorialArmed) {
+        tutorialArmed = true;
+        initTutorial(packet.IsFreshAccount !== 0);
+      }
+
+      // Modul: TotalItemsCraftedCount RISING is how a finished craft is
+      // detected - there is no craft-completed event on this wire, and the
+      // Unity tutorial controller reads the same counter for the same reason.
+      // It sat at a hardcoded zero until 2026-08-01, which made that tutorial
+      // step impossible to complete.
+      if (lastCraftedCount >= 0 && packet.TotalItemsCraftedCount > lastCraftedCount) {
+        notifyItemCrafted();
+        play('craftingCompleted');
+      }
+      lastCraftedCount = packet.TotalItemsCraftedCount;
+
+      if (lastLevel > 0 && packet.CurrentLevel > lastLevel) play('levelUp');
+      lastLevel = packet.CurrentLevel;
 
       if (packet.OfflineSummaryTick !== lastOfflineSummaryTick) {
         const isFirstPacketOfSession = lastOfflineSummaryTick === -1;
@@ -324,6 +368,9 @@ export function startSession(token: string): void {
     },
 
     onLootDrop: (packet: ResponseLootDrop) => {
+      notifyItemLooted();
+      play(packet.QualityTier >= 10 ? 'lootRare' : 'lootDropped');
+
       lootLog.update((entries) => {
         const next: LootEntry[] = [
           {
