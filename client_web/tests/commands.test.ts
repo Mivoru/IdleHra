@@ -9,6 +9,8 @@ vi.mock('../src/lib/net/connection', () => ({
     send: (draft: Record<string, unknown>) => {
       sent.push(draft);
     },
+    // Mentorship refuses self-targeting, so the guard needs an identity.
+    currentPlayerId: 0,
   },
 }));
 
@@ -21,6 +23,15 @@ const {
   craftForgeRecipe,
   executeForgeFusion,
   rerollAffix,
+  addFriend,
+  removeFriend,
+  blockPlayer,
+  unblockPlayer,
+  contributeToWarSupply,
+  launchGuildRaid,
+  contributeGuildGold,
+  establishMentorship,
+  terminateMentorship,
 } = await import('../src/lib/net/commands');
 const { CommandType } = await import('../src/lib/net/protocol.generated');
 
@@ -159,6 +170,102 @@ describe('forge fusion', () => {
     expect(executeForgeFusion(0, 2, 3, 5).ok).toBe(false);
     expect(executeForgeFusion(1, 0, 3, 5).ok).toBe(false);
     expect(executeForgeFusion(1, 2, 0, 5).ok).toBe(false);
+    expect(sent).toHaveLength(0);
+  });
+});
+
+describe('relationships', () => {
+  it('routes all four through TargetPlayerId, never TargetId', () => {
+    // Neighbouring commands use TargetId for their own purposes, so this is
+    // the field that matters rather than the obvious-looking one.
+    addFriend(42);
+    removeFriend(42);
+    blockPlayer(42);
+    unblockPlayer(42);
+
+    expect(sent.map((c) => c.Command)).toEqual([
+      CommandType.AddFriend,
+      CommandType.RemoveFriend,
+      CommandType.BlockPlayer,
+      CommandType.UnblockPlayer,
+    ]);
+    for (const command of sent) {
+      expect(command.TargetPlayerId).toBe(42);
+      expect(command.TargetId).toBeUndefined();
+    }
+  });
+
+  it('refuses a non-positive or out-of-range player id', () => {
+    // The field is a uint on the wire, so anything above 2^32 would wrap
+    // silently into a different player.
+    expect(addFriend(0).ok).toBe(false);
+    expect(addFriend(-1).ok).toBe(false);
+    expect(blockPlayer(0x1_0000_0000).ok).toBe(false);
+    expect(sent).toHaveLength(0);
+  });
+});
+
+describe('guild war, raids and treasury', () => {
+  it('puts the war commodity on SecondaryId and the amount on TertiaryId', () => {
+    expect(contributeToWarSupply(3, 100, 7).ok).toBe(true);
+    expect(sent[0]).toMatchObject({
+      Command: CommandType.ContributeToWarSupply,
+      SecondaryId: 3,
+      TertiaryId: 100,
+    });
+    // This command genuinely carries no TargetId.
+    expect(sent[0].TargetId).toBeUndefined();
+  });
+
+  it('refuses a war contribution with no active war', () => {
+    // The dispatcher silently ignores it otherwise - no error, no effect.
+    expect(contributeToWarSupply(3, 100, 0).ok).toBe(false);
+    expect(sent).toHaveLength(0);
+  });
+
+  it('sends a raid with no payload at all', () => {
+    expect(launchGuildRaid(true).ok).toBe(true);
+    expect(sent[0]).toEqual({ Command: CommandType.LaunchGuildRaid });
+  });
+
+  it('refuses a raid or treasury gift without a guild - both disconnect', () => {
+    expect(launchGuildRaid(false).ok).toBe(false);
+    expect(contributeGuildGold(100, false).ok).toBe(false);
+    expect(sent).toHaveLength(0);
+  });
+
+  it('marks a gold contribution with TargetId 0 and the amount on LimitPrice', () => {
+    // TargetId == 0 is what makes it gold; anything else is an item instance.
+    expect(contributeGuildGold(500, true).ok).toBe(true);
+    expect(sent[0]).toMatchObject({
+      Command: CommandType.ContributeGuildTreasury,
+      TargetId: 0,
+      LimitPrice: 500,
+    });
+  });
+
+  it('refuses a non-positive gold amount, which disconnects', () => {
+    expect(contributeGuildGold(0, true).ok).toBe(false);
+    expect(sent).toHaveLength(0);
+  });
+});
+
+describe('mentorship', () => {
+  it('sends only the counterparty, because the validator rejects anything else', () => {
+    // ValidateMentorshipRequest disconnects if MentorshipRole is non-zero or
+    // either Guid field is set - those checks exist to reject tampering, so
+    // the client must send neither.
+    expect(establishMentorship(88).ok).toBe(true);
+    expect(sent[0]).toEqual({
+      Command: CommandType.EstablishMentorship,
+      TargetPlayerId: 88,
+    });
+  });
+
+  it('refuses targeting yourself, which disconnects', () => {
+    // connection.currentPlayerId is 0 in this mock, so 0 doubles as "self".
+    expect(establishMentorship(0).ok).toBe(false);
+    expect(terminateMentorship(0).ok).toBe(false);
     expect(sent).toHaveLength(0);
   });
 });

@@ -284,3 +284,94 @@ export function blockPlayer(targetPlayerId: number): CommandOutcome {
 export function unblockPlayer(targetPlayerId: number): CommandOutcome {
   return relationshipCommand(CommandType.UnblockPlayer, targetPlayerId, 'unblock');
 }
+
+// ---------------------------------------------------------------------------
+// Guild war, raids and treasury
+// ---------------------------------------------------------------------------
+
+/**
+ * War supply contribution. Unusually for this wire it carries no TargetId at
+ * all: the commodity rides on SecondaryId and the amount on TertiaryId, and
+ * the dispatcher simply ignores the command unless the player is in a guild
+ * WITH an active war. No validator, so nothing disconnects - but nothing
+ * reports either, which is why the screen checks the same preconditions.
+ */
+export function contributeToWarSupply(
+  commodityId: number,
+  quantity: number,
+  guildWarId: number,
+): CommandOutcome {
+  if (guildWarId <= 0) return refuse('Your guild is not in a war right now.');
+  if (!Number.isInteger(commodityId) || commodityId <= 0) return refuse('Pick a commodity.');
+  if (!Number.isInteger(quantity) || quantity <= 0) return refuse('Contribute at least one.');
+
+  connection.send({
+    Command: CommandType.ContributeToWarSupply,
+    SecondaryId: commodityId,
+    TertiaryId: quantity,
+  });
+  return OK;
+}
+
+/**
+ * Raids carry NO payload - the guild is read from the requesting player's own
+ * state, and leader-only enforcement happens server-side against the locked
+ * GuildMembers row. A non-leader's request rolls back with no effect and no
+ * message, so the screen says as much rather than implying it worked.
+ */
+export function launchGuildRaid(hasGuild: boolean): CommandOutcome {
+  if (!hasGuild) return refuse('Join a guild first.');
+  connection.send({ Command: CommandType.LaunchGuildRaid });
+  return OK;
+}
+
+/**
+ * Mirrors ValidateGuildTreasuryContribution, which DISCONNECTS when the player
+ * has no guild, or when a gold contribution carries a non-positive amount.
+ *
+ * TargetId == 0 means "this is gold, the amount is on LimitPrice"; anything
+ * else is an equipment instance id. Two different meanings for one field
+ * again, distinguished only by whether it is zero.
+ */
+export function contributeGuildGold(amount: number, hasGuild: boolean): CommandOutcome {
+  if (!hasGuild) return refuse('Join a guild first.');
+  if (!Number.isInteger(amount) || amount <= 0) return refuse('Contribute at least one gold.');
+
+  connection.send({
+    Command: CommandType.ContributeGuildTreasury,
+    TargetId: 0,
+    LimitPrice: amount,
+  });
+  return OK;
+}
+
+// ---------------------------------------------------------------------------
+// Mentorship
+// ---------------------------------------------------------------------------
+
+/**
+ * Mirrors ValidateMentorshipRequest, which DISCONNECTS on four separate
+ * conditions - and three of them are about fields the screen never sets:
+ * a zero target, targeting YOURSELF, a non-zero MentorshipRole, or either Guid
+ * field being non-empty. The last two exist to reject a tampered packet, so
+ * this function deliberately sends nothing but the target.
+ */
+function mentorshipCommand(command: number, counterpartyPlayerId: number): CommandOutcome {
+  if (!Number.isInteger(counterpartyPlayerId) || counterpartyPlayerId <= 0) {
+    return refuse('Pick a player.');
+  }
+  if (counterpartyPlayerId === connection.currentPlayerId) {
+    return refuse('You cannot mentor yourself.');
+  }
+
+  connection.send({ Command: command, TargetPlayerId: counterpartyPlayerId });
+  return OK;
+}
+
+export function establishMentorship(counterpartyPlayerId: number): CommandOutcome {
+  return mentorshipCommand(CommandType.EstablishMentorship, counterpartyPlayerId);
+}
+
+export function terminateMentorship(counterpartyPlayerId: number): CommandOutcome {
+  return mentorshipCommand(CommandType.TerminateMentorship, counterpartyPlayerId);
+}

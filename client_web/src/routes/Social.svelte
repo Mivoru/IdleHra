@@ -9,7 +9,13 @@
     resolvePlayer,
     fetchPlayerNames,
   } from '../lib/net/rest';
-  import { addFriend, removeFriend, blockPlayer, unblockPlayer } from '../lib/net/commands';
+  import {
+    addFriend,
+    removeFriend,
+    blockPlayer,
+    unblockPlayer,
+    type CommandOutcome,
+  } from '../lib/net/commands';
   import { pushLocalNotice } from '../lib/stores/game';
   import { api } from '../lib/net/config';
   import { storedToken } from '../lib/net/auth';
@@ -55,9 +61,9 @@
     }
   }
 
-  function act(fn: (id: number) => { ok: boolean; reason?: string }, playerId: number) {
-    const outcome = fn(playerId) as { ok: boolean; reason?: string };
-    if (!outcome.ok && outcome.reason) pushLocalNotice(outcome.reason);
+  function act(fn: (id: number) => CommandOutcome, playerId: number) {
+    const outcome = fn(playerId);
+    if (!outcome.ok) pushLocalNotice(outcome.reason);
     refreshFriends();
   }
 

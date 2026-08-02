@@ -12,6 +12,7 @@
   import Forge from './routes/Forge.svelte';
   import Chat from './routes/Chat.svelte';
   import Social from './routes/Social.svelte';
+  import GuildOps from './routes/GuildOps.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
   import { startSession, endSession, connectionStatus, playerState } from './lib/stores/game';
@@ -35,6 +36,7 @@
     { key: 'bank', label: 'Bank' },
     { key: 'chat', label: 'Chat' },
     { key: 'social', label: 'Social' },
+    { key: 'guildops', label: 'War & Raid' },
   ] as const;
 
   type ScreenKey = (typeof SCREENS)[number]['key'];
@@ -130,6 +132,8 @@
       <Chat />
     {:else if screen === 'social'}
       <Social />
+    {:else if screen === 'guildops'}
+      <GuildOps />
     {/if}
 
     <OfflineSummary />

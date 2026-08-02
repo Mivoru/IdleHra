@@ -1,7 +1,7 @@
 # Web Client Port Plan
 
 Status: **Decision gate TAKEN 2026-08-02 - the web client is the direction.**
-Phases 0-3 built, Phase 4 partially built. **The Unity client is in feature freeze.**
+Phases 0-4 built, Phase 5 next. **The Unity client is in feature freeze.**
 
 Target: a browser-first client (Svelte + TypeScript), packaged for Android and
 iOS with Capacitor later. The existing Unity client stays untouched and
@@ -488,14 +488,15 @@ conditions. Budget for it accordingly.
 **Feature freeze on the Unity client starts here.** Past this point, dual
 maintenance is the main cost driver, and only bug fixes should land in Unity.
 
-### Phase 4 - Social (~12-18 days) - **PARTIALLY BUILT**
+### Phase 4 - Social (~12-18 days) - **BUILT**
 
-Built: chat across all three channels, friends with block/unblock, guild
-create/join/directory/roster/applications.
+Chat across all three channels, friends with block/unblock, guild
+create/join/directory/roster/applications, guild war scoreboard and supply
+contribution, raids, guild treasury, logistics depot, and mentorship.
 
-**Not built: guild war, raids, mentorship, and the congratulate button.** Named
-explicitly rather than left implied - a phase reported as done while three of
-its features are missing is how a port reaches "60 percent and stops".
+**Still not built: the congratulate button.** It hangs off an announcement
+flow that has no client-visible trigger yet, so there is nothing to attach it
+to; recorded rather than quietly dropped.
 
 Two things worth carrying forward:
 
