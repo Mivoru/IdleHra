@@ -22,6 +22,12 @@ export const queryKeys = {
   monsterLoot: (monsterId: number) => ['monsters', 'loot', monsterId] as const,
   bank: ['player', 'bank'] as const,
   friends: ['social', 'friends'] as const,
+  achievements: ['meta', 'achievements'] as const,
+  loginBonus: ['meta', 'loginBonus'] as const,
+  leaderboard: ['meta', 'leaderboard'] as const,
+  guildLeaderboard: ['meta', 'leaderboard', 'guilds'] as const,
+  codex: ['meta', 'codex'] as const,
+  raceMastery: ['meta', 'raceMastery'] as const,
   guilds: ['social', 'guilds'] as const,
   guildRoster: ['social', 'guild', 'roster'] as const,
   guildApplications: ['social', 'guild', 'applications'] as const,
@@ -295,4 +301,90 @@ export interface GuildApplication {
 /** Leader-only; returns an empty list for anyone else rather than a 403. */
 export function fetchGuildApplications(): Promise<GuildApplication[]> {
   return authedGet<GuildApplication[]>('/api/v1/guild/applications/pending');
+}
+
+// ---------------------------------------------------------------------------
+// Meta and progression
+// ---------------------------------------------------------------------------
+
+export interface AchievementEntry {
+  AchievementId: number;
+  CurrentProgress: number;
+  CompletedTier: number;
+  NextTierTarget: number;
+  NextTierReward: number;
+  IsClaimed: boolean;
+}
+
+export function fetchAchievements(): Promise<AchievementEntry[]> {
+  return authedGet<AchievementEntry[]>('/api/v1/achievements/snapshot');
+}
+
+export interface LoginBonusState {
+  CurrentStreakDay: number;
+  CreditedToday: boolean;
+  WeeklyGoldSchedule: number[];
+  Day7DiamondBonus: number;
+}
+
+export function fetchLoginBonus(): Promise<LoginBonusState> {
+  return authedGet<LoginBonusState>('/api/v1/login-bonus/state');
+}
+
+export interface LeaderboardEntry {
+  Rank: number;
+  PlayerId: number;
+  DisplayName: string;
+  Level: number;
+  Xp: number;
+}
+
+export function fetchLeaderboard(): Promise<LeaderboardEntry[]> {
+  return authedGet<LeaderboardEntry[]>('/api/v1/leaderboard/global');
+}
+
+/**
+ * Modul: the guild board does NOT reuse the player board's shape, despite the
+ * port plan asserting it did ("the player leaderboard shape already exists").
+ * It returns { Rank, GuildId, Name, GuildTier, GuildMMR } - no DisplayName, no
+ * Xp - and reading it as a player row crashes on undefined.
+ *
+ * Nobody had ever seen this response: the endpoint is implemented and fixed
+ * server-side but NO Unity screen has ever called it, which is exactly why the
+ * plan's assumption about its shape went unchallenged. It is one of the nine
+ * endpoints listed as capability the old client never used, and wiring it here
+ * closes that gap rather than inheriting it.
+ */
+export interface GuildLeaderboardEntry {
+  Rank: number;
+  GuildId: number;
+  Name: string;
+  GuildTier: number;
+  GuildMMR: number;
+}
+
+export function fetchGuildLeaderboard(): Promise<GuildLeaderboardEntry[]> {
+  return authedGet<GuildLeaderboardEntry[]>('/api/v1/leaderboard/guilds');
+}
+
+export interface CodexEntry {
+  MonsterId: number;
+  Level: number;
+  Kills: number;
+  NextLevelKills: number;
+}
+
+export function fetchCodex(): Promise<CodexEntry[]> {
+  return authedGet<CodexEntry[]>('/api/v1/codex/snapshot');
+}
+
+export interface RaceMasteryEntry {
+  RaceId: number;
+  Level: number;
+  Experience: number;
+  NextLevelExperience: number;
+}
+
+export function fetchRaceMastery(): Promise<RaceMasteryEntry[]> {
+  return authedGet<RaceMasteryEntry[]>('/api/v1/mastery/snapshot');
 }

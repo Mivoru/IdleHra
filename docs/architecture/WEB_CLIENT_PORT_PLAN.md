@@ -1,7 +1,7 @@
 # Web Client Port Plan
 
 Status: **Decision gate TAKEN 2026-08-02 - the web client is the direction.**
-Phases 0-4 built, Phase 5 next. **The Unity client is in feature freeze.**
+Phases 0-4 built, Phase 5 mostly built. **The Unity client is in feature freeze.**
 
 Target: a browser-first client (Svelte + TypeScript), packaged for Android and
 iOS with Capacitor later. The existing Unity client stays untouched and
@@ -514,14 +514,32 @@ Two things worth carrying forward:
 `UiChatWindow` is 627 lines with pooled rows, three channels and history. In
 the web version most of that shrinks to a virtual list plus a store.
 
-### Phase 5 - Meta and progression (~15-20 days)
+### Phase 5 - Meta and progression (~15-20 days) - **MOSTLY BUILT**
 
-Achievements, statistics, leaderboards, codex (excluding the 3D viewer), season
-pass, login bonus, race mastery, skill tree, village overview and buildings,
-breeding lab and gene vectors.
+Built: achievements with claiming, statistics, player AND guild leaderboards,
+monster codex with region completion, daily login bonus, race mastery, skill
+tree, village buildings and villagers.
 
-Largest phase by screen count, but the screens are mostly read-only lists -
-fast per screen.
+**Not built: season pass and the breeding lab / gene vectors.** Both need
+endpoints and command shapes that have not been read yet, so they are named
+rather than assumed done.
+
+Two findings, both from the same root cause - assuming a shape instead of
+reading it:
+
+- **The guild leaderboard does NOT reuse the player leaderboard's shape**,
+  despite this document asserting it did. It returns
+  `{ Rank, GuildId, Name, GuildTier, GuildMMR }` - no `DisplayName`, no `Xp` -
+  and reading it as a player row crashes on undefined. Nobody had ever seen the
+  response, because it is one of the nine endpoints no Unity screen calls,
+  which is exactly why the wrong assumption survived in this plan.
+- **Only ONE of the four achievements could actually be claimed.** The claim
+  processor handled the monster-kill id under a comment reading "Other
+  achievements mapped here in future...", while the snapshot endpoint reported
+  all four with real progress and rewards. Every threshold and payout was
+  already authored in `AchievementMilestones`, and `GetDiamondsForTiersCrossed`
+  existed to total them - so the mapping was completed generically, and a fifth
+  achievement now needs no change there at all.
 
 ### Phase 6 - Monetisation and packaging (~10-15 days)
 

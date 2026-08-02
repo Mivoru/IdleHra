@@ -256,22 +256,74 @@ namespace FolkIdle.Server.Engine
 
                             if (!achievement.IsClaimed)
                             {
-                                long volatileKillCount = req.LiveSession.GetCurrentMonsterKills();
+                                // Modul: 2026-08-02. This handled exactly ONE
+                                // of the four achievements, under a comment
+                                // reading "Other achievements mapped here in
+                                // future..." - so Treasury, Forging and
+                                // Logistics could be requested, were accepted
+                                // by the validator, and then silently did
+                                // nothing. /api/v1/achievements/snapshot has
+                                // always reported all four with real progress
+                                // and a real NextTierReward, so a client shows
+                                // a claim button that pays out for one id in
+                                // four and says nothing for the rest.
+                                //
+                                // Nothing here is invented. Every threshold and
+                                // reward is already authored in
+                                // AchievementMilestones, and
+                                // GetDiamondsForTiersCrossed exists precisely
+                                // to total the payout between two tiers - this
+                                // is the mapping the comment promised, written
+                                // generically so a fifth achievement needs no
+                                // change here at all.
+                                int rewardTier = achievement.CompletedTier;
 
-                                // Depending on achievementId, check if requirements met. For example:
-                                // Achievement 1: Kill 10,000 monsters
-                                if (req.AchievementId == AchievementMilestones.MonsterKillAchievementId
-                                    && (achievement.CurrentProgress + volatileKillCount) >= AchievementMilestones.MonsterKillThreshold)
+                                // The monster-kill achievement keeps its own
+                                // path: its progress lives partly in the live
+                                // session (kills since the last flush) rather
+                                // than only in CurrentProgress, so its
+                                // completion cannot be read off the row alone.
+                                if (req.AchievementId == AchievementMilestones.MonsterKillAchievementId)
                                 {
-                                    achievement.IsClaimed = true;
-                                    achievement.CompletedTier = 1;
-                                    var playerRecord = await dbContext.PlayerRecords.FindAsync(new object[] { req.PlayerId }, stoppingToken);
-                                    if (playerRecord != null)
+                                    long volatileKillCount = req.LiveSession.GetCurrentMonsterKills();
+                                    if ((achievement.CurrentProgress + volatileKillCount) >= AchievementMilestones.MonsterKillThreshold)
                                     {
-                                        playerRecord.PremiumDiamonds += AchievementMilestones.MonsterKillReward;
+                                        rewardTier = Math.Max(rewardTier, 1);
                                     }
                                 }
-                                // Other achievements mapped here in future...
+
+                                if (rewardTier > 0)
+                                {
+                                    int diamonds = AchievementMilestones.GetDiamondsForTiersCrossed(
+                                        (int)req.AchievementId, 0, rewardTier);
+
+                                    if (diamonds > 0)
+                                    {
+                                        achievement.IsClaimed = true;
+                                        achievement.CompletedTier = rewardTier;
+
+                                        var playerRecord = await dbContext.PlayerRecords.FindAsync(new object[] { req.PlayerId }, stoppingToken);
+                                        if (playerRecord != null)
+                                        {
+                                            playerRecord.PremiumDiamonds += diamonds;
+
+                                            // Modul: writing PlayerRecords is
+                                            // not enough for an ONLINE player -
+                                            // the live payload owns
+                                            // PremiumCurrency and the next
+                                            // checkpoint flush assigns it back
+                                            // over the top, silently erasing
+                                            // the reward. Same shape as the
+                                            // sweep's own reward-sync fix
+                                            // above, and fixed the same way.
+                                            _registry?.BillingSyncQueue.Enqueue(new BillingSyncNotification
+                                            {
+                                                PlayerId = req.PlayerId,
+                                                PremiumDiamondsBalance = playerRecord.PremiumDiamonds
+                                            });
+                                        }
+                                    }
+                                }
 
                                 await dbContext.SaveChangesAsync(stoppingToken);
                             }

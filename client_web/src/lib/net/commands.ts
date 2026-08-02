@@ -375,3 +375,99 @@ export function establishMentorship(counterpartyPlayerId: number): CommandOutcom
 export function terminateMentorship(counterpartyPlayerId: number): CommandOutcome {
   return mentorshipCommand(CommandType.TerminateMentorship, counterpartyPlayerId);
 }
+
+// ---------------------------------------------------------------------------
+// Progression
+// ---------------------------------------------------------------------------
+
+/** Mirrors ValidateAchievementClaimRequest: a quarantined account cannot claim. */
+export function claimAchievement(achievementId: number, quarantined: boolean): CommandOutcome {
+  if (quarantined) return refuse('Your account is restricted.');
+  if (!Number.isInteger(achievementId) || achievementId <= 0) return refuse('Pick an achievement.');
+
+  connection.send({ Command: CommandType.ClaimAchievementReward, TargetAchievementId: achievementId });
+  return OK;
+}
+
+/** Mirrors ValidateBattlePassClaimRequest: milestone index must be under 50. */
+export function claimBattlePassMilestone(milestoneIndex: number, quarantined: boolean): CommandOutcome {
+  if (quarantined) return refuse('Your account is restricted.');
+  if (!Number.isInteger(milestoneIndex) || milestoneIndex < 0 || milestoneIndex >= 50) {
+    return refuse('That milestone does not exist.');
+  }
+
+  connection.send({ Command: CommandType.ClaimBattlePassReward, TargetMilestoneIndex: milestoneIndex });
+  return OK;
+}
+
+// ---------------------------------------------------------------------------
+// Skills
+// ---------------------------------------------------------------------------
+
+/** ActiveSkillEngine.MaxSkillId. Exactly four skills exist, ids 1-4. */
+export const MAX_SKILL_ID = 4;
+
+function skillCommand(command: number, skillId: number): CommandOutcome {
+  // ValidateSkillCommand disconnects outside 1..MaxSkillId.
+  if (!Number.isInteger(skillId) || skillId < 1 || skillId > MAX_SKILL_ID) {
+    return refuse(`Skill id must be 1-${MAX_SKILL_ID}.`);
+  }
+  connection.send({ Command: command, TargetId: skillId });
+  return OK;
+}
+
+export function unlockSkill(skillId: number, availablePoints: number): CommandOutcome {
+  if (availablePoints <= 0) return refuse('No skill points available.');
+  return skillCommand(CommandType.RequestUnlockSkill, skillId);
+}
+
+export function castSkill(skillId: number): CommandOutcome {
+  return skillCommand(CommandType.RequestCastSkill, skillId);
+}
+
+// ---------------------------------------------------------------------------
+// Village
+// ---------------------------------------------------------------------------
+
+// Modul: VillageManagementEngine's building ids. Not contiguous by theme -
+// 1-4 are the specialist buildings, 5-8 the resource producers, 9-10 the two
+// added later - so the list is authored rather than generated from a range.
+export const BUILDINGS: readonly { id: number; name: string; stateField: string }[] = [
+  { id: 9, name: 'Town Hall', stateField: 'TownHallLevel' },
+  { id: 10, name: 'Crafting Workshop', stateField: 'CraftingWorkshopLevel' },
+  { id: 1, name: 'Forge', stateField: 'ForgeLevel' },
+  { id: 2, name: 'Inn', stateField: 'InnLevel' },
+  { id: 3, name: 'Breeding Grounds', stateField: 'BreedingLevel' },
+  { id: 4, name: 'Mentorship Academy', stateField: 'AcademyLevel' },
+  { id: 5, name: 'Lumberjack', stateField: 'LumberjackLevel' },
+  { id: 6, name: 'Quarry', stateField: 'QuarryLevel' },
+  { id: 7, name: 'Mine', stateField: 'MineLevel' },
+  { id: 8, name: 'Warehouse', stateField: 'WarehouseLevel' },
+];
+
+/**
+ * Modul: ValidateVillageManagementRequest is the strictest validator on this
+ * wire. It DISCONNECTS unless SIXTEEN unrelated fields are all zero, and it
+ * additionally requires that an upgrade carries TargetVillagerSlot == 0 while
+ * an eviction carries TargetBuildingId == 0.
+ *
+ * That is an anti-tamper check, so the only safe way to satisfy it is to send
+ * exactly one field and nothing else - which is why these two functions build
+ * their payload from scratch rather than sharing a helper that might carry a
+ * stray default along.
+ */
+export function upgradeBuilding(buildingId: number): CommandOutcome {
+  if (!BUILDINGS.some((b) => b.id === buildingId)) {
+    return refuse('Unknown building.');
+  }
+  connection.send({ Command: CommandType.UpgradeBuilding, TargetBuildingId: buildingId });
+  return OK;
+}
+
+export function evictVillager(villagerSlot: number): CommandOutcome {
+  if (!Number.isInteger(villagerSlot) || villagerSlot < 0) {
+    return refuse('Pick a villager.');
+  }
+  connection.send({ Command: CommandType.EvictVillager, TargetVillagerSlot: villagerSlot });
+  return OK;
+}

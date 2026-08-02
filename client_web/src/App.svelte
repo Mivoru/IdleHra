@@ -13,6 +13,9 @@
   import Chat from './routes/Chat.svelte';
   import Social from './routes/Social.svelte';
   import GuildOps from './routes/GuildOps.svelte';
+  import Progression from './routes/Progression.svelte';
+  import Village from './routes/Village.svelte';
+  import Codex from './routes/Codex.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
   import { startSession, endSession, connectionStatus, playerState } from './lib/stores/game';
@@ -37,6 +40,9 @@
     { key: 'chat', label: 'Chat' },
     { key: 'social', label: 'Social' },
     { key: 'guildops', label: 'War & Raid' },
+    { key: 'village', label: 'Village' },
+    { key: 'progression', label: 'Progress' },
+    { key: 'codex', label: 'Codex' },
   ] as const;
 
   type ScreenKey = (typeof SCREENS)[number]['key'];
@@ -134,6 +140,12 @@
       <Social />
     {:else if screen === 'guildops'}
       <GuildOps />
+    {:else if screen === 'village'}
+      <Village />
+    {:else if screen === 'progression'}
+      <Progression />
+    {:else if screen === 'codex'}
+      <Codex />
     {/if}
 
     <OfflineSummary />
