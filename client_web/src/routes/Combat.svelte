@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { playerState, visualState, lootLog, connectionStatus } from '../lib/stores/game';
+  import { playerState, visualState, lootLog, connectionStatus, observedMaxPlayerHp } from '../lib/stores/game';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
   import {
@@ -49,14 +49,6 @@
     snap && snap.CurrentMonsterId > 0 ? (registry?.monsters.get(snap.CurrentMonsterId) ?? null) : null,
   );
   const haltMessage = $derived(snap ? (HALT_REASONS[snap.ActivityHaltReason] ?? '') : '');
-
-  // Player max HP is not on the wire; the bar needs a denominator, so it
-  // tracks the highest value seen this session. Honest about being a guess:
-  // it is only used to scale a bar, never to decide anything.
-  let observedMaxPlayerHp = $state(100);
-  $effect(() => {
-    if (snap && snap.PlayerHp > observedMaxPlayerHp) observedMaxPlayerHp = snap.PlayerHp;
-  });
 
   async function selectMonster(monster: MonsterDefinition) {
     selectedMonsterId = monster.Id;
@@ -128,9 +120,9 @@
         <span class="dim">Your health</span>
         <Bar
           value={visual?.PlayerHp ?? snap.PlayerHp}
-          max={observedMaxPlayerHp}
+          max={$observedMaxPlayerHp}
           color="var(--good)"
-          label={`${Math.round(visual?.PlayerHp ?? snap.PlayerHp)} / ${observedMaxPlayerHp}`}
+          label={`${Math.round(visual?.PlayerHp ?? snap.PlayerHp)} / ${$observedMaxPlayerHp}`}
         />
       </div>
 

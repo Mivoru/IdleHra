@@ -114,7 +114,12 @@ describe.skipIf(!LIVE)('live server integration', () => {
               armed = true;
               // Auto-eat off so an empty larder cannot halt a fresh account
               // after one kill, then fight the first canonical monster.
-              connection.send({ Command: CommandType.UpdateAutoEatThreshold, TargetId: 0 });
+              //
+              // The threshold rides on LimitPrice, not TargetId. This was
+              // written with TargetId first, which did nothing - the step
+              // only appeared to work because LimitPrice defaults to 0 and 0
+              // happens to be the value it was trying to set.
+              connection.send({ Command: CommandType.UpdateAutoEatThreshold, LimitPrice: 0 });
               setTimeout(
                 () => connection.send({ Command: CommandType.ChangeActivity, TargetId: 91 }),
                 500,

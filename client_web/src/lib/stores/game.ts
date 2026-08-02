@@ -16,6 +16,7 @@ import {
   type InterpolatedFields,
 } from '../net/interpolation';
 import { DamageFeed, type DamageEvent } from './damage';
+import { CommandResultFeed, type CommandResultEntry } from './commandResults';
 import type { StateUpdate, ResponseChatMessage, ResponseLootDrop } from '../net/protocol.generated';
 
 // ---------------------------------------------------------------------------
@@ -38,6 +39,20 @@ export const isLive: Readable<boolean> = derived(
 // ---------------------------------------------------------------------------
 
 export const playerState = writable<StateUpdate | null>(null);
+
+// Modul: MAX HEALTH IS NOT ON THE WIRE. StateUpdatePacket carries PlayerHp and
+// nothing to scale it against, so a health bar has no honest denominator.
+//
+// Derived here, once, as the highest value seen this session - rather than
+// each screen inventing its own guess, which is how two screens end up
+// disagreeing about the same character. Combat's bar and the Character sheet
+// now read the same number.
+//
+// It is a floor, not a fact: a character that has not been at full health this
+// session reads low, and the bar then looks fuller than it is. Acceptable
+// because this value only ever scales a bar - nothing decides from it - but it
+// is the reason MaxHp belongs on the wire eventually.
+export const observedMaxPlayerHp = writable(1);
 
 // ---------------------------------------------------------------------------
 // Smoothed state
@@ -67,6 +82,11 @@ function pump(): void {
   const before = damageFeed.current.length;
   const kept = damageFeed.prune(now);
   if (kept.length !== before) damageEvents.set(kept);
+
+  commandResults.update((entries) => {
+    const live = entries.filter((e) => now - e.atMs < COMMAND_RESULT_LIFETIME_MS);
+    return live.length === entries.length ? entries : live;
+  });
 
   animationHandle = requestAnimationFrame(pump);
 }
@@ -119,6 +139,20 @@ let chatSequence = 0;
 export const chatLog = writable<ChatEntry[]>([]);
 
 // ---------------------------------------------------------------------------
+// Command results
+// ---------------------------------------------------------------------------
+
+const commandResultFeed = new CommandResultFeed();
+export const commandResults = writable<CommandResultEntry[]>([]);
+
+/** Long enough to read a sentence, short enough not to stack up. */
+const COMMAND_RESULT_LIFETIME_MS = 6000;
+
+export function dismissCommandResult(id: number): void {
+  commandResults.update((entries) => entries.filter((e) => e.id !== id));
+}
+
+// ---------------------------------------------------------------------------
 // Offline summary
 // ---------------------------------------------------------------------------
 
@@ -162,6 +196,11 @@ export function startSession(token: string): void {
   damageEvents.set([]);
   offlineSummary.set(null);
   lastOfflineSummaryTick = -1;
+  // A different account has a different maximum; carrying the old one over
+  // would scale the new player's bar against a stranger's health.
+  observedMaxPlayerHp.set(1);
+  commandResultFeed.reset();
+  commandResults.set([]);
   visualState.set(null);
   playerState.set(null);
 
@@ -179,6 +218,10 @@ export function startSession(token: string): void {
         // after a gap would attribute old hits to the reconnect.
         damageFeed.reset();
         damageEvents.set([]);
+        // The ring buffer survives a reconnect, so the watermark must reprime
+        // or every old rejection pops again on reconnect - and again on the
+        // next one.
+        commandResultFeed.reset();
       }
       if (status.phase === 'idle') stopPump();
     },
@@ -186,6 +229,7 @@ export function startSession(token: string): void {
     onStateUpdate: (packet: StateUpdate) => {
       const arrivedAtMs = performance.timeOrigin + performance.now();
       playerState.set(packet);
+      observedMaxPlayerHp.update((seen) => Math.max(seen, packet.PlayerHp));
 
       interpolator.push(
         extractInterpolated(packet as unknown as Record<string, unknown>),
@@ -202,6 +246,16 @@ export function startSession(token: string): void {
         atMs: arrivedAtMs,
       });
       if (hit !== null) damageEvents.set(damageFeed.current);
+
+      // Turns every silently-rejected command into an explanation. Without
+      // this the player presses a button, nothing happens, and nothing
+      // anywhere says why - which is the exact state the server's result ring
+      // buffer was added to end.
+      const results = commandResultFeed.accept(
+        packet as unknown as Record<string, unknown>,
+        arrivedAtMs,
+      );
+      if (results.length > 0) commandResults.update((entries) => [...entries, ...results]);
 
       if (packet.OfflineSummaryTick !== lastOfflineSummaryTick) {
         const isFirstPacketOfSession = lastOfflineSummaryTick === -1;
@@ -290,6 +344,8 @@ export function endSession(): void {
   interpolator.reset();
   damageFeed.reset();
   damageEvents.set([]);
+  commandResultFeed.reset();
+  commandResults.set([]);
   offlineSummary.set(null);
   playerState.set(null);
   visualState.set(null);

@@ -41,11 +41,32 @@ export const LAST_CANONICAL_MONSTER_ID = 115;
 export const MONSTERS_PER_REGION = 5;
 export const REGION_COUNT = 5;
 
+export interface GatheringNodeDefinition {
+  ActivityId: number;
+  /** 0 Woodcutting, 1 Mining, 2 Fishing, 3 Herbalism. */
+  ProfessionType: number;
+  BaseTickThreshold: number;
+  BaseMasteryXpReward: number;
+}
+
 export interface ContentRegistry {
   monsters: Map<number, MonsterDefinition>;
   items: Map<number, ItemDefinition>;
+  /** Reverse of `items`, because commands carry numeric ids and REST carries BaseIds. */
+  itemsByBaseId: Map<string, ItemDefinition>;
+  gatheringNodes: GatheringNodeDefinition[];
   /** The 25 canonical monsters, grouped into the five regions, in order. */
   regions: MonsterDefinition[][];
+}
+
+/**
+ * Food carries no flag in items.json; the "_food" suffix on its BaseId is the
+ * only marker, and all 14 cooked items use it. Recorded as a convention being
+ * relied on rather than a fact being read - if a food item ever ships without
+ * it, the larder simply will not offer it and nothing will say why.
+ */
+export function isFood(baseItemId: string): boolean {
+  return baseItemId.includes('_food');
 }
 
 async function fetchJson<T>(fileName: string): Promise<T> {
@@ -65,13 +86,15 @@ let cached: ContentRegistry | null = null;
 export async function loadContent(): Promise<ContentRegistry> {
   if (cached !== null) return cached;
 
-  const [monsterList, itemList] = await Promise.all([
+  const [monsterList, itemList, gatheringNodes] = await Promise.all([
     fetchJson<MonsterDefinition[]>('monsters.json'),
     fetchJson<ItemDefinition[]>('items.json'),
+    fetchJson<GatheringNodeDefinition[]>('gathering_nodes.json'),
   ]);
 
   const monsters = new Map(monsterList.map((m) => [m.Id, m]));
   const items = new Map(itemList.map((i) => [i.Id, i]));
+  const itemsByBaseId = new Map(itemList.map((i) => [i.BaseId, i]));
 
   const regions: MonsterDefinition[][] = [];
   for (let region = 0; region < REGION_COUNT; region++) {
@@ -84,7 +107,7 @@ export async function loadContent(): Promise<ContentRegistry> {
     regions.push(group);
   }
 
-  cached = { monsters, items, regions };
+  cached = { monsters, items, itemsByBaseId, gatheringNodes, regions };
   return cached;
 }
 

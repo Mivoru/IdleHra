@@ -1,8 +1,8 @@
 # client_web
 
-The browser client. Phase 1 of `docs/architecture/WEB_CLIENT_PORT_PLAN.md` -
-a vertical slice, not a port: log in, pick a monster, fight it, watch health,
-loot and progress. Four screens of forty-nine.
+The browser client. Phases 1-2 of `docs/architecture/WEB_CLIENT_PORT_PLAN.md`:
+combat, gathering, character sheet with seven equipment slots and the roster,
+inventory with equip/unequip, larder and auto-eat. Nine screens of forty-nine.
 
 **The Unity client in `client/` is still the shipping client.** Nothing here
 may break it, and nothing here is a reason to change it.
@@ -109,6 +109,33 @@ The cost is staleness - the smoothed value trails the server by up to the cap.
 That is safe **only** because the authoritative snapshot is a separate store:
 anything that decides reads `playerState`, and only things that animate read
 `visualState`. Never decide from an interpolated value.
+
+## Wire details that are easy to get wrong
+
+Each of these was got wrong first, and found in a real browser rather than by
+reading. They are listed because the failure mode in every case was silence.
+
+| Contract | The trap |
+|---|---|
+| An affix KEY is `id[#stack][@rarity]` | `crit_dmg_pct@2` is the id `crit_dmg_pct` at rarity 2. Testing the raw key for a `_pct` suffix fails, and a +6.0% affix renders as "+60". |
+| Affix magnitudes carry TWO units | Flat affixes are whole points, `_pct` affixes are TENTHS of a percent. The discriminator is the `_pct` suffix, not a `flat_` prefix - `armor_pen_flat` exists. |
+| `EquipItem` names the ITEM, `UnequipItem` names the SLOT | `TargetId` is an instance id for one and a slot index 0-6 for the other. Sending an instance id to unequip addresses slot 42 and is silently ignored. |
+| `UpdateAutoEatThreshold` rides on `LimitPrice` | Not `TargetId`. And `LimitPrice` defaults to 0, so getting it wrong does not merely fail - it silently sets the threshold to zero. Out-of-range values DISCONNECT rather than clamp. |
+| `resolveSlotIndex` test ORDER is the contract | 60 real items carry the generic `_armor_slot_` marker as well as their specific one. Testing the generic first files every helmet, glove, boot and legging into the chest slot. |
+| Gathering ids are 1000-4999 | 101-412 was the pre-move numbering and those are MONSTERS now, because the two id spaces once collided and gathering moved. |
+
+## Command results
+
+`StateUpdate` carries a four-slot ring buffer of `CommandResultCode`s, and the
+client surfaces them as toasts. Without it every rejected command is a button
+that does nothing and says nothing - which is the state the ring buffer was
+added to end.
+
+It is a RING, not a scalar, so a client that missed one broadcast while two
+commands were rejected still sees both. `ResultTick` is monotonic and never
+reset, so the client tracks a watermark; binding to "code != 0" would toast the
+same rejection on every packet forever, and replaying the buffer on connect
+would toast commands issued minutes ago.
 
 ## What is deliberately not here
 
