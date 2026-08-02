@@ -177,6 +177,25 @@ function generate(schema) {
   lines.push('];');
   lines.push('');
 
+  // The same idea for the account-erasure interlock. Its hash multiplies in
+  // wrapping uint32, which a plain JavaScript `*` gets right for small inputs
+  // and silently wrong for large ones, and the command it gates is the one
+  // that cannot be undone.
+  lines.push('/** Server-computed GDPR confirmation hashes. See tests/antiCheat.test.ts. */');
+  lines.push('export const GDPR_CONFIRMATION_VECTORS: readonly {');
+  lines.push('  playerId: number;');
+  lines.push('  logicEpochCounter: number;');
+  lines.push('  expectedHash: number;');
+  lines.push('}[] = [');
+  for (const vector of schema.gdprConfirmationVectors ?? []) {
+    lines.push(
+      `  { playerId: ${vector.playerId}, ` +
+      `logicEpochCounter: ${vector.logicEpochCounter}, expectedHash: ${vector.expectedHash} },`,
+    );
+  }
+  lines.push('];');
+  lines.push('');
+
   return lines.join('\n');
 }
 

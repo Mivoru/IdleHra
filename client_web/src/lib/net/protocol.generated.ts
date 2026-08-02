@@ -384,3 +384,17 @@ export const CHALLENGE_VECTORS: readonly {
   { seed: 305419896, playerId: 4294967298, logicEpochCounter: 5, expectedHash: 675803173 },
   { seed: 1831565813, playerId: 2147483647, logicEpochCounter: 2147483647, expectedHash: 1095946487 },
 ];
+
+/** Server-computed GDPR confirmation hashes. See tests/antiCheat.test.ts. */
+export const GDPR_CONFIRMATION_VECTORS: readonly {
+  playerId: number;
+  logicEpochCounter: number;
+  expectedHash: number;
+}[] = [
+  { playerId: 1, logicEpochCounter: 0, expectedHash: 161968333 },
+  { playerId: 1042, logicEpochCounter: 7, expectedHash: 3835261794 },
+  { playerId: 9, logicEpochCounter: 2147483647, expectedHash: 1801647405 },
+  { playerId: 7, logicEpochCounter: 4294967295, expectedHash: 2958100973 },
+  { playerId: 4294967298, logicEpochCounter: 123456789, expectedHash: 4142868759 },
+  { playerId: 2147483647, logicEpochCounter: 1, expectedHash: 1290345934 },
+];

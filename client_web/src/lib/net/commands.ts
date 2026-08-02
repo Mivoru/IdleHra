@@ -24,6 +24,7 @@
 
 import { connection } from './connection';
 import { CommandType } from './protocol.generated';
+import { computeGdprConfirmationHash } from './antiCheat';
 
 export interface CommandRefusal {
   ok: false;
@@ -77,6 +78,71 @@ export function buyMarketListing(orderId: number): CommandOutcome {
   return OK;
 }
 
+/**
+ * Standing limit order - the resting side of the book, as opposed to the
+ * instant list/buy above.
+ *
+ * The two directions address COMPLETELY DIFFERENT THINGS through the same
+ * TargetId, and the dispatcher decides which by reading `IsBuy`:
+ *
+ *   sell (IsBuy 0) - TargetId is an equipment INSTANCE id you own
+ *   buy  (IsBuy 1) - TargetId is an item DEFINITION id, resolved server-side
+ *                    through ContentRegistry.GetItemBaseId, and QualityTier
+ *                    then narrows which quality the order will fill against
+ *
+ * So a buy order built by copying the sell path sends an instance id where a
+ * definition id belongs. That does not disconnect - it silently posts an order
+ * for whatever item happens to share that number, which is worse.
+ *
+ * ValidatePlaceLimitOrderRequest disconnects on a non-positive price, a
+ * negative quality tier, a non-positive target, and - for BUY orders only - a
+ * target above ContentRegistry.ItemDefinitions.Length. That last bound is the
+ * one this client cannot check from first principles, so the caller passes the
+ * definition count it loaded from /gamedata; passing 0 skips the check rather
+ * than refusing every order, because a missing content table is the screen's
+ * problem to report, not a reason to claim the player picked a bad item.
+ */
+export function placeLimitOrder(options: {
+  isBuy: boolean;
+  /** Instance id when selling, item definition id when buying. */
+  targetId: number;
+  price: number;
+  /** Buy orders only. 0 means "any quality". */
+  qualityTier?: number;
+  /** ContentRegistry.ItemDefinitions.Length. Buy orders above it disconnect. */
+  itemDefinitionCount?: number;
+}): CommandOutcome {
+  const { isBuy, targetId, price } = options;
+
+  if (!Number.isInteger(targetId) || targetId <= 0) {
+    return refuse(isBuy ? 'Pick an item to bid on.' : 'Pick an item to sell.');
+  }
+  const definitionCount = options.itemDefinitionCount ?? 0;
+  if (isBuy && definitionCount > 0 && targetId > definitionCount) {
+    return refuse('That item does not exist.');
+  }
+  if (!Number.isInteger(price) || price <= 0) {
+    return refuse('Set a price above zero.');
+  }
+
+  const qualityTier = Math.max(0, Math.trunc(options.qualityTier ?? 0));
+  if (!isBuy && qualityTier !== 0) {
+    // A sell order's quality comes from the instance itself; sending one here
+    // would be ignored, and ignoring it silently hides a caller's confusion
+    // about which side it is building.
+    return refuse('A sell order takes its quality from the item itself.');
+  }
+
+  connection.send({
+    Command: CommandType.PlaceLimitOrder,
+    TargetId: targetId,
+    LimitPrice: price,
+    IsBuy: isBuy ? 1 : 0,
+    QualityTier: qualityTier,
+  });
+  return OK;
+}
+
 // ---------------------------------------------------------------------------
 // Bank vault
 // ---------------------------------------------------------------------------
@@ -95,6 +161,215 @@ export function withdrawFromBank(bankRowId: number): CommandOutcome {
     return refuse('Pick a stored item to withdraw.');
   }
   connection.send({ Command: CommandType.WithdrawFromBank, TargetId: bankRowId });
+  return OK;
+}
+
+// ---------------------------------------------------------------------------
+// Mailbox
+// ---------------------------------------------------------------------------
+
+/**
+ * Mirrors ValidateMailCommands, which disconnects on a non-positive mail id.
+ *
+ * `mailId` is the MAIL ROW id from /api/v1/mailbox/list, not an item id - the
+ * same distinction the bank draws between a row and an instance, and the same
+ * way to get it wrong.
+ */
+export function claimMailItem(mailId: number): CommandOutcome {
+  if (!Number.isInteger(mailId) || mailId <= 0) {
+    return refuse('Pick a message to claim.');
+  }
+  connection.send({ Command: CommandType.ClaimMailItem, TargetId: mailId });
+  return OK;
+}
+
+// ---------------------------------------------------------------------------
+// World boss
+// ---------------------------------------------------------------------------
+
+/** WorldBossEngine.ActiveBossInstanceId. One boss exists; the id is a constant. */
+export const ACTIVE_BOSS_INSTANCE_ID = 1;
+
+/** WorldBossEngine.MaxAttemptsPerEncounter. */
+export const MAX_BOSS_ATTEMPTS = 3;
+
+/** WorldBossEngine.MaxClientPredictedDamage. Above this the session dies. */
+export const MAX_PREDICTED_DAMAGE = 100_000_000;
+
+/** StateUpdatePacket.WorldBossEventState. */
+export const BossEventState = { Dormant: 0, Active: 1, Concluded: 2 } as const;
+
+/**
+ * Mirrors ValidateWorldBossAttackRequest - and then goes further, because that
+ * validator is only half the story.
+ *
+ * The validator DISCONNECTS on: the event not being active, a zero or
+ * out-of-range predicted damage, a boss id other than the active one, the boss
+ * already being dead, or any of twenty unrelated fields being non-zero.
+ *
+ * ExecuteAttackAsync then SILENTLY ROLLS BACK - no damage, no message, no
+ * telemetry the player will ever see - on three further conditions:
+ *
+ *   - the player has already used all three attempts this encounter
+ *   - the battle session cap has elapsed
+ *   - AUTO-EAT FOOD IS DEPLETED (all three larder slots empty)
+ *
+ * That last one is the cruel one: with an empty larder the button works, the
+ * request is accepted, and absolutely nothing happens. So it is refused here
+ * with an explanation rather than sent into the void.
+ */
+export function attackWorldBoss(options: {
+  predictedDamage: number;
+  eventState: number;
+  bossCurrentHp: number;
+  attemptCount: number;
+  /** True when Food1_Count, Food2_Count and Food3_Count are all zero. */
+  larderEmpty: boolean;
+}): CommandOutcome {
+  const { predictedDamage, eventState, bossCurrentHp, attemptCount, larderEmpty } = options;
+
+  if (eventState !== BossEventState.Active) {
+    return refuse('No world boss is active right now.');
+  }
+  if (bossCurrentHp <= 0) {
+    return refuse('The boss is already dead.');
+  }
+  if (attemptCount >= MAX_BOSS_ATTEMPTS) {
+    return refuse(`You have used all ${MAX_BOSS_ATTEMPTS} attempts this encounter.`);
+  }
+  if (larderEmpty) {
+    return refuse('Stock your larder first - an attack with no food is discarded silently.');
+  }
+
+  const damage = Math.trunc(predictedDamage);
+  if (!Number.isFinite(damage) || damage <= 0 || damage > MAX_PREDICTED_DAMAGE) {
+    return refuse('Cannot estimate your damage right now.');
+  }
+
+  connection.send({
+    Command: CommandType.AttackWorldBoss,
+    TargetedBossId: ACTIVE_BOSS_INSTANCE_ID,
+    ClientPredictedDamage: damage,
+  });
+  return OK;
+}
+
+// ---------------------------------------------------------------------------
+// Consumables
+// ---------------------------------------------------------------------------
+
+/** ValidateConsumableRequest's saturation cap, in 10 Hz ticks - two hours. */
+export const MAX_BUFF_TICKS = 72000;
+
+/**
+ * Mirrors ValidateConsumableRequest, which disconnects when the item is not a
+ * registered consumable OR when the player is already saturated with buff
+ * duration. The saturation case is the one an honest player reaches by simply
+ * drinking two potions in a row, so it is refused here with the remaining wait
+ * rather than allowed to kill the session.
+ *
+ * The item id rides on `ConsumableItemId`, not TargetId - one of the few
+ * commands on this wire with a field of its own for its subject.
+ */
+export function consumeConsumable(
+  consumableItemId: number,
+  remainingBuffTicks: number,
+  slotTarget = 0,
+): CommandOutcome {
+  if (!Number.isInteger(consumableItemId) || consumableItemId <= 0) {
+    return refuse('Pick something to use.');
+  }
+  if (remainingBuffTicks > MAX_BUFF_TICKS) {
+    const waitSeconds = Math.ceil((remainingBuffTicks - MAX_BUFF_TICKS) / 10);
+    return refuse(`Already saturated - wait about ${Math.ceil(waitSeconds / 60)} more minutes.`);
+  }
+
+  connection.send({
+    Command: CommandType.ConsumeConsumableAsset,
+    ConsumableItemId: consumableItemId,
+    ConsumableSlotTarget: Math.max(0, Math.trunc(slotTarget)),
+  });
+  return OK;
+}
+
+// ---------------------------------------------------------------------------
+// Chrono bank - AND THE ONE PLACE LogicEpochCounter MEANS SOMETHING ELSE
+// ---------------------------------------------------------------------------
+
+// Modul: READ THIS BEFORE TOUCHING EITHER FUNCTION BELOW.
+//
+// `LogicEpochCounter` carries TWO DIFFERENT QUANTITIES on this wire, and which
+// one is expected depends on the command:
+//
+//   every other command - the save-generation counter echoed back from the
+//     last StateUpdate (payload.LogicEpochCounter, which advances by one per
+//     checkpoint flush). ValidateEpochSynchronization allows +-5 drift.
+//
+//   ActivateChronoBoost and ConsumeTimeWarpCore - UNIX EPOCH SECONDS, compared
+//     against DateTimeOffset.UtcNow with +-5 SECONDS of tolerance.
+//
+// SimulationEngine skips ValidateEpochSynchronization for exactly these two
+// (`!isChronoManipulationCommand`), which is what makes the reuse possible and
+// what makes it invisible. GameConnection.send stamps the counter on every
+// command, so these two MUST override it - sending the generation counter
+// where a timestamp belongs fails the drift check and kills the session.
+//
+// Note this uses the SERVER-corrected clock. A browser whose clock is more
+// than five seconds off would otherwise be permanently unable to use its own
+// banked time, with no way to tell why.
+
+/** ChronoBufferEngine.MaxBankedChronoSeconds - seven days. */
+export const MAX_BANKED_CHRONO_SECONDS = 604800;
+
+/** The only two multipliers ValidateChronoManipulation accepts. */
+export const CHRONO_MULTIPLIERS = [2, 4] as const;
+
+export function activateChronoBoost(
+  multiplier: number,
+  bankedSeconds: number,
+  quarantined: boolean,
+): CommandOutcome {
+  if (quarantined) return refuse('Your account is restricted.');
+  if (!CHRONO_MULTIPLIERS.includes(multiplier as 2 | 4)) {
+    return refuse('Only 2x and 4x are available.');
+  }
+  if (bankedSeconds <= 0) {
+    return refuse('You have no banked time to spend.');
+  }
+
+  connection.send({
+    Command: CommandType.ActivateChronoBoost,
+    RequestedSpeedMultiplier: multiplier,
+    LogicEpochCounter: Math.floor(connection.serverNowMs() / 1000),
+  });
+  return OK;
+}
+
+export function consumeTimeWarpCore(
+  seconds: number,
+  bankedSeconds: number,
+  quarantined: boolean,
+  targetSlot = 0,
+): CommandOutcome {
+  if (quarantined) return refuse('Your account is restricted.');
+
+  const requested = Math.trunc(seconds);
+  if (!Number.isFinite(requested) || requested <= 0) {
+    return refuse('Choose how much time to spend.');
+  }
+  if (requested > bankedSeconds) {
+    return refuse('You do not have that much banked time.');
+  }
+  if (requested > MAX_BANKED_CHRONO_SECONDS) {
+    return refuse('Seven days is the most that can be spent at once.');
+  }
+
+  connection.send({
+    Command: CommandType.ConsumeTimeWarpCore,
+    ChronoWarpDurationSeconds: requested,
+    ChronoTargetSlot: Math.max(0, Math.trunc(targetSlot)),
+    LogicEpochCounter: Math.floor(connection.serverNowMs() / 1000),
+  });
   return OK;
 }
 
@@ -345,6 +620,149 @@ export function contributeGuildGold(amount: number, hasGuild: boolean): CommandO
   return OK;
 }
 
+/**
+ * Guild depot deposit. Mirrors ValidateGuildDepositRequest, which DISCONNECTS
+ * when the player has no guild, on a zero quantity, on a material id above
+ * ContentRegistry.ItemDefinitions.Length, or when any of FOURTEEN unrelated
+ * fields is non-zero - so this sends exactly two.
+ *
+ * Note this is a different command from `contributeToGuildStock` below despite
+ * both putting materials into a guild: this one addresses the depot through
+ * MaterialId/DepositQuantity, that one the logistics chain through
+ * TargetId/LimitPrice. They are validated by different code with different
+ * rules and reach different engines.
+ */
+export function depositGuildMaterial(
+  materialId: number,
+  quantity: number,
+  hasGuild: boolean,
+  itemDefinitionCount = 0,
+): CommandOutcome {
+  if (!hasGuild) return refuse('Join a guild first.');
+  if (!Number.isInteger(materialId) || materialId <= 0) return refuse('Pick a material.');
+  if (itemDefinitionCount > 0 && materialId > itemDefinitionCount) {
+    return refuse('That material does not exist.');
+  }
+  if (!Number.isInteger(quantity) || quantity <= 0) return refuse('Deposit at least one.');
+
+  connection.send({
+    Command: CommandType.DepositGuildMaterial,
+    MaterialId: materialId,
+    DepositQuantity: quantity,
+  });
+  return OK;
+}
+
+/**
+ * Guild logistics contribution. Mirrors ValidateGuildContributions, which only
+ * checks the quantity - but the dispatcher additionally ignores the command
+ * outright unless the player is in a guild, saying nothing, so that is checked
+ * here too rather than letting the click do nothing.
+ */
+export function contributeToGuildStock(
+  itemDefinitionId: number,
+  quantity: number,
+  hasGuild: boolean,
+): CommandOutcome {
+  if (!hasGuild) return refuse('Join a guild first.');
+  if (!Number.isInteger(itemDefinitionId) || itemDefinitionId <= 0) return refuse('Pick an item.');
+  if (!Number.isInteger(quantity) || quantity <= 0) return refuse('Contribute at least one.');
+
+  connection.send({
+    Command: CommandType.ContributeToGuild,
+    TargetId: itemDefinitionId,
+    LimitPrice: quantity,
+  });
+  return OK;
+}
+
+/**
+ * Volunteers this player's roster as the guild's war defence. Mirrors
+ * ValidateGuildWarAction's defence branch, which disconnects on no guild, a
+ * quarantined account, or any of TargetMatchUuid/ClientPredictedDamage/IsBuy
+ * being set - the three fields that belong to its sibling below. So this
+ * deliberately sends a bare command.
+ */
+export function registerGuildDefense(hasGuild: boolean, quarantined: boolean): CommandOutcome {
+  if (!hasGuild) return refuse('Join a guild first.');
+  if (quarantined) return refuse('Your account is restricted.');
+
+  connection.send({ Command: CommandType.RegisterGuildDefense });
+  return OK;
+}
+
+/** ValidateGuildWarAction's own damage ceiling for a shard attack. */
+export const MAX_SHARD_ATTACK_DAMAGE = 100_000_000;
+
+/**
+ * Cross-shard war attack. Mirrors ValidateGuildWarAction's attack branch: an
+ * empty match uuid, zero or excessive damage, or a uuid that disagrees with
+ * the player's own ActiveCrossShardMatchId all disconnect.
+ *
+ * That last check is the subtle one - once you are IN a match you may only
+ * attack THAT match, so a stale match id left in a screen's state after the
+ * war rolls over kills the session on the next click.
+ */
+export function submitShardAttack(options: {
+  matchUuid: string;
+  predictedDamage: number;
+  hasGuild: boolean;
+  quarantined: boolean;
+  /** payload.ActiveCrossShardMatchId. All-zero uuid means "not in a match yet". */
+  activeMatchUuid: string;
+}): CommandOutcome {
+  const { matchUuid, hasGuild, quarantined, activeMatchUuid } = options;
+  const EMPTY_UUID = '00000000-0000-0000-0000-000000000000';
+
+  if (!hasGuild) return refuse('Join a guild first.');
+  if (quarantined) return refuse('Your account is restricted.');
+  if (!matchUuid || matchUuid === EMPTY_UUID) return refuse('Pick a war target.');
+  if (activeMatchUuid && activeMatchUuid !== EMPTY_UUID && activeMatchUuid !== matchUuid) {
+    return refuse('You are already committed to a different match.');
+  }
+
+  const damage = Math.trunc(options.predictedDamage);
+  if (!Number.isFinite(damage) || damage <= 0 || damage > MAX_SHARD_ATTACK_DAMAGE) {
+    return refuse('Cannot estimate your damage right now.');
+  }
+
+  connection.send({
+    Command: CommandType.SubmitShardAttack,
+    TargetMatchUuid: matchUuid,
+    ClientPredictedDamage: damage,
+  });
+  return OK;
+}
+
+/**
+ * One turn of a guild-versus-guild simulated battle. Mirrors
+ * ValidateCombatTurnRequest: no guild, a zero MatchId, or any of fourteen
+ * unrelated fields being non-zero disconnects - and unusually, so does the
+ * SERVER'S OWN RESULT: if ExecuteCombatTurnAsync returns InvalidRequest or
+ * NotFound it force-disconnects after the fact. A turn submitted against a
+ * match that has already ended therefore kills the session even though nothing
+ * about the packet was malformed, which is why the screen must stop sending
+ * the moment a match leaves the state snapshot.
+ */
+export function executeCombatTurn(
+  matchId: number,
+  predictedTurnCounter: number,
+  hasGuild: boolean,
+): CommandOutcome {
+  if (!hasGuild) return refuse('Join a guild first.');
+  if (!Number.isInteger(matchId) || matchId <= 0) return refuse('No battle is running.');
+
+  const turn = Math.max(0, Math.trunc(predictedTurnCounter));
+  if (turn > 0x7fffffff) return refuse('Battle state is out of date - reopen the screen.');
+
+  connection.send({
+    Command: CommandType.ExecuteCombatTurn,
+    MatchId: matchId,
+    ClientPredictedTurnCounter: turn,
+  });
+  return OK;
+}
+
 // ---------------------------------------------------------------------------
 // Mentorship
 // ---------------------------------------------------------------------------
@@ -374,6 +792,103 @@ export function establishMentorship(counterpartyPlayerId: number): CommandOutcom
 
 export function terminateMentorship(counterpartyPlayerId: number): CommandOutcome {
   return mentorshipCommand(CommandType.TerminateMentorship, counterpartyPlayerId);
+}
+
+/** ValidateMentorshipAssignment's hard slot ceiling, independent of Academy level. */
+export const MAX_MENTOR_SLOTS = 5;
+
+/**
+ * Seats one of your own characters in an Academy mentor slot. A different
+ * command from establishMentorship above, which pairs you with another PLAYER
+ * - this one places a CHARACTER, and the two are easy to confuse by name.
+ *
+ * Mirrors ValidateMentorshipAssignment, which disconnects on an empty
+ * character guid, a slot outside 0-4, an Academy level of 0, or a slot index
+ * at or above the Academy level. The last rule is the interesting one: the
+ * Academy's level IS the number of slots it has, so a level 2 Academy has
+ * slots 0 and 1 and clicking slot 2 ends the session.
+ *
+ * The slot rides on LimitPrice - the market-price field again, a fourth
+ * meaning for it.
+ */
+export function assignMentor(
+  characterId: string,
+  slotIndex: number,
+  academyLevel: number,
+): CommandOutcome {
+  if (!characterId) return refuse('Pick a character.');
+  if (academyLevel <= 0) return refuse('Build a Mentorship Academy in your village first.');
+  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= MAX_MENTOR_SLOTS) {
+    return refuse(`Slot must be 0-${MAX_MENTOR_SLOTS - 1}.`);
+  }
+  if (slotIndex >= academyLevel) {
+    return refuse(`Your Academy is level ${academyLevel}, so it has ${academyLevel} slot(s).`);
+  }
+
+  connection.send({
+    Command: CommandType.AssignMentor,
+    TargetGuid: characterId,
+    LimitPrice: slotIndex,
+  });
+  return OK;
+}
+
+// ---------------------------------------------------------------------------
+// Gathering tools
+// ---------------------------------------------------------------------------
+
+/**
+ * Upgrades the gathering tool one tier. Carries NO payload at all - the
+ * dispatcher passes a literal 0 to ValidateUpgradeRequest and the engine reads
+ * everything else from the player's own record, so there is nothing to pick
+ * and nothing to get wrong on the wire.
+ *
+ * The tier ceiling and the cost are both server-side, and a request the player
+ * cannot afford simply does nothing without reporting - so the screen shows
+ * CachedCurrentToolTier and lets the player see whether it moved.
+ */
+export function upgradeTool(): CommandOutcome {
+  connection.send({ Command: CommandType.UpgradeTool });
+  return OK;
+}
+
+// ---------------------------------------------------------------------------
+// Account erasure
+// ---------------------------------------------------------------------------
+
+/**
+ * Permanently erases the account. THIS IS NOT REVERSIBLE.
+ *
+ * Two things about it are worth knowing before wiring a button to it:
+ *
+ * 1. It is interlocked by a hash of the player id and the CURRENT server epoch
+ *    (ComputeGdprConfirmationHash), so a purge cannot be replayed from a
+ *    captured packet. The client can only compute it from a live StateUpdate.
+ *
+ * 2. THE HASH MUST MATCH EXACTLY while the surrounding epoch check tolerates
+ *    +-5 of drift. So if a checkpoint flush lands between the StateUpdate this
+ *    hash was built from and the command arriving, the hash is stale and the
+ *    request is refused - by disconnecting.
+ *
+ * And the disconnect is indistinguishable from success, because the SUCCESS
+ * path also calls TerminateSessionForSecurity. The player sees the same closed
+ * socket either way. There is no result code to wait for and no way to make
+ * one appear from the client side, so the screen must say plainly that signing
+ * back in is the only way to learn which happened.
+ */
+export function triggerGdprPurge(playerId: number, logicEpochCounter: number): CommandOutcome {
+  if (!Number.isInteger(playerId) || playerId <= 0) {
+    return refuse('Not signed in.');
+  }
+  if (!Number.isInteger(logicEpochCounter) || logicEpochCounter < 0) {
+    return refuse('Waiting for a fresh state update - try again in a moment.');
+  }
+
+  connection.send({
+    Command: CommandType.TriggerGdprPurge,
+    ConfirmationHash: computeGdprConfirmationHash(playerId, logicEpochCounter),
+  });
+  return OK;
 }
 
 // ---------------------------------------------------------------------------

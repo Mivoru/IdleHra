@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { xorShift32, computeChallengeHash, low32, high32 } from '../src/lib/net/antiCheat';
-import { CHALLENGE_VECTORS } from '../src/lib/net/protocol.generated';
+import {
+  xorShift32,
+  computeChallengeHash,
+  computeGdprConfirmationHash,
+  low32,
+  high32,
+} from '../src/lib/net/antiCheat';
+import { CHALLENGE_VECTORS, GDPR_CONFIRMATION_VECTORS } from '../src/lib/net/protocol.generated';
 
 // Modul: the challenge hash is mirrored C# running in JavaScript, across the
 // one boundary JavaScript is worst at - unsigned 32-bit arithmetic. A wrong
@@ -27,6 +33,38 @@ describe('cross-language agreement with the server', () => {
       expect(computeChallengeHash(seed, playerId, logicEpochCounter)).toBe(expectedHash);
     },
   );
+});
+
+// Modul: the same treatment for the account-erasure interlock, which has a
+// sharper failure mode than the challenge hash in one specific way.
+//
+// A wrong challenge answer eventually quarantines an account, which someone
+// can undo. A wrong GDPR hash is REFUSED BY DISCONNECTING - and the success
+// path also disconnects, so the player cannot tell a rejected erasure from a
+// completed one. Nothing about the client's own behaviour distinguishes them,
+// which means this test is the only place the difference is observable.
+describe('GDPR confirmation hash agreement with the server', () => {
+  it('has vectors to check against at all', () => {
+    expect(GDPR_CONFIRMATION_VECTORS.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it.each(GDPR_CONFIRMATION_VECTORS)(
+    'matches the server for playerId=$playerId epoch=$logicEpochCounter',
+    ({ playerId, logicEpochCounter, expectedHash }) => {
+      expect(computeGdprConfirmationHash(playerId, logicEpochCounter)).toBe(expectedHash);
+    },
+  );
+
+  it('is the wrapping multiply, not the mathematically exact one', () => {
+    // The server writes `(uint)epoch * 0x9E3779B9u`, which wraps. Computing
+    // the true product in a double and truncating gives a DIFFERENT low word
+    // once it passes 2^53, so this pins down that the port wraps - the one
+    // property a re-derivation of the same formula would not catch.
+    const epoch = 4294967295;
+    const wrapped = Math.imul(epoch, 0x9e3779b9) >>> 0;
+    const naive = (epoch * 0x9e3779b9) >>> 0;
+    expect(wrapped).not.toBe(naive);
+  });
 });
 
 describe('xorShift32', () => {

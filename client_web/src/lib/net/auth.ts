@@ -135,3 +135,29 @@ export async function authedGet<T>(path: string): Promise<T> {
   }
   return (await response.json()) as T;
 }
+
+/**
+ * Authenticated POST.
+ *
+ * Returns `null` for a 200 with an empty body rather than throwing, because
+ * several endpoints here answer with a bare status and no JSON at all - the
+ * support-ticket endpoint among them. Parsing unconditionally would turn a
+ * success into a SyntaxError and report the opposite of what happened.
+ */
+export async function authedPost<T>(path: string, body: unknown): Promise<T | null> {
+  const token = storedToken();
+  if (!token) throw new AuthError('not signed in', 401);
+
+  const response = await fetch(api(path), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new AuthError(`POST ${path} failed (HTTP ${response.status})`, response.status);
+  }
+
+  const text = await response.text();
+  if (!text) return null;
+  return JSON.parse(text) as T;
+}

@@ -7,7 +7,7 @@
 // deduplication, retry and invalidation all belong to the query client and are
 // never reimplemented here.
 
-import { authedGet } from './auth';
+import { authedGet, authedPost } from './auth';
 
 // ---------------------------------------------------------------------------
 // Query keys
@@ -40,6 +40,10 @@ export const queryKeys = {
   recipes: ['crafting', 'recipes'] as const,
   market: (baseItemId: string, qualityTier: number, pageIndex: number) =>
     ['market', 'listings', baseItemId, qualityTier, pageIndex] as const,
+  mailbox: ['player', 'mailbox'] as const,
+  guildLogistics: ['social', 'guild', 'logistics'] as const,
+  codexRegions: ['meta', 'codex', 'regions'] as const,
+  storefront: ['shop', 'storefront'] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -307,6 +311,90 @@ export function fetchGuildApplications(): Promise<GuildApplication[]> {
   return authedGet<GuildApplication[]>('/api/v1/guild/applications/pending');
 }
 
+/**
+ * Approve or reject a pending application.
+ *
+ * `Success: false` is a NORMAL answer, not an error - ApproveApplicationAsync
+ * returns it when the caller is not the leader, when the guild is full, or
+ * when the application was already handled by someone else. The HTTP status is
+ * 200 in every one of those cases, so a caller that only checks the status
+ * reports a rejection as a success.
+ *
+ * The request property is `applicationId` in CAMEL CASE while the response
+ * DTO is PascalCase, and the two support/billing endpoints nearby use
+ * PascalCase for their requests. There is no rule to infer here - each body
+ * shape was read off its own handler, and a plausible-looking PascalCase
+ * `ApplicationId` gets a 400 with no hint as to why.
+ */
+export interface GuildApplicationActionResult {
+  Success: boolean;
+}
+
+export function approveGuildApplication(applicationId: number): Promise<GuildApplicationActionResult | null> {
+  return authedPost<GuildApplicationActionResult>('/api/v1/guild/applications/approve', {
+    applicationId,
+  });
+}
+
+export function rejectGuildApplication(applicationId: number): Promise<GuildApplicationActionResult | null> {
+  return authedPost<GuildApplicationActionResult>('/api/v1/guild/applications/reject', {
+    applicationId,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/guild/logistics/snapshot
+// ---------------------------------------------------------------------------
+
+/**
+ * The guild depot's per-material stock against its requirement.
+ *
+ * NEVER APPEND A QUERY STRING TO THIS URL. The handler treats ANY query as
+ * tampering: it calls ForceDisconnect on the player's live WebSocket session
+ * and answers 403. So a harmless-looking cache-buster (`?t=${Date.now()}`) -
+ * the reflex fix when a snapshot looks stale - drops the player out of the
+ * game. The storefront endpoint below behaves identically, via
+ * ValidateStorefrontQuery.
+ *
+ * A player with no guild gets 200 and an empty list, not an error, so there is
+ * nothing to gate on GuildId here.
+ */
+export interface GuildLogisticsEntry {
+  MaterialId: number;
+  CurrentStock: number;
+  TargetRequirement: number;
+}
+
+export function fetchGuildLogistics(): Promise<GuildLogisticsEntry[]> {
+  return authedGet<GuildLogisticsEntry[]>('/api/v1/guild/logistics/snapshot');
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/mailbox/list
+// ---------------------------------------------------------------------------
+
+/**
+ * Unclaimed mail. The server already filters out claimed and pending rows, so
+ * everything returned here is actionable - there is no "read" state to model.
+ *
+ * `Id` is the MAIL ROW id and is what ClaimMailItem takes. BaseItemId is a
+ * string identifier, not a numeric definition id, matching the inventory.
+ */
+export interface MailboxEntry {
+  Id: number;
+  BaseItemId: string;
+  QualityTier: number;
+  Quantity: number;
+  GoldAttachment: number;
+  HasEquipmentAttachment: boolean;
+  /** Unix seconds. */
+  ReceivedTimestamp: number;
+}
+
+export function fetchMailbox(): Promise<MailboxEntry[]> {
+  return authedGet<MailboxEntry[]>('/api/v1/mailbox/list');
+}
+
 // ---------------------------------------------------------------------------
 // Meta and progression
 // ---------------------------------------------------------------------------
@@ -451,8 +539,9 @@ export function fetchBreedingPreview(paternalId: string, maternalId: string): Pr
 }
 
 // Modul: the catalog carries NO PRICE - only the product id and how many
-// diamonds it grants. Real money pricing lives in the storefront, which this
-// client does not reach, so nothing here may present a currency amount.
+// diamonds it grants. Real money pricing lives in the storefront below, which
+// is a separate, personalised endpoint; nothing built from THIS list may
+// present a currency amount.
 export interface StoreCatalogEntry {
   ProductId: string;
   DiamondAmount: number;
@@ -460,4 +549,124 @@ export interface StoreCatalogEntry {
 
 export function fetchStoreCatalog(): Promise<StoreCatalogEntry[]> {
   return authedGet<StoreCatalogEntry[]>('/api/v1/store/catalog');
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/storefront/listings
+// ---------------------------------------------------------------------------
+
+/**
+ * The PERSONALISED storefront. This is not the same list for every player:
+ * requesting it runs StorefrontSegmentationEngine, which sorts the player into
+ * a cohort by lifetime spend, account age and days since their last purchase,
+ * and returns only that cohort's listings.
+ *
+ * Three consequences the UI has to respect. Fetching this WRITES - it upserts
+ * a PlayerSegmentationProfile row - so it must not be polled on a timer or
+ * refetched on window focus the way a read-only snapshot can be. Two players
+ * comparing screens will legitimately see different prices, so the screen
+ * should never describe a listing as "the" price. And as with the guild depot
+ * above, ANY query string force-disconnects the player's game session.
+ *
+ * `PriceInCents` is real money. Nothing in this client can complete such a
+ * purchase - that needs a platform store - so prices are shown as information
+ * and the buy path stays disabled rather than pretending.
+ */
+export interface StorefrontListing {
+  ListingId: number;
+  ProductIdentifier: string;
+  DiamondPackageYield: number;
+  PriceInCents: number;
+}
+
+export function fetchStorefront(): Promise<StorefrontListing[]> {
+  return authedGet<StorefrontListing[]>('/api/v1/storefront/listings');
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/codex/regions
+// ---------------------------------------------------------------------------
+
+/**
+ * Per-region kill progress toward completion, and the loot-luck bonus a
+ * completed region grants permanently.
+ *
+ * The server loops regions 1-10 and only emits those that actually exist in
+ * the content tables, so the list is shorter than ten - never index it by
+ * region number.
+ */
+export interface RegionProgress {
+  RegionId: number;
+  CurrentKills: number;
+  RequiredKills: number;
+  IsCompleted: boolean;
+  LootLuckBonusPct: number;
+}
+
+export function fetchCodexRegions(): Promise<RegionProgress[]> {
+  return authedGet<RegionProgress[]>('/api/v1/codex/regions');
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/achievements/state
+// ---------------------------------------------------------------------------
+
+/**
+ * The claim BITMASKS, as opposed to /achievements/snapshot's per-achievement
+ * progress rows. Both exist because they answer different questions: the
+ * snapshot says how far along each achievement is, this says which rewards
+ * have been taken.
+ *
+ * ClaimedMilestonesBitmask is a C# ulong. Fifty battle-pass milestones exist,
+ * so real values stay under 2^50 and survive JSON's double - but it would
+ * silently lose precision if the pass ever grew past 53 milestones, which is
+ * worth knowing before anyone adds one.
+ */
+export interface AchievementsState {
+  ClaimedAchievementFlags: number;
+  TotalAchievementsClaimedCount: number;
+  ClaimedMilestonesBitmask: number;
+}
+
+export function fetchAchievementsState(): Promise<AchievementsState> {
+  return authedGet<AchievementsState>('/api/v1/achievements/state');
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/support/tickets/create
+// ---------------------------------------------------------------------------
+
+/**
+ * Sends a diagnostic trace with a support request.
+ *
+ * WHAT THIS ACTUALLY DOES TODAY: the handler reads the TraceLog property,
+ * writes one line to the server console, and returns 200. It does not store a
+ * ticket, does not assign an id, and returns no body. So the UI must not
+ * promise a reply or show a reference number - a 200 means "the server
+ * received it", nothing more, and saying more would be a lie the player only
+ * discovers by waiting for an answer that never comes.
+ *
+ * Scrubbing is the CLIENT'S job by the server's own design decision, so
+ * `scrubTrace` runs before anything leaves the browser.
+ */
+export function submitSupportTicket(traceLog: string): Promise<null> {
+  return authedPost<null>('/api/v1/support/tickets/create', {
+    TraceLog: scrubTrace(traceLog),
+  }).then(() => null);
+}
+
+/**
+ * Removes the obvious personal identifiers before a trace leaves the browser.
+ *
+ * Deliberately conservative and deliberately not clever: it strips bearer
+ * tokens, email addresses and anything that looks like a long opaque id. It is
+ * a reduction of risk, not a guarantee of anonymity, and the UI says so rather
+ * than implying the log is safe.
+ */
+export function scrubTrace(traceLog: string): string {
+  return traceLog
+    .replace(/Bearer\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer [redacted]')
+    .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '[email]')
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[uuid]')
+    .slice(0, 16000);
 }

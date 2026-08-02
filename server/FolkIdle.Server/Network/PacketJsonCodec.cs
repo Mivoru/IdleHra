@@ -217,6 +217,19 @@ namespace FolkIdle.Server.Network
             (0x6D2B79F5u, 2147483647L, 2147483647L),
         };
 
+        // Chosen so that (uint)epoch * 0x9E3779B9 overflows uint32 in most of
+        // them - the case a double-precision `*` gets wrong - plus a playerId
+        // with a non-zero high word, which the hash mixes separately.
+        private static readonly (long PlayerId, long Epoch)[] GdprVectorInputs =
+        {
+            (1L, 0L),
+            (1042L, 7L),
+            (9L, 2147483647L),
+            (7L, 4294967295L),
+            (0x1_0000_0002L, 123456789L),
+            (2147483647L, 1L),
+        };
+
         public static string ExportSchemaJson()
         {
             var buffer = new ArrayBufferWriter<byte>(16 * 1024);
@@ -290,6 +303,34 @@ namespace FolkIdle.Server.Network
                     writer.WriteNumber(
                         "expectedHash",
                         FolkIdle.Server.Engine.AntiCheatTelemetryEngine.ComputeChallengeHash(seed, playerId, epoch));
+                    writer.WriteEndObject();
+                }
+                writer.WriteEndArray();
+
+                // Modul: GDPR confirmation vectors, published for the same
+                // reason as the challenge vectors above and with one extra
+                // hazard of its own.
+                //
+                // ComputeGdprConfirmationHash multiplies the epoch by
+                // 0x9E3779B9 in WRAPPING uint32 arithmetic. JavaScript's `*`
+                // computes the true product in a double and silently loses the
+                // low bits once it exceeds 2^53, so a naive port agrees with
+                // the server for small epochs and diverges for large ones -
+                // exactly the failure a hand-written test picks the wrong
+                // inputs to catch. The vectors below therefore include epochs
+                // whose product overflows, and the one command they gate
+                // erases an account, so a silent divergence is expensive in
+                // both directions: a failed purge looks identical to a
+                // successful one from the client side.
+                writer.WriteStartArray("gdprConfirmationVectors");
+                foreach ((long playerId, long epoch) in GdprVectorInputs)
+                {
+                    writer.WriteStartObject();
+                    writer.WriteNumber("playerId", playerId);
+                    writer.WriteNumber("logicEpochCounter", epoch);
+                    writer.WriteNumber(
+                        "expectedHash",
+                        FolkIdle.Server.Engine.ClientCommandValidator.ComputeGdprConfirmationHash(playerId, epoch));
                     writer.WriteEndObject();
                 }
                 writer.WriteEndArray();

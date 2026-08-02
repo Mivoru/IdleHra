@@ -59,3 +59,33 @@ export function low32(value: number): number {
 export function high32(value: number): number {
   return Number(BigInt.asUintN(32, BigInt(Math.trunc(value)) >> 32n));
 }
+
+// ---------------------------------------------------------------------------
+// The GDPR confirmation hash
+// ---------------------------------------------------------------------------
+
+/**
+ * ClientCommandValidator.ComputeGdprConfirmationHash.
+ *
+ * Lives beside the challenge hash because it is the same shape of thing - a
+ * server-side value the client must reproduce byte for byte or be disconnected
+ * - and shares its xorshift primitive. It is NOT an anti-cheat measure: it is
+ * a "did you really mean this" interlock on the one command that destroys an
+ * account, and it deliberately cannot be sent by a client that has not read
+ * the player's own id and current epoch from a live StateUpdate.
+ *
+ * The one thing to get right that the challenge hash does not have: the server
+ * writes `(uint)logicEpochCounter * 0x9E3779B9u`, a uint32 multiply that
+ * OVERFLOWS. A plain `*` in JavaScript would compute the mathematically
+ * correct product in a double and lose the low bits to rounding, so this uses
+ * Math.imul, which is exactly 32-bit wrapping multiplication.
+ */
+export function computeGdprConfirmationHash(playerId: number, logicEpochCounter: number): number {
+  let value = 0x47d99513;
+  value = (value ^ low32(playerId)) >>> 0;
+  value = xorShift32(value);
+  value = (value ^ high32(playerId)) >>> 0;
+  value = xorShift32((value + (Math.imul(low32(logicEpochCounter), 0x9e3779b9) >>> 0)) >>> 0);
+  value = (value ^ 0xa5c3f19b) >>> 0;
+  return xorShift32(value);
+}
