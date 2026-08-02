@@ -1,0 +1,545 @@
+using System;
+using System.Buffers;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Text.Json;
+
+namespace FolkIdle.Server.Network
+{
+    // Modul: JSON WebSocket mode, 2026-08-02. Phase 0, step 2 of the web
+    // client port plan (docs/architecture/WEB_CLIENT_PORT_PLAN.md, 3.2).
+    //
+    // The wire this project has always spoken is six fixed-layout C# structs,
+    // demultiplexed on the receiving side BY EXACT BYTE LENGTH - workable
+    // between two C# processes where Marshal.SizeOf proves both sides agree
+    // (see NetworkPacketLayoutGuard), and a trap for anything else. A browser
+    // client would have to hand-maintain a DataView parser for 151 fields in
+    // the largest struct alone, which is precisely the two-sources-of-truth
+    // drift that produced this project's worst bugs.
+    //
+    // This codec is the alternative: the same six packets, rendered as JSON
+    // with an explicit "type" discriminator so nothing anywhere dispatches on
+    // length.
+    //
+    // THE DESIGN PROPERTY THAT MATTERS: the field list is never written down
+    // here. It is derived by reflection from the struct itself, and
+    // BuildPlan then asserts the derived plan covers every single byte of the
+    // struct contiguously from offset 0 to Unsafe.SizeOf<T>(). So a field
+    // added to StateUpdatePacket appears in the JSON automatically, and a
+    // field this codec somehow failed to see is not a silently-missing JSON
+    // property - it is a gap in the byte coverage, which throws at first use.
+    // Drift is not caught here by a test that someone has to remember to
+    // update; it is unrepresentable.
+    //
+    // Conventions on the wire:
+    //   - Property names are the C# field names verbatim (PascalCase). No
+    //     camelCase translation layer, because a translation layer is one
+    //     more place the two sides can disagree.
+    //   - "type" (lowercase) is the discriminator, and cannot collide with a
+    //     field name since every field name is PascalCase.
+    //   - Integers are JSON numbers. Guid is a JSON string ("d" format).
+    //   - `fixed byte X[N]` buffers are base64 strings of the FULL fixed
+    //     capacity. Base64 rather than the decoded text, even though all four
+    //     such buffers happen to carry text today (JWT, chat message, device
+    //     token, store receipt): base64 round-trips byte for byte with no
+    //     assumption about content, and it keeps the buffer and its paired
+    //     length field (e.g. JwtToken/JwtTokenLength) as two independent
+    //     fields rather than teaching this codec which pairs with which -
+    //     that pairing knowledge would be hand-maintained, which is the thing
+    //     this file exists to avoid.
+    //   - Non-finite floats are written as the strings "NaN"/"Infinity"/
+    //     "-Infinity" and read back, so a divide-by-zero somewhere in combat
+    //     math cannot throw on the broadcast path.
+    public static class PacketJsonCodec
+    {
+        public const string TypePropertyName = "type";
+
+        // Modul: the per-connection protocol switch. Carried on the auth
+        // handshake object only - see NetworkBroadcastSystem's handshake
+        // branch, which treats the WebSocket frame type (Text vs Binary) as
+        // the real switch and this field as the explicit, legible
+        // declaration of intent. Binary remains the default in every sense:
+        // a client that says nothing gets the byte protocol the Unity client
+        // has always spoken.
+        public const string ModePropertyName = "mode";
+        public const string ModeJson = "json";
+        public const string ModeBinary = "binary";
+
+        public const string TypeAuthHandshake = "AuthHandshake";
+        public const string TypeClientCommand = "ClientCommand";
+        public const string TypeStateUpdate = "StateUpdate";
+        public const string TypeRequestChatMessage = "RequestChatMessage";
+        public const string TypeResponseChatMessage = "ResponseChatMessage";
+        public const string TypeResponseLootDrop = "ResponseLootDrop";
+
+        // Every packet on this wire. Exposed (rather than kept private) so
+        // the contract test can enumerate the protocol instead of restating
+        // it - a seventh packet type added without a discriminator here
+        // fails the test rather than shipping as an unsendable hole.
+        private static readonly Dictionary<Type, string> DiscriminatorsByType = new()
+        {
+            { typeof(AuthHandshakePacket), TypeAuthHandshake },
+            { typeof(ClientCommandPacket), TypeClientCommand },
+            { typeof(StateUpdatePacket), TypeStateUpdate },
+            { typeof(RequestChatMessagePacket), TypeRequestChatMessage },
+            { typeof(ResponseChatMessagePacket), TypeResponseChatMessage },
+            { typeof(ResponseLootDropPacket), TypeResponseLootDrop },
+        };
+
+        public static IReadOnlyDictionary<Type, string> Discriminators => DiscriminatorsByType;
+
+        public static string DiscriminatorFor(Type packetType)
+        {
+            if (!DiscriminatorsByType.TryGetValue(packetType, out string? discriminator))
+            {
+                throw new InvalidOperationException(
+                    $"{packetType.Name} has no JSON type discriminator. Every packet on this wire must declare one in PacketJsonCodec.DiscriminatorsByType.");
+            }
+
+            return discriminator;
+        }
+
+        // ---------------------------------------------------------------
+        // Field plan
+        // ---------------------------------------------------------------
+
+        private enum FieldKind : byte
+        {
+            U8,
+            I8,
+            U16,
+            I16,
+            U32,
+            I32,
+            U64,
+            I64,
+            F32,
+            F64,
+            GuidValue,
+            FixedBytes
+        }
+
+        private readonly struct PacketField
+        {
+            public readonly string Name;
+            public readonly int Offset;
+            public readonly int Size;
+            public readonly FieldKind Kind;
+
+            public PacketField(string name, int offset, int size, FieldKind kind)
+            {
+                Name = name;
+                Offset = offset;
+                Size = size;
+                Kind = kind;
+            }
+        }
+
+        // Built once per packet type on first use; the CLR's static-field
+        // initialization guarantees are what makes this thread safe without
+        // a lock, which matters because SendToPlayer reaches it from the
+        // 10Hz tick thread while the receive loops reach it from theirs.
+        private static class Plan<T> where T : unmanaged
+        {
+            internal static readonly PacketField[] Fields = BuildPlanChecked(typeof(T), Unsafe.SizeOf<T>());
+        }
+
+        // Marshal.OffsetOf reports the MARSHALLED layout while the wire (and
+        // MemoryMarshal.Read/Write below) uses the MANAGED one. For a
+        // [StructLayout(Sequential, Pack = 1)] struct of blittable fields
+        // those are the same thing - which is the whole reason this binary
+        // protocol works at all - but that is an assumption, so it is
+        // asserted rather than trusted.
+        private static PacketField[] BuildPlanChecked(Type type, int managedSize)
+        {
+            int marshalledSize = Marshal.SizeOf(type);
+            if (marshalledSize != managedSize)
+            {
+                throw new InvalidOperationException(
+                    $"{type.Name}: marshalled size {marshalledSize} differs from managed size {managedSize}. " +
+                    "The byte offsets this codec reads from would not match the bytes the binary wire writes.");
+            }
+
+            return BuildPlan(type, managedSize);
+        }
+
+        // Non-generic accessor for the contract test, which iterates packet
+        // types as Type objects rather than as generic arguments.
+        public static IReadOnlyList<string> FieldNames(Type packetType)
+        {
+            PacketField[] plan = BuildPlanChecked(packetType, Marshal.SizeOf(packetType));
+
+            var names = new string[plan.Length];
+            for (int i = 0; i < plan.Length; i++)
+            {
+                names[i] = plan[i].Name;
+            }
+
+            return names;
+        }
+
+        private static PacketField[] BuildPlan(Type type, int structSize)
+        {
+            FieldInfo[] fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
+            var plan = new List<PacketField>(fields.Length);
+
+            foreach (FieldInfo field in fields)
+            {
+                int offset = checked((int)Marshal.OffsetOf(type, field.Name));
+
+                FixedBufferAttribute? fixedBuffer = field.GetCustomAttribute<FixedBufferAttribute>();
+                if (fixedBuffer != null)
+                {
+                    if (fixedBuffer.ElementType != typeof(byte))
+                    {
+                        throw new InvalidOperationException(
+                            $"{type.Name}.{field.Name}: only fixed byte buffers are representable on this wire, found {fixedBuffer.ElementType.Name}.");
+                    }
+
+                    plan.Add(new PacketField(field.Name, offset, fixedBuffer.Length, FieldKind.FixedBytes));
+                    continue;
+                }
+
+                Type fieldType = field.FieldType;
+                if (fieldType.IsEnum)
+                {
+                    // CommandType is a byte enum; the JSON carries the
+                    // numeric opcode, exactly as the binary struct does.
+                    fieldType = Enum.GetUnderlyingType(fieldType);
+                }
+
+                FieldKind kind;
+                int size;
+                if (fieldType == typeof(byte)) { kind = FieldKind.U8; size = 1; }
+                else if (fieldType == typeof(sbyte)) { kind = FieldKind.I8; size = 1; }
+                else if (fieldType == typeof(ushort)) { kind = FieldKind.U16; size = 2; }
+                else if (fieldType == typeof(short)) { kind = FieldKind.I16; size = 2; }
+                else if (fieldType == typeof(uint)) { kind = FieldKind.U32; size = 4; }
+                else if (fieldType == typeof(int)) { kind = FieldKind.I32; size = 4; }
+                else if (fieldType == typeof(ulong)) { kind = FieldKind.U64; size = 8; }
+                else if (fieldType == typeof(long)) { kind = FieldKind.I64; size = 8; }
+                else if (fieldType == typeof(float)) { kind = FieldKind.F32; size = 4; }
+                else if (fieldType == typeof(double)) { kind = FieldKind.F64; size = 8; }
+                else if (fieldType == typeof(Guid)) { kind = FieldKind.GuidValue; size = 16; }
+                else
+                {
+                    throw new InvalidOperationException(
+                        $"{type.Name}.{field.Name}: type {fieldType.Name} has no JSON representation on this wire. Add one to PacketJsonCodec.BuildPlan.");
+                }
+
+                plan.Add(new PacketField(field.Name, offset, size, kind));
+            }
+
+            plan.Sort(static (a, b) => a.Offset.CompareTo(b.Offset));
+
+            // The anti-drift assertion. If the reflected plan does not
+            // account for every byte from 0 to the struct's real size, then
+            // some field is invisible to this codec - and an invisible field
+            // is exactly the silently-omitted-from-JSON failure the port
+            // plan warns is the largest risk in the whole project. Fail
+            // loudly at first use rather than shipping a lossy protocol.
+            int cursor = 0;
+            foreach (PacketField field in plan)
+            {
+                if (field.Offset != cursor)
+                {
+                    throw new InvalidOperationException(
+                        $"{type.Name}: JSON field plan is not contiguous - '{field.Name}' starts at byte {field.Offset}, expected {cursor}. " +
+                        "Every byte of a wire packet must be carried by exactly one JSON property.");
+                }
+
+                cursor += field.Size;
+            }
+
+            if (cursor != structSize)
+            {
+                throw new InvalidOperationException(
+                    $"{type.Name}: JSON field plan covers {cursor} bytes but the struct is {structSize}. " +
+                    "Some field is invisible to the codec and would be silently dropped from JSON.");
+            }
+
+            return plan.ToArray();
+        }
+
+        // ---------------------------------------------------------------
+        // Serialization
+        // ---------------------------------------------------------------
+
+        // Allocates a fresh array per call. Deliberate and acceptable: the
+        // binary path (SendToPlayer's reusable per-session buffer) is
+        // untouched and keeps its zero-allocation property, and this one only
+        // runs for connections that explicitly asked for JSON, where the
+        // whole premise (see the port plan, 3.2) is that ~2 KB of JSON at
+        // 10Hz per browser player is not the constraint.
+        public static byte[] SerializeToUtf8<T>(ref T packet) where T : unmanaged
+        {
+            var buffer = new ArrayBufferWriter<byte>(Math.Max(256, Unsafe.SizeOf<T>() * 3));
+            using (var writer = new Utf8JsonWriter(buffer))
+            {
+                writer.WriteStartObject();
+                writer.WriteString(TypePropertyName, DiscriminatorFor(typeof(T)));
+                WriteFields(writer, Plan<T>.Fields, MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref packet, 1)));
+                writer.WriteEndObject();
+            }
+
+            return buffer.WrittenSpan.ToArray();
+        }
+
+        public static string SerializeToString<T>(ref T packet) where T : unmanaged
+        {
+            return System.Text.Encoding.UTF8.GetString(SerializeToUtf8(ref packet));
+        }
+
+        private static void WriteFields(Utf8JsonWriter writer, PacketField[] plan, ReadOnlySpan<byte> bytes)
+        {
+            for (int i = 0; i < plan.Length; i++)
+            {
+                PacketField field = plan[i];
+                ReadOnlySpan<byte> slice = bytes.Slice(field.Offset, field.Size);
+
+                switch (field.Kind)
+                {
+                    case FieldKind.U8:
+                        writer.WriteNumber(field.Name, slice[0]);
+                        break;
+                    case FieldKind.I8:
+                        writer.WriteNumber(field.Name, unchecked((sbyte)slice[0]));
+                        break;
+                    case FieldKind.U16:
+                        writer.WriteNumber(field.Name, MemoryMarshal.Read<ushort>(slice));
+                        break;
+                    case FieldKind.I16:
+                        writer.WriteNumber(field.Name, MemoryMarshal.Read<short>(slice));
+                        break;
+                    case FieldKind.U32:
+                        writer.WriteNumber(field.Name, MemoryMarshal.Read<uint>(slice));
+                        break;
+                    case FieldKind.I32:
+                        writer.WriteNumber(field.Name, MemoryMarshal.Read<int>(slice));
+                        break;
+                    case FieldKind.U64:
+                        writer.WriteNumber(field.Name, MemoryMarshal.Read<ulong>(slice));
+                        break;
+                    case FieldKind.I64:
+                        writer.WriteNumber(field.Name, MemoryMarshal.Read<long>(slice));
+                        break;
+                    case FieldKind.F32:
+                    {
+                        float value = MemoryMarshal.Read<float>(slice);
+                        if (float.IsFinite(value))
+                        {
+                            writer.WriteNumber(field.Name, value);
+                        }
+                        else
+                        {
+                            writer.WriteString(field.Name, value.ToString(CultureInfo.InvariantCulture));
+                        }
+                        break;
+                    }
+                    case FieldKind.F64:
+                    {
+                        double value = MemoryMarshal.Read<double>(slice);
+                        if (double.IsFinite(value))
+                        {
+                            writer.WriteNumber(field.Name, value);
+                        }
+                        else
+                        {
+                            writer.WriteString(field.Name, value.ToString(CultureInfo.InvariantCulture));
+                        }
+                        break;
+                    }
+                    case FieldKind.GuidValue:
+                        writer.WriteString(field.Name, MemoryMarshal.Read<Guid>(slice));
+                        break;
+                    case FieldKind.FixedBytes:
+                        writer.WriteString(field.Name, Convert.ToBase64String(slice));
+                        break;
+                }
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // Deserialization
+        // ---------------------------------------------------------------
+
+        // Reads the envelope once so the caller can dispatch on "type" and
+        // then hand the same JsonElement to the matching TryRead<T> - the
+        // client never has to parse twice, and nothing ever infers a packet
+        // type from its size.
+        public static bool TryParseEnvelope(ReadOnlyMemory<byte> utf8Json, out JsonDocument? document, out string type, out string? error)
+        {
+            document = null;
+            type = string.Empty;
+            error = null;
+
+            try
+            {
+                document = JsonDocument.Parse(utf8Json);
+            }
+            catch (JsonException ex)
+            {
+                error = $"malformed JSON: {ex.Message}";
+                return false;
+            }
+
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                error = "top-level value is not an object";
+                document.Dispose();
+                document = null;
+                return false;
+            }
+
+            if (!document.RootElement.TryGetProperty(TypePropertyName, out JsonElement typeElement) ||
+                typeElement.ValueKind != JsonValueKind.String)
+            {
+                error = $"missing or non-string '{TypePropertyName}' discriminator";
+                document.Dispose();
+                document = null;
+                return false;
+            }
+
+            type = typeElement.GetString() ?? string.Empty;
+            return true;
+        }
+
+        // Absent properties leave their field at its default. Inbound packets
+        // are commands where a client legitimately fills three fields out of
+        // fifty, so requiring every property on the wire would make the
+        // protocol unusable by hand. A property that IS present but malformed
+        // is a hard failure - that is a client bug, not an omission.
+        public static bool TryRead<T>(JsonElement root, out T packet, out string? error) where T : unmanaged
+        {
+            packet = default;
+            error = null;
+
+            Span<byte> bytes = MemoryMarshal.AsBytes(MemoryMarshal.CreateSpan(ref packet, 1));
+            PacketField[] plan = Plan<T>.Fields;
+
+            for (int i = 0; i < plan.Length; i++)
+            {
+                PacketField field = plan[i];
+                if (!root.TryGetProperty(field.Name, out JsonElement element) || element.ValueKind == JsonValueKind.Null)
+                {
+                    continue;
+                }
+
+                if (!TryReadField(field, element, bytes, out error))
+                {
+                    error = $"{typeof(T).Name}.{field.Name}: {error}";
+                    packet = default;
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        public static bool TryDeserialize<T>(ReadOnlyMemory<byte> utf8Json, out T packet, out string? error) where T : unmanaged
+        {
+            packet = default;
+
+            if (!TryParseEnvelope(utf8Json, out JsonDocument? document, out string type, out error))
+            {
+                return false;
+            }
+
+            using (document)
+            {
+                string expected = DiscriminatorFor(typeof(T));
+                if (type != expected)
+                {
+                    error = $"expected '{TypePropertyName}' of '{expected}', got '{type}'";
+                    return false;
+                }
+
+                return TryRead(document!.RootElement, out packet, out error);
+            }
+        }
+
+        private static bool TryReadField(PacketField field, JsonElement element, Span<byte> bytes, out string? error)
+        {
+            error = null;
+            Span<byte> slice = bytes.Slice(field.Offset, field.Size);
+
+            try
+            {
+                switch (field.Kind)
+                {
+                    case FieldKind.U8:
+                        slice[0] = element.GetByte();
+                        return true;
+                    case FieldKind.I8:
+                        slice[0] = unchecked((byte)element.GetSByte());
+                        return true;
+                    case FieldKind.U16:
+                        MemoryMarshal.Write(slice, element.GetUInt16());
+                        return true;
+                    case FieldKind.I16:
+                        MemoryMarshal.Write(slice, element.GetInt16());
+                        return true;
+                    case FieldKind.U32:
+                        MemoryMarshal.Write(slice, element.GetUInt32());
+                        return true;
+                    case FieldKind.I32:
+                        MemoryMarshal.Write(slice, element.GetInt32());
+                        return true;
+                    case FieldKind.U64:
+                        MemoryMarshal.Write(slice, element.GetUInt64());
+                        return true;
+                    case FieldKind.I64:
+                        MemoryMarshal.Write(slice, element.GetInt64());
+                        return true;
+                    case FieldKind.F32:
+                    {
+                        float value = element.ValueKind == JsonValueKind.String
+                            ? float.Parse(element.GetString() ?? string.Empty, NumberStyles.Float, CultureInfo.InvariantCulture)
+                            : element.GetSingle();
+                        MemoryMarshal.Write(slice, value);
+                        return true;
+                    }
+                    case FieldKind.F64:
+                    {
+                        double value = element.ValueKind == JsonValueKind.String
+                            ? double.Parse(element.GetString() ?? string.Empty, NumberStyles.Float, CultureInfo.InvariantCulture)
+                            : element.GetDouble();
+                        MemoryMarshal.Write(slice, value);
+                        return true;
+                    }
+                    case FieldKind.GuidValue:
+                        MemoryMarshal.Write(slice, element.GetGuid());
+                        return true;
+                    case FieldKind.FixedBytes:
+                    {
+                        string encoded = element.GetString() ?? string.Empty;
+                        byte[] decoded = Convert.FromBase64String(encoded);
+                        if (decoded.Length > field.Size)
+                        {
+                            error = $"base64 decodes to {decoded.Length} bytes, exceeding the {field.Size}-byte fixed buffer";
+                            return false;
+                        }
+
+                        // Zero-pad short input to the fixed capacity, exactly
+                        // as the binary senders do - the paired *Length field
+                        // is what says how much of it is real.
+                        slice.Clear();
+                        decoded.CopyTo(slice);
+                        return true;
+                    }
+                }
+            }
+            catch (Exception ex) when (ex is FormatException or InvalidOperationException or OverflowException)
+            {
+                error = ex.Message;
+                return false;
+            }
+
+            error = "unsupported field kind";
+            return false;
+        }
+    }
+}

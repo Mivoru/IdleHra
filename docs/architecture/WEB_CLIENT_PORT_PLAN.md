@@ -216,22 +216,91 @@ Estimates are in focused working days for one developer already familiar with
 the domain. They assume the server is not changing underneath, and they
 exclude art, copy and balancing.
 
-### Phase 0 - Enabler (server only, ~3-5 days)
+### Phase 0 - Enabler (server only, ~3-5 days) - **DONE**
 
 No client work. Nothing visual.
 
-1. Add a `mode` field to the auth handshake: `binary` (default, Unity) or
-   `json`. Per connection, never global.
-2. JSON serialisation for all six packet types, each carrying an explicit
-   `type` discriminator so the client never dispatches on byte length.
-3. A contract test asserting the JSON shape carries every field the binary
-   struct declares, for all six. **This test is the entire defence** against
-   the drift this document warns about - without it, the port becomes the
-   project's fourth two-sources-of-truth bug and the largest one.
-4. Serve `StreamingAssets/GameData/*.json` over HTTP so the web client can
-   load the same content files.
+1. ~~CORS allow-list.~~ Done, commit `8a793bb`. `FOLKIDLE_WEB_ORIGINS`,
+   comma separated, failing closed when unset.
+2. ~~Add a `mode` field to the auth handshake: `binary` (default, Unity) or
+   `json`. Per connection, never global.~~ Done. The real switch is the
+   **frame type of the handshake** - a Binary first frame is the byte
+   protocol, a Text first frame is JSON - because a frame's type is
+   unforgeable and already carried by every WebSocket implementation, so
+   there is no negotiation round-trip and no way for the two sides to
+   disagree. The JSON handshake also carries an explicit `"mode":"json"`,
+   which is validated rather than inferred, so the intent is legible in a
+   packet capture.
+3. ~~JSON serialisation for all six packet types, each carrying an explicit
+   `type` discriminator so the client never dispatches on byte length.~~
+   Done - `Network/PacketJsonCodec.cs`.
+4. ~~A contract test asserting the JSON shape carries every field the binary
+   struct declares, for all six.~~ Done -
+   `FolkIdle.Server.Tests/WebClientJsonProtocolTests.cs`, 31 tests.
+5. ~~Serve `StreamingAssets/GameData/*.json` over HTTP.~~ Done -
+   `GET /gamedata` (manifest) and `GET /gamedata/<name>.json`.
 
-Exit: `wscat` logs in and receives readable state.
+Exit criterion met: a Node client using the browser `WebSocket` API logs in,
+receives readable `StateUpdate`, changes activity, chats, and receives loot -
+all as JSON - while a binary session on the same server still receives
+695-byte frames.
+
+#### How the drift defence actually works
+
+Worth stating precisely, because "we wrote a contract test" understates it.
+
+`PacketJsonCodec` **never writes the field list down**. It reflects over the
+struct, then asserts the derived plan covers every byte of that struct
+contiguously from offset 0 to `Unsafe.SizeOf<T>()`. A field added to
+`StateUpdatePacket` therefore appears in the JSON automatically, and a field
+the codec somehow failed to see is not a silently-missing property - it is a
+hole in the byte coverage, which throws at first use. Drift is not caught by
+a test someone has to remember to update; it is close to unrepresentable.
+
+The contract test is the second layer, and it deliberately derives its
+expected field list **by reflecting over the packet structs itself**, never
+by asking the codec what it thinks the fields are - a test that asked the
+codec to agree with itself would pass forever while the JSON quietly dropped
+whatever the codec missed. It was verified by mutation: deleting one field
+(`Gold`) from the codec's writer fails two tests, naming the field and its
+byte offset.
+
+#### Two undocumented wire obligations, found by building a client
+
+Neither is in any document; both were found by writing a non-Unity client and
+watching it get disconnected. Any web client must implement both, and they
+belong in the Phase 1 estimate.
+
+| Obligation | What happens without it |
+|---|---|
+| **Every `ClientCommand` must echo `LogicEpochCounter` from the most recent `StateUpdate`.** | `ValidateEpochSynchronization`'s "epoch interception gate" calls `TerminateSessionForSecurity` - the socket closes with 1008 "Violent termination" and no diagnostic anywhere. This is the single hardest failure to diagnose on this wire. |
+| **The server issues anti-cheat challenges (`ActiveChallengeSeed`) that the client must answer with opcode 31.** | Shadow-ban request. `WebSocketClient`'s challenge handling exists for this and is easy to miss when reading it as "just a send method". |
+
+A related trap for testing, not for the client: the `--seed-dev` fixture
+account is disconnected on login by `ValidateLoginTime` (its
+`LastLogoutTimestamp` is ahead of now). This reproduces identically over the
+binary protocol, so it is pre-existing and unrelated to the JSON mode - but
+it makes that account useless for driving either client until it is fixed.
+
+#### Notes on the JSON encoding
+
+- Property names are the C# field names verbatim (PascalCase). No camelCase
+  translation layer, because a translation layer is one more place the two
+  sides can disagree. `type` is lowercase and so cannot collide.
+- `fixed byte X[N]` buffers are **base64 of the full fixed capacity**. Base64
+  rather than the decoded text, even though all four such buffers happen to
+  carry text today: it round-trips byte for byte with no assumption about
+  content, and it keeps the buffer and its paired length field (e.g.
+  `JwtToken`/`JwtTokenLength`) independent rather than teaching the codec
+  which pairs with which - that pairing knowledge would be hand-maintained.
+- Absent properties leave their field at default, so a client can send three
+  fields of `ClientCommand`'s fifty. A property that is *present but
+  malformed* is a hard rejection.
+- Non-finite floats travel as `"NaN"`/`"Infinity"`/`"-Infinity"`, so a
+  divide-by-zero in combat math cannot throw on the broadcast path.
+- `GameBalanceConfig.json` is **not** served: it is server balance data and
+  is not part of the client's StreamingAssets mirror. Same reasoning as
+  `/api/v1/monsters/loot` being an endpoint rather than a shipped file.
 
 ### Phase 1 - Vertical slice and DECISION GATE (~8-12 days)
 

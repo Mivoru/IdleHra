@@ -39,6 +39,17 @@ namespace FolkIdle.Server.Network
         // always positive.
         public long GuildId;
 
+        // Modul: JSON WebSocket mode, 2026-08-02. Phase 0 of the web client
+        // port plan. Per connection, never global, and decided once at
+        // handshake time - a session cannot switch protocols mid-stream.
+        //
+        // False is the default in the fullest sense: the Unity client sends a
+        // binary AuthHandshakePacket, lands in the binary branch, and every
+        // send path below takes the same reusable-buffer, blittable-write
+        // route it always has. Nothing about the binary path changed to make
+        // room for this.
+        public bool UseJsonProtocol { get; }
+
         // Modul: .NET's WebSocket forbids more than one outstanding
         // send-family operation (SendAsync or CloseAsync) in flight at a
         // time on the same instance. State broadcasts (SendToPlayer, 1Hz),
@@ -55,10 +66,11 @@ namespace FolkIdle.Server.Network
         // is ever in flight regardless of which caller issued it.
         private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
 
-        public WebSocketSession(WebSocket socket, string redisLockToken)
+        public WebSocketSession(WebSocket socket, string redisLockToken, bool useJsonProtocol = false)
         {
             Socket = socket;
             RedisLockToken = redisLockToken;
+            UseJsonProtocol = useJsonProtocol;
             Throttler = new ClientInputThrottler();
             TokenBucket = NetworkThrottlingEngine.CreateBucket();
             ChatTokenBucket = ChatEngine.CreateChatBucket();
@@ -253,8 +265,16 @@ namespace FolkIdle.Server.Network
 
                 try
                 {
-                    MemoryMarshal.Write(_lootDropDispatchBuffer, in drop);
-                    await session.SendAsync(new ArraySegment<byte>(_lootDropDispatchBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+                    if (session.UseJsonProtocol)
+                    {
+                        byte[] json = PacketJsonCodec.SerializeToUtf8(ref drop);
+                        await session.SendAsync(new ArraySegment<byte>(json), WebSocketMessageType.Text, true, CancellationToken.None);
+                    }
+                    else
+                    {
+                        MemoryMarshal.Write(_lootDropDispatchBuffer, in drop);
+                        await session.SendAsync(new ArraySegment<byte>(_lootDropDispatchBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -292,6 +312,14 @@ namespace FolkIdle.Server.Network
             CopyChatPacketToDispatchBuffer(item.Packet);
             var segment = new ArraySegment<byte>(_chatDispatchBuffer);
 
+            // Modul: JSON WebSocket mode, 2026-08-02. Encoded at most once
+            // per dispatched message no matter how many JSON recipients it
+            // has, and not at all when every recipient is on the binary
+            // protocol - which is the state of the world until a web client
+            // actually connects.
+            ResponseChatMessagePacket chatPacket = item.Packet;
+            byte[]? chatJson = null;
+
             if (item.DispatchMode == ChatEngine.DispatchModeWhisper)
             {
                 if (!_connectedClients.TryGetValue(item.TargetPlayerId, out var targetSession) || blockedByRecipients.Contains(item.TargetPlayerId))
@@ -303,7 +331,15 @@ namespace FolkIdle.Server.Network
                 {
                     try
                     {
-                        await targetSession.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
+                        if (targetSession.UseJsonProtocol)
+                        {
+                            chatJson ??= PacketJsonCodec.SerializeToUtf8(ref chatPacket);
+                            await targetSession.SendAsync(new ArraySegment<byte>(chatJson), WebSocketMessageType.Text, true, CancellationToken.None);
+                        }
+                        else
+                        {
+                            await targetSession.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -329,7 +365,15 @@ namespace FolkIdle.Server.Network
                 {
                     try
                     {
-                        await kvp.Value.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
+                        if (kvp.Value.UseJsonProtocol)
+                        {
+                            chatJson ??= PacketJsonCodec.SerializeToUtf8(ref chatPacket);
+                            await kvp.Value.SendAsync(new ArraySegment<byte>(chatJson), WebSocketMessageType.Text, true, CancellationToken.None);
+                        }
+                        else
+                        {
+                            await kvp.Value.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -495,6 +539,24 @@ namespace FolkIdle.Server.Network
                     {
                         context.Response.StatusCode = 503;
                         context.Response.Close();
+                        continue;
+                    }
+
+                    // Modul: browser client support, 2026-08-02. Phase 0, step
+                    // 3 of the web client port plan. Serves the exact content
+                    // files the Unity client reads from StreamingAssets, so a
+                    // browser client mirrors monsters/items/skills/gathering
+                    // from the same bytes rather than shipping its own copy.
+                    // Unauthenticated by design - see HandleGameDataFile.
+                    if (requestPath.StartsWith("/gamedata/", StringComparison.Ordinal) && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleGameDataFile(context, requestPath.Substring("/gamedata/".Length));
+                        continue;
+                    }
+
+                    if (requestPath == "/gamedata" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleGameDataManifest(context);
                         continue;
                     }
 
@@ -3058,6 +3120,131 @@ namespace FolkIdle.Server.Network
             context.Response.Headers["Vary"] = "Origin";
         }
 
+        // Modul: browser client support, 2026-08-02. Phase 0, step 3 of the
+        // web client port plan.
+        //
+        // The Unity client reads these five files off disk from
+        // StreamingAssets/GameData; they are byte-identical to server/GameData
+        // (the server copy is authoritative and the client's is a mirror), so
+        // serving the server's own copy gives a browser client the same bytes
+        // without introducing a third one.
+        //
+        // Unauthenticated on purpose. These files already ship inside the
+        // Unity app bundle, so they are public by construction - gating them
+        // behind a bearer token would add a login dependency to content
+        // loading while protecting nothing.
+        //
+        // GameBalanceConfig.json is the one file in that directory that is
+        // NOT part of the client mirror, and it is excluded rather than
+        // served: it is server balance data (drop weights, price tables), and
+        // this codebase has already decided once that balance data does not
+        // ship to clients - see HandleMonsterLoot's own comment on why drop
+        // rates are an endpoint rather than a content file.
+        private static readonly System.Collections.Generic.HashSet<string> ServerOnlyGameDataFiles =
+            new(StringComparer.OrdinalIgnoreCase) { "GameBalanceConfig.json" };
+
+        // Anything else in GameData/ is served, so adding a content file does
+        // not also require editing a list here. The name is validated rather
+        // than sanitized - a request that is not exactly "word.json" is
+        // rejected outright, which forecloses path traversal without needing
+        // to reason about how many ways ".." can be spelled.
+        private static readonly System.Text.RegularExpressions.Regex GameDataFileNamePattern =
+            new(@"^[A-Za-z0-9_\-]+\.json$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        private static string GameDataDirectory => System.IO.Path.Combine(AppContext.BaseDirectory, "GameData");
+
+        private async Task HandleGameDataFile(HttpListenerContext context, string fileName)
+        {
+            try
+            {
+                if (!GameDataFileNamePattern.IsMatch(fileName) || ServerOnlyGameDataFiles.Contains(fileName))
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                string fullPath = System.IO.Path.Combine(GameDataDirectory, fileName);
+                if (!System.IO.File.Exists(fullPath))
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                var info = new System.IO.FileInfo(fullPath);
+
+                // Content changes only on deploy, but a stale content file is
+                // a silent wrong-data bug rather than a visible failure, so
+                // this revalidates every time and answers 304 when nothing
+                // moved rather than letting a browser cache it blind.
+                string etag = $"\"{info.Length:x}-{info.LastWriteTimeUtc.Ticks:x}\"";
+                if (string.Equals(context.Request.Headers["If-None-Match"], etag, StringComparison.Ordinal))
+                {
+                    context.Response.StatusCode = 304;
+                    context.Response.Headers["ETag"] = etag;
+                    context.Response.Close();
+                    return;
+                }
+
+                byte[] payload = await System.IO.File.ReadAllBytesAsync(fullPath);
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                context.Response.Headers["ETag"] = etag;
+                context.Response.Headers["Cache-Control"] = "no-cache";
+                context.Response.ContentLength64 = payload.Length;
+                await context.Response.OutputStream.WriteAsync(payload, 0, payload.Length);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"GameData file error for '{fileName}': {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: so a web client discovers which content files exist instead
+        // of hardcoding the list - the Unity client hardcodes it, and that
+        // hardcoded list is exactly the kind of second copy the port plan
+        // says must not be created.
+        private async Task HandleGameDataManifest(HttpListenerContext context)
+        {
+            try
+            {
+                var files = new System.Collections.Generic.List<string>();
+                if (System.IO.Directory.Exists(GameDataDirectory))
+                {
+                    foreach (string path in System.IO.Directory.EnumerateFiles(GameDataDirectory, "*.json"))
+                    {
+                        string name = System.IO.Path.GetFileName(path);
+                        if (GameDataFileNamePattern.IsMatch(name) && !ServerOnlyGameDataFiles.Contains(name))
+                        {
+                            files.Add(name);
+                        }
+                    }
+                }
+
+                files.Sort(StringComparer.Ordinal);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new GameDataManifestResponse { Files = files });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"GameData manifest error: {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class GameDataManifestResponse
+        {
+            public System.Collections.Generic.List<string> Files { get; set; } = new();
+        }
+
         private Task HandleMonsterLoot(HttpListenerContext context)
         {
             try
@@ -4197,6 +4384,18 @@ namespace FolkIdle.Server.Network
         {
             ReadOnlySpan<byte> span = new ReadOnlySpan<byte>(buffer, 0, count);
             var packet = MemoryMarshal.Read<ClientCommandPacket>(span);
+            return ValidateAndEnqueue(ref packet, playerId, session);
+        }
+
+        // Modul: JSON WebSocket mode, 2026-08-02. Split out of
+        // ParseValidateAndEnqueue so a command that arrived as JSON goes
+        // through the SAME token bucket, the same flood infraction, the same
+        // telemetry event and the same command queue as one that arrived as
+        // bytes. The encoding is a transport detail; anti-cheat and rate
+        // limiting are not, and a second entry point that skipped them would
+        // be a way in rather than a second client.
+        private bool ValidateAndEnqueue(ref ClientCommandPacket packet, long playerId, WebSocketSession session)
+        {
             if (!ClientCommandValidator.ValidateNetworkThroughput(ref session.TokenBucket, playerId, ref packet, out int reasonCode))
             {
                 session.Socket.Abort();
@@ -4217,6 +4416,104 @@ namespace FolkIdle.Server.Network
             _antiCheatTelemetryEngine?.RecordCommand(playerId, (byte)packet.Command);
             CommandQueue.Enqueue(new PlayerCommand { PlayerId = playerId, Packet = packet });
             return true;
+        }
+
+        // Modul: JSON WebSocket mode, 2026-08-02. Lifted verbatim out of the
+        // binary receive loop so the JSON path routes chat through exactly
+        // the same code - profanity masking, channel routing, the
+        // guild-membership check and the silent-drop conventions all live
+        // here once. Not async, so the unsafe in-place helpers below can take
+        // the packet by ref (unsafe blocks are not permitted directly inside
+        // an async method in this project's language version - the same split
+        // ExtractChatMessageText already uses).
+        private void DispatchInboundChatRequest(long playerId, WebSocketSession session, ref RequestChatMessagePacket chatRequest)
+        {
+            // Modul: Comprehensive Game System Audit, Part 2.3. Profanity
+            // masking runs in place over the packet's fixed byte buffer
+            // BEFORE ExtractChatMessageText materializes any managed string -
+            // the one zero-allocation insertion point on this path, and the
+            // single choke point every channel shares.
+            ApplyProfanityFilterInPlace(ref chatRequest);
+
+            string chatText = ExtractChatMessageText(ref chatRequest);
+
+            if (chatRequest.ChannelType == ChatEngine.GuildChannelType)
+            {
+                // A player not currently in a guild has nothing to route a
+                // guild message to - silently dropped, matching every other
+                // rejected-chat-message path (rate limit, empty content)
+                // rather than disconnecting.
+                if (session.GuildId > 0)
+                {
+                    _ = _chatEngine.PublishGuildMessageAsync(playerId, session.GuildId, chatText);
+                }
+            }
+            else if (chatRequest.ChannelType == ChatEngine.WhisperChannelType)
+            {
+                // Modul: Full-Stack Social Layer, Part 3. Client-supplied
+                // recipient, same treatment as every other
+                // rejected-chat-message path - an invalid target (0, self) is
+                // silently dropped by PublishWhisperMessageAsync's own guard
+                // rather than disconnecting.
+                _ = _chatEngine.PublishWhisperMessageAsync(playerId, chatRequest.TargetPlayerId, chatText);
+            }
+            else
+            {
+                _ = _chatEngine.PublishMessageAsync(playerId, chatText);
+            }
+        }
+
+        // Modul: JSON WebSocket mode, 2026-08-02. The binary protocol never
+        // needed this: every one of its six packets is a fixed size well
+        // under the 1024-byte receive buffer, arriving as exactly one
+        // unfragmented frame. JSON is neither - a ClientCommand renders to
+        // roughly 2 KB, and a browser's WebSocket stack is free to fragment
+        // it - so a JSON session must accumulate until EndOfMessage or it
+        // would silently parse a truncated prefix.
+        //
+        // Bounded on purpose. Without a cap, a client could stream an
+        // unbounded "message" and make the server buy the memory one frame at
+        // a time, which is a denial of service that never reaches the token
+        // bucket because the token bucket only sees completed packets.
+        private const int MaxJsonMessageBytes = 64 * 1024;
+
+        private static async Task<byte[]?> ReadTextMessageAsync(WebSocket socket, byte[] firstChunk, WebSocketReceiveResult firstResult, CancellationToken cancellationToken)
+        {
+            if (firstResult.Count > MaxJsonMessageBytes)
+            {
+                return null;
+            }
+
+            if (firstResult.EndOfMessage)
+            {
+                var single = new byte[firstResult.Count];
+                Array.Copy(firstChunk, single, firstResult.Count);
+                return single;
+            }
+
+            using var accumulator = new System.IO.MemoryStream(firstResult.Count * 2);
+            accumulator.Write(firstChunk, 0, firstResult.Count);
+
+            var continuation = new byte[firstChunk.Length];
+            while (true)
+            {
+                WebSocketReceiveResult result = await socket.ReceiveAsync(new ArraySegment<byte>(continuation), cancellationToken).ConfigureAwait(false);
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    return null;
+                }
+
+                if (accumulator.Length + result.Count > MaxJsonMessageBytes)
+                {
+                    return null;
+                }
+
+                accumulator.Write(continuation, 0, result.Count);
+                if (result.EndOfMessage)
+                {
+                    return accumulator.ToArray();
+                }
+            }
         }
 
         private AuthHandshakePacket ParseAuthHandshakePacket(byte[] buffer, int count)
@@ -4839,9 +5136,80 @@ namespace FolkIdle.Server.Network
                 // token auto-provisioned a brand new account with zero
                 // credential verification (the exact vulnerability this
                 // handshake exists to close).
-                if (result.MessageType == WebSocketMessageType.Binary && result.Count >= Marshal.SizeOf<AuthHandshakePacket>())
+                // Modul: JSON WebSocket mode, 2026-08-02. The per-connection
+                // protocol switch, decided here and nowhere else.
+                //
+                // The switch IS the frame type of the handshake: a Binary
+                // first frame means the byte protocol (what the Unity client
+                // has always sent - that branch below is unchanged), a Text
+                // first frame means JSON. A frame's type is unforgeable and
+                // already carried by every WebSocket implementation, so this
+                // needs no negotiation round-trip and no way for the two
+                // sides to disagree about which protocol they are speaking.
+                // The JSON handshake additionally carries an explicit
+                // "mode":"json" so the intent is legible in a packet capture
+                // rather than implied; it is validated, not inferred.
+                AuthHandshakePacket authPacket;
+                bool useJsonProtocol = false;
+
+                if (result.MessageType == WebSocketMessageType.Text)
                 {
-                    var authPacket = ParseAuthHandshakePacket(buffer, result.Count);
+                    byte[]? handshakeJson = await ReadTextMessageAsync(socket, buffer, result, cts.Token);
+                    if (handshakeJson == null)
+                    {
+                        await socket.CloseAsync(WebSocketCloseStatus.MessageTooBig, "Handshake message too large", CancellationToken.None);
+                        return;
+                    }
+
+                    if (!PacketJsonCodec.TryParseEnvelope(handshakeJson, out JsonDocument? handshakeDocument, out string handshakeType, out string? handshakeError))
+                    {
+                        await socket.CloseAsync(WebSocketCloseStatus.InvalidPayloadData, $"Malformed handshake: {handshakeError}", CancellationToken.None);
+                        return;
+                    }
+
+                    using (handshakeDocument)
+                    {
+                        if (handshakeType != PacketJsonCodec.TypeAuthHandshake)
+                        {
+                            await socket.CloseAsync(WebSocketCloseStatus.InvalidMessageType, "Expected an AuthHandshake packet", CancellationToken.None);
+                            return;
+                        }
+
+                        if (handshakeDocument!.RootElement.TryGetProperty(PacketJsonCodec.ModePropertyName, out JsonElement modeElement))
+                        {
+                            string declaredMode = modeElement.GetString() ?? string.Empty;
+                            if (!string.Equals(declaredMode, PacketJsonCodec.ModeJson, StringComparison.OrdinalIgnoreCase))
+                            {
+                                // A JSON handshake asking for the binary mode
+                                // is a contradiction, and honouring either
+                                // half of it would leave the two sides
+                                // speaking different protocols.
+                                await socket.CloseAsync(WebSocketCloseStatus.InvalidPayloadData,
+                                    $"Handshake sent as JSON but declared mode '{declaredMode}'", CancellationToken.None);
+                                return;
+                            }
+                        }
+
+                        if (!PacketJsonCodec.TryRead(handshakeDocument.RootElement, out authPacket, out string? readError))
+                        {
+                            await socket.CloseAsync(WebSocketCloseStatus.InvalidPayloadData, $"Malformed handshake: {readError}", CancellationToken.None);
+                            return;
+                        }
+                    }
+
+                    useJsonProtocol = true;
+                }
+                else if (result.MessageType == WebSocketMessageType.Binary && result.Count >= Marshal.SizeOf<AuthHandshakePacket>())
+                {
+                    authPacket = ParseAuthHandshakePacket(buffer, result.Count);
+                }
+                else
+                {
+                    await socket.CloseAsync(WebSocketCloseStatus.InvalidMessageType, "Expected Auth Handshake Packet", CancellationToken.None);
+                    return;
+                }
+
+                {
                     string jwtToken = ExtractJwtToken(ref authPacket);
 
                     JwtValidationResult validation = AuthenticationEngine.ValidateJwt(jwtToken, _jwtSecretKey);
@@ -4904,13 +5272,8 @@ namespace FolkIdle.Server.Network
                         }
                     }
 
-                    _connectedClients[playerId] = new WebSocketSession(socket, redisLockToken ?? string.Empty);
+                    _connectedClients[playerId] = new WebSocketSession(socket, redisLockToken ?? string.Empty, useJsonProtocol);
                     CommandQueue.Enqueue(new PlayerCommand { PlayerId = playerId, Packet = new ClientCommandPacket { Command = CommandType.Login, TargetId = playerId } });
-                }
-                else
-                {
-                    await socket.CloseAsync(WebSocketCloseStatus.InvalidMessageType, "Expected Auth Handshake Packet", CancellationToken.None);
-                    return;
                 }
 
                 if (!_connectedClients.TryGetValue(playerId, out session)) return;
@@ -4924,6 +5287,78 @@ namespace FolkIdle.Server.Network
                         break;
                     }
 
+                    // Modul: JSON WebSocket mode, 2026-08-02. A JSON session
+                    // demultiplexes on the "type" discriminator; the binary
+                    // branches below still demultiplex on exact byte length
+                    // (see NetworkPacketLayoutGuard), unchanged. The two
+                    // never mix: a session picked one at handshake time, and
+                    // a frame of the other kind is simply not this
+                    // connection's protocol.
+                    if (session.UseJsonProtocol)
+                    {
+                        if (result.MessageType != WebSocketMessageType.Text)
+                        {
+                            continue;
+                        }
+
+                        byte[]? messageJson = await ReadTextMessageAsync(socket, buffer, result, CancellationToken.None);
+                        if (messageJson == null)
+                        {
+                            await session.CloseAsync(WebSocketCloseStatus.MessageTooBig, "Message too large", CancellationToken.None);
+                            break;
+                        }
+
+                        if (!PacketJsonCodec.TryParseEnvelope(messageJson, out JsonDocument? document, out string messageType, out string? parseError))
+                        {
+                            // Malformed input is dropped, not a disconnect -
+                            // the same treatment a rejected chat message
+                            // gets, and the same reason: a client bug should
+                            // not look like a flood infraction. A real flood
+                            // is still caught by the token bucket below.
+                            Console.WriteLine($"JSON packet from player {playerId} rejected: {parseError}");
+                            continue;
+                        }
+
+                        bool flooded = false;
+                        using (document)
+                        {
+                            if (messageType == PacketJsonCodec.TypeRequestChatMessage)
+                            {
+                                if (ChatEngine.TryConsumeChatToken(ref session.ChatTokenBucket) &&
+                                    PacketJsonCodec.TryRead(document!.RootElement, out RequestChatMessagePacket jsonChatRequest, out _))
+                                {
+                                    DispatchInboundChatRequest(playerId, session, ref jsonChatRequest);
+                                }
+                            }
+                            else if (messageType == PacketJsonCodec.TypeClientCommand)
+                            {
+                                if (PacketJsonCodec.TryRead(document!.RootElement, out ClientCommandPacket jsonCommand, out _))
+                                {
+                                    flooded = !ValidateAndEnqueue(ref jsonCommand, playerId, session);
+                                }
+                            }
+                            else
+                            {
+                                // Includes the three server-to-client types.
+                                // A client sending one of those is confused,
+                                // not hostile.
+                                Console.WriteLine($"JSON packet from player {playerId} has unroutable type '{messageType}'.");
+                            }
+                        }
+
+                        if (flooded)
+                        {
+                            Interlocked.Increment(ref _throttledCounter);
+                            if (socket.State == WebSocketState.Open)
+                            {
+                                await session.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Packet flood", CancellationToken.None);
+                            }
+                            break;
+                        }
+
+                        continue;
+                    }
+
                     if (result.MessageType == WebSocketMessageType.Binary && result.Count == Marshal.SizeOf<RequestChatMessagePacket>())
                     {
                         // Modul: a rejected chat message (rate limited or
@@ -4934,48 +5369,7 @@ namespace FolkIdle.Server.Network
                         if (ChatEngine.TryConsumeChatToken(ref session.ChatTokenBucket))
                         {
                             var chatRequest = MemoryMarshal.Read<RequestChatMessagePacket>(new ReadOnlySpan<byte>(buffer, 0, result.Count));
-
-                            // Modul: Comprehensive Game System Audit, Part
-                            // 2.3. Profanity masking runs in place over the
-                            // packet's fixed byte buffer BEFORE
-                            // ExtractChatMessageText materializes any
-                            // managed string - the one zero-allocation
-                            // insertion point on this path, and the single
-                            // choke point both the global and guild
-                            // channels share. In its own static helper (not
-                            // inline) because unsafe blocks are not allowed
-                            // directly inside this async receive loop -
-                            // same split ExtractChatMessageText itself uses.
-                            ApplyProfanityFilterInPlace(ref chatRequest);
-
-                            string chatText = ExtractChatMessageText(ref chatRequest);
-
-                            if (chatRequest.ChannelType == ChatEngine.GuildChannelType)
-                            {
-                                // A player not currently in a guild has
-                                // nothing to route a guild message to -
-                                // silently dropped, matching every other
-                                // rejected-chat-message path (rate limit,
-                                // empty content) rather than disconnecting.
-                                if (session.GuildId > 0)
-                                {
-                                    _ = _chatEngine.PublishGuildMessageAsync(playerId, session.GuildId, chatText);
-                                }
-                            }
-                            else if (chatRequest.ChannelType == ChatEngine.WhisperChannelType)
-                            {
-                                // Modul: Full-Stack Social Layer, Part 3.
-                                // Client-supplied recipient, same treatment
-                                // as every other rejected-chat-message path -
-                                // an invalid target (0, self) is silently
-                                // dropped by PublishWhisperMessageAsync's own
-                                // guard rather than disconnecting.
-                                _ = _chatEngine.PublishWhisperMessageAsync(playerId, chatRequest.TargetPlayerId, chatText);
-                            }
-                            else
-                            {
-                                _ = _chatEngine.PublishMessageAsync(playerId, chatText);
-                            }
+                            DispatchInboundChatRequest(playerId, session, ref chatRequest);
                         }
                     }
                     else if (result.MessageType == WebSocketMessageType.Binary && result.Count >= Marshal.SizeOf<ClientCommandPacket>())
@@ -5075,10 +5469,28 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
-            ReadOnlySpan<StateUpdatePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
-            ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(span);
-            bytes.CopyTo(session.DiagnosticSendBuffer);
-            var segment = new ArraySegment<byte>(session.DiagnosticSendBuffer);
+            // Modul: JSON WebSocket mode, 2026-08-02. The binary path below is
+            // byte for byte what it always was, including its reusable
+            // per-session buffer - this is the single hottest path in the
+            // codebase (once per online player per 10Hz tick) and the JSON
+            // branch must not cost the Unity client anything but one already-
+            // loaded bool test.
+            ArraySegment<byte> segment;
+            WebSocketMessageType messageType;
+
+            if (session.UseJsonProtocol)
+            {
+                segment = new ArraySegment<byte>(PacketJsonCodec.SerializeToUtf8(ref packet));
+                messageType = WebSocketMessageType.Text;
+            }
+            else
+            {
+                ReadOnlySpan<StateUpdatePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
+                ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(span);
+                bytes.CopyTo(session.DiagnosticSendBuffer);
+                segment = new ArraySegment<byte>(session.DiagnosticSendBuffer);
+                messageType = WebSocketMessageType.Binary;
+            }
 
             // Fire-and-forget is intentional here - SendToPlayer is called
             // once per player per broadcast tick and must not block the
@@ -5088,7 +5500,7 @@ namespace FolkIdle.Server.Network
             // this allocates zero Task/state-machine objects on the
             // per-tick, per-player hot path - see _logSendFault's own doc
             // comment.
-            session.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None)
+            session.SendAsync(segment, messageType, true, CancellationToken.None)
                 .ContinueWith(_logSendFault, playerId, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
         }
 
