@@ -25,6 +25,7 @@
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
   import MailBadge from './lib/ui/MailBadge.svelte';
+  import EventBanner from './lib/ui/EventBanner.svelte';
   import { startSession, endSession, connectionStatus, playerState } from './lib/stores/game';
   import { storedToken, clearToken } from './lib/net/auth';
   import { queryClient } from './lib/net/queryClient';
@@ -152,6 +153,8 @@
           </div>
         {/each}
       </nav>
+
+      <EventBanner />
 
       {#if haltBadge}
         <span class="halt" title="This character is not earning">{haltBadge}</span>

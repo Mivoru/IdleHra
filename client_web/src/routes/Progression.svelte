@@ -30,13 +30,41 @@
 
   // Race names are not on the wire; RaceIds is a server-side enum. Listed here
   // because the mastery endpoint returns bare numeric ids.
+  //
+  // SIX races exist, not five - Moosleute (6) was missing from this list, so a
+  // player who unlocked it saw "Race 6". The gap in the ids is real: 5 is
+  // Vodnik and 6 is Moosleute, both defined in ContentRegistry.RaceIds.
   const RACE_NAMES: Record<number, string> = {
     1: 'Human',
     2: 'Vila',
     3: 'Draugr',
     4: 'Kobold',
     5: 'Vodnik',
+    6: 'Moosleute',
   };
+
+  const ALL_RACE_IDS = [1, 2, 3, 4, 5, 6];
+
+  // Modul: UnlockedRaceBitmask sets bit (raceId - 1), so Human is bit 0 and
+  // Moosleute is bit 5. It is a BYTE on the wire, which is exactly enough for
+  // six races and would silently stop recording a seventh.
+  const unlockedMask = $derived(snap?.UnlockedRaceBitmask ?? 0);
+
+  function isRaceUnlocked(raceId: number): boolean {
+    return (unlockedMask & (1 << (raceId - 1))) !== 0;
+  }
+
+  // The three races whose mastery level rides on the hot path rather than
+  // waiting for the REST snapshot - they feed StatsCalculator directly.
+  const liveMastery = $derived(
+    snap
+      ? [
+          { raceId: 1, level: snap.HumanMasteryLevel },
+          { raceId: 2, level: snap.VilaMasteryLevel },
+          { raceId: 3, level: snap.DraugrMasteryLevel },
+        ]
+      : [],
+  );
 
   function claim(entry: AchievementEntry) {
     const outcome = claimAchievement(entry.AchievementId, quarantined);
@@ -132,6 +160,19 @@
       <p class="dim">Loading...</p>
     {/if}
 
+    <h3>Races unlocked</h3>
+    <ul class="races">
+      {#each ALL_RACE_IDS as raceId}
+        {@const unlocked = isRaceUnlocked(raceId)}
+        <li class:locked={!unlocked}>
+          <span class="race-name">{RACE_NAMES[raceId]}</span>
+          <!-- The word, not only the colour - a locked race has to read as
+               locked without relying on the palette. -->
+          <span class="race-state">{unlocked ? 'unlocked' : 'locked'}</span>
+        </li>
+      {/each}
+    </ul>
+
     <h3>Race mastery</h3>
     {#if (raceMastery.data ?? []).length === 0}
       <p class="dim tiny">No race mastery yet.</p>
@@ -147,6 +188,18 @@
           />
         </div>
       {/each}
+    {/if}
+
+    {#if liveMastery.some((m) => m.level > 0)}
+      <p class="dim tiny">
+        <!-- These three come off the hot path rather than the REST snapshot,
+             so they can disagree with the bars above for a moment after a
+             level-up. Naming the source is cheaper than an unexplained
+             mismatch. -->
+        Live from the state feed:
+        {#each liveMastery as entry, index}{index > 0 ? ', ' : ''}{RACE_NAMES[entry.raceId]}
+          {entry.level}{/each}.
+      </p>
     {/if}
   </section>
 
@@ -337,6 +390,37 @@
     display: grid;
     gap: 0.15rem;
     margin-bottom: 0.45rem;
+  }
+
+  .races {
+    list-style: none;
+    margin: 0 0 0.5rem;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .races li {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--rarity-6);
+    color: var(--rarity-6);
+    font-size: 0.76rem;
+  }
+
+  .races li.locked {
+    border-color: var(--border);
+    color: var(--text-dim);
+    opacity: 0.7;
+  }
+
+  .race-state {
+    font-size: 0.65rem;
+    opacity: 0.8;
   }
 
   .stats {

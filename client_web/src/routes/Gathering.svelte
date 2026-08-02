@@ -54,9 +54,47 @@
     connection.send({ Command: CommandType.ChangeActivity, TargetId: 0 });
   }
 
-  /** BaseTickThreshold is in 10 Hz ticks. */
+  // Modul: BaseTickThreshold is NOT what a gather actually costs.
+  //
+  // SimulationEngine computes the real threshold as
+  //   BaseTickThreshold - masteryLevel*2 - CachedCurrentToolTier
+  // with a hard floor of 2 ticks. This screen used to print the base value, so
+  // a player with mastery 20 and a tier 5 tool was told a node took 12 seconds
+  // when it took 7.5 - the rate was wrong for everyone except a brand new
+  // account, and wrong in the direction that hides progress.
+  //
+  // The logistics achievement's percentage reduction is applied server-side
+  // after these and is not carried on any packet, so the number below is a
+  // floor on the real speed rather than an exact figure - stated in the UI
+  // rather than quietly presented as exact.
+  const MIN_GATHER_TICKS = 2;
+
+  function effectiveTicks(node: GatheringNodeDefinition): number {
+    if (!snap) return node.BaseTickThreshold;
+    const mastery =
+      node.ProfessionType === 0 ? snap.WoodcuttingMasteryLevel : snap.MiningMasteryLevel;
+    const reduced = node.BaseTickThreshold - mastery * 2 - snap.CachedCurrentToolTier;
+    return Math.max(MIN_GATHER_TICKS, reduced);
+  }
+
   function secondsPerUnit(node: GatheringNodeDefinition): string {
-    return (node.BaseTickThreshold / 10).toFixed(1);
+    return (effectiveTicks(node) / 10).toFixed(1);
+  }
+
+  function isFloored(node: GatheringNodeDefinition): boolean {
+    return effectiveTicks(node) === MIN_GATHER_TICKS;
+  }
+
+  const toolTier = $derived(snap?.CachedCurrentToolTier ?? 0);
+
+  // Monoliths are a GUILD upgrade, so they can move without the player doing
+  // anything. The yield bonus is a flat percent, capped at 50 server-side.
+  const MONOLITH_CAP_PCT = 50;
+  const woodMonolith = $derived(snap?.CachedWoodcuttingMonolithLevel ?? 0);
+  const mineMonolith = $derived(snap?.CachedMiningMonolithLevel ?? 0);
+
+  function monolithFor(professionId: number): number {
+    return professionId === 0 ? woodMonolith : mineMonolith;
   }
 </script>
 
@@ -121,6 +159,38 @@
           <dd>level {snap.MiningMasteryLevel} &middot; {snap.MiningMasteryXp.toLocaleString()} xp</dd>
         </div>
       </dl>
+
+      <h3>Speed and yield</h3>
+      <dl class="mastery">
+        <div>
+          <dt>Tool tier</dt>
+          <dd class="bonus">-{toolTier} ticks per gather</dd>
+        </div>
+        <div>
+          <dt>Mastery</dt>
+          <dd class="bonus">
+            -{snap.WoodcuttingMasteryLevel * 2} wood, -{snap.MiningMasteryLevel * 2} mining
+          </dd>
+        </div>
+        <div>
+          <dt>Woodcutting monolith</dt>
+          <dd class="bonus">
+            +{Math.min(woodMonolith, MONOLITH_CAP_PCT)}% yield
+            {#if woodMonolith > MONOLITH_CAP_PCT}<span class="dim tiny">(capped)</span>{/if}
+          </dd>
+        </div>
+        <div>
+          <dt>Mining monolith</dt>
+          <dd class="bonus">
+            +{Math.min(mineMonolith, MONOLITH_CAP_PCT)}% yield
+            {#if mineMonolith > MONOLITH_CAP_PCT}<span class="dim tiny">(capped)</span>{/if}
+          </dd>
+        </div>
+      </dl>
+      <p class="dim small">
+        Monoliths are a guild upgrade, so these move without you doing anything.
+        The rates in the node lists below already include your tool and mastery.
+      </p>
     </section>
   {/if}
 
@@ -133,13 +203,18 @@
           {#if masteryFor(profession.id)}
             &middot; {masteryFor(profession.id)?.name} mastery {masteryFor(profession.id)?.level}
           {/if}
+          {#if monolithFor(profession.id) > 0}
+            &middot; <span class="bonus">+{Math.min(monolithFor(profession.id), MONOLITH_CAP_PCT)}% yield</span>
+          {/if}
         </p>
 
         <ul class="nodes">
           {#each profession.nodes as node (node.ActivityId)}
             <li class:current={activeActivity === node.ActivityId}>
               <span class="tier">T{node.ActivityId % 1000}</span>
-              <span class="dim tiny">{secondsPerUnit(node)}s / unit</span>
+              <span class="dim tiny" title={`Base ${(node.BaseTickThreshold / 10).toFixed(1)}s, reduced by mastery and tool tier`}>
+                {secondsPerUnit(node)}s / unit{#if isFloored(node)}<span class="floored"> (floor)</span>{/if}
+              </span>
               <span class="dim tiny">{node.BaseMasteryXpReward} xp</span>
               <button
                 class="tiny-btn"
@@ -279,6 +354,17 @@
   .tier {
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+  }
+
+  .bonus {
+    color: var(--good);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A node already at the two-tick floor gains nothing from more mastery, and
+     that is worth knowing before spending on it. */
+  .floored {
+    color: var(--rarity-12);
   }
 
   .tiny-btn {

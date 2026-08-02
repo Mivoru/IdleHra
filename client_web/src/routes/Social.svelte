@@ -6,6 +6,8 @@
     fetchGuilds,
     fetchGuildRoster,
     fetchGuildApplications,
+    approveGuildApplication,
+    rejectGuildApplication,
     resolvePlayer,
     fetchPlayerNames,
   } from '../lib/net/rest';
@@ -127,9 +129,31 @@
   async function reviewApplication(applicationId: number, approve: boolean) {
     busy = true;
     try {
-      await post(`/api/v1/guild/applications/${approve ? 'approve' : 'reject'}`, { applicationId });
+      // Modul: `Success: false` arrives with HTTP 200 and MUST be checked.
+      //
+      // ApproveApplicationAsync returns it when the caller is not the leader,
+      // when the guild is full, or when someone else already handled the
+      // application - all normal outcomes, none of them an HTTP error. This
+      // used to fire and forget, so a refusal looked exactly like an approval
+      // and the only symptom was a roster that never grew.
+      const result = approve
+        ? await approveGuildApplication(applicationId)
+        : await rejectGuildApplication(applicationId);
+
+      if (result?.Success === false) {
+        pushLocalNotice(
+          approve
+            ? 'Not approved - you may not be the leader, or the guild is full.'
+            : 'Not rejected - it may already have been handled.',
+        );
+      } else {
+        pushLocalNotice(approve ? 'Application approved.' : 'Application rejected.', 'info');
+      }
+
       client.invalidateQueries({ queryKey: queryKeys.guildApplications });
       client.invalidateQueries({ queryKey: queryKeys.guildRoster });
+    } catch {
+      pushLocalNotice('Could not reach the server.');
     } finally {
       busy = false;
     }

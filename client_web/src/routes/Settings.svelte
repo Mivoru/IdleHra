@@ -5,7 +5,9 @@
   import { tutorialStep, skipTutorial, TutorialStep, currentPrompt } from '../lib/stores/tutorial';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
-  import { playerState, pushLocalNotice } from '../lib/stores/game';
+  import { playerState, pushLocalNotice, commandResults, connectionStatus } from '../lib/stores/game';
+  import { triggerGdprPurge } from '../lib/net/commands';
+  import { submitSupportTicket, scrubTrace } from '../lib/net/rest';
 
   const snap = $derived($playerState);
 
@@ -43,6 +45,79 @@
   }
 
   const clipNames = Object.keys(CLIPS) as ClipName[];
+
+  // ---------------------------------------------------------------------------
+  // Support
+  // ---------------------------------------------------------------------------
+
+  let supportMessage = $state('');
+  let supportSent = $state(false);
+
+  /**
+   * The diagnostic bundle. Deliberately assembled from things this client
+   * already knows rather than scraping the page: connection phase, the last
+   * few command result codes, and the player's own id. Nothing else in this
+   * app has a legitimate reason to appear in a support log.
+   */
+  function buildTrace(): string {
+    const lines = [
+      `player=${snap?.PlayerId ?? 'unknown'}`,
+      `phase=${$connectionStatus.phase} attempt=${$connectionStatus.attempt}`,
+      `epoch=${connection.currentEpoch}`,
+      `agent=${navigator.userAgent}`,
+      `language=${$language}`,
+      '--- recent command results ---',
+      ...$commandResults.slice(-8).map((entry) => `code=${entry.code} tick=${entry.tick}`),
+      '--- message ---',
+      supportMessage,
+    ];
+    return scrubTrace(lines.join('\n'));
+  }
+
+  const tracePreview = $derived(buildTrace());
+
+  async function sendSupport() {
+    try {
+      await submitSupportTicket(buildTrace());
+      supportSent = true;
+      // Modul: the handler writes ONE LINE TO THE SERVER CONSOLE and returns
+      // 200. It does not store a ticket, assign an id or produce a body. So
+      // this must not promise a reply - a 200 means "received", nothing more,
+      // and anything warmer is a lie the player discovers by waiting.
+      pushLocalNotice('Sent. There is no ticketing system behind this yet.', 'info');
+    } catch {
+      pushLocalNotice('Could not reach the server.');
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Account erasure
+  // ---------------------------------------------------------------------------
+
+  let purgeConfirmation = $state('');
+  const PURGE_PHRASE = 'DELETE MY ACCOUNT';
+  const purgeArmed = $derived(purgeConfirmation.trim() === PURGE_PHRASE);
+
+  function purge() {
+    if (!purgeArmed || !snap) return;
+
+    const outcome = triggerGdprPurge(snap.PlayerId, connection.currentEpoch);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+
+    // Modul: BOTH OUTCOMES LOOK IDENTICAL FROM HERE.
+    //
+    // A successful purge ends with TerminateSessionForSecurity. So does a
+    // REJECTED one - the interlock hash is checked for exact equality against
+    // the server's current epoch, and a checkpoint flush landing between the
+    // last state update and this command makes it stale. There is no result
+    // code either way and no way to produce one from the client side.
+    //
+    // Saying so is the only honest thing available.
+    pushLocalNotice(
+      'Request sent. You will be disconnected either way - sign in again to see whether the account is gone.',
+      'info',
+    );
+  }
 </script>
 
 <div class="grid">
@@ -143,6 +218,69 @@
         </div>
       </dl>
     {/if}
+  </section>
+
+  <section class="panel">
+    <h2>Support</h2>
+    <p class="dim small">
+      Sends a short diagnostic bundle with your message. Bearer tokens, email
+      addresses and long opaque ids are stripped in your browser before
+      anything is sent - a reduction of risk rather than a guarantee, so do not
+      paste anything private into the box.
+    </p>
+
+    <label>
+      What went wrong
+      <textarea rows="4" bind:value={supportMessage}></textarea>
+    </label>
+
+    <details>
+      <summary>See exactly what will be sent</summary>
+      <pre>{tracePreview}</pre>
+    </details>
+
+    <button disabled={supportMessage.trim().length === 0} onclick={sendSupport}>
+      Send
+    </button>
+
+    {#if supportSent}
+      <p class="dim tiny">
+        Received by the server. There is no ticketing system behind this
+        endpoint yet, so nobody will reply to it - stated here rather than
+        implied by a reference number that does not exist.
+      </p>
+    {/if}
+  </section>
+
+  <section class="panel danger-panel">
+    <h2>Delete this account</h2>
+
+    <p class="warn">
+      <strong>This cannot be undone.</strong> Every character, item, guild
+      membership and purchase is erased permanently.
+    </p>
+
+    <p class="dim small">
+      Type <code>{PURGE_PHRASE}</code> below to enable the button. The request
+      also carries a one-time interlock computed from your player id and the
+      server's current save generation, so it cannot be replayed from a
+      captured request.
+    </p>
+
+    <label>
+      Confirmation
+      <input type="text" bind:value={purgeConfirmation} placeholder={PURGE_PHRASE} />
+    </label>
+
+    <button class="destructive" disabled={!purgeArmed || !snap} onclick={purge}>
+      Permanently delete
+    </button>
+
+    <p class="dim tiny">
+      You will be disconnected whether or not it succeeds - the server ends the
+      session either way and sends no result code. Signing in again is the only
+      way to find out which happened.
+    </p>
   </section>
 </div>
 
@@ -261,6 +399,65 @@
     grid-template-columns: repeat(2, 1fr);
     gap: 0.5rem;
     margin: 0;
+  }
+
+  /* The one panel on this screen that can destroy something. Bordered in the
+     danger colour AND separated by its own heading and a typed confirmation -
+     colour is the last of the three signals, not the only one. */
+  .danger-panel {
+    border-color: var(--danger);
+  }
+
+  .warn {
+    font-size: 0.85rem;
+    color: var(--danger);
+    margin: 0 0 0.6rem;
+  }
+
+  .destructive:not(:disabled) {
+    border-color: var(--danger);
+    color: var(--danger);
+  }
+
+  textarea,
+  input[type='text'] {
+    font: inherit;
+    color: inherit;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.4rem 0.5rem;
+    width: 100%;
+    resize: vertical;
+  }
+
+  code {
+    background: var(--bg-raised);
+    padding: 0.05rem 0.3rem;
+    border-radius: 4px;
+    font-size: 0.85em;
+  }
+
+  details {
+    margin: 0 0 0.7rem;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+
+  summary {
+    cursor: pointer;
+  }
+
+  pre {
+    margin: 0.4rem 0 0;
+    padding: 0.5rem;
+    background: var(--bg-raised);
+    border-radius: var(--radius);
+    font-size: 0.68rem;
+    max-height: 12rem;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
   }
 
   .stats div {
