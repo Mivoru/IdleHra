@@ -991,6 +991,14 @@ namespace FolkIdle.Server.Network
             public string Username { get; set; } = string.Empty;
             public int Level { get; set; }
             public bool IsBlocked { get; set; }
+
+            // Modul: friend online status, 2026-08-02. The friend list carried
+            // no online state at all, so it could not answer the one question a
+            // friend list exists to answer - who is around right now. The
+            // capability was already there: PlayerSessionRegistry.IsPlayerOnline
+            // is what the market escrow uses to decide between crediting a live
+            // payload and writing to the database.
+            public bool IsOnline { get; set; }
         }
 
         private sealed class PlayerResolveResponse
@@ -2548,7 +2556,21 @@ namespace FolkIdle.Server.Network
                         PlayerId = rel.TargetPlayerId,
                         Username = target?.Username ?? "(unknown player)",
                         Level = target?.CurrentLevel ?? 0,
-                        IsBlocked = rel.RelationType == RelationType.Blocked
+                        IsBlocked = rel.RelationType == RelationType.Blocked,
+
+                        // Live connection table rather than a persisted column:
+                        // a stored "is online" flag goes stale the moment a
+                        // process dies without a clean logout, and would then
+                        // claim someone is online forever.
+                        //
+                        // POD-LOCAL. _connectedClients is this pod's own
+                        // WebSocket table, so a friend connected to a different
+                        // pod reads as offline. Correct for a single-pod
+                        // deployment, which is what this runs as today; a
+                        // multi-pod answer needs a Redis presence key, and
+                        // inventing one here would be a second source of truth
+                        // about who is online. Recorded rather than faked.
+                        IsOnline = _connectedClients.ContainsKey(rel.TargetPlayerId)
                     });
                 }
 

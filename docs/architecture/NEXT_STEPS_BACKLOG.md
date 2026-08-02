@@ -1219,3 +1219,35 @@ add/remove/invite and online-status flows remain unaudited.
 leaves `characters.Equipped*Id` pointing at them, and the fixture's
 "already equipped" guard then refuses to re-seed. Only reachable by editing
 the database by hand, but worth knowing before the next fixture reset.
+
+### 50. Friendlist audit, 2026-08-02
+
+**Verified correct.** `RelationshipEngine.AddFriendAsync` validates properly
+before touching anything: rejects self-friending and non-positive ids, checks
+the target actually exists, and takes the existing relationship row `FOR
+UPDATE` inside a Serializable transaction. Its raw SQL quotes identifiers
+correctly. The command handlers dispatch through `SafeDispatchAsync` with no
+tick-thread blocking. Validation living in the engine rather than the handler
+is the right split - the handler cannot reach the database.
+
+**Fixed: the friend list carried no online status at all.**
+`FriendEntryResponse` returned PlayerId, Username, Level and IsBlocked, so the
+list could not answer the one question a friend list exists to answer - who is
+around right now. Neither the server DTO nor the client cache had the field.
+Added on both sides, sourced from the live connection table rather than a
+persisted column, since a stored flag goes stale the instant a process dies
+without a clean logout and would then claim someone is online forever.
+
+**Known limitation, deliberately not papered over:** the online answer is
+POD-LOCAL. It reads this pod's own WebSocket table, so a friend connected to a
+different pod reads as offline. That is correct for the single-pod deployment
+this runs as today. A multi-pod answer needs a Redis presence key, and
+inventing one inline would have created a second source of truth about who is
+online - the exact class of split this codebase has already been bitten by
+twice (diamonds, gold).
+
+**Still not exercised live.** Add, remove, block and the online flag itself
+were audited by reading, not by running two accounts against each other. The
+mechanics are simple and the validation is visibly correct, but "looks right"
+and "works" have diverged three times in this project within two days, so this
+is recorded as unverified rather than passed.

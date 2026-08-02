@@ -14,6 +14,11 @@ namespace FolkIdle.Client.Engine
         public string Username { get; set; } = string.Empty;
         public int Level { get; set; }
         public bool IsBlocked { get; set; }
+
+        // Mirrors FriendEntryResponse.IsOnline. Name must match the server's
+        // property exactly - this is a JSON contract, so a mismatch silently
+        // yields false for everyone rather than erroring.
+        public bool IsOnline { get; set; }
     }
 
     // Modul: UI audit follow-up. On-demand snapshot cache for the player's
