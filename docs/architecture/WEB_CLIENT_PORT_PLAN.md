@@ -1,7 +1,7 @@
 # Web Client Port Plan
 
 Status: **Decision gate TAKEN 2026-08-02 - the web client is the direction.**
-Phases 0-2 built, Phase 3 in progress. **The Unity client is in feature freeze.**
+Phases 0-3 built, Phase 4 partially built. **The Unity client is in feature freeze.**
 
 Target: a browser-first client (Svelte + TypeScript), packaged for Android and
 iOS with Capacitor later. The existing Unity client stays untouched and
@@ -488,11 +488,27 @@ conditions. Budget for it accordingly.
 **Feature freeze on the Unity client starts here.** Past this point, dual
 maintenance is the main cost driver, and only bug fixes should land in Unity.
 
-### Phase 4 - Social (~12-18 days)
+### Phase 4 - Social (~12-18 days) - **PARTIALLY BUILT**
 
-Chat across all three channels plus announcements and the congratulate button,
-friends, guild create/join/directory/roster/applications, guild war, raids,
-mentorship.
+Built: chat across all three channels, friends with block/unblock, guild
+create/join/directory/roster/applications.
+
+**Not built: guild war, raids, mentorship, and the congratulate button.** Named
+explicitly rather than left implied - a phase reported as done while three of
+its features are missing is how a port reaches "60 percent and stops".
+
+Two things worth carrying forward:
+
+- **This wire identifies players NUMERICALLY.** `ResponseChatMessagePacket` has
+  no room for a name and neither does the guild roster response, so every
+  social surface would read "Player #1042" without resolving names separately.
+  `/api/v1/players/names` batches deliberately: a chat log issues ONE request
+  for every id on screen, not one per row.
+- Guild create and join are **HTTP POSTs, not WebSocket commands**, because a
+  guild name is a variable-length string and `ClientCommandPacket` has no field
+  for one - the same reason email/password auth uses HTTP. The body field is
+  `guildName`; getting it wrong is a bare 400 with no indication of which field
+  was at fault.
 
 `UiChatWindow` is 627 lines with pooled rows, three channels and history. In
 the web version most of that shrinks to a virtual list plus a store.

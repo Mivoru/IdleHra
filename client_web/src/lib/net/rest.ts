@@ -21,6 +21,11 @@ export const queryKeys = {
   statistics: ['player', 'statistics'] as const,
   monsterLoot: (monsterId: number) => ['monsters', 'loot', monsterId] as const,
   bank: ['player', 'bank'] as const,
+  friends: ['social', 'friends'] as const,
+  guilds: ['social', 'guilds'] as const,
+  guildRoster: ['social', 'guild', 'roster'] as const,
+  guildApplications: ['social', 'guild', 'applications'] as const,
+  playerNames: (ids: number[]) => ['social', 'names', ids.join(',')] as const,
   forge: ['player', 'forge'] as const,
   recipes: ['crafting', 'recipes'] as const,
   market: (baseItemId: string, qualityTier: number, pageIndex: number) =>
@@ -207,4 +212,87 @@ export function fetchMarketListings(
     pageSize: String(pageSize),
   });
   return authedGet<MarketListing[]>(`/api/v1/market/listings?${query}`);
+}
+
+// ---------------------------------------------------------------------------
+// Social
+// ---------------------------------------------------------------------------
+
+export interface FriendEntry {
+  PlayerId: number;
+  Username: string;
+  Level: number;
+  IsBlocked: boolean;
+  IsOnline: boolean;
+}
+
+export function fetchFriends(): Promise<FriendEntry[]> {
+  return authedGet<FriendEntry[]>('/api/v1/friends/list');
+}
+
+/** Username to numeric id. The relationship commands take ids, not names. */
+export function resolvePlayer(username: string): Promise<{ PlayerId: number }> {
+  return authedGet<{ PlayerId: number }>(
+    `/api/v1/players/resolve?username=${encodeURIComponent(username)}`,
+  );
+}
+
+export interface PlayerName {
+  PlayerId: number;
+  Username: string;
+}
+
+/**
+ * Batched on purpose. ResponseChatMessagePacket has no room for a name, so
+ * every social surface carries a raw numeric SenderPlayerId - a chat log
+ * resolves ONE request for every id it is displaying, not one per row.
+ */
+export function fetchPlayerNames(ids: number[]): Promise<PlayerName[]> {
+  if (ids.length === 0) return Promise.resolve([]);
+  return authedGet<PlayerName[]>(`/api/v1/players/names?ids=${ids.join(',')}`);
+}
+
+export interface GuildDirectoryEntry {
+  GuildId: number;
+  Name: string;
+  CurrentTier: number;
+  ActiveMembers: number;
+  MaxMembers: number;
+  GuildMMR: number;
+  TaxRatePct: number;
+  /** Server-side JoinType; anything non-zero requires an application. */
+  JoinType: number;
+  MinApplicationLevel: number;
+}
+
+export function fetchGuilds(): Promise<GuildDirectoryEntry[]> {
+  return authedGet<GuildDirectoryEntry[]>('/api/v1/guilds/list');
+}
+
+// Modul: the roster carries NO USERNAME - only PlayerId, Role,
+// ContributionPoints and IsOnline. Names come from /api/v1/players/names, the
+// same batched resolver chat uses, because the same constraint applies: this
+// wire identifies players numerically and names are looked up separately.
+export interface GuildMember {
+  PlayerId: number;
+  Role: number;
+  ContributionPoints: number;
+  IsOnline: boolean;
+}
+
+export function fetchGuildRoster(): Promise<GuildMember[]> {
+  return authedGet<GuildMember[]>('/api/v1/guild/roster');
+}
+
+export interface GuildApplication {
+  Id: number;
+  PlayerId: number;
+  Username: string;
+  ApplicantLevel: number;
+  CreatedAtEpoch: number;
+}
+
+/** Leader-only; returns an empty list for anyone else rather than a 403. */
+export function fetchGuildApplications(): Promise<GuildApplication[]> {
+  return authedGet<GuildApplication[]>('/api/v1/guild/applications/pending');
 }

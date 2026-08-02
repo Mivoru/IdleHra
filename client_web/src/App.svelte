@@ -10,6 +10,8 @@
   import Bank from './routes/Bank.svelte';
   import Crafting from './routes/Crafting.svelte';
   import Forge from './routes/Forge.svelte';
+  import Chat from './routes/Chat.svelte';
+  import Social from './routes/Social.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
   import { startSession, endSession, connectionStatus, playerState } from './lib/stores/game';
@@ -31,6 +33,8 @@
     { key: 'forge', label: 'Forge' },
     { key: 'market', label: 'Market' },
     { key: 'bank', label: 'Bank' },
+    { key: 'chat', label: 'Chat' },
+    { key: 'social', label: 'Social' },
   ] as const;
 
   type ScreenKey = (typeof SCREENS)[number]['key'];
@@ -122,6 +126,10 @@
       <Market />
     {:else if screen === 'bank'}
       <Bank />
+    {:else if screen === 'chat'}
+      <Chat />
+    {:else if screen === 'social'}
+      <Social />
     {/if}
 
     <OfflineSummary />

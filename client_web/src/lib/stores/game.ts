@@ -16,7 +16,7 @@ import {
   type InterpolatedFields,
 } from '../net/interpolation';
 import { DamageFeed, type DamageEvent } from './damage';
-import { CommandResultFeed, type CommandResultEntry } from './commandResults';
+import { CommandResultFeed, COMMAND_RESULT_SUCCESS, type CommandResultEntry } from './commandResults';
 import type { StateUpdate, ResponseChatMessage, ResponseLootDrop } from '../net/protocol.generated';
 
 // ---------------------------------------------------------------------------
@@ -159,10 +159,13 @@ let localNoticeSequence = -1;
  * splitting them across two notification styles would only make the UI harder
  * to read. Negative ids so they can never collide with a server result.
  */
-export function pushLocalNotice(message: string): void {
+export function pushLocalNotice(message: string, tone: 'info' | 'error' = 'error'): void {
   const entry: CommandResultEntry = {
     id: localNoticeSequence--,
-    code: -1,
+    // Reuses the server's success code for an informational notice so the
+    // toast is not styled as a failure - "Guild created" in red reads as
+    // something having gone wrong.
+    code: tone === 'info' ? COMMAND_RESULT_SUCCESS : -1,
     tick: 0,
     message,
     atMs: performance.timeOrigin + performance.now(),

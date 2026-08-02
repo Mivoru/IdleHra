@@ -249,3 +249,38 @@ export function rerollAffix(
   });
   return OK;
 }
+
+// ---------------------------------------------------------------------------
+// Relationships
+// ---------------------------------------------------------------------------
+
+// Modul: all four relationship commands resolve their target through
+// TargetPlayerId - never TargetId, which several neighbouring commands use for
+// their own purposes. The field is a uint on the wire, so a player id above
+// 2^32 would silently wrap; ids are sequential and nowhere near that, but the
+// bound is checked rather than assumed.
+const MAX_UINT32 = 0xffffffff;
+
+function relationshipCommand(command: number, targetPlayerId: number, verb: string): CommandOutcome {
+  if (!Number.isInteger(targetPlayerId) || targetPlayerId <= 0 || targetPlayerId > MAX_UINT32) {
+    return refuse(`Pick a player to ${verb}.`);
+  }
+  connection.send({ Command: command, TargetPlayerId: targetPlayerId });
+  return OK;
+}
+
+export function addFriend(targetPlayerId: number): CommandOutcome {
+  return relationshipCommand(CommandType.AddFriend, targetPlayerId, 'add');
+}
+
+export function removeFriend(targetPlayerId: number): CommandOutcome {
+  return relationshipCommand(CommandType.RemoveFriend, targetPlayerId, 'remove');
+}
+
+export function blockPlayer(targetPlayerId: number): CommandOutcome {
+  return relationshipCommand(CommandType.BlockPlayer, targetPlayerId, 'block');
+}
+
+export function unblockPlayer(targetPlayerId: number): CommandOutcome {
+  return relationshipCommand(CommandType.UnblockPlayer, targetPlayerId, 'unblock');
+}
