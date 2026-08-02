@@ -53,16 +53,49 @@ each screen in a real browser and fails on any console error or blank page.
 
 ### Deliberately not shipped
 
-- **`SubmitShardAttack`.** The server refuses an attack aimed at any match
-  other than the one you are committed to, and refuses it by disconnecting -
-  but `ActiveCrossShardMatchId` lives only in the server's tick state and is on
-  no packet or endpoint the client can read. The screen says so.
 - **Real-money purchase.** Needs a platform store SDK. Storefront prices are
   shown as information with the buy path disabled.
 
+## Phase 9 - artwork, Capacitor, and the last protocol gap (2026-08-02, DONE)
+
+**`SubmitShardAttack` now ships.** It was blocked because the validator refuses
+an attack aimed at any match other than the committed one - by disconnecting -
+and `ActiveCrossShardMatchId` lived only in the server's tick state. Closed with
+`/api/v1/guild/shard-match`, which mirrors StateCheckpointManager's own query so
+the id the client attacks with is the id the validator compares against. A REST
+read rather than a packet field: StateUpdatePacket is 695 bytes against a
+700-byte ceiling and a Guid is 16.
+
+**The 206 generated PNGs are on screen.** The server links and serves them like
+the audio (one copy, no drift); `scripts/generate-sprites.mjs` builds the lookup
+tables from disk and validates every alias against items.json.
+
+- Matching is EXPLICIT, never fuzzy. A normalizer would confidently put the
+  wrong picture on an item, which a player cannot detect.
+- Equipment sets match on (set, slot) with a unique-candidate requirement,
+  because the art and the content file disagree on the noun. **Greaves are
+  leggings; sabatons are boots** - both in the same TIER 1 folder.
+- Coverage: 25/25 monsters, 99 items, 6 races, 33 tools. The 21 skipped are art
+  waiting for content - the brief commissioned a ring and an amulet per tier
+  and items.json contains none of them.
+- Serving needed care: the filenames carry spaces and ampersands, so each path
+  segment is validated against the characters those names use. `..` cannot
+  match, so traversal is impossible by construction rather than by sanitisation.
+
+**Capacitor is scaffolded** for Android and iOS - see `client_web/MOBILE.md`.
+Three things differ on native and all three fail silently: `localhost` means the
+phone, a secure origin blocks `ws://` as uncatchable mixed content, and the CORS
+allow-list needs the platform's Capacitor origin (which differs between Android
+and iOS). `configurationProblem()` detects the first two and the login screen
+says so plainly. Token storage moves to localStorage on native, because an OS
+that suspends apps on its own schedule makes "dies with the tab" the wrong
+lifetime.
+
+Still not built: push, in-app purchase, icons and signing keys. Still not
+verified: the build has never run on a real phone or a touch screen.
+
 Target: a browser-first client (Svelte + TypeScript), packaged for Android and
-iOS with Capacitor later. The existing Unity client stays untouched and
-working throughout.
+iOS with Capacitor. The Unity client is abandoned.
 
 ---
 
