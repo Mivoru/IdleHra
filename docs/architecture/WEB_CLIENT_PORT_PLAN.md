@@ -1,7 +1,64 @@
 # Web Client Port Plan
 
 Status: **Decision gate TAKEN 2026-08-02 - the web client is the direction.**
-Phases 0-5 and 7 built, Phase 6 partial. **The Unity client is in feature freeze.**
+Phases 0-5 and 7 built. **Phase 8 (protocol-gap audit) complete, 2026-08-02.**
+Phase 6 is now packaging only. **Unity is abandoned, not merely frozen.**
+
+## Phase 8 - the protocol-gap audit (2026-08-02, DONE)
+
+A field-level audit against the server, not against the phase list. It found
+the web client could send **35 of 60 opcodes** and call **30 of 44 endpoints**,
+with 44 of 156 state fields reaching no screen. Whole systems were unreachable:
+mailbox, world boss, consumables, chrono bank, guild depot and war, tool
+upgrades, mentor slots, market limit orders, account erasure.
+
+All of it is now built: **21 screens**, every opcode a player can legitimately
+send, every endpoint that has a UI answer. `scripts/smoke-screens.mjs` opens
+each screen in a real browser and fails on any console error or blank page.
+
+### Wire traps found by reading validators rather than guessing
+
+- **`LogicEpochCounter` carries two different quantities.** Every command
+  echoes the save-generation counter, but `ActivateChronoBoost` and
+  `ConsumeTimeWarpCore` are exempt from `ValidateEpochSynchronization` and are
+  measured against the WALL CLOCK within five seconds. `GameConnection.send`
+  stamps the counter on everything, so those two override it.
+- **Guild logistics and storefront force-disconnect on ANY query string.** A
+  reflexive `?t=${Date.now()}` cache-buster drops the player out of the game.
+  Verified live: 200 without, 403 with.
+- **Guild application approve/reject take `applicationId` in camelCase** while
+  neighbouring endpoints use PascalCase. Verified live: 200 vs 400.
+- **The world boss silently rolls back an attack when the larder is empty.**
+  Accepted, no damage, nothing reported.
+- **`Success: false` arrives with HTTP 200** on guild application actions.
+- The GDPR interlock hash is a **wrapping uint32 multiply**; the server now
+  publishes known-good vectors through `--dump-protocol` and the TypeScript
+  port is tested against them, including epochs that overflow.
+
+### Server-side defects found, NOT fixed (web was the scope)
+
+- **`GlobalEventType.MasterArtisan` (event 3) has no effect anywhere.** The
+  weekly rotation schedules it like any other, so for a quarter of every cycle
+  the game announces an event that does nothing. Verified by searching every
+  comparison against the id.
+- **`/api/v1/codex/regions` reports ten regions; the game has five.** It groups
+  by `GetMonsterRegionTier`, and RegionTier is not the canonical region - the
+  five real ones are monsters 91-115. Phantom regions 6-10 show 0/1000 kills
+  that can never be earned. Filtered client-side for now.
+- **`LootLuckBonusPct` is written as `isCompleted ? 1 : 0`**, so it cannot
+  answer "what is finishing this region worth".
+- **`Test_BreedingPair_GrantedRacePairCanBreedAndSameSexIsRefused` is flaky** -
+  order- or parallelism-dependent. Passes in isolation and on a re-run of the
+  full suite; failed once mid-session.
+
+### Deliberately not shipped
+
+- **`SubmitShardAttack`.** The server refuses an attack aimed at any match
+  other than the one you are committed to, and refuses it by disconnecting -
+  but `ActiveCrossShardMatchId` lives only in the server's tick state and is on
+  no packet or endpoint the client can read. The screen says so.
+- **Real-money purchase.** Needs a platform store SDK. Storefront prices are
+  shown as information with the buy path disabled.
 
 Target: a browser-first client (Svelte + TypeScript), packaged for Android and
 iOS with Capacitor later. The existing Unity client stays untouched and
