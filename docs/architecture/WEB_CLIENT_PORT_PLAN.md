@@ -189,8 +189,21 @@ Being explicit here saves weeks:
   of bug where chat rendered nothing because Addressables silently failed.
 - **`ThermalOptimizationBroker`, `MotionUiEasingEngine`.** Browser and CSS
   handle these.
-- **`Codex3DViewer`.** Decide deliberately: either drop it, or use three.js.
-  Do not port it during the slice.
+- **The two render-texture viewers.** `UiCodex3DViewer` AND `UiForgeItemViewer`
+  - the second was missed by the first two drafts of this document, which is
+  worth recording because it sits in the Forge flow scheduled for Phase 3, not
+  in the optional codex.
+
+  Both render a loaded prefab into an isolated RenderTexture on a dedicated
+  layer with their own Camera. **But no 3D model assets exist in the project**
+  - no `.fbx`, `.obj` or `.blend` anywhere. They are rendering sprite-based
+  prefabs through a 3D pipeline to get an isolated preview viewport, which in
+  the browser is simply an `<img>` in a styled container.
+
+  So neither needs three.js. Both collapse to a plain image preview, and the
+  entire `UI_3D_Preview` layer, RenderTexture and Camera machinery disappears.
+  This is a simplification the first draft got wrong in the pessimistic
+  direction.
 - **Scene builder (`MainSceneBuilder`, ~8,000 lines).** Has no equivalent and
   needs none - components ARE the scene description. This is the single
   largest deletion and a good measure of why the web is a better fit here.
@@ -387,8 +400,36 @@ Neither client has these; they surface as soon as a browser is the target.
 | `ObfuscatedValue` | Delete | See section 3.3. |
 | `PlayerNameCache` | TanStack Query with a batch fetcher | Endpoint already batches. |
 | Prefabs | Components | Removes the fileID churn in git. |
+| RenderTexture previews (`UiCodex3DViewer`, `UiForgeItemViewer`) | `<img>` in a styled container | No 3D assets exist; the 3D pipeline was only providing an isolated viewport. |
+| `ParticleSystem`, `AndroidJavaObject` | Deleted with `ThermalOptimizationBroker` | Their only users. |
 
 ---
+
+## 5b. Verification performed on this document
+
+Three passes, each finding material gaps the previous had missed. Recorded so
+the confidence level is legible rather than implied.
+
+| Pass | Method | What it found |
+|---|---|---|
+| 1 | File census - names, counts, endpoints, opcodes | The baseline scope numbers |
+| 2 | Folder-by-folder audit | Four missing packet types, push notifications, the whole `Network/` disposition |
+| 3 | Endpoint diff, asset survey, Unity-API sweep | Nine unused server endpoints, the asset layer being trivial, `UiForgeItemViewer` |
+
+**Unity-API sweep results** (the check most likely to invalidate the plan):
+
+- `Mesh` appears in 34 files and is **TextMeshPro in all 34** - no 3D geometry.
+- `ParticleSystem` and `AndroidJavaObject` appear in exactly one file each,
+  both `ThermalOptimizationBroker`, already marked for deletion.
+- `Camera` appears in two files, both render-texture previews - see 3.3.
+- No `Rigidbody`, no `Physics`, no `Animator`, no `LineRenderer` anywhere.
+- One coroutine in the entire client.
+
+**What has still NOT been done:** reading the 18,000 lines of UI behaviour.
+The structure is verified - every folder, packet, endpoint, asset type and
+Unity dependency. What is not verified is what each of the 49 screens does in
+detail. That level of specification is worth writing per phase, when the phase
+is about to be built, not up front for screens that may never be ported.
 
 ## 6. Risks
 
