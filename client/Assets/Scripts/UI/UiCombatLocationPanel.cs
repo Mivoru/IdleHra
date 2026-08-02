@@ -54,6 +54,11 @@ namespace FolkIdle.Client.UI
         public GameObject TargetHealthRoot;
         public TMP_Text TargetNameText;
         public TMP_Text TargetHealthText;
+
+        // Modul: drop preview, 2026-08-02. What the selected monster drops and
+        // the real per-kill odds, so a player can judge whether it is worth
+        // farming before committing.
+        public TMP_Text TargetDropListText;
         public RectTransform TargetHealthFill;
 
         [Header("Monster roster - pooled")]
@@ -126,6 +131,11 @@ namespace FolkIdle.Client.UI
 
         private void OnEnable()
         {
+            // Subscribed here rather than in Awake so a panel that is never
+            // opened costs nothing, and unsubscribed in OnDisable below - the
+            // cache event is static and would otherwise hold this panel alive.
+            FolkIdle.Client.Engine.MonsterLootCache.OnMonsterLootLoaded += HandleMonsterLootLoaded;
+
             CodexRegionsCache.OnCodexRegionsCacheUpdated += RefreshLocationHeader;
             CodexInventoryCache.OnCodexCacheUpdated += RefreshMonsterRoster;
             BreedingRosterCache.OnRosterCacheUpdated += RefreshCharacterSlots;
@@ -140,6 +150,8 @@ namespace FolkIdle.Client.UI
 
         private void OnDisable()
         {
+            FolkIdle.Client.Engine.MonsterLootCache.OnMonsterLootLoaded -= HandleMonsterLootLoaded;
+
             CodexRegionsCache.OnCodexRegionsCacheUpdated -= RefreshLocationHeader;
             CodexInventoryCache.OnCodexCacheUpdated -= RefreshMonsterRoster;
             BreedingRosterCache.OnRosterCacheUpdated -= RefreshCharacterSlots;
@@ -296,6 +308,12 @@ namespace FolkIdle.Client.UI
             RefreshMonsterRoster();
             RefreshFeatureImage();
             RefreshTargetHeader();
+
+            // Cached after the first request, so re-selecting the same monster
+            // costs nothing.
+            MonsterLootCache.Request(monsterId);
+            RefreshDropList();
+
             SetStatus(string.Empty);
         }
 
@@ -685,5 +703,50 @@ namespace FolkIdle.Client.UI
                 StatusText.text = message;
             }
         }
+        private void HandleMonsterLootLoaded(int monsterId)
+        {
+            // Only redraw if the answer that arrived is for what is on screen -
+            // a slow response for a previously selected monster must not
+            // overwrite the current one.
+            if (monsterId == _selectedMonsterId) RefreshDropList();
+        }
+
+        private void RefreshDropList()
+        {
+            if (TargetDropListText == null) return;
+
+            if (_selectedMonsterId <= 0 || !MonsterLootCache.TryGet(_selectedMonsterId, out var entries))
+            {
+                TargetDropListText.text = "Drops: loading...";
+                return;
+            }
+
+            _dropTextBuilder.Clear();
+            _dropTextBuilder.Append("Drops:");
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                var e = entries[i];
+
+                _dropTextBuilder.AppendLine();
+                _dropTextBuilder.Append("  ");
+                _dropTextBuilder.Append(ClientContentRegistry.GetItemDisplayName(e.BaseItemId));
+
+                if (e.MaxQuantity > e.MinQuantity)
+                {
+                    _dropTextBuilder.Append(" x").Append(e.MinQuantity).Append('-').Append(e.MaxQuantity);
+                }
+
+                // Two decimals because equipment sits below one percent and
+                // would otherwise all render as "0%" - which reads as "never
+                // drops" rather than "rare".
+                _dropTextBuilder.Append("   ").Append(e.ChancePct.ToString("0.##")).Append('%');
+            }
+
+            TargetDropListText.text = _dropTextBuilder.ToString();
+        }
+
+        private readonly System.Text.StringBuilder _dropTextBuilder = new System.Text.StringBuilder(256);
+
     }
 }

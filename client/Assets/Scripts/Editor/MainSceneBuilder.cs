@@ -374,12 +374,28 @@ namespace FolkIdle.Client.Editor
             DestroyRootIfExists("EventSystem");
         }
 
+        // Modul: rebuild duplication fix, 2026-08-02.
+        //
+        // Was GameObject.Find, which only returns ACTIVE objects. A scene saved
+        // with the Canvas disabled - which is its normal state before login, and
+        // also how it can be left after exiting Play Mode - therefore skipped
+        // the cleanup silently, and the rebuild added a SECOND full hierarchy
+        // on top of the first. Confirmed: a rebuild of the committed scene took
+        // UiCombatLocationPanel from one instance to two.
+        //
+        // Scanning scene roots finds inactive objects too, which is the whole
+        // point of a cleanup step.
         private static void DestroyRootIfExists(string rootObjectName)
         {
-            GameObject existing = GameObject.Find(rootObjectName);
-            if (existing != null && existing.transform.parent == null)
+            var scene = UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene();
+            GameObject[] roots = scene.GetRootGameObjects();
+
+            for (int i = 0; i < roots.Length; i++)
             {
-                Object.DestroyImmediate(existing);
+                if (roots[i] != null && roots[i].name == rootObjectName)
+                {
+                    Object.DestroyImmediate(roots[i]);
+                }
             }
         }
 
@@ -6175,6 +6191,29 @@ namespace FolkIdle.Client.Editor
 
             TextMeshProUGUI targetHealth = CreateText(targetBarHostRect, "TargetHealthText", string.Empty, 13f, TextAlignmentOptions.Center);
             StretchFull((RectTransform)targetHealth.transform);
+            // Modul: drop preview, 2026-08-02. Sits under the target header so
+            // "what am I fighting" and "what does it give me" read together.
+            // Anchored below the bar host rather than inside it, since the drop
+            // list grows with the table while the health line is one row.
+            GameObject dropListObject = new GameObject("TargetDropListText", typeof(RectTransform));
+            dropListObject.transform.SetParent(targetBarHostRect.parent, false);
+            RectTransform dropListRect = (RectTransform)dropListObject.transform;
+            dropListRect.anchorMin = new Vector2(0f, 1f);
+            dropListRect.anchorMax = new Vector2(1f, 1f);
+            dropListRect.pivot = new Vector2(0.5f, 1f);
+            dropListRect.sizeDelta = new Vector2(-16f, 120f);
+            dropListRect.anchoredPosition = new Vector2(0f, -404f);
+
+            TextMeshProUGUI dropListText = dropListObject.AddComponent<TextMeshProUGUI>();
+            dropListText.fontSize = 12f;
+            dropListText.alignment = TextAlignmentOptions.TopLeft;
+            dropListText.color = new Color(1f, 1f, 1f, 0.75f);
+            dropListText.raycastTarget = false;
+            dropListText.enableAutoSizing = true;
+            dropListText.fontSizeMin = 9f;
+            dropListText.fontSizeMax = 12f;
+
+            panel.TargetDropListText = dropListText;
             panel.TargetHealthText = targetHealth;
 
             // ---- Monster roster ----
