@@ -19,8 +19,12 @@
   import Breeding from './routes/Breeding.svelte';
   import Store from './routes/Store.svelte';
   import Settings from './routes/Settings.svelte';
+  import Mailbox from './routes/Mailbox.svelte';
+  import WorldBoss from './routes/WorldBoss.svelte';
+  import Boosts from './routes/Boosts.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
+  import MailBadge from './lib/ui/MailBadge.svelte';
   import { startSession, endSession, connectionStatus, playerState } from './lib/stores/game';
   import { storedToken, clearToken } from './lib/net/auth';
   import { queryClient } from './lib/net/queryClient';
@@ -36,28 +40,55 @@
   // than a router - closer to the existing design and one dependency fewer.
   let token = $state<string | null>(storedToken());
 
-  const SCREENS = [
-    { key: 'combat', label: 'Combat' },
-    { key: 'gathering', label: 'Gathering' },
-    { key: 'character', label: 'Character' },
-    { key: 'inventory', label: 'Inventory' },
-    { key: 'larder', label: 'Larder' },
-    { key: 'crafting', label: 'Crafting' },
-    { key: 'forge', label: 'Forge' },
-    { key: 'market', label: 'Market' },
-    { key: 'bank', label: 'Bank' },
-    { key: 'chat', label: 'Chat' },
-    { key: 'social', label: 'Social' },
-    { key: 'guildops', label: 'War & Raid' },
-    { key: 'village', label: 'Village' },
-    { key: 'progression', label: 'Progress' },
-    { key: 'codex', label: 'Codex' },
-    { key: 'breeding', label: 'Breeding' },
-    { key: 'store', label: 'Store' },
-    { key: 'settings', label: 'Settings' },
+  // Modul: grouped rather than a flat row. Twenty-one destinations in one line
+  // wrapped into an unscannable block on any window narrower than a desktop,
+  // and the groups are how the game already thinks about itself - what you do,
+  // what you own, who you do it with, and what you have achieved.
+  const GROUPS = [
+    {
+      name: 'Play',
+      screens: [
+        { key: 'combat', label: 'Combat' },
+        { key: 'gathering', label: 'Gathering' },
+        { key: 'worldboss', label: 'World Boss' },
+        { key: 'boosts', label: 'Boosts' },
+      ],
+    },
+    {
+      name: 'Items',
+      screens: [
+        { key: 'character', label: 'Character' },
+        { key: 'inventory', label: 'Inventory' },
+        { key: 'larder', label: 'Larder' },
+        { key: 'crafting', label: 'Crafting' },
+        { key: 'forge', label: 'Forge' },
+        { key: 'bank', label: 'Bank' },
+        { key: 'mailbox', label: 'Mail' },
+      ],
+    },
+    {
+      name: 'Others',
+      screens: [
+        { key: 'market', label: 'Market' },
+        { key: 'chat', label: 'Chat' },
+        { key: 'social', label: 'Social' },
+        { key: 'guildops', label: 'Guild' },
+      ],
+    },
+    {
+      name: 'You',
+      screens: [
+        { key: 'village', label: 'Village' },
+        { key: 'progression', label: 'Progress' },
+        { key: 'codex', label: 'Codex' },
+        { key: 'breeding', label: 'Breeding' },
+        { key: 'store', label: 'Store' },
+        { key: 'settings', label: 'Settings' },
+      ],
+    },
   ] as const;
 
-  type ScreenKey = (typeof SCREENS)[number]['key'];
+  type ScreenKey = (typeof GROUPS)[number]['screens'][number]['key'];
   let screen = $state<ScreenKey>('combat');
 
   $effect(() => {
@@ -107,10 +138,18 @@
       <strong>FolkIdle</strong>
 
       <nav>
-        {#each SCREENS as item}
-          <button class:active={screen === item.key} onclick={() => (screen = item.key)}>
-            {item.label}
-          </button>
+        {#each GROUPS as group}
+          <div class="group" role="group" aria-label={group.name}>
+            <span class="group-name">{group.name}</span>
+            <div class="group-buttons">
+              {#each group.screens as item}
+                <button class:active={screen === item.key} onclick={() => (screen = item.key)}>
+                  {item.label}
+                  {#if item.key === 'mailbox'}<MailBadge />{/if}
+                </button>
+              {/each}
+            </div>
+          </div>
         {/each}
       </nav>
 
@@ -177,6 +216,12 @@
       <Store />
     {:else if screen === 'settings'}
       <Settings />
+    {:else if screen === 'mailbox'}
+      <Mailbox />
+    {:else if screen === 'worldboss'}
+      <WorldBoss />
+    {:else if screen === 'boosts'}
+      <Boosts />
     {/if}
 
     {#if $tutorialStep > TutorialStep.Inactive && $tutorialStep < TutorialStep.Completed}
@@ -211,14 +256,39 @@
 
   nav {
     display: flex;
-    gap: 0.25rem;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+  }
+
+  .group {
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  /* The group name is a label, not a control - small, quiet, and skippable
+     once the player knows where things live. */
+  .group-name {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    opacity: 0.65;
+    padding-left: 0.15rem;
+  }
+
+  .group-buttons {
+    display: flex;
+    gap: 0.2rem;
   }
 
   nav button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
     background: transparent;
     border-color: transparent;
-    padding: 0.35rem 0.7rem;
-    font-size: 0.85rem;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.83rem;
     color: var(--text-dim);
   }
 
@@ -226,6 +296,16 @@
     background: var(--bg-raised);
     border-color: var(--border);
     color: var(--text);
+  }
+
+  @media (max-width: 52rem) {
+    nav {
+      gap: 0.5rem;
+      width: 100%;
+    }
+    .group-buttons {
+      flex-wrap: wrap;
+    }
   }
 
   .halt {

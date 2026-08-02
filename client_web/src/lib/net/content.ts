@@ -69,6 +69,30 @@ export function isFood(baseItemId: string): boolean {
   return baseItemId.includes('_food');
 }
 
+/**
+ * Consumable classification, by the SAME BaseId markers ConsumableEngine uses
+ * server-side.
+ *
+ * Deliberately not a hand-written id list. There was one of those on the
+ * server - AlchemyCompendium's seven legacy ids - and because the eight real
+ * consumables (items.json 372-379) were added to the engine but not to that
+ * set, eating a Roasted Perch FORCE-DISCONNECTED the player. Reading the same
+ * markers the engine reads means this cannot drift the same way.
+ *
+ * Note "_food_consumable" also contains "_food", so `isFood` above is true for
+ * these too - the two answer different questions (larder stocking versus
+ * on-demand use) and the overlap is intentional.
+ */
+export type ConsumableKind = 'food' | 'offensive' | 'defensive';
+
+export function consumableKind(baseItemId: string): ConsumableKind | null {
+  if (!baseItemId.includes('_consumable')) return null;
+  if (baseItemId.includes('_offensive_potion')) return 'offensive';
+  if (baseItemId.includes('_defensive_potion')) return 'defensive';
+  if (baseItemId.includes('_food')) return 'food';
+  return null;
+}
+
 async function fetchJson<T>(fileName: string): Promise<T> {
   const response = await fetch(`${GAMEDATA_BASE}/${fileName}`);
   if (!response.ok) {

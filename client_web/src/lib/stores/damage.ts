@@ -81,6 +81,7 @@ export class DamageFeed {
       atMs: sample.atMs,
     };
     this.events = [...this.events, event];
+    this.record(amount);
     return event;
   }
 
@@ -98,5 +99,31 @@ export class DamageFeed {
   reset(): void {
     this.previous = null;
     this.events = [];
+    this.recentHits = [];
+  }
+
+  // Modul: a rolling record of real hits, kept SEPARATELY from `events`.
+  //
+  // `events` exists to drive floating damage text and is pruned after about a
+  // second, so it is empty most of the time and useless as a measurement. The
+  // world boss needs a damage estimate to send, and the only honest source of
+  // one is what this player's hits actually land for.
+  //
+  // Deliberately not a running mean: a single outlier crit would drag it for
+  // the rest of the session. The median of the last sixteen is stable, cheap,
+  // and cannot be steered by one lucky hit.
+  private recentHits: number[] = [];
+  private static readonly SAMPLE_SIZE = 16;
+
+  private record(amount: number): void {
+    this.recentHits.push(amount);
+    if (this.recentHits.length > DamageFeed.SAMPLE_SIZE) this.recentHits.shift();
+  }
+
+  /** Median of the last sixteen hits, or null when nothing has been observed. */
+  get typicalHit(): number | null {
+    if (this.recentHits.length === 0) return null;
+    const sorted = [...this.recentHits].sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)];
   }
 }

@@ -74,6 +74,18 @@ let lastMonsterHp = 0;
 const damageFeed = new DamageFeed();
 export const damageEvents = writable<DamageEvent[]>([]);
 
+/**
+ * The median of this player's last sixteen observed hits, or null before any
+ * have been seen.
+ *
+ * Exists because the world boss asks the client for a damage number and there
+ * is no stat on the wire to compute one from - the state snapshot carries no
+ * attack power, only outcomes. Measuring what hits actually land for is the
+ * only honest answer available, and it updates on the same path the floating
+ * numbers do rather than on a timer of its own.
+ */
+export const typicalHit = writable<number | null>(null);
+
 function pump(): void {
   const now = performance.timeOrigin + performance.now();
 
@@ -288,7 +300,10 @@ export function startSession(token: string): void {
         monsterHp: packet.CurrentMonsterHp,
         atMs: arrivedAtMs,
       });
-      if (hit !== null) damageEvents.set(damageFeed.current);
+      if (hit !== null) {
+        damageEvents.set(damageFeed.current);
+        typicalHit.set(damageFeed.typicalHit);
+      }
 
       // Turns every silently-rejected command into an explanation. Without
       // this the player presses a button, nothing happens, and nothing
