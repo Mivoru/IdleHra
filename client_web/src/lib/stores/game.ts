@@ -66,6 +66,10 @@ let tutorialArmed = false;
 let lastCraftedCount = -1;
 let lastLevel = 0;
 let lastMonsterHp = 0;
+// -1 so the FIRST packet of a session never counts as a change - a reconnect
+// would otherwise announce every race the player already had.
+let lastUnlockedRaceMask = -1;
+let lastHaltReason = 0;
 
 // ---------------------------------------------------------------------------
 // Floating damage
@@ -192,6 +196,12 @@ export function pushLocalNotice(message: string, tone: 'info' | 'error' = 'error
     atMs: performance.timeOrigin + performance.now(),
   };
   commandResults.update((entries) => [...entries, entry]);
+
+  // A refusal makes a noise; an informational notice does not. The refusals
+  // are the ones a player might otherwise miss - they usually follow a click
+  // that visibly did nothing, which is exactly when a toast in the corner is
+  // easiest to look past.
+  if (tone === 'error') play('error');
 }
 
 // ---------------------------------------------------------------------------
@@ -245,6 +255,8 @@ export function startSession(token: string): void {
   lastCraftedCount = -1;
   lastLevel = 0;
   lastMonsterHp = 0;
+  lastUnlockedRaceMask = -1;
+  lastHaltReason = 0;
   commandResultFeed.reset();
   commandResults.set([]);
   visualState.set(null);
@@ -313,7 +325,12 @@ export function startSession(token: string): void {
         packet as unknown as Record<string, unknown>,
         arrivedAtMs,
       );
-      if (results.length > 0) commandResults.update((entries) => [...entries, ...results]);
+      if (results.length > 0) {
+        commandResults.update((entries) => [...entries, ...results]);
+        // One cue per batch, not per result: the ring buffer can deliver four
+        // at once and four overlapping error tones is a noise, not a signal.
+        if (results.some((r) => r.code !== COMMAND_RESULT_SUCCESS)) play('error');
+      }
 
       // Modul: the tutorial arms from IsFreshAccount - the server's own signal
       // that this account's first character has never aged - which is the same
@@ -336,6 +353,28 @@ export function startSession(token: string): void {
 
       if (lastLevel > 0 && packet.CurrentLevel > lastLevel) play('levelUp');
       lastLevel = packet.CurrentLevel;
+
+      // Modul: the last two unused clips, wired to the events they were
+      // recorded for rather than to a button somewhere.
+      //
+      // Sound lives HERE, on the packet, not scattered through seventeen
+      // screens. A cue tied to a click fires when the player asks for
+      // something; a cue tied to the state fires when it actually happened,
+      // which is the difference between "I pressed craft" and "the craft
+      // finished". It also means a screen cannot forget to make a noise.
+      if (lastUnlockedRaceMask >= 0 && packet.UnlockedRaceBitmask !== lastUnlockedRaceMask) {
+        // Only a NEW bit is a celebration; the mask can also arrive for the
+        // first time on a reconnect, which is not.
+        const gained = packet.UnlockedRaceBitmask & ~lastUnlockedRaceMask;
+        if (gained !== 0) play('raceUnlocked');
+      }
+      lastUnlockedRaceMask = packet.UnlockedRaceBitmask;
+
+      // A halt is the one state change a player most needs to notice, because
+      // it is silent by nature - the character simply stops earning. Only on
+      // the EDGE, or a stopped character would buzz every 1.6 seconds forever.
+      if (lastHaltReason === 0 && packet.ActivityHaltReason !== 0) play('error');
+      lastHaltReason = packet.ActivityHaltReason;
 
       if (packet.OfflineSummaryTick !== lastOfflineSummaryTick) {
         const isFirstPacketOfSession = lastOfflineSummaryTick === -1;

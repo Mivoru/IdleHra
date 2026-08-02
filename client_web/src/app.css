@@ -186,3 +186,48 @@ input {
     text-shadow: 0 0 4px currentColor;
   }
 }
+
+/* Modul: feedback for things that HAPPEN, as opposed to things that are.
+ *
+ * An idle game spends most of its time showing numbers that change on their
+ * own, and a number that changes silently is easy to miss entirely. These are
+ * the few moments worth interrupting for - a hit landing, a level gained - and
+ * they are deliberately short, because a screen that is always animating is
+ * one nobody looks at.
+ *
+ * Every one of them is paired with information that does not move (the bar
+ * width, the level number), so reduced-motion loses decoration and never
+ * meaning. */
+
+@keyframes hit-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+.hit-shake {
+  animation: hit-shake 180ms ease-in-out;
+}
+
+@keyframes level-flare {
+  0% { box-shadow: 0 0 0 0 var(--good); }
+  100% { box-shadow: 0 0 0 12px transparent; }
+}
+
+.level-flare {
+  animation: level-flare 700ms ease-out;
+}
+
+/* A button whose work is in flight. Distinct from :disabled, which means "you
+   cannot do this" - this means "you already did, wait". */
+.busy {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hit-shake,
+  .level-flare {
+    animation: none;
+  }
+}

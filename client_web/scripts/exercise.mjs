@@ -23,9 +23,17 @@ const consoleErrors = [];
 page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
 page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e.message}`));
 
+// Waits for the screen to have actually LOADED, not for a fixed delay. Most
+// screens open on a query, and a cold server answers the first one slowly
+// enough that a fixed wait passes locally and fails on a fresh boot - which is
+// a flaky test pretending to be a bug report.
 const go = async (label) => {
   await page.getByRole('button', { name: label, exact: true }).first().click();
-  await page.waitForTimeout(1100);
+  await page.waitForFunction(
+    () => !/\bLoading\.\.\./.test(document.body.innerText),
+    { timeout: 15000 },
+  ).catch(() => {});
+  await page.waitForTimeout(600);
 };
 
 // A toast is how this client reports both server results and its own refusals,
@@ -105,13 +113,31 @@ await page.waitForTimeout(4000);
     await page.waitForTimeout(180);
   }
   record('monster health bar animates', new Set(widths).size > 2, `${new Set(widths).size} distinct widths`);
+
+  // Modul: a guard against re-introducing a render loop.
+  //
+  // A hit-reaction effect keyed on "the damage array is non-empty" re-created
+  // its node about sixty times a second, because the render loop rewrites that
+  // array whenever it prunes an expired number. It starved the main thread
+  // badly enough that every OTHER screen stopped loading - a symptom that
+  // looks nothing like an animation bug and cost a while to trace.
+  //
+  // Counting renders is not possible from here, so this measures the effect:
+  // during live combat the page must still be able to do work promptly.
+  const started = Date.now();
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r(null))));
+  const frameMs = Date.now() - started;
+  record('the page stays responsive during combat', frameMs < 400, `${frameMs}ms to the next frame`);
 }
 
 // --- forge: fusion and reroll ------------------------------------------------
 await go('Forge');
 {
   const text = await page.evaluate(() => document.body.innerText);
-  record('forge lists owned equipment', /eq_|Sentry|Hunter/i.test(text));
+  // Asserted on the panel headings rather than on item names: the Forge's
+  // stock list is CraftingReceptuary recipes, and which of those exist is
+  // content that legitimately changes.
+  record('forge shows fusion, reroll and stock', /Fusion/.test(text) && /Affix reroll/.test(text) && /Forge stock/.test(text));
 
   // Reroll needs an item and an affix picked. The screen's selects are the
   // only way to know which affix index the command should carry.

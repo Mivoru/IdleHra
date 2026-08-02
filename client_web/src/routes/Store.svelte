@@ -9,6 +9,8 @@
     toggleChronoAcceleration,
   } from '../lib/net/commands';
   import { prettifyBaseId } from '../lib/net/content';
+  import { purchase, purchaseUnavailableReason } from '../lib/net/billing';
+  import { play } from '../lib/ui/audio';
 
   const catalog = createQuery(() => ({ queryKey: queryKeys.storeCatalog, queryFn: fetchStoreCatalog }));
 
@@ -22,6 +24,34 @@
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   }));
+
+  // --- purchasing -----------------------------------------------------------
+  //
+  // Computed once, not per-click: a screen that lets you press Buy and then
+  // explains why it could not is worse than one that disables the button and
+  // says so up front. Same reasoning as the guarded command layer.
+  const cannotBuy = purchaseUnavailableReason();
+
+  let buying = $state<string | null>(null);
+
+  async function buy(productIdentifier: string) {
+    buying = productIdentifier;
+    try {
+      const outcome = await purchase(productIdentifier);
+      if (outcome.kind === 'granted') {
+        play('levelUp');
+        pushLocalNotice('Purchase confirmed - your diamonds are on the way.', 'info');
+      } else if (outcome.kind === 'cancelled') {
+        // Deliberately silent. Changing your mind is not an event worth a
+        // notification, and telling someone about it every time reads as a
+        // complaint.
+      } else {
+        pushLocalNotice(outcome.reason);
+      }
+    } finally {
+      buying = null;
+    }
+  }
 
   const snap = $derived($playerState);
   const quarantined = $derived(snap ? snap.Quarantine_Active !== 0 : false);
@@ -95,9 +125,9 @@
            verification is also the endpoint the Unity client never called at
            all, which is a real revenue risk rather than cosmetics. -->
       <p class="dim tiny">
-        Buying is not available in the browser build. The catalogue carries no
-        price - real-money purchase needs a platform store SDK and receipt
-        verification, which arrives with the mobile packaging.
+        The catalogue above carries no price - it only says how many diamonds
+        each product grants. Prices are personal and live in your storefront
+        below.
       </p>
 
       <h3>Your storefront</h3>
@@ -119,6 +149,10 @@
       {:else if (storefront.data ?? []).length === 0}
         <p class="dim tiny">No listings are offered to your account right now.</p>
       {:else}
+        {#if cannotBuy}
+          <p class="dim tiny buy-note">{cannotBuy}</p>
+        {/if}
+
         <ul class="rows">
           {#each storefront.data ?? [] as listing (listing.ListingId)}
             <li>
@@ -127,6 +161,13 @@
                 <Money amount={listing.DiamondPackageYield} kind="diamond" />
               </span>
               <span class="cash">{(listing.PriceInCents / 100).toFixed(2)}</span>
+              <button
+                class="tiny-btn"
+                disabled={cannotBuy !== null || buying === listing.ProductIdentifier}
+                onclick={() => buy(listing.ProductIdentifier)}
+              >
+                {buying === listing.ProductIdentifier ? 'Buying...' : 'Buy'}
+              </button>
             </li>
           {/each}
         </ul>
@@ -252,14 +293,26 @@
     gap: 0.3rem;
   }
 
+  .buy-note {
+    margin: 0 0 0.5rem;
+    color: var(--warn);
+  }
+
+  /* Flex rather than a fixed grid: the catalogue rows carry three children and
+     the storefront rows four (they have a Buy button), and a shared
+     grid-template would wrap the fourth onto its own line. */
   .rows li {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
+    display: flex;
     gap: 0.5rem;
     align-items: center;
     font-size: 0.85rem;
     border-bottom: 1px solid var(--border);
     padding-bottom: 0.28rem;
+  }
+
+  .rows .name {
+    flex: 1;
+    min-width: 0;
   }
 
   /* Real money, so deliberately NOT coloured like an in-game currency - the

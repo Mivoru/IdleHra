@@ -1,6 +1,13 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { playerState, visualState, lootLog, connectionStatus, observedMaxPlayerHp } from '../lib/stores/game';
+  import {
+    playerState,
+    visualState,
+    lootLog,
+    connectionStatus,
+    observedMaxPlayerHp,
+    damageEvents,
+  } from '../lib/stores/game';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
   import {
@@ -62,6 +69,46 @@
   );
   const stalled = $derived(deployedTo !== null && activeMonster === null);
 
+  // Modul: a brief shake on the monster portrait when a hit lands, and a flare
+  // on the panel when a level is gained.
+  //
+  // Driven off the damage feed and the level number rather than off a timer,
+  // so they fire exactly when the thing they describe happened. Both are keyed
+  // to a counter that the CSS animation restarts from, which is how you replay
+  // an animation in Svelte without removing and re-adding the node.
+  let hitPulse = $state(0);
+  let levelPulse = $state(0);
+  let lastSeenLevel = 0;
+
+  // Modul: keyed on the newest event ID, not on the array being non-empty.
+  //
+  // `damageEvents` is rewritten by the render loop every time it prunes an
+  // expired number - roughly sixty times a second - so "the array has items"
+  // fires continuously. An earlier version incremented on that, which
+  // re-created the portrait node sixty times a second and starved the main
+  // thread badly enough that the rest of the app stopped responding: the
+  // health bar froze and every other screen failed to load. The symptom
+  // looked nothing like an animation bug.
+  //
+  // The highest id only moves when a hit actually lands, which is the event
+  // this is meant to reflect.
+  let lastHitId = 0;
+
+  $effect(() => {
+    const events = $damageEvents;
+    const newest = events.length > 0 ? events[events.length - 1].id : 0;
+    if (newest > lastHitId) {
+      lastHitId = newest;
+      hitPulse++;
+    }
+  });
+
+  $effect(() => {
+    const level = snap?.CurrentLevel ?? 0;
+    if (lastSeenLevel > 0 && level > lastSeenLevel) levelPulse++;
+    lastSeenLevel = level;
+  });
+
   async function selectMonster(monster: MonsterDefinition) {
     selectedMonsterId = monster.Id;
     if (dropPreviewFor !== monster.Id) {
@@ -94,8 +141,11 @@
 </script>
 
 <div class="layout">
-  <section class="panel">
-    <h2>Combat</h2>
+  <!-- The level-up flare goes on the whole panel rather than on the number,
+       because the number is small and the moment is not. -->
+  {#key levelPulse}
+    <section class="panel" class:level-flare={levelPulse > 0}>
+      <h2>Combat</h2>
 
     {#if contentError}
       <p class="error">Content failed to load: {contentError}</p>
@@ -141,7 +191,14 @@
       {#if activeMonster}
         <FloatingDamage />
         <div class="fighting">
-          <MonsterPortrait monsterId={activeMonster.Id} name={activeMonster.Name} size="lg" />
+          <!-- Keyed on the pulse counter so the animation restarts on every
+               hit; without the key Svelte reuses the node and the animation
+               only ever plays once. -->
+          {#key hitPulse}
+            <span class="hit-shake">
+              <MonsterPortrait monsterId={activeMonster.Id} name={activeMonster.Name} size="lg" />
+            </span>
+          {/key}
           <div class="hpblock grow">
             <span class="dim">Fighting {activeMonster.Name}</span>
             <Bar
@@ -171,7 +228,8 @@
     {:else}
       <p class="dim">Waiting for the first state snapshot...</p>
     {/if}
-  </section>
+    </section>
+  {/key}
 
   <section class="panel">
     <h2>Monsters</h2>
