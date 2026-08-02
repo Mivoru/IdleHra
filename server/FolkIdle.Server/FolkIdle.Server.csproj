@@ -41,17 +41,22 @@
     </None>
   </ItemGroup>
 
-  <!-- Modul: the generated 2D artwork, linked for exactly the same reason as
-       the audio above - one copy, shared, so the two clients cannot drift on
-       what a Magma Wyrm looks like. `.meta` files are Unity's own bookkeeping
-       and are excluded; the directory structure is preserved because the
-       filenames are only unique within a location folder.
+  <!-- Modul: the generated 2D artwork, linked for the same reason as the audio
+       above - one copy, shared, so nothing can drift on what a Magma Wyrm
+       looks like.
 
-       206 PNGs is a few megabytes, which is fine to copy on build. If this
-       grows into hundreds of megabytes, move it behind a CDN rather than
-       making the build slower. -->
+       SERVED FROM SpritesWeb, NOT Sprites. The masters in Sprites are
+       2048x2048 PNGs totalling 640 MB, drawn at forty pixels; shipping those
+       would be a third of a gigabyte of transfer to render icons, and the
+       browser's one-step downscale looks worse than a proper resample. Worse,
+       113 of them still carry the white background the original cut-out could
+       not reach - see tools/clean_sprites.py, which repairs that and writes
+       the 50 MB of WebP this serves.
+
+       So: edit or regenerate the masters, then run the cleaner. The masters
+       stay the source of truth and are never modified. -->
   <ItemGroup>
-    <None Include="../../client/Assets/Images/Sprites/**/*.png" Exclude="../../client/Assets/Images/Sprites/**/*.meta">
+    <None Include="../../client/Assets/Images/SpritesWeb/**/*.webp">
       <Link>Sprites/%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

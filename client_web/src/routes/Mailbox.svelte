@@ -13,6 +13,7 @@
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import { play } from '../lib/ui/audio';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
+  import Skeleton from '../lib/ui/Skeleton.svelte';
 
   const client = useQueryClient();
   const mailbox = createQuery(() => ({ queryKey: queryKeys.mailbox, queryFn: fetchMailbox }));
@@ -93,7 +94,7 @@
     {/if}
 
     {#if mailbox.isPending}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {:else if mailbox.isError}
       <p class="warn">Could not load the mailbox.</p>
     {:else if entries.length === 0}

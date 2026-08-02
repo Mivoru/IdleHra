@@ -6,6 +6,7 @@
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
+  import Skeleton from '../lib/ui/Skeleton.svelte';
 
   const client = useQueryClient();
   const bank = createQuery(() => ({ queryKey: queryKeys.bank, queryFn: fetchBank }));
@@ -52,7 +53,7 @@
     {/if}
 
     {#if inventory.isPending}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {:else if depositable.length === 0}
       <p class="dim">Nothing carried to deposit.</p>
     {:else}
@@ -87,7 +88,7 @@
     </p>
 
     {#if bank.isPending}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {:else if bank.isError}
       <p class="err">{bank.error?.message}</p>
     {:else if (bank.data ?? []).length === 0}

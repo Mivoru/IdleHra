@@ -21,6 +21,7 @@
   import { pushLocalNotice } from '../lib/stores/game';
   import { api } from '../lib/net/config';
   import { storedToken } from '../lib/net/auth';
+  import Skeleton from '../lib/ui/Skeleton.svelte';
 
   const client = useQueryClient();
   const friends = createQuery(() => ({ queryKey: queryKeys.friends, queryFn: fetchFriends }));
@@ -185,7 +186,7 @@
     </div>
 
     {#if friends.isPending}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {:else if friends.isError}
       <p class="err">{friends.error?.message}</p>
     {:else if (friends.data ?? []).length === 0}
@@ -218,7 +219,7 @@
     </div>
 
     {#if guilds.isPending}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {:else if (guilds.data ?? []).length === 0}
       <p class="dim">No guilds exist yet. Create the first.</p>
     {:else}

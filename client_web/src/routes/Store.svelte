@@ -11,6 +11,7 @@
   import { prettifyBaseId } from '../lib/net/content';
   import { purchase, purchaseUnavailableReason } from '../lib/net/billing';
   import { play } from '../lib/ui/audio';
+  import Skeleton from '../lib/ui/Skeleton.svelte';
 
   const catalog = createQuery(() => ({ queryKey: queryKeys.storeCatalog, queryFn: fetchStoreCatalog }));
 
@@ -103,7 +104,7 @@
       </p>
 
       {#if catalog.isPending}
-        <p class="dim">Loading...</p>
+        <Skeleton />
       {:else if catalog.isError}
         <p class="err">{catalog.error?.message}</p>
       {:else}
@@ -117,13 +118,12 @@
         </ul>
       {/if}
 
-      <!-- Modul: purchases are NOT wired, deliberately. The catalog carries no
-           price, and the whole flow - storefront listing, platform receipt,
-           /api/v1/billing/verify-receipt - needs a real store SDK behind it.
-           The port plan schedules that for Capacitor packaging, and a "Buy"
-           button that cannot take money would be worse than none. Receipt
-           verification is also the endpoint the Unity client never called at
-           all, which is a real revenue risk rather than cosmetics. -->
+      <!-- Modul: purchases ARE wired now - see lib/net/billing.ts. They go
+           through /api/v1/billing/verify-receipt, which validates the store's
+           signature, and never through opcode 39, which grants diamonds on an
+           unsigned transaction id. What is still missing is a store adapter
+           for a specific vendor, which is why the Buy buttons below disable
+           themselves and say so rather than pretending. -->
       <p class="dim tiny">
         The catalogue above carries no price - it only says how many diamonds
         each product grants. Prices are personal and live in your storefront
@@ -143,7 +143,7 @@
            - so it must never be polled or refetched on window focus. And any
            query string on the URL force-disconnects the player's session. -->
       {#if storefront.isPending}
-        <p class="dim tiny">Loading...</p>
+        <Skeleton rows={2} />
       {:else if storefront.isError}
         <p class="dim tiny">Could not load your storefront.</p>
       {:else if (storefront.data ?? []).length === 0}

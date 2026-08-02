@@ -166,9 +166,9 @@
              statistics snapshot calls the same number PremiumDiamonds. Two
              names for one balance, and only this one is live. -->
         <span class="wallet">
-          <Money amount={snap.Gold} />
+          <Money amount={snap.Gold} icon />
           {#if Number(snap.PremiumCurrencyBalance) > 0}
-            <Money amount={snap.PremiumCurrencyBalance} kind="diamond" />
+            <Money amount={snap.PremiumCurrencyBalance} kind="diamond" icon />
           {/if}
         </span>
       {/if}

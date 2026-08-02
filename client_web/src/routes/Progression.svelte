@@ -16,6 +16,9 @@
   import { connection } from '../lib/net/connection';
   import Bar from '../lib/ui/Bar.svelte';
   import Money from '../lib/ui/Money.svelte';
+  import RaceIcon from '../lib/ui/RaceIcon.svelte';
+  import { RACE_NAMES, ALL_RACE_IDS, isRaceUnlocked } from '../lib/ui/races';
+  import Skeleton from '../lib/ui/Skeleton.svelte';
 
   const client = useQueryClient();
   const achievements = createQuery(() => ({ queryKey: queryKeys.achievements, queryFn: fetchAchievements }));
@@ -40,31 +43,10 @@
   // than leaving buttons that silently do nothing.
   const quarantined = $derived(snap ? snap.Quarantine_Active !== 0 : false);
 
-  // Race names are not on the wire; RaceIds is a server-side enum. Listed here
-  // because the mastery endpoint returns bare numeric ids.
-  //
-  // SIX races exist, not five - Moosleute (6) was missing from this list, so a
-  // player who unlocked it saw "Race 6". The gap in the ids is real: 5 is
-  // Vodnik and 6 is Moosleute, both defined in ContentRegistry.RaceIds.
-  const RACE_NAMES: Record<number, string> = {
-    1: 'Human',
-    2: 'Vila',
-    3: 'Draugr',
-    4: 'Kobold',
-    5: 'Vodnik',
-    6: 'Moosleute',
-  };
-
-  const ALL_RACE_IDS = [1, 2, 3, 4, 5, 6];
-
-  // Modul: UnlockedRaceBitmask sets bit (raceId - 1), so Human is bit 0 and
-  // Moosleute is bit 5. It is a BYTE on the wire, which is exactly enough for
-  // six races and would silently stop recording a seventh.
+  // Race names and the unlock bitmask both live in lib/ui/races.ts - this
+  // screen used to carry its own copy and it had already gone stale at five
+  // entries, so anyone who unlocked Moosleute saw "Race 6".
   const unlockedMask = $derived(snap?.UnlockedRaceBitmask ?? 0);
-
-  function isRaceUnlocked(raceId: number): boolean {
-    return (unlockedMask & (1 << (raceId - 1))) !== 0;
-  }
 
   // The three races whose mastery level rides on the hot path rather than
   // waiting for the REST snapshot - they feed StatsCalculator directly.
@@ -112,7 +94,7 @@
     {/if}
 
     {#if achievements.isPending}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {:else if achievements.isError}
       <p class="err">{achievements.error?.message}</p>
     {:else if (achievements.data ?? []).length === 0}
@@ -176,14 +158,15 @@
         </p>
       {/if}
     {:else}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {/if}
 
     <h3>Races unlocked</h3>
     <ul class="races">
       {#each ALL_RACE_IDS as raceId}
-        {@const unlocked = isRaceUnlocked(raceId)}
+        {@const unlocked = isRaceUnlocked(unlockedMask, raceId)}
         <li class:locked={!unlocked}>
+          <RaceIcon {raceId} />
           <span class="race-name">{RACE_NAMES[raceId]}</span>
           <!-- The word, not only the colour - a locked race has to read as
                locked without relying on the palette. -->
@@ -244,14 +227,14 @@
         <p class="dim tiny">Guild: {st.GuildName}</p>
       {/if}
     {:else}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {/if}
   </section>
 
   <section class="panel">
     <h2>Leaderboard</h2>
     {#if leaderboard.isPending}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {:else if (leaderboard.data ?? []).length === 0}
       <p class="dim">No ranked players yet.</p>
     {:else}
@@ -420,15 +403,25 @@
     gap: 0.3rem;
   }
 
+  /* Centred rather than baseline-aligned now that each pill leads with an
+     image - baseline puts the picture's bottom edge on the text baseline and
+     the whole row sits crooked. */
   .races li {
     display: inline-flex;
-    align-items: baseline;
-    gap: 0.3rem;
-    padding: 0.15rem 0.5rem;
-    border-radius: 999px;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.5rem 0.2rem 0.25rem;
+    border-radius: var(--radius);
     border: 1px solid var(--rarity-6);
     color: var(--rarity-6);
     font-size: 0.76rem;
+  }
+
+  /* A locked race is greyed as well as dimmed, so the pills read as two
+     distinct states at a glance rather than as one state at two opacities. */
+  .races li.locked :global(img) {
+    filter: grayscale(1);
+    opacity: 0.6;
   }
 
   .races li.locked {

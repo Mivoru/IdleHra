@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { currencyIcon } from './sprites';
   // Modul: one way to render a currency amount.
   //
   // Gold and diamonds appear on nine screens and were formatted nine different
@@ -19,9 +20,21 @@
     available?: number;
     /** Prefix a sign, for deltas rather than totals. */
     signed?: boolean;
+    /**
+     * Draw the coin or gem alongside the number.
+     *
+     * Off by default on purpose. A ledger of thirty rows with thirty tiny
+     * images is slower and busier than the same ledger with a colour and a
+     * suffix, and the colour already distinguishes the two currencies. It
+     * earns its place where the amount is the SUBJECT - the header wallet, a
+     * store listing - rather than one column among many.
+     */
+    icon?: boolean;
   }
 
-  const { amount, kind = 'gold', available, signed = false }: Props = $props();
+  const { amount, kind = 'gold', available, signed = false, icon = false }: Props = $props();
+
+  const iconUrl = $derived(icon ? currencyIcon(kind) : null);
 
   const value = $derived(Number(amount));
   const short = $derived(kind === 'gold' ? 'g' : '');
@@ -41,14 +54,29 @@
   class:unaffordable={!affordable}
   title={affordable ? undefined : `You have ${(available ?? 0).toLocaleString()}`}
 >
+  {#if iconUrl}
+    <img src={iconUrl} alt="" loading="lazy" decoding="async" />
+  {/if}
   {formatted}{short}
   {#if kind === 'diamond'}<span class="unit">diamonds</span>{/if}
 </span>
 
 <style>
   .money {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25em;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
+  }
+
+  /* Sized in em so the coin tracks whatever type size it sits in, rather than
+     needing a variant per place it appears. */
+  img {
+    width: 1.15em;
+    height: 1.15em;
+    object-fit: contain;
+    flex: none;
   }
 
   .money[data-kind='gold'] {

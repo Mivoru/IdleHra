@@ -23,7 +23,13 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..');
-const spriteRoot = join(repoRoot, 'client', 'Assets', 'Images', 'Sprites');
+// Reads the CLEANED artwork, not the masters.
+//
+// Two reasons it must be this directory and not client/Assets/Images/Sprites:
+// the extensions differ (.webp, not .png), and a master that the cleaner has
+// not processed yet would be mapped to a URL the server cannot serve - a 404
+// that looks like a missing icon rather than a stale build step.
+const spriteRoot = join(repoRoot, 'client', 'Assets', 'Images', 'SpritesWeb');
 const gameData = join(repoRoot, 'client', 'Assets', 'StreamingAssets', 'GameData');
 const outFile = join(here, '..', 'src', 'lib', 'ui', 'sprites.generated.ts');
 
@@ -129,7 +135,9 @@ const DELIBERATELY_UNMAPPED = {
   'Defensive Shield Potion': 'no matching potion; the four real ones are named differently',
   'vampiric lifesteal potion': 'no matching potion; the four real ones are named differently',
   'resistance potion': 'no matching potion; the four real ones are named differently',
-  'Emergency Revive': 'no matching item in items.json',
+  // "Emergency Revive" used to be listed here as unmappable. It is not - the
+  // art brief names it as the Death Ward Elixir - so it now has an alias
+  // above and this entry would be dead, contradictory documentation.
   Acacia: 'ambiguous between acacia_log and acacia_twig',
   Frostpine: 'ambiguous between frostpine_log and frostpine_twig',
   Sulfur: 'duplicate of "volcanic sulfur", which is mapped',
@@ -204,7 +212,7 @@ function walk(dir) {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
     if (statSync(full).isDirectory()) out.push(...walk(full));
-    else if (extname(entry).toLowerCase() === '.png') out.push(full);
+    else if (extname(entry).toLowerCase() === '.webp') out.push(full);
   }
   return out;
 }
@@ -233,7 +241,7 @@ const problems = [];
 const unmatched = [];
 
 for (const file of files) {
-  const name = basename(file, '.png');
+  const name = basename(file, '.webp');
 
   // --- monsters: exact Name match, which covers all 25 canonical ones ------
   if (file.includes('/Monsters/')) {

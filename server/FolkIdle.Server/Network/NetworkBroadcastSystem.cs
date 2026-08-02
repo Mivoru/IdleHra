@@ -3412,7 +3412,10 @@ namespace FolkIdle.Server.Network
             {
                 string decoded = Uri.UnescapeDataString(relativePath);
 
-                if (!decoded.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
+                // WebP, not PNG - this art is hand-painted with gradients,
+                // which is exactly what PNG compresses worst. See
+                // tools/clean_sprites.py.
+                if (!decoded.EndsWith(".webp", StringComparison.OrdinalIgnoreCase))
                 {
                     context.Response.StatusCode = 404;
                     context.Response.Close();
@@ -3458,7 +3461,7 @@ namespace FolkIdle.Server.Network
 
                 byte[] payload = await System.IO.File.ReadAllBytesAsync(resolved);
                 context.Response.StatusCode = 200;
-                context.Response.ContentType = "image/png";
+                context.Response.ContentType = "image/webp";
                 context.Response.Headers["ETag"] = etag;
                 // Art changes only on a deploy, and a screen can ask for fifty
                 // of these at once, so a long cache matters more here than it
@@ -3487,7 +3490,7 @@ namespace FolkIdle.Server.Network
                 if (System.IO.Directory.Exists(SpritesDirectory))
                 {
                     string root = System.IO.Path.GetFullPath(SpritesDirectory);
-                    foreach (string path in System.IO.Directory.EnumerateFiles(root, "*.png", System.IO.SearchOption.AllDirectories))
+                    foreach (string path in System.IO.Directory.EnumerateFiles(root, "*.webp", System.IO.SearchOption.AllDirectories))
                     {
                         string relative = System.IO.Path.GetRelativePath(root, path).Replace('\\', '/');
                         if (relative.Split('/').All(s => SpriteSegmentPattern.IsMatch(s))) files.Add(relative);

@@ -15,6 +15,7 @@
   } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import Bar from '../lib/ui/Bar.svelte';
+  import { toolIcon } from '../lib/ui/sprites';
   import type { StateUpdate } from '../lib/net/protocol.generated';
 
   const client = useQueryClient();
@@ -90,6 +91,7 @@
   // the most straightforwardly valuable upgrade in the game and the one with
   // no screen until now.
   const toolTier = $derived(snap?.CachedCurrentToolTier ?? 0);
+  const TOOL_KINDS = ['axe', 'pickaxe', 'rod'] as const;
 
   function upgradeGatheringTool() {
     const outcome = upgradeTool();
@@ -244,6 +246,22 @@
 
     <section class="panel">
       <h2>Gathering tool</h2>
+
+      <!-- The three tools share one tier, so all three are shown: the ladder
+           is a wood type, not a per-profession upgrade, and seeing an axe, a
+           pickaxe and a rod change together is what makes that legible. -->
+      <div class="tools">
+        {#each TOOL_KINDS as kind}
+          {@const url = toolIcon(kind, toolTier)}
+          <span class="tool" title="{kind} tier {toolTier}">
+            {#if url}
+              <img src={url} alt="" loading="lazy" decoding="async" />
+            {:else}
+              <span class="dim tiny">{kind}</span>
+            {/if}
+          </span>
+        {/each}
+      </div>
 
       <dl class="stocks">
         <div><dt>Tier</dt><dd class="tier">{toolTier}</dd></div>
@@ -412,6 +430,28 @@
 
   .tier {
     color: var(--accent);
+  }
+
+  .tools {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .tool {
+    display: grid;
+    place-items: center;
+    width: 3.4rem;
+    height: 3.4rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+  }
+
+  .tool img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
   }
 
   .name {

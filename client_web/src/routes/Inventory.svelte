@@ -9,6 +9,7 @@
   import { resolveSlotIndex, EQUIPMENT_SLOTS } from '../lib/ui/slots';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import Affixes from '../lib/ui/Affixes.svelte';
+  import Skeleton from '../lib/ui/Skeleton.svelte';
 
   const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
 
@@ -70,7 +71,7 @@
     {/if}
 
     {#if inventory.isPending}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {:else if inventory.isError}
       <p class="err">Could not load inventory: {inventory.error?.message}</p>
     {:else if equipment.length === 0}
@@ -122,7 +123,7 @@
     </p>
 
     {#if inventory.isPending}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {:else if stacks.length === 0}
       <p class="dim">Nothing stored.</p>
     {:else}

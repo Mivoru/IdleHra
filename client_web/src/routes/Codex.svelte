@@ -6,6 +6,7 @@
   import { playerState } from '../lib/stores/game';
   import Bar from '../lib/ui/Bar.svelte';
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
+  import Skeleton from '../lib/ui/Skeleton.svelte';
 
   const codex = createQuery(() => ({ queryKey: queryKeys.codex, queryFn: fetchCodex }));
 
@@ -78,7 +79,7 @@
     </h3>
 
     {#if regionsQuery.isPending}
-      <p class="dim tiny">Loading...</p>
+      <Skeleton rows={2} />
     {:else if regions.length === 0}
       <p class="dim tiny">No region requirements are defined.</p>
     {:else}
@@ -109,7 +110,7 @@
     {/if}
 
     {#if codex.isPending}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {:else if codex.isError}
       <p class="err">{codex.error?.message}</p>
     {:else if !registry}

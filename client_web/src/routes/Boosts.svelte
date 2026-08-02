@@ -24,6 +24,7 @@
   } from '../lib/net/commands';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { play } from '../lib/ui/audio';
+  import Skeleton from '../lib/ui/Skeleton.svelte';
 
   const snap = $derived($playerState);
   const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
@@ -161,7 +162,7 @@
     {/if}
 
     {#if inventory.isPending || !registry}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {:else if held.length === 0}
       <p class="dim">You are not carrying any consumables.</p>
     {:else}

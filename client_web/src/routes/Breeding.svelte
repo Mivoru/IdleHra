@@ -11,6 +11,7 @@
   import { executeBreeding, claimBattlePassMilestone, purchaseBattlePass } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import { agePhaseName } from '../lib/ui/slots';
+  import Skeleton from '../lib/ui/Skeleton.svelte';
 
   const client = useQueryClient();
   const roster = createQuery(() => ({ queryKey: queryKeys.breedingRoster, queryFn: fetchBreedingRoster }));
@@ -167,7 +168,7 @@
     <h2>Chronicle pass</h2>
 
     {#if metadata.isPending}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {:else}
       <dl class="stats">
         <div><dt>Pass level</dt><dd>{passLevel}</dd></div>

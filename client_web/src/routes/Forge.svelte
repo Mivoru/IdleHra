@@ -7,6 +7,7 @@
   import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { toDisplayAffixes, AFFIX_RARITY_NAMES, KNOWN_AFFIX_IDS } from '../lib/ui/affixes';
   import Affixes from '../lib/ui/Affixes.svelte';
+  import Skeleton from '../lib/ui/Skeleton.svelte';
 
   const client = useQueryClient();
   const forge = createQuery(() => ({ queryKey: queryKeys.forge, queryFn: fetchForge }));
@@ -246,7 +247,7 @@
   <section class="panel">
     <h2>Forge stock</h2>
     {#if forge.isPending}
-      <p class="dim">Loading...</p>
+      <Skeleton />
     {:else if forge.isError}
       <p class="err">{forge.error?.message}</p>
     {:else}

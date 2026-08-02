@@ -25,6 +25,7 @@
   import { connection } from '../lib/net/connection';
   import { loadContent, prettifyBaseId, type ContentRegistry } from '../lib/net/content';
   import Bar from '../lib/ui/Bar.svelte';
+  import Skeleton from '../lib/ui/Skeleton.svelte';
 
   const client = useQueryClient();
   const roster = createQuery(() => ({ queryKey: queryKeys.guildRoster, queryFn: fetchGuildRoster }));
@@ -345,7 +346,7 @@
         </p>
 
         {#if logistics.isPending}
-          <p class="dim">Loading...</p>
+          <Skeleton />
         {:else if (logistics.data ?? []).length === 0}
           <p class="dim">The depot has no requirements set.</p>
         {:else}
