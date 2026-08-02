@@ -27,6 +27,10 @@ export const queryKeys = {
   leaderboard: ['meta', 'leaderboard'] as const,
   guildLeaderboard: ['meta', 'leaderboard', 'guilds'] as const,
   codex: ['meta', 'codex'] as const,
+  metadata: ['meta', 'metadata'] as const,
+  breedingRoster: ['meta', 'breeding'] as const,
+  breedingPreview: (a: string, b: string) => ['meta', 'breeding', 'preview', a, b] as const,
+  storeCatalog: ['shop', 'catalog'] as const,
   raceMastery: ['meta', 'raceMastery'] as const,
   guilds: ['social', 'guilds'] as const,
   guildRoster: ['social', 'guild', 'roster'] as const,
@@ -387,4 +391,73 @@ export interface RaceMasteryEntry {
 
 export function fetchRaceMastery(): Promise<RaceMasteryEntry[]> {
   return authedGet<RaceMasteryEntry[]>('/api/v1/mastery/snapshot');
+}
+
+// ---------------------------------------------------------------------------
+// Season pass, breeding and the store
+// ---------------------------------------------------------------------------
+
+// Modul: ChroniclePassLevel and AccumulatedSeasonalXp used to ride on
+// StateUpdatePacket and were moved off it - low-frequency metadata does not
+// belong on a 10 Hz packet - so this endpoint is their only home.
+export interface PlayerMetadata {
+  ChroniclePassLevel: number;
+  AccumulatedSeasonalXp: number;
+  EventHorizonTransactionCount: number;
+}
+
+export function fetchMetadata(): Promise<PlayerMetadata> {
+  return authedGet<PlayerMetadata>('/api/v1/player/metadata');
+}
+
+export interface BreedingCandidate {
+  CharacterId: string;
+  Level: number;
+  AgePhase: number;
+  GenerationIndex: number;
+  IsBreedingActive: boolean;
+  BreedingCooldownEndEpoch: number;
+  IsEpicMutation: boolean;
+  IsInbred: boolean;
+  LocusRaceDominant: number;
+  LocusRaceRecessive: number;
+}
+
+export function fetchBreedingRoster(): Promise<BreedingCandidate[]> {
+  return authedGet<BreedingCandidate[]>('/api/v1/breeding/roster');
+}
+
+export interface GeneLocusPreview {
+  LocusName: string;
+  ParentPaternalDominant: number;
+  ParentMaternalDominant: number;
+  PredictedMinDominant: number;
+  PredictedMaxDominant: number;
+  MutationChancePct: number;
+}
+
+export interface BreedingPreview {
+  IsEligible: boolean;
+  IneligibleReason: string;
+  IsInbredRisk: boolean;
+  BreedingCostGold: number;
+  HasSufficientGold: boolean;
+  Loci: GeneLocusPreview[];
+}
+
+export function fetchBreedingPreview(paternalId: string, maternalId: string): Promise<BreedingPreview> {
+  const query = new URLSearchParams({ paternalId, maternalId });
+  return authedGet<BreedingPreview>(`/api/v1/breeding/preview?${query}`);
+}
+
+// Modul: the catalog carries NO PRICE - only the product id and how many
+// diamonds it grants. Real money pricing lives in the storefront, which this
+// client does not reach, so nothing here may present a currency amount.
+export interface StoreCatalogEntry {
+  ProductId: string;
+  DiamondAmount: number;
+}
+
+export function fetchStoreCatalog(): Promise<StoreCatalogEntry[]> {
+  return authedGet<StoreCatalogEntry[]>('/api/v1/store/catalog');
 }

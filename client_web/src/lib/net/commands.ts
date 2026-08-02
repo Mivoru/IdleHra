@@ -471,3 +471,70 @@ export function evictVillager(villagerSlot: number): CommandOutcome {
   connection.send({ Command: CommandType.EvictVillager, TargetVillagerSlot: villagerSlot });
   return OK;
 }
+
+// ---------------------------------------------------------------------------
+// Breeding
+// ---------------------------------------------------------------------------
+
+/**
+ * Mirrors ValidateBreedingRequest, which disconnects when BreedingLevel is 0,
+ * when either parent Guid is empty, when THE TWO PARENTS ARE THE SAME, or when
+ * any of sixteen unrelated fields is non-zero.
+ *
+ * Same-parent is the one a UI produces by accident, exactly as with fusion -
+ * so the screen excludes each parent from the other's list AND this refuses.
+ */
+export function executeBreeding(
+  paternalId: string,
+  maternalId: string,
+  breedingLevel: number,
+): CommandOutcome {
+  if (breedingLevel <= 0) return refuse('Build Breeding Grounds in your village first.');
+  if (!paternalId || !maternalId) return refuse('Choose two parents.');
+  if (paternalId === maternalId) return refuse('The two parents must be different characters.');
+
+  connection.send({
+    Command: CommandType.ExecuteBreeding,
+    TargetGuid: paternalId,
+    SecondaryGuid: maternalId,
+  });
+  return OK;
+}
+
+// ---------------------------------------------------------------------------
+// Monetisation
+// ---------------------------------------------------------------------------
+
+/** Spends PremiumDiamonds server-side; no cash IAP hook is involved. */
+export function purchaseBattlePass(): CommandOutcome {
+  connection.send({ Command: CommandType.PurchaseBattlePass });
+  return OK;
+}
+
+/**
+ * Mirrors ValidateLegacyStoreRequest: fourteen fields must be zero, so this
+ * sends TargetUnlockId alone.
+ */
+export function purchaseLegacyUnlock(unlockId: number): CommandOutcome {
+  if (!Number.isInteger(unlockId) || unlockId <= 0) return refuse('Pick an unlock.');
+  connection.send({ Command: CommandType.PurchaseLegacyUnlocks, TargetUnlockId: unlockId });
+  return OK;
+}
+
+/**
+ * Mirrors ValidateChronoCommands: TargetId must be positive, fifteen other
+ * fields must be zero, and a QUARANTINED account is rejected outright.
+ */
+export function consumeChronoCore(itemId: number, quarantined: boolean): CommandOutcome {
+  if (quarantined) return refuse('Your account is restricted.');
+  if (!Number.isInteger(itemId) || itemId <= 0) return refuse('Pick a chrono core.');
+  connection.send({ Command: CommandType.ConsumeChronoCore, TargetId: itemId });
+  return OK;
+}
+
+/** The requested multiplier rides on TargetId. 1 turns acceleration off. */
+export function toggleChronoAcceleration(multiplier: number): CommandOutcome {
+  if (!Number.isInteger(multiplier) || multiplier < 1) return refuse('Multiplier must be at least 1.');
+  connection.send({ Command: CommandType.ToggleChronoAcceleration, TargetId: multiplier });
+  return OK;
+}

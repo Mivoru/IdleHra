@@ -1,7 +1,7 @@
 # Web Client Port Plan
 
 Status: **Decision gate TAKEN 2026-08-02 - the web client is the direction.**
-Phases 0-4 built, Phase 5 mostly built. **The Unity client is in feature freeze.**
+Phases 0-5 built, Phase 6 partial. **The Unity client is in feature freeze.**
 
 Target: a browser-first client (Svelte + TypeScript), packaged for Android and
 iOS with Capacitor later. The existing Unity client stays untouched and
@@ -494,9 +494,13 @@ Chat across all three channels, friends with block/unblock, guild
 create/join/directory/roster/applications, guild war scoreboard and supply
 contribution, raids, guild treasury, logistics depot, and mentorship.
 
-**Still not built: the congratulate button.** It hangs off an announcement
-flow that has no client-visible trigger yet, so there is nothing to attach it
-to; recorded rather than quietly dropped.
+Congratulate is in, and finding where it belonged exposed a real gap:
+**announcements are a FOURTH channel type (3), not global messages with special
+text.** ChatEngine gives them their own byte precisely so a client can tell
+them apart without parsing - and a client that only knows 0/1/2, as this one
+originally did, silently dropped every announcement on the floor. The button
+itself is not a dedicated command: it sends the literal string "gz!" on the
+global channel, inheriting the ordinary rate limit and profanity path.
 
 Two things worth carrying forward:
 
@@ -520,9 +524,14 @@ Built: achievements with claiming, statistics, player AND guild leaderboards,
 monster codex with region completion, daily login bonus, race mastery, skill
 tree, village buildings and villagers.
 
-**Not built: season pass and the breeding lab / gene vectors.** Both need
-endpoints and command shapes that have not been read yet, so they are named
-rather than assumed done.
+Season pass and the breeding lab are in too, so the phase is complete apart
+from the codex 3D viewer, which the plan already excludes.
+
+One thing the season pass cannot do, and it is a wire limitation rather than a
+shortcut: **`ClaimedMilestonesBitmask` was removed from `StateUpdatePacket` and
+nothing replaced it**, so which milestones a player has already claimed is not
+readable by any client. Milestones are therefore claimed by index, and a repeat
+is the server's to refuse - a checked list would have to invent the checkmarks.
 
 Two findings, both from the same root cause - assuming a shape instead of
 reading it:
@@ -541,11 +550,21 @@ reading it:
   existed to total them - so the mapping was completed generically, and a fifth
   achievement now needs no change there at all.
 
-### Phase 6 - Monetisation and packaging (~10-15 days)
+### Phase 6 - Monetisation and packaging (~10-15 days) - **PARTIALLY BUILT**
 
-Store, legacy shop, chrono bank, billing verification and receipt validation.
-Then Capacitor for Android; then iOS, which needs a Mac exactly as Unity does.
-Push notifications land here (see 3.2c).
+Built: the diamond catalogue, the legacy shop's three prestige perks read off
+`LegacyPerksBitmask`, and the chrono bank's speed toggle and core consumption.
+
+**Deliberately NOT built: actual purchasing.** `/api/v1/store/catalog` carries
+a product id and a diamond amount and *no price* - real-money pricing lives in
+the storefront, behind a platform store SDK, with `/api/v1/billing/verify-receipt`
+closing the loop. A "Buy" button that cannot take money would be worse than
+none, so the screen says so plainly instead.
+
+Still outstanding: Capacitor packaging for Android and then iOS, receipt
+validation, and push notifications (see 3.2c). Receipt verification is one of
+the nine endpoints the Unity client never called, and the plan already records
+it as a real revenue risk rather than cosmetics.
 
 ### Phase 7 - Parity close-out (~10-15 days)
 

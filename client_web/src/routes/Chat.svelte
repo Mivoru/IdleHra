@@ -11,11 +11,18 @@
   const GLOBAL = 0;
   const GUILD = 1;
   const WHISPER = 2;
+  // Modul: ANNOUNCEMENTS ARE A FOURTH CHANNEL, not global messages with
+  // special text. ChatEngine gives them their own channel byte precisely so a
+  // client can tell them apart without parsing - and a client that only knows
+  // 0/1/2, as this screen originally did, drops every one of them on the floor
+  // with nothing anywhere saying so.
+  const ANNOUNCEMENT = 3;
 
   const CHANNELS = [
     { id: GLOBAL, label: 'World' },
     { id: GUILD, label: 'Guild' },
     { id: WHISPER, label: 'Whispers' },
+    { id: ANNOUNCEMENT, label: 'Announcements' },
   ];
 
   let active = $state(GLOBAL);
@@ -61,6 +68,15 @@
     connection.sendChat(text, active, active === WHISPER ? whisperTarget : 0);
     draft = '';
   }
+
+  // Modul: the congratulate button. NOT a dedicated command - the Unity client
+  // sends the literal string "gz!" on the Global channel, so it inherits the
+  // ordinary chat rate limit and profanity path rather than needing its own.
+  // Kept identical rather than "improved" into something friendlier, because
+  // both clients write into the same world chat.
+  function congratulate() {
+    connection.sendChat('gz!', GLOBAL);
+  }
 </script>
 
 <div class="wrap">
@@ -80,7 +96,12 @@
           <span class="who" class:self={message.senderPlayerId === connection.currentPlayerId}>
             {displayName(message.senderPlayerId)}
           </span>
-          <span class="text">{message.text}</span>
+          <span class="text" class:announcement={message.channelType === ANNOUNCEMENT}>
+            {message.text}
+          </span>
+          {#if message.channelType === ANNOUNCEMENT && message.senderPlayerId !== connection.currentPlayerId}
+            <button class="gz" title="Say gz! in world chat" onclick={congratulate}>gz!</button>
+          {/if}
         </li>
       {/each}
     </ul>
@@ -89,9 +110,11 @@
       <p class="dim empty">
         Nothing in this channel yet.
         {#if active === GUILD}Guild messages only arrive if you are in a guild.{/if}
+        {#if active === ANNOUNCEMENT}High-rarity drops across the world show up here.{/if}
       </p>
     {/if}
 
+    {#if active !== ANNOUNCEMENT}
     <div class="composer">
       {#if active === WHISPER}
         <input
@@ -115,6 +138,7 @@
     <!-- RequestChatMessagePacket's MessageText is a fixed 128-byte buffer, so
          the input is bounded rather than truncated silently server-side. -->
     <p class="dim tiny">Up to 128 bytes per message.</p>
+    {/if}
   </section>
 </div>
 
@@ -168,7 +192,7 @@
 
   .log li {
     display: grid;
-    grid-template-columns: 3rem auto 1fr;
+    grid-template-columns: 3rem auto 1fr auto;
     gap: 0.5rem;
     align-items: baseline;
   }
@@ -189,6 +213,16 @@
 
   .text {
     overflow-wrap: anywhere;
+  }
+
+  .text.announcement {
+    color: var(--rarity-12);
+  }
+
+  .gz {
+    padding: 0 0.35rem;
+    font-size: 0.7rem;
+    line-height: 1.4;
   }
 
   .composer {

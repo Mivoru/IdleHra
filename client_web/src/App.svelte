@@ -16,6 +16,8 @@
   import Progression from './routes/Progression.svelte';
   import Village from './routes/Village.svelte';
   import Codex from './routes/Codex.svelte';
+  import Breeding from './routes/Breeding.svelte';
+  import Store from './routes/Store.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
   import { startSession, endSession, connectionStatus, playerState } from './lib/stores/game';
@@ -43,6 +45,8 @@
     { key: 'village', label: 'Village' },
     { key: 'progression', label: 'Progress' },
     { key: 'codex', label: 'Codex' },
+    { key: 'breeding', label: 'Breeding' },
+    { key: 'store', label: 'Store' },
   ] as const;
 
   type ScreenKey = (typeof SCREENS)[number]['key'];
@@ -146,6 +150,10 @@
       <Progression />
     {:else if screen === 'codex'}
       <Codex />
+    {:else if screen === 'breeding'}
+      <Breeding />
+    {:else if screen === 'store'}
+      <Store />
     {/if}
 
     <OfflineSummary />
