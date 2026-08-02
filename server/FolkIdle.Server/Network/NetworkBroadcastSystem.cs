@@ -421,6 +421,32 @@ namespace FolkIdle.Server.Network
                     var context = await _httpListener.GetContextAsync();
                     string requestPath = context.Request.Url?.AbsolutePath ?? "/";
 
+                    // Modul: browser client support, 2026-08-02. Phase 0 of the
+                    // web client port plan.
+                    //
+                    // A browser refuses every cross-origin response that does
+                    // not carry these headers, so without this the web client
+                    // cannot make a single successful call - not even login.
+                    // The Unity client is unaffected: it is not a browser and
+                    // ignores them.
+                    //
+                    // Allow-list, never "*", because these endpoints carry a
+                    // bearer token. A wildcard would let any page on the
+                    // internet call this API with a user's credentials once
+                    // credentials are ever sent.
+                    ApplyCorsHeaders(context);
+
+                    // A browser sends OPTIONS before any request carrying an
+                    // Authorization header, and expects a bodyless 204. Answered
+                    // here rather than per-route so a new endpoint cannot forget
+                    // it - forgetting is invisible until a browser tries.
+                    if (context.Request.HttpMethod == "OPTIONS")
+                    {
+                        context.Response.StatusCode = 204;
+                        context.Response.Close();
+                        continue;
+                    }
+
                     // Modul: previously both paths unconditionally returned 200
                     // regardless of real engine state - InfrastructureHealthMonitor
                     // (IsLive/IsReady/WritePlainHealth) already existed with the
@@ -2973,6 +2999,65 @@ namespace FolkIdle.Server.Network
         // are balance data; as a client asset they would drift from the server
         // table and show players odds the server does not honour. The rates are
         // read from CombatLootEngine's own constants for the same reason.
+        // Modul: browser client support, 2026-08-02.
+        //
+        // Origins come from FOLKIDLE_WEB_ORIGINS, comma separated. Unset means
+        // no browser origin is allowed, which is the correct default for a
+        // deployment that has no web client yet - it fails closed rather than
+        // silently opening the API to every page on the internet.
+        //
+        // Local development typically wants:
+        //   FOLKIDLE_WEB_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+        // which is Vite's default port.
+        private static readonly string[] AllowedWebOrigins = ResolveAllowedWebOrigins();
+
+        private static string[] ResolveAllowedWebOrigins()
+        {
+            string raw = Environment.GetEnvironmentVariable("FOLKIDLE_WEB_ORIGINS") ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return Array.Empty<string>();
+            }
+
+            return raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
+
+        private static void ApplyCorsHeaders(HttpListenerContext context)
+        {
+            string? origin = context.Request.Headers["Origin"];
+            if (string.IsNullOrEmpty(origin))
+            {
+                // Not a browser request - the Unity client, curl, health checks.
+                return;
+            }
+
+            bool allowed = false;
+            for (int i = 0; i < AllowedWebOrigins.Length; i++)
+            {
+                if (string.Equals(AllowedWebOrigins[i], origin, StringComparison.OrdinalIgnoreCase))
+                {
+                    allowed = true;
+                    break;
+                }
+            }
+
+            if (!allowed)
+            {
+                // Deliberately silent: echoing back a rejected origin would
+                // defeat the allow-list, and the browser reports the failure
+                // clearly enough on its side.
+                return;
+            }
+
+            context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+            context.Response.Headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS";
+            context.Response.Headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type";
+
+            // Origin is echoed rather than fixed, so any cache between here and
+            // the browser must key on it.
+            context.Response.Headers["Vary"] = "Origin";
+        }
+
         private Task HandleMonsterLoot(HttpListenerContext context)
         {
             try
