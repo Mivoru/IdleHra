@@ -1,6 +1,6 @@
 # Web Client Port Plan
 
-Status: **Phase 0 complete**, Phase 1 in progress. Written 2026-08-02.
+Status: **Phase 0 complete, Phase 1 built**, decision gate not yet taken. Written 2026-08-02.
 
 Target: a browser-first client (Svelte + TypeScript), packaged for Android and
 iOS with Capacitor later. The existing Unity client stays untouched and
@@ -380,9 +380,31 @@ Three things the build found that no amount of reading would have:
 3. Drop-preview rows for equipment carry `ItemId = 0` and are identified by
    `BaseItemId` alone, which rendered four of five rows as "Item #0".
 
-**Still open before the gate can honestly be taken:** floating damage text,
-and the offline-summary path. The decision question - "is iterating on this
-materially faster than Unity" - is not answered by this document.
+Floating damage text and the offline "welcome back" flow are now in as well.
+Two more things the build surfaced:
+
+4. **The wire carries no damage event.** There is no "you hit for N" packet
+   anywhere in this protocol - only `CurrentMonsterHp` on a snapshot - so
+   every number shown is inferred from a difference between two snapshots,
+   and the inference has to reject three lies: a monster change (6 -> 3500 is
+   a new monster, not a heal), a respawn at full health, and a reconnect gap
+   that collapses thirty hits into one difference. It is fed from the
+   AUTHORITATIVE snapshot, never the interpolated one, which would turn one
+   hit into a blizzard of fictional tiny ones.
+
+5. **`OfflineSummaryTick` does not mean "you earned something".**
+   `OfflineSimulationEngine` increments it for any elapsed window at all, so
+   an idle character produces a "welcome back" with `+0 +0 +0` - measured at
+   39 minutes away on the dev fixture. Presenting that as a rewards panel is
+   a dialog whose only purpose is to be dismissed, but suppressing it is also
+   wrong: in an idle game, earning nothing over 39 minutes is the single most
+   useful thing to tell the player, because the cause is a character they
+   never deployed. So a zero-earning catch-up still surfaces, phrased as the
+   problem it is, once the window is long enough not to be a page refresh.
+
+**The decision question - "is iterating on this materially faster than
+Unity" - is not answered by this document.** That is the user's call, and
+taking the gate is the next step, not more building.
 
 #### Original plan for this phase
 

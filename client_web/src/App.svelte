@@ -1,6 +1,7 @@
 <script lang="ts">
   import Login from './routes/Login.svelte';
   import Combat from './routes/Combat.svelte';
+  import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import { startSession, endSession, connectionStatus } from './lib/stores/game';
   import { storedToken, clearToken } from './lib/net/auth';
 
@@ -46,6 +47,7 @@
   {/if}
 
   <Combat />
+  <OfflineSummary />
 {:else}
   <Login onAuthenticated={(newToken) => (token = newToken)} />
 {/if}

@@ -15,6 +15,7 @@
   import { authedGet } from '../lib/net/auth';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import Bar from '../lib/ui/Bar.svelte';
+  import FloatingDamage from '../lib/ui/FloatingDamage.svelte';
 
   let registry = $state<ContentRegistry | null>(null);
   let contentError = $state('');
@@ -134,6 +135,7 @@
       </div>
 
       {#if activeMonster}
+        <FloatingDamage />
         <div class="hpblock">
           <span class="dim">Fighting {activeMonster.Name}</span>
           <Bar

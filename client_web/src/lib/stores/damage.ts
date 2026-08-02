@@ -1,0 +1,102 @@
+// Modul: floating damage text. The descendant of UiFloatingDamageText plus
+// CombatVfxPool, minus the pooling - a keyed Svelte each-block reuses DOM
+// nodes on its own, which is what UIComponentPool existed to do by hand.
+//
+// The hard part is not the animation, it is that THE WIRE CARRIES NO DAMAGE
+// EVENT. There is no "you hit for N" packet anywhere in this protocol; there
+// is only `CurrentMonsterHp` on a snapshot. So a hit has to be inferred from
+// the difference between two snapshots, and the inference has to be careful
+// about the three ways that difference can lie:
+//
+//   1. The monster changed. Health going from 6 to 3500 is a new monster, not
+//      a heal, and 3500 to 6 on the same tick is not a 3494 hit.
+//   2. The monster REGENERATED or the same monster id respawned at full
+//      health. An increase is never a hit.
+//   3. A reconnect gap collapses many hits into one difference. Reporting
+//      "4210" for what was really thirty hits is worse than reporting nothing.
+//
+// This is deliberately fed from the AUTHORITATIVE snapshot stream, never from
+// the interpolated one - the smoothed value passes through every intermediate
+// number on its way, which would produce a blizzard of tiny fictional hits.
+
+export interface DamageEvent {
+  id: number;
+  amount: number;
+  /** 0..1 horizontal jitter so simultaneous numbers do not stack exactly. */
+  offset: number;
+  atMs: number;
+}
+
+/** How long a number stays on screen. Matches the CSS animation duration. */
+export const DAMAGE_TEXT_LIFETIME_MS = 1100;
+
+/**
+ * Beyond this the two snapshots are not adjacent - a reconnect, a tab that was
+ * frozen by the OS, or a long dirty-check silence. Attributing the whole
+ * accumulated difference to one hit would put an absurd number on screen.
+ */
+export const MAX_ADJACENT_SNAPSHOT_GAP_MS = 3000;
+
+export interface CombatSample {
+  monsterId: number;
+  monsterHp: number;
+  atMs: number;
+}
+
+/**
+ * Pure: given the previous and current combat samples, the damage to show, or
+ * null. Separated from any store so the rules above are unit-testable without
+ * a DOM, a clock or a component.
+ */
+export function inferDamage(previous: CombatSample | null, current: CombatSample): number | null {
+  if (previous === null) return null;
+  if (previous.monsterId !== current.monsterId) return null;
+  if (current.monsterId <= 0) return null;
+
+  const gap = current.atMs - previous.atMs;
+  if (gap <= 0 || gap > MAX_ADJACENT_SNAPSHOT_GAP_MS) return null;
+
+  const delta = previous.monsterHp - current.monsterHp;
+  // Zero is the common case (most snapshots carry no hit); negative is a heal
+  // or a respawn at full health, and neither is damage the player dealt.
+  return delta > 0 ? delta : null;
+}
+
+let sequence = 0;
+
+export class DamageFeed {
+  private previous: CombatSample | null = null;
+  private events: DamageEvent[] = [];
+
+  /** Returns the new event, if this snapshot represented a hit. */
+  push(sample: CombatSample): DamageEvent | null {
+    const amount = inferDamage(this.previous, sample);
+    this.previous = sample;
+    if (amount === null) return null;
+
+    const event: DamageEvent = {
+      id: ++sequence,
+      amount,
+      offset: Math.random(),
+      atMs: sample.atMs,
+    };
+    this.events = [...this.events, event];
+    return event;
+  }
+
+  /** Drops expired events. Called from the render loop, not a timer per event. */
+  prune(nowMs: number): DamageEvent[] {
+    const kept = this.events.filter((e) => nowMs - e.atMs < DAMAGE_TEXT_LIFETIME_MS);
+    if (kept.length !== this.events.length) this.events = kept;
+    return this.events;
+  }
+
+  get current(): DamageEvent[] {
+    return this.events;
+  }
+
+  reset(): void {
+    this.previous = null;
+    this.events = [];
+  }
+}
