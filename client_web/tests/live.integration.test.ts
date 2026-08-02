@@ -225,9 +225,13 @@ describe.skipIf(!LIVE)('live server integration', () => {
       // cleared in the database before the fixture is usable again.
       expect(
         quarantined,
-        'the dev fixture is quarantined - clear IsQuarantined/Quarantine_Active ' +
-          'in PlayerRecords. Some client that never answered an anti-cheat ' +
-          'challenge was run against this account.',
+        'The dev fixture is quarantined, so it is fed spoofed data and drops ' +
+          'nothing. Some client that never answered an anti-cheat challenge ' +
+          'was run against it. Lift it with the real tool - ' +
+          '"dotnet FolkIdle.Server.dll --lift-quarantine 1" - which also ' +
+          'unfreezes the market listings the shadow ban froze. Do NOT just ' +
+          'UPDATE PlayerRecords: that returns the account with its economy ' +
+          'still locked.',
       ).toBe(false);
 
       // ResponseLootDrop is one of the four packet types an earlier draft of

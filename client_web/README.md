@@ -56,6 +56,15 @@ one of these, not the transport.
 vectors the **server itself** computed (`CHALLENGE_VECTORS`), because a wrong
 answer is worse than no answer - it gets a real player flagged as a cheater.
 
+A quarantined account is fed spoofed data and drops nothing, with no error
+anywhere, so it looks like the loot code is broken. Lift it with the tool that
+already exists - it also unfreezes the market listings the shadow ban froze,
+which a bare `UPDATE PlayerRecords` does not:
+
+```bash
+dotnet server/FolkIdle.Server/bin/Debug/net8.0/FolkIdle.Server.dll --lift-quarantine <playerId>
+```
+
 ## Tests
 
 ```bash
