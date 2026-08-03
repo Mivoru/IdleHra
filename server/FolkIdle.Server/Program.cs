@@ -110,6 +110,94 @@ if (args.Length > 0 && args[0] == "--seed-dev")
 // did wrongly flag them, see that engine's own comments - had no route back,
 // no appeal, and no support tool. A ban system that cannot be reversed is a
 // bug in the ban system regardless of how accurate the detector becomes.
+// Modul: reconciles the diamonds the regional-boss bug handed out.
+//
+// `monsterId % 6 == 0` decided who was a boss, and a boss kill granted ten
+// premium diamonds. No real boss matched it; monsters 96, 102, 108 and 114 did,
+// as did every sixth legacy monster. Anyone who ground one of those was paid
+// premium currency for it - at the measured kill rate, roughly twenty thousand
+// an hour.
+//
+// The debt is computable EXACTLY rather than estimated: monster_codex_entries
+// stores a per-player, per-monster kill count, which is the same event that
+// paid out. Sum the kills on the affected ids, multiply by ten.
+//
+// DRY RUN BY DEFAULT. It prints what it would take and changes nothing unless
+// --apply is passed, because this removes currency from real accounts and the
+// operator should see the list first. Balances are clamped at zero: a player
+// who already spent the diamonds ends at nothing rather than in debt, which is
+// the kinder side of an error that was ours.
+if (args.Length > 0 && args[0] == "--reconcile-boss-diamonds")
+{
+    bool apply = args.Contains("--apply");
+
+    var reconcileConnectionString = Environment.GetEnvironmentVariable("FOLKIDLE_DB_CONN") ?? ConnectionStringDefaults.LocalDevelopmentFallback;
+    var reconcileOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+        .UseNpgsql(reconcileConnectionString)
+        .Options;
+
+    await using var reconcileDb = new FolkIdleDbContext(reconcileOptions);
+
+    // The exact set the old heuristic rewarded: divisible by six AND not a
+    // real boss. Asking ContentRegistry keeps this honest if the canonical
+    // boss set ever changes.
+    ContentRegistry.Initialize();
+    var wronglyPaid = Enumerable.Range(1, ContentRegistry.LastCanonicalMonsterId)
+        .Where(id => id % 6 == 0 && !ContentRegistry.IsRegionalBoss(id))
+        .ToArray();
+
+    Console.WriteLine($"Monsters that wrongly paid a boss bounty: {string.Join(", ", wronglyPaid)}");
+
+    var debts = await reconcileDb.Set<MonsterCodexEntry>()
+        .AsNoTracking()
+        .Where(e => wronglyPaid.Contains(e.MonsterId))
+        .GroupBy(e => e.PlayerId)
+        .Select(g => new { PlayerId = g.Key, Kills = g.Sum(e => e.KillCount) })
+        .ToListAsync();
+
+    if (debts.Count == 0)
+    {
+        Console.WriteLine("No account earned diamonds from the bug.");
+        return;
+    }
+
+    const int DiamondsPerBossKill = 10;
+    long total = 0;
+
+    foreach (var debt in debts.OrderByDescending(d => d.Kills))
+    {
+        long owed = (long)debt.Kills * DiamondsPerBossKill;
+        total += owed;
+
+        var player = await reconcileDb.PlayerRecords.FirstOrDefaultAsync(p => p.Id == debt.PlayerId);
+        int balance = player?.PremiumDiamonds ?? 0;
+        long taken = Math.Min(owed, balance);
+
+        Console.WriteLine(
+            $"  player {debt.PlayerId}: {debt.Kills} kills = {owed} diamonds granted, " +
+            $"balance {balance}, would take {taken}");
+
+        if (apply && player != null)
+        {
+            player.PremiumDiamonds = (int)Math.Max(0, balance - owed);
+        }
+    }
+
+    Console.WriteLine($"{debts.Count} account(s), {total} diamonds granted in total.");
+
+    if (apply)
+    {
+        await reconcileDb.SaveChangesAsync();
+        Console.WriteLine("Applied.");
+    }
+    else
+    {
+        Console.WriteLine("Dry run - nothing changed. Re-run with --apply to take them.");
+    }
+
+    return;
+}
+
 if (args.Length > 1 && args[0] == "--lift-quarantine")
 {
     if (!long.TryParse(args[1], out long quarantinedPlayerId))
