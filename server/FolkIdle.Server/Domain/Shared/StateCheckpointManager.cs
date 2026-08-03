@@ -759,6 +759,10 @@ namespace FolkIdle.Server.Domain.Shared
                 WoodcuttingMasteryLevel = player.WoodcuttingMasteryLevel,
                 MiningMasteryXp = player.MiningMasteryXp,
                 MiningMasteryLevel = player.MiningMasteryLevel,
+                FishingMasteryXp = player.FishingMasteryXp,
+                FishingMasteryLevel = player.FishingMasteryLevel,
+                HerbalismMasteryXp = player.HerbalismMasteryXp,
+                HerbalismMasteryLevel = player.HerbalismMasteryLevel,
                 // Modul: race unlock feedback. Rebuilt from the durable
                 // PlayerRaceUnlocks rows, so the mask is correct after a
                 // reconnect and for accounts that unlocked races before this
@@ -934,6 +938,10 @@ namespace FolkIdle.Server.Domain.Shared
             player.WoodcuttingMasteryLevel = state.WoodcuttingMasteryLevel;
             player.MiningMasteryXp = state.MiningMasteryXp;
             player.MiningMasteryLevel = state.MiningMasteryLevel;
+            player.FishingMasteryXp = state.FishingMasteryXp;
+            player.FishingMasteryLevel = state.FishingMasteryLevel;
+            player.HerbalismMasteryXp = state.HerbalismMasteryXp;
+            player.HerbalismMasteryLevel = state.HerbalismMasteryLevel;
 
             long sessionSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - state.SessionStartEpochSeconds;
             if (sessionSeconds < 0L) sessionSeconds = 0L;

@@ -5,10 +5,12 @@
   import { CommandType } from '../lib/net/protocol.generated';
   import { queryKeys, fetchInventory, type InventoryEquipment } from '../lib/net/rest';
   import { loadContent, prettifyBaseId, monsterName, type ContentRegistry } from '../lib/net/content';
-  import { EQUIPMENT_SLOTS, equippedIdFor, isAffixLocked, agePhaseName, HALT_REASON_SHORT, isGatheringActivity, professionName } from '../lib/ui/slots';
+  import { EQUIPMENT_SLOTS, equippedIdFor, isAffixLocked, agePhaseName, HALT_REASON_SHORT, isGatheringActivity, professionName, resolveSlotIndex } from '../lib/ui/slots';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import Affixes from '../lib/ui/Affixes.svelte';
   import Bar from '../lib/ui/Bar.svelte';
+  import RaceIcon from '../lib/ui/RaceIcon.svelte';
+  import { raceName } from '../lib/ui/races';
   import { onMount } from 'svelte';
 
   const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
@@ -27,6 +29,43 @@
   const byId = $derived(
     new Map<number, InventoryEquipment>((inventory.data?.Equipment ?? []).map((e) => [e.Id, e])),
   );
+
+  // Modul: you could see the seven slots here but only ever empty them. The
+  // only place that could EQUIP anything was the chest screen, so gearing up
+  // meant leaving the character you were gearing. Candidates are resolved with
+  // the same slot rule the server uses, so the list for a slot is exactly what
+  // that slot will accept.
+  const equippedIds = $derived(
+    snap
+      ? new Set(EQUIPMENT_SLOTS.map((slot) => equippedIdFor(snap, slot)).filter((id) => id > 0))
+      : new Set<number>(),
+  );
+
+  const candidatesBySlot = $derived.by(() => {
+    const bySlot = new Map<number, InventoryEquipment[]>();
+    for (const item of inventory.data?.Equipment ?? []) {
+      if (equippedIds.has(item.Id)) continue;
+      const index = resolveSlotIndex(item.BaseItemId);
+      if (index < 0) continue;
+      const list = bySlot.get(index) ?? [];
+      list.push(item);
+      bySlot.set(index, list);
+    }
+    for (const list of bySlot.values()) {
+      list.sort((a, b) => b.QualityTier - a.QualityTier);
+    }
+    return bySlot;
+  });
+
+  let picked = $state<Record<number, number>>({});
+
+  function equip(slotIndex: number) {
+    const instanceId = picked[slotIndex];
+    if (!instanceId) return;
+    connection.send({ Command: CommandType.EquipItem, TargetId: instanceId });
+    picked = { ...picked, [slotIndex]: 0 };
+    setTimeout(() => inventory.refetch(), 700);
+  }
 
   function activityLabel(activityId: number, haltReason: number): string {
     if (activityId === 0) {
@@ -48,6 +87,7 @@
             id: snap.Slot1_CharacterId,
             ageTicks: snap.Slot1_AgeTicks,
             agePhase: snap.Slot1_AgePhase,
+            raceId: snap.Slot1_RaceId,
             activity: Number(snap.ActiveActivityId),
             halt: snap.ActivityHaltReason,
           },
@@ -56,6 +96,7 @@
             id: snap.Slot2_CharacterId,
             ageTicks: snap.Slot2_AgeTicks,
             agePhase: snap.Slot2_AgePhase,
+            raceId: snap.Slot2_RaceId,
             activity: snap.Slot2ActivityId,
             halt: snap.Slot2ActivityHaltReason,
           },
@@ -64,6 +105,7 @@
             id: snap.Slot3_CharacterId,
             ageTicks: snap.Slot3_AgeTicks,
             agePhase: snap.Slot3_AgePhase,
+            raceId: snap.Slot3_RaceId,
             activity: snap.Slot3ActivityId,
             halt: snap.Slot3ActivityHaltReason,
           },
@@ -154,6 +196,7 @@
         {#each EQUIPMENT_SLOTS as slot}
           {@const instanceId = equippedIdFor(snap, slot)}
           {@const item = byId.get(instanceId)}
+          {@const candidates = candidatesBySlot.get(slot.index) ?? []}
           <li>
             <div class="slotname dim">{slot.label}</div>
             {#if instanceId > 0}
@@ -174,6 +217,28 @@
             {:else}
               <div class="item empty dim">empty</div>
             {/if}
+
+            {#if candidates.length > 0}
+              <div class="equiprow">
+                <select bind:value={picked[slot.index]}>
+                  <option value={0}>Choose...</option>
+                  {#each candidates as candidate (candidate.Id)}
+                    <option value={candidate.Id}>
+                      {prettifyBaseId(candidate.BaseItemId)} [{rarityName(candidate.QualityTier)}]
+                    </option>
+                  {/each}
+                </select>
+                <button
+                  class="tiny-btn"
+                  disabled={!picked[slot.index]}
+                  onclick={() => equip(slot.index)}
+                >
+                  Equip
+                </button>
+              </div>
+            {:else if instanceId === 0}
+              <span class="dim tiny">Nothing in the chest fits this slot.</span>
+            {/if}
           </li>
         {/each}
       </ul>
@@ -182,13 +247,17 @@
     <section class="panel">
       <h2>Roster</h2>
       <p class="dim small">
-        Characters 2 and 3 report their activity on the hot path but not their gear -
-        it changes on a button press, not ten times a second.
+        Every character in your village. Equipment is shown for the active
+        character only.
       </p>
 
       {#each roster as character}
         <div class="rosterrow">
           <strong>Slot {character.slot}</strong>
+          <span class="race">
+            <RaceIcon raceId={character.raceId} />
+            {raceName(character.raceId)}
+          </span>
           <span class="dim">{agePhaseName(character.agePhase)}</span>
           <span class="dim tiny">{Number(character.ageTicks).toLocaleString()} age ticks</span>
           <span class:idle={character.activity === 0}>
@@ -213,6 +282,24 @@
 {/if}
 
 <style>
+  .equiprow {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    margin-top: 0.3rem;
+  }
+
+  .equiprow select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .race {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));

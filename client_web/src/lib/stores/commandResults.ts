@@ -31,7 +31,9 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   8: 'The server rejected that.',
   9: 'A bank transaction is already in flight - try again in a moment.',
   10: 'Already at maximum tier.',
-  11: 'Backpack full.',
+  // The server no longer returns this - storage is unlimited. Mapped so a
+  // stale code cannot render as a bare number.
+  11: 'That could not be stored.',
   12: 'Trading requires an active guild membership.',
   13: 'Your level is too low for that item.',
   14: 'Another character is already on that node.',

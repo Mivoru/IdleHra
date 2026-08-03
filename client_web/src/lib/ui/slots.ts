@@ -196,7 +196,10 @@ export const HALT_REASONS: Record<number, string> = {
   0: '',
   1: 'Out of food - the larder is empty, so auto-eat stopped the activity.',
   2: 'Died and respawned. Combat activities stop on death; gathering does not.',
-  3: 'Backpack full - EVERYTHING IS STOPPED. No combat, no gathering, no XP. Free a slot to start again.',
+  // 3 was "backpack full". The backpack is gone - storage is one unlimited
+  // village chest - and the server no longer sets this reason. Kept mapped so
+  // an old queued packet cannot render "undefined".
+  3: '',
   4: 'No eligible character - the only one may be lent out as an Academy mentor.',
 };
 
@@ -204,7 +207,7 @@ export const HALT_REASON_SHORT: Record<number, string> = {
   0: '',
   1: 'Out of food',
   2: 'Died',
-  3: 'Backpack full',
+  3: '',
   4: 'No character',
 };
 

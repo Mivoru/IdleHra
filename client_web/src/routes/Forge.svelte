@@ -91,8 +91,8 @@
 
     {#if forgeLevel === 0}
       <p class="warn">
-        You have no Forge. The server rejects fusion without one - by
-        disconnecting rather than answering, so this screen will not send it.
+        Fusion needs a Forge in your village. Build one under
+        <strong>Village</strong>, then come back.
       </p>
     {:else}
       <p class="dim small">

@@ -115,6 +115,13 @@ namespace FolkIdle.Server.Domain.Combat
         // drift apart.
         public const int DefaultBackpackCapacity = 20;
 
+        // Modul: warp equipment drops used to be bounded by free backpack
+        // slots. With unlimited storage that bound is gone, so an explicit one
+        // replaces it - this only stops a very long warp from flooding
+        // CombatLootEngine's queue in a single resolve, it is not a cap on
+        // what the player keeps.
+        public const int MaxWarpEquipmentDropsPerResolve = 500;
+
         public static int ActiveGlobalEventId { get; private set; }
 
         public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, MentorshipEngine mentorshipEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null)
@@ -702,10 +709,6 @@ namespace FolkIdle.Server.Domain.Combat
                     if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
                     {
                         currentPayload.AddGold(notification.GoldDelta);
-                        if (notification.NewEquipmentInstanceId.HasValue)
-                        {
-                            currentPayload.InventorySpaceRemaining--;
-                        }
                         currentPayload.IsDirty = true;
                     }
                     else if (notification.GoldDelta != 0L)
@@ -1070,16 +1073,17 @@ namespace FolkIdle.Server.Domain.Combat
                         // only, forever, which made every backpack read as full
                         // after 20 kills and silently discarded all loot for the
                         // rest of the session.
-                        if (combatLootDrop.HasSlotCensus)
-                        {
-                            int capacity = currentPayload.InventoryCapacity > 0 ? currentPayload.InventoryCapacity : DefaultBackpackCapacity;
-                            int remaining = capacity - combatLootDrop.OccupiedSlots;
-                            currentPayload.InventorySpaceRemaining = remaining > 0 ? remaining : 0;
-                        }
-                        else if (combatLootDrop.ConsumedInventorySlot && currentPayload.InventorySpaceRemaining > 0)
-                        {
-                            currentPayload.InventorySpaceRemaining--;
-                        }
+                        // Modul: the backpack is gone. Storage is one
+                        // unlimited village chest, so this counter is pinned
+                        // at capacity and gates nothing. It used to be
+                        // `capacity - OccupiedSlots`, and OccupiedSlots now
+                        // counts the CHEST - an unbounded number measured
+                        // against a 20 slot ceiling. Twenty stacks in and
+                        // every player was permanently "full": gathering
+                        // dropped nothing, and the halt banner said
+                        // EVERYTHING IS STOPPED.
+                        currentPayload.InventorySpaceRemaining =
+                            currentPayload.InventoryCapacity > 0 ? currentPayload.InventoryCapacity : DefaultBackpackCapacity;
                         currentPayload.IsDirty = true;
                     }
                 }
@@ -1462,14 +1466,7 @@ namespace FolkIdle.Server.Domain.Combat
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, req.PlayerId);
                     if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
                     {
-                        if (req.HasItem && currentPayload.InventorySpaceRemaining <= 0)
                         {
-                            _playerRegistry.EnqueueCommandResult(req.PlayerId, (byte)CommandResultCode.InventoryFull);
-                            SafeDispatchAsync("MailClaim.Reject", req.PlayerId, async () => { await _mailboxEngine.CommitMailClaimAsync(req.PlayerId, req.MailId, false); });
-                        }
-                        else
-                        {
-                            if (req.HasItem) currentPayload.InventorySpaceRemaining--;
                             currentPayload.AddGold(req.GoldAttachment);
                             currentPayload.IsDirty = true;
                             SafeDispatchAsync("MailClaim.Accept", req.PlayerId, async () => { await _mailboxEngine.CommitMailClaimAsync(req.PlayerId, req.MailId, true); });
@@ -1775,7 +1772,8 @@ namespace FolkIdle.Server.Domain.Combat
                         long targetId = cmd.TargetId;
                         long price = cmd.LimitPrice;
                         bool isBuy = cmd.Command == CommandType.MarketBuyItem;
-                        bool hasSpace = currentPayload.InventorySpaceRemaining > 0;
+                        // The chest is unlimited, so a buy always has room.
+                        bool hasSpace = true;
 
                         SafeDispatchAsync("Market.EscrowOrder", pId, async () => {
                             if (isBuy)
@@ -3147,6 +3145,10 @@ namespace FolkIdle.Server.Domain.Combat
                                 WoodcuttingMasteryLevel = currentPayload.WoodcuttingMasteryLevel,
                                 MiningMasteryXp = currentPayload.MiningMasteryXp,
                                 MiningMasteryLevel = currentPayload.MiningMasteryLevel,
+                                FishingMasteryXp = currentPayload.FishingMasteryXp,
+                                FishingMasteryLevel = currentPayload.FishingMasteryLevel,
+                                HerbalismMasteryXp = currentPayload.HerbalismMasteryXp,
+                                HerbalismMasteryLevel = currentPayload.HerbalismMasteryLevel,
                                 GatheringProgressTicks = currentPayload.GatheringProgressTicks,
                                 CompletedAreaFlags = currentPayload.CompletedAreaFlags,
                                 HumanMasteryLevel = currentPayload.HumanMasteryLevel,
@@ -3281,6 +3283,9 @@ namespace FolkIdle.Server.Domain.Combat
                                 Slot3_CharacterId = currentPayload.Slot3_CharacterId,
                                 Slot3_AgeTicks = currentPayload.Slot3_AgeTicks,
                                 Slot3_AgePhase = currentPayload.Slot3_AgePhase,
+                                Slot1_RaceId = (byte)(currentPayload.Slot1_GeneticVector & 0xFF),
+                                Slot2_RaceId = (byte)(currentPayload.Slot2_GeneticVector & 0xFF),
+                                Slot3_RaceId = (byte)(currentPayload.Slot3_GeneticVector & 0xFF),
                                 ActiveStatusEffectModifierBitmask = statBitmask,
                                 RemainingBuffDurationTicks = statDurTicks,
                                 ActiveChallengeSeed = currentPayload.ActiveChallengeSeed,
@@ -3595,7 +3600,7 @@ namespace FolkIdle.Server.Domain.Combat
 
         private static void ApplyGatheringWarp(ref TickStatePayload payload, GatheringNodeDefinition gatheringNode, long totalTicks, int warpSeconds, uint remainingBuffTicks, int potencyModifierPct)
         {
-            int masteryLevel = gatheringNode.ProfessionType == 0 ? payload.WoodcuttingMasteryLevel : payload.MiningMasteryLevel;
+            int masteryLevel = GetMasteryLevel(ref payload, gatheringNode.ProfessionType);
             int requiredTicks = gatheringNode.BaseTickThreshold - (masteryLevel * 2) - payload.CachedCurrentToolTier;
             // Modul: Logistics achievement family's stackable claim reward
             // (Phase: Full-Stack Production Polish, Part 2.3) - a flat
@@ -3761,7 +3766,7 @@ namespace FolkIdle.Server.Domain.Combat
             // Modul: equipment drop requests, safely bounded by kill count and
             // available inventory space, mirroring OfflineSimulationEngine's
             // identical safeguard against flooding CombatLootEngine's queue.
-            int warpEquipmentDropsToGrant = (int)Math.Min(completedKills, Math.Max(0, payload.InventorySpaceRemaining));
+            int warpEquipmentDropsToGrant = (int)Math.Min(completedKills, MaxWarpEquipmentDropsPerResolve);
             for (int i = 0; i < warpEquipmentDropsToGrant; i++)
             {
                 CombatLootEngine.DropRequestQueue.Enqueue(new CombatLootDropRequest
@@ -3771,7 +3776,6 @@ namespace FolkIdle.Server.Domain.Combat
                     LootLuckPct = warpCombatStats.LootLuckPct
                 });
             }
-            payload.InventorySpaceRemaining -= warpEquipmentDropsToGrant;
 
             payload.CurrentMonsterId = monsterId;
             payload.CurrentMonsterHp = (long)ContentRegistry.GetScaledMonsterMaxHp(monsterId) * 1000L;
@@ -3875,42 +3879,75 @@ namespace FolkIdle.Server.Domain.Combat
 
         private static void ConsumeInventorySlots(ref TickStatePayload payload, long expectedDrops)
         {
-            if (expectedDrops <= 0 || payload.InventorySpaceRemaining <= 0)
-            {
-                return;
-            }
-
-            int consumed = expectedDrops >= payload.InventorySpaceRemaining ? payload.InventorySpaceRemaining : (int)expectedDrops;
-            payload.InventorySpaceRemaining -= consumed;
+            // Modul: the backpack is gone - storage is one unlimited village
+            // chest. Kept as a no-op rather than deleted so the two warp
+            // resolvers still read as "this is where slots used to be spent",
+            // and so nothing can quietly start draining the counter again.
+            _ = payload;
+            _ = expectedDrops;
         }
 
-        private static void ApplyBulkMasteryXp(ref TickStatePayload payload, int professionType, long masteryXp)
+        internal static void ApplyBulkMasteryXp(ref TickStatePayload payload, int professionType, long masteryXp)
         {
             if (masteryXp <= 0)
             {
                 return;
             }
 
-            if (professionType == 0)
+            // Modul: every profession has its own track. This used to be
+            // `professionType == 0 ? Woodcutting : Mining`, duplicated in the
+            // realtime path as well - so Fishing (2) and Herbalism (3) both
+            // levelled MINING. Fishing a node in band 3000 raised the player's
+            // mining level, and Fishing had no field to display at all.
+            //
+            // The mapping now exists exactly once, here and in
+            // GetMasteryLevel, so a fifth profession cannot land in the wrong
+            // track by being the one nobody added a branch for.
+            switch (professionType)
             {
-                payload.WoodcuttingMasteryXp = ClampLongToInt((long)payload.WoodcuttingMasteryXp + masteryXp);
-                int requiredMasteryXp = 50 * (payload.WoodcuttingMasteryLevel + 1) * (payload.WoodcuttingMasteryLevel + 1);
-                while (payload.WoodcuttingMasteryXp >= requiredMasteryXp)
-                {
-                    payload.WoodcuttingMasteryXp -= requiredMasteryXp;
-                    payload.WoodcuttingMasteryLevel++;
-                    requiredMasteryXp = 50 * (payload.WoodcuttingMasteryLevel + 1) * (payload.WoodcuttingMasteryLevel + 1);
-                }
-                return;
+                case 0:
+                    AdvanceMastery(ref payload.WoodcuttingMasteryXp, ref payload.WoodcuttingMasteryLevel, masteryXp);
+                    break;
+                case 1:
+                    AdvanceMastery(ref payload.MiningMasteryXp, ref payload.MiningMasteryLevel, masteryXp);
+                    break;
+                case 2:
+                    AdvanceMastery(ref payload.FishingMasteryXp, ref payload.FishingMasteryLevel, masteryXp);
+                    break;
+                default:
+                    AdvanceMastery(ref payload.HerbalismMasteryXp, ref payload.HerbalismMasteryLevel, masteryXp);
+                    break;
             }
+        }
 
-            payload.MiningMasteryXp = ClampLongToInt((long)payload.MiningMasteryXp + masteryXp);
-            int requiredMiningXp = 50 * (payload.MiningMasteryLevel + 1) * (payload.MiningMasteryLevel + 1);
-            while (payload.MiningMasteryXp >= requiredMiningXp)
+        internal static int GetMasteryLevel(ref TickStatePayload payload, int professionType)
+        {
+            return professionType switch
             {
-                payload.MiningMasteryXp -= requiredMiningXp;
-                payload.MiningMasteryLevel++;
-                requiredMiningXp = 50 * (payload.MiningMasteryLevel + 1) * (payload.MiningMasteryLevel + 1);
+                0 => payload.WoodcuttingMasteryLevel,
+                1 => payload.MiningMasteryLevel,
+                2 => payload.FishingMasteryLevel,
+                _ => payload.HerbalismMasteryLevel
+            };
+        }
+
+        // 50 * (level + 1)^2, as long rather than int: the curve passes
+        // int.MaxValue somewhere past level 6500, and an overflow there would
+        // wrap the requirement negative and level the player up forever.
+        private static long MasteryXpForLevel(int level)
+        {
+            return 50L * (level + 1L) * (level + 1L);
+        }
+
+        private static void AdvanceMastery(ref int xp, ref int level, long gain)
+        {
+            xp = ClampLongToInt((long)xp + gain);
+            long required = MasteryXpForLevel(level);
+            while (xp >= required)
+            {
+                xp -= (int)required;
+                level++;
+                required = MasteryXpForLevel(level);
             }
         }
 
@@ -4323,20 +4360,7 @@ namespace FolkIdle.Server.Domain.Combat
             if (extraIterations < 0) extraIterations = 0;
 
             // Normal tick (i = 0)
-            if (payload.ActiveActivityId > 0 && payload.InventorySpaceRemaining <= 0)
-            {
-                payload.SpeedMultiplier = 1;
-                extraIterations = 0;
-
-                // Modul: halt reasons. A full backpack does not stop the
-                // activity - it keeps running and throws every drop away (see
-                // the InventorySpaceRemaining <= 0 early-outs in
-                // ProcessGatheringTick and both loot-grant loops). That is a
-                // silent, unbounded loss of everything the player is playing
-                // for, so it is reported even though nothing halted.
-                payload.ActivityHaltReason = Network.ActivityHaltReason.InventoryFull;
-            }
-            else if (payload.ActiveActivityId > 0)
+            if (payload.ActiveActivityId > 0)
             {
                 // Running and earning: whatever stopped the player last has
                 // been resolved, so the reason must not linger.
@@ -4978,7 +5002,7 @@ namespace FolkIdle.Server.Domain.Combat
 
             if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out var gatheringNode))
             {
-                int masteryLevel = gatheringNode.ProfessionType == 0 ? payload.WoodcuttingMasteryLevel : payload.MiningMasteryLevel;
+                int masteryLevel = GetMasteryLevel(ref payload, gatheringNode.ProfessionType);
 
                 // Modul: Deferred Part 5 Implementation, Parts 1/3. The
                 // required-tick math (legacy flat reductions + the tool
@@ -4988,7 +5012,15 @@ namespace FolkIdle.Server.Domain.Combat
                 // arithmetic over unmanaged payload ids, zero allocation on
                 // this 10Hz path. Lumberjack accelerates Woodcutting, Mine
                 // accelerates Mining.
-                int villageProductionLevel = gatheringNode.ProfessionType == 0 ? payload.LumberjackLevel : payload.MineLevel;
+                // Only Woodcutting and Mining have a village production
+                // building. Fishing and Herbalism get no acceleration rather
+                // than silently borrowing the Mine's.
+                int villageProductionLevel = gatheringNode.ProfessionType switch
+                {
+                    0 => payload.LumberjackLevel,
+                    1 => payload.MineLevel,
+                    _ => 0
+                };
                 int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, payload.CachedCurrentToolTier, villageProductionLevel);
                 payload.RequiredProgressTicks = requiredTicks;
                 payload.GatheringProgressTicks++;
@@ -4999,34 +5031,12 @@ namespace FolkIdle.Server.Domain.Combat
                     payload.HarvestLoopCount++;
 
                     int masteryXpGain = gatheringNode.BaseMasteryXpReward;
-                    if (gatheringNode.ProfessionType == 0)
-                    {
-                        payload.WoodcuttingMasteryXp += masteryXpGain;
-                        AddSeasonalXp(ref payload, masteryXpGain);
-                        int requiredMasteryXp = 50 * (payload.WoodcuttingMasteryLevel + 1) * (payload.WoodcuttingMasteryLevel + 1);
-                        while (payload.WoodcuttingMasteryXp >= requiredMasteryXp)
-                        {
-                            payload.WoodcuttingMasteryXp -= requiredMasteryXp;
-                            payload.WoodcuttingMasteryLevel++;
-                            requiredMasteryXp = 50 * (payload.WoodcuttingMasteryLevel + 1) * (payload.WoodcuttingMasteryLevel + 1);
-                        }
-                    }
-                    else
-                    {
-                        payload.MiningMasteryXp += masteryXpGain;
-                        AddSeasonalXp(ref payload, masteryXpGain);
-                        int requiredMasteryXp = 50 * (payload.MiningMasteryLevel + 1) * (payload.MiningMasteryLevel + 1);
-                        while (payload.MiningMasteryXp >= requiredMasteryXp)
-                        {
-                            payload.MiningMasteryXp -= requiredMasteryXp;
-                            payload.MiningMasteryLevel++;
-                            requiredMasteryXp = 50 * (payload.MiningMasteryLevel + 1) * (payload.MiningMasteryLevel + 1);
-                        }
-                    }
+                    ApplyBulkMasteryXp(ref payload, gatheringNode.ProfessionType, masteryXpGain);
+                    AddSeasonalXp(ref payload, masteryXpGain);
 
                     // Loot roll
                     var lootTable = ContentRegistry.GetLootTable(gatheringNode.ActivityId);
-                    if (lootTable.Length > 0 && payload.InventorySpaceRemaining > 0)
+                    if (lootTable.Length > 0)
                     {
                         int gatherActiveAgePhase = 1;
                         int gatherActiveRaceId = 0;
@@ -5037,7 +5047,12 @@ namespace FolkIdle.Server.Domain.Combat
                         }
                         var gatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherActiveAgePhase, payload.CompletedAreaFlags, gatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
 
-                        int monolithLevel = gatheringNode.ProfessionType == 0 ? payload.CachedWoodcuttingMonolithLevel : payload.CachedMiningMonolithLevel;
+                        int monolithLevel = gatheringNode.ProfessionType switch
+                        {
+                            0 => payload.CachedWoodcuttingMonolithLevel,
+                            1 => payload.CachedMiningMonolithLevel,
+                            _ => 0
+                        };
                         float yieldBonusPct = Math.Min(monolithLevel * 1.0f, 50.0f);
                         int additionalYieldBonus = (int)(100f * (yieldBonusPct / 100f)); // Add to multiplier
 
@@ -5103,7 +5118,6 @@ namespace FolkIdle.Server.Domain.Combat
                             }
                             for (int r = 0; r < rollsToExecute; r++)
                             {
-                                if (payload.InventorySpaceRemaining <= 0) break;
                                 int roll = Random.Shared.Next(totalWeight);
                                 int currentWeight = 0;
                                 for (int i = 0; i < lootTable.Length; i++)

@@ -6,7 +6,6 @@
   import Character from './routes/Character.svelte';
   import Larder from './routes/Larder.svelte';
   import Market from './routes/Market.svelte';
-  import Bank from './routes/Bank.svelte';
   import Crafting from './routes/Crafting.svelte';
   import Forge from './routes/Forge.svelte';
   import Chat from './routes/Chat.svelte';
@@ -61,10 +60,9 @@
       screens: [
         { key: 'character', label: 'Character' },
         { key: 'chest', label: 'Chest' },
-        { key: 'larder', label: 'Larder' },
+        { key: 'larder', label: 'Auto-Eat' },
         { key: 'crafting', label: 'Crafting' },
         { key: 'forge', label: 'Forge' },
-        { key: 'bank', label: 'Bank' },
         { key: 'mailbox', label: 'Mail' },
       ],
     },
@@ -206,8 +204,6 @@
       <Forge />
     {:else if screen === 'market'}
       <Market />
-    {:else if screen === 'bank'}
-      <Bank />
     {:else if screen === 'chat'}
       <Chat />
     {:else if screen === 'social'}

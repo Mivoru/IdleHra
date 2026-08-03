@@ -30,17 +30,12 @@
     },
     3: {
       key: 'EventMasterArtisan',
-      // Modul: DECLARED BUT NOT IMPLEMENTED. GlobalEventType.MasterArtisan
-      // exists in ContentRegistry and the rotation schedules it like any
-      // other, but no code anywhere on the server reads event id 3 - verified
-      // by searching every comparison against it. So for a quarter of every
-      // rotation the game announces an event that does nothing.
-      //
-      // Saying "no effect" is the honest option. Inventing a plausible
-      // crafting bonus would be worse than silence, and silence would leave
-      // players hunting for a bonus that is not there.
-      effect: 'no effect on the server yet',
-      tone: 'dim',
+      // CraftingEngine.GrantCraftedOutputAsync: `quantityProduced++` on a
+      // 25% roll. This banner used to read "no effect on the server yet",
+      // because for a quarter of every rotation the game really did announce
+      // an event no code read.
+      effect: '25% chance of an extra item from every craft',
+      tone: 'accent',
     },
     4: {
       key: 'EventDiamondStar',

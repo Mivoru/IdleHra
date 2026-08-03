@@ -195,12 +195,26 @@ namespace FolkIdle.Server.Network
         public long Slot3_AgeTicks;
         public int Slot3_AgePhase;
 
+        // Modul: a character's RACE never reached the client. GeneticVector
+        // carries it in the low byte of TickStatePayload, but that field is
+        // server-internal, so the Character screen could show a roster with no
+        // species in it - and the six race sprites had nothing to key off.
+        // One byte each rather than the whole 8-byte vector: the rest of the
+        // vector is breeding genetics the UI has no use for.
+        public byte Slot1_RaceId;
+        public byte Slot2_RaceId;
+        public byte Slot3_RaceId;
+
         public int CachedMentorCount;
 
         public int WoodcuttingMasteryXp;
         public int WoodcuttingMasteryLevel;
         public int MiningMasteryXp;
         public int MiningMasteryLevel;
+        public int FishingMasteryXp;
+        public int FishingMasteryLevel;
+        public int HerbalismMasteryXp;
+        public int HerbalismMasteryLevel;
         public int GatheringProgressTicks;
         
         public int CompletedAreaFlags;

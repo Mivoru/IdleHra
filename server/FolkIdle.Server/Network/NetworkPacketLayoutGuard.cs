@@ -66,7 +66,26 @@ namespace FolkIdle.Server.Network
         // on every client startup until this pass; see that file's comment.
         // Modul: race unlock feedback. 694 -> 695: UnlockedRaceBitmask (1 byte).
         // Headroom under the 700-byte ceiling the tests pin: 5 bytes.
-        public const int ExpectedStateUpdateSize = 695;
+        //
+        // Modul: Fishing and Herbalism mastery. 695 -> 711, and the ceiling
+        // moves 700 -> 768. Four ints: FishingMasteryXp/Level and
+        // HerbalismMasteryXp/Level. Both professions already had activity
+        // bands, authored nodes and loot tables; they had no mastery track, so
+        // their XP was routed into Mining and neither could be displayed.
+        //
+        // The alternative was narrowing the two existing mastery LEVEL fields
+        // from int to byte, which pays for exactly this addition and no more.
+        // Gathering mastery has no cap anywhere in the codebase, so that trade
+        // buys 6 bytes in exchange for a silent wrap at level 256 - the ceiling
+        // moved instead. It is a discipline marker, not a transport limit:
+        // nothing fragments at 700, and size-based demultiplexing stays
+        // unambiguous because the next packet sizes down are 530 and up is
+        // nothing.
+        //
+        // Modul: character race. 711 -> 714, one byte per roster slot. See
+        // StateUpdatePacket's own comment for why the whole GeneticVector
+        // does not go on the wire.
+        public const int ExpectedStateUpdateSize = 714;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

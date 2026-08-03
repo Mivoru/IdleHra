@@ -91,7 +91,7 @@ export interface ClientCommand {
   RerollStopAffixIndex: number;
 }
 
-/** StateUpdatePacket - 695 bytes on the binary wire. */
+/** StateUpdatePacket - 714 bytes on the binary wire. */
 export interface StateUpdate {
   readonly type: typeof PacketType.StateUpdate;
   PlayerId: number;
@@ -122,11 +122,18 @@ export interface StateUpdate {
   Slot3_CharacterId: string;
   Slot3_AgeTicks: number;
   Slot3_AgePhase: number;
+  Slot1_RaceId: number;
+  Slot2_RaceId: number;
+  Slot3_RaceId: number;
   CachedMentorCount: number;
   WoodcuttingMasteryXp: number;
   WoodcuttingMasteryLevel: number;
   MiningMasteryXp: number;
   MiningMasteryLevel: number;
+  FishingMasteryXp: number;
+  FishingMasteryLevel: number;
+  HerbalismMasteryXp: number;
+  HerbalismMasteryLevel: number;
   GatheringProgressTicks: number;
   CompletedAreaFlags: number;
   HumanMasteryLevel: number;
@@ -364,7 +371,7 @@ export type CommandTypeName = keyof typeof CommandType;
 export const PACKET_BYTE_SIZE = {
   AuthHandshake: 530,
   ClientCommand: 359,
-  StateUpdate: 695,
+  StateUpdate: 714,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
   ResponseLootDrop: 22,

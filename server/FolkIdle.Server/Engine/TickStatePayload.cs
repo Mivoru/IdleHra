@@ -74,6 +74,10 @@ namespace FolkIdle.Server.Engine
         public int WoodcuttingMasteryLevel;
         public int MiningMasteryXp;
         public int MiningMasteryLevel;
+        public int FishingMasteryXp;
+        public int FishingMasteryLevel;
+        public int HerbalismMasteryXp;
+        public int HerbalismMasteryLevel;
         public int GatheringProgressTicks;
         public int VillagePopulation;
 

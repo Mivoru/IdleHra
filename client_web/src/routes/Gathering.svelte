@@ -33,17 +33,37 @@
     }));
   });
 
-  // Modul: only Woodcutting and Mining have mastery on the wire.
-  // SimulationEngine reads `ProfessionType == 0 ? Woodcutting : Mining`, so
-  // Fishing and Herbalism nodes accrue their XP into the Mining track. That is
-  // the server's behaviour, not an oversight in this screen - showing a
-  // Fishing mastery level the wire does not carry would be inventing one.
+  // All four professions now carry their own mastery. Until this pass the
+  // wire had two tracks and the server routed Fishing and Herbalism into
+  // Mining, so fishing raised your mining level and Fishing could not be shown
+  // at all.
+  const MASTERY_TRACKS = [
+    { id: 0, name: 'Woodcutting' },
+    { id: 1, name: 'Mining' },
+    { id: 2, name: 'Fishing' },
+    { id: 3, name: 'Herbalism' },
+  ];
+
+  function masteryLevelOf(professionId: number): number {
+    if (!snap) return 0;
+    if (professionId === 0) return snap.WoodcuttingMasteryLevel;
+    if (professionId === 1) return snap.MiningMasteryLevel;
+    if (professionId === 2) return snap.FishingMasteryLevel;
+    return snap.HerbalismMasteryLevel;
+  }
+
+  function masteryXpOf(professionId: number): number {
+    if (!snap) return 0;
+    if (professionId === 0) return snap.WoodcuttingMasteryXp;
+    if (professionId === 1) return snap.MiningMasteryXp;
+    if (professionId === 2) return snap.FishingMasteryXp;
+    return snap.HerbalismMasteryXp;
+  }
+
   const masteryFor = $derived((professionId: number) => {
     if (!snap) return null;
-    if (professionId === 0) {
-      return { name: 'Woodcutting', level: snap.WoodcuttingMasteryLevel, xp: snap.WoodcuttingMasteryXp };
-    }
-    return { name: 'Mining', level: snap.MiningMasteryLevel, xp: snap.MiningMasteryXp };
+    const track = MASTERY_TRACKS.find((t) => t.id === professionId) ?? MASTERY_TRACKS[3];
+    return { name: track.name, level: masteryLevelOf(professionId), xp: masteryXpOf(professionId) };
   });
 
   function deploy(node: GatheringNodeDefinition) {
@@ -71,8 +91,7 @@
 
   function effectiveTicks(node: GatheringNodeDefinition): number {
     if (!snap) return node.BaseTickThreshold;
-    const mastery =
-      node.ProfessionType === 0 ? snap.WoodcuttingMasteryLevel : snap.MiningMasteryLevel;
+    const mastery = masteryLevelOf(node.ProfessionType);
     const reduced = node.BaseTickThreshold - mastery * 2 - snap.CachedCurrentToolTier;
     return Math.max(MIN_GATHER_TICKS, reduced);
   }
@@ -146,18 +165,19 @@
     <section class="panel">
       <h3>Mastery</h3>
       <p class="dim small">
-        Only two mastery tracks exist on the wire. Fishing and Herbalism accrue
-        into Mining server-side, so their levels are not shown separately.
+        Each profession levels on its own. Higher mastery cuts two ticks per
+        gather off that profession's nodes.
       </p>
       <dl class="mastery">
-        <div>
-          <dt>Woodcutting</dt>
-          <dd>level {snap.WoodcuttingMasteryLevel} &middot; {snap.WoodcuttingMasteryXp.toLocaleString()} xp</dd>
-        </div>
-        <div>
-          <dt>Mining</dt>
-          <dd>level {snap.MiningMasteryLevel} &middot; {snap.MiningMasteryXp.toLocaleString()} xp</dd>
-        </div>
+        {#each MASTERY_TRACKS as track (track.id)}
+          <div>
+            <dt>{track.name}</dt>
+            <dd>
+              level {masteryLevelOf(track.id)} &middot;
+              {masteryXpOf(track.id).toLocaleString()} xp
+            </dd>
+          </div>
+        {/each}
       </dl>
 
       <h3>Speed and yield</h3>
@@ -169,7 +189,8 @@
         <div>
           <dt>Mastery</dt>
           <dd class="bonus">
-            -{snap.WoodcuttingMasteryLevel * 2} wood, -{snap.MiningMasteryLevel * 2} mining
+            -{masteryLevelOf(0) * 2} wood, -{masteryLevelOf(1) * 2} mining,
+            -{masteryLevelOf(2) * 2} fish, -{masteryLevelOf(3) * 2} herb
           </dd>
         </div>
         <div>

@@ -5797,11 +5797,15 @@ namespace FolkIdle.Server.Tests
         // proof the 10Hz hot-path packet is strictly under 700 bytes, not
         // just NetworkPacketLayoutGuard's exact-680 pin (which would also
         // pass at, say, 699).
+        //
+        // Modul: Fishing and Herbalism mastery moved this ceiling 700 -> 768.
+        // See NetworkPacketLayoutGuard for why the four new ints were worth it
+        // and why narrowing the existing level fields to byte was not.
         [Fact]
-        public void Test_StateUpdatePacket_StructuralSizeIsStrictlyUnder700Bytes()
+        public void Test_StateUpdatePacket_StructuralSizeIsStrictlyUnder768Bytes()
         {
             int actualSize = System.Runtime.InteropServices.Marshal.SizeOf<StateUpdatePacket>();
-            Assert.True(actualSize < 700, $"StateUpdatePacket is {actualSize} bytes - expected strictly under 700.");
+            Assert.True(actualSize < 768, $"StateUpdatePacket is {actualSize} bytes - expected strictly under 768.");
         }
 
         // Modul: Production Release Hardening, Part 3. Exercises

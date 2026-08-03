@@ -14,8 +14,6 @@
     contributeToWarSupply,
     launchGuildRaid,
     contributeGuildGold,
-    establishMentorship,
-    terminateMentorship,
     depositGuildMaterial,
     contributeToGuildStock,
     registerGuildDefense,
@@ -88,30 +86,16 @@
     refresh();
   }
 
-  // --- mentorship -----------------------------------------------------------
-  const mentorId = $derived(snap ? Number(snap.ActiveMentorPlayerId) : 0);
-  const mentorBonus = $derived(
-    snap && typeof snap.MentorshipExpBonusMultiplier === 'number'
-      ? snap.MentorshipExpBonusMultiplier
-      : 1,
-  );
+  // Modul: mentorship was removed from this screen. It is a player-to-player
+  // relationship, not a guild function, and living inside Guild implied you
+  // could only be mentored by a guildmate. The commands and the server engine
+  // are untouched - only the guild screen stopped claiming to own them.
 
-  let mentorTarget = $state(0);
-
-  function establish() {
-    const outcome = establishMentorship(mentorTarget);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-    pushLocalNotice('Mentorship requested.', 'info');
-  }
-
-  function terminate() {
-    const outcome = terminateMentorship(mentorId);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-    pushLocalNotice('Mentorship ended.', 'info');
-  }
-
-  const otherMembers = $derived(
-    (roster.data ?? []).filter((m) => m.PlayerId !== connection.currentPlayerId),
+  // Modul: the roster was fetched and never rendered. Its only consumer was
+  // the mentorship picker, so removing that left a query with no screen -
+  // a guild page that could not show you who was in your guild.
+  const members = $derived(
+    [...(roster.data ?? [])].sort((a, b) => a.PlayerId - b.PlayerId),
   );
 
   // --- depot ----------------------------------------------------------------
@@ -480,43 +464,28 @@
     </section>
 
     <section class="panel">
-      <h2>Mentorship</h2>
+      <h2>Members</h2>
 
-      <dl class="stats">
-        <div><dt>Mentors held</dt><dd>{snap.CachedMentorCount}</dd></div>
-        <div><dt>XP bonus</dt><dd>{(mentorBonus * 100).toFixed(0)}%</dd></div>
-      </dl>
-
-      {#if mentorId > 0}
-        <p class="active">
-          Mentored by {nameById.get(mentorId) ?? `Player #${mentorId}`}.
-        </p>
-        <button onclick={terminate}>End mentorship</button>
+      {#if roster.isPending}
+        <p class="dim small">Loading the roster...</p>
+      {:else if members.length === 0}
+        <p class="dim small">No members listed.</p>
       {:else}
-        <p class="dim small">
-          A mentor lends you their character's experience bonus. You cannot
-          mentor yourself.
-        </p>
-
-        <label>
-          Guild member
-          <select bind:value={mentorTarget}>
-            <option value={0}>Choose...</option>
-            {#each otherMembers as member (member.PlayerId)}
-              <option value={member.PlayerId}>
+        <ul class="members">
+          {#each members as member (member.PlayerId)}
+            <li>
+              <span class="who">
                 {nameById.get(member.PlayerId) ?? `Player #${member.PlayerId}`}
-              </option>
-            {/each}
-          </select>
-        </label>
-
-        <button disabled={mentorTarget === 0} onclick={establish}>Request mentorship</button>
-
-        {#if otherMembers.length === 0}
-          <p class="dim tiny">No other guild members to ask.</p>
-        {/if}
+              </span>
+              {#if member.PlayerId === connection.currentPlayerId}
+                <span class="dim tiny">you</span>
+              {/if}
+            </li>
+          {/each}
+        </ul>
       {/if}
     </section>
+
   </div>
 {/if}
 
@@ -564,10 +533,30 @@
     padding: 1rem;
   }
 
-  .active {
-    color: var(--good);
-    font-size: 0.88rem;
-    margin: 0 0 0.6rem;
+  .members {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .members li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+    border-bottom: 1px solid var(--line, rgba(255, 255, 255, 0.07));
+  }
+
+  .members li:last-child {
+    border-bottom: none;
+  }
+
+  .who {
+    font-weight: 600;
   }
 
   .axis {

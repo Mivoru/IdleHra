@@ -156,6 +156,17 @@ namespace FolkIdle.Server.Models
         public int MiningMasteryXp { get; set; }
         public int MiningMasteryLevel { get; set; }
 
+        // Modul: Fishing and Herbalism were professions with authored nodes,
+        // their own activity bands and their own loot tables - but no mastery
+        // track anywhere. Every XP router in the engine read
+        // `professionType == 0 ? Woodcutting : Mining`, so fishing a node in
+        // band 3000 levelled MINING, and Fishing simply did not appear in the
+        // UI because there was no field to show.
+        public int FishingMasteryXp { get; set; }
+        public int FishingMasteryLevel { get; set; }
+        public int HerbalismMasteryXp { get; set; }
+        public int HerbalismMasteryLevel { get; set; }
+
         public long TotalItemsCrafted { get; set; }
         public long TotalDeaths { get; set; }
         public long TotalPlayTimeSeconds { get; set; }

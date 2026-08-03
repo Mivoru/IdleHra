@@ -260,9 +260,28 @@ namespace FolkIdle.Server.Domain.Economy
         //   5 Alchemy   -> potions, stackable
         // Stackables go to CommodityRecords (the backpack), keyed by BaseId
         // exactly like every other commodity writer in this codebase.
+        // GlobalEventType.MasterArtisan. A flat chance of one extra unit from
+        // any craft - it applies to bars, food, potions and equipment alike,
+        // so no profession is left out of its own event.
+        private const int MasterArtisanEventId = 3;
+        private const int MasterArtisanBonusYieldPct = 25;
+
         private static async Task GrantCraftedOutputAsync(FolkIdleDbContext context, long playerId, ContentRegistry.RecipeDefinition recipe, int quantityProduced)
         {
             if (quantityProduced <= 0 || recipe.ResultItemId <= 0) return;
+
+            // Modul: MasterArtisan finally does something. GlobalEventType 3
+            // was scheduled by the rotation like any other event, but no code
+            // anywhere on the server read it - for a quarter of every rotation
+            // the game announced an event with no effect, and the client
+            // banner had to say so. This mirrors DiamondStar's hook in
+            // ForgeSplicingEngine: one comparison, at the point the bonus
+            // applies.
+            if (SimulationEngine.ActiveGlobalEventId == MasterArtisanEventId &&
+                Random.Shared.Next(100) < MasterArtisanBonusYieldPct)
+            {
+                quantityProduced++;
+            }
 
             string resultBaseId = ContentRegistry.GetItemBaseId(recipe.ResultItemId);
             if (string.IsNullOrEmpty(resultBaseId)) return;

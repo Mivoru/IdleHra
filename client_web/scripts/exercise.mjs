@@ -194,6 +194,73 @@ await go('Chat');
   record('chat message round-trips through the server', text.includes(marker));
 }
 
+// --- gathering ---------------------------------------------------------------
+// Reported from a live session: "when I go fishing, XP is added to mining and
+// fishing is not there at all", plus a "Backpack full - EVERYTHING IS STOPPED"
+// banner about a minute in. Both were real. Every XP router read
+// `professionType == 0 ? Woodcutting : Mining`, and the loot census had started
+// measuring an UNLIMITED chest against a 20 slot ceiling.
+await go('Gathering');
+{
+  // Parsed by walking lines rather than by building a RegExp from a template
+  // literal: `\s` inside backticks is just "s", so a constructed pattern
+  // silently matches nothing and the check then fails for a reason that has
+  // nothing to do with the game. That happened on the first run of this very
+  // check.
+  const readMastery = async (name) => {
+    const text = await page.evaluate(() => document.body.innerText);
+    const lines = text.split('\n').map((l) => l.trim());
+    const at = lines.indexOf(name);
+    if (at < 0 || at + 1 >= lines.length) return null;
+    const hit = /level\s+(\d+)\s*\u00b7\s*([\d,]+)\s*xp/i.exec(lines[at + 1]);
+    return hit ? { level: Number(hit[1]), xp: Number(hit[2].replace(/,/g, '')) } : null;
+  };
+
+  const fishingBefore = await readMastery('Fishing');
+  const miningBefore = await readMastery('Mining');
+  record(
+    'every profession has its own mastery track',
+    fishingBefore !== null && miningBefore !== null && (await readMastery('Herbalism')) !== null,
+    'Woodcutting, Mining, Fishing and Herbalism all shown',
+  );
+
+  // Scoped by the profession's activity band, not by button order. Every node
+  // button on this screen is labelled "Gather", so `.first()` or a fixed index
+  // is one content change away from silently testing woodcutting instead.
+  const fishingSection = page
+    .locator('section')
+    .filter({ hasText: 'Activity ids 3000-3999' })
+    .last();
+  const fishBtn = fishingSection.getByRole('button', { name: 'Gather' }).first();
+  const deployed = (await fishBtn.count()) > 0;
+  if (deployed) await fishBtn.click();
+  await page.waitForTimeout(9000);
+
+  const fishingAfter = await readMastery('Fishing');
+  const miningAfter = await readMastery('Mining');
+
+  const fishingMoved =
+    fishingAfter !== null &&
+    fishingBefore !== null &&
+    (fishingAfter.xp > fishingBefore.xp || fishingAfter.level > fishingBefore.level);
+  const miningMoved =
+    miningAfter !== null &&
+    miningBefore !== null &&
+    (miningAfter.xp > miningBefore.xp || miningAfter.level > miningBefore.level);
+
+  if (deployed) {
+    record('fishing raises fishing mastery', fishingMoved, `fishing xp ${fishingBefore?.xp} -> ${fishingAfter?.xp}`);
+    record('fishing does not raise mining mastery', !miningMoved, `mining xp ${miningBefore?.xp} -> ${miningAfter?.xp}`);
+  }
+
+  const text = await page.evaluate(() => document.body.innerText);
+  record(
+    'no backpack-full halt anywhere',
+    !/Backpack full|EVERYTHING IS STOPPED/i.test(text),
+    'storage is the unlimited village chest',
+  );
+}
+
 // --- guild -------------------------------------------------------------------
 await go('Guild');
 {
