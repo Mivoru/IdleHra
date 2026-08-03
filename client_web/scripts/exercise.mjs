@@ -73,8 +73,20 @@ record('sign in with the dev fixture', true);
 }
 
 // --- combat ------------------------------------------------------------------
+//
+// Modul: fights the SECOND region, not the first.
+//
+// The bar-animation check below asserts that the monster's health moves
+// between snapshots. Against Field Mouse - 80 HP, and the fixture is level 40 -
+// the character one-shots it, so every sample catches a brand new monster at
+// full health and the bar reads 100% forever. That failed for two sessions and
+// looked like an interpolation bug; it was the test picking a target that
+// cannot survive long enough to be observed.
+//
+// Thorny Vine is 950 HP and measured at 2.1 seconds a kill, which is about
+// twenty ticks - enough intermediate values to prove the bar tracks them.
 await go('Combat');
-await page.getByRole('button', { name: 'Fight' }).first().click();
+await page.getByRole('button', { name: 'Fight' }).nth(5).click();
 await page.waitForTimeout(4000);
 {
   const text = await page.evaluate(() => document.body.innerText);
