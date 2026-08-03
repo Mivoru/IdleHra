@@ -1291,6 +1291,14 @@ namespace FolkIdle.Server.Network
             public long GuildId { get; set; }
         }
 
+        private sealed class MarketBrowseResponse
+        {
+            public System.Collections.Generic.List<MarketListingResponse> Listings { get; set; } = new();
+            public int TotalCount { get; set; }
+            public int PageIndex { get; set; }
+            public int PageSize { get; set; }
+        }
+
         private sealed class GuildCreateRefusalResponse
         {
             public string Reason { get; set; } = string.Empty;
@@ -1388,19 +1396,49 @@ namespace FolkIdle.Server.Network
 
                 var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
                 string baseItemId = query["baseItemId"] ?? string.Empty;
-                int.TryParse(query["qualityTier"], out int qualityTier);
                 int.TryParse(query["pageIndex"], out int pageIndex);
                 if (!int.TryParse(query["pageSize"], out int pageSize))
                 {
-                    pageSize = 20;
+                    pageSize = 24;
                 }
 
-                if (string.IsNullOrEmpty(baseItemId) || !ClientCommandValidator.ValidateMarketBrowserQuery(playerId, pageIndex, pageSize))
+                // Modul: EVERY FILTER IS OPTIONAL NOW.
+                //
+                // This endpoint used to 400 without an exact BaseItemId, and
+                // matched QualityTier exactly as well - so the only question a
+                // player could ask was "is this precise item at this precise
+                // rarity for sale", which nobody can ask about a marketplace
+                // they have not seen. No filters at all is the default and it
+                // returns the whole book, paginated.
+                if (!int.TryParse(query["slotIndex"], out int slotIndex))
+                {
+                    slotIndex = -1;
+                }
+
+                if (!int.TryParse(query["minQualityTier"], out int minQualityTier))
+                {
+                    minQualityTier = 0;
+                }
+
+                if (!int.TryParse(query["maxQualityTier"], out int maxQualityTier))
+                {
+                    maxQualityTier = ForgeSplicingEngine.MaxQualityTier;
+                }
+
+                string sortBy = query["sortBy"] ?? "price";
+                bool descending = query["descending"] == "1" || string.Equals(query["descending"], "true", StringComparison.OrdinalIgnoreCase);
+
+                if (!ClientCommandValidator.ValidateMarketBrowserQuery(playerId, pageIndex, pageSize))
                 {
                     context.Response.StatusCode = 400;
                     context.Response.Close();
                     return;
                 }
+
+                if (minQualityTier < 0) minQualityTier = 0;
+                if (maxQualityTier > ForgeSplicingEngine.MaxQualityTier) maxQualityTier = ForgeSplicingEngine.MaxQualityTier;
+                if (maxQualityTier < minQualityTier) maxQualityTier = minQualityTier;
+                if (sortBy != "price" && sortBy != "rarity" && sortBy != "name") sortBy = "price";
 
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -1411,24 +1449,44 @@ namespace FolkIdle.Server.Network
                     .Select(p => p.IsQuarantined || p.Quarantine_Active)
                     .SingleOrDefaultAsync();
 
-                var listings = await MarketOrderBookEngine.FetchActiveListingsAsync(db, baseItemId, qualityTier, isQuarantined, pageIndex, pageSize);
-
-                var response = new System.Collections.Generic.List<MarketListingResponse>(listings.Count);
-                for (int i = 0; i < listings.Count; i++)
+                var page = await MarketOrderBookEngine.BrowseActiveListingsAsync(db, new MarketOrderBookEngine.MarketBrowseQuery
                 {
-                    response.Add(new MarketListingResponse
+                    BaseItemId = baseItemId,
+                    SlotIndex = slotIndex,
+                    MinQualityTier = minQualityTier,
+                    MaxQualityTier = maxQualityTier,
+                    IsQuarantined = isQuarantined,
+                    PageIndex = pageIndex,
+                    PageSize = pageSize,
+                    SortBy = sortBy,
+                    Descending = descending,
+                });
+
+                var rows = new System.Collections.Generic.List<MarketListingResponse>(page.Listings.Count);
+                for (int i = 0; i < page.Listings.Count; i++)
+                {
+                    rows.Add(new MarketListingResponse
                     {
-                        OrderId = listings[i].Id,
-                        BaseItemId = listings[i].BaseItemId,
-                        QualityTier = listings[i].QualityTier,
-                        Price = listings[i].Price,
-                        CreatedAtEpoch = listings[i].CreatedAtEpoch
+                        OrderId = page.Listings[i].Id,
+                        BaseItemId = page.Listings[i].BaseItemId,
+                        QualityTier = page.Listings[i].QualityTier,
+                        Price = page.Listings[i].Price,
+                        CreatedAtEpoch = page.Listings[i].CreatedAtEpoch
                     });
                 }
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
-                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+                // An envelope rather than a bare array: without TotalCount the
+                // browser cannot draw a pager, and "did I reach the end" is not
+                // answerable from a full page.
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new MarketBrowseResponse
+                {
+                    Listings = rows,
+                    TotalCount = page.TotalCount,
+                    PageIndex = pageIndex,
+                    PageSize = pageSize,
+                });
             }
             catch (Exception ex)
             {

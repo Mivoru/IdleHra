@@ -606,6 +606,14 @@ namespace FolkIdle.Server.Tests
             Console.WriteLine($"Stress Test Done. Terminated sockets: {terminatedCount}, Kept Open: {normalCount}");
         }
 
+        private sealed class MarketBrowsePageTestDto
+        {
+            public System.Collections.Generic.List<MarketListingTestDto> Listings { get; set; } = new();
+            public int TotalCount { get; set; }
+            public int PageIndex { get; set; }
+            public int PageSize { get; set; }
+        }
+
         private sealed class MarketListingTestDto
         {
             public long OrderId { get; set; }
@@ -681,11 +689,16 @@ namespace FolkIdle.Server.Tests
                 var validResponse = await httpClient.GetAsync($"http://localhost:8083/api/v1/market/listings?baseItemId={baseItemId}&qualityTier=0&pageIndex=0&pageSize=10");
                 Assert.Equal(System.Net.HttpStatusCode.OK, validResponse.StatusCode);
 
+                // Modul: the response is an ENVELOPE now, not a bare array.
+                // Without TotalCount the browser cannot draw a pager, and "have
+                // I reached the end" is not answerable from a full page.
                 string body = await validResponse.Content.ReadAsStringAsync();
-                var listings = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.List<MarketListingTestDto>>(body);
+                var page = System.Text.Json.JsonSerializer.Deserialize<MarketBrowsePageTestDto>(body);
 
-                Assert.NotNull(listings);
-                Assert.Equal(3, listings!.Count);
+                Assert.NotNull(page);
+                var listings = page!.Listings;
+                Assert.Equal(3, listings.Count);
+                Assert.Equal(3, page.TotalCount);
                 Assert.All(listings, l => Assert.Equal(baseItemId, l.BaseItemId));
 
                 // Price ascending, then CreatedAtEpoch ascending as the tiebreak.
@@ -694,6 +707,25 @@ namespace FolkIdle.Server.Tests
                 Assert.Equal(100L, listings[1].Price);
                 Assert.Equal(2000L, listings[1].CreatedAtEpoch);
                 Assert.Equal(300L, listings[2].Price);
+
+                // Modul: NO FILTER IS REQUIRED. This endpoint used to 400
+                // without an exact baseItemId, which made the marketplace
+                // unbrowsable - a player could only ask about an item they
+                // already knew was there.
+                var browseAll = await httpClient.GetAsync("http://localhost:8083/api/v1/market/listings?pageIndex=0&pageSize=10");
+                Assert.Equal(System.Net.HttpStatusCode.OK, browseAll.StatusCode);
+
+                var everything = System.Text.Json.JsonSerializer.Deserialize<MarketBrowsePageTestDto>(
+                    await browseAll.Content.ReadAsStringAsync());
+                Assert.NotNull(everything);
+                Assert.True(everything!.TotalCount >= 3, "an unfiltered browse must see at least the seeded listings");
+
+                // Sorting is a real query parameter, not a client-side reshuffle.
+                var byPriceDesc = await httpClient.GetAsync($"http://localhost:8083/api/v1/market/listings?baseItemId={baseItemId}&sortBy=price&descending=1&pageIndex=0&pageSize=10");
+                var descending = System.Text.Json.JsonSerializer.Deserialize<MarketBrowsePageTestDto>(
+                    await byPriceDesc.Content.ReadAsStringAsync());
+                Assert.NotNull(descending);
+                Assert.Equal(300L, descending!.Listings[0].Price);
 
                 var negativePageIndexResponse = await httpClient.GetAsync($"http://localhost:8083/api/v1/market/listings?baseItemId={baseItemId}&qualityTier=0&pageIndex=-1&pageSize=10");
                 Assert.Equal(System.Net.HttpStatusCode.BadRequest, negativePageIndexResponse.StatusCode);

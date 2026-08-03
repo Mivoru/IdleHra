@@ -76,14 +76,153 @@ namespace FolkIdle.Server.Engine
         // a quarantined player see the real, non-isolated economy).
         public static async Task<System.Collections.Generic.List<MarketOrderRecord>> FetchActiveListingsAsync(FolkIdleDbContext db, string baseItemId, int qualityTier, bool isQuarantined, int pageIndex, int pageSize)
         {
-            return await db.MarketOrderRecords
+            var page = await BrowseActiveListingsAsync(db, new MarketBrowseQuery
+            {
+                BaseItemId = baseItemId,
+                MinQualityTier = qualityTier,
+                MaxQualityTier = qualityTier,
+                IsQuarantined = isQuarantined,
+                PageIndex = pageIndex,
+                PageSize = pageSize,
+            });
+            return page.Listings;
+        }
+
+        /// <summary>
+        /// What the browser asks for.
+        ///
+        /// Modul: THE MARKET WAS NOT BROWSABLE. Its only query required an
+        /// exact BaseItemId and an exact QualityTier and 400'd without them, so
+        /// a player could look up
+        /// "eq_steel_claymore_melee_weapon_slot_base at tier 7" and could not,
+        /// under any circumstances, see what was for sale. On a marketplace
+        /// meant to hold every player's spare gear that is not a search, it is
+        /// a lock.
+        /// </summary>
+        public sealed class MarketBrowseQuery
+        {
+            /// <summary>Substring match, not equality. Empty means everything.</summary>
+            public string BaseItemId = string.Empty;
+            /// <summary>EquipmentSlotEngine slot index, or -1 for any.</summary>
+            public int SlotIndex = -1;
+            public int MinQualityTier;
+            public int MaxQualityTier = 13;
+            public bool IsQuarantined;
+            public int PageIndex;
+            public int PageSize = 24;
+            /// <summary>price | rarity | name, ascending unless Descending.</summary>
+            public string SortBy = "price";
+            public bool Descending;
+        }
+
+        public sealed class MarketBrowsePage
+        {
+            public System.Collections.Generic.List<MarketOrderRecord> Listings = new();
+            public int TotalCount;
+        }
+
+        public static async Task<MarketBrowsePage> BrowseActiveListingsAsync(FolkIdleDbContext db, MarketBrowseQuery query)
+        {
+            var rows = db.MarketOrderRecords
                 .AsNoTracking()
-                .Where(o => o.Status == 0 && o.OrderType == "SELL" && o.BaseItemId == baseItemId && o.QualityTier == qualityTier && o.IsQuarantined == isQuarantined)
-                .OrderBy(o => o.Price)
-                .ThenBy(o => o.CreatedAtEpoch)
-                .Skip(pageIndex * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+                .Where(o => o.Status == 0
+                    && o.OrderType == "SELL"
+                    && o.IsQuarantined == query.IsQuarantined
+                    && o.QualityTier >= query.MinQualityTier
+                    && o.QualityTier <= query.MaxQualityTier);
+
+            if (!string.IsNullOrWhiteSpace(query.BaseItemId))
+            {
+                string needle = query.BaseItemId.Trim();
+                rows = rows.Where(o => EF.Functions.ILike(o.BaseItemId, "%" + needle + "%"));
+            }
+
+            // The slot filter is the "helmet / leggings / melee weapon" axis the
+            // browser is built around. It is resolved from the BaseItemId by the
+            // same rule the equip path uses, and it cannot be expressed in SQL:
+            // ResolveSlotIndex is an ordered sequence of substring tests whose
+            // ORDER is the contract. So it is applied in memory, over a bounded
+            // superset rather than the whole book.
+            if (query.SlotIndex >= 0)
+            {
+                var candidates = await rows
+                    .OrderBy(o => o.Price)
+                    .ThenBy(o => o.CreatedAtEpoch)
+                    .Take(MaxSlotFilterScan)
+                    .ToListAsync();
+
+                var matching = new System.Collections.Generic.List<MarketOrderRecord>(candidates.Count);
+                for (int i = 0; i < candidates.Count; i++)
+                {
+                    if (Domain.Combat.EquipmentSlotEngine.ResolveSlotIndex(candidates[i].BaseItemId) == query.SlotIndex)
+                    {
+                        matching.Add(candidates[i]);
+                    }
+                }
+
+                SortInMemory(matching, query);
+                return new MarketBrowsePage
+                {
+                    TotalCount = matching.Count,
+                    Listings = matching
+                        .Skip(query.PageIndex * query.PageSize)
+                        .Take(query.PageSize)
+                        .ToList(),
+                };
+            }
+
+            int total = await rows.CountAsync();
+
+            // Ordering stays deterministic whatever the sort key: CreatedAtEpoch
+            // is always the final tiebreak, so page N does not reshuffle between
+            // requests as unrelated listings are created and filled.
+            rows = query.SortBy switch
+            {
+                "rarity" => query.Descending
+                    ? rows.OrderByDescending(o => o.QualityTier).ThenBy(o => o.Price).ThenBy(o => o.CreatedAtEpoch)
+                    : rows.OrderBy(o => o.QualityTier).ThenBy(o => o.Price).ThenBy(o => o.CreatedAtEpoch),
+                "name" => query.Descending
+                    ? rows.OrderByDescending(o => o.BaseItemId).ThenBy(o => o.Price).ThenBy(o => o.CreatedAtEpoch)
+                    : rows.OrderBy(o => o.BaseItemId).ThenBy(o => o.Price).ThenBy(o => o.CreatedAtEpoch),
+                _ => query.Descending
+                    ? rows.OrderByDescending(o => o.Price).ThenBy(o => o.CreatedAtEpoch)
+                    : rows.OrderBy(o => o.Price).ThenBy(o => o.CreatedAtEpoch),
+            };
+
+            return new MarketBrowsePage
+            {
+                TotalCount = total,
+                Listings = await rows
+                    .Skip(query.PageIndex * query.PageSize)
+                    .Take(query.PageSize)
+                    .ToListAsync(),
+            };
+        }
+
+        // How deep the slot filter reads before giving up. Large enough that a
+        // real order book is covered whole, small enough that it can never pull
+        // the entire table into memory.
+        private const int MaxSlotFilterScan = 2000;
+
+        private static void SortInMemory(System.Collections.Generic.List<MarketOrderRecord> rows, MarketBrowseQuery query)
+        {
+            System.Comparison<MarketOrderRecord> comparison = query.SortBy switch
+            {
+                "rarity" => (a, b) => a.QualityTier != b.QualityTier
+                    ? a.QualityTier.CompareTo(b.QualityTier)
+                    : a.Price.CompareTo(b.Price),
+                "name" => (a, b) => string.CompareOrdinal(a.BaseItemId, b.BaseItemId) != 0
+                    ? string.CompareOrdinal(a.BaseItemId, b.BaseItemId)
+                    : a.Price.CompareTo(b.Price),
+                _ => (a, b) => a.Price.CompareTo(b.Price),
+            };
+
+            rows.Sort((a, b) =>
+            {
+                int primary = comparison(a, b);
+                if (primary != 0) return query.Descending ? -primary : primary;
+                return a.CreatedAtEpoch.CompareTo(b.CreatedAtEpoch);
+            });
         }
 
         public async Task PlaceLimitOrderAsync(long playerId, bool isBuy, long instanceId, long price, string baseItemId, int qualityTier)

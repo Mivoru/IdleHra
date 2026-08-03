@@ -215,23 +215,45 @@ export interface MarketListing {
   CreatedAtEpoch: number;
 }
 
+export interface MarketBrowseFilters {
+  /** Substring, not an exact id. Empty means every item. */
+  baseItemId?: string;
+  /** Equipment slot index, or -1 for any. */
+  slotIndex?: number;
+  minQualityTier?: number;
+  maxQualityTier?: number;
+  sortBy?: 'price' | 'rarity' | 'name';
+  descending?: boolean;
+  pageIndex?: number;
+  pageSize?: number;
+}
+
+export interface MarketBrowsePage {
+  Listings: MarketListing[];
+  TotalCount: number;
+  PageIndex: number;
+  PageSize: number;
+}
+
 /**
- * `baseItemId` is REQUIRED - the endpoint 400s without one, so this is a
- * search rather than a browse. There is no "show me everything" query.
+ * Every filter is optional. The endpoint used to 400 without an exact
+ * BaseItemId AND match QualityTier exactly, so the only question a player could
+ * ask was "is this precise item at this precise rarity for sale" - which nobody
+ * can ask about a marketplace they have never seen. No filters returns the
+ * whole book, paginated.
  */
-export function fetchMarketListings(
-  baseItemId: string,
-  qualityTier: number,
-  pageIndex = 0,
-  pageSize = 20,
-): Promise<MarketListing[]> {
+export function fetchMarketListings(filters: MarketBrowseFilters = {}): Promise<MarketBrowsePage> {
   const query = new URLSearchParams({
-    baseItemId,
-    qualityTier: String(qualityTier),
-    pageIndex: String(pageIndex),
-    pageSize: String(pageSize),
+    baseItemId: filters.baseItemId ?? '',
+    slotIndex: String(filters.slotIndex ?? -1),
+    minQualityTier: String(filters.minQualityTier ?? 0),
+    maxQualityTier: String(filters.maxQualityTier ?? 13),
+    sortBy: filters.sortBy ?? 'price',
+    descending: filters.descending ? '1' : '0',
+    pageIndex: String(filters.pageIndex ?? 0),
+    pageSize: String(filters.pageSize ?? 24),
   });
-  return authedGet<MarketListing[]>(`/api/v1/market/listings?${query}`);
+  return authedGet<MarketBrowsePage>(`/api/v1/market/listings?${query}`);
 }
 
 // ---------------------------------------------------------------------------

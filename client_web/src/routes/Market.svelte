@@ -11,6 +11,8 @@
   import { listItemOnMarket, buyMarketListing, placeLimitOrder } from '../lib/net/commands';
   import { loadContent, type ContentRegistry } from '../lib/net/content';
   import { rarityColor, rarityName, MAX_QUALITY_TIER } from '../lib/ui/rarity';
+  import { EQUIPMENT_SLOTS } from '../lib/ui/slots';
+  import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import { pushLocalNotice } from '../lib/stores/game';
 
   const client = useQueryClient();
@@ -31,36 +33,90 @@
   const hasGuildLicense = $derived((statistics.data?.GuildName ?? '') !== '');
 
   // --- browse ---------------------------------------------------------------
-  let searchBaseItemId = $state('');
-  let searchQuality = $state(1);
-  let submittedSearch = $state<{ baseItemId: string; quality: number } | null>(null);
+  //
+  // Modul: THE MARKET WAS A LOOKUP, NOT A SHOP. It required an exact
+  // BaseItemId and an exact rarity and returned nothing without them, so the
+  // only question a player could ask was "is this precise item at this precise
+  // tier for sale" - a question nobody can ask about a marketplace they have
+  // never seen. This is a shop front: filter by what kind of thing it is and
+  // how rare, sort it, and page through the rest.
+  const SLOT_FILTERS = [
+    { index: -1, label: 'Everything' },
+    ...EQUIPMENT_SLOTS.map((slot) => ({ index: slot.index, label: slot.label })),
+  ];
+
+  const SORTS = [
+    { key: 'price', label: 'Price' },
+    { key: 'rarity', label: 'Rarity' },
+    { key: 'name', label: 'Name' },
+  ] as const;
+
+  let filterText = $state('');
+  let filterSlot = $state(-1);
+  let filterMinRarity = $state(0);
+  let filterMaxRarity = $state(MAX_QUALITY_TIER);
+  let sortBy = $state<'price' | 'rarity' | 'name'>('price');
+  let descending = $state(false);
+  let pageIndex = $state(0);
+
+  const PAGE_SIZE = 24;
+
+  // Debounced so typing does not fire a request per keystroke.
+  let debouncedText = $state('');
+  let debounceHandle: ReturnType<typeof setTimeout> | undefined;
+  $effect(() => {
+    const next = filterText;
+    clearTimeout(debounceHandle);
+    debounceHandle = setTimeout(() => {
+      debouncedText = next;
+      pageIndex = 0;
+    }, 300);
+    return () => clearTimeout(debounceHandle);
+  });
 
   const listings = createQuery(() => ({
-    queryKey: queryKeys.market(
-      submittedSearch?.baseItemId ?? '',
-      submittedSearch?.quality ?? 0,
-      0,
-    ),
-    queryFn: () => fetchMarketListings(submittedSearch!.baseItemId, submittedSearch!.quality),
-    // The endpoint 400s without a baseItemId, so this is a search, not a
-    // browse - there is deliberately no "everything" query to fire on mount.
-    enabled: submittedSearch !== null,
+    queryKey: [
+      'market',
+      debouncedText,
+      filterSlot,
+      filterMinRarity,
+      filterMaxRarity,
+      sortBy,
+      descending,
+      pageIndex,
+    ],
+    queryFn: () =>
+      fetchMarketListings({
+        baseItemId: debouncedText,
+        slotIndex: filterSlot,
+        minQualityTier: filterMinRarity,
+        maxQualityTier: filterMaxRarity,
+        sortBy,
+        descending,
+        pageIndex,
+        pageSize: PAGE_SIZE,
+      }),
   }));
+
+  const rows = $derived(listings.data?.Listings ?? []);
+  const totalCount = $derived(listings.data?.TotalCount ?? 0);
+  const pageCount = $derived(Math.max(1, Math.ceil(totalCount / PAGE_SIZE)));
+
+  function resetFilters() {
+    filterText = '';
+    filterSlot = -1;
+    filterMinRarity = 0;
+    filterMaxRarity = MAX_QUALITY_TIER;
+    sortBy = 'price';
+    descending = false;
+    pageIndex = 0;
+  }
 
   // Carried equipment is the only sellable stock; anything worn has to be
   // taken off first.
   const sellable = $derived(
     (inventory.data?.Equipment ?? []).filter((e: InventoryEquipment) => !e.IsEquipped),
   );
-
-  const distinctBaseIds = $derived(
-    [...new Set((inventory.data?.Equipment ?? []).map((e: InventoryEquipment) => e.BaseItemId))].sort(),
-  );
-
-  function search() {
-    if (!searchBaseItemId) return;
-    submittedSearch = { baseItemId: searchBaseItemId, quality: searchQuality };
-  }
 
   // --- sell -----------------------------------------------------------------
   let sellInstanceId = $state(0);
@@ -141,52 +197,103 @@
 </script>
 
 <div class="grid">
-  <section class="panel">
-    <h2>Browse</h2>
-    <p class="dim small">
-      The market is searched by item, not browsed - the server requires a base
-      item id, so there is no "show everything" query.
-    </p>
+  <section class="panel browse">
+    <header class="head">
+      <h2>Market</h2>
+      <span class="dim tiny">
+        {totalCount.toLocaleString()} listing{totalCount === 1 ? '' : 's'}
+      </span>
+    </header>
 
-    <div class="search">
-      <select bind:value={searchBaseItemId}>
-        <option value="">Choose an item...</option>
-        {#each distinctBaseIds as baseId}
-          <option value={baseId}>{prettifyBaseId(baseId)}</option>
+    <div class="filters">
+      <input placeholder="Search by name..." bind:value={filterText} />
+
+      <select bind:value={filterSlot} onchange={() => (pageIndex = 0)}>
+        {#each SLOT_FILTERS as option (option.index)}
+          <option value={option.index}>{option.label}</option>
         {/each}
       </select>
-      <select bind:value={searchQuality}>
-        {#each Array.from({ length: MAX_QUALITY_TIER }, (_, i) => i + 1) as tier}
-          <option value={tier}>{rarityName(tier)}</option>
-        {/each}
-      </select>
-      <button onclick={search} disabled={!searchBaseItemId}>Search</button>
+
+      <label class="range">
+        Rarity
+        <select bind:value={filterMinRarity} onchange={() => (pageIndex = 0)}>
+          {#each Array.from({ length: MAX_QUALITY_TIER + 1 }, (_, i) => i) as tier}
+            <option value={tier}>{rarityName(tier)}</option>
+          {/each}
+        </select>
+        to
+        <select bind:value={filterMaxRarity} onchange={() => (pageIndex = 0)}>
+          {#each Array.from({ length: MAX_QUALITY_TIER + 1 }, (_, i) => i) as tier}
+            <option value={tier}>{rarityName(tier)}</option>
+          {/each}
+        </select>
+      </label>
+
+      <label class="range">
+        Sort
+        <select bind:value={sortBy} onchange={() => (pageIndex = 0)}>
+          {#each SORTS as option (option.key)}
+            <option value={option.key}>{option.label}</option>
+          {/each}
+        </select>
+        <button class="tiny-btn" onclick={() => (descending = !descending)}>
+          {descending ? 'High to low' : 'Low to high'}
+        </button>
+      </label>
+
+      <button class="tiny-btn" onclick={resetFilters}>Clear</button>
     </div>
-    <p class="dim tiny">Only items you already own can be picked here - the wire has no item catalogue endpoint.</p>
 
-    {#if submittedSearch}
-      {#if listings.isPending}
-        <p class="dim">Searching...</p>
-      {:else if listings.isError}
-        <p class="err">{listings.error?.message}</p>
-      {:else if (listings.data ?? []).length === 0}
-        <p class="dim">No listings for that item and tier.</p>
-      {:else}
-        <ul class="listings">
-          {#each listings.data ?? [] as listing (listing.OrderId)}
-            <li>
-              <span style="color: {rarityColor(listing.QualityTier)}">
+    {#if listings.isPending}
+      <p class="dim">Loading the market...</p>
+    {:else if listings.isError}
+      <p class="err">{listings.error?.message}</p>
+    {:else if rows.length === 0}
+      <p class="dim">
+        Nothing matches those filters.
+        {#if totalCount === 0 && !debouncedText && filterSlot === -1}
+          The market is empty - nobody has listed anything yet.
+        {/if}
+      </p>
+    {:else}
+      <ul class="cards">
+        {#each rows as listing (listing.OrderId)}
+          <li>
+            <ItemIcon
+              baseItemId={listing.BaseItemId}
+              name={prettifyBaseId(listing.BaseItemId)}
+              qualityTier={listing.QualityTier}
+              size="md"
+            />
+            <div class="what">
+              <span class="name" style="color: {rarityColor(listing.QualityTier)}">
                 {prettifyBaseId(listing.BaseItemId)}
               </span>
-              <span class="dim tiny">[{rarityName(listing.QualityTier)}]</span>
-              <span class="price">{listing.Price.toLocaleString()}g</span>
-              <button class="tiny-btn" disabled={!hasGuildLicense} onclick={() => buy(listing.OrderId)}>
-                Buy
-              </button>
-            </li>
-          {/each}
-        </ul>
-      {/if}
+              <span class="dim tiny">{rarityName(listing.QualityTier)}</span>
+            </div>
+            <span class="price">{listing.Price.toLocaleString()}g</span>
+            <button class="tiny-btn" disabled={!hasGuildLicense} onclick={() => buy(listing.OrderId)}>
+              Buy
+            </button>
+          </li>
+        {/each}
+      </ul>
+
+      <!-- Pages rather than one endless scroll: the book is meant to get
+           large, and "page 4 of 60" is a fact a scrollbar cannot state. -->
+      <div class="pager">
+        <button class="tiny-btn" disabled={pageIndex === 0} onclick={() => (pageIndex -= 1)}>
+          Previous
+        </button>
+        <span class="dim tiny">Page {pageIndex + 1} of {pageCount}</span>
+        <button
+          class="tiny-btn"
+          disabled={pageIndex + 1 >= pageCount}
+          onclick={() => (pageIndex += 1)}
+        >
+          Next
+        </button>
+      </div>
     {/if}
   </section>
 
@@ -317,6 +424,82 @@
 </div>
 
 <style>
+  .browse .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+    margin: 0.6rem 0 0.8rem;
+  }
+
+  .filters input {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+
+  .filters select {
+    width: auto;
+  }
+
+  .range {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.82rem;
+  }
+
+  .cards {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 0.4rem;
+  }
+
+  .cards li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: var(--radius, 6px);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .cards .what {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .cards .name {
+    font-size: 0.85rem;
+    line-height: 1.15;
+    overflow-wrap: break-word;
+  }
+
+  .cards .price {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    margin-top: 0.8rem;
+  }
+
   .sides {
     display: flex;
     gap: 0.3rem;
@@ -379,12 +562,6 @@
     margin: 0 0 0.7rem;
   }
 
-  .search {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 0.4rem;
-  }
-
   select,
   input {
     font: inherit;
@@ -402,24 +579,6 @@
     font-size: 0.8rem;
     color: var(--text-dim);
     margin-bottom: 0.6rem;
-  }
-
-  .listings {
-    list-style: none;
-    margin: 0.8rem 0 0;
-    padding: 0;
-    display: grid;
-    gap: 0.3rem;
-  }
-
-  .listings li {
-    display: grid;
-    grid-template-columns: 1fr auto auto auto;
-    gap: 0.5rem;
-    align-items: center;
-    font-size: 0.85rem;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.3rem;
   }
 
   .price {

@@ -140,6 +140,38 @@ await go('Market');
   const before = await page.evaluate(() => document.body.innerText);
   record('market shows a sell list', before.includes('Sell'));
 
+  // Modul: the market used to REQUIRE an exact BaseItemId and an exact rarity
+  // and returned nothing without both - a lookup, not a shop. These assert the
+  // shop front: it loads on its own, and it can be narrowed.
+  record(
+    'the market lists on arrival, with no search typed',
+    /\d+ listings?|Nothing matches|market is empty|Loading the market/i.test(before),
+    'browse is the default',
+  );
+
+  const filterCount = await page.locator('.filters select').count();
+  record(
+    'the market filters by type and rarity',
+    filterCount >= 3,
+    `${filterCount} filter dropdowns`,
+  );
+
+  record(
+    'the market pages rather than dumping the book',
+    /Page \d+ of \d+/.test(before) || /Nothing matches|market is empty/i.test(before),
+  );
+
+  // Narrowing to a slot must actually change the request, not just the UI.
+  const slotSelect = page.locator('.filters select').first();
+  await slotSelect.selectOption({ label: 'Helmet' });
+  await page.waitForTimeout(1200);
+  const narrowed = await page.evaluate(() => document.body.innerText);
+  record(
+    'narrowing by slot re-queries the market',
+    narrowed !== before,
+    'the listing panel changed',
+  );
+
   const listButton = page.getByRole('button', { name: /^List for/ });
   const hasList = (await listButton.count()) > 0;
   record('market has a list-for-price button', hasList);
