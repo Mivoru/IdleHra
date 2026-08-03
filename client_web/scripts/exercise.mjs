@@ -236,16 +236,26 @@ await go('Gathering');
     'Woodcutting, Mining, Fishing and Herbalism all shown',
   );
 
-  // Scoped by the profession's activity band, not by button order. Every node
-  // button on this screen is labelled "Gather", so `.first()` or a fixed index
-  // is one content change away from silently testing woodcutting instead.
+  // Scoped by the profession heading, not by button order. Every node button
+  // on this screen is labelled "Gather", so `.first()` or a fixed index is one
+  // content change away from silently testing woodcutting instead. (It used to
+  // key off "Activity ids 3000-3999" - that line is gone now the nodes are
+  // named after the five locations rather than numbered.)
   const fishingSection = page
     .locator('section')
-    .filter({ hasText: 'Activity ids 3000-3999' })
+    .filter({ has: page.getByRole('heading', { name: 'Fishing', exact: true }) })
     .last();
+  // The first location is the only one a fresh account has reached, so it is
+  // the only one with a Gather button - the rest read "Fight here first".
   const fishBtn = fishingSection.getByRole('button', { name: 'Gather' }).first();
   const deployed = (await fishBtn.count()) > 0;
   if (deployed) await fishBtn.click();
+
+  record(
+    'gathering is locked to locations the player has reached',
+    (await page.getByText('Fight here first').count()) > 0,
+    'later locations are gated',
+  );
   await page.waitForTimeout(9000);
 
   const fishingAfter = await readMastery('Fishing');
@@ -264,6 +274,25 @@ await go('Gathering');
     record('fishing raises fishing mastery', fishingMoved, `fishing xp ${fishingBefore?.xp} -> ${fishingAfter?.xp}`);
     record('fishing does not raise mining mastery', !miningMoved, `mining xp ${miningBefore?.xp} -> ${miningAfter?.xp}`);
   }
+
+  // Modul: GATHERING USED TO GRANT NOTHING. The tick rolled the node's loot
+  // table, picked a winner, spent a backpack slot and broke - there was no
+  // write to CommodityRecords anywhere on the gathering path. Mastery XP went
+  // up (which is what the checks above measure), so the professions looked
+  // alive while producing not one log. This asserts the OUTPUT.
+  const hauled = await page.evaluate(() => {
+    const heading = [...document.querySelectorAll('h2')].find(
+      (h) => /Hauled this session/i.test(h.textContent ?? ''),
+    );
+    return heading?.closest('section')?.innerText ?? '';
+  });
+  // "Nothing yet." is SessionLoot's empty state. Matched exactly rather than
+  // as the word "nothing", which also appears in this panel's own description.
+  record(
+    'gathering actually yields materials',
+    hauled.length > 0 && !/Nothing yet\./.test(hauled),
+    hauled.split(String.fromCharCode(10)).filter(Boolean).slice(-1)[0] ?? 'empty',
+  );
 
   const text = await page.evaluate(() => document.body.innerText);
   record(

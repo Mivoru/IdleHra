@@ -7317,12 +7317,35 @@ namespace FolkIdle.Server.Tests
             // gathering materials, so it is asserted directly: no entry in a
             // Woodcutting node's table may be one of the monster-only mat_*
             // drops (ids 250+), which is what a leak would look like.
-            var woodcuttingTable = ContentRegistry.GetLootTable(1001).ToArray();
-            Assert.NotEmpty(woodcuttingTable);
-            foreach (var entry in woodcuttingTable)
+            // Modul: the proxy moved again. Requiring every entry to carry
+            // "_woodcutting_material" was a second stand-in, and it stopped
+            // holding when gathering was rebuilt around the five locations:
+            // the alchemy chain's eight inputs no longer fit in Herbalism's
+            // five rare slots, so heartwood_core and subterranean_sawdust are
+            // now what a woodcutter turns up. Both are legitimate gathering
+            // materials; neither is a monster drop.
+            //
+            // So the leak invariant is asserted as itself - no monster-only
+            // mat_* id (250+) in a gathering table - rather than through a
+            // naming convention that keeps needing exceptions.
+            foreach (var node in ContentRegistry.GatheringNodes.ToArray())
             {
-                Assert.True(ContentRegistry.GetItemBaseId(entry.ItemId).Contains("_woodcutting_material"),
-                    $"Gathering node 101 drops item {entry.ItemId} ({ContentRegistry.GetItemBaseId(entry.ItemId)}), which is not a woodcutting material - a monster table has leaked into the node id space.");
+                var table = ContentRegistry.GetLootTable((int)node.ActivityId).ToArray();
+                Assert.NotEmpty(table);
+                foreach (var entry in table)
+                {
+                    // By NAME, not by id range. "250+ is monster-only" was
+                    // true when it was written and stopped being true the
+                    // moment a new gathering material was authored above that
+                    // number - which happened immediately, with the fifth
+                    // location's fish. Monster drops are the ones prefixed
+                    // mat_, and that is a fact about the content rather than
+                    // about where the id counter happened to be.
+                    string droppedBaseId = ContentRegistry.GetItemBaseId(entry.ItemId);
+                    Assert.False(droppedBaseId.StartsWith("mat_", StringComparison.Ordinal),
+                        $"Gathering node {node.ActivityId} drops {droppedBaseId}, a monster-only "
+                        + "material - a monster table has leaked into the node id space.");
+                }
             }
 
             Assert.Equal(5, CraftingEngine.GetMaxForgeTierForRegion(1));
@@ -8440,7 +8463,34 @@ namespace FolkIdle.Server.Tests
                 Assert.False(ContentRegistry.GetLootTable((int)node.ActivityId).IsEmpty,
                     $"Gathering node {node.ActivityId} lost its loot table in the re-key.");
             }
-            Assert.Equal(31, checkedNodes);
+            // Modul: 31 -> 20. Gathering was rebuilt around the five canonical
+            // locations: four professions x five places, one node each. It
+            // used to be five Woodcutting, five Mining, NINE Fishing and
+            // TWELVE Herbalism nodes, each of the latter two dropping a single
+            // fish or herb - so "tier" was an unrelated ladder of one-item
+            // nodes and the professions did not line up with the world or with
+            // each other.
+            Assert.Equal(20, checkedNodes);
+
+            // Every node drops exactly two materials: a common and a rare.
+            foreach (var node in ContentRegistry.GatheringNodes.ToArray())
+            {
+                var table = ContentRegistry.GetLootTable((int)node.ActivityId);
+                Assert.Equal(2, table.Length);
+                Assert.Equal(90, table[0].Weight);
+                Assert.Equal(10, table[1].Weight);
+            }
+
+            // Four professions, five locations each, no gaps and no strays.
+            for (int profession = 0; profession < 4; profession++)
+            {
+                for (int location = 1; location <= ContentRegistry.LocationCount; location++)
+                {
+                    long id = ActivityIdBands.GetBandForProfession(profession) + location;
+                    Assert.True(ContentRegistry.TryGetGatheringNode(id, out _), $"missing node {id}");
+                    Assert.Equal(location, ContentRegistry.GetNodeLocation(id));
+                }
+            }
 
             // The legacy ids must now resolve to nothing at all, or something is
             // still reading the pre-re-key space.

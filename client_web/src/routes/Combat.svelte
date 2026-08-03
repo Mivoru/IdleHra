@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { locationName } from '../lib/ui/locations';
   import { onMount } from 'svelte';
   import {
     playerState,
@@ -231,7 +232,7 @@
     <h2>Monsters</h2>
     {#if registry}
       {#each registry.regions as region, index}
-        <h3>Region {index + 1}</h3>
+        <h3>{locationName(index + 1)}</h3>
         <ul class="monsters">
           {#each region as monster}
             <li class:selected={selectedMonsterId === monster.Id}>

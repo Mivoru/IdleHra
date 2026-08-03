@@ -5,7 +5,9 @@
   import { CommandType } from '../lib/net/protocol.generated';
   import { loadContent, type ContentRegistry, type GatheringNodeDefinition } from '../lib/net/content';
   import { PROFESSIONS, isGatheringActivity, HALT_REASONS } from '../lib/ui/slots';
+  import { locationName, nodeLocation } from '../lib/ui/locations';
   import Bar from '../lib/ui/Bar.svelte';
+  import SessionLoot from '../lib/ui/SessionLoot.svelte';
 
   let registry = $state<ContentRegistry | null>(null);
   let contentError = $state('');
@@ -106,6 +108,16 @@
 
   const toolTier = $derived(snap?.CachedCurrentToolTier ?? 0);
 
+  // Modul: a node belongs to a PLACE, and you can only work places you have
+  // been. Gathering used to be completely open, so a brand new character could
+  // work the Abyssal Breach on their first minute and the five locations were
+  // decoration. One kill in a location is what opens it.
+  const reached = $derived(snap?.HighestLocationReached ?? 1);
+
+  function isLocked(node: GatheringNodeDefinition): boolean {
+    return nodeLocation(node.ActivityId) > reached;
+  }
+
   // Monoliths are a GUILD upgrade, so they can move without the player doing
   // anything. The yield bonus is a flat percent, capped at 50 server-side.
   const MONOLITH_CAP_PCT = 50;
@@ -128,7 +140,7 @@
         <h2>Gathering</h2>
         {#if isGathering}
           <p class="active">
-            Working node {activeActivity}
+            Working {locationName(nodeLocation(activeActivity))}
             {#if snap.RequiredProgressTicks > 0}
               &middot; {Math.floor(
                 ((visual?.CurrentProgressTicks ?? snap.CurrentProgressTicks) /
@@ -216,11 +228,20 @@
   {/if}
 
   <div class="professions">
+    <section class="panel">
+      <h2>Hauled this session</h2>
+      <p class="dim small">
+        What this character has actually pulled out of the ground and the water.
+        Combat has had this feed since the loot events landed; gathering showed
+        nothing, so a working node and a broken one looked identical.
+      </p>
+      <SessionLoot {registry} />
+    </section>
+
     {#each byProfession as profession}
       <section class="panel">
         <h2>{profession.name}</h2>
         <p class="dim small">
-          Activity ids {profession.band}-{profession.band + 999}
           {#if masteryFor(profession.id)}
             &middot; {masteryFor(profession.id)?.name} mastery {masteryFor(profession.id)?.level}
           {/if}
@@ -231,19 +252,24 @@
 
         <ul class="nodes">
           {#each profession.nodes as node (node.ActivityId)}
-            <li class:current={activeActivity === node.ActivityId}>
-              <span class="tier">T{node.ActivityId % 1000}</span>
+            {@const locked = isLocked(node)}
+            <li class:current={activeActivity === node.ActivityId} class:locked>
+              <span class="place">{locationName(nodeLocation(node.ActivityId))}</span>
               <span class="dim tiny" title={`Base ${(node.BaseTickThreshold / 10).toFixed(1)}s, reduced by mastery and tool tier`}>
                 {secondsPerUnit(node)}s / unit{#if isFloored(node)}<span class="floored"> (floor)</span>{/if}
               </span>
               <span class="dim tiny">{node.BaseMasteryXpReward} xp</span>
-              <button
-                class="tiny-btn"
-                disabled={activeActivity === node.ActivityId}
-                onclick={() => deploy(node)}
-              >
-                {activeActivity === node.ActivityId ? 'Working' : 'Gather'}
-              </button>
+              {#if locked}
+                <span class="dim tiny lock">Fight here first</span>
+              {:else}
+                <button
+                  class="tiny-btn"
+                  disabled={activeActivity === node.ActivityId}
+                  onclick={() => deploy(node)}
+                >
+                  {activeActivity === node.ActivityId ? 'Working' : 'Gather'}
+                </button>
+              {/if}
             </li>
           {/each}
         </ul>
@@ -372,9 +398,16 @@
     background: rgba(74, 163, 223, 0.08);
   }
 
-  .tier {
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
+  .place {
+    font-weight: 600;
+  }
+
+  li.locked {
+    opacity: 0.5;
+  }
+
+  .lock {
+    font-style: italic;
   }
 
   .bonus {

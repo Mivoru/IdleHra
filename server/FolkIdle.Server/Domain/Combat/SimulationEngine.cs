@@ -121,6 +121,7 @@ namespace FolkIdle.Server.Domain.Combat
         // queue: no DB work, no allocation and no await on the hot path.
         public static readonly System.Collections.Concurrent.ConcurrentQueue<CraftTickCompletion> CraftingTickQueue = new();
 
+
         // Modul: warp equipment drops used to be bounded by free backpack
         // slots. With unlimited storage that bound is gone, so an explicit one
         // replaces it - this only stops a very long warp from flooding
@@ -1820,6 +1821,19 @@ namespace FolkIdle.Server.Domain.Combat
                             continue;
                         }
 
+                        // Modul: gathering is locked to where you have been.
+                        // A node in the Abyssal Breach is not workable by a
+                        // character who has never fought there - that is what
+                        // made the five locations decoration. Refused with a
+                        // result code rather than a disconnect: this is state,
+                        // not a malformed command.
+                        int requestedLocation = ContentRegistry.GetNodeLocation(cmd.TargetId);
+                        if (requestedLocation > currentPayload.HighestLocationReached)
+                        {
+                            _playerRegistry.EnqueueCommandResult(routingPlayerId, (byte)CommandResultCode.LocationLocked);
+                            continue;
+                        }
+
                         // Modul: Architecture Overhaul, Part 2. A non-empty
                         // TargetGuid selects which of the player's up to 3
                         // characters is changing activity; the slot-level
@@ -3175,6 +3189,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 HerbalismMasteryLevel = currentPayload.HerbalismMasteryLevel,
                                 GatheringProgressTicks = currentPayload.GatheringProgressTicks,
                                 CompletedAreaFlags = currentPayload.CompletedAreaFlags,
+                                HighestLocationReached = (byte)currentPayload.HighestLocationReached,
                                 HumanMasteryLevel = currentPayload.HumanMasteryLevel,
                                 VilaMasteryLevel = currentPayload.VilaMasteryLevel,
                                 DraugrMasteryLevel = currentPayload.DraugrMasteryLevel,
@@ -5198,21 +5213,30 @@ namespace FolkIdle.Server.Domain.Combat
                                         // entirely, matching "0% efficiency" on
                                         // overflow) while gold/XP already granted
                                         // above are preserved.
-                                        int itemWeight = 1;
-                                        if (gatherActiveRaceId == RaceIds.Kobold)
-                                        {
-                                            string droppedBaseId = ContentRegistry.GetMaterialString(lootTable[i].ItemId);
-                                            bool isOreOrBar = droppedBaseId.Contains("_ore_") || droppedBaseId.Contains("_bar_");
-                                            if (!isOreOrBar) itemWeight = 2;
-                                        }
+                                        // Modul: THE GATHERED ITEM IS ACTUALLY
+                                        // GRANTED. This block used to compute a
+                                        // Kobold carry weight, spend a backpack
+                                        // slot and break - with no write to
+                                        // CommodityRecords anywhere on the
+                                        // gathering path. The winner was picked
+                                        // and dropped on the floor.
+                                        //
+                                        // The Kobold penalty went with the
+                                        // backpack: it was a rule about carrying
+                                        // capacity, and there is no capacity to
+                                        // penalise now that storage is one
+                                        // unlimited chest.
+                                        int grantQuantity = lootTable[i].MaxQuantity > lootTable[i].MinQuantity
+                                            ? Random.Shared.Next(Math.Max(1, lootTable[i].MinQuantity), lootTable[i].MaxQuantity + 1)
+                                            : 1;
 
-                                        if (itemWeight > payload.InventorySpaceRemaining)
+                                        CombatLootEngine.GatheringGrantQueue.Enqueue(new GatheredMaterialGrant
                                         {
-                                            r = rollsToExecute;
-                                            break;
-                                        }
-
-                                        payload.InventorySpaceRemaining -= itemWeight;
+                                            PlayerId = payload.PlayerId,
+                                            ActivityId = payload.ActiveActivityId,
+                                            ItemId = lootTable[i].ItemId,
+                                            Quantity = grantQuantity
+                                        });
                                         break;
                                     }
                                 }
@@ -5607,6 +5631,16 @@ namespace FolkIdle.Server.Domain.Combat
 
                 int seasonalCombatXp = activeMonster.BaseXpReward * finalXpMultiplier / 100;
                 ProgressionEngine.ProcessMonsterDeath(ref payload, activeMonster.BaseXpReward, finalXpMultiplier, ActiveGlobalEventId, activeRaceId);
+
+                // Modul: reaching a location unlocks its gathering. One kill is
+                // the whole requirement - if you can fight here, you can work
+                // here. Raised live as well as at hydration so the node list
+                // opens up the moment the kill lands, not on next login.
+                int killedLocation = ContentRegistry.GetCanonicalLocation(activeMonster.Id);
+                if (killedLocation > payload.HighestLocationReached)
+                {
+                    payload.HighestLocationReached = killedLocation;
+                }
                 AddSeasonalXp(ref payload, seasonalCombatXp);
                 
                 if (liveSessionContexts.TryGetValue(payload.PlayerId, out var sessionCtx))

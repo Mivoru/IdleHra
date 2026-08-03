@@ -13,6 +13,7 @@
   import Bar from '../lib/ui/Bar.svelte';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
+  import { locationName, nodeLocation } from '../lib/ui/locations';
   // EMPTY_GUID is the sentinel the roster filter below tests against.
   import { raceName } from '../lib/ui/races';
   import { onMount } from 'svelte';
@@ -90,7 +91,7 @@
     for (const node of registry.gatheringNodes) {
       out.push({
         id: node.ActivityId,
-        label: `${professionName(node.ProfessionType)} tier ${node.ActivityId % 1000}`,
+        label: `${professionName(node.ProfessionType)} - ${locationName(nodeLocation(node.ActivityId))}`,
         group: 'Gathering',
       });
     }
@@ -148,7 +149,7 @@
     }
     if (isGatheringActivity(activityId)) {
       const profession = professionName(Math.floor(activityId / 1000) - 1);
-      return `${profession} tier ${activityId % 1000}`;
+      return `${profession} - ${locationName(nodeLocation(activityId))}`;
     }
     if (isCraftingActivity(activityId)) {
       const job = craftingJobs.find((j) => j.id === activityId);

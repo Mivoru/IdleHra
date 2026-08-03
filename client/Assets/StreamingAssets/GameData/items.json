@@ -1,4 +1,4 @@
-﻿[
+[
   {
     "Id": 1,
     "RegionTier": 6,
@@ -3190,5 +3190,13 @@
     "FlatAttackPower": 0,
     "FlatDefenseRating": 648,
     "BaseId": "eq_dread_signet_ring_1/2_slot_base"
+  },
+  {
+    "Id": 400,
+    "RegionTier": 5,
+    "BaseValueGold": 2400,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "abyssal_lanternfish_raw_fishing_material"
   }
 ]

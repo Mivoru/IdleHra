@@ -251,6 +251,12 @@ namespace FolkIdle.Server.Engine
             return materialStacks + backpackEquipment;
         }
 
+        // Modul: gathering grants. Static and drained by this engine's own
+        // poll loop, exactly like DropRequestQueue above - SimulationEngine
+        // holds a LootTableEngine, not this class, so an instance call from
+        // the tick was never available.
+        public static readonly ConcurrentQueue<GatheredMaterialGrant> GatheringGrantQueue = new();
+
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry _playerRegistry;
         private CancellationTokenSource _cts = new();
@@ -280,6 +286,11 @@ namespace FolkIdle.Server.Engine
                 while (DropRequestQueue.TryDequeue(out var request))
                 {
                     await ProcessMonsterLootDropAsync(request.PlayerId, request.MonsterId, request.LootLuckPct);
+                }
+
+                while (GatheringGrantQueue.TryDequeue(out var gathered))
+                {
+                    await GrantGatheredMaterialAsync(gathered.PlayerId, gathered.ActivityId, gathered.ItemId, gathered.Quantity);
                 }
             }
         }
@@ -555,6 +566,69 @@ namespace FolkIdle.Server.Engine
         // only AFTER the row has been added, and the enqueued items are
         // discarded if that transaction later rolls back - see
         // ProcessMonsterLootDropAsync's own note on _pendingDrops.
+        /// <summary>
+        /// Grants one gathered material and publishes it to the loot feed.
+        ///
+        /// Modul: GATHERING GRANTED NOTHING. The 10Hz tick rolled the node's
+        /// loot table, picked a winning entry, decremented a backpack counter
+        /// and then simply broke out of the loop - there was no write to
+        /// CommodityRecords anywhere on the gathering path and no queue
+        /// carrying one. Chopping wood for an hour produced mastery XP and not
+        /// a single log. The offline catch-up DID grant materials, which is why
+        /// the gap survived: logging back in after a night away filled the
+        /// chest, so the chest was never empty enough to make anyone look.
+        ///
+        /// The publish is the other half of the same fix - combat has had a
+        /// visible drop feed since the loot event feed landed and gathering
+        /// showed nothing at all, so there was no way to tell a working node
+        /// from a broken one.
+        /// </summary>
+        public async Task GrantGatheredMaterialAsync(long playerId, long activityId, int itemId, int quantity)
+        {
+            if (itemId <= 0 || quantity <= 0) return;
+
+            string materialItemId = ContentRegistry.GetItemBaseId(itemId);
+            if (string.IsNullOrEmpty(materialItemId)) return;
+
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+
+            await strategy.ExecuteAsync(async () =>
+            {
+                dbContext.ChangeTracker.Clear();
+                using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+
+                var existing = await dbContext.CommodityRecords
+                    .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {materialItemId} FOR UPDATE")
+                    .SingleOrDefaultAsync();
+
+                if (existing == null)
+                {
+                    dbContext.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = materialItemId, Quantity = quantity });
+                }
+                else
+                {
+                    existing.Quantity += quantity;
+                }
+
+                await dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+            });
+
+            // MonsterId doubles as "where this came from" on the wire; a
+            // gathering node id is as much an origin as a monster id is.
+            _playerRegistry.OutboundLootDropQueue.Enqueue(new Network.ResponseLootDropPacket
+            {
+                PlayerId = playerId,
+                ItemId = itemId,
+                Quantity = quantity,
+                MonsterId = (int)activityId,
+                QualityTier = 0,
+                DropKind = Network.ResponseLootDropPacket.DropKindMaterial
+            });
+        }
+
         private void PublishLootDrop(long playerId, int monsterId, int itemId, int quantity, byte qualityTier, byte dropKind)
         {
             if (itemId <= 0 || quantity <= 0) return;

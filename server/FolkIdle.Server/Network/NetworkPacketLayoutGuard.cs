@@ -88,7 +88,10 @@ namespace FolkIdle.Server.Network
         //
         // Modul: per-character offline summary. 714 -> 750, nine ints. See
         // StateUpdatePacket for why ints and not longs.
-        public const int ExpectedStateUpdateSize = 750;
+        //
+        // Modul: location gating. 750 -> 751, one byte for
+        // HighestLocationReached.
+        public const int ExpectedStateUpdateSize = 751;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

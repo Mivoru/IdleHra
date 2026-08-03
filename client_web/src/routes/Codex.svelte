@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { locationName } from '../lib/ui/locations';
   import { onMount } from 'svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import { queryKeys, fetchCodex, fetchCodexRegions } from '../lib/net/rest';
@@ -93,7 +94,7 @@
         {#each regions as region (region.RegionId)}
           <li>
             <span class="region-name">
-              Region {region.RegionId}
+              {locationName(region.RegionId)}
               <!-- The word as well as the colour, so a completed region reads
                    as completed without relying on the green. -->
               {#if region.IsCompleted}<span class="done">complete</span>{/if}
@@ -118,7 +119,7 @@
     {:else}
       {#each registry.regions as region, regionIndex}
         <h3>
-          Region {regionIndex + 1}
+          {locationName(regionIndex + 1)}
           {#if regionComplete(regionIndex)}<span class="done">complete</span>{/if}
         </h3>
         <ul class="entries">

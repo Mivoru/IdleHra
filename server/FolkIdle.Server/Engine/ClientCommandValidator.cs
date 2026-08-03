@@ -673,6 +673,12 @@ namespace FolkIdle.Server.Engine
 
             if (ContentRegistry.TryGetGatheringNode(targetActivityId, out _))
             {
+                // Modul: a gathering node in a location the player has never
+                // reached is REFUSED, not disconnected. Returning false here
+                // would kill the session for a command a stale client could
+                // legitimately send (the node list is content, the reach is
+                // state), so the refusal happens at the point of assignment
+                // instead - see ChangeActivity's location check.
                 return true;
             }
 

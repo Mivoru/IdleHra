@@ -335,6 +335,17 @@ namespace FolkIdle.Server.Engine
 
         // Codex and Achievements
         public int CompletedAreaFlags;
+
+        // Modul: how far the player has actually GOT, 1-5.
+        //
+        // Gathering was completely ungated: a brand new character could work
+        // the Abyssal Breach node on their first minute, which made the five
+        // locations decoration rather than progress. CompletedAreaFlags could
+        // not answer this - it means "killed every monster here a thousand
+        // times", which is a completion badge, not a passport.
+        //
+        // One kill anywhere in a location is what counts as having reached it.
+        public int HighestLocationReached;
         public int ClaimedAchievementFlags;
         public uint TotalAchievementsClaimedCount;
 

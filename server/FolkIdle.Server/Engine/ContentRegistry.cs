@@ -441,6 +441,64 @@ namespace FolkIdle.Server.Engine
             new LootTableEntry { ItemId = 39, Weight = 28, MinQuantity = 1, MaxQuantity = 2 },  // index 74: adamantite_ore  (node 205)
             new LootTableEntry { ItemId = 57, Weight = 22, MinQuantity = 1, MaxQuantity = 2 },  // index 75: obsidian_ore    (node 205)
             new LootTableEntry { ItemId = 75, Weight = 16 },                                    // index 76: celestial_ore   (node 205)
+
+            // Modul: gathering rebuilt around the five canonical locations.
+            //
+            // Every node now drops exactly TWO materials: a common at 90% and
+            // a rare at 10%. Fishing had NINE nodes and Herbalism TWELVE, each
+            // dropping a single fish or herb - so "tier" meant an unrelated
+            // ladder of one-item nodes rather than a place you go, and the two
+            // professions did not line up with the world or with each other.
+            // Woodcutting and Mining had five nodes with three-to-four item
+            // tables, which was a third shape again.
+            //
+            // Entries below are appended rather than replacing indices 0-76,
+            // because those indices are positional and everything authored
+            // after them would shift.
+            // --- Woodcutting ---
+            new LootTableEntry { ItemId = 99, Weight = 90 },  // index 77: oak_logs - Whispering Woods (Woodcutting, common)
+            new LootTableEntry { ItemId = 31, Weight = 10 },  // index 78: heartwood_core - Whispering Woods (Woodcutting, rare)
+            new LootTableEntry { ItemId = 117, Weight = 90 },  // index 79: willow_logs - The Murky Swamps (Woodcutting, common)
+            new LootTableEntry { ItemId = 51, Weight = 10 },  // index 80: subterranean_sawdust - The Murky Swamps (Woodcutting, rare)
+            new LootTableEntry { ItemId = 135, Weight = 90 },  // index 81: pine_trees - Craggy Highlands (Woodcutting, common)
+            new LootTableEntry { ItemId = 69, Weight = 10 },  // index 82: berserker_blood_essence - Craggy Highlands (Woodcutting, rare)
+            new LootTableEntry { ItemId = 153, Weight = 90 },  // index 83: birch_trees - Ancient Ruins (Woodcutting, common)
+            new LootTableEntry { ItemId = 63, Weight = 10 },  // index 84: ancient_wood - Ancient Ruins (Woodcutting, rare)
+            new LootTableEntry { ItemId = 174, Weight = 90 },  // index 85: beech_logs - Abyssal Breach (Woodcutting, common)
+            new LootTableEntry { ItemId = 81, Weight = 10 },  // index 86: yggdrasil_burl - Abyssal Breach (Woodcutting, rare)
+            // --- Mining ---
+            new LootTableEntry { ItemId = 165, Weight = 90 },  // index 87: copper_ore - Whispering Woods (Mining, common)
+            new LootTableEntry { ItemId = 129, Weight = 10 },  // index 88: coal_node - Whispering Woods (Mining, rare)
+            new LootTableEntry { ItemId = 93, Weight = 90 },  // index 89: tin_ore - The Murky Swamps (Mining, common)
+            new LootTableEntry { ItemId = 111, Weight = 10 },  // index 90: iron_ore - The Murky Swamps (Mining, rare)
+            new LootTableEntry { ItemId = 147, Weight = 90 },  // index 91: silver_ore - Craggy Highlands (Mining, common)
+            new LootTableEntry { ItemId = 1, Weight = 10 },  // index 92: gold_ore - Craggy Highlands (Mining, rare)
+            new LootTableEntry { ItemId = 57, Weight = 90 },  // index 93: obsidian_ore - Ancient Ruins (Mining, common)
+            new LootTableEntry { ItemId = 21, Weight = 10 },  // index 94: mithril_ore - Ancient Ruins (Mining, rare)
+            new LootTableEntry { ItemId = 75, Weight = 90 },  // index 95: celestial_ore - Abyssal Breach (Mining, common)
+            new LootTableEntry { ItemId = 39, Weight = 10 },  // index 96: adamantite_ore - Abyssal Breach (Mining, rare)
+            // --- Fishing ---
+            new LootTableEntry { ItemId = 102, Weight = 90 },  // index 97: river_trout - Whispering Woods (Fishing, common)
+            new LootTableEntry { ItemId = 11, Weight = 10 },  // index 98: coastline_cod - Whispering Woods (Fishing, rare)
+            new LootTableEntry { ItemId = 120, Weight = 90 },  // index 99: mud_carp - The Murky Swamps (Fishing, common)
+            new LootTableEntry { ItemId = 30, Weight = 10 },  // index 100: deep_mire_eel - The Murky Swamps (Fishing, rare)
+            new LootTableEntry { ItemId = 156, Weight = 90 },  // index 101: steppe_salmon - Craggy Highlands (Fishing, common)
+            new LootTableEntry { ItemId = 48, Weight = 10 },  // index 102: canyon_catfish - Craggy Highlands (Fishing, rare)
+            new LootTableEntry { ItemId = 138, Weight = 90 },  // index 103: chasm_pike - Ancient Ruins (Fishing, common)
+            new LootTableEntry { ItemId = 66, Weight = 10 },  // index 104: fjord_shark - Ancient Ruins (Fishing, rare)
+            new LootTableEntry { ItemId = 400, Weight = 90 },  // index 105: abyssal_lanternfish - Abyssal Breach (Fishing, common)
+            new LootTableEntry { ItemId = 84, Weight = 10 },  // index 106: astral_whale - Abyssal Breach (Fishing, rare)
+            // --- Herbalism ---
+            new LootTableEntry { ItemId = 5, Weight = 90 },  // index 107: salt_lotus - Whispering Woods (Herbalism, common)
+            new LootTableEntry { ItemId = 9, Weight = 10 },  // index 108: condensation_essence - Whispering Woods (Herbalism, rare)
+            new LootTableEntry { ItemId = 24, Weight = 90 },  // index 109: screaming_mandrake - The Murky Swamps (Herbalism, common)
+            new LootTableEntry { ItemId = 14, Weight = 10 },  // index 110: peat_clump - The Murky Swamps (Herbalism, rare)
+            new LootTableEntry { ItemId = 42, Weight = 90 },  // index 111: jagged_bloodgrass - Craggy Highlands (Herbalism, common)
+            new LootTableEntry { ItemId = 28, Weight = 10 },  // index 112: spore_pod - Craggy Highlands (Herbalism, rare)
+            new LootTableEntry { ItemId = 60, Weight = 90 },  // index 113: frost_moonflower - Ancient Ruins (Herbalism, common)
+            new LootTableEntry { ItemId = 33, Weight = 10 },  // index 114: schrat_horn - Ancient Ruins (Herbalism, rare)
+            new LootTableEntry { ItemId = 150, Weight = 90 },  // index 115: wild_ginseng - Abyssal Breach (Herbalism, common)
+            new LootTableEntry { ItemId = 49, Weight = 10 },  // index 116: gargoyle_heart_shard - Abyssal Breach (Herbalism, rare)
         };
 
         // Modul: LootTableId -> (Start, Count) into _lootEntries, keyed by
@@ -480,37 +538,26 @@ namespace FolkIdle.Server.Engine
             // table like the rest, and index 21 is left in place rather than
             // removed so the indices of every entry authored after it stay
             // stable.
-            { 1001, (47, 3) },
-            { 1002, (50, 3) },
-            { 1003, (53, 3) },
-            { 1004, (56, 3) },
-            { 1005, (59, 2) },
-            { 2001, (61, 3) },
-            { 2002, (64, 3) },
-            { 2003, (67, 3) },
-            { 2004, (70, 3) },
-            { 2005, (73, 4) },
-            { 3001, (0, 1) },
-            { 3002, (1, 1) },
-            { 3003, (2, 1) },
-            { 3004, (3, 1) },
-            { 3005, (4, 1) },
-            { 3006, (5, 1) },
-            { 3007, (6, 1) },
-            { 3008, (7, 1) },
-            { 3009, (8, 1) },
-            { 4001, (9, 1) },
-            { 4002, (10, 1) },
-            { 4003, (11, 1) },
-            { 4004, (12, 1) },
-            { 4005, (13, 1) },
-            { 4006, (14, 1) },
-            { 4007, (15, 1) },
-            { 4008, (16, 1) },
-            { 4009, (17, 1) },
-            { 4010, (18, 1) },
-            { 4011, (19, 1) },
-            { 4012, (20, 1) },
+            { 1001, (77, 2) }, // Whispering Woods
+            { 1002, (79, 2) }, // The Murky Swamps
+            { 1003, (81, 2) }, // Craggy Highlands
+            { 1004, (83, 2) }, // Ancient Ruins
+            { 1005, (85, 2) }, // Abyssal Breach
+            { 2001, (87, 2) }, // Whispering Woods
+            { 2002, (89, 2) }, // The Murky Swamps
+            { 2003, (91, 2) }, // Craggy Highlands
+            { 2004, (93, 2) }, // Ancient Ruins
+            { 2005, (95, 2) }, // Abyssal Breach
+            { 3001, (97, 2) }, // Whispering Woods
+            { 3002, (99, 2) }, // The Murky Swamps
+            { 3003, (101, 2) }, // Craggy Highlands
+            { 3004, (103, 2) }, // Ancient Ruins
+            { 3005, (105, 2) }, // Abyssal Breach
+            { 4001, (107, 2) }, // Whispering Woods
+            { 4002, (109, 2) }, // The Murky Swamps
+            { 4003, (111, 2) }, // Craggy Highlands
+            { 4004, (113, 2) }, // Ancient Ruins
+            { 4005, (115, 2) }, // Abyssal Breach
 
             // Modul: Full-Stack Expansion, Part 2 - monster loot tables
             // for the 25 new regional monsters (monster ids 91-115). The
@@ -792,6 +839,62 @@ namespace FolkIdle.Server.Engine
         /// Legacy monsters 1-90 are not part of any region and are never
         /// bosses; the old rule made every sixth one of those a boss too.
         /// </summary>
+        // Modul: THE FIVE LOCATIONS HAVE NAMES.
+        //
+        // Every screen said "Region 1".."Region 5" and gathering said "tier 1"
+        // .."tier 5", so the same place had two anonymous numbers and neither
+        // matched the art, the monsters or the loot. These are the canon names
+        // and this is the only place they are written down server-side.
+        public static readonly string[] LocationNames =
+        {
+            "Whispering Woods",
+            "The Murky Swamps",
+            "Craggy Highlands",
+            "Ancient Ruins",
+            "Abyssal Breach",
+        };
+
+        public const int LocationCount = 5;
+
+        public static string GetLocationName(int locationIndex)
+        {
+            if (locationIndex < 1 || locationIndex > LocationCount)
+            {
+                return $"Location {locationIndex}";
+            }
+
+            return LocationNames[locationIndex - 1];
+        }
+
+        // Which of the five locations a canonical monster belongs to, 1-5.
+        // Zero for the 90 legacy monsters, which belong to none of them.
+        //
+        // NOT GetMonsterRegionTier: that reads an authored RegionTier which
+        // runs 1-10 and is a difficulty band, not a place - see the codex
+        // endpoint reporting ten regions for a world that has five.
+        public static int GetCanonicalLocation(int monsterId)
+        {
+            if (monsterId < FirstCanonicalMonsterId || monsterId > LastCanonicalMonsterId)
+            {
+                return 0;
+            }
+
+            return (monsterId - FirstCanonicalMonsterId) / MonstersPerRegion + 1;
+        }
+
+        // Which location a gathering node sits in, 1-5. The node id is
+        // band + location, so this is the last digit and nothing more.
+        public static int GetNodeLocation(long activityId)
+        {
+            if (!ActivityIdBands.IsGatheringActivity(activityId))
+            {
+                return 0;
+            }
+
+            int location = (int)(activityId % ActivityIdBands.BandSize);
+            return location >= 1 && location <= LocationCount ? location : 0;
+        }
+
         public static bool IsRegionalBoss(int monsterId)
         {
             if (monsterId < FirstCanonicalMonsterId || monsterId > LastCanonicalMonsterId)

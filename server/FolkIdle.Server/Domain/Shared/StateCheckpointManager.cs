@@ -462,6 +462,19 @@ namespace FolkIdle.Server.Domain.Shared
             int achievementFlags = achievements?.ClaimedAchievementFlags ?? 0;
 
             var codexEntries = await dbContext.MonsterCodexEntries.Where(c => c.PlayerId == playerId).ToListAsync();
+            // Modul: how far the player has reached. One kill anywhere in a
+            // location is enough - the point is "have you been here", not
+            // "have you finished here", which is what completedAreas below
+            // answers. Location 1 is always open, so a player with no kills
+            // at all still has somewhere to gather.
+            int highestLocationReached = 1;
+            for (int i = 0; i < codexEntries.Count; i++)
+            {
+                if (codexEntries[i].KillCount <= 0) continue;
+                int location = ContentRegistry.GetCanonicalLocation(codexEntries[i].MonsterId);
+                if (location > highestLocationReached) highestLocationReached = location;
+            }
+
             int completedAreas = 0;
             for (int region = 1; region <= 10; region++)
             {
@@ -733,6 +746,7 @@ namespace FolkIdle.Server.Domain.Shared
                 ClaimedAchievementFlags = achievementFlags,
                 TotalAchievementsClaimedCount = (uint)totalAchievements,
                 CompletedAreaFlags = completedAreas,
+                HighestLocationReached = highestLocationReached,
                 HumanMasteryLevel = humanMastery,
                 VilaMasteryLevel = vilaMastery,
                 DraugrMasteryLevel = draugrMastery,

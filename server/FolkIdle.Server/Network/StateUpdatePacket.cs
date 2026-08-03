@@ -116,7 +116,12 @@ namespace FolkIdle.Server.Network
         // Modul: forge fusion requires three items of the SAME rarity.
         // Distinct from GenericValidationFailure so the client can name the
         // actual rule instead of saying "that did not work".
-        RarityMismatch = 16
+        RarityMismatch = 16,
+
+        // Modul: a gathering node in a location the player has not reached.
+        // Distinct from InvalidActivity, which means the id is not a thing at
+        // all - this one means "not yet".
+        LocationLocked = 17
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -223,6 +228,10 @@ namespace FolkIdle.Server.Network
         public int GatheringProgressTicks;
         
         public int CompletedAreaFlags;
+
+        // Modul: the furthest location the player has reached, 1-5. Gates
+        // gathering; see TickStatePayload for why CompletedAreaFlags could not.
+        public byte HighestLocationReached;
         public int HumanMasteryLevel;
         public int VilaMasteryLevel;
         public int DraugrMasteryLevel;
