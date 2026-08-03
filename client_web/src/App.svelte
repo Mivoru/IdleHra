@@ -9,6 +9,7 @@
   import Crafting from './routes/Crafting.svelte';
   import Forge from './routes/Forge.svelte';
   import ChatDock from './lib/ui/ChatDock.svelte';
+  import Hub from './routes/Hub.svelte';
   import Social from './routes/Social.svelte';
   import GuildOps from './routes/GuildOps.svelte';
   import Progression from './routes/Progression.svelte';
@@ -49,6 +50,7 @@
     {
       name: 'Play',
       screens: [
+        { key: 'hub', label: 'Map' },
         { key: 'combat', label: 'Combat' },
         { key: 'gathering', label: 'Gathering' },
         { key: 'worldboss', label: 'World Boss' },
@@ -88,7 +90,10 @@
   ] as const;
 
   type ScreenKey = (typeof GROUPS)[number]['screens'][number]['key'];
-  let screen = $state<ScreenKey>('combat');
+  // Modul: the map is where a session starts. Signing in used to drop the
+  // player straight onto Combat with a wall of nav words above it; the painted
+  // valley is both prettier and a better answer to "where am I".
+  let screen = $state<ScreenKey>('hub');
 
   $effect(() => {
     if (token) {
@@ -189,7 +194,9 @@
       </div>
     {/if}
 
-    {#if screen === 'combat'}
+    {#if screen === 'hub'}
+      <Hub onNavigate={(next) => (screen = next)} />
+    {:else if screen === 'combat'}
       <Combat />
     {:else if screen === 'gathering'}
       <Gathering />

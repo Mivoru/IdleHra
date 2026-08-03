@@ -1,5 +1,6 @@
 <script lang="ts">
   import { locationName } from '../lib/ui/locations';
+  import { locationBackground } from '../lib/ui/sprites';
   import { onMount } from 'svelte';
   import {
     playerState,
@@ -232,7 +233,18 @@
     <h2>Monsters</h2>
     {#if registry}
       {#each registry.regions as region, index}
-        <h3>{locationName(index + 1)}</h3>
+        <!-- Modul: each location gets its painted scene as a banner. The art
+             existed and nothing referenced it; a list of five identical
+             headings is a much weaker sense of place than the thing the
+             painting is of. -->
+        <h3
+          class="place"
+          style={locationBackground(index + 1)
+            ? `background-image: linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.75)), url('${locationBackground(index + 1)}')`
+            : ''}
+        >
+          {locationName(index + 1)}
+        </h3>
         <ul class="monsters">
           {#each region as monster}
             <li class:selected={selectedMonsterId === monster.Id}>
@@ -288,6 +300,16 @@
 </div>
 
 <style>
+  h3.place {
+    background-size: cover;
+    background-position: center;
+    border-radius: var(--radius, 6px);
+    padding: 0.7rem 0.9rem;
+    margin: 1rem 0 0.5rem;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    letter-spacing: 0.04em;
+  }
+
   .layout {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));

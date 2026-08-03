@@ -206,6 +206,30 @@ await page.waitForTimeout(600);
   );
 }
 
+// --- the hub map -------------------------------------------------------------
+// Signing in used to land on Combat behind a wall of nav words. The painted
+// valley is the menu now: five places, each a plate on its own landmark.
+// The suite has walked through several screens by now, so it has to come back
+// to the map before asking what is on it.
+await go('Map');
+{
+  const plates = await page.locator('.place').count();
+  record('the hub map shows its five places', plates === 5, `${plates} plates`);
+
+  const hubImage = await page.evaluate(() => {
+    const scene = document.querySelector('.scene');
+    return scene ? getComputedStyle(scene).backgroundImage : '';
+  });
+  record('the hub background is loaded art, not a colour', /main_hub\.webp/.test(hubImage));
+
+  // Clicking a PLATE - scoped to the map, not the nav button of the same name.
+  await page.locator('.place').filter({ hasText: 'Market' }).first().click();
+  await page.waitForTimeout(900);
+  const leftTheMap = (await page.locator('.scene').count()) === 0;
+  const text = await page.evaluate(() => document.body.innerText);
+  record('a plate navigates to its screen', leftTheMap && /Sell|Market/i.test(text));
+}
+
 // --- gathering ---------------------------------------------------------------
 // Reported from a live session: "when I go fishing, XP is added to mining and
 // fishing is not there at all", plus a "Backpack full - EVERYTHING IS STOPPED"

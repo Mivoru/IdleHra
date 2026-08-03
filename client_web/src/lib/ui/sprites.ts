@@ -25,6 +25,30 @@ function spriteUrl(relativePath: string): string {
   return `${HTTP_BASE}/sprites/${encoded}`;
 }
 
+/**
+ * Backgrounds and UI plates, by file name.
+ *
+ * Not generated: these are a fixed handful authored for specific screens
+ * rather than a table keyed on content ids, so a generated map would only
+ * restate the file names. See tools/prepare_backgrounds.py.
+ */
+export function backgroundUrl(name: string): string {
+  return spriteUrl(`Backgrounds/${name}.webp`);
+}
+
+/** The five locations, in canon order, keyed the way locations.ts names them. */
+export function locationBackground(locationIndex: number): string | null {
+  const files = [
+    'whispering_woods',
+    'the_murky_swamps',
+    'craggy_highlands',
+    'ancient_ruins',
+    'abyssal_breach',
+  ];
+  const file = files[locationIndex - 1];
+  return file ? backgroundUrl(file) : null;
+}
+
 export function monsterIcon(monsterId: number): string | null {
   const path = MONSTER_ICONS[monsterId];
   return path ? spriteUrl(path) : null;
