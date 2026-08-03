@@ -77,31 +77,7 @@ await go('Combat');
 await page.getByRole('button', { name: 'Fight' }).first().click();
 await page.waitForTimeout(4000);
 {
-  let text = await page.evaluate(() => document.body.innerText);
-
-  // The dev fixture ships with a FULL backpack, and a full backpack returns
-  // from ProcessSubTick before anything spawns - so combat cannot start until
-  // a slot is freed. That is a real state a real player reaches, so it is
-  // asserted rather than worked around: the screen must SAY the character is
-  // deployed and stalled, not show the idle screen as if the button did
-  // nothing.
-  const stalled = text.includes('but nothing is happening');
-  if (stalled) {
-    record('a stalled deployment is reported, not shown as idle', true);
-    record('the halt reason says everything is stopped', text.includes('EVERYTHING IS STOPPED'));
-
-    // Free a slot, then combat should genuinely run.
-    await go('Bank');
-    const dep = page.getByRole('button', { name: 'Deposit', exact: true });
-    if ((await dep.count()) > 0) {
-      await dep.first().click();
-      await page.waitForTimeout(2500);
-    }
-    await go('Combat');
-    await page.getByRole('button', { name: 'Fight' }).first().click();
-    await page.waitForTimeout(5000);
-    text = await page.evaluate(() => document.body.innerText);
-  }
+  const text = await page.evaluate(() => document.body.innerText);
 
   record('combat starts', text.includes('Fighting'), text.match(/Fighting [^\n]*/)?.[0]);
 
@@ -232,7 +208,7 @@ await go('World Boss');
 }
 
 // --- inventory / equip -------------------------------------------------------
-await go('Inventory');
+await go('Chest');
 {
   const equipBtn = page.getByRole('button', { name: 'Equip', exact: true });
   if ((await equipBtn.count()) > 0) {
@@ -246,7 +222,7 @@ await go('Inventory');
     record('equipping reports an outcome', text.includes('Unequip') || msgs.length > 0, msgs.join(' | '));
     await dismissToasts();
   } else {
-    record('inventory has equippable items', false, 'no Equip button found');
+    record('chest lists something to act on', false, 'no Equip button found');
   }
 }
 

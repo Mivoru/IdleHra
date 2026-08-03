@@ -4,7 +4,6 @@
   import Combat from './routes/Combat.svelte';
   import Gathering from './routes/Gathering.svelte';
   import Character from './routes/Character.svelte';
-  import Inventory from './routes/Inventory.svelte';
   import Larder from './routes/Larder.svelte';
   import Market from './routes/Market.svelte';
   import Bank from './routes/Bank.svelte';
@@ -20,6 +19,7 @@
   import Store from './routes/Store.svelte';
   import Settings from './routes/Settings.svelte';
   import Mailbox from './routes/Mailbox.svelte';
+  import Chest from './routes/Chest.svelte';
   import WorldBoss from './routes/WorldBoss.svelte';
   import Boosts from './routes/Boosts.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
@@ -60,7 +60,7 @@
       name: 'Items',
       screens: [
         { key: 'character', label: 'Character' },
-        { key: 'inventory', label: 'Inventory' },
+        { key: 'chest', label: 'Chest' },
         { key: 'larder', label: 'Larder' },
         { key: 'crafting', label: 'Crafting' },
         { key: 'forge', label: 'Forge' },
@@ -198,8 +198,6 @@
       <Gathering />
     {:else if screen === 'character'}
       <Character />
-    {:else if screen === 'inventory'}
-      <Inventory />
     {:else if screen === 'larder'}
       <Larder />
     {:else if screen === 'crafting'}
@@ -230,6 +228,8 @@
       <Settings />
     {:else if screen === 'mailbox'}
       <Mailbox />
+    {:else if screen === 'chest'}
+      <Chest />
     {:else if screen === 'worldboss'}
       <WorldBoss />
     {:else if screen === 'boosts'}

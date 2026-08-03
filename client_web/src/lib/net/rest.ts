@@ -399,6 +399,32 @@ export function fetchGuildShardMatch(): Promise<GuildShardMatch | null> {
 }
 
 // ---------------------------------------------------------------------------
+// The village chest
+// ---------------------------------------------------------------------------
+
+/**
+ * Selling or binning from the chest.
+ *
+ * `Success: false` arrives with HTTP 200 - the item was already gone, or the
+ * quantity was nonsense. Reason names which. Same shape as the guild
+ * application endpoints, and the same trap: a caller that only checks the
+ * status reports a failure as a sale.
+ */
+export interface ChestActionResult {
+  Success: boolean;
+  GoldGained: number;
+  Reason: string;
+}
+
+export function sellFromChest(target: { equipmentId: number } | { itemId: string; quantity: number }) {
+  return authedPost<ChestActionResult>('/api/v1/chest/sell', target);
+}
+
+export function discardFromChest(target: { equipmentId: number } | { itemId: string; quantity: number }) {
+  return authedPost<ChestActionResult>('/api/v1/chest/discard', target);
+}
+
+// ---------------------------------------------------------------------------
 // /api/v1/mailbox/list
 // ---------------------------------------------------------------------------
 

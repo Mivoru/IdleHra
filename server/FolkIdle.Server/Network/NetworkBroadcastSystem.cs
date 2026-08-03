@@ -719,6 +719,18 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/chest/sell" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleChestAction(context, sell: true);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/chest/discard" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleChestAction(context, sell: false);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/guild/shard-match" && context.Request.HttpMethod == "GET")
                     {
                         await HandleGuildShardMatch(context);
@@ -1666,6 +1678,86 @@ namespace FolkIdle.Server.Network
         // id a client attacks with is the id the validator will compare it
         // against - a second, subtly different query here would produce
         // exactly the disconnect this endpoint exists to prevent.
+        private sealed class ChestActionResponse
+        {
+            public bool Success { get; set; }
+            public long GoldGained { get; set; }
+            public string Reason { get; set; } = string.Empty;
+        }
+
+        /// <summary>
+        /// Sells or bins one thing from the village chest.
+        ///
+        /// One handler for both because they differ only in whether gold is
+        /// paid - the lookup, the ownership check and the transaction are
+        /// identical, and duplicating them would be duplicating the part that
+        /// destroys a player's property.
+        ///
+        /// REST rather than a WebSocket command deliberately: the caller needs
+        /// to be told HOW MUCH GOLD it got, and the fixed-layout command packet
+        /// has no reply channel. It is also an explicit, deliberate action - a
+        /// player pressing "sell" is waiting for the answer.
+        /// </summary>
+        private async Task HandleChestAction(HttpListenerContext context, bool sell)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = JsonSerializer.Deserialize<JsonElement>(await reader.ReadToEndAsync());
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                VillageChestEngine.ChestActionResult result;
+                long gold;
+
+                // An equipment id and a material id are different shapes, so
+                // which one is present decides the operation rather than a
+                // separate "kind" field that could disagree with the payload.
+                if (payload.TryGetProperty("equipmentId", out var equipmentElement))
+                {
+                    (result, gold) = await VillageChestEngine.RemoveEquipmentAsync(
+                        db, playerId, equipmentElement.GetInt64(), sell);
+                }
+                else if (payload.TryGetProperty("itemId", out var itemElement))
+                {
+                    long quantity = payload.TryGetProperty("quantity", out var q) ? q.GetInt64() : 0L;
+                    (result, gold) = await VillageChestEngine.RemoveMaterialAsync(
+                        db, playerId, itemElement.GetString() ?? string.Empty, quantity, sell);
+                }
+                else
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new ChestActionResponse
+                {
+                    Success = result == VillageChestEngine.ChestActionResult.Success,
+                    GoldGained = gold,
+                    Reason = result.ToString()
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Chest action error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
         private async Task HandleGuildShardMatch(HttpListenerContext context)
         {
             try

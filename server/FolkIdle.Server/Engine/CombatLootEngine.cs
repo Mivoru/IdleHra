@@ -525,7 +525,20 @@ namespace FolkIdle.Server.Engine
             // player's call, made in the chest with a sell or a bin, not the
             // server's made silently at 3am.
             string affixPayload = BuildAffixPayload(tier, monsterRegion, baseItemId);
-            dbContext.BankEquipmentInstances.Add(new BankEquipmentInstance
+
+            // Modul: EquipmentInstances, NOT the bank.
+            //
+            // An earlier version of this pass routed loot to
+            // BankEquipmentInstances because that table carries AffixPayload
+            // and I had mistaken the backpack's cap for a property of its
+            // table. It is not - the cap lived in the census and the tick gate,
+            // both of which are gone. Routing to the bank quietly broke
+            // EQUIPPING: EquipmentSlotEngine reads EquipmentInstances, as do
+            // forge fusion, affix reroll and market listing, so a player could
+            // loot a Legendary and never be able to wear, upgrade or sell it.
+            //
+            // This table is the chest's equipment half. It is unbounded now.
+            dbContext.EquipmentInstances.Add(new EquipmentInstance
             {
                 BaseItemId = baseItemId,
                 PlayerId = playerId,

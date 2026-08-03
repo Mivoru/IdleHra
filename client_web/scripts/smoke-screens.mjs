@@ -31,7 +31,7 @@ await page.waitForFunction(
 // Every destination in the header, by its visible label.
 const SCREENS = [
   'Combat', 'Gathering', 'World Boss', 'Boosts',
-  'Character', 'Inventory', 'Larder', 'Crafting', 'Forge', 'Bank', 'Mail',
+  'Character', 'Chest', 'Larder', 'Crafting', 'Forge', 'Bank', 'Mail',
   'Market', 'Chat', 'Social', 'Guild',
   'Village', 'Progress', 'Codex', 'Breeding', 'Store', 'Settings',
 ];
