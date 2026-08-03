@@ -309,23 +309,12 @@ namespace FolkIdle.Server.Engine
         // the Human race's variable bonus slots are intentionally not
         // modeled here since this check only needs to be conservative,
         // never exact.
-        // Mirrors MailboxAndBankEngine's own maxBankSlots. Kept as a named
-        // constant here rather than a literal so the two are findable together
-        // - they are the same limit seen from the two ends of the same store.
-        private const int BankEquipmentCapacity = 100;
-
-        /// <summary>
-        /// The lowest quality tier worth a bank slot. Anything below scraps.
-        ///
-        /// Ultra Rare (5) by measurement, not by feel: equipment drops at 1.63%
-        /// of kills and a level-appropriate kill takes about 2.1 seconds, so a
-        /// running character produces roughly 28 pieces an hour. Tier 5+ is
-        /// 4.7% of the rarity table, which is about 1.3 an hour into a
-        /// 100-slot bank - some seventy hours unattended. Tier 4+ would be 3.1
-        /// an hour and about thirty hours, which also clears the target but
-        /// fills the bank with pieces nobody looks at.
-        /// </summary>
-        public const int KeepEquipmentMinimumTier = RarityTier.UltraRare;
+        // Modul: the village chest is UNBOUNDED, so nothing here counts slots.
+        //
+        // There was a keep-threshold and a 100-slot cap in an earlier version
+        // of this pass. Both are gone: a cap only forces the engine to decide
+        // what to destroy, and that decision belongs to the player. The chest
+        // grows; the player sells or bins what they do not want.
 
         private async Task ProcessMonsterLootDropAsync(long playerId, int monsterId, float lootLuckPct)
         {
@@ -380,8 +369,6 @@ namespace FolkIdle.Server.Engine
                 // above puts 1.3 an hour into a 100-slot bank - about 77 hours
                 // - while the other 95% becomes chest material the player can
                 // actually use. The session never stops.
-                int bankedEquipmentCount = await dbContext.BankEquipmentInstances.CountAsync(e => e.PlayerId == playerId);
-                bool bankFull = bankedEquipmentCount >= BankEquipmentCapacity;
 
                 // Roll 1: Crafting Materials, quantity bounded by the loot
                 // table entry's authored [MinQuantity, MaxQuantity] range.
@@ -398,17 +385,17 @@ namespace FolkIdle.Server.Engine
                 // Rolls 2-5: Melee, Ranged, Magic, Helper - each fully
                 // independent of the others and of the materials roll
                 // above.
-                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, bankFull, "_melee_weapon_slot_", MeleeWeaponDropChance);
-                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, bankFull, "_ranged_weapon_slot_", RangedWeaponDropChance);
-                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, bankFull, "_magic_weapon_slot_", MagicWeaponDropChance);
-                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, bankFull, "_helper_offhand_", HelperDropChance);
+                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, "_melee_weapon_slot_", MeleeWeaponDropChance);
+                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, "_ranged_weapon_slot_", RangedWeaponDropChance);
+                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, "_magic_weapon_slot_", MagicWeaponDropChance);
+                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, "_helper_offhand_", HelperDropChance);
 
                 // Regional Bosses always guarantee at least one extra armor
                 // piece on top of whatever the independent rolls produced,
                 // preserving the previous "boss kills feel rewarding" floor.
                 if (isRegionalBoss)
                 {
-                    await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, bankFull, "_armor_slot_", 1.0);
+                    await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, "_armor_slot_", 1.0);
                 }
 
                 await dbContext.SaveChangesAsync();
@@ -515,7 +502,7 @@ namespace FolkIdle.Server.Engine
         // the monster's own regional raw material deposited straight into
         // the infinite Village Stash (Backpack is full) - the drop is
         // never silently discarded during an offline catch-up burst.
-        private async Task TryRollEquipmentCategoryAsync(FolkIdleDbContext dbContext, long playerId, int monsterId, int monsterRegion, float lootLuckPct, bool bankFull, string categorySubstring, double dropChance)
+        private async Task TryRollEquipmentCategoryAsync(FolkIdleDbContext dbContext, long playerId, int monsterId, int monsterRegion, float lootLuckPct, string categorySubstring, double dropChance)
         {
             if (Random.Shared.NextDouble() >= dropChance) return;
 
@@ -525,42 +512,18 @@ namespace FolkIdle.Server.Engine
             int tier = RarityTier.RollTier(lootLuckPct);
             string baseItemId = ContentRegistry.GetItemBaseId(chosenItemId);
 
-            // Below the keep threshold, or with nowhere left to put it: the
-            // piece is scrapped into stackable material rather than dropped on
-            // the floor. The player still SEES it happen - the loot feed
-            // carries a scrap event - so a session's output stays legible
-            // instead of quietly becoming nothing.
+            // Modul: NOTHING IS EVER DESTROYED ON THE WAY IN.
             //
-            // The threshold is the whole reason this stays sustainable. At the
-            // measured 28 drops an hour, Ultra Rare and above is 4.7% of them,
-            // so about 1.3 an hour reaches a 100-slot bank; the rest becomes
-            // material. Scrapping a Godly piece because the bank happens to be
-            // full is a real loss, which is why the bank check is separate and
-            // reported differently below.
-            if (tier < KeepEquipmentMinimumTier || bankFull)
-            {
-                LootTableEntry[] monsterLootTable = ContentRegistry.GetLootTable(GetMonsterLootTableId(monsterId)).ToArray();
-                string scrapMaterialId = monsterLootTable.Length > 0
-                    ? ContentRegistry.GetItemBaseId(monsterLootTable[0].ItemId)
-                    : "iron_ore";
-
-                // Rarer pieces scrap into more material, so a Legendary that
-                // could not be kept is still worth more than a Common that was
-                // never going to be.
-                int scrapValue = Math.Max(1, tier * monsterRegion);
-                await Domain.Economy.InventoryAndStashSystem.DepositToStashAsync(dbContext, playerId, scrapMaterialId, scrapValue);
-
-                int scrapItemId = monsterLootTable.Length > 0 ? monsterLootTable[0].ItemId : 0;
-                // The TIER is carried on the scrap event too, so the loot log
-                // can say "a Legendary was scrapped" rather than reporting a
-                // pile of ore with no history.
-                PublishLootDrop(playerId, monsterId, scrapItemId, scrapValue, (byte)tier, Network.ResponseLootDropPacket.DropKindScrap);
-                return;
-            }
-
-            // Kept pieces go to the BANK, not to a backpack - it is the only
-            // store that carries AffixPayload, and the affixes are what make
-            // one Sentry Helm different from another.
+            // An earlier version of this scrapped anything below a rarity
+            // threshold into material. That was wrong, and wrong in a way the
+            // player would have felt immediately: the forge upgrades a piece by
+            // consuming two others, so a low-tier drop is not junk - it is the
+            // fuel for raising a better one. Auto-scrapping it destroys the
+            // upgrade path to save a slot that no longer needs saving.
+            //
+            // Every piece is stored. Whether it is worth keeping is the
+            // player's call, made in the chest with a sell or a bin, not the
+            // server's made silently at 3am.
             string affixPayload = BuildAffixPayload(tier, monsterRegion, baseItemId);
             dbContext.BankEquipmentInstances.Add(new BankEquipmentInstance
             {

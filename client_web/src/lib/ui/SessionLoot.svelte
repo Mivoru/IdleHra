@@ -1,10 +1,10 @@
 <script lang="ts">
   // Modul: what this session actually produced, best first.
   //
-  // The backpack is gone: materials go straight to the village chest and
-  // equipment to the bank or to scrap, none of which the player watches. So
-  // this feed is now the ONLY place a session's output is visible, which makes
-  // its ordering a real decision rather than a display preference.
+  // The backpack is gone and everything lands in the village chest, which the
+  // player is not watching. So this feed is the ONLY place a session's output
+  // is visible as it happens, which makes its ordering a real decision rather
+  // than a display preference.
   //
   // Sorted by RARITY descending, not by time. A chronological feed of an idle
   // session is a wall of Normal-tier scrap with the one Legendary buried four
@@ -16,7 +16,7 @@
 
   import { lootLog, type LootEntry } from '../stores/game';
   import { itemName, type ContentRegistry } from '../net/content';
-  import { rarityColor, rarityName, shouldGlow } from './rarity';
+  import { rarityColor, shouldGlow } from './rarity';
 
   interface Props {
     registry: ContentRegistry | null;
@@ -27,7 +27,6 @@
   /** ResponseLootDropPacket's DropKind. */
   const KIND_MATERIAL = 0;
   const KIND_EQUIPMENT = 1;
-  const KIND_SCRAP = 2;
 
   interface Row {
     key: string;
@@ -43,9 +42,8 @@
     const byKey = new Map<string, Row>();
 
     for (const entry of $lootLog as LootEntry[]) {
-      // Kind is part of the key: a Legendary that was KEPT and a Legendary
-      // that was SCRAPPED are different outcomes and merging them would hide
-      // the one the player would want to change a setting over.
+      // Kind is part of the key so a material and an equipment piece that
+      // happen to share an id never merge into one row.
       const key = `${entry.dropKind}:${entry.itemId}:${entry.qualityTier}`;
       const existing = byKey.get(key);
       if (existing) {
@@ -66,9 +64,9 @@
     }
 
     return [...byKey.values()].sort(
-      // Rarity first, then equipment above the material it would scrap into,
-      // then most recent - so the top of the list is stable and the tail is
-      // where churn happens.
+      // Rarity first, then equipment above materials at the same tier, then
+      // most recent - so the top of the list is stable and the tail is where
+      // churn happens.
       (a, b) =>
         b.qualityTier - a.qualityTier ||
         (b.dropKind === KIND_EQUIPMENT ? 1 : 0) - (a.dropKind === KIND_EQUIPMENT ? 1 : 0) ||
@@ -76,15 +74,14 @@
     );
   });
 
-  const kept = $derived(rows.filter((r) => r.dropKind === KIND_EQUIPMENT).length);
-  const scrapped = $derived(rows.filter((r) => r.dropKind === KIND_SCRAP).reduce((n, r) => n + r.count, 0));
+  const equipmentCount = $derived(
+    rows.filter((r) => r.dropKind === KIND_EQUIPMENT).reduce((n, r) => n + r.count, 0),
+  );
+  const materialCount = $derived(
+    rows.filter((r) => r.dropKind === KIND_MATERIAL).reduce((n, r) => n + r.quantity, 0),
+  );
 
   function label(row: Row): string {
-    if (row.dropKind === KIND_SCRAP) {
-      // The scrap event carries the tier of the piece that was broken down,
-      // so it can say what was given up rather than reporting anonymous ore.
-      return `${rarityName(row.qualityTier)} scrapped`;
-    }
     return itemName(registry, row.itemId);
   }
 </script>
@@ -93,7 +90,9 @@
   <div class="head">
     <h3>Loot received</h3>
     {#if rows.length > 0}
-      <span class="dim tiny">{kept} kept &middot; {scrapped} scrapped</span>
+      <span class="dim tiny">
+        {equipmentCount} equipment &middot; {materialCount.toLocaleString()} materials
+      </span>
     {/if}
   </div>
 
@@ -102,7 +101,7 @@
   {:else}
     <ul>
       {#each rows as row (row.key)}
-        <li class:scrap={row.dropKind === KIND_SCRAP}>
+        <li>
           <span
             class="name"
             style="color: {row.dropKind === KIND_MATERIAL ? 'var(--text)' : rarityColor(row.qualityTier)}"
@@ -112,9 +111,7 @@
           </span>
 
           {#if row.dropKind === KIND_EQUIPMENT}
-            <span class="tag kept-tag">to bank</span>
-          {:else if row.dropKind === KIND_SCRAP}
-            <span class="tag">to chest</span>
+            <span class="tag kept-tag">equipment</span>
           {/if}
 
           <span class="qty">
@@ -168,13 +165,6 @@
     align-items: baseline;
     gap: 0.45rem;
     font-size: 0.83rem;
-  }
-
-  /* Scrap is dimmed rather than hidden: it is most of the volume and none of
-     the interest, but a player deciding where to set the keep threshold needs
-     to see how much is going that way. */
-  li.scrap {
-    opacity: 0.62;
   }
 
   .name {
