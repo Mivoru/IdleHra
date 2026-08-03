@@ -148,30 +148,92 @@ namespace FolkIdle.Server.Tests
             _fixture = fixture;
         }
 
+        /// <summary>
+        /// Fusion takes THREE ITEMS OF THE SAME RARITY, and charges the tier
+        /// curve with no fodder-quality modifier.
+        ///
+        /// This test used to pin that modifier: tier-1 sacrifices cost 4x and
+        /// tier-4 sacrifices cost 1x, against a tier-1 target. That whole
+        /// mechanism existed because the two sacrifices could be ANY rarity,
+        /// which let a player climb a high-tier item on Normal duplicates. With
+        /// all three rarities required to match, the modifier had exactly one
+        /// possible value and the mismatch it priced is now refused outright.
+        /// </summary>
         [Fact]
-        public async Task Test_ForgeSplicing_FodderPenaltyCalculation()
+        public async Task Test_ForgeSplicing_RequiresMatchingRarityAndChargesTheTierCurve()
         {
             var forgeEngine = new ForgeSplicingEngine(_fixture.ServiceProvider);
 
-            long lowQualityCost = await RunFusionAndMeasureCostAsync(
-                baseItemId: "integration_test_forge_sword_low",
+            long matchedCost = await RunFusionAndMeasureCostAsync(
+                baseItemId: "integration_test_forge_sword_matched",
                 sacrificeQualityTier: 1,
                 forgeEngine);
 
-            long highQualityCost = await RunFusionAndMeasureCostAsync(
-                baseItemId: "integration_test_forge_sword_high",
+            long mismatchedCost = await RunFusionAndMeasureCostAsync(
+                baseItemId: "integration_test_forge_sword_mismatched",
                 sacrificeQualityTier: 4,
                 forgeEngine);
 
-            // Modul: recomputed for the GDD exponential forge cost curve
-            // (BaseGoldCost * 1.5^currentTier, Phase 2 Part 2.3) - target
-            // starts at QualityTier 1, so baseGoldCost = ceil(1000 * 1.5^1)
-            // = 1500 (previously the linear 1000 * (1+1) = 2000). The
-            // fodder-quality penalty multiplier itself (4.0x for tier-1
-            // sacrifices, 1.0x for tier-4 sacrifices) is unchanged.
-            Assert.Equal(6000L, lowQualityCost);
-            Assert.Equal(1500L, highQualityCost);
-            Assert.True(lowQualityCost > highQualityCost);
+            // Target starts at QualityTier 1, so the fee is
+            // ceil(1000 * 1.5^1) = 1500 - flat, with no fodder modifier.
+            Assert.Equal(1500L, matchedCost);
+
+            // Tier-4 sacrifices against a tier-1 target are refused before any
+            // gold moves. Not "more expensive" - rejected.
+            Assert.Equal(0L, mismatchedCost);
+        }
+
+        /// <summary>
+        /// Matched rarities always succeed. The roll, the tier-2 affix lockout
+        /// and the tier-3+ vaporization are gone: with the chest removing
+        /// scrapping, the forge IS how duplicates are disposed of, so a
+        /// mechanic that eats three matched items and returns nothing is a
+        /// dead end with no alternative.
+        /// </summary>
+        [Fact]
+        public async Task Test_ForgeSplicing_MatchedRaritiesAlwaysSucceed()
+        {
+            var forgeEngine = new ForgeSplicingEngine(_fixture.ServiceProvider);
+
+            for (int attempt = 0; attempt < 8; attempt++)
+            {
+                var result = await RunFusionAndReturnResultAsync(
+                    baseItemId: $"integration_test_forge_certain_{attempt}",
+                    startingTier: 3,
+                    forgeEngine);
+
+                Assert.Equal(ForgeSplicingResult.Success, result);
+            }
+        }
+
+        private async Task<ForgeSplicingResult> RunFusionAndReturnResultAsync(string baseItemId, int startingTier, ForgeSplicingEngine forgeEngine)
+        {
+            long targetId, sac1Id, sac2Id;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                bool hasForge = await db.VillageInfrastructures.AnyAsync(
+                    v => v.PlayerId == DbSeeder.PlayerHighId && v.BuildingId == VillageManagementEngine.ForgeBuildingId);
+                if (!hasForge)
+                {
+                    db.VillageInfrastructures.Add(new VillageInfrastructure
+                    {
+                        PlayerId = DbSeeder.PlayerHighId,
+                        BuildingId = VillageManagementEngine.ForgeBuildingId,
+                        CurrentLevel = 10
+                    });
+                }
+
+                var target = new EquipmentInstance { PlayerId = DbSeeder.PlayerHighId, BaseItemId = baseItemId, QualityTier = startingTier };
+                var sac1 = new EquipmentInstance { PlayerId = DbSeeder.PlayerHighId, BaseItemId = baseItemId, QualityTier = startingTier };
+                var sac2 = new EquipmentInstance { PlayerId = DbSeeder.PlayerHighId, BaseItemId = baseItemId, QualityTier = startingTier };
+                db.EquipmentInstances.AddRange(target, sac1, sac2);
+                await db.SaveChangesAsync();
+                targetId = target.Id;
+                sac1Id = sac1.Id;
+                sac2Id = sac2.Id;
+            }
+
+            return await forgeEngine.ExecuteFusionAsync(DbSeeder.PlayerHighId, targetId, sac1Id, sac2Id);
         }
 
         private async Task<long> RunFusionAndMeasureCostAsync(string baseItemId, int sacrificeQualityTier, ForgeSplicingEngine forgeEngine)
@@ -5680,9 +5742,12 @@ namespace FolkIdle.Server.Tests
         {
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
+                // All three at the target's rarity - fusion refuses anything
+                // else, so a fixed tier-4 fodder would measure a rejection
+                // rather than a cost.
                 var target = new EquipmentInstance { PlayerId = playerId, BaseItemId = baseItemId, QualityTier = startingTier };
-                var sac1 = new EquipmentInstance { PlayerId = playerId, BaseItemId = baseItemId, QualityTier = 4 };
-                var sac2 = new EquipmentInstance { PlayerId = playerId, BaseItemId = baseItemId, QualityTier = 4 };
+                var sac1 = new EquipmentInstance { PlayerId = playerId, BaseItemId = baseItemId, QualityTier = startingTier };
+                var sac2 = new EquipmentInstance { PlayerId = playerId, BaseItemId = baseItemId, QualityTier = startingTier };
                 db.EquipmentInstances.AddRange(target, sac1, sac2);
                 await db.SaveChangesAsync();
 

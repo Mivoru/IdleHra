@@ -44,6 +44,20 @@ namespace FolkIdle.Server.Engine
         public const long GatheringFirst = WoodcuttingBand;
         public const long GatheringLast = HerbalismBand + BandSize - 1L;
 
+        // Modul: crafting is a JOB, not a button.
+        //
+        // Every recipe already carried a CraftingTimeMs and nothing used it as
+        // a duration - CraftItem consumed the materials and produced the
+        // result in the same instant, from any screen, with no character
+        // involved. So cooking a hundred meals was a hundred clicks, and a
+        // character could gather or fight but never cook.
+        //
+        // A crafting activity is CraftingBand + the recipe's INDEX in
+        // ContentRegistry.Recipes. Index rather than ResultItemId because
+        // result ids run into the hundreds and would collide with the
+        // gathering bands; the index is dense and bounded by the recipe table.
+        public const long CraftingBand = 5000L;
+
         // Reserved well above every band - see ClientCommandValidator.
         public const long WorldBossActivityId = 9999L;
 
@@ -52,6 +66,11 @@ namespace FolkIdle.Server.Engine
         public static bool IsGatheringActivity(long activityId)
         {
             return activityId >= GatheringFirst && activityId <= GatheringLast;
+        }
+
+        public static bool IsCraftingActivity(long activityId)
+        {
+            return activityId >= CraftingBand && activityId < CraftingBand + BandSize;
         }
 
         public static bool IsCombatActivity(long activityId)

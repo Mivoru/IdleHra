@@ -271,6 +271,19 @@ namespace FolkIdle.Server.Engine
         // clearing these fields after one broadcast.
         public long OfflineElapsedSeconds;
         public long OfflineGoldEarned;
+
+        // Modul: the welcome-back card said "you earned X" for a household of
+        // up to three workers. Per-character so the player can see which one
+        // is idle and which one is carrying them.
+        public int OfflineSlot1Gold;
+        public int OfflineSlot1Xp;
+        public int OfflineSlot1Drops;
+        public int OfflineSlot2Gold;
+        public int OfflineSlot2Xp;
+        public int OfflineSlot2Drops;
+        public int OfflineSlot3Gold;
+        public int OfflineSlot3Xp;
+        public int OfflineSlot3Drops;
         public long OfflineXpEarned;
         public int OfflineMaterialDropsGranted;
         public byte OfflineSummaryTick;

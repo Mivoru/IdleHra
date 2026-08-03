@@ -177,7 +177,10 @@ await go('Social');
 }
 
 // --- chat --------------------------------------------------------------------
-await go('Chat');
+// Chat is no longer a nav tab - it is a floating dock that slides out, with a
+// red unread dot on its handle. Opening it is now a click on that handle.
+await page.getByRole('button', { name: /Show chat/i }).first().click();
+await page.waitForTimeout(600);
 {
   // Located by placeholder, not by `input[type=text]` - the element has no
   // explicit type attribute, which is valid HTML and exactly the kind of
@@ -192,6 +195,15 @@ await go('Chat');
   // A message the server echoed back is proof the whole round trip works:
   // RequestChatMessage out, ResponseChatMessage in, decoded, rendered.
   record('chat message round-trips through the server', text.includes(marker));
+
+  // Shut the dock and confirm the handle is back, so a failure to close is not
+  // mistaken for "no unread" later.
+  await page.getByRole('button', { name: /Hide chat/i }).first().click();
+  await page.waitForTimeout(400);
+  record(
+    'the chat dock closes back to its handle',
+    (await page.getByRole('button', { name: /Show chat/i }).count()) > 0,
+  );
 }
 
 // --- gathering ---------------------------------------------------------------
@@ -259,6 +271,35 @@ await go('Gathering');
     !/Backpack full|EVERYTHING IS STOPPED/i.test(text),
     'storage is the unlimited village chest',
   );
+}
+
+// --- crafting as a job -------------------------------------------------------
+// Crafting used to be instant and needed no character: every recipe carried a
+// CraftingTimeMs that nothing read. It is now an activity in its own band, so
+// the proof is that a character ends up REPORTING it as their job.
+await go('Crafting');
+{
+  const text = await page.evaluate(() => document.body.innerText);
+  record(
+    'crafting is presented as a job, not a button',
+    /Crafting takes time and needs a character/i.test(text),
+  );
+
+  const work = page.getByRole('button', { name: /Put to work/i }).first();
+  const hasWork = (await work.count()) > 0;
+  if (hasWork) {
+    await work.click();
+    await page.waitForTimeout(1500);
+
+    await go('Character');
+    const roster = await page.evaluate(() => document.body.innerText);
+    // The roster names the craft rather than "Idle" or a bare activity id.
+    record(
+      'an assigned character reports the craft as its job',
+      /Smelting:|Cooking:|Alchemy:|Equipment:/i.test(roster),
+      'roster shows the recipe',
+    );
+  }
 }
 
 // --- guild -------------------------------------------------------------------

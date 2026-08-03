@@ -115,12 +115,23 @@ namespace FolkIdle.Server.Domain.Combat
         // drift apart.
         public const int DefaultBackpackCapacity = 20;
 
+        // Modul: crafting as an assignable job. The 10Hz tick counts the time
+        // and this queue carries the finished craft out to CraftingEngine,
+        // which owns the transaction. Same shape as CombatLootEngine's drop
+        // queue: no DB work, no allocation and no await on the hot path.
+        public static readonly System.Collections.Concurrent.ConcurrentQueue<CraftTickCompletion> CraftingTickQueue = new();
+
         // Modul: warp equipment drops used to be bounded by free backpack
         // slots. With unlimited storage that bound is gone, so an explicit one
         // replaces it - this only stops a very long warp from flooding
         // CombatLootEngine's queue in a single resolve, it is not a cap on
         // what the player keeps.
         public const int MaxWarpEquipmentDropsPerResolve = 500;
+
+        // A craft can never be faster than a fifth of a second, however cheap
+        // its recipe - the tick counts in tenths and a zero would make the
+        // completion branch fire on every single tick.
+        public const int MinCraftTicks = 2;
 
         public static int ActiveGlobalEventId { get; private set; }
 
@@ -922,6 +933,19 @@ namespace FolkIdle.Server.Domain.Combat
                 // PlayerRecords; this is the hand-off that makes it live for the
                 // running session, so restocking mid-fight takes effect on the
                 // next tick rather than at the next login.
+                // Modul: crafting as an assignable job. Drained next to every
+                // other cross-engine queue, so a finished craft costs the tick
+                // one dequeue and CraftingEngine does the rest off the hot
+                // path.
+                while (CraftingTickQueue.TryDequeue(out var craftCompletion))
+                {
+                    long craftPlayerId = craftCompletion.PlayerId;
+                    int craftResultItemId = craftCompletion.ResultItemId;
+                    SafeDispatchAsync("Crafting.Job", craftPlayerId, async () => {
+                        await _craftingEngine.ExecuteCraftingAsync(craftPlayerId, craftResultItemId);
+                    });
+                }
+
                 while (_playerRegistry.LarderSlotUpdateQueue.TryDequeue(out var larderUpdate))
                 {
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, larderUpdate.PlayerId);
@@ -3326,6 +3350,15 @@ namespace FolkIdle.Server.Domain.Combat
                                 LastSkillCastResultTick = currentPayload.LastSkillCastResultTick,
                                 OfflineElapsedSeconds = currentPayload.OfflineElapsedSeconds,
                                 OfflineGoldEarned = currentPayload.OfflineGoldEarned,
+                                OfflineSlot1Gold = currentPayload.OfflineSlot1Gold,
+                                OfflineSlot1Xp = currentPayload.OfflineSlot1Xp,
+                                OfflineSlot1Drops = currentPayload.OfflineSlot1Drops,
+                                OfflineSlot2Gold = currentPayload.OfflineSlot2Gold,
+                                OfflineSlot2Xp = currentPayload.OfflineSlot2Xp,
+                                OfflineSlot2Drops = currentPayload.OfflineSlot2Drops,
+                                OfflineSlot3Gold = currentPayload.OfflineSlot3Gold,
+                                OfflineSlot3Xp = currentPayload.OfflineSlot3Xp,
+                                OfflineSlot3Drops = currentPayload.OfflineSlot3Drops,
                                 OfflineXpEarned = currentPayload.OfflineXpEarned,
                                 OfflineMaterialDropsGranted = currentPayload.OfflineMaterialDropsGranted,
                                 OfflineSummaryTick = currentPayload.OfflineSummaryTick,
@@ -4360,10 +4393,17 @@ namespace FolkIdle.Server.Domain.Combat
             if (extraIterations < 0) extraIterations = 0;
 
             // Normal tick (i = 0)
-            if (payload.ActiveActivityId > 0)
+            if (payload.ActiveActivityId > 0 && payload.ActivityHaltReason != Network.ActivityHaltReason.OutOfFood)
             {
                 // Running and earning: whatever stopped the player last has
                 // been resolved, so the reason must not linger.
+                //
+                // OutOfFood is exempt because it no longer stops anything - it
+                // is a standing warning that the character is fighting without
+                // healing. Clearing it here would erase it on the very next
+                // tick and the player would never see it. It is cleared where
+                // it stops being true: when food is eaten, and when the larder
+                // is stocked.
                 payload.ActivityHaltReason = Network.ActivityHaltReason.None;
             }
 
@@ -4376,12 +4416,6 @@ namespace FolkIdle.Server.Domain.Combat
             {
                 for (int i = 0; i < extraIterations; i++)
                 {
-                    if (payload.ActiveActivityId > 0 && payload.InventorySpaceRemaining <= 0)
-                    {
-                        payload.SpeedMultiplier = 1;
-                        break;
-                    }
-
                     ProcessPassiveVillageTick(ref payload, TickIntervalSeconds, now);
                     ProcessAllSlotSubTicks(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
                 }
@@ -4798,7 +4832,11 @@ namespace FolkIdle.Server.Domain.Combat
             return (elapsedMs / intervalMs) > (previousMs / intervalMs);
         }
 
-        private static void SwapSlotIntoActiveRegister(ref TickStatePayload payload, int slotIndex)
+        // internal: OfflineSimulationEngine needs the same swap to catch up
+        // characters 2 and 3. Before that it only ever simulated whatever was
+        // in the active register, which is always slot 1 - so an assigned
+        // second character earned nothing at all while the player was away.
+        internal static void SwapSlotIntoActiveRegister(ref TickStatePayload payload, int slotIndex)
         {
             if (slotIndex == 0)
             {
@@ -5000,7 +5038,34 @@ namespace FolkIdle.Server.Domain.Combat
 
             payload.IsDirty = true;
 
-            if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out var gatheringNode))
+
+            if (ContentRegistry.TryGetRecipeByActivityId(payload.ActiveActivityId, out var craftingRecipe))
+            {
+                // Modul: crafting as an assignable job. CraftingTimeMs was
+                // authored on all 104 recipes and read by nothing - a craft
+                // was instant and needed no character. It is now a job like
+                // any other: one assigned character, real elapsed time, and
+                // it repeats until the player stops it or runs out of
+                // materials (CraftingEngine refuses the craft, the tick keeps
+                // counting, and the halt shows up as nothing being produced).
+                int craftTicks = craftingRecipe.CraftingTimeMs / 100;
+                if (craftTicks < MinCraftTicks) craftTicks = MinCraftTicks;
+
+                payload.RequiredProgressTicks = craftTicks;
+                payload.GatheringProgressTicks++;
+
+                if (payload.GatheringProgressTicks >= craftTicks)
+                {
+                    payload.GatheringProgressTicks = 0;
+                    payload.HarvestLoopCount++;
+                    CraftingTickQueue.Enqueue(new CraftTickCompletion
+                    {
+                        PlayerId = payload.PlayerId,
+                        ResultItemId = craftingRecipe.ResultItemId
+                    });
+                }
+            }
+            else if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out var gatheringNode))
             {
                 int masteryLevel = GetMasteryLevel(ref payload, gatheringNode.ProfessionType);
 
@@ -5450,6 +5515,14 @@ namespace FolkIdle.Server.Domain.Combat
                 if (bestFoodIndex == 1) { payload.Food1_Count--; payload.PlayerHp += highestHeal; }
                 else if (bestFoodIndex == 2) { payload.Food2_Count--; payload.PlayerHp += highestHeal; }
                 else if (bestFoodIndex == 3) { payload.Food3_Count--; payload.PlayerHp += highestHeal; }
+
+                if (bestFoodIndex > 0)
+                {
+                    if (payload.ActivityHaltReason == Network.ActivityHaltReason.OutOfFood)
+                    {
+                        payload.ActivityHaltReason = Network.ActivityHaltReason.None;
+                    }
+                }
                 else
                 {
                     if (liveSessionContexts.TryGetValue(payload.PlayerId, out var telemetrySessionContext))
@@ -5461,15 +5534,23 @@ namespace FolkIdle.Server.Domain.Combat
                                 payload.ActiveActivityId));
                     }
 
-                    // Modul: halt reasons. This was the single most common
-                    // way a session ended and the only trace of it was a
-                    // telemetry metric no player can see - the character just
-                    // stopped. Now named on the wire.
+                    // Modul: an empty larder no longer ENDS the activity.
+                    //
+                    // This used to stop combat outright the first time health
+                    // crossed the auto-eat threshold with nothing to eat -
+                    // which meant that at a 50% threshold a character with a
+                    // full health bar and no food stopped at half health,
+                    // having never been in danger. Food was therefore not a
+                    // sustain system but a licence to play at all, and the
+                    // only way to notice was that everything went quiet.
+                    //
+                    // Now the character simply does not heal. It keeps
+                    // fighting and, if it loses, dies and respawns - which the
+                    // death branch below already handles and which the player
+                    // can see happening. The halt reason is still reported so
+                    // "you are out of food" remains visible; it is now a
+                    // warning rather than a full stop.
                     payload.ActivityHaltReason = Network.ActivityHaltReason.OutOfFood;
-                    payload.ActiveActivityId = 0;
-                    payload.CurrentMonsterHp = 0;
-                    payload.CurrentMonsterId = 0;
-                    payload.CombatTargetTickAccumulator = 0;
                 }
 
                 if (payload.PlayerHp > effectiveMaxHp) payload.PlayerHp = effectiveMaxHp;

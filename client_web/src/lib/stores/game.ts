@@ -208,6 +208,14 @@ export function pushLocalNotice(message: string, tone: 'info' | 'error' = 'error
 // Offline summary
 // ---------------------------------------------------------------------------
 
+export interface OfflineCharacterEarnings {
+  slot: number;
+  raceId: number;
+  gold: number;
+  xp: number;
+  drops: number;
+}
+
 export interface OfflineSummary {
   elapsedSeconds: number;
   goldEarned: number;
@@ -215,6 +223,9 @@ export interface OfflineSummary {
   materialDropsGranted: number;
   /** True when the catch-up granted nothing at all - see the note below. */
   earnedNothing: boolean;
+  /** One row per character that exists, so an idle worker is visible as a
+   *  row of zeroes rather than by its absence. */
+  perCharacter: OfflineCharacterEarnings[];
 }
 
 /**
@@ -408,12 +419,43 @@ export function startSession(token: string): void {
           (!earnedNothing || packet.OfflineElapsedSeconds >= IDLE_WARNING_THRESHOLD_SECONDS);
 
         if (worthShowing && isFirstPacketOfSession) {
+          const EMPTY = '00000000-0000-0000-0000-000000000000';
+          const perCharacter: OfflineCharacterEarnings[] = [];
+          if (packet.Slot1_CharacterId !== EMPTY) {
+            perCharacter.push({
+              slot: 1,
+              raceId: packet.Slot1_RaceId,
+              gold: packet.OfflineSlot1Gold,
+              xp: packet.OfflineSlot1Xp,
+              drops: packet.OfflineSlot1Drops,
+            });
+          }
+          if (packet.Slot2_CharacterId !== EMPTY) {
+            perCharacter.push({
+              slot: 2,
+              raceId: packet.Slot2_RaceId,
+              gold: packet.OfflineSlot2Gold,
+              xp: packet.OfflineSlot2Xp,
+              drops: packet.OfflineSlot2Drops,
+            });
+          }
+          if (packet.Slot3_CharacterId !== EMPTY) {
+            perCharacter.push({
+              slot: 3,
+              raceId: packet.Slot3_RaceId,
+              gold: packet.OfflineSlot3Gold,
+              xp: packet.OfflineSlot3Xp,
+              drops: packet.OfflineSlot3Drops,
+            });
+          }
+
           offlineSummary.set({
             elapsedSeconds: packet.OfflineElapsedSeconds,
             goldEarned: packet.OfflineGoldEarned,
             xpEarned: packet.OfflineXpEarned,
             materialDropsGranted: packet.OfflineMaterialDropsGranted,
             earnedNothing,
+            perCharacter,
           });
         }
       }

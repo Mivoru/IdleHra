@@ -41,6 +41,45 @@ namespace FolkIdle.Server.Engine
         // milli-HP regardless of which food slot is consumed).
         private const int AutoEatHealPerFoodUnitMilliHp = 50000;
 
+        // Modul: THE BACKPACK CAPPED OFFLINE PROGRESS AT TWENTY.
+        //
+        // Every bound in this file was `payload.InventorySpaceRemaining`. With
+        // a 20 slot backpack that meant a night away produced at most twenty
+        // gathers and twenty kills' worth of drops - the rest of the elapsed
+        // time was pushed into the chrono bank as "overflow", which is why the
+        // Time Warp screen always had hours banked and the welcome-back card
+        // always showed almost nothing. Storage is now one unlimited village
+        // chest, so the real bound is what a single login may safely enqueue
+        // and write, not what a character could carry.
+        //
+        // Gathering loot is granted analytically (one aggregated row per item)
+        // so its ceiling only needs to stop absurd arithmetic. Equipment drops
+        // enqueue one CombatLootEngine request each, so theirs is much tighter
+        // and is per slot.
+        private const int MaxOfflineGatherActions = 200_000;
+        private const int MaxOfflineLootRolls = 200_000;
+        private const int MaxOfflineEquipmentDropsPerSlot = 500;
+
+        private static bool SlotHoldsCharacter(ref TickStatePayload payload, int slotIndex)
+        {
+            return slotIndex switch
+            {
+                0 => payload.Slot1_CharacterId != Guid.Empty,
+                1 => payload.Slot2_CharacterId != Guid.Empty,
+                2 => payload.Slot3_CharacterId != Guid.Empty,
+                _ => false
+            };
+        }
+
+        // The per-slot summary fields are ints on the wire, so a delta that
+        // somehow exceeded int range saturates rather than wrapping negative -
+        // a negative "you earned" line is worse than a clamped one.
+        private static int ClampToInt(long value)
+        {
+            if (value <= 0L) return 0;
+            return value > int.MaxValue ? int.MaxValue : (int)value;
+        }
+
         public static async Task<TickStatePayload> ExtrapolateOfflineProgressAsync(FolkIdleDbContext db, TickStatePayload payload, long currentUnixTimestamp)
         {
             if (payload.LastLogoutTimestamp == 0)
@@ -89,39 +128,87 @@ namespace FolkIdle.Server.Engine
             long xpBeforeOfflineCatchUp = payload.CurrentXp;
             int materialDropsGrantedThisCatchUp = 0;
 
-            if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out GatheringNodeDefinition gatheringNode))
-            {
-                LootProjection projection = CalculateGatheringProjection(ref payload, gatheringNode, elapsedSeconds);
-                int granted = await GrantProjectedLootAsync(db, payload.PlayerId, projection, payload.InventorySpaceRemaining);
-                payload.InventorySpaceRemaining -= granted;
-                materialDropsGrantedThisCatchUp += granted;
-            }
-            else if (payload.ActiveActivityId > 0)
-            {
-                LootProjection projection = CalculateCombatProjection(ref payload, elapsedSeconds);
-                if (projection.IsValid)
-                {
-                    // Modul: equipment drop requests are reserved against
-                    // inventory space first (bounded by kill count and
-                    // available slots inside CalculateCombatProjection) so the
-                    // commodity roll below only competes for whatever space
-                    // remains, and a long-offline player never enqueues more
-                    // CombatLootEngine requests than they have room to receive.
-                    payload.InventorySpaceRemaining -= projection.EquipmentDropsGranted;
-                    materialDropsGrantedThisCatchUp += projection.EquipmentDropsGranted;
+            // Modul: EVERY CHARACTER CATCHES UP, not just slot 1.
+            //
+            // This method only ever read payload.ActiveActivityId, which is the
+            // ACTIVE REGISTER - always slot 1. Characters 2 and 3 could be
+            // bred, housed, aged and given a job, and then earned exactly
+            // nothing for every hour the player was away. The live tick has
+            // walked all three slots since the multi-slot overhaul; this did
+            // not, so the two disagreed about what a character does.
+            //
+            // Same swap the live tick uses, so "what a slot earns offline" and
+            // "what it earns online" read the identical register rather than
+            // two descriptions of it.
+            int unlockedSlots = CharacterSlotEngine.GetUnlockedSlotCount(payload.TownHallLevel);
 
-                    int granted = await GrantProjectedLootAsync(db, payload.PlayerId, projection, payload.InventorySpaceRemaining);
-                    payload.InventorySpaceRemaining -= granted;
-                    materialDropsGrantedThisCatchUp += granted;
-                }
-                else
-                {
-                    BankOverflowSeconds(ref payload, elapsedSeconds);
-                }
-            }
-            else
+            for (int slotIndex = 0; slotIndex < unlockedSlots; slotIndex++)
             {
-                BankOverflowSeconds(ref payload, elapsedSeconds);
+                if (slotIndex > 0 && !SlotHoldsCharacter(ref payload, slotIndex))
+                {
+                    continue;
+                }
+
+                SimulationEngine.SwapSlotIntoActiveRegister(ref payload, slotIndex);
+                try
+                {
+                    long slotGoldBefore = payload.CurrentGold;
+                    long slotXpBefore = payload.CurrentXp;
+                    int slotDrops = 0;
+
+                    if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out GatheringNodeDefinition gatheringNode))
+                    {
+                        LootProjection projection = CalculateGatheringProjection(ref payload, gatheringNode, elapsedSeconds);
+                        slotDrops += await GrantProjectedLootAsync(db, payload.PlayerId, projection, MaxOfflineLootRolls);
+                    }
+                    else if (payload.ActiveActivityId > 0)
+                    {
+                        LootProjection projection = CalculateCombatProjection(ref payload, elapsedSeconds);
+                        if (projection.IsValid)
+                        {
+                            slotDrops += projection.EquipmentDropsGranted;
+                            slotDrops += await GrantProjectedLootAsync(db, payload.PlayerId, projection, MaxOfflineLootRolls);
+                        }
+                        else if (slotIndex == 0)
+                        {
+                            // Only slot 1 banks unusable time. Banking once per
+                            // idle slot would triple a player's chrono reserve
+                            // for the crime of owning characters.
+                            BankOverflowSeconds(ref payload, elapsedSeconds);
+                        }
+                    }
+                    else if (slotIndex == 0)
+                    {
+                        BankOverflowSeconds(ref payload, elapsedSeconds);
+                    }
+
+                    int slotGold = ClampToInt(payload.CurrentGold - slotGoldBefore);
+                    int slotXp = ClampToInt(payload.CurrentXp - slotXpBefore);
+                    materialDropsGrantedThisCatchUp += slotDrops;
+
+                    switch (slotIndex)
+                    {
+                        case 0:
+                            payload.OfflineSlot1Gold = slotGold;
+                            payload.OfflineSlot1Xp = slotXp;
+                            payload.OfflineSlot1Drops = slotDrops;
+                            break;
+                        case 1:
+                            payload.OfflineSlot2Gold = slotGold;
+                            payload.OfflineSlot2Xp = slotXp;
+                            payload.OfflineSlot2Drops = slotDrops;
+                            break;
+                        default:
+                            payload.OfflineSlot3Gold = slotGold;
+                            payload.OfflineSlot3Xp = slotXp;
+                            payload.OfflineSlot3Drops = slotDrops;
+                            break;
+                    }
+                }
+                finally
+                {
+                    SimulationEngine.SwapSlotIntoActiveRegister(ref payload, slotIndex);
+                }
             }
 
             payload.OfflineElapsedSeconds = elapsedSeconds;
@@ -248,7 +335,7 @@ namespace FolkIdle.Server.Engine
             double actionIntervalSeconds = requiredTicks / 10.0;
             double totalActionsDouble = elapsedSeconds / actionIntervalSeconds;
 
-            long allowedActions = (long)Math.Min(totalActionsDouble, payload.InventorySpaceRemaining);
+            long allowedActions = (long)Math.Min(totalActionsDouble, MaxOfflineGatherActions);
             double usedSeconds = allowedActions * actionIntervalSeconds;
             double overflowSeconds = elapsedSeconds - usedSeconds;
             BankOverflowSeconds(ref payload, (long)overflowSeconds);
@@ -398,7 +485,7 @@ namespace FolkIdle.Server.Engine
             // available inventory space (reserved by the caller in
             // ExtrapolateOfflineProgressAsync) so a long-offline player cannot
             // flood CombatLootEngine's queue/transactions in a single login.
-            int equipmentDropsToGrant = (int)Math.Min(totalKills, Math.Max(0, payload.InventorySpaceRemaining));
+            int equipmentDropsToGrant = (int)Math.Min(totalKills, MaxOfflineEquipmentDropsPerSlot);
             for (int i = 0; i < equipmentDropsToGrant; i++)
             {
                 CombatLootEngine.DropRequestQueue.Enqueue(new CombatLootDropRequest

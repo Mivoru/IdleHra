@@ -8,7 +8,7 @@
   import Market from './routes/Market.svelte';
   import Crafting from './routes/Crafting.svelte';
   import Forge from './routes/Forge.svelte';
-  import Chat from './routes/Chat.svelte';
+  import ChatDock from './lib/ui/ChatDock.svelte';
   import Social from './routes/Social.svelte';
   import GuildOps from './routes/GuildOps.svelte';
   import Progression from './routes/Progression.svelte';
@@ -70,7 +70,6 @@
       name: 'Others',
       screens: [
         { key: 'market', label: 'Market' },
-        { key: 'chat', label: 'Chat' },
         { key: 'social', label: 'Social' },
         { key: 'guildops', label: 'Guild' },
       ],
@@ -204,8 +203,6 @@
       <Forge />
     {:else if screen === 'market'}
       <Market />
-    {:else if screen === 'chat'}
-      <Chat />
     {:else if screen === 'social'}
       <Social />
     {:else if screen === 'guildops'}
@@ -241,6 +238,7 @@
     {/if}
 
     <OfflineSummary />
+    <ChatDock />
     <Toasts />
   {:else}
     <Login onAuthenticated={(newToken) => (token = newToken)} />

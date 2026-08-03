@@ -443,6 +443,7 @@ export function executeForgeFusion(
   sacrificeOneId: number,
   sacrificeTwoId: number,
   forgeLevel: number,
+  match?: { sameBase: boolean; sameRarity: boolean },
 ): CommandOutcome {
   if (forgeLevel <= 0) {
     return refuse('Build a Forge in your village first.');
@@ -453,12 +454,70 @@ export function executeForgeFusion(
   if (targetId === sacrificeOneId || targetId === sacrificeTwoId || sacrificeOneId === sacrificeTwoId) {
     return refuse('The target and both sacrifices must be three different items.');
   }
+  // ForgeSplicingEngine requires all three to share a BaseItemId AND a
+  // QualityTier. The rarity rule is new; before it, any two sacrifices of any
+  // rarity would do, which let a player climb a Legendary on Normal fodder.
+  if (match && (!match.sameBase || !match.sameRarity)) {
+    return refuse(
+      match.sameBase
+        ? 'All three items must be the same rarity.'
+        : 'All three items must be the same item.',
+    );
+  }
 
   connection.send({
     Command: CommandType.ExecuteForgeFusion,
     TargetId: targetId,
     SecondaryId: sacrificeOneId,
     TertiaryId: sacrificeTwoId,
+  });
+  return OK;
+}
+
+// ---------------------------------------------------------------------------
+// Character assignment
+// ---------------------------------------------------------------------------
+
+/** Guid.Empty. A ChangeActivity carrying this applies to the live session
+ *  payload (the legacy single-character path) rather than to a named slot. */
+export const EMPTY_GUID = '00000000-0000-0000-0000-000000000000';
+
+/**
+ * Puts one specific character on one specific activity.
+ *
+ * SimulationEngine routes ChangeActivity by TargetGuid: empty means "whoever
+ * is in slot 1", a real character id means that character. The server has
+ * supported this since the multi-slot overhaul and no screen ever sent it, so
+ * characters 2 and 3 could be bred, housed and aged but never given a job.
+ *
+ * ValidateChangeActivityRequest DISCONNECTS on an activity id it does not
+ * recognise, and CharacterSlotEngine refuses a node another of your own
+ * characters already works (NodeOccupied) - the caller is expected to have
+ * offered only legal choices, and this refuses the rest rather than letting
+ * the session die.
+ */
+export function assignCharacterActivity(
+  characterId: string,
+  activityId: number,
+  options?: { unlocked?: boolean; takenBy?: string | null },
+): CommandOutcome {
+  if (!characterId || characterId === EMPTY_GUID) {
+    return refuse('That slot has no character in it.');
+  }
+  if (options?.unlocked === false) {
+    return refuse('That character slot is still locked.');
+  }
+  if (!Number.isInteger(activityId) || activityId < 0) {
+    return refuse('Pick something for this character to do.');
+  }
+  if (activityId > 0 && options?.takenBy) {
+    return refuse(`${options.takenBy} is already working that.`);
+  }
+
+  connection.send({
+    Command: CommandType.ChangeActivity,
+    TargetId: activityId,
+    TargetGuid: characterId,
   });
   return OK;
 }

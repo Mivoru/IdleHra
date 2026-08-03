@@ -1,5 +1,7 @@
 <script lang="ts">
   import { offlineSummary, dismissOfflineSummary } from '../stores/game';
+  import RaceIcon from './RaceIcon.svelte';
+  import { raceName } from './races';
 
   function duration(seconds: number): string {
     if (seconds < 60) return `${seconds} seconds`;
@@ -41,6 +43,38 @@
           <div><dt>XP</dt><dd>+{summary.xpEarned.toLocaleString()}</dd></div>
           <div><dt>Materials</dt><dd>+{summary.materialDropsGranted.toLocaleString()}</dd></div>
         </dl>
+
+        <!-- Per character, because the household has up to three workers and
+             one aggregate number cannot tell you that two of them stood still.
+             A row of zeroes is the point, not noise. -->
+        {#if summary.perCharacter.length > 1}
+          <table class="crew">
+            <thead>
+              <tr><th>Character</th><th>Gold</th><th>XP</th><th>Drops</th></tr>
+            </thead>
+            <tbody>
+              {#each summary.perCharacter as worker (worker.slot)}
+                <tr class:idle={worker.gold === 0 && worker.xp === 0 && worker.drops === 0}>
+                  <td class="who">
+                    <RaceIcon raceId={worker.raceId} />
+                    <span>Slot {worker.slot}</span>
+                    <span class="dim">{raceName(worker.raceId)}</span>
+                  </td>
+                  <td>{worker.gold.toLocaleString()}</td>
+                  <td>{worker.xp.toLocaleString()}</td>
+                  <td>{worker.drops.toLocaleString()}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+
+          {#if summary.perCharacter.some((w) => w.gold === 0 && w.xp === 0 && w.drops === 0)}
+            <p class="idle">
+              A character on zero was not assigned to anything. Give them a job
+              on the <strong>Character</strong> screen.
+            </p>
+          {/if}
+        {/if}
       {/if}
 
       <button onclick={dismissOfflineSummary}>Continue</button>
@@ -49,6 +83,42 @@
 {/if}
 
 <style>
+  .crew {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.6rem 0 0.2rem;
+    font-size: 0.85rem;
+  }
+
+  .crew th {
+    text-align: right;
+    font-weight: 600;
+    opacity: 0.6;
+    padding: 0.2rem 0.3rem;
+  }
+
+  .crew th:first-child {
+    text-align: left;
+  }
+
+  .crew td {
+    text-align: right;
+    padding: 0.25rem 0.3rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .crew td.who {
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .crew tr.idle td {
+    opacity: 0.55;
+  }
+
   .backdrop {
     position: fixed;
     inset: 0;

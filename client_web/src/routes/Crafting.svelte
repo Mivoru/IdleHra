@@ -2,7 +2,8 @@
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { queryKeys, fetchRecipes, type CraftingRecipe } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
-  import { startTreeCraft } from '../lib/net/commands';
+  import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
+  import { craftingActivityId } from '../lib/ui/slots';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import { craftingProfessionName } from '../lib/ui/slots';
 
@@ -51,9 +52,52 @@
     (recipes.data?.Recipes ?? []).filter((r) => isAffordable(r) && isUnlocked(r)).length,
   );
 
-  function craft(recipe: CraftingRecipe) {
-    const outcome = startTreeCraft(recipe.ResultItemId);
+  // Modul: crafting is a JOB now, not a button.
+  //
+  // Every recipe has always carried a CraftingTimeMs and nothing read it: a
+  // craft consumed its materials and produced its result in the same instant,
+  // with no character involved. So a hundred meals was a hundred clicks, and a
+  // character could gather or fight but never cook.
+  //
+  // Assigning replaces the instant craft rather than sitting beside it - an
+  // instant button next to a timed job is just the timed job being optional,
+  // which is the state this is meant to leave.
+  const workers = $derived(
+    snap
+      ? [
+          { slot: 1, id: snap.Slot1_CharacterId, busy: Number(snap.ActiveActivityId) },
+          { slot: 2, id: snap.Slot2_CharacterId, busy: snap.Slot2ActivityId },
+          { slot: 3, id: snap.Slot3_CharacterId, busy: snap.Slot3ActivityId },
+        ].filter((w) => w.id !== EMPTY_GUID)
+      : [],
+  );
+
+  let worker = $state(1);
+
+  // The activity id is the recipe's INDEX in the server's table, and this list
+  // is that same table in that same order - so the index has to come from the
+  // unfiltered array, never from the filtered/sorted view on screen.
+  function activityIdFor(recipe: CraftingRecipe): number {
+    const index = (recipes.data?.Recipes ?? []).findIndex(
+      (r) => r.ResultItemId === recipe.ResultItemId,
+    );
+    return index < 0 ? -1 : craftingActivityId(index);
+  }
+
+  function putToWork(recipe: CraftingRecipe) {
+    const chosen = workers.find((w) => w.slot === worker);
+    if (!chosen) return pushLocalNotice('No character to assign.');
+
+    const activityId = activityIdFor(recipe);
+    if (activityId < 0) return pushLocalNotice('That recipe is not on the server list.');
+
+    const clash = workers.find((w) => w.slot !== worker && w.busy === activityId);
+    const outcome = assignCharacterActivity(chosen.id, activityId, {
+      takenBy: clash ? `Slot ${clash.slot}` : null,
+    });
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
+
+    pushLocalNotice(`Slot ${worker} is now making ${prettifyBaseId(recipe.ResultBaseItemId)}.`, 'info');
     setTimeout(() => {
       client.invalidateQueries({ queryKey: queryKeys.recipes });
       client.invalidateQueries({ queryKey: queryKeys.inventory });
@@ -70,6 +114,24 @@
         {#if snap}&middot; Workshop {snap.CraftingWorkshopLevel}{/if}
       </span>
     </div>
+
+    <p class="dim small">
+      Crafting takes time and needs a character. Assign one and they will keep
+      making it until you give them something else to do.
+    </p>
+
+    {#if workers.length === 0}
+      <p class="dim tiny">No character available to assign.</p>
+    {:else}
+      <label class="worker">
+        Character
+        <select bind:value={worker}>
+          {#each workers as w (w.slot)}
+            <option value={w.slot}>Slot {w.slot}</option>
+          {/each}
+        </select>
+      </label>
+    {/if}
 
     <div class="filters">
       <input placeholder="Filter by name..." bind:value={search} />
@@ -90,7 +152,13 @@
           <li class:ready>
             <div class="line">
               <strong>{prettifyBaseId(recipe.ResultBaseItemId)}</strong>
-              <button class="tiny-btn" disabled={!ready} onclick={() => craft(recipe)}>Craft</button>
+              <button
+                class="tiny-btn"
+                disabled={!ready || workers.length === 0}
+                onclick={() => putToWork(recipe)}
+              >
+                {workers.some((w) => w.busy === activityIdFor(recipe)) ? 'Working' : 'Put to work'}
+              </button>
             </div>
 
             <div class="dim tiny meta">
@@ -132,6 +200,18 @@
 </div>
 
 <style>
+  .worker {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  .worker select {
+    width: auto;
+  }
+
   .wrap {
     padding: 1rem;
   }

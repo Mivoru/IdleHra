@@ -676,6 +676,11 @@ namespace FolkIdle.Server.Engine
                 return true;
             }
 
+            if (ContentRegistry.TryGetRecipeByActivityId(targetActivityId, out _))
+            {
+                return true;
+            }
+
             if (targetActivityId <= ContentRegistry.Monsters.Length)
             {
                 return true;

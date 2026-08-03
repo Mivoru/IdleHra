@@ -192,9 +192,23 @@ export function craftingProfessionName(professionType: number): string {
 // message that makes them NOT go and fix it. Whether the server should behave
 // the way its comment claims is a gameplay decision; saying what it actually
 // does is not.
+// ActivityIdBands.CraftingBand. A crafting activity is the band plus the
+// recipe's INDEX in ContentRegistry.Recipes - not its result item id, which
+// would collide with the gathering bands.
+export const CRAFTING_BAND = 5000;
+export const CRAFTING_BAND_SIZE = 1000;
+
+export function isCraftingActivity(activityId: number): boolean {
+  return activityId >= CRAFTING_BAND && activityId < CRAFTING_BAND + CRAFTING_BAND_SIZE;
+}
+
+export function craftingActivityId(recipeIndex: number): number {
+  return CRAFTING_BAND + recipeIndex;
+}
+
 export const HALT_REASONS: Record<number, string> = {
   0: '',
-  1: 'Out of food - the larder is empty, so auto-eat stopped the activity.',
+  1: 'Out of food - auto-eat has nothing left, so you are fighting without healing.',
   2: 'Died and respawned. Combat activities stop on death; gathering does not.',
   // 3 was "backpack full". The backpack is gone - storage is one unlimited
   // village chest - and the server no longer sets this reason. Kept mapped so

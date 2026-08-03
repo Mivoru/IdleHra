@@ -1,4 +1,10 @@
 <script lang="ts">
+  // Modul: this is the chat PANEL. It renders full-page on its own route and
+  // inside the floating dock (see ChatDock.svelte) - the dock is where the
+  // collapse state and the unread marker live, so this file stays a plain
+  // channel view either way.
+  let { docked = false }: { docked?: boolean } = $props();
+
   import { createQuery } from '@tanstack/svelte-query';
   import { chatLog, type ChatEntry } from '../lib/stores/game';
   import { connection } from '../lib/net/connection';
@@ -79,7 +85,7 @@
   }
 </script>
 
-<div class="wrap">
+<div class="wrap" class:docked>
   <section class="panel">
     <div class="tabs">
       {#each CHANNELS as channel}
@@ -145,6 +151,30 @@
 <style>
   .wrap {
     padding: 1rem;
+  }
+
+  /* Inside the dock the panel IS the window, so it drops its own page
+     padding, its border and its background - the dock supplies all three,
+     translucent. */
+  .wrap.docked {
+    padding: 0;
+    height: 100%;
+  }
+
+  .wrap.docked .panel {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0.6rem 0.75rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .wrap.docked .log {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
 
   .panel {

@@ -689,6 +689,35 @@ namespace FolkIdle.Server.Engine
         };
         public static ReadOnlySpan<RecipeDefinition> Recipes => _recipes;
 
+        // Modul: crafting as an assignable job. Maps a crafting-band activity
+        // id back to the recipe it names. The index is the identity here, so
+        // reordering _recipes would reassign every character mid-craft - which
+        // is why this is the only place that converts between the two and why
+        // the band comment says "index", loudly.
+        public static bool TryGetRecipeByActivityId(long activityId, out RecipeDefinition recipe)
+        {
+            if (!ActivityIdBands.IsCraftingActivity(activityId))
+            {
+                recipe = default;
+                return false;
+            }
+
+            long index = activityId - ActivityIdBands.CraftingBand;
+            if (index < 0 || index >= _recipes.Length)
+            {
+                recipe = default;
+                return false;
+            }
+
+            recipe = _recipes[index];
+            return true;
+        }
+
+        public static long GetActivityIdForRecipeIndex(int recipeIndex)
+        {
+            return ActivityIdBands.CraftingBand + recipeIndex;
+        }
+
         public static bool TryGetRecipe(int resultItemId, out RecipeDefinition recipe)
         {
             for (int i = 0; i < _recipes.Length; i++)

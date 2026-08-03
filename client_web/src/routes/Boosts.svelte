@@ -258,8 +258,18 @@
       {/if}
 
       <h3>Time warp</h3>
+      <!-- Modul: time warp is NOT how offline progress is collected.
+           It used to look like it, because offline catch-up was capped at
+           twenty actions and everything past that was pushed into this bank -
+           so a night away left the card near-empty and the bank full, and
+           warping felt mandatory. Offline now runs in full for every
+           character and applies itself on login. What lands here is only
+           time no character could use, plus whatever login rewards and the
+           season pass grant. -->
       <p class="dim tiny">
-        Spends the bank in one go instead of draining it in real time.
+        Replays banked time at once. Time banks only when a character had
+        nothing to do - what you actually farmed while away is already yours,
+        and is shown when you sign in.
       </p>
       <div class="row">
         <label>
@@ -270,7 +280,8 @@
       </div>
       <p class="dim tiny">
         {#if banked <= 0}
-          Nothing banked yet. The bank fills while you are offline.
+          Nothing banked. Time banks only when a character was idle while you
+          were away, so an empty bank means everyone was working.
         {:else}
           Costs {Math.round(warpMinutes * 60).toLocaleString()}s of the
           {banked.toLocaleString()}s banked.

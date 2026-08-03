@@ -32,11 +32,23 @@ namespace FolkIdle.Server.Domain.Economy
         private readonly PlayerSessionRegistry? _playerRegistry;
         private const long BaseGoldCost = 1000;
 
-        // Modul: Luck made real. Ceiling on the Luck-adjusted fusion success
-        // roll. The forge is meant to stay a gamble at high tiers - without a
-        // cap, enough Luck would eventually turn it into a guaranteed upgrade
-        // and remove the tier sink the gold curve above exists to create.
-        private const double MaxForgeSuccessProbability = 0.95;
+        // Modul: fusion is no longer a gamble. Three IDENTICAL items of the
+        // SAME rarity produce one of the next rarity, for a gold fee. The
+        // random roll, the affix lockout on a tier 2 failure and the total
+        // vaporization at tier 3+ are all gone.
+        //
+        // The reason is the chest. There is no scrapping any more - the way a
+        // player disposes of duplicate gear IS the forge - so a mechanic that
+        // eats three matched items and returns nothing is a dead end with no
+        // alternative. Requiring all three to match in rarity as well as base
+        // id is a much harder input to assemble than the old "any two
+        // sacrifices", which is what pays for the certainty.
+        //
+        // Luck used to buy success probability. With no roll left it buys a
+        // discount on the fee instead, so the stat keeps exactly one forge
+        // meaning rather than silently having none - which is the state it was
+        // in before "Luck made real" fixed it the first time.
+        private const double MaxForgeFeeDiscount = 0.25;
 
         // Modul: GAME_DESIGN_SPEC.md/GDD's 14-tier geometric forge formula
         // requires exactly 3^13 = 1,594,323 Normal item bases to synthesize
@@ -144,6 +156,20 @@ namespace FolkIdle.Server.Domain.Economy
                     return ForgeSplicingResult.InvalidRequest;
                 }
 
+                // Modul: all three must ALSO share a rarity. Fusion used to
+                // take any two sacrifices regardless of tier, which let a
+                // player feed two Normal duplicates into a Legendary and climb
+                // for almost nothing - the cost formula even discounted low
+                // tier fodder. Three matched rarities is the whole input rule
+                // now, and it is what makes a guaranteed result affordable.
+                if (targetItem.QualityTier != sac1.QualityTier || targetItem.QualityTier != sac2.QualityTier)
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine("Fusion failed: all three items must share the same rarity.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.RarityMismatch);
+                    return ForgeSplicingResult.InvalidRequest;
+                }
+
                 int currentTier = targetItem.QualityTier;
 
                 // Modul: hard tier cap - rejected before any resource
@@ -187,30 +213,11 @@ namespace FolkIdle.Server.Domain.Economy
                 // tiers relative to the rest of this game's exponential
                 // economy (village production, legacy perks, level-up cost
                 // all scale geometrically too).
-                long baseGoldCost = (long)Math.Ceiling(BaseGoldCost * Math.Pow(1.5, currentTier));
-                long cost = (long)(baseGoldCost * (1.0 + ((4 - sac1.QualityTier) * 0.50) + ((4 - sac2.QualityTier) * 0.50)));
-
-                // Lock and fetch gold record
-                var goldRecord = await db.CommodityRecords
-                    .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
-                    .SingleOrDefaultAsync();
-
-                if (goldRecord == null || goldRecord.Quantity < cost)
-                {
-                    await transaction.RollbackAsync();
-                    Console.WriteLine("Fusion failed: Insufficient gold.");
-                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientGold);
-                    return ForgeSplicingResult.InsufficientGold;
-                }
-
-                // Deduct cost
-                goldRecord.Quantity -= cost;
-
-                double baseProbability = Math.Max(0.05, 0.85 * Math.Pow(1.6, -(currentTier - 1)));
-                if (SimulationEngine.ActiveGlobalEventId == 4) // DiamondStar
-                {
-                    baseProbability += 0.05;
-                }
+                // The old multiplier discounted LOW tier fodder - it existed
+                // because the two sacrifices could be any rarity. All three
+                // now share a rarity by rule, so the modifier had exactly one
+                // possible value and is gone; the curve itself is unchanged.
+                long cost = (long)Math.Ceiling(BaseGoldCost * Math.Pow(1.5, currentTier));
 
                 // Modul: Luck made real. StatsCalculator has always documented
                 // Luck as granting "+0.05% Forge Success" and has always
@@ -229,20 +236,40 @@ namespace FolkIdle.Server.Domain.Economy
                     .Select(p => new { p.BaseLuck })
                     .SingleOrDefaultAsync();
 
+                double feeDiscount = 0.0;
                 if (forgePlayer != null)
                 {
-                    // Additive on the probability, expressed in percentage
-                    // points, and clamped so Luck can improve the odds without
-                    // ever making a fusion a certainty.
                     float forgeSuccessPct = StatsCalculator.Calculate(0, 0, 0, forgePlayer.BaseLuck).ForgeSuccessPct;
-                    baseProbability = Math.Min(MaxForgeSuccessProbability, baseProbability + (forgeSuccessPct / 100.0));
+                    feeDiscount = Math.Min(MaxForgeFeeDiscount, forgeSuccessPct / 100.0);
                 }
 
-                double roll = Random.Shared.NextDouble();
-
-                if (roll <= baseProbability)
+                if (SimulationEngine.ActiveGlobalEventId == 4) // DiamondStar
                 {
-                    // SUCCESS
+                    // Was +5 percentage points of success. With no roll left
+                    // it is 5 percentage points off the fee, so the event
+                    // still means something at the anvil.
+                    feeDiscount = Math.Min(MaxForgeFeeDiscount, feeDiscount + 0.05);
+                }
+
+                cost = (long)Math.Ceiling(cost * (1.0 - feeDiscount));
+
+                // Lock and fetch gold record
+                var goldRecord = await db.CommodityRecords
+                    .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
+                    .SingleOrDefaultAsync();
+
+                if (goldRecord == null || goldRecord.Quantity < cost)
+                {
+                    await transaction.RollbackAsync();
+                    Console.WriteLine("Fusion failed: Insufficient gold.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientGold);
+                    return ForgeSplicingResult.InsufficientGold;
+                }
+
+                // Deduct cost
+                goldRecord.Quantity -= cost;
+
+                {
                     db.EquipmentInstances.Remove(sac1);
                     db.EquipmentInstances.Remove(sac2);
 
@@ -287,47 +314,6 @@ namespace FolkIdle.Server.Domain.Economy
                     _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
 
                     return ForgeSplicingResult.Success;
-                }
-                else
-                {
-                    // FAILURE
-                    if (currentTier == 2)
-                    {
-                        // Tier 2: Lock random affix slot
-                        db.EquipmentInstances.Remove(sac1);
-                        db.EquipmentInstances.Remove(sac2);
-
-                        JsonObject affixPayload = ParseAffixPayload(targetItem.AffixPayload);
-                        affixPayload["is_affix_locked"] = true;
-                        targetItem.AffixPayload = affixPayload.ToJsonString();
-                        targetItem.IsAffixLocked = true;
-
-                        Console.WriteLine($"Fusion Failed! Target item {targetItem.Id} received affix lockout. Sacrifices lost.");
-                        await db.SaveChangesAsync();
-                        await transaction.CommitAsync();
-                        return ForgeSplicingResult.FailedAffixLocked;
-                    }
-                    else if (currentTier >= 3)
-                    {
-                        // Tier 3+: Full vaporization
-                        db.EquipmentInstances.Remove(targetItem);
-                        db.EquipmentInstances.Remove(sac1);
-                        db.EquipmentInstances.Remove(sac2);
-                        Console.WriteLine($"Fusion Critical Failure! All items destroyed.");
-                        await db.SaveChangesAsync();
-                        await transaction.CommitAsync();
-                        return ForgeSplicingResult.CriticalFailure;
-                    }
-                    else
-                    {
-                        // Tier 1 failure: just lose sacrifices
-                        db.EquipmentInstances.Remove(sac1);
-                        db.EquipmentInstances.Remove(sac2);
-                        Console.WriteLine($"Fusion Failed! Sacrifices lost.");
-                        await db.SaveChangesAsync();
-                        await transaction.CommitAsync();
-                        return ForgeSplicingResult.FailedSacrificesDestroyed;
-                    }
                 }
             }
             catch (Exception ex)

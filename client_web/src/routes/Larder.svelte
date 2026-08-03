@@ -32,13 +32,18 @@
       : [],
   );
 
-  /** Food carried in the backpack. Only the backpack can be loaded from. */
+  // Modul: food anywhere in the village chest, not just the backpack half of
+  // it. LarderEngine stocks through InventoryAndStashSystem.TryConsumeUnified,
+  // which already draws from both CommodityRecords and the stash - this screen
+  // was the only thing still splitting them, so food sitting in the stash was
+  // invisible and unloadable even though the server would have taken it.
   const availableFood = $derived(
     (inventory.data?.Stacks ?? [])
-      .filter((s) => isFood(s.ItemId) && s.BackpackQuantity > 0)
+      .map((s) => ({ ...s, total: s.BackpackQuantity + s.StashQuantity }))
+      .filter((s) => isFood(s.ItemId) && s.total > 0)
       .map((s) => ({
         baseId: s.ItemId,
-        quantity: s.BackpackQuantity,
+        quantity: s.total,
         // Commands carry the numeric ContentRegistry id; REST carries BaseIds.
         numericId: registry?.itemsByBaseId.get(s.ItemId)?.Id ?? 0,
       }))
@@ -78,7 +83,7 @@
   }
 
   function unload(slotIndex: number) {
-    // DepositQuantity 0 means "unload this slot back into the backpack".
+    // DepositQuantity 0 means "unload this slot back into the chest".
     connection.send({
       Command: CommandType.StockFoodSlot,
       TargetSlotIndex: slotIndex,
@@ -115,10 +120,14 @@
 
 <div class="grid">
   <section class="panel">
-    <h2>Larder</h2>
+    <h2>Auto-Eat</h2>
     <p class="dim small">
-      Auto-eat draws from these three slots. An empty larder is what stops a
-      combat activity the first time health crosses the threshold.
+      Load up to three foods. When health drops below the threshold your
+      character eats the one that heals most, automatically.
+    </p>
+    <p class="dim tiny">
+      Running out no longer stops you - you simply stop healing, and keep
+      fighting until you win or die.
     </p>
 
     <ul class="slots">
@@ -144,11 +153,10 @@
       {/each}
     </ul>
 
-    <h3>Load from backpack</h3>
+    <h3>Load from the village chest</h3>
     {#if availableFood.length === 0}
       <p class="dim">
-        No food in the backpack. Cook something, or fish it up - the larder can
-        only be loaded from carried stock, not from the village stash.
+        No food in the chest. Cook something, or fish it up.
       </p>
     {:else}
       <div class="loader">
@@ -167,12 +175,12 @@
   </section>
 
   <section class="panel">
-    <h2>Auto-eat</h2>
+    <h2>When to eat</h2>
     {#if snap}
       <p class="dim small">
-        Eats when health falls below this. Set it to 0 to never auto-eat - the
-        character will fight until it dies instead, which stops the activity
-        just the same but costs no food.
+        Eats as soon as health falls below this share of maximum. Higher wastes
+        food on scratches; lower risks dying between bites. Set it to 0 to
+        never auto-eat.
       </p>
 
       <div class="threshold">

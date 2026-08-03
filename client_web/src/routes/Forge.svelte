@@ -42,19 +42,82 @@
   let fusionSacOne = $state(0);
   let fusionSacTwo = $state(0);
 
-  // Modul: ValidateFusionCommand DISCONNECTS if any two of the three ids
-  // match, so each dropdown excludes whatever the other two already hold. The
-  // command layer refuses a duplicate as a second line of defence, but not
-  // offering the choice is better than refusing it.
-  const targetChoices = $derived(owned.filter((i) => i.Id !== fusionSacOne && i.Id !== fusionSacTwo));
-  const sacOneChoices = $derived(owned.filter((i) => i.Id !== fusionTarget && i.Id !== fusionSacTwo));
-  const sacTwoChoices = $derived(owned.filter((i) => i.Id !== fusionTarget && i.Id !== fusionSacOne));
-
   const fusionTargetItem = $derived(owned.find((i) => i.Id === fusionTarget) ?? null);
   const atMaxTier = $derived((fusionTargetItem?.QualityTier ?? 0) >= MAX_QUALITY_TIER);
 
+  // Modul: fusion now takes THREE IDENTICAL items of the SAME RARITY. Once a
+  // target is picked, the only legal partners are its exact twins, so the two
+  // other dropdowns offer nothing else - a mismatch is not something the
+  // player should be able to select and then be told about.
+  //
+  // ValidateFusionCommand also DISCONNECTS if any two of the three ids match,
+  // so each list still excludes what the others already hold.
+  const twins = $derived(
+    fusionTargetItem
+      ? owned.filter(
+          (i) =>
+            i.Id !== fusionTarget &&
+            i.BaseItemId === fusionTargetItem.BaseItemId &&
+            i.QualityTier === fusionTargetItem.QualityTier,
+        )
+      : [],
+  );
+
+  const targetChoices = $derived(owned.filter((i) => i.Id !== fusionSacOne && i.Id !== fusionSacTwo));
+  const sacOneChoices = $derived(twins.filter((i) => i.Id !== fusionSacTwo));
+  const sacTwoChoices = $derived(twins.filter((i) => i.Id !== fusionSacOne));
+
+  // Sets the player can actually fuse right now: three or more of the same
+  // item at the same rarity. Without this the screen is a puzzle - three
+  // dropdowns and no way to tell whether any legal combination exists.
+  const fusableSets = $derived.by(() => {
+    const groups = new Map<string, { base: string; tier: number; count: number }>();
+    for (const item of owned) {
+      if (item.QualityTier >= MAX_QUALITY_TIER) continue;
+      const key = `${item.BaseItemId}#${item.QualityTier}`;
+      const seen = groups.get(key) ?? { base: item.BaseItemId, tier: item.QualityTier, count: 0 };
+      seen.count++;
+      groups.set(key, seen);
+    }
+    return [...groups.values()]
+      .filter((g) => g.count >= 3)
+      .sort((a, b) => b.tier - a.tier || a.base.localeCompare(b.base));
+  });
+
+  // ForgeSplicingEngine: BaseGoldCost * 1.5^currentTier, rounded up. Luck and
+  // the Diamond Star event take up to 25% off server-side, so this is the
+  // ceiling rather than the exact charge - stated in the UI as such rather
+  // than quietly presented as final.
+  const FORGE_BASE_FEE = 1000;
+  const fusionFee = $derived(
+    fusionTargetItem ? Math.ceil(FORGE_BASE_FEE * Math.pow(1.5, fusionTargetItem.QualityTier)) : 0,
+  );
+  const gold = $derived(Number($playerState?.Gold ?? 0));
+
+  function pickSet(base: string, tier: number) {
+    const trio = owned.filter((i) => i.BaseItemId === base && i.QualityTier === tier).slice(0, 3);
+    if (trio.length < 3) return;
+    fusionTarget = trio[0].Id;
+    fusionSacOne = trio[1].Id;
+    fusionSacTwo = trio[2].Id;
+  }
+
   function fuse() {
-    const outcome = executeForgeFusion(fusionTarget, fusionSacOne, fusionSacTwo, forgeLevel);
+    const one = owned.find((i) => i.Id === fusionSacOne) ?? null;
+    const two = owned.find((i) => i.Id === fusionSacTwo) ?? null;
+    const match =
+      fusionTargetItem && one && two
+        ? {
+            sameBase:
+              one.BaseItemId === fusionTargetItem.BaseItemId &&
+              two.BaseItemId === fusionTargetItem.BaseItemId,
+            sameRarity:
+              one.QualityTier === fusionTargetItem.QualityTier &&
+              two.QualityTier === fusionTargetItem.QualityTier,
+          }
+        : undefined;
+
+    const outcome = executeForgeFusion(fusionTarget, fusionSacOne, fusionSacTwo, forgeLevel, match);
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
     fusionSacOne = 0;
     fusionSacTwo = 0;
@@ -96,9 +159,26 @@
       </p>
     {:else}
       <p class="dim small">
-        Consumes two items to raise a third by one quality tier. All three must
-        be different items.
+        Three identical items of the same rarity become one of the next rarity,
+        for a gold fee. It always works - nothing is lost to chance.
       </p>
+
+      {#if fusableSets.length > 0}
+        <div class="sets">
+          <span class="dim tiny">Ready to fuse:</span>
+          {#each fusableSets as set (set.base + set.tier)}
+            <button class="settag" onclick={() => pickSet(set.base, set.tier)}>
+              <span style="color: {rarityColor(set.tier)}">{prettifyBaseId(set.base)}</span>
+              <span class="dim tiny">{rarityName(set.tier)} &times;{set.count}</span>
+            </button>
+          {/each}
+        </div>
+      {:else}
+        <p class="dim tiny">
+          Nothing to fuse yet - you need three of the same item at the same
+          rarity.
+        </p>
+      {/if}
     {/if}
 
     <label>
@@ -110,20 +190,27 @@
     </label>
 
     <label>
-      Sacrifice
-      <select bind:value={fusionSacOne}>
+      Matching item
+      <select bind:value={fusionSacOne} disabled={fusionTarget === 0}>
         <option value={0}>Choose...</option>
         {#each sacOneChoices as item (item.Id)}<option value={item.Id}>{label(item)}</option>{/each}
       </select>
     </label>
 
     <label>
-      Sacrifice
-      <select bind:value={fusionSacTwo}>
+      Matching item
+      <select bind:value={fusionSacTwo} disabled={fusionTarget === 0}>
         <option value={0}>Choose...</option>
         {#each sacTwoChoices as item (item.Id)}<option value={item.Id}>{label(item)}</option>{/each}
       </select>
     </label>
+
+    {#if fusionTarget !== 0 && twins.length < 2}
+      <p class="blocked small">
+        You only have {twins.length + 1} of this item at
+        {rarityName(fusionTargetItem?.QualityTier ?? 0)}. Fusion needs three.
+      </p>
+    {/if}
 
     {#if fusionTargetItem}
       <p class="preview">
@@ -136,11 +223,23 @@
           &middot; <span class="blocked">already at the maximum tier</span>
         {/if}
       </p>
+
+      {#if !atMaxTier}
+        <p class="dim small">
+          Fee up to <b class:blocked={gold < fusionFee}>{fusionFee.toLocaleString()}g</b>.
+          Luck and the Diamond Star event take up to 25% off.
+        </p>
+      {/if}
     {/if}
 
     <button
       onclick={fuse}
-      disabled={forgeLevel === 0 || fusionTarget === 0 || fusionSacOne === 0 || fusionSacTwo === 0 || atMaxTier}
+      disabled={forgeLevel === 0 ||
+        fusionTarget === 0 ||
+        fusionSacOne === 0 ||
+        fusionSacTwo === 0 ||
+        atMaxTier ||
+        gold < fusionFee}
     >
       Fuse
     </button>
@@ -272,6 +371,32 @@
 </div>
 
 <style>
+  .sets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    align-items: center;
+    margin: 0 0 0.6rem;
+  }
+
+  .settag {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: var(--radius, 6px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+    font-size: 0.8rem;
+    width: auto;
+  }
+
+  .settag:hover {
+    border-color: rgba(255, 255, 255, 0.32);
+  }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));

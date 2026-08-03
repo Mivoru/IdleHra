@@ -85,7 +85,10 @@ namespace FolkIdle.Server.Network
         // Modul: character race. 711 -> 714, one byte per roster slot. See
         // StateUpdatePacket's own comment for why the whole GeneticVector
         // does not go on the wire.
-        public const int ExpectedStateUpdateSize = 714;
+        //
+        // Modul: per-character offline summary. 714 -> 750, nine ints. See
+        // StateUpdatePacket for why ints and not longs.
+        public const int ExpectedStateUpdateSize = 750;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

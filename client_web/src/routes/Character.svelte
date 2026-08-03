@@ -1,19 +1,26 @@
 <script lang="ts">
   import { createQuery } from '@tanstack/svelte-query';
-  import { playerState, visualState, observedMaxPlayerHp } from '../lib/stores/game';
+  import { playerState, visualState, observedMaxPlayerHp, pushLocalNotice } from '../lib/stores/game';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
   import { queryKeys, fetchInventory, type InventoryEquipment } from '../lib/net/rest';
   import { loadContent, prettifyBaseId, monsterName, type ContentRegistry } from '../lib/net/content';
-  import { EQUIPMENT_SLOTS, equippedIdFor, isAffixLocked, agePhaseName, HALT_REASON_SHORT, isGatheringActivity, professionName, resolveSlotIndex } from '../lib/ui/slots';
+  import { EQUIPMENT_SLOTS, equippedIdFor, isAffixLocked, agePhaseName, HALT_REASON_SHORT, isGatheringActivity, professionName, resolveSlotIndex, isCraftingActivity, craftingActivityId } from '../lib/ui/slots';
+  import { craftingProfessionName } from '../lib/ui/slots';
+  import { queryKeys as qk, fetchRecipes } from '../lib/net/rest';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import Affixes from '../lib/ui/Affixes.svelte';
   import Bar from '../lib/ui/Bar.svelte';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
+  import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
+  // EMPTY_GUID is the sentinel the roster filter below tests against.
   import { raceName } from '../lib/ui/races';
   import { onMount } from 'svelte';
 
   const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
+  // Recipes carry no id of their own on the wire - the crafting activity id is
+  // the recipe's INDEX in this list, which is the same order the server holds.
+  const recipeList = createQuery(() => ({ queryKey: qk.recipes, queryFn: fetchRecipes }));
 
   let registry = $state<ContentRegistry | null>(null);
   onMount(async () => {
@@ -67,6 +74,73 @@
     setTimeout(() => inventory.refetch(), 700);
   }
 
+  // Modul: nothing could tell a character what to do.
+  //
+  // SimulationEngine has routed ChangeActivity by TargetGuid since the
+  // multi-slot overhaul, and CharacterSlotEngine unlocks slot 2 at Town Hall 3
+  // and slot 3 at Town Hall 5 - but no screen ever named a character, so
+  // characters 2 and 3 sat Idle permanently. Every other screen assigns work
+  // to "you", which is always slot 1.
+  const SLOT_UNLOCK_TOWN_HALL = [0, 3, 5];
+  const townHall = $derived(snap?.TownHallLevel ?? 0);
+
+  const jobChoices = $derived.by(() => {
+    if (!registry) return [] as { id: number; label: string; group: string }[];
+    const out: { id: number; label: string; group: string }[] = [];
+    for (const node of registry.gatheringNodes) {
+      out.push({
+        id: node.ActivityId,
+        label: `${professionName(node.ProfessionType)} tier ${node.ActivityId % 1000}`,
+        group: 'Gathering',
+      });
+    }
+    for (const region of registry.regions) {
+      for (const monster of region) {
+        out.push({ id: monster.Id, label: monster.Name, group: 'Combat' });
+      }
+    }
+    (recipeList.data?.Recipes ?? []).forEach((recipe, index) => {
+      out.push({
+        id: craftingActivityId(index),
+        label: `${craftingProfessionName(recipe.ProfessionType)}: ${prettifyBaseId(recipe.ResultBaseItemId)}`,
+        group: 'Crafting',
+      });
+    });
+    return out;
+  });
+
+  const gatheringJobs = $derived(jobChoices.filter((j) => j.group === 'Gathering'));
+  const combatJobs = $derived(jobChoices.filter((j) => j.group === 'Combat'));
+  const craftingJobs = $derived(jobChoices.filter((j) => j.group === 'Crafting'));
+
+  // CharacterSlotEngine.IsActivityOccupiedByAnotherSlot: two of your own
+  // characters may not work the same activity. The server answers NodeOccupied;
+  // showing it here means the player never has to find out that way.
+  function occupiedBy(activityId: number, bySlot: number): string | null {
+    if (activityId <= 0 || !snap) return null;
+    if (bySlot !== 1 && Number(snap.ActiveActivityId) === activityId) return 'Slot 1';
+    if (bySlot !== 2 && snap.Slot2ActivityId === activityId) return 'Slot 2';
+    if (bySlot !== 3 && snap.Slot3ActivityId === activityId) return 'Slot 3';
+    return null;
+  }
+
+  let jobPick = $state<Record<number, number>>({});
+
+  function assign(slot: number, characterId: string) {
+    const activityId = jobPick[slot] ?? 0;
+    const outcome = assignCharacterActivity(characterId, activityId, {
+      unlocked: townHall >= SLOT_UNLOCK_TOWN_HALL[slot - 1],
+      takenBy: occupiedBy(activityId, slot),
+    });
+    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+  }
+
+  function stopWork(slot: number, characterId: string) {
+    const outcome = assignCharacterActivity(characterId, 0);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    jobPick = { ...jobPick, [slot]: 0 };
+  }
+
   function activityLabel(activityId: number, haltReason: number): string {
     if (activityId === 0) {
       const halt = HALT_REASON_SHORT[haltReason];
@@ -75,6 +149,10 @@
     if (isGatheringActivity(activityId)) {
       const profession = professionName(Math.floor(activityId / 1000) - 1);
       return `${profession} tier ${activityId % 1000}`;
+    }
+    if (isCraftingActivity(activityId)) {
+      const job = craftingJobs.find((j) => j.id === activityId);
+      return job ? job.label : `Crafting #${activityId}`;
     }
     return monsterName(registry, activityId);
   }
@@ -109,7 +187,7 @@
             activity: snap.Slot3ActivityId,
             halt: snap.Slot3ActivityHaltReason,
           },
-        ].filter((c) => c.id !== '00000000-0000-0000-0000-000000000000')
+        ].filter((c) => c.id !== EMPTY_GUID)
       : [],
   );
 
@@ -252,18 +330,67 @@
       </p>
 
       {#each roster as character}
-        <div class="rosterrow">
-          <strong>Slot {character.slot}</strong>
-          <span class="race">
-            <RaceIcon raceId={character.raceId} />
-            {raceName(character.raceId)}
-          </span>
-          <span class="dim">{agePhaseName(character.agePhase)}</span>
-          <span class="dim tiny">{Number(character.ageTicks).toLocaleString()} age ticks</span>
-          <span class:idle={character.activity === 0}>
-            {activityLabel(character.activity, character.halt)}
-          </span>
+        <div class="rostercard">
+          <div class="rosterrow">
+            <strong>Slot {character.slot}</strong>
+            <span class="race">
+              <RaceIcon raceId={character.raceId} />
+              {raceName(character.raceId)}
+            </span>
+            <span class="dim">{agePhaseName(character.agePhase)}</span>
+            <span class:idle={character.activity === 0}>
+              {activityLabel(character.activity, character.halt)}
+            </span>
+          </div>
+
+          <div class="assign">
+            <select bind:value={jobPick[character.slot]}>
+              <option value={0}>Choose a job...</option>
+              <optgroup label="Gathering">
+                {#each gatheringJobs as job (job.id)}
+                  <option value={job.id}>
+                    {job.label}{occupiedBy(job.id, character.slot) ? ' (taken)' : ''}
+                  </option>
+                {/each}
+              </optgroup>
+              <optgroup label="Combat">
+                {#each combatJobs as job (job.id)}
+                  <option value={job.id}>
+                    {job.label}{occupiedBy(job.id, character.slot) ? ' (taken)' : ''}
+                  </option>
+                {/each}
+              </optgroup>
+              <optgroup label="Crafting &amp; cooking">
+                {#each craftingJobs as job (job.id)}
+                  <option value={job.id}>
+                    {job.label}{occupiedBy(job.id, character.slot) ? ' (taken)' : ''}
+                  </option>
+                {/each}
+              </optgroup>
+            </select>
+            <button
+              class="tiny-btn"
+              disabled={!jobPick[character.slot]}
+              onclick={() => assign(character.slot, character.id)}
+            >
+              Assign
+            </button>
+            {#if character.activity !== 0}
+              <button class="tiny-btn" onclick={() => stopWork(character.slot, character.id)}>
+                Stop
+              </button>
+            {/if}
+          </div>
         </div>
+      {/each}
+
+      {#each [2, 3] as lockedSlot}
+        {#if roster.length < lockedSlot && townHall < SLOT_UNLOCK_TOWN_HALL[lockedSlot - 1]}
+          <p class="dim tiny">
+            Slot {lockedSlot} unlocks at Town Hall {SLOT_UNLOCK_TOWN_HALL[lockedSlot - 1]} (you
+            are at {townHall}).
+          </p>
+        {/if}
       {/each}
 
       {#if roster.length === 0}
@@ -282,6 +409,27 @@
 {/if}
 
 <style>
+  .rostercard {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .rostercard:last-of-type {
+    border-bottom: none;
+  }
+
+  .assign {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    margin-top: 0.35rem;
+  }
+
+  .assign select {
+    flex: 1;
+    min-width: 0;
+  }
+
   .equiprow {
     display: flex;
     gap: 0.4rem;

@@ -111,7 +111,12 @@ namespace FolkIdle.Server.Network
         // relationship row for the exact same (PlayerId, TargetPlayerId)
         // pair and RelationType already exists - the safe roll-back
         // condition the unique index on PlayerRelationships enforces.
-        RelationshipAlreadyExists = 15
+        RelationshipAlreadyExists = 15,
+
+        // Modul: forge fusion requires three items of the SAME rarity.
+        // Distinct from GenericValidationFailure so the client can name the
+        // actual rule instead of saying "that did not work".
+        RarityMismatch = 16
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -500,6 +505,20 @@ namespace FolkIdle.Server.Network
         // login, not on every subsequent broadcast of the same tick.
         public long OfflineElapsedSeconds;
         public long OfflineGoldEarned;
+
+        // Modul: per-character offline breakdown. Ints rather than longs: the
+        // offline window is capped, so no single character can earn more in one
+        // absence than an int holds, and three longs would not fit under the
+        // packet ceiling.
+        public int OfflineSlot1Gold;
+        public int OfflineSlot1Xp;
+        public int OfflineSlot1Drops;
+        public int OfflineSlot2Gold;
+        public int OfflineSlot2Xp;
+        public int OfflineSlot2Drops;
+        public int OfflineSlot3Gold;
+        public int OfflineSlot3Xp;
+        public int OfflineSlot3Drops;
         public long OfflineXpEarned;
         public int OfflineMaterialDropsGranted;
         public byte OfflineSummaryTick;
