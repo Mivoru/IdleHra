@@ -1,0 +1,624 @@
+fileFormatVersion: 2
+guid: ae60bc4e1588f334684fd776de8a19c2
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 6804824156992080639
+    second: vampiric lifesteal potion_0
+  - first:
+      213: 3672118935279305298
+    second: vampiric lifesteal potion_1
+  - first:
+      213: 2659418221362081390
+    second: vampiric lifesteal potion_2
+  - first:
+      213: -2632554445472024052
+    second: vampiric lifesteal potion_3
+  - first:
+      213: -3720480479167184651
+    second: vampiric lifesteal potion_4
+  - first:
+      213: 136212023084888773
+    second: vampiric lifesteal potion_5
+  - first:
+      213: -5575021334422105926
+    second: vampiric lifesteal potion_6
+  - first:
+      213: 2708435129410603343
+    second: vampiric lifesteal potion_7
+  - first:
+      213: -9111140200030134323
+    second: vampiric lifesteal potion_8
+  - first:
+      213: -8778722199207476443
+    second: vampiric lifesteal potion_9
+  - first:
+      213: 6365568564781105333
+    second: vampiric lifesteal potion_10
+  - first:
+      213: 5350933614913145248
+    second: vampiric lifesteal potion_11
+  - first:
+      213: 6636649904634546373
+    second: vampiric lifesteal potion_12
+  - first:
+      213: -2736699158542577885
+    second: vampiric lifesteal potion_13
+  - first:
+      213: -7074181989917624731
+    second: vampiric lifesteal potion_14
+  - first:
+      213: 3528671504602896304
+    second: vampiric lifesteal potion_15
+  - first:
+      213: -2000529105787429128
+    second: vampiric lifesteal potion_16
+  - first:
+      213: -4705398741689821372
+    second: vampiric lifesteal potion_17
+  - first:
+      213: -4670990125730431404
+    second: vampiric lifesteal potion_18
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 289
+        width: 363
+        height: 1759
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ffa828c64879f6e50800000000000000
+      internalID: 6804824156992080639
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_1
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1617
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2520f4647bcf5f230800000000000000
+      internalID: 3672118935279305298
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_2
+      rect:
+        serializedVersion: 2
+        x: 77
+        y: 0
+        width: 1971
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e6eec7938c628e420800000000000000
+      internalID: 2659418221362081390
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_3
+      rect:
+        serializedVersion: 2
+        x: 302
+        y: 459
+        width: 267
+        height: 258
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0ab3c10ea9477bd0800000000000000
+      internalID: -2632554445472024052
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_4
+      rect:
+        serializedVersion: 2
+        x: 367
+        y: 871
+        width: 127
+        height: 180
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f0077557b23e5cc0800000000000000
+      internalID: -3720480479167184651
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_5
+      rect:
+        serializedVersion: 2
+        x: 408
+        y: 359
+        width: 102
+        height: 86
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c2bc120d1ce3e100800000000000000
+      internalID: 136212023084888773
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_6
+      rect:
+        serializedVersion: 2
+        x: 410
+        y: 758
+        width: 67
+        height: 67
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab0db8252ab81a2b0800000000000000
+      internalID: -5575021334422105926
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_7
+      rect:
+        serializedVersion: 2
+        x: 451
+        y: 1033
+        width: 57
+        height: 105
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f4945b9766b469520800000000000000
+      internalID: 2708435129410603343
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_8
+      rect:
+        serializedVersion: 2
+        x: 1642
+        y: 1395
+        width: 98
+        height: 151
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dcf1c6ec24abe8180800000000000000
+      internalID: -9111140200030134323
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_9
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 35
+        height: 286
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5230766eba6bb2680800000000000000
+      internalID: -8778722199207476443
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_10
+      rect:
+        serializedVersion: 2
+        x: 916
+        y: 96
+        width: 236
+        height: 181
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5b0cb2922ea075850800000000000000
+      internalID: 6365568564781105333
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_11
+      rect:
+        serializedVersion: 2
+        x: 1777
+        y: 248
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0a94895b5c5524a40800000000000000
+      internalID: 5350933614913145248
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_12
+      rect:
+        serializedVersion: 2
+        x: 1777
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c84f500ded1a1c50800000000000000
+      internalID: 6636649904634546373
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_13
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 260
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 32f85fd6d9a450ad0800000000000000
+      internalID: -2736699158542577885
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_14
+      rect:
+        serializedVersion: 2
+        x: 1792
+        y: 209
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5667e76f5f473dd90800000000000000
+      internalID: -7074181989917624731
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_15
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 262
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0b716e8a90c58f030800000000000000
+      internalID: 3528671504602896304
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_16
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8fed5b6a061bc34e0800000000000000
+      internalID: -2000529105787429128
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_17
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 248
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 447120356c013beb0800000000000000
+      internalID: -4705398741689821372
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: vampiric lifesteal potion_18
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45efa768a3f4d2fb0800000000000000
+      internalID: -4670990125730431404
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      vampiric lifesteal potion_0: 6804824156992080639
+      vampiric lifesteal potion_1: 3672118935279305298
+      vampiric lifesteal potion_10: 6365568564781105333
+      vampiric lifesteal potion_11: 5350933614913145248
+      vampiric lifesteal potion_12: 6636649904634546373
+      vampiric lifesteal potion_13: -2736699158542577885
+      vampiric lifesteal potion_14: -7074181989917624731
+      vampiric lifesteal potion_15: 3528671504602896304
+      vampiric lifesteal potion_16: -2000529105787429128
+      vampiric lifesteal potion_17: -4705398741689821372
+      vampiric lifesteal potion_18: -4670990125730431404
+      vampiric lifesteal potion_2: 2659418221362081390
+      vampiric lifesteal potion_3: -2632554445472024052
+      vampiric lifesteal potion_4: -3720480479167184651
+      vampiric lifesteal potion_5: 136212023084888773
+      vampiric lifesteal potion_6: -5575021334422105926
+      vampiric lifesteal potion_7: 2708435129410603343
+      vampiric lifesteal potion_8: -9111140200030134323
+      vampiric lifesteal potion_9: -8778722199207476443
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

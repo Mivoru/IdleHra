@@ -106,6 +106,11 @@ const MATERIAL_ALIASES = {
   obsidian_plate: 'eq_obsidian_plate_chest_armor_slot_base',
   magus_slippers: 'eq_magus_slippers_boots_armor_slot_base',
 
+  // The Eternal Dreadnought set is `eq_dreadnought_*` for its helmet and
+  // `eq_dread_*` for everything else, so the (set, slot) rule cannot reach it
+  // from an art file called dread_helm.
+  dread_helm: 'eq_dreadnought_helm_helmet_armor_slot_base',
+
   // Named by the art brief, which lists this file as
   // "pot_r5_death_ward_elixir.png (Emergency Revive)" - the art's title and
   // the item's name differ, and only the brief connects them.
@@ -117,13 +122,11 @@ const MATERIAL_ALIASES = {
  * Listed rather than silently skipped so the coverage report stays honest and
  * nobody re-adds them as a guess.
  *
- * Note what the skipped SET PIECES mean. The art brief commissioned a ring and
- * an amulet for every tier (copper band, linen pendant, hunter amulet, runic
- * talisman, obsidian loop, frost band, glacial pendant, doom gorget, dread
- * signet) and items.json contains none of them - its only rings and amulets
- * belong to the gilded/steel/abyssal families instead. Those sprites are
- * therefore art waiting for content, not a mapping failure, and the generator
- * reports them each run so the gap stays visible. */
+ * This list used to also carry every ring and amulet in the game, on the note
+ * that the art brief had commissioned them and items.json contained none. That
+ * was true and is no longer: the twenty missing pieces - five helmets, five
+ * gloves and all ten accessories - were added to items.json, so the art now
+ * resolves. What remains below is art that genuinely maps to no single item. */
 const DELIBERATELY_UNMAPPED = {
   CopperMalachiteOre: 'combined-ore node art, not a single item',
   IronHematitOre: 'combined-ore node art, not a single item',
@@ -315,10 +318,21 @@ for (const file of files) {
       continue;
     }
 
-    const setCandidates = items.filter((i) => {
-      const b = i.BaseId;
-      return (b.startsWith(`eq_${setToken}_`) || b.startsWith(`${setToken}_`)) && b.includes(`_${slot}_`);
-    });
+    // THE `eq_` FAMILY WINS WHEN BOTH EXIST.
+    //
+    // items.json carries two unrelated families that share a word: the
+    // designed sets are `eq_steel_*` at region tier 1, while `steel_*` with no
+    // prefix is a legacy region-4 line that predates them. Accepting either
+    // left four Chiming Steel pieces and the iron signet with "2 candidates"
+    // and no icon. The art belongs to the designed set, so that is preferred
+    // and the legacy family is only consulted when there is no `eq_` match.
+    const prefixed = items.filter(
+      (i) => i.BaseId.startsWith(`eq_${setToken}_`) && i.BaseId.includes(`_${slot}_`),
+    );
+    const legacy = items.filter(
+      (i) => i.BaseId.startsWith(`${setToken}_`) && i.BaseId.includes(`_${slot}_`),
+    );
+    const setCandidates = prefixed.length > 0 ? prefixed : legacy;
 
     if (setCandidates.length === 1) itemIcons[setCandidates[0].BaseId] = file;
     else unmatched.push(`${file} (set "${setToken}" slot "${slot}": ${setCandidates.length} candidates)`);

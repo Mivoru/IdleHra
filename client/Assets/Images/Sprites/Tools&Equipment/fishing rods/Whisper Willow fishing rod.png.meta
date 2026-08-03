@@ -1,0 +1,936 @@
+fileFormatVersion: 2
+guid: 598e0a21854cdaa47a43f79768512dbf
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 9090543993129189339
+    second: Whisper Willow fishing rod_0
+  - first:
+      213: 5012825887757722240
+    second: Whisper Willow fishing rod_1
+  - first:
+      213: 6971051244359847130
+    second: Whisper Willow fishing rod_2
+  - first:
+      213: 3858616901937719582
+    second: Whisper Willow fishing rod_3
+  - first:
+      213: -9008089587199282012
+    second: Whisper Willow fishing rod_4
+  - first:
+      213: 3933584783554699502
+    second: Whisper Willow fishing rod_5
+  - first:
+      213: 8037370001192562779
+    second: Whisper Willow fishing rod_6
+  - first:
+      213: -1610481003322664091
+    second: Whisper Willow fishing rod_7
+  - first:
+      213: -2377042536301420986
+    second: Whisper Willow fishing rod_8
+  - first:
+      213: -7596629181054507422
+    second: Whisper Willow fishing rod_9
+  - first:
+      213: -4634092381349725144
+    second: Whisper Willow fishing rod_10
+  - first:
+      213: -40709825386541241
+    second: Whisper Willow fishing rod_11
+  - first:
+      213: 3516570588164452955
+    second: Whisper Willow fishing rod_12
+  - first:
+      213: -375671156041647597
+    second: Whisper Willow fishing rod_13
+  - first:
+      213: 5140841367994142249
+    second: Whisper Willow fishing rod_14
+  - first:
+      213: -8948126632985262794
+    second: Whisper Willow fishing rod_15
+  - first:
+      213: 5348392787860843989
+    second: Whisper Willow fishing rod_16
+  - first:
+      213: -6859888695750859473
+    second: Whisper Willow fishing rod_17
+  - first:
+      213: -6486734908422808743
+    second: Whisper Willow fishing rod_18
+  - first:
+      213: 4381784676988340309
+    second: Whisper Willow fishing rod_19
+  - first:
+      213: -2719668261293461954
+    second: Whisper Willow fishing rod_20
+  - first:
+      213: 6384039581669802042
+    second: Whisper Willow fishing rod_21
+  - first:
+      213: -4015913175486828012
+    second: Whisper Willow fishing rod_22
+  - first:
+      213: 5290417798007608043
+    second: Whisper Willow fishing rod_23
+  - first:
+      213: -3589193119446040851
+    second: Whisper Willow fishing rod_24
+  - first:
+      213: -1257365963926390558
+    second: Whisper Willow fishing rod_25
+  - first:
+      213: -8067298068690190981
+    second: Whisper Willow fishing rod_26
+  - first:
+      213: 4143092590220990644
+    second: Whisper Willow fishing rod_27
+  - first:
+      213: 1429201860185256615
+    second: Whisper Willow fishing rod_28
+  - first:
+      213: -4804150665219658366
+    second: Whisper Willow fishing rod_29
+  - first:
+      213: -2683878690036691697
+    second: Whisper Willow fishing rod_30
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1906
+        height: 2023
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bdfb6851999182e70800000000000000
+      internalID: 9090543993129189339
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_1
+      rect:
+        serializedVersion: 2
+        x: 1694
+        y: 2011
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0826ea8f592219540800000000000000
+      internalID: 5012825887757722240
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_2
+      rect:
+        serializedVersion: 2
+        x: 81
+        y: 287
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: adc0d1b2c262eb060800000000000000
+      internalID: 6971051244359847130
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_3
+      rect:
+        serializedVersion: 2
+        x: 84
+        y: 375
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e19e054e0af8c8530800000000000000
+      internalID: 3858616901937719582
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_4
+      rect:
+        serializedVersion: 2
+        x: 190
+        y: 35
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a477125f36dcf280800000000000000
+      internalID: -9008089587199282012
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_5
+      rect:
+        serializedVersion: 2
+        x: 212
+        y: 41
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ee0e8a50586e69630800000000000000
+      internalID: 3933584783554699502
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_6
+      rect:
+        serializedVersion: 2
+        x: 260
+        y: 63
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b50b679ae697a8f60800000000000000
+      internalID: 8037370001192562779
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_7
+      rect:
+        serializedVersion: 2
+        x: 314
+        y: 32
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 56b10776f0c66a9e0800000000000000
+      internalID: -1610481003322664091
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_8
+      rect:
+        serializedVersion: 2
+        x: 416
+        y: 13
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 64e92c7486c030fd0800000000000000
+      internalID: -2377042536301420986
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_9
+      rect:
+        serializedVersion: 2
+        x: 516
+        y: 13
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 26621ec220a539690800000000000000
+      internalID: -7596629181054507422
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_10
+      rect:
+        serializedVersion: 2
+        x: 807
+        y: 23
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82c3e49188560bfb0800000000000000
+      internalID: -4634092381349725144
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_11
+      rect:
+        serializedVersion: 2
+        x: 1011
+        y: 30
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 74f87f621ae5f6ff0800000000000000
+      internalID: -40709825386541241
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_12
+      rect:
+        serializedVersion: 2
+        x: 1141
+        y: 47
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b52f02f715e5dc030800000000000000
+      internalID: 3516570588164452955
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_13
+      rect:
+        serializedVersion: 2
+        x: 1292
+        y: 7
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 31af6cfe21959caf0800000000000000
+      internalID: -375671156041647597
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_14
+      rect:
+        serializedVersion: 2
+        x: 1321
+        y: 14
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92e8ce1acffe75740800000000000000
+      internalID: 5140841367994142249
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_15
+      rect:
+        serializedVersion: 2
+        x: 1624
+        y: 18
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 63583bb8c3ed1d380800000000000000
+      internalID: -8948126632985262794
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_16
+      rect:
+        serializedVersion: 2
+        x: 1774
+        y: 38
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5dde4bf47ee493a40800000000000000
+      internalID: 5348392787860843989
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_17
+      rect:
+        serializedVersion: 2
+        x: 1798
+        y: 197
+        width: 7
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f256d039397ccc0a0800000000000000
+      internalID: -6859888695750859473
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_18
+      rect:
+        serializedVersion: 2
+        x: 1805
+        y: 1933
+        width: 8
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 95b155f08fc7af5a0800000000000000
+      internalID: -6486734908422808743
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_19
+      rect:
+        serializedVersion: 2
+        x: 1811
+        y: 0
+        width: 237
+        height: 1992
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 558c322b2f93fcc30800000000000000
+      internalID: 4381784676988340309
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_20
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 262
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e3ee2b2302cc14ad0800000000000000
+      internalID: -2719668261293461954
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_21
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a304679ec2aa89850800000000000000
+      internalID: 6384039581669802042
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_22
+      rect:
+        serializedVersion: 2
+        x: 1827
+        y: 248
+        width: 12
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 412fb4e7e3c9448c0800000000000000
+      internalID: -4015913175486828012
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_23
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be2d5ab15f65b6940800000000000000
+      internalID: 5290417798007608043
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_24
+      rect:
+        serializedVersion: 2
+        x: 1843
+        y: 232
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dee742dcfdf903ec0800000000000000
+      internalID: -3589193119446040851
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_25
+      rect:
+        serializedVersion: 2
+        x: 1846
+        y: 181
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e8308f4150fc8ee0800000000000000
+      internalID: -1257365963926390558
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_26
+      rect:
+        serializedVersion: 2
+        x: 1882
+        y: 276
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b7db68e16233b0090800000000000000
+      internalID: -8067298068690190981
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_27
+      rect:
+        serializedVersion: 2
+        x: 1900
+        y: 330
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4b8dcaf72c83f7930800000000000000
+      internalID: 4143092590220990644
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_28
+      rect:
+        serializedVersion: 2
+        x: 1939
+        y: 9
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7a27ba4058b85d310800000000000000
+      internalID: 1429201860185256615
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_29
+      rect:
+        serializedVersion: 2
+        x: 1940
+        y: 284
+        width: 15
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28d20286c6a345db0800000000000000
+      internalID: -4804150665219658366
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Whisper Willow fishing rod_30
+      rect:
+        serializedVersion: 2
+        x: 1940
+        y: 162
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0d4f1c1d82f0cad0800000000000000
+      internalID: -2683878690036691697
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Whisper Willow fishing rod_0: 9090543993129189339
+      Whisper Willow fishing rod_1: 5012825887757722240
+      Whisper Willow fishing rod_10: -4634092381349725144
+      Whisper Willow fishing rod_11: -40709825386541241
+      Whisper Willow fishing rod_12: 3516570588164452955
+      Whisper Willow fishing rod_13: -375671156041647597
+      Whisper Willow fishing rod_14: 5140841367994142249
+      Whisper Willow fishing rod_15: -8948126632985262794
+      Whisper Willow fishing rod_16: 5348392787860843989
+      Whisper Willow fishing rod_17: -6859888695750859473
+      Whisper Willow fishing rod_18: -6486734908422808743
+      Whisper Willow fishing rod_19: 4381784676988340309
+      Whisper Willow fishing rod_2: 6971051244359847130
+      Whisper Willow fishing rod_20: -2719668261293461954
+      Whisper Willow fishing rod_21: 6384039581669802042
+      Whisper Willow fishing rod_22: -4015913175486828012
+      Whisper Willow fishing rod_23: 5290417798007608043
+      Whisper Willow fishing rod_24: -3589193119446040851
+      Whisper Willow fishing rod_25: -1257365963926390558
+      Whisper Willow fishing rod_26: -8067298068690190981
+      Whisper Willow fishing rod_27: 4143092590220990644
+      Whisper Willow fishing rod_28: 1429201860185256615
+      Whisper Willow fishing rod_29: -4804150665219658366
+      Whisper Willow fishing rod_3: 3858616901937719582
+      Whisper Willow fishing rod_30: -2683878690036691697
+      Whisper Willow fishing rod_4: -9008089587199282012
+      Whisper Willow fishing rod_5: 3933584783554699502
+      Whisper Willow fishing rod_6: 8037370001192562779
+      Whisper Willow fishing rod_7: -1610481003322664091
+      Whisper Willow fishing rod_8: -2377042536301420986
+      Whisper Willow fishing rod_9: -7596629181054507422
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

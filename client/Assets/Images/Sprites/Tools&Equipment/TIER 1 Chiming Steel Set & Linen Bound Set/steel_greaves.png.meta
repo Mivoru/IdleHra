@@ -1,0 +1,1586 @@
+fileFormatVersion: 2
+guid: a7c1f2f9396662e47b76fb0175ffc82e
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 535848394756300076
+    second: steel_greaves_0
+  - first:
+      213: -5385865552825278242
+    second: steel_greaves_1
+  - first:
+      213: -8725992524335986009
+    second: steel_greaves_2
+  - first:
+      213: 8096631191851939401
+    second: steel_greaves_3
+  - first:
+      213: 6342387799578550981
+    second: steel_greaves_4
+  - first:
+      213: -425558604288469715
+    second: steel_greaves_5
+  - first:
+      213: -5070401346287111559
+    second: steel_greaves_6
+  - first:
+      213: -6906543070107586817
+    second: steel_greaves_7
+  - first:
+      213: 3164015512451667001
+    second: steel_greaves_8
+  - first:
+      213: 4145951119136194538
+    second: steel_greaves_9
+  - first:
+      213: -4854319573734624128
+    second: steel_greaves_10
+  - first:
+      213: 8158435006216996382
+    second: steel_greaves_11
+  - first:
+      213: -8745896829069143897
+    second: steel_greaves_12
+  - first:
+      213: -3428513494010087008
+    second: steel_greaves_13
+  - first:
+      213: -8228553530041209146
+    second: steel_greaves_14
+  - first:
+      213: 2697171401694574680
+    second: steel_greaves_15
+  - first:
+      213: 41060906621156009
+    second: steel_greaves_16
+  - first:
+      213: -9074641244211342138
+    second: steel_greaves_17
+  - first:
+      213: 1984871791737593235
+    second: steel_greaves_18
+  - first:
+      213: 9085192272355818323
+    second: steel_greaves_19
+  - first:
+      213: -225284668182944334
+    second: steel_greaves_20
+  - first:
+      213: 7320630521040071869
+    second: steel_greaves_21
+  - first:
+      213: -279980783061117446
+    second: steel_greaves_22
+  - first:
+      213: 2203990006068834994
+    second: steel_greaves_23
+  - first:
+      213: 3751247965856290097
+    second: steel_greaves_24
+  - first:
+      213: -574877787150140549
+    second: steel_greaves_25
+  - first:
+      213: -3252740287561139647
+    second: steel_greaves_26
+  - first:
+      213: 8540769820305693931
+    second: steel_greaves_27
+  - first:
+      213: 1519627478627294507
+    second: steel_greaves_28
+  - first:
+      213: -3501698316066546490
+    second: steel_greaves_29
+  - first:
+      213: -5262464177234190460
+    second: steel_greaves_30
+  - first:
+      213: 1663764633359286814
+    second: steel_greaves_31
+  - first:
+      213: 8191262587641473262
+    second: steel_greaves_32
+  - first:
+      213: 8719397959210723934
+    second: steel_greaves_33
+  - first:
+      213: -1663229415407190996
+    second: steel_greaves_34
+  - first:
+      213: 6195142963195091498
+    second: steel_greaves_35
+  - first:
+      213: 7069962535385252460
+    second: steel_greaves_36
+  - first:
+      213: 3105476331936477447
+    second: steel_greaves_37
+  - first:
+      213: -5489837607457344029
+    second: steel_greaves_38
+  - first:
+      213: -446978776453744726
+    second: steel_greaves_39
+  - first:
+      213: 6290754889434249824
+    second: steel_greaves_40
+  - first:
+      213: 1324922211618732409
+    second: steel_greaves_41
+  - first:
+      213: 7492165521842236263
+    second: steel_greaves_42
+  - first:
+      213: 7558457211960634708
+    second: steel_greaves_43
+  - first:
+      213: 1924571505536737325
+    second: steel_greaves_44
+  - first:
+      213: 4190258875771774888
+    second: steel_greaves_45
+  - first:
+      213: 8616159540543770905
+    second: steel_greaves_46
+  - first:
+      213: -1752218867826596355
+    second: steel_greaves_47
+  - first:
+      213: 4897047276251475488
+    second: steel_greaves_48
+  - first:
+      213: -2452569052128603005
+    second: steel_greaves_49
+  - first:
+      213: 9115776205615597358
+    second: steel_greaves_50
+  - first:
+      213: 8480825936827542927
+    second: steel_greaves_51
+  - first:
+      213: 1514686956442329453
+    second: steel_greaves_52
+  - first:
+      213: 8485846205631037265
+    second: steel_greaves_53
+  - first:
+      213: 4622218629882561097
+    second: steel_greaves_54
+  - first:
+      213: -6068904751065577754
+    second: steel_greaves_55
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: steel_greaves_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 2048
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c2d99e6a647bf6700800000000000000
+      internalID: 535848394756300076
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_1
+      rect:
+        serializedVersion: 2
+        x: 237
+        y: 1515
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed026d3b0df8145b0800000000000000
+      internalID: -5385865552825278242
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_2
+      rect:
+        serializedVersion: 2
+        x: 1937
+        y: 1322
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7aa4d3a080c07e680800000000000000
+      internalID: -8725992524335986009
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_3
+      rect:
+        serializedVersion: 2
+        x: 1600
+        y: 1278
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 946bea3db230d5070800000000000000
+      internalID: 8096631191851939401
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_4
+      rect:
+        serializedVersion: 2
+        x: 1944
+        y: 1183
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c2a6ada910b40850800000000000000
+      internalID: 6342387799578550981
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_5
+      rect:
+        serializedVersion: 2
+        x: 461
+        y: 1049
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d25564044bc181af0800000000000000
+      internalID: -425558604288469715
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_6
+      rect:
+        serializedVersion: 2
+        x: 1825
+        y: 1053
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 972f4e5f6d052a9b0800000000000000
+      internalID: -5070401346287111559
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_7
+      rect:
+        serializedVersion: 2
+        x: 260
+        y: 993
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ffe2d409ba70720a0800000000000000
+      internalID: -6906543070107586817
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_8
+      rect:
+        serializedVersion: 2
+        x: 83
+        y: 966
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 934d18b4857d8eb20800000000000000
+      internalID: 3164015512451667001
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_9
+      rect:
+        serializedVersion: 2
+        x: 423
+        y: 967
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aeffe30a390698930800000000000000
+      internalID: 4145951119136194538
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_10
+      rect:
+        serializedVersion: 2
+        x: 518
+        y: 938
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0847255211ef1acb0800000000000000
+      internalID: -4854319573734624128
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_11
+      rect:
+        serializedVersion: 2
+        x: 1675
+        y: 889
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e160da4b965983170800000000000000
+      internalID: 8158435006216996382
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_12
+      rect:
+        serializedVersion: 2
+        x: 1887
+        y: 838
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7a05e15fb2550a680800000000000000
+      internalID: -8745896829069143897
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_13
+      rect:
+        serializedVersion: 2
+        x: 507
+        y: 734
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0a935e964297b60d0800000000000000
+      internalID: -3428513494010087008
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_14
+      rect:
+        serializedVersion: 2
+        x: 1668
+        y: 741
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ce6b92492e4ecd80800000000000000
+      internalID: -8228553530041209146
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_15
+      rect:
+        serializedVersion: 2
+        x: 1783
+        y: 735
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 858f85089174e6520800000000000000
+      internalID: 2697171401694574680
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_16
+      rect:
+        serializedVersion: 2
+        x: 264
+        y: 667
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9aa3f415da0e19000800000000000000
+      internalID: 41060906621156009
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_17
+      rect:
+        serializedVersion: 2
+        x: 123
+        y: 646
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6c49cae2ed5601280800000000000000
+      internalID: -9074641244211342138
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_18
+      rect:
+        serializedVersion: 2
+        x: 121
+        y: 609
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 39d5637d06eab8b10800000000000000
+      internalID: 1984871791737593235
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_19
+      rect:
+        serializedVersion: 2
+        x: 1546
+        y: 603
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 35b74ed7c36151e70800000000000000
+      internalID: 9085192272355818323
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_20
+      rect:
+        serializedVersion: 2
+        x: 457
+        y: 601
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b52d93b9c0afdcf0800000000000000
+      internalID: -225284668182944334
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_21
+      rect:
+        serializedVersion: 2
+        x: 1591
+        y: 574
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dbce97a2caa189560800000000000000
+      internalID: 7320630521040071869
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_22
+      rect:
+        serializedVersion: 2
+        x: 2015
+        y: 568
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: af5d4b116fe4d1cf0800000000000000
+      internalID: -279980783061117446
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_23
+      rect:
+        serializedVersion: 2
+        x: 1741
+        y: 561
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b27e38bb35269e10800000000000000
+      internalID: 2203990006068834994
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_24
+      rect:
+        serializedVersion: 2
+        x: 1779
+        y: 557
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1355545662c1f0430800000000000000
+      internalID: 3751247965856290097
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_25
+      rect:
+        serializedVersion: 2
+        x: 1905
+        y: 553
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b7b37abc2bf9508f0800000000000000
+      internalID: -574877787150140549
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_26
+      rect:
+        serializedVersion: 2
+        x: 122
+        y: 516
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 14af05531f1fbd2d0800000000000000
+      internalID: -3252740287561139647
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_27
+      rect:
+        serializedVersion: 2
+        x: 1713
+        y: 517
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bec92bf86e8e68670800000000000000
+      internalID: 8540769820305693931
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_28
+      rect:
+        serializedVersion: 2
+        x: 1782
+        y: 451
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b2d9086f32dc61510800000000000000
+      internalID: 1519627478627294507
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_29
+      rect:
+        serializedVersion: 2
+        x: 1937
+        y: 437
+        width: 10
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6cc15403fe7776fc0800000000000000
+      internalID: -3501698316066546490
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_30
+      rect:
+        serializedVersion: 2
+        x: 1660
+        y: 349
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48fdcb866b8f7f6b0800000000000000
+      internalID: -5262464177234190460
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_31
+      rect:
+        serializedVersion: 2
+        x: 519
+        y: 331
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e120d397e11e61710800000000000000
+      internalID: 1663764633359286814
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_32
+      rect:
+        serializedVersion: 2
+        x: 457
+        y: 306
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ee8215e9ce53da170800000000000000
+      internalID: 8191262587641473262
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_33
+      rect:
+        serializedVersion: 2
+        x: 1169
+        y: 297
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e5a650e1f36810970800000000000000
+      internalID: 8719397959210723934
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_34
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 260
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c2c7caaa8a50be8e0800000000000000
+      internalID: -1663229415407190996
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_35
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 262
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a2a1106a3b199f550800000000000000
+      internalID: 6195142963195091498
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_36
+      rect:
+        serializedVersion: 2
+        x: 1771
+        y: 246
+        width: 17
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c6245f8b77d8d1260800000000000000
+      internalID: 7069962535385252460
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_37
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 247
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 701f477354ed81b20800000000000000
+      internalID: 3105476331936477447
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_38
+      rect:
+        serializedVersion: 2
+        x: 1777
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e5bcec48cd20d3b0800000000000000
+      internalID: -5489837607457344029
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_39
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa7f557cb230cc9f0800000000000000
+      internalID: -446978776453744726
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_40
+      rect:
+        serializedVersion: 2
+        x: 257
+        y: 199
+        width: 8
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 06ab7c9fd304d4750800000000000000
+      internalID: 6290754889434249824
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_41
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9793f825bb1136210800000000000000
+      internalID: 1324922211618732409
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_42
+      rect:
+        serializedVersion: 2
+        x: 1809
+        y: 197
+        width: 9
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76be5dfc8d489f760800000000000000
+      internalID: 7492165521842236263
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_43
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 209
+        width: 11
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45d27e0b9c805e860800000000000000
+      internalID: 7558457211960634708
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_44
+      rect:
+        serializedVersion: 2
+        x: 415
+        y: 172
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d202b54669375ba10800000000000000
+      internalID: 1924571505536737325
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_45
+      rect:
+        serializedVersion: 2
+        x: 1345
+        y: 181
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8a7ed4f1f3ac62a30800000000000000
+      internalID: 4190258875771774888
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_46
+      rect:
+        serializedVersion: 2
+        x: 769
+        y: 156
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9115436a37fb29770800000000000000
+      internalID: 8616159540543770905
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_47
+      rect:
+        serializedVersion: 2
+        x: 694
+        y: 122
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: df5657e293edea7e0800000000000000
+      internalID: -1752218867826596355
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_48
+      rect:
+        serializedVersion: 2
+        x: 1815
+        y: 121
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 02e63455d8ec5f340800000000000000
+      internalID: 4897047276251475488
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_49
+      rect:
+        serializedVersion: 2
+        x: 1225
+        y: 69
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 38412ccf079b6fdd0800000000000000
+      internalID: -2452569052128603005
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_50
+      rect:
+        serializedVersion: 2
+        x: 1321
+        y: 51
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e270dab592eb18e70800000000000000
+      internalID: 9115776205615597358
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_51
+      rect:
+        serializedVersion: 2
+        x: 847
+        y: 42
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f8d66869142f1b570800000000000000
+      internalID: 8480825936827542927
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_52
+      rect:
+        serializedVersion: 2
+        x: 1250
+        y: 41
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d61a9a003cf350510800000000000000
+      internalID: 1514686956442329453
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_53
+      rect:
+        serializedVersion: 2
+        x: 1652
+        y: 31
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 15ffb310a28c3c570800000000000000
+      internalID: 8485846205631037265
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_54
+      rect:
+        serializedVersion: 2
+        x: 1284
+        y: 11
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 942c754ba5b652040800000000000000
+      internalID: 4622218629882561097
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: steel_greaves_55
+      rect:
+        serializedVersion: 2
+        x: 1905
+        y: 15
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6e64e09884be6cba0800000000000000
+      internalID: -6068904751065577754
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      steel_greaves_0: 535848394756300076
+      steel_greaves_1: -5385865552825278242
+      steel_greaves_10: -4854319573734624128
+      steel_greaves_11: 8158435006216996382
+      steel_greaves_12: -8745896829069143897
+      steel_greaves_13: -3428513494010087008
+      steel_greaves_14: -8228553530041209146
+      steel_greaves_15: 2697171401694574680
+      steel_greaves_16: 41060906621156009
+      steel_greaves_17: -9074641244211342138
+      steel_greaves_18: 1984871791737593235
+      steel_greaves_19: 9085192272355818323
+      steel_greaves_2: -8725992524335986009
+      steel_greaves_20: -225284668182944334
+      steel_greaves_21: 7320630521040071869
+      steel_greaves_22: -279980783061117446
+      steel_greaves_23: 2203990006068834994
+      steel_greaves_24: 3751247965856290097
+      steel_greaves_25: -574877787150140549
+      steel_greaves_26: -3252740287561139647
+      steel_greaves_27: 8540769820305693931
+      steel_greaves_28: 1519627478627294507
+      steel_greaves_29: -3501698316066546490
+      steel_greaves_3: 8096631191851939401
+      steel_greaves_30: -5262464177234190460
+      steel_greaves_31: 1663764633359286814
+      steel_greaves_32: 8191262587641473262
+      steel_greaves_33: 8719397959210723934
+      steel_greaves_34: -1663229415407190996
+      steel_greaves_35: 6195142963195091498
+      steel_greaves_36: 7069962535385252460
+      steel_greaves_37: 3105476331936477447
+      steel_greaves_38: -5489837607457344029
+      steel_greaves_39: -446978776453744726
+      steel_greaves_4: 6342387799578550981
+      steel_greaves_40: 6290754889434249824
+      steel_greaves_41: 1324922211618732409
+      steel_greaves_42: 7492165521842236263
+      steel_greaves_43: 7558457211960634708
+      steel_greaves_44: 1924571505536737325
+      steel_greaves_45: 4190258875771774888
+      steel_greaves_46: 8616159540543770905
+      steel_greaves_47: -1752218867826596355
+      steel_greaves_48: 4897047276251475488
+      steel_greaves_49: -2452569052128603005
+      steel_greaves_5: -425558604288469715
+      steel_greaves_50: 9115776205615597358
+      steel_greaves_51: 8480825936827542927
+      steel_greaves_52: 1514686956442329453
+      steel_greaves_53: 8485846205631037265
+      steel_greaves_54: 4622218629882561097
+      steel_greaves_55: -6068904751065577754
+      steel_greaves_6: -5070401346287111559
+      steel_greaves_7: -6906543070107586817
+      steel_greaves_8: 3164015512451667001
+      steel_greaves_9: 4145951119136194538
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

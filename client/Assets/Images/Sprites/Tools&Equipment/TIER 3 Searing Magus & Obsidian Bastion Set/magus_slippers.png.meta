@@ -1,0 +1,4342 @@
+fileFormatVersion: 2
+guid: a379d404a67dc944e99c13439bb6ef64
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -7748447587101747269
+    second: magus_slippers_0
+  - first:
+      213: -8966391790186863897
+    second: magus_slippers_1
+  - first:
+      213: 3528632447170738880
+    second: magus_slippers_2
+  - first:
+      213: 8618377041571211338
+    second: magus_slippers_3
+  - first:
+      213: 4733060859739020360
+    second: magus_slippers_4
+  - first:
+      213: -6127300342423559578
+    second: magus_slippers_5
+  - first:
+      213: -2376058026570439295
+    second: magus_slippers_6
+  - first:
+      213: 3125778259069434349
+    second: magus_slippers_7
+  - first:
+      213: 8639210089546856431
+    second: magus_slippers_8
+  - first:
+      213: -5376579800055554251
+    second: magus_slippers_9
+  - first:
+      213: -823586759973324909
+    second: magus_slippers_10
+  - first:
+      213: 6255885081634252380
+    second: magus_slippers_11
+  - first:
+      213: 4958661669711131240
+    second: magus_slippers_12
+  - first:
+      213: -4262200394367320796
+    second: magus_slippers_13
+  - first:
+      213: -8280110573925198261
+    second: magus_slippers_14
+  - first:
+      213: 8409145007956334663
+    second: magus_slippers_15
+  - first:
+      213: 8998503839359355771
+    second: magus_slippers_16
+  - first:
+      213: -9211488254240223238
+    second: magus_slippers_17
+  - first:
+      213: -8759296516365583293
+    second: magus_slippers_18
+  - first:
+      213: -7095153494663117088
+    second: magus_slippers_19
+  - first:
+      213: 1586296244153914806
+    second: magus_slippers_20
+  - first:
+      213: 6521984106187217243
+    second: magus_slippers_21
+  - first:
+      213: -5519454299516403296
+    second: magus_slippers_22
+  - first:
+      213: -6974284686192030363
+    second: magus_slippers_23
+  - first:
+      213: -2098755561550764117
+    second: magus_slippers_24
+  - first:
+      213: 5571034138472748979
+    second: magus_slippers_25
+  - first:
+      213: -1233376826404352056
+    second: magus_slippers_26
+  - first:
+      213: -6669781272337054145
+    second: magus_slippers_27
+  - first:
+      213: 5947262970319940053
+    second: magus_slippers_28
+  - first:
+      213: -3067825108499435852
+    second: magus_slippers_29
+  - first:
+      213: -8444316145397402567
+    second: magus_slippers_30
+  - first:
+      213: 4511409138121272992
+    second: magus_slippers_31
+  - first:
+      213: 5018535747371968448
+    second: magus_slippers_32
+  - first:
+      213: 239443004539011883
+    second: magus_slippers_33
+  - first:
+      213: 284686128071002099
+    second: magus_slippers_34
+  - first:
+      213: -2112776834499452500
+    second: magus_slippers_35
+  - first:
+      213: 1862049928751659477
+    second: magus_slippers_36
+  - first:
+      213: 4149989904076206874
+    second: magus_slippers_37
+  - first:
+      213: -5911066025481914786
+    second: magus_slippers_38
+  - first:
+      213: 4125838694239459605
+    second: magus_slippers_39
+  - first:
+      213: 864503451144341442
+    second: magus_slippers_40
+  - first:
+      213: -2130431111354011956
+    second: magus_slippers_41
+  - first:
+      213: -4072060141661766460
+    second: magus_slippers_42
+  - first:
+      213: 7475995795304374682
+    second: magus_slippers_43
+  - first:
+      213: -2051463142824596691
+    second: magus_slippers_44
+  - first:
+      213: 2080902776907451798
+    second: magus_slippers_45
+  - first:
+      213: -1990991445439082760
+    second: magus_slippers_46
+  - first:
+      213: -5373204666066387631
+    second: magus_slippers_47
+  - first:
+      213: 1479246542484324991
+    second: magus_slippers_48
+  - first:
+      213: 939626354368523495
+    second: magus_slippers_49
+  - first:
+      213: -5997570858242394355
+    second: magus_slippers_50
+  - first:
+      213: -8247918634126509235
+    second: magus_slippers_51
+  - first:
+      213: 9094330526717360105
+    second: magus_slippers_52
+  - first:
+      213: -4960492557906520522
+    second: magus_slippers_53
+  - first:
+      213: -2741703826534836464
+    second: magus_slippers_54
+  - first:
+      213: -5958075102915548966
+    second: magus_slippers_55
+  - first:
+      213: -1895771667772383823
+    second: magus_slippers_56
+  - first:
+      213: -814032977230552095
+    second: magus_slippers_57
+  - first:
+      213: 307490418971759966
+    second: magus_slippers_58
+  - first:
+      213: 398285702391846244
+    second: magus_slippers_59
+  - first:
+      213: 2210653679987061008
+    second: magus_slippers_60
+  - first:
+      213: -2252321709158883478
+    second: magus_slippers_61
+  - first:
+      213: 4318662379654599915
+    second: magus_slippers_62
+  - first:
+      213: -1989935028094424961
+    second: magus_slippers_63
+  - first:
+      213: 6057028260810393498
+    second: magus_slippers_64
+  - first:
+      213: 4983959759761018837
+    second: magus_slippers_65
+  - first:
+      213: 6289144555453192748
+    second: magus_slippers_66
+  - first:
+      213: 3428669202521370320
+    second: magus_slippers_67
+  - first:
+      213: -3190963190717314626
+    second: magus_slippers_68
+  - first:
+      213: 525482545464221828
+    second: magus_slippers_69
+  - first:
+      213: 1523401239574517992
+    second: magus_slippers_70
+  - first:
+      213: 540911901114891835
+    second: magus_slippers_71
+  - first:
+      213: 5060349836040193160
+    second: magus_slippers_72
+  - first:
+      213: 3429323792615192111
+    second: magus_slippers_73
+  - first:
+      213: 2180943388821680732
+    second: magus_slippers_74
+  - first:
+      213: 3520448841083671095
+    second: magus_slippers_75
+  - first:
+      213: -3689379627786733258
+    second: magus_slippers_76
+  - first:
+      213: -4461854043389685037
+    second: magus_slippers_77
+  - first:
+      213: -1990725376982263215
+    second: magus_slippers_78
+  - first:
+      213: -2462745740208808960
+    second: magus_slippers_79
+  - first:
+      213: 6329497679897858265
+    second: magus_slippers_80
+  - first:
+      213: -2446963765834672364
+    second: magus_slippers_81
+  - first:
+      213: -1737855650738338736
+    second: magus_slippers_82
+  - first:
+      213: 7870521040636086216
+    second: magus_slippers_83
+  - first:
+      213: -2136598502574091107
+    second: magus_slippers_84
+  - first:
+      213: -6125186407549066137
+    second: magus_slippers_85
+  - first:
+      213: 2026704587540755502
+    second: magus_slippers_86
+  - first:
+      213: -3877981269131735779
+    second: magus_slippers_87
+  - first:
+      213: 8612054315338536876
+    second: magus_slippers_88
+  - first:
+      213: 6118798288705410212
+    second: magus_slippers_89
+  - first:
+      213: -1689039699086376366
+    second: magus_slippers_90
+  - first:
+      213: -3650174691216956138
+    second: magus_slippers_91
+  - first:
+      213: 6088003506403251573
+    second: magus_slippers_92
+  - first:
+      213: 8626507380401111005
+    second: magus_slippers_93
+  - first:
+      213: -7307060212509496611
+    second: magus_slippers_94
+  - first:
+      213: 6361973562610176258
+    second: magus_slippers_95
+  - first:
+      213: -5917410936045965122
+    second: magus_slippers_96
+  - first:
+      213: 3001431160337619382
+    second: magus_slippers_97
+  - first:
+      213: 3011283271500317841
+    second: magus_slippers_98
+  - first:
+      213: -4640226412522841218
+    second: magus_slippers_99
+  - first:
+      213: -2006813423796103980
+    second: magus_slippers_100
+  - first:
+      213: -1568804872733818614
+    second: magus_slippers_101
+  - first:
+      213: 4028480378675621574
+    second: magus_slippers_102
+  - first:
+      213: 1877877102236701579
+    second: magus_slippers_103
+  - first:
+      213: -3904989939966471467
+    second: magus_slippers_104
+  - first:
+      213: -1566838445062697681
+    second: magus_slippers_105
+  - first:
+      213: 9116954243671935587
+    second: magus_slippers_106
+  - first:
+      213: 319040516081940237
+    second: magus_slippers_107
+  - first:
+      213: -4171644757028841745
+    second: magus_slippers_108
+  - first:
+      213: 6090132260355708743
+    second: magus_slippers_109
+  - first:
+      213: -1289276249813857876
+    second: magus_slippers_110
+  - first:
+      213: 7870221684794793618
+    second: magus_slippers_111
+  - first:
+      213: 3182483853482950422
+    second: magus_slippers_112
+  - first:
+      213: 2147758473300279958
+    second: magus_slippers_113
+  - first:
+      213: 8615079460735783581
+    second: magus_slippers_114
+  - first:
+      213: 3540660820454313290
+    second: magus_slippers_115
+  - first:
+      213: -5612416784836119856
+    second: magus_slippers_116
+  - first:
+      213: -423154051457533439
+    second: magus_slippers_117
+  - first:
+      213: 7861639585459614163
+    second: magus_slippers_118
+  - first:
+      213: 5322594622411222352
+    second: magus_slippers_119
+  - first:
+      213: -2222708128564693227
+    second: magus_slippers_120
+  - first:
+      213: -8962565145962558131
+    second: magus_slippers_121
+  - first:
+      213: -459564660543342288
+    second: magus_slippers_122
+  - first:
+      213: -5372291651906686812
+    second: magus_slippers_123
+  - first:
+      213: 4181510407297704572
+    second: magus_slippers_124
+  - first:
+      213: 854193422432679554
+    second: magus_slippers_125
+  - first:
+      213: 5567142353839683263
+    second: magus_slippers_126
+  - first:
+      213: 7564506288985760768
+    second: magus_slippers_127
+  - first:
+      213: -1569597370873037083
+    second: magus_slippers_128
+  - first:
+      213: -7839428414645008680
+    second: magus_slippers_129
+  - first:
+      213: 5500937569241942861
+    second: magus_slippers_130
+  - first:
+      213: 8278079432924709159
+    second: magus_slippers_131
+  - first:
+      213: 7725157112263723413
+    second: magus_slippers_132
+  - first:
+      213: -2391665193546286446
+    second: magus_slippers_133
+  - first:
+      213: -2557743450230639812
+    second: magus_slippers_134
+  - first:
+      213: -1405055992497769702
+    second: magus_slippers_135
+  - first:
+      213: -1313663868892236252
+    second: magus_slippers_136
+  - first:
+      213: 2625380264296554494
+    second: magus_slippers_137
+  - first:
+      213: 1439966126248354225
+    second: magus_slippers_138
+  - first:
+      213: 2394909228941159567
+    second: magus_slippers_139
+  - first:
+      213: -4432405061332530278
+    second: magus_slippers_140
+  - first:
+      213: 1232711747602073096
+    second: magus_slippers_141
+  - first:
+      213: -7326543315488715507
+    second: magus_slippers_142
+  - first:
+      213: 9014395422758258170
+    second: magus_slippers_143
+  - first:
+      213: 4879627830161189602
+    second: magus_slippers_144
+  - first:
+      213: -5152260120756334742
+    second: magus_slippers_145
+  - first:
+      213: 5242824951056858488
+    second: magus_slippers_146
+  - first:
+      213: 1534126478687126613
+    second: magus_slippers_147
+  - first:
+      213: -2125533854142747150
+    second: magus_slippers_148
+  - first:
+      213: -8716729080069796657
+    second: magus_slippers_149
+  - first:
+      213: 1724764524176652024
+    second: magus_slippers_150
+  - first:
+      213: -461315312809841653
+    second: magus_slippers_151
+  - first:
+      213: 9204978737370660492
+    second: magus_slippers_152
+  - first:
+      213: -7149724946559452804
+    second: magus_slippers_153
+  - first:
+      213: 1721404941750735486
+    second: magus_slippers_154
+  - first:
+      213: -7700355394929838905
+    second: magus_slippers_155
+  - first:
+      213: -2143846588221382674
+    second: magus_slippers_156
+  - first:
+      213: 1612661677114992991
+    second: magus_slippers_157
+  - first:
+      213: -4236970621320955474
+    second: magus_slippers_158
+  - first:
+      213: -5364092512621818194
+    second: magus_slippers_159
+  - first:
+      213: 5731719890722902021
+    second: magus_slippers_160
+  - first:
+      213: 2905518148882780475
+    second: magus_slippers_161
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: magus_slippers_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 128
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bb7511af8fbf77490800000000000000
+      internalID: -7748447587101747269
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_1
+      rect:
+        serializedVersion: 2
+        x: 17
+        y: 90
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7e2eeec3c2af09380800000000000000
+      internalID: -8966391790186863897
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_2
+      rect:
+        serializedVersion: 2
+        x: 18
+        y: 41
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ca7784e38838f030800000000000000
+      internalID: 3528632447170738880
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_3
+      rect:
+        serializedVersion: 2
+        x: 20
+        y: 15
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a48eb37d140aa9770800000000000000
+      internalID: 8618377041571211338
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_4
+      rect:
+        serializedVersion: 2
+        x: 24
+        y: 49
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84c9c0d66c53fa140800000000000000
+      internalID: 4733060859739020360
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_5
+      rect:
+        serializedVersion: 2
+        x: 25
+        y: 187
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 662e6b96dc477faa0800000000000000
+      internalID: -6127300342423559578
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_6
+      rect:
+        serializedVersion: 2
+        x: 38
+        y: 745
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 185ad8050db860fd0800000000000000
+      internalID: -2376058026570439295
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_7
+      rect:
+        serializedVersion: 2
+        x: 49
+        y: 37
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: de9f87af3cef06b20800000000000000
+      internalID: 3125778259069434349
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_8
+      rect:
+        serializedVersion: 2
+        x: 55
+        y: 209
+        width: 13
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe7396fcdc3a4e770800000000000000
+      internalID: 8639210089546856431
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_9
+      rect:
+        serializedVersion: 2
+        x: 63
+        y: 34
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 53fd52f782d8265b0800000000000000
+      internalID: -5376579800055554251
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_10
+      rect:
+        serializedVersion: 2
+        x: 99
+        y: 0
+        width: 1949
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 397331294380294f0800000000000000
+      internalID: -823586759973324909
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_11
+      rect:
+        serializedVersion: 2
+        x: 111
+        y: 89
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c56a97e265e51d650800000000000000
+      internalID: 6255885081634252380
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_12
+      rect:
+        serializedVersion: 2
+        x: 114
+        y: 563
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8623a783484b0d440800000000000000
+      internalID: 4958661669711131240
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_13
+      rect:
+        serializedVersion: 2
+        x: 118
+        y: 1069
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 42db43cc25f99d4c0800000000000000
+      internalID: -4262200394367320796
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_14
+      rect:
+        serializedVersion: 2
+        x: 120
+        y: 87
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b469b3c8d43271d80800000000000000
+      internalID: -8280110573925198261
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_15
+      rect:
+        serializedVersion: 2
+        x: 133
+        y: 1013
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7489cf7c4d843b470800000000000000
+      internalID: 8409145007956334663
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_16
+      rect:
+        serializedVersion: 2
+        x: 134
+        y: 1080
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b7bc007d09b11ec70800000000000000
+      internalID: 8998503839359355771
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_17
+      rect:
+        serializedVersion: 2
+        x: 145
+        y: 31
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aff0451cc383a2080800000000000000
+      internalID: -9211488254240223238
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_18
+      rect:
+        serializedVersion: 2
+        x: 151
+        y: 25
+        width: 12
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 34c76b32a3ab07680800000000000000
+      internalID: -8759296516365583293
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_19
+      rect:
+        serializedVersion: 2
+        x: 161
+        y: 731
+        width: 7
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0e6cbb30d73f88d90800000000000000
+      internalID: -7095153494663117088
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_20
+      rect:
+        serializedVersion: 2
+        x: 161
+        y: 432
+        width: 6
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6b5945d8708a30610800000000000000
+      internalID: 1586296244153914806
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_21
+      rect:
+        serializedVersion: 2
+        x: 170
+        y: 682
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b5958085dfdb28a50800000000000000
+      internalID: 6521984106187217243
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_22
+      rect:
+        serializedVersion: 2
+        x: 175
+        y: 28
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0a18253de85f663b0800000000000000
+      internalID: -5519454299516403296
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_23
+      rect:
+        serializedVersion: 2
+        x: 179
+        y: 651
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 56dc31d770d563f90800000000000000
+      internalID: -6974284686192030363
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_24
+      rect:
+        serializedVersion: 2
+        x: 183
+        y: 567
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ba7246bbfe8bfd2e0800000000000000
+      internalID: -2098755561550764117
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_25
+      rect:
+        serializedVersion: 2
+        x: 206
+        y: 28
+        width: 17
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3b71e37480a405d40800000000000000
+      internalID: 5571034138472748979
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_26
+      rect:
+        serializedVersion: 2
+        x: 208
+        y: 682
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8cf48f3af4a22eee0800000000000000
+      internalID: -1233376826404352056
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_27
+      rect:
+        serializedVersion: 2
+        x: 211
+        y: 176
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f360cc4554d2073a0800000000000000
+      internalID: -6669781272337054145
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_28
+      rect:
+        serializedVersion: 2
+        x: 227
+        y: 785
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d921cb592ce88250800000000000000
+      internalID: 5947262970319940053
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_29
+      rect:
+        serializedVersion: 2
+        x: 263
+        y: 40
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4beedde5155ec65d0800000000000000
+      internalID: -3067825108499435852
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_30
+      rect:
+        serializedVersion: 2
+        x: 266
+        y: 42
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 934fd76a433cfca80800000000000000
+      internalID: -8444316145397402567
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_31
+      rect:
+        serializedVersion: 2
+        x: 280
+        y: 46
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ae6b2a65bebb9e30800000000000000
+      internalID: 4511409138121272992
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_32
+      rect:
+        serializedVersion: 2
+        x: 281
+        y: 57
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c7a4b24cab65a540800000000000000
+      internalID: 5018535747371968448
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_33
+      rect:
+        serializedVersion: 2
+        x: 305
+        y: 265
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b23008dd42ca25300800000000000000
+      internalID: 239443004539011883
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_34
+      rect:
+        serializedVersion: 2
+        x: 305
+        y: 83
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f74720768863f300800000000000000
+      internalID: 284686128071002099
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_35
+      rect:
+        serializedVersion: 2
+        x: 313
+        y: 301
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca16cf9b9a8eda2e0800000000000000
+      internalID: -2112776834499452500
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_36
+      rect:
+        serializedVersion: 2
+        x: 323
+        y: 33
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d9b84d6b8457d910800000000000000
+      internalID: 1862049928751659477
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_37
+      rect:
+        serializedVersion: 2
+        x: 347
+        y: 701
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a137be584d9b79930800000000000000
+      internalID: 4149989904076206874
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_38
+      rect:
+        serializedVersion: 2
+        x: 348
+        y: 58
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e56354b94cca7fda0800000000000000
+      internalID: -5911066025481914786
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_39
+      rect:
+        serializedVersion: 2
+        x: 365
+        y: 774
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51954bace6ce14930800000000000000
+      internalID: 4125838694239459605
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_40
+      rect:
+        serializedVersion: 2
+        x: 415
+        y: 603
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c7ce88fe455ffb00800000000000000
+      internalID: 864503451144341442
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_41
+      rect:
+        serializedVersion: 2
+        x: 416
+        y: 679
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ccead4511303f62e0800000000000000
+      internalID: -2130431111354011956
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_42
+      rect:
+        serializedVersion: 2
+        x: 417
+        y: 32
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4cc393830e22d77c0800000000000000
+      internalID: -4072060141661766460
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_43
+      rect:
+        serializedVersion: 2
+        x: 431
+        y: 153
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a916e69f09210c760800000000000000
+      internalID: 7475995795304374682
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_44
+      rect:
+        serializedVersion: 2
+        x: 433
+        y: 39
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2b2226042db783e0800000000000000
+      internalID: -2051463142824596691
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_45
+      rect:
+        serializedVersion: 2
+        x: 437
+        y: 283
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 69d41bdec0ad0ec10800000000000000
+      internalID: 2080902776907451798
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_46
+      rect:
+        serializedVersion: 2
+        x: 439
+        y: 31
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8fe03cf34d39e54e0800000000000000
+      internalID: -1990991445439082760
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_47
+      rect:
+        serializedVersion: 2
+        x: 451
+        y: 136
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 15d34ad13da8e65b0800000000000000
+      internalID: -5373204666066387631
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_48
+      rect:
+        serializedVersion: 2
+        x: 468
+        y: 130
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f72c00c94e6578410800000000000000
+      internalID: 1479246542484324991
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_49
+      rect:
+        serializedVersion: 2
+        x: 469
+        y: 213
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7ec2bb1e0393a0d00800000000000000
+      internalID: 939626354368523495
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_50
+      rect:
+        serializedVersion: 2
+        x: 469
+        y: 187
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d073a37b41954cca0800000000000000
+      internalID: -5997570858242394355
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_51
+      rect:
+        serializedVersion: 2
+        x: 479
+        y: 41
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4b709c93b1898d80800000000000000
+      internalID: -8247918634126509235
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_52
+      rect:
+        serializedVersion: 2
+        x: 488
+        y: 37
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9e7baf22e6d853e70800000000000000
+      internalID: 9094330526717360105
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_53
+      rect:
+        serializedVersion: 2
+        x: 499
+        y: 30
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6365307ec4ac82bb0800000000000000
+      internalID: -4960492557906520522
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_54
+      rect:
+        serializedVersion: 2
+        x: 530
+        y: 173
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 017df0c55e283f9d0800000000000000
+      internalID: -2741703826534836464
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_55
+      rect:
+        serializedVersion: 2
+        x: 542
+        y: 41
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ad8ae99d24aa05da0800000000000000
+      internalID: -5958075102915548966
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_56
+      rect:
+        serializedVersion: 2
+        x: 546
+        y: 61
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1bd5d2f56bdd0b5e0800000000000000
+      internalID: -1895771667772383823
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_57
+      rect:
+        serializedVersion: 2
+        x: 572
+        y: 85
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1e328b4f159f3b4f0800000000000000
+      internalID: -814032977230552095
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_58
+      rect:
+        serializedVersion: 2
+        x: 618
+        y: 40
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e55d5aa28ec644400800000000000000
+      internalID: 307490418971759966
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_59
+      rect:
+        serializedVersion: 2
+        x: 622
+        y: 112
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 465de227cbef68500800000000000000
+      internalID: 398285702391846244
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_60
+      rect:
+        serializedVersion: 2
+        x: 622
+        y: 35
+        width: 7
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 011f9053fc1ddae10800000000000000
+      internalID: 2210653679987061008
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_61
+      rect:
+        serializedVersion: 2
+        x: 624
+        y: 300
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a6f1fadb6552eb0e0800000000000000
+      internalID: -2252321709158883478
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_62
+      rect:
+        serializedVersion: 2
+        x: 624
+        y: 133
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be4d7249d88feeb30800000000000000
+      internalID: 4318662379654599915
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_63
+      rect:
+        serializedVersion: 2
+        x: 626
+        y: 306
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f78235492a45264e0800000000000000
+      internalID: -1989935028094424961
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_64
+      rect:
+        serializedVersion: 2
+        x: 626
+        y: 28
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a970b189c13ee0450800000000000000
+      internalID: 6057028260810393498
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_65
+      rect:
+        serializedVersion: 2
+        x: 646
+        y: 144
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5df856fcef49a2540800000000000000
+      internalID: 4983959759761018837
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_66
+      rect:
+        serializedVersion: 2
+        x: 677
+        y: 372
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c2a9ed0e6a7874750800000000000000
+      internalID: 6289144555453192748
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_67
+      rect:
+        serializedVersion: 2
+        x: 687
+        y: 213
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0deab9c4974159f20800000000000000
+      internalID: 3428669202521370320
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_68
+      rect:
+        serializedVersion: 2
+        x: 697
+        y: 83
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb982fd62eb67b3d0800000000000000
+      internalID: -3190963190717314626
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_69
+      rect:
+        serializedVersion: 2
+        x: 712
+        y: 40
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 480201a4793ea4700800000000000000
+      internalID: 525482545464221828
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_70
+      rect:
+        serializedVersion: 2
+        x: 715
+        y: 103
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8e89a372b55342510800000000000000
+      internalID: 1523401239574517992
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_71
+      rect:
+        serializedVersion: 2
+        x: 759
+        y: 23
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b3efbb81284b18700800000000000000
+      internalID: 540911901114891835
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_72
+      rect:
+        serializedVersion: 2
+        x: 773
+        y: 226
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 884c1607d59f93640800000000000000
+      internalID: 5060349836040193160
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_73
+      rect:
+        serializedVersion: 2
+        x: 782
+        y: 28
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f26bf9ee1d7679f20800000000000000
+      internalID: 3429323792615192111
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_74
+      rect:
+        serializedVersion: 2
+        x: 793
+        y: 216
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c52f3fdf474444e10800000000000000
+      internalID: 2180943388821680732
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_75
+      rect:
+        serializedVersion: 2
+        x: 793
+        y: 154
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7325abe91952bd030800000000000000
+      internalID: 3520448841083671095
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_76
+      rect:
+        serializedVersion: 2
+        x: 825
+        y: 70
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 639753496c0bcccc0800000000000000
+      internalID: -3689379627786733258
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_77
+      rect:
+        serializedVersion: 2
+        x: 869
+        y: 162
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3d21e10336f4412c0800000000000000
+      internalID: -4461854043389685037
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_78
+      rect:
+        serializedVersion: 2
+        x: 871
+        y: 265
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 15add9321d58f54e0800000000000000
+      internalID: -1990725376982263215
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_79
+      rect:
+        serializedVersion: 2
+        x: 883
+        y: 41
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00c5fb62cc192ddd0800000000000000
+      internalID: -2462745740208808960
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_80
+      rect:
+        serializedVersion: 2
+        x: 919
+        y: 42
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9d098f0da94e6d750800000000000000
+      internalID: 6329497679897858265
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_81
+      rect:
+        serializedVersion: 2
+        x: 936
+        y: 261
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4171c276b63aa0ed0800000000000000
+      internalID: -2446963765834672364
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_82
+      rect:
+        serializedVersion: 2
+        x: 941
+        y: 319
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 05406d24e75e1e7e0800000000000000
+      internalID: -1737855650738338736
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_83
+      rect:
+        serializedVersion: 2
+        x: 950
+        y: 39
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8c70a58cf25b93d60800000000000000
+      internalID: 7870521040636086216
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_84
+      rect:
+        serializedVersion: 2
+        x: 986
+        y: 6
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d94907a6bf64952e0800000000000000
+      internalID: -2136598502574091107
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_85
+      rect:
+        serializedVersion: 2
+        x: 1026
+        y: 237
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 764acfa3a67fefaa0800000000000000
+      internalID: -6125186407549066137
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_86
+      rect:
+        serializedVersion: 2
+        x: 1027
+        y: 279
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e24750d951d402c10800000000000000
+      internalID: 2026704587540755502
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_87
+      rect:
+        serializedVersion: 2
+        x: 1073
+        y: 41
+        width: 11
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d1dc8c70594ae2ac0800000000000000
+      internalID: -3877981269131735779
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_88
+      rect:
+        serializedVersion: 2
+        x: 1088
+        y: 31
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca79f1c65c9248770800000000000000
+      internalID: 8612054315338536876
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_89
+      rect:
+        serializedVersion: 2
+        x: 1101
+        y: 30
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a4dd82ff965ae450800000000000000
+      internalID: 6118798288705410212
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_90
+      rect:
+        serializedVersion: 2
+        x: 1111
+        y: 91
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2528c64b7535f88e0800000000000000
+      internalID: -1689039699086376366
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_91
+      rect:
+        serializedVersion: 2
+        x: 1138
+        y: 174
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61564e13579f75dc0800000000000000
+      internalID: -3650174691216956138
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_92
+      rect:
+        serializedVersion: 2
+        x: 1169
+        y: 154
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5759f76feeeec7450800000000000000
+      internalID: 6088003506403251573
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_93
+      rect:
+        serializedVersion: 2
+        x: 1175
+        y: 30
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ddff71dd1c287b770800000000000000
+      internalID: 8626507380401111005
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_94
+      rect:
+        serializedVersion: 2
+        x: 1185
+        y: 24
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dda2bf0837b189a90800000000000000
+      internalID: -7307060212509496611
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_95
+      rect:
+        serializedVersion: 2
+        x: 1195
+        y: 283
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2015ecd7f354a4850800000000000000
+      internalID: 6361973562610176258
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_96
+      rect:
+        serializedVersion: 2
+        x: 1217
+        y: 40
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb0f7fefa1221eda0800000000000000
+      internalID: -5917410936045965122
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_97
+      rect:
+        serializedVersion: 2
+        x: 1230
+        y: 40
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6b956b1fcb937a920800000000000000
+      internalID: 3001431160337619382
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_98
+      rect:
+        serializedVersion: 2
+        x: 1250
+        y: 42
+        width: 6
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1944ad35e2a3ac920800000000000000
+      internalID: 3011283271500317841
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_99
+      rect:
+        serializedVersion: 2
+        x: 1253
+        y: 70
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7bd03ca9aa9a9fb0800000000000000
+      internalID: -4640226412522841218
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_100
+      rect:
+        serializedVersion: 2
+        x: 1279
+        y: 387
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4d4d528d2dd5624e0800000000000000
+      internalID: -2006813423796103980
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_101
+      rect:
+        serializedVersion: 2
+        x: 1280
+        y: 256
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a018cc6b74c7a3ae0800000000000000
+      internalID: -1568804872733818614
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_102
+      rect:
+        serializedVersion: 2
+        x: 1374
+        y: 41
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ce67938f8908e730800000000000000
+      internalID: 4028480378675621574
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_103
+      rect:
+        serializedVersion: 2
+        x: 1417
+        y: 74
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b8398aa664f8f0a10800000000000000
+      internalID: 1877877102236701579
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_104
+      rect:
+        serializedVersion: 2
+        x: 1442
+        y: 38
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d213d0d650bec9c0800000000000000
+      internalID: -3904989939966471467
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_105
+      rect:
+        serializedVersion: 2
+        x: 1462
+        y: 158
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f2dcc955cb8714ae0800000000000000
+      internalID: -1566838445062697681
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_106
+      rect:
+        serializedVersion: 2
+        x: 1480
+        y: 38
+        width: 16
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36a4e87b49de58e70800000000000000
+      internalID: 9116954243671935587
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_107
+      rect:
+        serializedVersion: 2
+        x: 1510
+        y: 36
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d077506b8a57d6400800000000000000
+      internalID: 319040516081940237
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_108
+      rect:
+        serializedVersion: 2
+        x: 1523
+        y: 39
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe6dc2022375b16c0800000000000000
+      internalID: -4171644757028841745
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_109
+      rect:
+        serializedVersion: 2
+        x: 1535
+        y: 42
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 74716ad160f748450800000000000000
+      internalID: 6090132260355708743
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_110
+      rect:
+        serializedVersion: 2
+        x: 1539
+        y: 56
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca94f78e4129b1ee0800000000000000
+      internalID: -1289276249813857876
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_111
+      rect:
+        serializedVersion: 2
+        x: 1555
+        y: 307
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 29e15c19ce4a83d60800000000000000
+      internalID: 7870221684794793618
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_112
+      rect:
+        serializedVersion: 2
+        x: 1556
+        y: 43
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61f744604347a2c20800000000000000
+      internalID: 3182483853482950422
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_113
+      rect:
+        serializedVersion: 2
+        x: 1585
+        y: 87
+        width: 8
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6920660c3fe5ecd10800000000000000
+      internalID: 2147758473300279958
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_114
+      rect:
+        serializedVersion: 2
+        x: 1596
+        y: 91
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d929be8ff19ee8770800000000000000
+      internalID: 8615079460735783581
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_115
+      rect:
+        serializedVersion: 2
+        x: 1617
+        y: 85
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a4d8259c144f22130800000000000000
+      internalID: 3540660820454313290
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_116
+      rect:
+        serializedVersion: 2
+        x: 1618
+        y: 381
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0d237688ba0bc12b0800000000000000
+      internalID: -5612416784836119856
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_117
+      rect:
+        serializedVersion: 2
+        x: 1631
+        y: 89
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 10a3b95d1a7a02af0800000000000000
+      internalID: -423154051457533439
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_118
+      rect:
+        serializedVersion: 2
+        x: 1639
+        y: 275
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3d1387bdc872a1d60800000000000000
+      internalID: 7861639585459614163
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_119
+      rect:
+        serializedVersion: 2
+        x: 1643
+        y: 39
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 05da938db97add940800000000000000
+      internalID: 5322594622411222352
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_120
+      rect:
+        serializedVersion: 2
+        x: 1655
+        y: 39
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5173785cbba5721e0800000000000000
+      internalID: -2222708128564693227
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_121
+      rect:
+        serializedVersion: 2
+        x: 1658
+        y: 317
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4dca964c729e9380800000000000000
+      internalID: -8962565145962558131
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_122
+      rect:
+        serializedVersion: 2
+        x: 1659
+        y: 199
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 039bdf8406c4f99f0800000000000000
+      internalID: -459564660543342288
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_123
+      rect:
+        serializedVersion: 2
+        x: 1675
+        y: 251
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a03e4ac439c175b0800000000000000
+      internalID: -5372291651906686812
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_124
+      rect:
+        serializedVersion: 2
+        x: 1675
+        y: 39
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c7224939f85b70a30800000000000000
+      internalID: 4181510407297704572
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_125
+      rect:
+        serializedVersion: 2
+        x: 1692
+        y: 90
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28633995464badb00800000000000000
+      internalID: 854193422432679554
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_126
+      rect:
+        serializedVersion: 2
+        x: 1717
+        y: 218
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb675ae8976724d40800000000000000
+      internalID: 5567142353839683263
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_127
+      rect:
+        serializedVersion: 2
+        x: 1718
+        y: 80
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 004643034668af860800000000000000
+      internalID: 7564506288985760768
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_128
+      rect:
+        serializedVersion: 2
+        x: 1730
+        y: 31
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5eeb9bcd18ba73ae0800000000000000
+      internalID: -1569597370873037083
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_129
+      rect:
+        serializedVersion: 2
+        x: 1737
+        y: 189
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d60bf65461c43390800000000000000
+      internalID: -7839428414645008680
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_130
+      rect:
+        serializedVersion: 2
+        x: 1739
+        y: 40
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4b4442f291475c40800000000000000
+      internalID: 5500937569241942861
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_131
+      rect:
+        serializedVersion: 2
+        x: 1754
+        y: 299
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 721c1f59265a1e270800000000000000
+      internalID: 8278079432924709159
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_132
+      rect:
+        serializedVersion: 2
+        x: 1766
+        y: 27
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 599cf86c675453b60800000000000000
+      internalID: 7725157112263723413
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_133
+      rect:
+        serializedVersion: 2
+        x: 1771
+        y: 686
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 29af1059d291fced0800000000000000
+      internalID: -2391665193546286446
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_134
+      rect:
+        serializedVersion: 2
+        x: 1771
+        y: 246
+        width: 17
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c33bb6e22e1118cd0800000000000000
+      internalID: -2557743450230639812
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_135
+      rect:
+        serializedVersion: 2
+        x: 1777
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a13f2a5e40d308ce0800000000000000
+      internalID: -1405055992497769702
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_136
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 260
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 426b96cdbade4cde0800000000000000
+      internalID: -1313663868892236252
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_137
+      rect:
+        serializedVersion: 2
+        x: 1792
+        y: 209
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eff97b5c0793f6420800000000000000
+      internalID: 2625380264296554494
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_138
+      rect:
+        serializedVersion: 2
+        x: 1800
+        y: 276
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b1e0a30099cbf310800000000000000
+      internalID: 1439966126248354225
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_139
+      rect:
+        serializedVersion: 2
+        x: 1803
+        y: 42
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f8ca754414d6c3120800000000000000
+      internalID: 2394909228941159567
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_140
+      rect:
+        serializedVersion: 2
+        x: 1804
+        y: 676
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9b81a2a41fec72c0800000000000000
+      internalID: -4432405061332530278
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_141
+      rect:
+        serializedVersion: 2
+        x: 1814
+        y: 262
+        width: 10
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 806c542adc87b1110800000000000000
+      internalID: 1232711747602073096
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_142
+      rect:
+        serializedVersion: 2
+        x: 1814
+        y: 204
+        width: 12
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d0d48c81ca3e25a90800000000000000
+      internalID: -7326543315488715507
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_143
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 245
+        width: 17
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: af5c96e60e0991d70800000000000000
+      internalID: 9014395422758258170
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_144
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 221
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ea2edc78abe7b340800000000000000
+      internalID: 4879627830161189602
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_145
+      rect:
+        serializedVersion: 2
+        x: 1833
+        y: 1330
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a6f48efc7be7f78b0800000000000000
+      internalID: -5152260120756334742
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_146
+      rect:
+        serializedVersion: 2
+        x: 1833
+        y: 607
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 87d7c4be38142c840800000000000000
+      internalID: 5242824951056858488
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_147
+      rect:
+        serializedVersion: 2
+        x: 1838
+        y: 230
+        width: 13
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 554caaa77ef4a4510800000000000000
+      internalID: 1534126478687126613
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_148
+      rect:
+        serializedVersion: 2
+        x: 1846
+        y: 218
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2fd21c1a8369082e0800000000000000
+      internalID: -2125533854142747150
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_149
+      rect:
+        serializedVersion: 2
+        x: 1847
+        y: 819
+        width: 6
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fcc4f1bb515f70780800000000000000
+      internalID: -8716729080069796657
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_150
+      rect:
+        serializedVersion: 2
+        x: 1847
+        y: 36
+        width: 8
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8f6beb052389fe710800000000000000
+      internalID: 1724764524176652024
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_151
+      rect:
+        serializedVersion: 2
+        x: 1855
+        y: 73
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b0c658aca241999f0800000000000000
+      internalID: -461315312809841653
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_152
+      rect:
+        serializedVersion: 2
+        x: 1864
+        y: 34
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c8e700e3467aebf70800000000000000
+      internalID: 9204978737370660492
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_153
+      rect:
+        serializedVersion: 2
+        x: 1881
+        y: 86
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c79339eba0317cc90800000000000000
+      internalID: -7149724946559452804
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_154
+      rect:
+        serializedVersion: 2
+        x: 1921
+        y: 877
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7297a39ca8a3e710800000000000000
+      internalID: 1721404941750735486
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_155
+      rect:
+        serializedVersion: 2
+        x: 1942
+        y: 45
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7c4b1f80197d22590800000000000000
+      internalID: -7700355394929838905
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_156
+      rect:
+        serializedVersion: 2
+        x: 1955
+        y: 70
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eef9128f2e68f32e0800000000000000
+      internalID: -2143846588221382674
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_157
+      rect:
+        serializedVersion: 2
+        x: 1959
+        y: 13
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f5923574043516610800000000000000
+      internalID: 1612661677114992991
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_158
+      rect:
+        serializedVersion: 2
+        x: 1969
+        y: 12
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ea9f5681ba14335c0800000000000000
+      internalID: -4236970621320955474
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_159
+      rect:
+        serializedVersion: 2
+        x: 1987
+        y: 41
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eae08daa74aee85b0800000000000000
+      internalID: -5364092512621818194
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_160
+      rect:
+        serializedVersion: 2
+        x: 2005
+        y: 1164
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 50054966fd82b8f40800000000000000
+      internalID: 5731719890722902021
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_slippers_161
+      rect:
+        serializedVersion: 2
+        x: 2040
+        y: 687
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b31db90cc59725820800000000000000
+      internalID: 2905518148882780475
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      magus_slippers_0: -7748447587101747269
+      magus_slippers_1: -8966391790186863897
+      magus_slippers_10: -823586759973324909
+      magus_slippers_100: -2006813423796103980
+      magus_slippers_101: -1568804872733818614
+      magus_slippers_102: 4028480378675621574
+      magus_slippers_103: 1877877102236701579
+      magus_slippers_104: -3904989939966471467
+      magus_slippers_105: -1566838445062697681
+      magus_slippers_106: 9116954243671935587
+      magus_slippers_107: 319040516081940237
+      magus_slippers_108: -4171644757028841745
+      magus_slippers_109: 6090132260355708743
+      magus_slippers_11: 6255885081634252380
+      magus_slippers_110: -1289276249813857876
+      magus_slippers_111: 7870221684794793618
+      magus_slippers_112: 3182483853482950422
+      magus_slippers_113: 2147758473300279958
+      magus_slippers_114: 8615079460735783581
+      magus_slippers_115: 3540660820454313290
+      magus_slippers_116: -5612416784836119856
+      magus_slippers_117: -423154051457533439
+      magus_slippers_118: 7861639585459614163
+      magus_slippers_119: 5322594622411222352
+      magus_slippers_12: 4958661669711131240
+      magus_slippers_120: -2222708128564693227
+      magus_slippers_121: -8962565145962558131
+      magus_slippers_122: -459564660543342288
+      magus_slippers_123: -5372291651906686812
+      magus_slippers_124: 4181510407297704572
+      magus_slippers_125: 854193422432679554
+      magus_slippers_126: 5567142353839683263
+      magus_slippers_127: 7564506288985760768
+      magus_slippers_128: -1569597370873037083
+      magus_slippers_129: -7839428414645008680
+      magus_slippers_13: -4262200394367320796
+      magus_slippers_130: 5500937569241942861
+      magus_slippers_131: 8278079432924709159
+      magus_slippers_132: 7725157112263723413
+      magus_slippers_133: -2391665193546286446
+      magus_slippers_134: -2557743450230639812
+      magus_slippers_135: -1405055992497769702
+      magus_slippers_136: -1313663868892236252
+      magus_slippers_137: 2625380264296554494
+      magus_slippers_138: 1439966126248354225
+      magus_slippers_139: 2394909228941159567
+      magus_slippers_14: -8280110573925198261
+      magus_slippers_140: -4432405061332530278
+      magus_slippers_141: 1232711747602073096
+      magus_slippers_142: -7326543315488715507
+      magus_slippers_143: 9014395422758258170
+      magus_slippers_144: 4879627830161189602
+      magus_slippers_145: -5152260120756334742
+      magus_slippers_146: 5242824951056858488
+      magus_slippers_147: 1534126478687126613
+      magus_slippers_148: -2125533854142747150
+      magus_slippers_149: -8716729080069796657
+      magus_slippers_15: 8409145007956334663
+      magus_slippers_150: 1724764524176652024
+      magus_slippers_151: -461315312809841653
+      magus_slippers_152: 9204978737370660492
+      magus_slippers_153: -7149724946559452804
+      magus_slippers_154: 1721404941750735486
+      magus_slippers_155: -7700355394929838905
+      magus_slippers_156: -2143846588221382674
+      magus_slippers_157: 1612661677114992991
+      magus_slippers_158: -4236970621320955474
+      magus_slippers_159: -5364092512621818194
+      magus_slippers_16: 8998503839359355771
+      magus_slippers_160: 5731719890722902021
+      magus_slippers_161: 2905518148882780475
+      magus_slippers_17: -9211488254240223238
+      magus_slippers_18: -8759296516365583293
+      magus_slippers_19: -7095153494663117088
+      magus_slippers_2: 3528632447170738880
+      magus_slippers_20: 1586296244153914806
+      magus_slippers_21: 6521984106187217243
+      magus_slippers_22: -5519454299516403296
+      magus_slippers_23: -6974284686192030363
+      magus_slippers_24: -2098755561550764117
+      magus_slippers_25: 5571034138472748979
+      magus_slippers_26: -1233376826404352056
+      magus_slippers_27: -6669781272337054145
+      magus_slippers_28: 5947262970319940053
+      magus_slippers_29: -3067825108499435852
+      magus_slippers_3: 8618377041571211338
+      magus_slippers_30: -8444316145397402567
+      magus_slippers_31: 4511409138121272992
+      magus_slippers_32: 5018535747371968448
+      magus_slippers_33: 239443004539011883
+      magus_slippers_34: 284686128071002099
+      magus_slippers_35: -2112776834499452500
+      magus_slippers_36: 1862049928751659477
+      magus_slippers_37: 4149989904076206874
+      magus_slippers_38: -5911066025481914786
+      magus_slippers_39: 4125838694239459605
+      magus_slippers_4: 4733060859739020360
+      magus_slippers_40: 864503451144341442
+      magus_slippers_41: -2130431111354011956
+      magus_slippers_42: -4072060141661766460
+      magus_slippers_43: 7475995795304374682
+      magus_slippers_44: -2051463142824596691
+      magus_slippers_45: 2080902776907451798
+      magus_slippers_46: -1990991445439082760
+      magus_slippers_47: -5373204666066387631
+      magus_slippers_48: 1479246542484324991
+      magus_slippers_49: 939626354368523495
+      magus_slippers_5: -6127300342423559578
+      magus_slippers_50: -5997570858242394355
+      magus_slippers_51: -8247918634126509235
+      magus_slippers_52: 9094330526717360105
+      magus_slippers_53: -4960492557906520522
+      magus_slippers_54: -2741703826534836464
+      magus_slippers_55: -5958075102915548966
+      magus_slippers_56: -1895771667772383823
+      magus_slippers_57: -814032977230552095
+      magus_slippers_58: 307490418971759966
+      magus_slippers_59: 398285702391846244
+      magus_slippers_6: -2376058026570439295
+      magus_slippers_60: 2210653679987061008
+      magus_slippers_61: -2252321709158883478
+      magus_slippers_62: 4318662379654599915
+      magus_slippers_63: -1989935028094424961
+      magus_slippers_64: 6057028260810393498
+      magus_slippers_65: 4983959759761018837
+      magus_slippers_66: 6289144555453192748
+      magus_slippers_67: 3428669202521370320
+      magus_slippers_68: -3190963190717314626
+      magus_slippers_69: 525482545464221828
+      magus_slippers_7: 3125778259069434349
+      magus_slippers_70: 1523401239574517992
+      magus_slippers_71: 540911901114891835
+      magus_slippers_72: 5060349836040193160
+      magus_slippers_73: 3429323792615192111
+      magus_slippers_74: 2180943388821680732
+      magus_slippers_75: 3520448841083671095
+      magus_slippers_76: -3689379627786733258
+      magus_slippers_77: -4461854043389685037
+      magus_slippers_78: -1990725376982263215
+      magus_slippers_79: -2462745740208808960
+      magus_slippers_8: 8639210089546856431
+      magus_slippers_80: 6329497679897858265
+      magus_slippers_81: -2446963765834672364
+      magus_slippers_82: -1737855650738338736
+      magus_slippers_83: 7870521040636086216
+      magus_slippers_84: -2136598502574091107
+      magus_slippers_85: -6125186407549066137
+      magus_slippers_86: 2026704587540755502
+      magus_slippers_87: -3877981269131735779
+      magus_slippers_88: 8612054315338536876
+      magus_slippers_89: 6118798288705410212
+      magus_slippers_9: -5376579800055554251
+      magus_slippers_90: -1689039699086376366
+      magus_slippers_91: -3650174691216956138
+      magus_slippers_92: 6088003506403251573
+      magus_slippers_93: 8626507380401111005
+      magus_slippers_94: -7307060212509496611
+      magus_slippers_95: 6361973562610176258
+      magus_slippers_96: -5917410936045965122
+      magus_slippers_97: 3001431160337619382
+      magus_slippers_98: 3011283271500317841
+      magus_slippers_99: -4640226412522841218
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

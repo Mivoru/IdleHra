@@ -1,0 +1,988 @@
+fileFormatVersion: 2
+guid: cf3e11e588493a44a8d1bb2716238227
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 1369252451121611364
+    second: Absidian_0
+  - first:
+      213: -6421070075606771906
+    second: Absidian_1
+  - first:
+      213: -3677692540687296373
+    second: Absidian_2
+  - first:
+      213: 1267874432620591181
+    second: Absidian_3
+  - first:
+      213: -2521579420672592770
+    second: Absidian_4
+  - first:
+      213: 2376847881634408173
+    second: Absidian_5
+  - first:
+      213: -335039757389005180
+    second: Absidian_6
+  - first:
+      213: 7856068039426276670
+    second: Absidian_7
+  - first:
+      213: 652070881809597751
+    second: Absidian_8
+  - first:
+      213: 906181000430073255
+    second: Absidian_9
+  - first:
+      213: -912323676628543254
+    second: Absidian_10
+  - first:
+      213: -4690247066612362011
+    second: Absidian_11
+  - first:
+      213: 3037027259976570038
+    second: Absidian_12
+  - first:
+      213: 2557367355155088359
+    second: Absidian_13
+  - first:
+      213: 1544700705103941193
+    second: Absidian_14
+  - first:
+      213: -5528568294056843629
+    second: Absidian_15
+  - first:
+      213: 1564012434678446292
+    second: Absidian_16
+  - first:
+      213: -1365990479708164712
+    second: Absidian_17
+  - first:
+      213: 1411990715972872606
+    second: Absidian_18
+  - first:
+      213: 8859415343400486062
+    second: Absidian_19
+  - first:
+      213: -1166503841663647655
+    second: Absidian_20
+  - first:
+      213: 1884542523726430209
+    second: Absidian_21
+  - first:
+      213: 5992287119394445578
+    second: Absidian_22
+  - first:
+      213: 3433553236385066851
+    second: Absidian_23
+  - first:
+      213: -1913358354571903882
+    second: Absidian_24
+  - first:
+      213: -9105819405453080941
+    second: Absidian_25
+  - first:
+      213: -3585878316386193342
+    second: Absidian_26
+  - first:
+      213: 4619161722185695104
+    second: Absidian_27
+  - first:
+      213: 7202964465847346223
+    second: Absidian_28
+  - first:
+      213: 898571415492650090
+    second: Absidian_29
+  - first:
+      213: 2480586118126536501
+    second: Absidian_30
+  - first:
+      213: 1639186451193796112
+    second: Absidian_31
+  - first:
+      213: 3030228410644536348
+    second: Absidian_32
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Absidian_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 2047
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 462cfe489df800310800000000000000
+      internalID: 1369252451121611364
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_1
+      rect:
+        serializedVersion: 2
+        x: 768
+        y: 1778
+        width: 24
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e37519959c6c3e6a0800000000000000
+      internalID: -6421070075606771906
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_2
+      rect:
+        serializedVersion: 2
+        x: 1317
+        y: 1763
+        width: 13
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b88da379e1636fcc0800000000000000
+      internalID: -3677692540687296373
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_3
+      rect:
+        serializedVersion: 2
+        x: 1523
+        y: 1760
+        width: 13
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4876283415689110800000000000000
+      internalID: 1267874432620591181
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_4
+      rect:
+        serializedVersion: 2
+        x: 270
+        y: 1204
+        width: 13
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e74ffd570ec810dd0800000000000000
+      internalID: -2521579420672592770
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_5
+      rect:
+        serializedVersion: 2
+        x: 1825
+        y: 1208
+        width: 13
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: de665f52e824cf020800000000000000
+      internalID: 2376847881634408173
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_6
+      rect:
+        serializedVersion: 2
+        x: 281
+        y: 1164
+        width: 13
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48ef133ad13b95bf0800000000000000
+      internalID: -335039757389005180
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_7
+      rect:
+        serializedVersion: 2
+        x: 1821
+        y: 1165
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e3d7d45324c560d60800000000000000
+      internalID: 7856068039426276670
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_8
+      rect:
+        serializedVersion: 2
+        x: 192
+        y: 1016
+        width: 24
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 73503ae130f9c0900800000000000000
+      internalID: 652070881809597751
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_9
+      rect:
+        serializedVersion: 2
+        x: 1826
+        y: 1027
+        width: 25
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7a5b7d891d6639c00800000000000000
+      internalID: 906181000430073255
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_10
+      rect:
+        serializedVersion: 2
+        x: 276
+        y: 979
+        width: 22
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ae890662376c653f0800000000000000
+      internalID: -912323676628543254
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_11
+      rect:
+        serializedVersion: 2
+        x: 1827
+        y: 977
+        width: 16
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5e490c59425e8eeb0800000000000000
+      internalID: -4690247066612362011
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_12
+      rect:
+        serializedVersion: 2
+        x: 1901
+        y: 936
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6b4d41cb330b52a20800000000000000
+      internalID: 3037027259976570038
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_13
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 863
+        width: 33
+        height: 41
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7e3033c5f089d7320800000000000000
+      internalID: 2557367355155088359
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_14
+      rect:
+        serializedVersion: 2
+        x: 1879
+        y: 901
+        width: 13
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 94e040c6b11ef6510800000000000000
+      internalID: 1544700705103941193
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_15
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 841
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 396214c9d649643b0800000000000000
+      internalID: -5528568294056843629
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_16
+      rect:
+        serializedVersion: 2
+        x: 239
+        y: 768
+        width: 16
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4d87d49d50d74b510800000000000000
+      internalID: 1564012434678446292
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_17
+      rect:
+        serializedVersion: 2
+        x: 1804
+        y: 670
+        width: 23
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 89ded6265e60b0de0800000000000000
+      internalID: -1365990479708164712
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_18
+      rect:
+        serializedVersion: 2
+        x: 1838
+        y: 629
+        width: 19
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e9966bb3316689310800000000000000
+      internalID: 1411990715972872606
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_19
+      rect:
+        serializedVersion: 2
+        x: 10
+        y: 573
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ea4080dc057f2fa70800000000000000
+      internalID: 8859415343400486062
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_20
+      rect:
+        serializedVersion: 2
+        x: 232
+        y: 402
+        width: 120
+        height: 105
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9508288bfeebfcfe0800000000000000
+      internalID: -1166503841663647655
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_21
+      rect:
+        serializedVersion: 2
+        x: 1781
+        y: 400
+        width: 40
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 10005dac07d372a10800000000000000
+      internalID: 1884542523726430209
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_22
+      rect:
+        serializedVersion: 2
+        x: 187
+        y: 329
+        width: 64
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a0997a7f261e82350800000000000000
+      internalID: 5992287119394445578
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_23
+      rect:
+        serializedVersion: 2
+        x: 416
+        y: 193
+        width: 224
+        height: 150
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36fef1c0a7e66af20800000000000000
+      internalID: 3433553236385066851
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_24
+      rect:
+        serializedVersion: 2
+        x: 1110
+        y: 229
+        width: 99
+        height: 68
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 67c37b3c6b26275e0800000000000000
+      internalID: -1913358354571903882
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_25
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 262
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3964c15de71a1a180800000000000000
+      internalID: -9105819405453080941
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_26
+      rect:
+        serializedVersion: 2
+        x: 690
+        y: 223
+        width: 33
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 24076088ba66c3ec0800000000000000
+      internalID: -3585878316386193342
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_27
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 248
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 08fb5faec1f8a1040800000000000000
+      internalID: 4619161722185695104
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_28
+      rect:
+        serializedVersion: 2
+        x: 1270
+        y: 203
+        width: 50
+        height: 38
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f24a79cc40216f360800000000000000
+      internalID: 7202964465847346223
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_29
+      rect:
+        serializedVersion: 2
+        x: 1777
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a6462c901fd587c00800000000000000
+      internalID: 898571415492650090
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_30
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 53782b58eefcc6220800000000000000
+      internalID: 2480586118126536501
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_31
+      rect:
+        serializedVersion: 2
+        x: 1792
+        y: 209
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0161a00846f8fb610800000000000000
+      internalID: 1639186451193796112
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Absidian_32
+      rect:
+        serializedVersion: 2
+        x: 1815
+        y: 209
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c1c93c44fa88d0a20800000000000000
+      internalID: 3030228410644536348
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Absidian_0: 1369252451121611364
+      Absidian_1: -6421070075606771906
+      Absidian_10: -912323676628543254
+      Absidian_11: -4690247066612362011
+      Absidian_12: 3037027259976570038
+      Absidian_13: 2557367355155088359
+      Absidian_14: 1544700705103941193
+      Absidian_15: -5528568294056843629
+      Absidian_16: 1564012434678446292
+      Absidian_17: -1365990479708164712
+      Absidian_18: 1411990715972872606
+      Absidian_19: 8859415343400486062
+      Absidian_2: -3677692540687296373
+      Absidian_20: -1166503841663647655
+      Absidian_21: 1884542523726430209
+      Absidian_22: 5992287119394445578
+      Absidian_23: 3433553236385066851
+      Absidian_24: -1913358354571903882
+      Absidian_25: -9105819405453080941
+      Absidian_26: -3585878316386193342
+      Absidian_27: 4619161722185695104
+      Absidian_28: 7202964465847346223
+      Absidian_29: 898571415492650090
+      Absidian_3: 1267874432620591181
+      Absidian_30: 2480586118126536501
+      Absidian_31: 1639186451193796112
+      Absidian_32: 3030228410644536348
+      Absidian_4: -2521579420672592770
+      Absidian_5: 2376847881634408173
+      Absidian_6: -335039757389005180
+      Absidian_7: 7856068039426276670
+      Absidian_8: 652070881809597751
+      Absidian_9: 906181000430073255
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

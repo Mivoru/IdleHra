@@ -1,0 +1,4420 @@
+fileFormatVersion: 2
+guid: a6fafff0dc17d594d9e739ba673de7a1
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -4519185807077818629
+    second: Golden Ebon log_0
+  - first:
+      213: 4699734308536208571
+    second: Golden Ebon log_1
+  - first:
+      213: 8579876763558235987
+    second: Golden Ebon log_2
+  - first:
+      213: 6474903717688396217
+    second: Golden Ebon log_3
+  - first:
+      213: 1935105252952109527
+    second: Golden Ebon log_4
+  - first:
+      213: 3730413461006172146
+    second: Golden Ebon log_5
+  - first:
+      213: -3857070074751419582
+    second: Golden Ebon log_6
+  - first:
+      213: -3153743099553223807
+    second: Golden Ebon log_7
+  - first:
+      213: 3565298804033038928
+    second: Golden Ebon log_8
+  - first:
+      213: 2749215084680663143
+    second: Golden Ebon log_9
+  - first:
+      213: 7787045700202707793
+    second: Golden Ebon log_10
+  - first:
+      213: 1447509318293833516
+    second: Golden Ebon log_11
+  - first:
+      213: -2353369651792875872
+    second: Golden Ebon log_12
+  - first:
+      213: -7689480359458122590
+    second: Golden Ebon log_13
+  - first:
+      213: -4098937875966093725
+    second: Golden Ebon log_14
+  - first:
+      213: -5158408697512542735
+    second: Golden Ebon log_15
+  - first:
+      213: -2198260533540618796
+    second: Golden Ebon log_16
+  - first:
+      213: 1671461200128540080
+    second: Golden Ebon log_17
+  - first:
+      213: 575669714966023096
+    second: Golden Ebon log_18
+  - first:
+      213: 2247290656875954313
+    second: Golden Ebon log_19
+  - first:
+      213: -6828602139507008890
+    second: Golden Ebon log_20
+  - first:
+      213: -2663846123735092746
+    second: Golden Ebon log_21
+  - first:
+      213: -2910410958700564192
+    second: Golden Ebon log_22
+  - first:
+      213: -2398122067186427643
+    second: Golden Ebon log_23
+  - first:
+      213: 7172288880395088701
+    second: Golden Ebon log_24
+  - first:
+      213: -3333746297226619031
+    second: Golden Ebon log_25
+  - first:
+      213: 2129328795364577441
+    second: Golden Ebon log_26
+  - first:
+      213: -8276044777180366145
+    second: Golden Ebon log_27
+  - first:
+      213: 5120160791882365232
+    second: Golden Ebon log_28
+  - first:
+      213: 2845683236323326537
+    second: Golden Ebon log_29
+  - first:
+      213: 2810208014381101414
+    second: Golden Ebon log_30
+  - first:
+      213: -3353514528441242293
+    second: Golden Ebon log_31
+  - first:
+      213: -1148913649173898150
+    second: Golden Ebon log_32
+  - first:
+      213: -5531307387428691047
+    second: Golden Ebon log_33
+  - first:
+      213: -3797351516945846204
+    second: Golden Ebon log_34
+  - first:
+      213: 7244911525447207359
+    second: Golden Ebon log_35
+  - first:
+      213: -5049262895693878701
+    second: Golden Ebon log_36
+  - first:
+      213: 1677763770716796940
+    second: Golden Ebon log_37
+  - first:
+      213: 1229596467061145580
+    second: Golden Ebon log_38
+  - first:
+      213: 3208431046170391128
+    second: Golden Ebon log_39
+  - first:
+      213: -9185156595220706125
+    second: Golden Ebon log_40
+  - first:
+      213: -6988389278750898404
+    second: Golden Ebon log_41
+  - first:
+      213: 2955293297953841152
+    second: Golden Ebon log_42
+  - first:
+      213: 6581701203094393088
+    second: Golden Ebon log_43
+  - first:
+      213: -7022463973397366084
+    second: Golden Ebon log_44
+  - first:
+      213: -8321530112907836500
+    second: Golden Ebon log_45
+  - first:
+      213: -8652538067457640055
+    second: Golden Ebon log_46
+  - first:
+      213: -2181249423122487975
+    second: Golden Ebon log_47
+  - first:
+      213: -361926647727444769
+    second: Golden Ebon log_48
+  - first:
+      213: -6815776006356018999
+    second: Golden Ebon log_49
+  - first:
+      213: 172290053227701893
+    second: Golden Ebon log_50
+  - first:
+      213: 2708377079564998251
+    second: Golden Ebon log_51
+  - first:
+      213: 6942547270058915796
+    second: Golden Ebon log_52
+  - first:
+      213: -7434953638693719398
+    second: Golden Ebon log_53
+  - first:
+      213: -4686349083148677591
+    second: Golden Ebon log_54
+  - first:
+      213: -41386314271473591
+    second: Golden Ebon log_55
+  - first:
+      213: 5490744979842675570
+    second: Golden Ebon log_56
+  - first:
+      213: 3263067077440288425
+    second: Golden Ebon log_57
+  - first:
+      213: -5474480871268863139
+    second: Golden Ebon log_58
+  - first:
+      213: -6224905986448136485
+    second: Golden Ebon log_59
+  - first:
+      213: -4949476106300281815
+    second: Golden Ebon log_60
+  - first:
+      213: -7891831864798363760
+    second: Golden Ebon log_61
+  - first:
+      213: -8765743379936462605
+    second: Golden Ebon log_62
+  - first:
+      213: 8472710583200255388
+    second: Golden Ebon log_63
+  - first:
+      213: -8586216827223426850
+    second: Golden Ebon log_64
+  - first:
+      213: -1877733084094945968
+    second: Golden Ebon log_65
+  - first:
+      213: 2140241146950772881
+    second: Golden Ebon log_66
+  - first:
+      213: -9046906428274768738
+    second: Golden Ebon log_67
+  - first:
+      213: -5807187676755600362
+    second: Golden Ebon log_68
+  - first:
+      213: 7219823792414781266
+    second: Golden Ebon log_69
+  - first:
+      213: 732294554041168752
+    second: Golden Ebon log_70
+  - first:
+      213: 8607162862922930147
+    second: Golden Ebon log_71
+  - first:
+      213: 9117235747673955511
+    second: Golden Ebon log_72
+  - first:
+      213: -1086858541659379836
+    second: Golden Ebon log_73
+  - first:
+      213: -2121549790044941029
+    second: Golden Ebon log_74
+  - first:
+      213: 6056903372712916669
+    second: Golden Ebon log_75
+  - first:
+      213: 3177630048959648058
+    second: Golden Ebon log_76
+  - first:
+      213: -7123323904221911002
+    second: Golden Ebon log_77
+  - first:
+      213: 7724713299067341840
+    second: Golden Ebon log_78
+  - first:
+      213: -4219892368391780062
+    second: Golden Ebon log_79
+  - first:
+      213: 6358864769176945435
+    second: Golden Ebon log_80
+  - first:
+      213: -2779640757477955959
+    second: Golden Ebon log_81
+  - first:
+      213: 4705100689413806406
+    second: Golden Ebon log_82
+  - first:
+      213: -465924314409005527
+    second: Golden Ebon log_83
+  - first:
+      213: -8731914268283279068
+    second: Golden Ebon log_84
+  - first:
+      213: -4635675374465795841
+    second: Golden Ebon log_85
+  - first:
+      213: -2800191924623280551
+    second: Golden Ebon log_86
+  - first:
+      213: -3476981038554187199
+    second: Golden Ebon log_87
+  - first:
+      213: 1767036260764461571
+    second: Golden Ebon log_88
+  - first:
+      213: -1035097804816436975
+    second: Golden Ebon log_89
+  - first:
+      213: -8529912791160961398
+    second: Golden Ebon log_90
+  - first:
+      213: -5681917963301363590
+    second: Golden Ebon log_91
+  - first:
+      213: 2506344900848834982
+    second: Golden Ebon log_92
+  - first:
+      213: -8094645231432522139
+    second: Golden Ebon log_93
+  - first:
+      213: 4961961504707454897
+    second: Golden Ebon log_94
+  - first:
+      213: -3992113926023355588
+    second: Golden Ebon log_95
+  - first:
+      213: 7046892723586131133
+    second: Golden Ebon log_96
+  - first:
+      213: -1200969857346498082
+    second: Golden Ebon log_97
+  - first:
+      213: 5952756581166328283
+    second: Golden Ebon log_98
+  - first:
+      213: 5904794022537936264
+    second: Golden Ebon log_99
+  - first:
+      213: -1034306965043203432
+    second: Golden Ebon log_100
+  - first:
+      213: -3299026469443848230
+    second: Golden Ebon log_101
+  - first:
+      213: -8451482882378732583
+    second: Golden Ebon log_102
+  - first:
+      213: -5623830596645079445
+    second: Golden Ebon log_103
+  - first:
+      213: 6175726140868058727
+    second: Golden Ebon log_104
+  - first:
+      213: -4282082890733593168
+    second: Golden Ebon log_105
+  - first:
+      213: -1687175617720371155
+    second: Golden Ebon log_106
+  - first:
+      213: 5110305935118635146
+    second: Golden Ebon log_107
+  - first:
+      213: -5662206333801676162
+    second: Golden Ebon log_108
+  - first:
+      213: 5265891471483552854
+    second: Golden Ebon log_109
+  - first:
+      213: 2601914796859218809
+    second: Golden Ebon log_110
+  - first:
+      213: 4798719315378285215
+    second: Golden Ebon log_111
+  - first:
+      213: -4082447653882503496
+    second: Golden Ebon log_112
+  - first:
+      213: -7511390521721663644
+    second: Golden Ebon log_113
+  - first:
+      213: -5810239669529253601
+    second: Golden Ebon log_114
+  - first:
+      213: 6916578667327535251
+    second: Golden Ebon log_115
+  - first:
+      213: 5486103313904072813
+    second: Golden Ebon log_116
+  - first:
+      213: 9110518704243311574
+    second: Golden Ebon log_117
+  - first:
+      213: 1375806412167124921
+    second: Golden Ebon log_118
+  - first:
+      213: 5194639586045381524
+    second: Golden Ebon log_119
+  - first:
+      213: 7416609733665305428
+    second: Golden Ebon log_120
+  - first:
+      213: 7674334624499653714
+    second: Golden Ebon log_121
+  - first:
+      213: 681829724196021104
+    second: Golden Ebon log_122
+  - first:
+      213: -8164620751733906602
+    second: Golden Ebon log_123
+  - first:
+      213: -8756789839734200039
+    second: Golden Ebon log_124
+  - first:
+      213: -1240958835455578079
+    second: Golden Ebon log_125
+  - first:
+      213: -7760335982368328128
+    second: Golden Ebon log_126
+  - first:
+      213: -5279828468998841566
+    second: Golden Ebon log_127
+  - first:
+      213: -1231119727177467621
+    second: Golden Ebon log_128
+  - first:
+      213: -4277783132195830564
+    second: Golden Ebon log_129
+  - first:
+      213: 2517141488727228433
+    second: Golden Ebon log_130
+  - first:
+      213: -4203910199147707084
+    second: Golden Ebon log_131
+  - first:
+      213: 7575231126394436565
+    second: Golden Ebon log_132
+  - first:
+      213: -5178633763999880212
+    second: Golden Ebon log_133
+  - first:
+      213: 9031785842471478846
+    second: Golden Ebon log_134
+  - first:
+      213: -3309883702264353499
+    second: Golden Ebon log_135
+  - first:
+      213: 4479452824504066807
+    second: Golden Ebon log_136
+  - first:
+      213: -3063978200216793593
+    second: Golden Ebon log_137
+  - first:
+      213: 531302320845532281
+    second: Golden Ebon log_138
+  - first:
+      213: 7721839874197648129
+    second: Golden Ebon log_139
+  - first:
+      213: -6141479905057819177
+    second: Golden Ebon log_140
+  - first:
+      213: -1006519002959590580
+    second: Golden Ebon log_141
+  - first:
+      213: 934448201121235595
+    second: Golden Ebon log_142
+  - first:
+      213: 6300878014965747150
+    second: Golden Ebon log_143
+  - first:
+      213: -1629064082730900785
+    second: Golden Ebon log_144
+  - first:
+      213: 889651146139251795
+    second: Golden Ebon log_145
+  - first:
+      213: -8248609072337540644
+    second: Golden Ebon log_146
+  - first:
+      213: -2030204615726409462
+    second: Golden Ebon log_147
+  - first:
+      213: -3362213999124342713
+    second: Golden Ebon log_148
+  - first:
+      213: -2051058388626745734
+    second: Golden Ebon log_149
+  - first:
+      213: -1156442913612779969
+    second: Golden Ebon log_150
+  - first:
+      213: -4864320803395082371
+    second: Golden Ebon log_151
+  - first:
+      213: -2070880825452697169
+    second: Golden Ebon log_152
+  - first:
+      213: 6051106140036566465
+    second: Golden Ebon log_153
+  - first:
+      213: 1774282439771495841
+    second: Golden Ebon log_154
+  - first:
+      213: -3999266295016338872
+    second: Golden Ebon log_155
+  - first:
+      213: -7046594698744304542
+    second: Golden Ebon log_156
+  - first:
+      213: 6321106894671430096
+    second: Golden Ebon log_157
+  - first:
+      213: -4263126996776570086
+    second: Golden Ebon log_158
+  - first:
+      213: 7026581247758889082
+    second: Golden Ebon log_159
+  - first:
+      213: -3640682549218430180
+    second: Golden Ebon log_160
+  - first:
+      213: 5521968663775868506
+    second: Golden Ebon log_161
+  - first:
+      213: 6628071230260361914
+    second: Golden Ebon log_162
+  - first:
+      213: 962152058348314671
+    second: Golden Ebon log_163
+  - first:
+      213: -4836508666504025028
+    second: Golden Ebon log_164
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Golden Ebon log_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 255
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bfeb32fb370a841c0800000000000000
+      internalID: -4519185807077818629
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_1
+      rect:
+        serializedVersion: 2
+        x: 243
+        y: 0
+        width: 517
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bbc440f047fc83140800000000000000
+      internalID: 4699734308536208571
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_2
+      rect:
+        serializedVersion: 2
+        x: 603
+        y: 0
+        width: 1641
+        height: 1374
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 35f44845578d11770800000000000000
+      internalID: 8579876763558235987
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_3
+      rect:
+        serializedVersion: 2
+        x: 759
+        y: 1372
+        width: 180
+        height: 164
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9b94caf20aa7bd950800000000000000
+      internalID: 6474903717688396217
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_4
+      rect:
+        serializedVersion: 2
+        x: 871
+        y: 1451
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d1f33599ffdada10800000000000000
+      internalID: 1935105252952109527
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_5
+      rect:
+        serializedVersion: 2
+        x: 924
+        y: 1474
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ffbb98374715c330800000000000000
+      internalID: 3730413461006172146
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_6
+      rect:
+        serializedVersion: 2
+        x: 928
+        y: 1476
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 24bf6a0e33fe87ac0800000000000000
+      internalID: -3857070074751419582
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_7
+      rect:
+        serializedVersion: 2
+        x: 939
+        y: 1371
+        width: 98
+        height: 165
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 18b6a463c57ab34d0800000000000000
+      internalID: -3153743099553223807
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_8
+      rect:
+        serializedVersion: 2
+        x: 999
+        y: 1391
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 05aa38c5f5c7a7130800000000000000
+      internalID: 3565298804033038928
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_9
+      rect:
+        serializedVersion: 2
+        x: 1039
+        y: 1376
+        width: 147
+        height: 160
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7605985bd8c272620800000000000000
+      internalID: 2749215084680663143
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_10
+      rect:
+        serializedVersion: 2
+        x: 1187
+        y: 1074
+        width: 565
+        height: 462
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 15bb05a8ec4211c60800000000000000
+      internalID: 7787045700202707793
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_11
+      rect:
+        serializedVersion: 2
+        x: 1558
+        y: 1425
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c27c8f54e06961410800000000000000
+      internalID: 1447509318293833516
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_12
+      rect:
+        serializedVersion: 2
+        x: 1672
+        y: 1418
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ae63b735c6275fd0800000000000000
+      internalID: -2353369651792875872
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_13
+      rect:
+        serializedVersion: 2
+        x: 1751
+        y: 1370
+        width: 255
+        height: 166
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a4d72b8a5a794590800000000000000
+      internalID: -7689480359458122590
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_14
+      rect:
+        serializedVersion: 2
+        x: 1789
+        y: 1413
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36695aa08b5ad17c0800000000000000
+      internalID: -4098937875966093725
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_15
+      rect:
+        serializedVersion: 2
+        x: 1809
+        y: 1425
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1fdba7abe96a968b0800000000000000
+      internalID: -5158408697512542735
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_16
+      rect:
+        serializedVersion: 2
+        x: 1877
+        y: 1271
+        width: 76
+        height: 126
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4ddfc8e01b53e71e0800000000000000
+      internalID: -2198260533540618796
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_17
+      rect:
+        serializedVersion: 2
+        x: 2003
+        y: 0
+        width: 525
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0bd72811b19323710800000000000000
+      internalID: 1671461200128540080
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_18
+      rect:
+        serializedVersion: 2
+        x: 2021
+        y: 1418
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8bb00844e803df700800000000000000
+      internalID: 575669714966023096
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_19
+      rect:
+        serializedVersion: 2
+        x: 2508
+        y: 0
+        width: 308
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 980452e12faff2f10800000000000000
+      internalID: 2247290656875954313
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_20
+      rect:
+        serializedVersion: 2
+        x: 2722
+        y: 1425
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 68a563a988eeb31a0800000000000000
+      internalID: -6828602139507008890
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_21
+      rect:
+        serializedVersion: 2
+        x: 2791
+        y: 1408
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6f1f77a601e180bd0800000000000000
+      internalID: -2663846123735092746
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_22
+      rect:
+        serializedVersion: 2
+        x: 247
+        y: 1360
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 021bf3037a42c97d0800000000000000
+      internalID: -2910410958700564192
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_23
+      rect:
+        serializedVersion: 2
+        x: 2512
+        y: 1357
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 509d3598fa828bed0800000000000000
+      internalID: -2398122067186427643
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_24
+      rect:
+        serializedVersion: 2
+        x: 2433
+        y: 1339
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d33fe6e7cb6198360800000000000000
+      internalID: 7172288880395088701
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_25
+      rect:
+        serializedVersion: 2
+        x: 2503
+        y: 1345
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9679886d7672cb1d0800000000000000
+      internalID: -3333746297226619031
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_26
+      rect:
+        serializedVersion: 2
+        x: 2487
+        y: 1325
+        width: 11
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1a057b9f145ec8d10800000000000000
+      internalID: 2129328795364577441
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_27
+      rect:
+        serializedVersion: 2
+        x: 161
+        y: 1305
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fbaffee9f15952d80800000000000000
+      internalID: -8276044777180366145
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_28
+      rect:
+        serializedVersion: 2
+        x: 2418
+        y: 1312
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 039f709cc177e0740800000000000000
+      internalID: 5120160791882365232
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_29
+      rect:
+        serializedVersion: 2
+        x: 2530
+        y: 1282
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 94af55c83d5ed7720800000000000000
+      internalID: 2845683236323326537
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_30
+      rect:
+        serializedVersion: 2
+        x: 2759
+        y: 1282
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 661342acc4ddff620800000000000000
+      internalID: 2810208014381101414
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_31
+      rect:
+        serializedVersion: 2
+        x: 2386
+        y: 1271
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b4de527dd4ce571d0800000000000000
+      internalID: -3353514528441242293
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_32
+      rect:
+        serializedVersion: 2
+        x: 2470
+        y: 1267
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a5c546f8f1d3e00f0800000000000000
+      internalID: -1148913649173898150
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_33
+      rect:
+        serializedVersion: 2
+        x: 2544
+        y: 1267
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 993a1dcbc39dc33b0800000000000000
+      internalID: -5531307387428691047
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_34
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1264
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 440f6212ae81d4bc0800000000000000
+      internalID: -3797351516945846204
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_35
+      rect:
+        serializedVersion: 2
+        x: 200
+        y: 1220
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb90a6fa5a81b8460800000000000000
+      internalID: 7244911525447207359
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_36
+      rect:
+        serializedVersion: 2
+        x: 472
+        y: 1221
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 35a2b94062a6de9b0800000000000000
+      internalID: -5049262895693878701
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_37
+      rect:
+        serializedVersion: 2
+        x: 2709
+        y: 1194
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c083892a24d984710800000000000000
+      internalID: 1677763770716796940
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_38
+      rect:
+        serializedVersion: 2
+        x: 378
+        y: 1181
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cef314cd877601110800000000000000
+      internalID: 1229596467061145580
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_39
+      rect:
+        serializedVersion: 2
+        x: 2565
+        y: 1168
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85232599903a68c20800000000000000
+      internalID: 3208431046170391128
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_40
+      rect:
+        serializedVersion: 2
+        x: 2487
+        y: 1141
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3bc888fddb4c78080800000000000000
+      internalID: -9185156595220706125
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_41
+      rect:
+        serializedVersion: 2
+        x: 2776
+        y: 1131
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c1787ef1af0440f90800000000000000
+      internalID: -6988389278750898404
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_42
+      rect:
+        serializedVersion: 2
+        x: 147
+        y: 1119
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 000a1afb89f430920800000000000000
+      internalID: 2955293297953841152
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_43
+      rect:
+        serializedVersion: 2
+        x: 2499
+        y: 1114
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 001d3347f56e65b50800000000000000
+      internalID: 6581701203094393088
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_44
+      rect:
+        serializedVersion: 2
+        x: 2742
+        y: 1121
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cbafba909323b8e90800000000000000
+      internalID: -7022463973397366084
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_45
+      rect:
+        serializedVersion: 2
+        x: 2435
+        y: 1109
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca38960a37cf38c80800000000000000
+      internalID: -8321530112907836500
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_46
+      rect:
+        serializedVersion: 2
+        x: 2627
+        y: 1109
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 98974a388720ce780800000000000000
+      internalID: -8652538067457640055
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_47
+      rect:
+        serializedVersion: 2
+        x: 2707
+        y: 1111
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9552248d435aab1e0800000000000000
+      internalID: -2181249423122487975
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_48
+      rect:
+        serializedVersion: 2
+        x: 2719
+        y: 1109
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fdc2577a1ad2afaf0800000000000000
+      internalID: -361926647727444769
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_49
+      rect:
+        serializedVersion: 2
+        x: 442
+        y: 1098
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9c8d48075df7961a0800000000000000
+      internalID: -6815776006356018999
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_50
+      rect:
+        serializedVersion: 2
+        x: 2747
+        y: 1090
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58668fcf3e8146200800000000000000
+      internalID: 172290053227701893
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_51
+      rect:
+        serializedVersion: 2
+        x: 2365
+        y: 1063
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b661841ba96169520800000000000000
+      internalID: 2708377079564998251
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_52
+      rect:
+        serializedVersion: 2
+        x: 2785
+        y: 1068
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4d7383c75f1e85060800000000000000
+      internalID: 6942547270058915796
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_53
+      rect:
+        serializedVersion: 2
+        x: 2332
+        y: 1055
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a92b924ce0db1d890800000000000000
+      internalID: -7434953638693719398
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_54
+      rect:
+        serializedVersion: 2
+        x: 2582
+        y: 1056
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92e0275965eb6feb0800000000000000
+      internalID: -4686349083148677591
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_55
+      rect:
+        serializedVersion: 2
+        x: 317
+        y: 1014
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 940494fcd57fc6ff0800000000000000
+      internalID: -41386314271473591
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_56
+      rect:
+        serializedVersion: 2
+        x: 241
+        y: 1000
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 27338cbc77b033c40800000000000000
+      internalID: 5490744979842675570
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_57
+      rect:
+        serializedVersion: 2
+        x: 475
+        y: 988
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9a6b91de73eb84d20800000000000000
+      internalID: 3263067077440288425
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_58
+      rect:
+        serializedVersion: 2
+        x: 509
+        y: 991
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d53395217acb604b0800000000000000
+      internalID: -5474480871268863139
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_59
+      rect:
+        serializedVersion: 2
+        x: 2566
+        y: 947
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd66e8d7cf0bc99a0800000000000000
+      internalID: -6224905986448136485
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_60
+      rect:
+        serializedVersion: 2
+        x: 2258
+        y: 881
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92c20bb64bdef4bb0800000000000000
+      internalID: -4949476106300281815
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_61
+      rect:
+        serializedVersion: 2
+        x: 219
+        y: 859
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 09fb59f4bb49a7290800000000000000
+      internalID: -7891831864798363760
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_62
+      rect:
+        serializedVersion: 2
+        x: 2320
+        y: 843
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f8b7aeb6d2d95680800000000000000
+      internalID: -8765743379936462605
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_63
+      rect:
+        serializedVersion: 2
+        x: 2735
+        y: 834
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c9d0854926d159570800000000000000
+      internalID: 8472710583200255388
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_64
+      rect:
+        serializedVersion: 2
+        x: 18
+        y: 779
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed8bdd09941a7d880800000000000000
+      internalID: -8586216827223426850
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_65
+      rect:
+        serializedVersion: 2
+        x: 222
+        y: 777
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 055a58b65b3f0f5e0800000000000000
+      internalID: -1877733084094945968
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_66
+      rect:
+        serializedVersion: 2
+        x: 594
+        y: 757
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 198eca1dbf9a3bd10800000000000000
+      internalID: 2140241146950772881
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_67
+      rect:
+        serializedVersion: 2
+        x: 2425
+        y: 759
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e940c7a398ee27280800000000000000
+      internalID: -9046906428274768738
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_68
+      rect:
+        serializedVersion: 2
+        x: 2794
+        y: 764
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61cd4f66399b86fa0800000000000000
+      internalID: -5807187676755600362
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_69
+      rect:
+        serializedVersion: 2
+        x: 177
+        y: 754
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 25febc7ac77f13460800000000000000
+      internalID: 7219823792414781266
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_70
+      rect:
+        serializedVersion: 2
+        x: 2770
+        y: 752
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 073b39c5402a92a00800000000000000
+      internalID: 732294554041168752
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_71
+      rect:
+        serializedVersion: 2
+        x: 2423
+        y: 715
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e794786509c27770800000000000000
+      internalID: 8607162862922930147
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_72
+      rect:
+        serializedVersion: 2
+        x: 2777
+        y: 713
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7bc59997b9de68e70800000000000000
+      internalID: 9117235747673955511
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_73
+      rect:
+        serializedVersion: 2
+        x: 282
+        y: 670
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4872b4f2ae3bae0f0800000000000000
+      internalID: -1086858541659379836
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_74
+      rect:
+        serializedVersion: 2
+        x: 2538
+        y: 662
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b151117d4bdbe82e0800000000000000
+      internalID: -2121549790044941029
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_75
+      rect:
+        serializedVersion: 2
+        x: 2657
+        y: 665
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: db63b61d6817e0450800000000000000
+      internalID: 6056903372712916669
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_76
+      rect:
+        serializedVersion: 2
+        x: 2289
+        y: 662
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a31d8d791b5391c20800000000000000
+      internalID: 3177630048959648058
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_77
+      rect:
+        serializedVersion: 2
+        x: 543
+        y: 648
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 628edcc66aed42d90800000000000000
+      internalID: -7123323904221911002
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_78
+      rect:
+        serializedVersion: 2
+        x: 2396
+        y: 649
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 01c05a671d1b33b60800000000000000
+      internalID: 7724713299067341840
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_79
+      rect:
+        serializedVersion: 2
+        x: 2407
+        y: 640
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 22940a7bf3eef65c0800000000000000
+      internalID: -4219892368391780062
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_80
+      rect:
+        serializedVersion: 2
+        x: 611
+        y: 626
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b13c98d11d93f3850800000000000000
+      internalID: 6358864769176945435
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_81
+      rect:
+        serializedVersion: 2
+        x: 359
+        y: 607
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 986245f457bbc69d0800000000000000
+      internalID: -2779640757477955959
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_82
+      rect:
+        serializedVersion: 2
+        x: 2665
+        y: 610
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 64994f8f520eb4140800000000000000
+      internalID: 4705100689413806406
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_83
+      rect:
+        serializedVersion: 2
+        x: 255
+        y: 595
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92e0f6bfd44b889f0800000000000000
+      internalID: -465924314409005527
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_84
+      rect:
+        serializedVersion: 2
+        x: 2458
+        y: 602
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4296fc59c3202d680800000000000000
+      internalID: -8731914268283279068
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_85
+      rect:
+        serializedVersion: 2
+        x: 2770
+        y: 602
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff8b0facec5caafb0800000000000000
+      internalID: -4635675374465795841
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_86
+      rect:
+        serializedVersion: 2
+        x: 2716
+        y: 567
+        width: 11
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 95679e5d748b329d0800000000000000
+      internalID: -2800191924623280551
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_87
+      rect:
+        serializedVersion: 2
+        x: 210
+        y: 525
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 14a7532da284fbfc0800000000000000
+      internalID: -3476981038554187199
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_88
+      rect:
+        serializedVersion: 2
+        x: 587
+        y: 522
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 30aa914fd16c58810800000000000000
+      internalID: 1767036260764461571
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_89
+      rect:
+        serializedVersion: 2
+        x: 2423
+        y: 523
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 111312cd70892a1f0800000000000000
+      internalID: -1035097804816436975
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_90
+      rect:
+        serializedVersion: 2
+        x: 2409
+        y: 507
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a864ac58289af9980800000000000000
+      internalID: -8529912791160961398
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_91
+      rect:
+        serializedVersion: 2
+        x: 275
+        y: 477
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a70e28a67b5c521b0800000000000000
+      internalID: -5681917963301363590
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_92
+      rect:
+        serializedVersion: 2
+        x: 359
+        y: 423
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6a9d4bb786358c220800000000000000
+      internalID: 2506344900848834982
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_93
+      rect:
+        serializedVersion: 2
+        x: 595
+        y: 423
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 566a7ad9c0b0aaf80800000000000000
+      internalID: -8094645231432522139
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_94
+      rect:
+        serializedVersion: 2
+        x: 2341
+        y: 423
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b7204de2bd6cd440800000000000000
+      internalID: 4961961504707454897
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_95
+      rect:
+        serializedVersion: 2
+        x: 2417
+        y: 424
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c33ec7019892998c0800000000000000
+      internalID: -3992113926023355588
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_96
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 411
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: db4e2a798979bc160800000000000000
+      internalID: 7046892723586131133
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_97
+      rect:
+        serializedVersion: 2
+        x: 221
+        y: 414
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed119ea174c455fe0800000000000000
+      internalID: -1200969857346498082
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_98
+      rect:
+        serializedVersion: 2
+        x: 2786
+        y: 408
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd9a9ce42907c9250800000000000000
+      internalID: 5952756581166328283
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_99
+      rect:
+        serializedVersion: 2
+        x: 2593
+        y: 402
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 88d3939e0ea02f150800000000000000
+      internalID: 5904794022537936264
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_100
+      rect:
+        serializedVersion: 2
+        x: 340
+        y: 375
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 89233e79b4765a1f0800000000000000
+      internalID: -1034306965043203432
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_101
+      rect:
+        serializedVersion: 2
+        x: 2759
+        y: 353
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ad73030b7e08732d0800000000000000
+      internalID: -3299026469443848230
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_102
+      rect:
+        serializedVersion: 2
+        x: 2739
+        y: 341
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9db658aa81d46ba80800000000000000
+      internalID: -8451482882378732583
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_103
+      rect:
+        serializedVersion: 2
+        x: 222
+        y: 323
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b663ff16ed324f1b0800000000000000
+      internalID: -5623830596645079445
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_104
+      rect:
+        serializedVersion: 2
+        x: 275
+        y: 328
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76ed888643694b550800000000000000
+      internalID: 6175726140868058727
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_105
+      rect:
+        serializedVersion: 2
+        x: 419
+        y: 305
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0bddb0f5c4cf294c0800000000000000
+      internalID: -4282082890733593168
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_106
+      rect:
+        serializedVersion: 2
+        x: 2422
+        y: 298
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d28b318f6b2f598e0800000000000000
+      internalID: -1687175617720371155
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_107
+      rect:
+        serializedVersion: 2
+        x: 462
+        y: 261
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a8011542c247be640800000000000000
+      internalID: 5110305935118635146
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_108
+      rect:
+        serializedVersion: 2
+        x: 2558
+        y: 260
+        width: 12
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e72c8ccc65dcb61b0800000000000000
+      internalID: -5662206333801676162
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_109
+      rect:
+        serializedVersion: 2
+        x: 2582
+        y: 262
+        width: 10
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6544987b464341940800000000000000
+      internalID: 5265891471483552854
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_110
+      rect:
+        serializedVersion: 2
+        x: 2533
+        y: 242
+        width: 24
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 97b50a2e8bbdb1420800000000000000
+      internalID: 2601914796859218809
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_111
+      rect:
+        serializedVersion: 2
+        x: 2596
+        y: 248
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f9aade9eac9789240800000000000000
+      internalID: 4798719315378285215
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_112
+      rect:
+        serializedVersion: 2
+        x: 283
+        y: 239
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8bed4301d7b3857c0800000000000000
+      internalID: -4082447653882503496
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_113
+      rect:
+        serializedVersion: 2
+        x: 2540
+        y: 222
+        width: 16
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 46f4b871e1e22c790800000000000000
+      internalID: -7511390521721663644
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_114
+      rect:
+        serializedVersion: 2
+        x: 2596
+        y: 222
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f1963d5fdc1ed5fa0800000000000000
+      internalID: -5810239669529253601
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_115
+      rect:
+        serializedVersion: 2
+        x: 2560
+        y: 198
+        width: 13
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3983a1ff6af9cff50800000000000000
+      internalID: 6916578667327535251
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_116
+      rect:
+        serializedVersion: 2
+        x: 2584
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d68785ab5ed822c40800000000000000
+      internalID: 5486103313904072813
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_117
+      rect:
+        serializedVersion: 2
+        x: 923
+        y: 167
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d389fded701f6e70800000000000000
+      internalID: 9110518704243311574
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_118
+      rect:
+        serializedVersion: 2
+        x: 2438
+        y: 173
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9b71dec74a8d71310800000000000000
+      internalID: 1375806412167124921
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_119
+      rect:
+        serializedVersion: 2
+        x: 1249
+        y: 166
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 49bca6e5e21171840800000000000000
+      internalID: 5194639586045381524
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_120
+      rect:
+        serializedVersion: 2
+        x: 2372
+        y: 163
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45333d402471de660800000000000000
+      internalID: 7416609733665305428
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_121
+      rect:
+        serializedVersion: 2
+        x: 354
+        y: 156
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 25c58cc3ea6b08a60800000000000000
+      internalID: 7674334624499653714
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_122
+      rect:
+        serializedVersion: 2
+        x: 523
+        y: 157
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 073a10c8588567900800000000000000
+      internalID: 681829724196021104
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_123
+      rect:
+        serializedVersion: 2
+        x: 43
+        y: 136
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6532e1f2fa071be80800000000000000
+      internalID: -8164620751733906602
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_124
+      rect:
+        serializedVersion: 2
+        x: 255
+        y: 133
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 919a4e54902a97680800000000000000
+      internalID: -8756789839734200039
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_125
+      rect:
+        serializedVersion: 2
+        x: 2261
+        y: 132
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 120b9c7938a37cee0800000000000000
+      internalID: -1240958835455578079
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_126
+      rect:
+        serializedVersion: 2
+        x: 2743
+        y: 137
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 046f0414a8fbd4490800000000000000
+      internalID: -7760335982368328128
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_127
+      rect:
+        serializedVersion: 2
+        x: 123
+        y: 129
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 22b545e2bf74ab6b0800000000000000
+      internalID: -5279828468998841566
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_128
+      rect:
+        serializedVersion: 2
+        x: 898
+        y: 109
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b197c91812f2aeee0800000000000000
+      internalID: -1231119727177467621
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_129
+      rect:
+        serializedVersion: 2
+        x: 1284
+        y: 111
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cd44f4be7e242a4c0800000000000000
+      internalID: -4277783132195830564
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_130
+      rect:
+        serializedVersion: 2
+        x: 1490
+        y: 104
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1100cfcf8deaee220800000000000000
+      internalID: 2517141488727228433
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_131
+      rect:
+        serializedVersion: 2
+        x: 2583
+        y: 108
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 435c82872f5b8a5c0800000000000000
+      internalID: -4203910199147707084
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_132
+      rect:
+        serializedVersion: 2
+        x: 433
+        y: 103
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5dbf83cf290a02960800000000000000
+      internalID: 7575231126394436565
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_133
+      rect:
+        serializedVersion: 2
+        x: 23
+        y: 94
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ceb61fa770cc128b0800000000000000
+      internalID: -5178633763999880212
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_134
+      rect:
+        serializedVersion: 2
+        x: 333
+        y: 94
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e362aeb0f59575d70800000000000000
+      internalID: 9031785842471478846
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_135
+      rect:
+        serializedVersion: 2
+        x: 395
+        y: 91
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 52dadae2f4ee012d0800000000000000
+      internalID: -3309883702264353499
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_136
+      rect:
+        serializedVersion: 2
+        x: 1295
+        y: 90
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f26fa85c963a2e30800000000000000
+      internalID: 4479452824504066807
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_137
+      rect:
+        serializedVersion: 2
+        x: 1812
+        y: 95
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 70e89808f009a75d0800000000000000
+      internalID: -3063978200216793593
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_138
+      rect:
+        serializedVersion: 2
+        x: 2160
+        y: 90
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 97ca65655a09f5700800000000000000
+      internalID: 531302320845532281
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_139
+      rect:
+        serializedVersion: 2
+        x: 2246
+        y: 87
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1037ff9147c792b60800000000000000
+      internalID: 7721839874197648129
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_140
+      rect:
+        serializedVersion: 2
+        x: 86
+        y: 66
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d534d7b09415caa0800000000000000
+      internalID: -6141479905057819177
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_141
+      rect:
+        serializedVersion: 2
+        x: 1211
+        y: 72
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c4bc9e0bc402802f0800000000000000
+      internalID: -1006519002959590580
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_142
+      rect:
+        serializedVersion: 2
+        x: 1490
+        y: 65
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b8285d020b3d7fc00800000000000000
+      internalID: 934448201121235595
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_143
+      rect:
+        serializedVersion: 2
+        x: 2180
+        y: 65
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ecd0a1fcb27317750800000000000000
+      internalID: 6300878014965747150
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_144
+      rect:
+        serializedVersion: 2
+        x: 2719
+        y: 67
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fc22a7019d66469e0800000000000000
+      internalID: -1629064082730900785
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_145
+      rect:
+        serializedVersion: 2
+        x: 973
+        y: 63
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 35436abf00da85c00800000000000000
+      internalID: 889651146139251795
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_146
+      rect:
+        serializedVersion: 2
+        x: 1169
+        y: 65
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cd9a14070cd078d80800000000000000
+      internalID: -8248609072337540644
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_147
+      rect:
+        serializedVersion: 2
+        x: 1984
+        y: 64
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a09d44298a343d3e0800000000000000
+      internalID: -2030204615726409462
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_148
+      rect:
+        serializedVersion: 2
+        x: 2734
+        y: 57
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 748195b7e240751d0800000000000000
+      internalID: -3362213999124342713
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_149
+      rect:
+        serializedVersion: 2
+        x: 338
+        y: 51
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a765154334d2983e0800000000000000
+      internalID: -2051058388626745734
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_150
+      rect:
+        serializedVersion: 2
+        x: 587
+        y: 53
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f3ea7131c4d73ffe0800000000000000
+      internalID: -1156442913612779969
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_151
+      rect:
+        serializedVersion: 2
+        x: 1654
+        y: 51
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d77e71860067e7cb0800000000000000
+      internalID: -4864320803395082371
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_152
+      rect:
+        serializedVersion: 2
+        x: 2050
+        y: 51
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fa969ba7cd0c243e0800000000000000
+      internalID: -2070880825452697169
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_153
+      rect:
+        serializedVersion: 2
+        x: 2455
+        y: 48
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1cd801769f8d9f350800000000000000
+      internalID: 6051106140036566465
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_154
+      rect:
+        serializedVersion: 2
+        x: 2692
+        y: 40
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ad1bc97a748f9810800000000000000
+      internalID: 1774282439771495841
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_155
+      rect:
+        serializedVersion: 2
+        x: 2746
+        y: 30
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84acb536e70cf78c0800000000000000
+      internalID: -3999266295016338872
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_156
+      rect:
+        serializedVersion: 2
+        x: 2270
+        y: 30
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 26ce139b477753e90800000000000000
+      internalID: -7046594698744304542
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_157
+      rect:
+        serializedVersion: 2
+        x: 1779
+        y: 20
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0d1c924ea3519b750800000000000000
+      internalID: 6321106894671430096
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_158
+      rect:
+        serializedVersion: 2
+        x: 1803
+        y: 18
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1331cc559456d4c0800000000000000
+      internalID: -4263126996776570086
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_159
+      rect:
+        serializedVersion: 2
+        x: 2722
+        y: 20
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a70f61a9a6e638160800000000000000
+      internalID: 7026581247758889082
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_160
+      rect:
+        serializedVersion: 2
+        x: 18
+        y: 12
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c133fd9b282b97dc0800000000000000
+      internalID: -3640682549218430180
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_161
+      rect:
+        serializedVersion: 2
+        x: 2183
+        y: 11
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a56f2393e39f1ac40800000000000000
+      internalID: 5521968663775868506
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_162
+      rect:
+        serializedVersion: 2
+        x: 2362
+        y: 11
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: abab7a9baa3abfb50800000000000000
+      internalID: 6628071230260361914
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_163
+      rect:
+        serializedVersion: 2
+        x: 2538
+        y: 9
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f2023c903304a5d00800000000000000
+      internalID: 962152058348314671
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon log_164
+      rect:
+        serializedVersion: 2
+        x: 2710
+        y: 9
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c3cede32ef441ecb0800000000000000
+      internalID: -4836508666504025028
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Golden Ebon log_0: -4519185807077818629
+      Golden Ebon log_1: 4699734308536208571
+      Golden Ebon log_10: 7787045700202707793
+      Golden Ebon log_100: -1034306965043203432
+      Golden Ebon log_101: -3299026469443848230
+      Golden Ebon log_102: -8451482882378732583
+      Golden Ebon log_103: -5623830596645079445
+      Golden Ebon log_104: 6175726140868058727
+      Golden Ebon log_105: -4282082890733593168
+      Golden Ebon log_106: -1687175617720371155
+      Golden Ebon log_107: 5110305935118635146
+      Golden Ebon log_108: -5662206333801676162
+      Golden Ebon log_109: 5265891471483552854
+      Golden Ebon log_11: 1447509318293833516
+      Golden Ebon log_110: 2601914796859218809
+      Golden Ebon log_111: 4798719315378285215
+      Golden Ebon log_112: -4082447653882503496
+      Golden Ebon log_113: -7511390521721663644
+      Golden Ebon log_114: -5810239669529253601
+      Golden Ebon log_115: 6916578667327535251
+      Golden Ebon log_116: 5486103313904072813
+      Golden Ebon log_117: 9110518704243311574
+      Golden Ebon log_118: 1375806412167124921
+      Golden Ebon log_119: 5194639586045381524
+      Golden Ebon log_12: -2353369651792875872
+      Golden Ebon log_120: 7416609733665305428
+      Golden Ebon log_121: 7674334624499653714
+      Golden Ebon log_122: 681829724196021104
+      Golden Ebon log_123: -8164620751733906602
+      Golden Ebon log_124: -8756789839734200039
+      Golden Ebon log_125: -1240958835455578079
+      Golden Ebon log_126: -7760335982368328128
+      Golden Ebon log_127: -5279828468998841566
+      Golden Ebon log_128: -1231119727177467621
+      Golden Ebon log_129: -4277783132195830564
+      Golden Ebon log_13: -7689480359458122590
+      Golden Ebon log_130: 2517141488727228433
+      Golden Ebon log_131: -4203910199147707084
+      Golden Ebon log_132: 7575231126394436565
+      Golden Ebon log_133: -5178633763999880212
+      Golden Ebon log_134: 9031785842471478846
+      Golden Ebon log_135: -3309883702264353499
+      Golden Ebon log_136: 4479452824504066807
+      Golden Ebon log_137: -3063978200216793593
+      Golden Ebon log_138: 531302320845532281
+      Golden Ebon log_139: 7721839874197648129
+      Golden Ebon log_14: -4098937875966093725
+      Golden Ebon log_140: -6141479905057819177
+      Golden Ebon log_141: -1006519002959590580
+      Golden Ebon log_142: 934448201121235595
+      Golden Ebon log_143: 6300878014965747150
+      Golden Ebon log_144: -1629064082730900785
+      Golden Ebon log_145: 889651146139251795
+      Golden Ebon log_146: -8248609072337540644
+      Golden Ebon log_147: -2030204615726409462
+      Golden Ebon log_148: -3362213999124342713
+      Golden Ebon log_149: -2051058388626745734
+      Golden Ebon log_15: -5158408697512542735
+      Golden Ebon log_150: -1156442913612779969
+      Golden Ebon log_151: -4864320803395082371
+      Golden Ebon log_152: -2070880825452697169
+      Golden Ebon log_153: 6051106140036566465
+      Golden Ebon log_154: 1774282439771495841
+      Golden Ebon log_155: -3999266295016338872
+      Golden Ebon log_156: -7046594698744304542
+      Golden Ebon log_157: 6321106894671430096
+      Golden Ebon log_158: -4263126996776570086
+      Golden Ebon log_159: 7026581247758889082
+      Golden Ebon log_16: -2198260533540618796
+      Golden Ebon log_160: -3640682549218430180
+      Golden Ebon log_161: 5521968663775868506
+      Golden Ebon log_162: 6628071230260361914
+      Golden Ebon log_163: 962152058348314671
+      Golden Ebon log_164: -4836508666504025028
+      Golden Ebon log_17: 1671461200128540080
+      Golden Ebon log_18: 575669714966023096
+      Golden Ebon log_19: 2247290656875954313
+      Golden Ebon log_2: 8579876763558235987
+      Golden Ebon log_20: -6828602139507008890
+      Golden Ebon log_21: -2663846123735092746
+      Golden Ebon log_22: -2910410958700564192
+      Golden Ebon log_23: -2398122067186427643
+      Golden Ebon log_24: 7172288880395088701
+      Golden Ebon log_25: -3333746297226619031
+      Golden Ebon log_26: 2129328795364577441
+      Golden Ebon log_27: -8276044777180366145
+      Golden Ebon log_28: 5120160791882365232
+      Golden Ebon log_29: 2845683236323326537
+      Golden Ebon log_3: 6474903717688396217
+      Golden Ebon log_30: 2810208014381101414
+      Golden Ebon log_31: -3353514528441242293
+      Golden Ebon log_32: -1148913649173898150
+      Golden Ebon log_33: -5531307387428691047
+      Golden Ebon log_34: -3797351516945846204
+      Golden Ebon log_35: 7244911525447207359
+      Golden Ebon log_36: -5049262895693878701
+      Golden Ebon log_37: 1677763770716796940
+      Golden Ebon log_38: 1229596467061145580
+      Golden Ebon log_39: 3208431046170391128
+      Golden Ebon log_4: 1935105252952109527
+      Golden Ebon log_40: -9185156595220706125
+      Golden Ebon log_41: -6988389278750898404
+      Golden Ebon log_42: 2955293297953841152
+      Golden Ebon log_43: 6581701203094393088
+      Golden Ebon log_44: -7022463973397366084
+      Golden Ebon log_45: -8321530112907836500
+      Golden Ebon log_46: -8652538067457640055
+      Golden Ebon log_47: -2181249423122487975
+      Golden Ebon log_48: -361926647727444769
+      Golden Ebon log_49: -6815776006356018999
+      Golden Ebon log_5: 3730413461006172146
+      Golden Ebon log_50: 172290053227701893
+      Golden Ebon log_51: 2708377079564998251
+      Golden Ebon log_52: 6942547270058915796
+      Golden Ebon log_53: -7434953638693719398
+      Golden Ebon log_54: -4686349083148677591
+      Golden Ebon log_55: -41386314271473591
+      Golden Ebon log_56: 5490744979842675570
+      Golden Ebon log_57: 3263067077440288425
+      Golden Ebon log_58: -5474480871268863139
+      Golden Ebon log_59: -6224905986448136485
+      Golden Ebon log_6: -3857070074751419582
+      Golden Ebon log_60: -4949476106300281815
+      Golden Ebon log_61: -7891831864798363760
+      Golden Ebon log_62: -8765743379936462605
+      Golden Ebon log_63: 8472710583200255388
+      Golden Ebon log_64: -8586216827223426850
+      Golden Ebon log_65: -1877733084094945968
+      Golden Ebon log_66: 2140241146950772881
+      Golden Ebon log_67: -9046906428274768738
+      Golden Ebon log_68: -5807187676755600362
+      Golden Ebon log_69: 7219823792414781266
+      Golden Ebon log_7: -3153743099553223807
+      Golden Ebon log_70: 732294554041168752
+      Golden Ebon log_71: 8607162862922930147
+      Golden Ebon log_72: 9117235747673955511
+      Golden Ebon log_73: -1086858541659379836
+      Golden Ebon log_74: -2121549790044941029
+      Golden Ebon log_75: 6056903372712916669
+      Golden Ebon log_76: 3177630048959648058
+      Golden Ebon log_77: -7123323904221911002
+      Golden Ebon log_78: 7724713299067341840
+      Golden Ebon log_79: -4219892368391780062
+      Golden Ebon log_8: 3565298804033038928
+      Golden Ebon log_80: 6358864769176945435
+      Golden Ebon log_81: -2779640757477955959
+      Golden Ebon log_82: 4705100689413806406
+      Golden Ebon log_83: -465924314409005527
+      Golden Ebon log_84: -8731914268283279068
+      Golden Ebon log_85: -4635675374465795841
+      Golden Ebon log_86: -2800191924623280551
+      Golden Ebon log_87: -3476981038554187199
+      Golden Ebon log_88: 1767036260764461571
+      Golden Ebon log_89: -1035097804816436975
+      Golden Ebon log_9: 2749215084680663143
+      Golden Ebon log_90: -8529912791160961398
+      Golden Ebon log_91: -5681917963301363590
+      Golden Ebon log_92: 2506344900848834982
+      Golden Ebon log_93: -8094645231432522139
+      Golden Ebon log_94: 4961961504707454897
+      Golden Ebon log_95: -3992113926023355588
+      Golden Ebon log_96: 7046892723586131133
+      Golden Ebon log_97: -1200969857346498082
+      Golden Ebon log_98: 5952756581166328283
+      Golden Ebon log_99: 5904794022537936264
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

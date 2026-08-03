@@ -1,0 +1,5668 @@
+fileFormatVersion: 2
+guid: f631fadb39c0ce645957da29fa45e17f
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 7032865350594325424
+    second: doom_crown_0
+  - first:
+      213: -4376260594621287256
+    second: doom_crown_1
+  - first:
+      213: 5424626047495724683
+    second: doom_crown_2
+  - first:
+      213: 1807682400292892732
+    second: doom_crown_3
+  - first:
+      213: -4272517463418779232
+    second: doom_crown_4
+  - first:
+      213: 7768151771580611795
+    second: doom_crown_5
+  - first:
+      213: 8128342674220297314
+    second: doom_crown_6
+  - first:
+      213: 6357016031568144444
+    second: doom_crown_7
+  - first:
+      213: -5702573215016698729
+    second: doom_crown_8
+  - first:
+      213: 2363921053166259385
+    second: doom_crown_9
+  - first:
+      213: 5359559464616857267
+    second: doom_crown_10
+  - first:
+      213: -1558295912430566746
+    second: doom_crown_11
+  - first:
+      213: -7611672456239976943
+    second: doom_crown_12
+  - first:
+      213: 363878437537029402
+    second: doom_crown_13
+  - first:
+      213: -5069607979063013173
+    second: doom_crown_14
+  - first:
+      213: 5392912145752728019
+    second: doom_crown_15
+  - first:
+      213: -90834001937256211
+    second: doom_crown_16
+  - first:
+      213: -6786914271404621974
+    second: doom_crown_17
+  - first:
+      213: -6475566860685264370
+    second: doom_crown_18
+  - first:
+      213: -9031405128455343005
+    second: doom_crown_19
+  - first:
+      213: 6259883170653335468
+    second: doom_crown_20
+  - first:
+      213: -1066833244056022622
+    second: doom_crown_21
+  - first:
+      213: 7118281949812121273
+    second: doom_crown_22
+  - first:
+      213: -2007416126220166547
+    second: doom_crown_23
+  - first:
+      213: 7508800980477829993
+    second: doom_crown_24
+  - first:
+      213: -2957292236183025874
+    second: doom_crown_25
+  - first:
+      213: 6860539855840591965
+    second: doom_crown_26
+  - first:
+      213: 297737706044462047
+    second: doom_crown_27
+  - first:
+      213: -3109464987929489080
+    second: doom_crown_28
+  - first:
+      213: 7995108116550179826
+    second: doom_crown_29
+  - first:
+      213: 243892952659398907
+    second: doom_crown_30
+  - first:
+      213: 6131741253646602672
+    second: doom_crown_31
+  - first:
+      213: 7553092981440778767
+    second: doom_crown_32
+  - first:
+      213: -7515061609950498580
+    second: doom_crown_33
+  - first:
+      213: -4675969241555984530
+    second: doom_crown_34
+  - first:
+      213: -2027474839503937409
+    second: doom_crown_35
+  - first:
+      213: -4926573448286392086
+    second: doom_crown_36
+  - first:
+      213: -8406635550430005211
+    second: doom_crown_37
+  - first:
+      213: -6044131644155159697
+    second: doom_crown_38
+  - first:
+      213: -3009410607643154655
+    second: doom_crown_39
+  - first:
+      213: 5929410569955392644
+    second: doom_crown_40
+  - first:
+      213: 6293779291372075541
+    second: doom_crown_41
+  - first:
+      213: -1246629280786010758
+    second: doom_crown_42
+  - first:
+      213: 8568718278146520686
+    second: doom_crown_43
+  - first:
+      213: -6654988032557931829
+    second: doom_crown_44
+  - first:
+      213: -4787412791352243124
+    second: doom_crown_45
+  - first:
+      213: 4147244319042515568
+    second: doom_crown_46
+  - first:
+      213: 7112252410542283120
+    second: doom_crown_47
+  - first:
+      213: -208711794059692462
+    second: doom_crown_48
+  - first:
+      213: 254023939307499282
+    second: doom_crown_49
+  - first:
+      213: 3035649682578038946
+    second: doom_crown_50
+  - first:
+      213: 340747098334678722
+    second: doom_crown_51
+  - first:
+      213: -6887396347361692756
+    second: doom_crown_52
+  - first:
+      213: -7133730142099103975
+    second: doom_crown_53
+  - first:
+      213: 7846477143505154012
+    second: doom_crown_54
+  - first:
+      213: -4219571158557638141
+    second: doom_crown_55
+  - first:
+      213: 6008125115136407859
+    second: doom_crown_56
+  - first:
+      213: -341908754282314195
+    second: doom_crown_57
+  - first:
+      213: -6638382952397626680
+    second: doom_crown_58
+  - first:
+      213: -8895932448685228370
+    second: doom_crown_59
+  - first:
+      213: -4426559489563491571
+    second: doom_crown_60
+  - first:
+      213: -8227536740742317608
+    second: doom_crown_61
+  - first:
+      213: -3624089965040953712
+    second: doom_crown_62
+  - first:
+      213: -2354882868513940852
+    second: doom_crown_63
+  - first:
+      213: 3427626576991206059
+    second: doom_crown_64
+  - first:
+      213: -8759427339157921402
+    second: doom_crown_65
+  - first:
+      213: -341301662843275108
+    second: doom_crown_66
+  - first:
+      213: 8476840059882126864
+    second: doom_crown_67
+  - first:
+      213: 961528844537705887
+    second: doom_crown_68
+  - first:
+      213: -6404288379645996982
+    second: doom_crown_69
+  - first:
+      213: -4722153816694341665
+    second: doom_crown_70
+  - first:
+      213: 4105041140226076435
+    second: doom_crown_71
+  - first:
+      213: 2137623082772673104
+    second: doom_crown_72
+  - first:
+      213: -9122473108659475444
+    second: doom_crown_73
+  - first:
+      213: 716551865057058107
+    second: doom_crown_74
+  - first:
+      213: -831102577057939184
+    second: doom_crown_75
+  - first:
+      213: 701654652117029900
+    second: doom_crown_76
+  - first:
+      213: -455221976397602148
+    second: doom_crown_77
+  - first:
+      213: -7923190832936249063
+    second: doom_crown_78
+  - first:
+      213: -5205240847114781977
+    second: doom_crown_79
+  - first:
+      213: -3136953936968087556
+    second: doom_crown_80
+  - first:
+      213: 6172759228988388679
+    second: doom_crown_81
+  - first:
+      213: -7768928019541607278
+    second: doom_crown_82
+  - first:
+      213: -1664190939021515354
+    second: doom_crown_83
+  - first:
+      213: 9211108445809731377
+    second: doom_crown_84
+  - first:
+      213: -7908439683207984418
+    second: doom_crown_85
+  - first:
+      213: -3060059725626140906
+    second: doom_crown_86
+  - first:
+      213: 1598678882331590726
+    second: doom_crown_87
+  - first:
+      213: -2777765184290237152
+    second: doom_crown_88
+  - first:
+      213: 9135664500034000112
+    second: doom_crown_89
+  - first:
+      213: 6790088815095063888
+    second: doom_crown_90
+  - first:
+      213: -6171847770892562662
+    second: doom_crown_91
+  - first:
+      213: -737057086501647461
+    second: doom_crown_92
+  - first:
+      213: -6030403398992607648
+    second: doom_crown_93
+  - first:
+      213: 2882959979386300280
+    second: doom_crown_94
+  - first:
+      213: 456771727484502811
+    second: doom_crown_95
+  - first:
+      213: 512740605749219131
+    second: doom_crown_96
+  - first:
+      213: 2524473167313215356
+    second: doom_crown_97
+  - first:
+      213: 6727855765100135681
+    second: doom_crown_98
+  - first:
+      213: 3318655274689008479
+    second: doom_crown_99
+  - first:
+      213: 4831783518081155121
+    second: doom_crown_100
+  - first:
+      213: 4713734935721119900
+    second: doom_crown_101
+  - first:
+      213: -2738886712905693392
+    second: doom_crown_102
+  - first:
+      213: -3786893944905165796
+    second: doom_crown_103
+  - first:
+      213: 4777583870146288623
+    second: doom_crown_104
+  - first:
+      213: 5784805515353939815
+    second: doom_crown_105
+  - first:
+      213: 7519960046626138618
+    second: doom_crown_106
+  - first:
+      213: -5102332956661596102
+    second: doom_crown_107
+  - first:
+      213: 2575655713696844776
+    second: doom_crown_108
+  - first:
+      213: 920018342564799015
+    second: doom_crown_109
+  - first:
+      213: 1072936486706767411
+    second: doom_crown_110
+  - first:
+      213: 6938327301403898122
+    second: doom_crown_111
+  - first:
+      213: 4054939470010343542
+    second: doom_crown_112
+  - first:
+      213: 260682275406493173
+    second: doom_crown_113
+  - first:
+      213: -4535124022143380879
+    second: doom_crown_114
+  - first:
+      213: 3524857320872134011
+    second: doom_crown_115
+  - first:
+      213: -7335958247715282902
+    second: doom_crown_116
+  - first:
+      213: -6600458989226541906
+    second: doom_crown_117
+  - first:
+      213: -4089945424155496671
+    second: doom_crown_118
+  - first:
+      213: -2340265241527044243
+    second: doom_crown_119
+  - first:
+      213: -8091303884463305777
+    second: doom_crown_120
+  - first:
+      213: 3769033163783805711
+    second: doom_crown_121
+  - first:
+      213: -2601282687375596232
+    second: doom_crown_122
+  - first:
+      213: 3974917813089981832
+    second: doom_crown_123
+  - first:
+      213: 1647060210925572702
+    second: doom_crown_124
+  - first:
+      213: 3416249753037262821
+    second: doom_crown_125
+  - first:
+      213: 7974407133792440144
+    second: doom_crown_126
+  - first:
+      213: 8683672953629804047
+    second: doom_crown_127
+  - first:
+      213: 5213262039071479777
+    second: doom_crown_128
+  - first:
+      213: -7341895456668428575
+    second: doom_crown_129
+  - first:
+      213: -5138490878249215433
+    second: doom_crown_130
+  - first:
+      213: 390373116833766981
+    second: doom_crown_131
+  - first:
+      213: 6011821082967767822
+    second: doom_crown_132
+  - first:
+      213: -846680554616549611
+    second: doom_crown_133
+  - first:
+      213: 3111625340659629834
+    second: doom_crown_134
+  - first:
+      213: -8830706932511349169
+    second: doom_crown_135
+  - first:
+      213: 4223201864262438295
+    second: doom_crown_136
+  - first:
+      213: -2895661395577611563
+    second: doom_crown_137
+  - first:
+      213: -5019607091192184796
+    second: doom_crown_138
+  - first:
+      213: -8426436378860465913
+    second: doom_crown_139
+  - first:
+      213: -9203401800590279901
+    second: doom_crown_140
+  - first:
+      213: 3108083999287695722
+    second: doom_crown_141
+  - first:
+      213: 5248615166571403736
+    second: doom_crown_142
+  - first:
+      213: 3299506892643434256
+    second: doom_crown_143
+  - first:
+      213: -2004728838388961336
+    second: doom_crown_144
+  - first:
+      213: -6303371888159179790
+    second: doom_crown_145
+  - first:
+      213: 2947533064991835565
+    second: doom_crown_146
+  - first:
+      213: 5619418882124528245
+    second: doom_crown_147
+  - first:
+      213: -2367107843105193605
+    second: doom_crown_148
+  - first:
+      213: -4807941296134387485
+    second: doom_crown_149
+  - first:
+      213: -1562106403610754963
+    second: doom_crown_150
+  - first:
+      213: 1052614903828522787
+    second: doom_crown_151
+  - first:
+      213: 8159641941057299570
+    second: doom_crown_152
+  - first:
+      213: -2768918832818565802
+    second: doom_crown_153
+  - first:
+      213: 6426587070698824361
+    second: doom_crown_154
+  - first:
+      213: -555654163079270245
+    second: doom_crown_155
+  - first:
+      213: 8144924802498893160
+    second: doom_crown_156
+  - first:
+      213: 8037365581975454225
+    second: doom_crown_157
+  - first:
+      213: 8873586999637266045
+    second: doom_crown_158
+  - first:
+      213: -256427918759617891
+    second: doom_crown_159
+  - first:
+      213: -4009074668916605462
+    second: doom_crown_160
+  - first:
+      213: 1618256801643267932
+    second: doom_crown_161
+  - first:
+      213: 7159313792033574085
+    second: doom_crown_162
+  - first:
+      213: -4373401090353375822
+    second: doom_crown_163
+  - first:
+      213: -277972831285631515
+    second: doom_crown_164
+  - first:
+      213: -3989212813860715211
+    second: doom_crown_165
+  - first:
+      213: 8083432409378698913
+    second: doom_crown_166
+  - first:
+      213: 3573159772998795753
+    second: doom_crown_167
+  - first:
+      213: -1524183809777475851
+    second: doom_crown_168
+  - first:
+      213: 8131485431763667200
+    second: doom_crown_169
+  - first:
+      213: -6531976579425484384
+    second: doom_crown_170
+  - first:
+      213: 2338780789636882240
+    second: doom_crown_171
+  - first:
+      213: -8031711543858051081
+    second: doom_crown_172
+  - first:
+      213: 2337089858161720964
+    second: doom_crown_173
+  - first:
+      213: 5514745413706777780
+    second: doom_crown_174
+  - first:
+      213: -2010370787622041731
+    second: doom_crown_175
+  - first:
+      213: 7595697886321595500
+    second: doom_crown_176
+  - first:
+      213: -1158248439901954597
+    second: doom_crown_177
+  - first:
+      213: 3353325047586393730
+    second: doom_crown_178
+  - first:
+      213: 898784711253322306
+    second: doom_crown_179
+  - first:
+      213: 6970355558798401534
+    second: doom_crown_180
+  - first:
+      213: 1252642363463942527
+    second: doom_crown_181
+  - first:
+      213: -269788332499329206
+    second: doom_crown_182
+  - first:
+      213: -5958161177109975997
+    second: doom_crown_183
+  - first:
+      213: 5000360175981142121
+    second: doom_crown_184
+  - first:
+      213: -604217358424124933
+    second: doom_crown_185
+  - first:
+      213: -5430460075625392200
+    second: doom_crown_186
+  - first:
+      213: 6725566896838696494
+    second: doom_crown_187
+  - first:
+      213: 3729755845301186718
+    second: doom_crown_188
+  - first:
+      213: -4881546270855566195
+    second: doom_crown_189
+  - first:
+      213: 8904722686163524683
+    second: doom_crown_190
+  - first:
+      213: -657095405862899891
+    second: doom_crown_191
+  - first:
+      213: 4410747885987610272
+    second: doom_crown_192
+  - first:
+      213: -2872831654582353346
+    second: doom_crown_193
+  - first:
+      213: -202153651748508276
+    second: doom_crown_194
+  - first:
+      213: -5324348759893432584
+    second: doom_crown_195
+  - first:
+      213: 1185696867777852388
+    second: doom_crown_196
+  - first:
+      213: -7926553367215810538
+    second: doom_crown_197
+  - first:
+      213: -3066197108544132091
+    second: doom_crown_198
+  - first:
+      213: -2608454163395921822
+    second: doom_crown_199
+  - first:
+      213: -8440438686673357017
+    second: doom_crown_200
+  - first:
+      213: 3083650181229489324
+    second: doom_crown_201
+  - first:
+      213: -1599908218303208084
+    second: doom_crown_202
+  - first:
+      213: -6276027954890458325
+    second: doom_crown_203
+  - first:
+      213: -7095771617062680472
+    second: doom_crown_204
+  - first:
+      213: -3281714125570508660
+    second: doom_crown_205
+  - first:
+      213: 2433902328987611296
+    second: doom_crown_206
+  - first:
+      213: -6211360643225498867
+    second: doom_crown_207
+  - first:
+      213: 2517929492741634058
+    second: doom_crown_208
+  - first:
+      213: 1588863734739608332
+    second: doom_crown_209
+  - first:
+      213: 5411062675508864774
+    second: doom_crown_210
+  - first:
+      213: 8683890370643316071
+    second: doom_crown_211
+  - first:
+      213: 7721662867958186499
+    second: doom_crown_212
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: doom_crown_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 2048
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0bbe35f46c1c99160800000000000000
+      internalID: 7032865350594325424
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_1
+      rect:
+        serializedVersion: 2
+        x: 15
+        y: 26
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8a4fe05fc266443c0800000000000000
+      internalID: -4376260594621287256
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_2
+      rect:
+        serializedVersion: 2
+        x: 15
+        y: 23
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b8e505836a4284b40800000000000000
+      internalID: 5424626047495724683
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_3
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 47
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c30fe28c09d261910800000000000000
+      internalID: 1807682400292892732
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_4
+      rect:
+        serializedVersion: 2
+        x: 36
+        y: 53
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0a94548f008f4b4c0800000000000000
+      internalID: -4272517463418779232
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_5
+      rect:
+        serializedVersion: 2
+        x: 37
+        y: 60
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3dc326af0e40ecb60800000000000000
+      internalID: 7768151771580611795
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_6
+      rect:
+        serializedVersion: 2
+        x: 73
+        y: 109
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 26cac8da89cadc070800000000000000
+      internalID: 8128342674220297314
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_7
+      rect:
+        serializedVersion: 2
+        x: 79
+        y: 38
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c3825195668a83850800000000000000
+      internalID: 6357016031568144444
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_8
+      rect:
+        serializedVersion: 2
+        x: 111
+        y: 44
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79cb54ddfd36cd0b0800000000000000
+      internalID: -5702573215016698729
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_9
+      rect:
+        serializedVersion: 2
+        x: 133
+        y: 36
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9bcca0b5ca55ec020800000000000000
+      internalID: 2363921053166259385
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_10
+      rect:
+        serializedVersion: 2
+        x: 161
+        y: 96
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3be0219dfeaf06a40800000000000000
+      internalID: 5359559464616857267
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_11
+      rect:
+        serializedVersion: 2
+        x: 163
+        y: 58
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6a202a4bf12df5ae0800000000000000
+      internalID: -1558295912430566746
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_12
+      rect:
+        serializedVersion: 2
+        x: 170
+        y: 44
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 11ee03bba38ed5690800000000000000
+      internalID: -7611672456239976943
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_13
+      rect:
+        serializedVersion: 2
+        x: 177
+        y: 63
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1d91d2d281cc0500800000000000000
+      internalID: 363878437537029402
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_14
+      rect:
+        serializedVersion: 2
+        x: 195
+        y: 179
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bc09679276225a9b0800000000000000
+      internalID: -5069607979063013173
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_15
+      rect:
+        serializedVersion: 2
+        x: 232
+        y: 55
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3d12b70160977da40800000000000000
+      internalID: 5392912145752728019
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_16
+      rect:
+        serializedVersion: 2
+        x: 234
+        y: 97
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: de0b00dd4fa4dbef0800000000000000
+      internalID: -90834001937256211
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_17
+      rect:
+        serializedVersion: 2
+        x: 235
+        y: 196
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a6ff5e3cd6900d1a0800000000000000
+      internalID: -6786914271404621974
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_18
+      rect:
+        serializedVersion: 2
+        x: 236
+        y: 30
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e0a309dcf3a2226a0800000000000000
+      internalID: -6475566860685264370
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_19
+      rect:
+        serializedVersion: 2
+        x: 246
+        y: 81
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36437c7d2e00aa280800000000000000
+      internalID: -9031405128455343005
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_20
+      rect:
+        serializedVersion: 2
+        x: 248
+        y: 43
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cafec32d3929fd650800000000000000
+      internalID: 6259883170653335468
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_21
+      rect:
+        serializedVersion: 2
+        x: 257
+        y: 123
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a1967d11d8d131f0800000000000000
+      internalID: -1066833244056022622
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_22
+      rect:
+        serializedVersion: 2
+        x: 262
+        y: 160
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9be50a518b739c260800000000000000
+      internalID: 7118281949812121273
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_23
+      rect:
+        serializedVersion: 2
+        x: 263
+        y: 51
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d6a91404ba93424e0800000000000000
+      internalID: -2007416126220166547
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_24
+      rect:
+        serializedVersion: 2
+        x: 268
+        y: 12
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9636c7a55be943860800000000000000
+      internalID: 7508800980477829993
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_25
+      rect:
+        serializedVersion: 2
+        x: 269
+        y: 91
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e274a4d216695f6d0800000000000000
+      internalID: -2957292236183025874
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_26
+      rect:
+        serializedVersion: 2
+        x: 271
+        y: 42
+        width: 12
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d50c9c276a8853f50800000000000000
+      internalID: 6860539855840591965
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_27
+      rect:
+        serializedVersion: 2
+        x: 278
+        y: 115
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd3150dbdd6c12400800000000000000
+      internalID: 297737706044462047
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_28
+      rect:
+        serializedVersion: 2
+        x: 288
+        y: 24
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 841d2f07116f8d4d0800000000000000
+      internalID: -3109464987929489080
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_29
+      rect:
+        serializedVersion: 2
+        x: 290
+        y: 37
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2fbd0dbd87454fe60800000000000000
+      internalID: 7995108116550179826
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_30
+      rect:
+        serializedVersion: 2
+        x: 313
+        y: 158
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bf01c76295b726300800000000000000
+      internalID: 243892952659398907
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_31
+      rect:
+        serializedVersion: 2
+        x: 343
+        y: 37
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0b1d63ece22581550800000000000000
+      internalID: 6131741253646602672
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_32
+      rect:
+        serializedVersion: 2
+        x: 346
+        y: 195
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0216427c0af1d860800000000000000
+      internalID: 7553092981440778767
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_33
+      rect:
+        serializedVersion: 2
+        x: 350
+        y: 37
+        width: 17
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce0b9b1484325b790800000000000000
+      internalID: -7515061609950498580
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_34
+      rect:
+        serializedVersion: 2
+        x: 367
+        y: 41
+        width: 12
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e6f1768cfbe9b1fb0800000000000000
+      internalID: -4675969241555984530
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_35
+      rect:
+        serializedVersion: 2
+        x: 394
+        y: 110
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f7063502066fcd3e0800000000000000
+      internalID: -2027474839503937409
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_36
+      rect:
+        serializedVersion: 2
+        x: 397
+        y: 57
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ae0b4070d8b41abb0800000000000000
+      internalID: -4926573448286392086
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_37
+      rect:
+        serializedVersion: 2
+        x: 458
+        y: 27
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 528f274d181a55b80800000000000000
+      internalID: -8406635550430005211
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_38
+      rect:
+        serializedVersion: 2
+        x: 459
+        y: 176
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6b1f66fa4eee1ca0800000000000000
+      internalID: -6044131644155159697
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_39
+      rect:
+        serializedVersion: 2
+        x: 463
+        y: 59
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 12723243ffc6c36d0800000000000000
+      internalID: -3009410607643154655
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_40
+      rect:
+        serializedVersion: 2
+        x: 492
+        y: 46
+        width: 11
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48c33ad7f7f794250800000000000000
+      internalID: 5929410569955392644
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_41
+      rect:
+        serializedVersion: 2
+        x: 494
+        y: 10
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51a31fc6beef75750800000000000000
+      internalID: 6293779291372075541
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_42
+      rect:
+        serializedVersion: 2
+        x: 503
+        y: 42
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a7d2628264513bee0800000000000000
+      internalID: -1246629280786010758
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_43
+      rect:
+        serializedVersion: 2
+        x: 523
+        y: 43
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e66f15dffd33ae670800000000000000
+      internalID: 8568718278146520686
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_44
+      rect:
+        serializedVersion: 2
+        x: 528
+        y: 119
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bc2a8eed4abb4a3a0800000000000000
+      internalID: -6654988032557931829
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_45
+      rect:
+        serializedVersion: 2
+        x: 529
+        y: 95
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c4cc94a5e61bf8db0800000000000000
+      internalID: -4787412791352243124
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_46
+      rect:
+        serializedVersion: 2
+        x: 531
+        y: 58
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07239413cb8fd8930800000000000000
+      internalID: 4147244319042515568
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_47
+      rect:
+        serializedVersion: 2
+        x: 533
+        y: 24
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 079d94392ebc3b260800000000000000
+      internalID: 7112252410542283120
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_48
+      rect:
+        serializedVersion: 2
+        x: 549
+        y: 57
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 25633a6aab18a1df0800000000000000
+      internalID: -208711794059692462
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_49
+      rect:
+        serializedVersion: 2
+        x: 551
+        y: 218
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 21f6eda4d69768300800000000000000
+      internalID: 254023939307499282
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_50
+      rect:
+        serializedVersion: 2
+        x: 610
+        y: 35
+        width: 9
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a067908d4bc02a20800000000000000
+      internalID: 3035649682578038946
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_51
+      rect:
+        serializedVersion: 2
+        x: 610
+        y: 17
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2cecb7a3ea39ab400800000000000000
+      internalID: 340747098334678722
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_52
+      rect:
+        serializedVersion: 2
+        x: 622
+        y: 38
+        width: 6
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca3fe28538d0b60a0800000000000000
+      internalID: -6887396347361692756
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_53
+      rect:
+        serializedVersion: 2
+        x: 631
+        y: 33
+        width: 9
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 91f9fac5b36effc90800000000000000
+      internalID: -7133730142099103975
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_54
+      rect:
+        serializedVersion: 2
+        x: 641
+        y: 195
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cdfa8dcb36944ec60800000000000000
+      internalID: 7846477143505154012
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_55
+      rect:
+        serializedVersion: 2
+        x: 642
+        y: 47
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 30240b533621175c0800000000000000
+      internalID: -4219571158557638141
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_56
+      rect:
+        serializedVersion: 2
+        x: 651
+        y: 61
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 339fec5b5f5216350800000000000000
+      internalID: 6008125115136407859
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_57
+      rect:
+        serializedVersion: 2
+        x: 661
+        y: 180
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d26086baccb414bf0800000000000000
+      internalID: -341908754282314195
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_58
+      rect:
+        serializedVersion: 2
+        x: 668
+        y: 34
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8c2a45f50e9bfd3a0800000000000000
+      internalID: -6638382952397626680
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_59
+      rect:
+        serializedVersion: 2
+        x: 674
+        y: 181
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eaefe32129c4b8480800000000000000
+      internalID: -8895932448685228370
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_60
+      rect:
+        serializedVersion: 2
+        x: 679
+        y: 35
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d030f6fd893b192c0800000000000000
+      internalID: -4426559489563491571
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_61
+      rect:
+        serializedVersion: 2
+        x: 708
+        y: 11
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d93497fceae1dd80800000000000000
+      internalID: -8227536740742317608
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_62
+      rect:
+        serializedVersion: 2
+        x: 722
+        y: 9
+        width: 10
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0961da7c065a4bdc0800000000000000
+      internalID: -3624089965040953712
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_63
+      rect:
+        serializedVersion: 2
+        x: 728
+        y: 22
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c8ad29ef186c15fd0800000000000000
+      internalID: -2354882868513940852
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_64
+      rect:
+        serializedVersion: 2
+        x: 731
+        y: 195
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: baabf302630619f20800000000000000
+      internalID: 3427626576991206059
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_65
+      rect:
+        serializedVersion: 2
+        x: 731
+        y: 61
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 681a5a59e33407680800000000000000
+      internalID: -8759427339157921402
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_66
+      rect:
+        serializedVersion: 2
+        x: 758
+        y: 36
+        width: 10
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c98f9f822f3734bf0800000000000000
+      internalID: -341301662843275108
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_67
+      rect:
+        serializedVersion: 2
+        x: 759
+        y: 194
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 01e331b4f19c3a570800000000000000
+      internalID: 8476840059882126864
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_68
+      rect:
+        serializedVersion: 2
+        x: 765
+        y: 109
+        width: 10
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f9536f3c369085d00800000000000000
+      internalID: 961528844537705887
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_69
+      rect:
+        serializedVersion: 2
+        x: 766
+        y: 38
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a40d90c66a56f17a0800000000000000
+      internalID: -6404288379645996982
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_70
+      rect:
+        serializedVersion: 2
+        x: 767
+        y: 193
+        width: 15
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fdfbd2d6f1a877eb0800000000000000
+      internalID: -4722153816694341665
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_71
+      rect:
+        serializedVersion: 2
+        x: 771
+        y: 180
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 31f2a87ea2908f830800000000000000
+      internalID: 4105041140226076435
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_72
+      rect:
+        serializedVersion: 2
+        x: 771
+        y: 78
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 05237504edc5aad10800000000000000
+      internalID: 2137623082772673104
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_73
+      rect:
+        serializedVersion: 2
+        x: 771
+        y: 34
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0c6c456a07766180800000000000000
+      internalID: -9122473108659475444
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_74
+      rect:
+        serializedVersion: 2
+        x: 774
+        y: 57
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b3d9ed3ff14b1f900800000000000000
+      internalID: 716551865057058107
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_75
+      rect:
+        serializedVersion: 2
+        x: 775
+        y: 148
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 011cc8a0c945774f0800000000000000
+      internalID: -831102577057939184
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_76
+      rect:
+        serializedVersion: 2
+        x: 777
+        y: 131
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c049f664037ccb900800000000000000
+      internalID: 701654652117029900
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_77
+      rect:
+        serializedVersion: 2
+        x: 781
+        y: 79
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c92aeda360abea9f0800000000000000
+      internalID: -455221976397602148
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_78
+      rect:
+        serializedVersion: 2
+        x: 783
+        y: 213
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 91914339aeb2b0290800000000000000
+      internalID: -7923190832936249063
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_79
+      rect:
+        serializedVersion: 2
+        x: 783
+        y: 34
+        width: 9
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7eabe51370543c7b0800000000000000
+      internalID: -5205240847114781977
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_80
+      rect:
+        serializedVersion: 2
+        x: 790
+        y: 195
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cf7014eb30d4774d0800000000000000
+      internalID: -3136953936968087556
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_81
+      rect:
+        serializedVersion: 2
+        x: 796
+        y: 195
+        width: 14
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 745fdd760db0aa550800000000000000
+      internalID: 6172759228988388679
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_82
+      rect:
+        serializedVersion: 2
+        x: 839
+        y: 36
+        width: 12
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 29cb4a5b0293f2490800000000000000
+      internalID: -7768928019541607278
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_83
+      rect:
+        serializedVersion: 2
+        x: 849
+        y: 95
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6a5e231882b97e8e0800000000000000
+      internalID: -1664190939021515354
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_84
+      rect:
+        serializedVersion: 2
+        x: 855
+        y: 25
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 137e614345e64df70800000000000000
+      internalID: 9211108445809731377
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_85
+      rect:
+        serializedVersion: 2
+        x: 868
+        y: 12
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eda09c242049f3290800000000000000
+      internalID: -7908439683207984418
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_86
+      rect:
+        serializedVersion: 2
+        x: 907
+        y: 47
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 617139674eb7885d0800000000000000
+      internalID: -3060059725626140906
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_87
+      rect:
+        serializedVersion: 2
+        x: 908
+        y: 41
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6400b4b29f5af2610800000000000000
+      internalID: 1598678882331590726
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_88
+      rect:
+        serializedVersion: 2
+        x: 918
+        y: 150
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 025dee838456379d0800000000000000
+      internalID: -2777765184290237152
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_89
+      rect:
+        serializedVersion: 2
+        x: 919
+        y: 58
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f45cafb57668ce70800000000000000
+      internalID: 9135664500034000112
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_90
+      rect:
+        serializedVersion: 2
+        x: 929
+        y: 181
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 05528194dcd3b3e50800000000000000
+      internalID: 6790088815095063888
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_91
+      rect:
+        serializedVersion: 2
+        x: 931
+        y: 54
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1f8928f621395aa0800000000000000
+      internalID: -6171847770892562662
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_92
+      rect:
+        serializedVersion: 2
+        x: 950
+        y: 35
+        width: 9
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9b82e32c7275c5f0800000000000000
+      internalID: -737057086501647461
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_93
+      rect:
+        serializedVersion: 2
+        x: 967
+        y: 41
+        width: 7
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 066ccbe1f04bf4ca0800000000000000
+      internalID: -6030403398992607648
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_94
+      rect:
+        serializedVersion: 2
+        x: 970
+        y: 198
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 877ecf0a3d4520820800000000000000
+      internalID: 2882959979386300280
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_95
+      rect:
+        serializedVersion: 2
+        x: 970
+        y: 95
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b13c7205777c65600800000000000000
+      internalID: 456771727484502811
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_96
+      rect:
+        serializedVersion: 2
+        x: 1023
+        y: 196
+        width: 12
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b3fc9934dde9d1700800000000000000
+      internalID: 512740605749219131
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_97
+      rect:
+        serializedVersion: 2
+        x: 1026
+        y: 69
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c7f95be68fab80320800000000000000
+      internalID: 2524473167313215356
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_98
+      rect:
+        serializedVersion: 2
+        x: 1027
+        y: 49
+        width: 8
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1058bd23c252e5d50800000000000000
+      internalID: 6727855765100135681
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_99
+      rect:
+        serializedVersion: 2
+        x: 1057
+        y: 94
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f5390dba36b3e0e20800000000000000
+      internalID: 3318655274689008479
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_100
+      rect:
+        serializedVersion: 2
+        x: 1061
+        y: 173
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 13080d28281fd0340800000000000000
+      internalID: 4831783518081155121
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_101
+      rect:
+        serializedVersion: 2
+        x: 1076
+        y: 133
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c90910913fc8a6140800000000000000
+      internalID: 4713734935721119900
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_102
+      rect:
+        serializedVersion: 2
+        x: 1077
+        y: 40
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 037083dbb058df9d0800000000000000
+      internalID: -2738886712905693392
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_103
+      rect:
+        serializedVersion: 2
+        x: 1103
+        y: 81
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c1499db5500427bc0800000000000000
+      internalID: -3786893944905165796
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_104
+      rect:
+        serializedVersion: 2
+        x: 1106
+        y: 96
+        width: 12
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: feb94b897336d4240800000000000000
+      internalID: 4777583870146288623
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_105
+      rect:
+        serializedVersion: 2
+        x: 1106
+        y: 27
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76f546d87f1c74050800000000000000
+      internalID: 5784805515353939815
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_106
+      rect:
+        serializedVersion: 2
+        x: 1107
+        y: 45
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: af9e748e1d34c5860800000000000000
+      internalID: 7519960046626138618
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_107
+      rect:
+        serializedVersion: 2
+        x: 1122
+        y: 38
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a30ca60953fd039b0800000000000000
+      internalID: -5102332956661596102
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_108
+      rect:
+        serializedVersion: 2
+        x: 1130
+        y: 9
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8eb0b96a9319eb320800000000000000
+      internalID: 2575655713696844776
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_109
+      rect:
+        serializedVersion: 2
+        x: 1135
+        y: 178
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7222b6fdecf84cc00800000000000000
+      internalID: 920018342564799015
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_110
+      rect:
+        serializedVersion: 2
+        x: 1139
+        y: 15
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 33666bccc06d3ee00800000000000000
+      internalID: 1072936486706767411
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_111
+      rect:
+        serializedVersion: 2
+        x: 1141
+        y: 177
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a01f2977be3e94060800000000000000
+      internalID: 6938327301403898122
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_112
+      rect:
+        serializedVersion: 2
+        x: 1174
+        y: 177
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6706da7c6f9064830800000000000000
+      internalID: 4054939470010343542
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_113
+      rect:
+        serializedVersion: 2
+        x: 1175
+        y: 44
+        width: 11
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f538d8f5212e9300800000000000000
+      internalID: 260682275406493173
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_114
+      rect:
+        serializedVersion: 2
+        x: 1181
+        y: 193
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1729dcfdab00011c0800000000000000
+      internalID: -4535124022143380879
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_115
+      rect:
+        serializedVersion: 2
+        x: 1195
+        y: 43
+        width: 12
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b75c48ece0fcae030800000000000000
+      internalID: 3524857320872134011
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_116
+      rect:
+        serializedVersion: 2
+        x: 1201
+        y: 195
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a2065dd57d0713a90800000000000000
+      internalID: -7335958247715282902
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_117
+      rect:
+        serializedVersion: 2
+        x: 1207
+        y: 39
+        width: 13
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eac3e9025857664a0800000000000000
+      internalID: -6600458989226541906
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_118
+      rect:
+        serializedVersion: 2
+        x: 1219
+        y: 32
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 12f2a726e489d37c0800000000000000
+      internalID: -4089945424155496671
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_119
+      rect:
+        serializedVersion: 2
+        x: 1223
+        y: 74
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d67369e7925b58fd0800000000000000
+      internalID: -2340265241527044243
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_120
+      rect:
+        serializedVersion: 2
+        x: 1224
+        y: 144
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fcb83d49cf9e5bf80800000000000000
+      internalID: -8091303884463305777
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_121
+      rect:
+        serializedVersion: 2
+        x: 1239
+        y: 14
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0b100a71bb4e4430800000000000000
+      internalID: 3769033163783805711
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_122
+      rect:
+        serializedVersion: 2
+        x: 1247
+        y: 39
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 835aa929d2366ebd0800000000000000
+      internalID: -2601282687375596232
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_123
+      rect:
+        serializedVersion: 2
+        x: 1248
+        y: 44
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 885d994e0beb92730800000000000000
+      internalID: 3974917813089981832
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_124
+      rect:
+        serializedVersion: 2
+        x: 1265
+        y: 37
+        width: 12
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e5216eb09888bd610800000000000000
+      internalID: 1647060210925572702
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_125
+      rect:
+        serializedVersion: 2
+        x: 1265
+        y: 21
+        width: 13
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5ef4dc1ec05f86f20800000000000000
+      internalID: 3416249753037262821
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_126
+      rect:
+        serializedVersion: 2
+        x: 1269
+        y: 180
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 05f0a08b909caae60800000000000000
+      internalID: 7974407133792440144
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_127
+      rect:
+        serializedVersion: 2
+        x: 1270
+        y: 142
+        width: 9
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0685c21b8a928870800000000000000
+      internalID: 8683672953629804047
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_128
+      rect:
+        serializedVersion: 2
+        x: 1277
+        y: 13
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1e752e7143a395840800000000000000
+      internalID: 5213262039071479777
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_129
+      rect:
+        serializedVersion: 2
+        x: 1279
+        y: 43
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1e6593f2bf85c1a90800000000000000
+      internalID: -7341895456668428575
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_130
+      rect:
+        serializedVersion: 2
+        x: 1281
+        y: 133
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 73ade5865c960b8b0800000000000000
+      internalID: -5138490878249215433
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_131
+      rect:
+        serializedVersion: 2
+        x: 1282
+        y: 78
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 54e1dbe0842ea6500800000000000000
+      internalID: 390373116833766981
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_132
+      rect:
+        serializedVersion: 2
+        x: 1285
+        y: 195
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e0b7f774c674e6350800000000000000
+      internalID: 6011821082967767822
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_133
+      rect:
+        serializedVersion: 2
+        x: 1287
+        y: 45
+        width: 12
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51f89df758cff34f0800000000000000
+      internalID: -846680554616549611
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_134
+      rect:
+        serializedVersion: 2
+        x: 1291
+        y: 59
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a0ffe10e2c6be2b20800000000000000
+      internalID: 3111625340659629834
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_135
+      rect:
+        serializedVersion: 2
+        x: 1311
+        y: 40
+        width: 11
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f46e41cf4d6037580800000000000000
+      internalID: -8830706932511349169
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_136
+      rect:
+        serializedVersion: 2
+        x: 1316
+        y: 108
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79d412658b3db9a30800000000000000
+      internalID: 4223201864262438295
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_137
+      rect:
+        serializedVersion: 2
+        x: 1338
+        y: 69
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5dad8c67d4b80d7d0800000000000000
+      internalID: -2895661395577611563
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_138
+      rect:
+        serializedVersion: 2
+        x: 1342
+        y: 39
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 420457112f5c65ab0800000000000000
+      internalID: -5019607091192184796
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_139
+      rect:
+        serializedVersion: 2
+        x: 1387
+        y: 14
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 701d79332c84f0b80800000000000000
+      internalID: -8426436378860465913
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_140
+      rect:
+        serializedVersion: 2
+        x: 1405
+        y: 189
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 32b30a6f2d2f64080800000000000000
+      internalID: -9203401800590279901
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_141
+      rect:
+        serializedVersion: 2
+        x: 1417
+        y: 42
+        width: 6
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a695e951ee1222b20800000000000000
+      internalID: 3108083999287695722
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_142
+      rect:
+        serializedVersion: 2
+        x: 1463
+        y: 151
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d957368fa3d6d840800000000000000
+      internalID: 5248615166571403736
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_143
+      rect:
+        serializedVersion: 2
+        x: 1467
+        y: 79
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 01ff6fd89043acd20800000000000000
+      internalID: 3299506892643434256
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_144
+      rect:
+        serializedVersion: 2
+        x: 1483
+        y: 29
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8cf28d43eb5cd24e0800000000000000
+      internalID: -2004728838388961336
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_145
+      rect:
+        serializedVersion: 2
+        x: 1499
+        y: 41
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2fbb6171aace588a0800000000000000
+      internalID: -6303371888159179790
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_146
+      rect:
+        serializedVersion: 2
+        x: 1515
+        y: 37
+        width: 15
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da58e86b4bdb7e820800000000000000
+      internalID: 2947533064991835565
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_147
+      rect:
+        serializedVersion: 2
+        x: 1536
+        y: 181
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 57ab72943bf2cfd40800000000000000
+      internalID: 5619418882124528245
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_148
+      rect:
+        serializedVersion: 2
+        x: 1536
+        y: 161
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b718caa45f7562fd0800000000000000
+      internalID: -2367107843105193605
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_149
+      rect:
+        serializedVersion: 2
+        x: 1538
+        y: 35
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e88afe5dd2c64db0800000000000000
+      internalID: -4807941296134387485
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_150
+      rect:
+        serializedVersion: 2
+        x: 1539
+        y: 78
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d600b679088425ae0800000000000000
+      internalID: -1562106403610754963
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_151
+      rect:
+        serializedVersion: 2
+        x: 1542
+        y: 49
+        width: 9
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3272bf39da3ab9e00800000000000000
+      internalID: 1052614903828522787
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_152
+      rect:
+        serializedVersion: 2
+        x: 1545
+        y: 178
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 274691f1d1fdc3170800000000000000
+      internalID: 8159641941057299570
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_153
+      rect:
+        serializedVersion: 2
+        x: 1551
+        y: 24
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 65dc5fdedf2d299d0800000000000000
+      internalID: -2768918832818565802
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_154
+      rect:
+        serializedVersion: 2
+        x: 1555
+        y: 178
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9a22f1b24e2df2950800000000000000
+      internalID: 6426587070698824361
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_155
+      rect:
+        serializedVersion: 2
+        x: 1571
+        y: 46
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9071bf8b7be948f0800000000000000
+      internalID: -555654163079270245
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_156
+      rect:
+        serializedVersion: 2
+        x: 1573
+        y: 124
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 865173744f5980170800000000000000
+      internalID: 8144924802498893160
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_157
+      rect:
+        serializedVersion: 2
+        x: 1578
+        y: 44
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 112099bb9657a8f60800000000000000
+      internalID: 8037365581975454225
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_158
+      rect:
+        serializedVersion: 2
+        x: 1600
+        y: 46
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d7e47e4ac50552b70800000000000000
+      internalID: 8873586999637266045
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_159
+      rect:
+        serializedVersion: 2
+        x: 1615
+        y: 36
+        width: 13
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d9a17df9a2cf07cf0800000000000000
+      internalID: -256427918759617891
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_160
+      rect:
+        serializedVersion: 2
+        x: 1623
+        y: 159
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aed753164d7ec58c0800000000000000
+      internalID: -4009074668916605462
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_161
+      rect:
+        serializedVersion: 2
+        x: 1631
+        y: 40
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c578e49bcf3357610800000000000000
+      internalID: 1618256801643267932
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_162
+      rect:
+        serializedVersion: 2
+        x: 1641
+        y: 40
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5cc47b156fdfa5360800000000000000
+      internalID: 7159313792033574085
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_163
+      rect:
+        serializedVersion: 2
+        x: 1647
+        y: 42
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b55e2d21ee8e43c0800000000000000
+      internalID: -4373401090353375822
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_164
+      rect:
+        serializedVersion: 2
+        x: 1650
+        y: 125
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5e5a206ce21742cf0800000000000000
+      internalID: -277972831285631515
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_165
+      rect:
+        serializedVersion: 2
+        x: 1655
+        y: 14
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5354560e41873a8c0800000000000000
+      internalID: -3989212813860715211
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_166
+      rect:
+        serializedVersion: 2
+        x: 1685
+        y: 38
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1a6b5eec2fe1e2070800000000000000
+      internalID: 8083432409378698913
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_167
+      rect:
+        serializedVersion: 2
+        x: 1692
+        y: 79
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9e10f43d1e9669130800000000000000
+      internalID: 3573159772998795753
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_168
+      rect:
+        serializedVersion: 2
+        x: 1693
+        y: 23
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5fedfc586e209dae0800000000000000
+      internalID: -1524183809777475851
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_169
+      rect:
+        serializedVersion: 2
+        x: 1695
+        y: 110
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0098980fae6d8d070800000000000000
+      internalID: 8131485431763667200
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_170
+      rect:
+        serializedVersion: 2
+        x: 1697
+        y: 135
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0a14c2ea8e1c955a0800000000000000
+      internalID: -6531976579425484384
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_171
+      rect:
+        serializedVersion: 2
+        x: 1697
+        y: 43
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 04f50dd9cb4057020800000000000000
+      internalID: 2338780789636882240
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_172
+      rect:
+        serializedVersion: 2
+        x: 1728
+        y: 58
+        width: 8
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f7cfe997e0a98090800000000000000
+      internalID: -8031711543858051081
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_173
+      rect:
+        serializedVersion: 2
+        x: 1733
+        y: 195
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48eb5e3f7d20f6020800000000000000
+      internalID: 2337089858161720964
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_174
+      rect:
+        serializedVersion: 2
+        x: 1738
+        y: 127
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4b405b24cbf488c40800000000000000
+      internalID: 5514745413706777780
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_175
+      rect:
+        serializedVersion: 2
+        x: 1743
+        y: 179
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d7747f88b6ab914e0800000000000000
+      internalID: -2010370787622041731
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_176
+      rect:
+        serializedVersion: 2
+        x: 1755
+        y: 33
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c64526fdbf6596960800000000000000
+      internalID: 7595697886321595500
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_177
+      rect:
+        serializedVersion: 2
+        x: 1759
+        y: 269
+        width: 11
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bdd5ef93e231defe0800000000000000
+      internalID: -1158248439901954597
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_178
+      rect:
+        serializedVersion: 2
+        x: 1771
+        y: 246
+        width: 17
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28e8ec53d57698e20800000000000000
+      internalID: 3353325047586393730
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_179
+      rect:
+        serializedVersion: 2
+        x: 1772
+        y: 222
+        width: 16
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 24a6ec3deef197c00800000000000000
+      internalID: 898784711253322306
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_180
+      rect:
+        serializedVersion: 2
+        x: 1783
+        y: 178
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eff1950437dabb060800000000000000
+      internalID: 6970355558798401534
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_181
+      rect:
+        serializedVersion: 2
+        x: 1789
+        y: 203
+        width: 13
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f71cfd0c797426110800000000000000
+      internalID: 1252642363463942527
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_182
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 260
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a4f15d4e0f4814cf0800000000000000
+      internalID: -269788332499329206
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_183
+      rect:
+        serializedVersion: 2
+        x: 1791
+        y: 113
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 34c26d32afb505da0800000000000000
+      internalID: -5958161177109975997
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_184
+      rect:
+        serializedVersion: 2
+        x: 1794
+        y: 149
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 960ad564619d46540800000000000000
+      internalID: 5000360175981142121
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_185
+      rect:
+        serializedVersion: 2
+        x: 1799
+        y: 194
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bf1510883836d97f0800000000000000
+      internalID: -604217358424124933
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_186
+      rect:
+        serializedVersion: 2
+        x: 1800
+        y: 276
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b75861455123a4b0800000000000000
+      internalID: -5430460075625392200
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_187
+      rect:
+        serializedVersion: 2
+        x: 1803
+        y: 191
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e2e52378573065d50800000000000000
+      internalID: 6725566896838696494
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_188
+      rect:
+        serializedVersion: 2
+        x: 1804
+        y: 179
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e903d122e21c2c330800000000000000
+      internalID: 3729755845301186718
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_189
+      rect:
+        serializedVersion: 2
+        x: 1807
+        y: 61
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d8c650bb783414cb0800000000000000
+      internalID: -4881546270855566195
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_190
+      rect:
+        serializedVersion: 2
+        x: 1809
+        y: 41
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b4c93249a1ee39b70800000000000000
+      internalID: 8904722686163524683
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_191
+      rect:
+        serializedVersion: 2
+        x: 1811
+        y: 270
+        width: 7
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4f2006b53781e6f0800000000000000
+      internalID: -657095405862899891
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_192
+      rect:
+        serializedVersion: 2
+        x: 1814
+        y: 24
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0aeb81a45df163d30800000000000000
+      internalID: 4410747885987610272
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_193
+      rect:
+        serializedVersion: 2
+        x: 1815
+        y: 262
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e320f11c4d6a128d0800000000000000
+      internalID: -2872831654582353346
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_194
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c8d6b75235ec13df0800000000000000
+      internalID: -202153651748508276
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_195
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 247
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8f6a242330d1c16b0800000000000000
+      internalID: -5324348759893432584
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_196
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4e33137e401747010800000000000000
+      internalID: 1185696867777852388
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_197
+      rect:
+        serializedVersion: 2
+        x: 1829
+        y: 123
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 618dced85b93ff190800000000000000
+      internalID: -7926553367215810538
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_198
+      rect:
+        serializedVersion: 2
+        x: 1858
+        y: 36
+        width: 6
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 50ca5e5a9fda275d0800000000000000
+      internalID: -3066197108544132091
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_199
+      rect:
+        serializedVersion: 2
+        x: 1859
+        y: 81
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 268b5e132c8eccbd0800000000000000
+      internalID: -2608454163395921822
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_200
+      rect:
+        serializedVersion: 2
+        x: 1866
+        y: 36
+        width: 13
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 727be5cdbb98dda80800000000000000
+      internalID: -8440438686673357017
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_201
+      rect:
+        serializedVersion: 2
+        x: 1896
+        y: 32
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: caca0cf70835bca20800000000000000
+      internalID: 3083650181229489324
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_202
+      rect:
+        serializedVersion: 2
+        x: 1911
+        y: 13
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c652fceb3fbfbc9e0800000000000000
+      internalID: -1599908218303208084
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_203
+      rect:
+        serializedVersion: 2
+        x: 1927
+        y: 43
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b2b355ca3d117e8a0800000000000000
+      internalID: -6276027954890458325
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_204
+      rect:
+        serializedVersion: 2
+        x: 1942
+        y: 37
+        width: 14
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8680ead2f41c68d90800000000000000
+      internalID: -7095771617062680472
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_205
+      rect:
+        serializedVersion: 2
+        x: 1986
+        y: 39
+        width: 13
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c88fcfad3620572d0800000000000000
+      internalID: -3281714125570508660
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_206
+      rect:
+        serializedVersion: 2
+        x: 1989
+        y: 97
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0a07d49d545f6c120800000000000000
+      internalID: 2433902328987611296
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_207
+      rect:
+        serializedVersion: 2
+        x: 1991
+        y: 180
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d0bc3b87760dcc9a0800000000000000
+      internalID: -6211360643225498867
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_208
+      rect:
+        serializedVersion: 2
+        x: 1991
+        y: 141
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a083858788b71f220800000000000000
+      internalID: 2517929492741634058
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_209
+      rect:
+        serializedVersion: 2
+        x: 1991
+        y: 103
+        width: 8
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c03a7a90627cc0610800000000000000
+      internalID: 1588863734739608332
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_210
+      rect:
+        serializedVersion: 2
+        x: 1998
+        y: 59
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 607a41795d4f71b40800000000000000
+      internalID: 5411062675508864774
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_211
+      rect:
+        serializedVersion: 2
+        x: 2002
+        y: 40
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76d41aa6840638870800000000000000
+      internalID: 8683890370643316071
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: doom_crown_212
+      rect:
+        serializedVersion: 2
+        x: 2029
+        y: 44
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 302c8ff977bd82b60800000000000000
+      internalID: 7721662867958186499
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      doom_crown_0: 7032865350594325424
+      doom_crown_1: -4376260594621287256
+      doom_crown_10: 5359559464616857267
+      doom_crown_100: 4831783518081155121
+      doom_crown_101: 4713734935721119900
+      doom_crown_102: -2738886712905693392
+      doom_crown_103: -3786893944905165796
+      doom_crown_104: 4777583870146288623
+      doom_crown_105: 5784805515353939815
+      doom_crown_106: 7519960046626138618
+      doom_crown_107: -5102332956661596102
+      doom_crown_108: 2575655713696844776
+      doom_crown_109: 920018342564799015
+      doom_crown_11: -1558295912430566746
+      doom_crown_110: 1072936486706767411
+      doom_crown_111: 6938327301403898122
+      doom_crown_112: 4054939470010343542
+      doom_crown_113: 260682275406493173
+      doom_crown_114: -4535124022143380879
+      doom_crown_115: 3524857320872134011
+      doom_crown_116: -7335958247715282902
+      doom_crown_117: -6600458989226541906
+      doom_crown_118: -4089945424155496671
+      doom_crown_119: -2340265241527044243
+      doom_crown_12: -7611672456239976943
+      doom_crown_120: -8091303884463305777
+      doom_crown_121: 3769033163783805711
+      doom_crown_122: -2601282687375596232
+      doom_crown_123: 3974917813089981832
+      doom_crown_124: 1647060210925572702
+      doom_crown_125: 3416249753037262821
+      doom_crown_126: 7974407133792440144
+      doom_crown_127: 8683672953629804047
+      doom_crown_128: 5213262039071479777
+      doom_crown_129: -7341895456668428575
+      doom_crown_13: 363878437537029402
+      doom_crown_130: -5138490878249215433
+      doom_crown_131: 390373116833766981
+      doom_crown_132: 6011821082967767822
+      doom_crown_133: -846680554616549611
+      doom_crown_134: 3111625340659629834
+      doom_crown_135: -8830706932511349169
+      doom_crown_136: 4223201864262438295
+      doom_crown_137: -2895661395577611563
+      doom_crown_138: -5019607091192184796
+      doom_crown_139: -8426436378860465913
+      doom_crown_14: -5069607979063013173
+      doom_crown_140: -9203401800590279901
+      doom_crown_141: 3108083999287695722
+      doom_crown_142: 5248615166571403736
+      doom_crown_143: 3299506892643434256
+      doom_crown_144: -2004728838388961336
+      doom_crown_145: -6303371888159179790
+      doom_crown_146: 2947533064991835565
+      doom_crown_147: 5619418882124528245
+      doom_crown_148: -2367107843105193605
+      doom_crown_149: -4807941296134387485
+      doom_crown_15: 5392912145752728019
+      doom_crown_150: -1562106403610754963
+      doom_crown_151: 1052614903828522787
+      doom_crown_152: 8159641941057299570
+      doom_crown_153: -2768918832818565802
+      doom_crown_154: 6426587070698824361
+      doom_crown_155: -555654163079270245
+      doom_crown_156: 8144924802498893160
+      doom_crown_157: 8037365581975454225
+      doom_crown_158: 8873586999637266045
+      doom_crown_159: -256427918759617891
+      doom_crown_16: -90834001937256211
+      doom_crown_160: -4009074668916605462
+      doom_crown_161: 1618256801643267932
+      doom_crown_162: 7159313792033574085
+      doom_crown_163: -4373401090353375822
+      doom_crown_164: -277972831285631515
+      doom_crown_165: -3989212813860715211
+      doom_crown_166: 8083432409378698913
+      doom_crown_167: 3573159772998795753
+      doom_crown_168: -1524183809777475851
+      doom_crown_169: 8131485431763667200
+      doom_crown_17: -6786914271404621974
+      doom_crown_170: -6531976579425484384
+      doom_crown_171: 2338780789636882240
+      doom_crown_172: -8031711543858051081
+      doom_crown_173: 2337089858161720964
+      doom_crown_174: 5514745413706777780
+      doom_crown_175: -2010370787622041731
+      doom_crown_176: 7595697886321595500
+      doom_crown_177: -1158248439901954597
+      doom_crown_178: 3353325047586393730
+      doom_crown_179: 898784711253322306
+      doom_crown_18: -6475566860685264370
+      doom_crown_180: 6970355558798401534
+      doom_crown_181: 1252642363463942527
+      doom_crown_182: -269788332499329206
+      doom_crown_183: -5958161177109975997
+      doom_crown_184: 5000360175981142121
+      doom_crown_185: -604217358424124933
+      doom_crown_186: -5430460075625392200
+      doom_crown_187: 6725566896838696494
+      doom_crown_188: 3729755845301186718
+      doom_crown_189: -4881546270855566195
+      doom_crown_19: -9031405128455343005
+      doom_crown_190: 8904722686163524683
+      doom_crown_191: -657095405862899891
+      doom_crown_192: 4410747885987610272
+      doom_crown_193: -2872831654582353346
+      doom_crown_194: -202153651748508276
+      doom_crown_195: -5324348759893432584
+      doom_crown_196: 1185696867777852388
+      doom_crown_197: -7926553367215810538
+      doom_crown_198: -3066197108544132091
+      doom_crown_199: -2608454163395921822
+      doom_crown_2: 5424626047495724683
+      doom_crown_20: 6259883170653335468
+      doom_crown_200: -8440438686673357017
+      doom_crown_201: 3083650181229489324
+      doom_crown_202: -1599908218303208084
+      doom_crown_203: -6276027954890458325
+      doom_crown_204: -7095771617062680472
+      doom_crown_205: -3281714125570508660
+      doom_crown_206: 2433902328987611296
+      doom_crown_207: -6211360643225498867
+      doom_crown_208: 2517929492741634058
+      doom_crown_209: 1588863734739608332
+      doom_crown_21: -1066833244056022622
+      doom_crown_210: 5411062675508864774
+      doom_crown_211: 8683890370643316071
+      doom_crown_212: 7721662867958186499
+      doom_crown_22: 7118281949812121273
+      doom_crown_23: -2007416126220166547
+      doom_crown_24: 7508800980477829993
+      doom_crown_25: -2957292236183025874
+      doom_crown_26: 6860539855840591965
+      doom_crown_27: 297737706044462047
+      doom_crown_28: -3109464987929489080
+      doom_crown_29: 7995108116550179826
+      doom_crown_3: 1807682400292892732
+      doom_crown_30: 243892952659398907
+      doom_crown_31: 6131741253646602672
+      doom_crown_32: 7553092981440778767
+      doom_crown_33: -7515061609950498580
+      doom_crown_34: -4675969241555984530
+      doom_crown_35: -2027474839503937409
+      doom_crown_36: -4926573448286392086
+      doom_crown_37: -8406635550430005211
+      doom_crown_38: -6044131644155159697
+      doom_crown_39: -3009410607643154655
+      doom_crown_4: -4272517463418779232
+      doom_crown_40: 5929410569955392644
+      doom_crown_41: 6293779291372075541
+      doom_crown_42: -1246629280786010758
+      doom_crown_43: 8568718278146520686
+      doom_crown_44: -6654988032557931829
+      doom_crown_45: -4787412791352243124
+      doom_crown_46: 4147244319042515568
+      doom_crown_47: 7112252410542283120
+      doom_crown_48: -208711794059692462
+      doom_crown_49: 254023939307499282
+      doom_crown_5: 7768151771580611795
+      doom_crown_50: 3035649682578038946
+      doom_crown_51: 340747098334678722
+      doom_crown_52: -6887396347361692756
+      doom_crown_53: -7133730142099103975
+      doom_crown_54: 7846477143505154012
+      doom_crown_55: -4219571158557638141
+      doom_crown_56: 6008125115136407859
+      doom_crown_57: -341908754282314195
+      doom_crown_58: -6638382952397626680
+      doom_crown_59: -8895932448685228370
+      doom_crown_6: 8128342674220297314
+      doom_crown_60: -4426559489563491571
+      doom_crown_61: -8227536740742317608
+      doom_crown_62: -3624089965040953712
+      doom_crown_63: -2354882868513940852
+      doom_crown_64: 3427626576991206059
+      doom_crown_65: -8759427339157921402
+      doom_crown_66: -341301662843275108
+      doom_crown_67: 8476840059882126864
+      doom_crown_68: 961528844537705887
+      doom_crown_69: -6404288379645996982
+      doom_crown_7: 6357016031568144444
+      doom_crown_70: -4722153816694341665
+      doom_crown_71: 4105041140226076435
+      doom_crown_72: 2137623082772673104
+      doom_crown_73: -9122473108659475444
+      doom_crown_74: 716551865057058107
+      doom_crown_75: -831102577057939184
+      doom_crown_76: 701654652117029900
+      doom_crown_77: -455221976397602148
+      doom_crown_78: -7923190832936249063
+      doom_crown_79: -5205240847114781977
+      doom_crown_8: -5702573215016698729
+      doom_crown_80: -3136953936968087556
+      doom_crown_81: 6172759228988388679
+      doom_crown_82: -7768928019541607278
+      doom_crown_83: -1664190939021515354
+      doom_crown_84: 9211108445809731377
+      doom_crown_85: -7908439683207984418
+      doom_crown_86: -3060059725626140906
+      doom_crown_87: 1598678882331590726
+      doom_crown_88: -2777765184290237152
+      doom_crown_89: 9135664500034000112
+      doom_crown_9: 2363921053166259385
+      doom_crown_90: 6790088815095063888
+      doom_crown_91: -6171847770892562662
+      doom_crown_92: -737057086501647461
+      doom_crown_93: -6030403398992607648
+      doom_crown_94: 2882959979386300280
+      doom_crown_95: 456771727484502811
+      doom_crown_96: 512740605749219131
+      doom_crown_97: 2524473167313215356
+      doom_crown_98: 6727855765100135681
+      doom_crown_99: 3318655274689008479
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

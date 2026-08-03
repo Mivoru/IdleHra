@@ -1,0 +1,988 @@
+fileFormatVersion: 2
+guid: 3862e4624623bf04e99eed8f05efc6bd
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 7215979042103898133
+    second: Frost Cod_0
+  - first:
+      213: 2124387259340598472
+    second: Frost Cod_1
+  - first:
+      213: -8614424653478704826
+    second: Frost Cod_2
+  - first:
+      213: -7098087870925381829
+    second: Frost Cod_3
+  - first:
+      213: 790492836225725623
+    second: Frost Cod_4
+  - first:
+      213: 3575988183710829795
+    second: Frost Cod_5
+  - first:
+      213: 3358655129691056830
+    second: Frost Cod_6
+  - first:
+      213: 3740576797198553530
+    second: Frost Cod_7
+  - first:
+      213: 7400142693578416039
+    second: Frost Cod_8
+  - first:
+      213: 6413112085268566282
+    second: Frost Cod_9
+  - first:
+      213: -8929853531011179301
+    second: Frost Cod_10
+  - first:
+      213: -6141939178906403070
+    second: Frost Cod_11
+  - first:
+      213: -8381345638101904046
+    second: Frost Cod_12
+  - first:
+      213: 2411447056598911484
+    second: Frost Cod_13
+  - first:
+      213: -2102437638075823846
+    second: Frost Cod_14
+  - first:
+      213: 5838474998371035831
+    second: Frost Cod_15
+  - first:
+      213: -7940700999263976060
+    second: Frost Cod_16
+  - first:
+      213: 4940435147031577292
+    second: Frost Cod_17
+  - first:
+      213: -7957702014780805268
+    second: Frost Cod_18
+  - first:
+      213: 8379052772379905167
+    second: Frost Cod_19
+  - first:
+      213: 2942993336129069641
+    second: Frost Cod_20
+  - first:
+      213: -8694317060439533858
+    second: Frost Cod_21
+  - first:
+      213: -8857604303351969959
+    second: Frost Cod_22
+  - first:
+      213: 125796406366401429
+    second: Frost Cod_23
+  - first:
+      213: -3516415152297489574
+    second: Frost Cod_24
+  - first:
+      213: -4006525456882181697
+    second: Frost Cod_25
+  - first:
+      213: -5081482666950758922
+    second: Frost Cod_26
+  - first:
+      213: 6613769444482053495
+    second: Frost Cod_27
+  - first:
+      213: -7180131340251379563
+    second: Frost Cod_28
+  - first:
+      213: -833876368590659496
+    second: Frost Cod_29
+  - first:
+      213: -8742668938228563436
+    second: Frost Cod_30
+  - first:
+      213: 9197251632506016800
+    second: Frost Cod_31
+  - first:
+      213: -4184557949712218766
+    second: Frost Cod_32
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Frost Cod_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 747
+        width: 1424
+        height: 1301
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5103447f4be442460800000000000000
+      internalID: 7215979042103898133
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_1
+      rect:
+        serializedVersion: 2
+        x: 254
+        y: 0
+        width: 1794
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8ccac56f4f65b7d10800000000000000
+      internalID: 2124387259340598472
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_2
+      rect:
+        serializedVersion: 2
+        x: 1270
+        y: 1887
+        width: 32
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 649c8093b6a637880800000000000000
+      internalID: -8614424653478704826
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_3
+      rect:
+        serializedVersion: 2
+        x: 1488
+        y: 1893
+        width: 18
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b3fdbfc40b68e7d90800000000000000
+      internalID: -7098087870925381829
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_4
+      rect:
+        serializedVersion: 2
+        x: 1446
+        y: 1847
+        width: 21
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7b4b9bcdb0568fa00800000000000000
+      internalID: 790492836225725623
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_5
+      rect:
+        serializedVersion: 2
+        x: 1685
+        y: 1861
+        width: 11
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3ec04138e4670a130800000000000000
+      internalID: 3575988183710829795
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_6
+      rect:
+        serializedVersion: 2
+        x: 92
+        y: 998
+        width: 21
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eba6748ab075c9e20800000000000000
+      internalID: 3358655129691056830
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_7
+      rect:
+        serializedVersion: 2
+        x: 232
+        y: 685
+        width: 20
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab1961457c239e330800000000000000
+      internalID: 3740576797198553530
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_8
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 258
+        height: 664
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7af91f9729692b660800000000000000
+      internalID: 7400142693578416039
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_9
+      rect:
+        serializedVersion: 2
+        x: 137
+        y: 129
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a019233a673fff850800000000000000
+      internalID: 6413112085268566282
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_10
+      rect:
+        serializedVersion: 2
+        x: 163
+        y: 217
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bdc9fc3a689c21480800000000000000
+      internalID: -8929853531011179301
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_11
+      rect:
+        serializedVersion: 2
+        x: 197
+        y: 26
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 20fba31bbd273caa0800000000000000
+      internalID: -6141939178906403070
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_12
+      rect:
+        serializedVersion: 2
+        x: 216
+        y: 557
+        width: 29
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2559a256c8a7fab80800000000000000
+      internalID: -8381345638101904046
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_13
+      rect:
+        serializedVersion: 2
+        x: 237
+        y: 241
+        width: 320
+        height: 159
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cf94d33525e277120800000000000000
+      internalID: 2411447056598911484
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_14
+      rect:
+        serializedVersion: 2
+        x: 246
+        y: 396
+        width: 107
+        height: 109
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a19441c7b14a2d2e0800000000000000
+      internalID: -2102437638075823846
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_15
+      rect:
+        serializedVersion: 2
+        x: 252
+        y: 551
+        width: 38
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7baa7e3d31e660150800000000000000
+      internalID: 5838474998371035831
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_16
+      rect:
+        serializedVersion: 2
+        x: 254
+        y: 615
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48508474386fcc190800000000000000
+      internalID: -7940700999263976060
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_17
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 587
+        width: 65
+        height: 76
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cc20ca63793ff8440800000000000000
+      internalID: 4940435147031577292
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_18
+      rect:
+        serializedVersion: 2
+        x: 283
+        y: 28
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c6f6494ed20909190800000000000000
+      internalID: -7957702014780805268
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_19
+      rect:
+        serializedVersion: 2
+        x: 309
+        y: 38
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f8cc4f33a10684470800000000000000
+      internalID: 8379052772379905167
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_20
+      rect:
+        serializedVersion: 2
+        x: 350
+        y: 38
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 942a058b8dc97d820800000000000000
+      internalID: 2942993336129069641
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_21
+      rect:
+        serializedVersion: 2
+        x: 387
+        y: 115
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed612efa2b4975780800000000000000
+      internalID: -8694317060439533858
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_22
+      rect:
+        serializedVersion: 2
+        x: 556
+        y: 225
+        width: 32
+        height: 37
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9570cb1d0d7731580800000000000000
+      internalID: -8857604303351969959
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_23
+      rect:
+        serializedVersion: 2
+        x: 1026
+        y: 40
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5937d734a2beeb100800000000000000
+      internalID: 125796406366401429
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_24
+      rect:
+        serializedVersion: 2
+        x: 1297
+        y: 231
+        width: 25
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a5bc18cbc0f233fc0800000000000000
+      internalID: -3516415152297489574
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_25
+      rect:
+        serializedVersion: 2
+        x: 1304
+        y: 87
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb95afe0356f568c0800000000000000
+      internalID: -4006525456882181697
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_26
+      rect:
+        serializedVersion: 2
+        x: 1585
+        y: 115
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6fd6810ff62fa79b0800000000000000
+      internalID: -5081482666950758922
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_27
+      rect:
+        serializedVersion: 2
+        x: 1777
+        y: 221
+        width: 12
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7757facb444d8cb50800000000000000
+      internalID: 6613769444482053495
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_28
+      rect:
+        serializedVersion: 2
+        x: 1792
+        y: 208
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 598caa7869c0b5c90800000000000000
+      internalID: -7180131340251379563
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_29
+      rect:
+        serializedVersion: 2
+        x: 1798
+        y: 197
+        width: 7
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 850af8f5cd97d64f0800000000000000
+      internalID: -833876368590659496
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_30
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4128b0cdbeccba680800000000000000
+      internalID: -8742668938228563436
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_31
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 222
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 024176171a333af70800000000000000
+      internalID: 9197251632506016800
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Frost Cod_32
+      rect:
+        serializedVersion: 2
+        x: 2043
+        y: 0
+        width: 5
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 275cd5927b67de5c0800000000000000
+      internalID: -4184557949712218766
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Frost Cod_0: 7215979042103898133
+      Frost Cod_1: 2124387259340598472
+      Frost Cod_10: -8929853531011179301
+      Frost Cod_11: -6141939178906403070
+      Frost Cod_12: -8381345638101904046
+      Frost Cod_13: 2411447056598911484
+      Frost Cod_14: -2102437638075823846
+      Frost Cod_15: 5838474998371035831
+      Frost Cod_16: -7940700999263976060
+      Frost Cod_17: 4940435147031577292
+      Frost Cod_18: -7957702014780805268
+      Frost Cod_19: 8379052772379905167
+      Frost Cod_2: -8614424653478704826
+      Frost Cod_20: 2942993336129069641
+      Frost Cod_21: -8694317060439533858
+      Frost Cod_22: -8857604303351969959
+      Frost Cod_23: 125796406366401429
+      Frost Cod_24: -3516415152297489574
+      Frost Cod_25: -4006525456882181697
+      Frost Cod_26: -5081482666950758922
+      Frost Cod_27: 6613769444482053495
+      Frost Cod_28: -7180131340251379563
+      Frost Cod_29: -833876368590659496
+      Frost Cod_3: -7098087870925381829
+      Frost Cod_30: -8742668938228563436
+      Frost Cod_31: 9197251632506016800
+      Frost Cod_32: -4184557949712218766
+      Frost Cod_4: 790492836225725623
+      Frost Cod_5: 3575988183710829795
+      Frost Cod_6: 3358655129691056830
+      Frost Cod_7: 3740576797198553530
+      Frost Cod_8: 7400142693578416039
+      Frost Cod_9: 6413112085268566282
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

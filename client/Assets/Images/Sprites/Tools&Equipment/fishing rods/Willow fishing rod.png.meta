@@ -1,0 +1,6032 @@
+fileFormatVersion: 2
+guid: e96579b6b9d62204f98ec5ae756511bd
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 959440725667234970
+    second: Willow fishing rod_0
+  - first:
+      213: 8920013397763611107
+    second: Willow fishing rod_1
+  - first:
+      213: 5127511884511191082
+    second: Willow fishing rod_2
+  - first:
+      213: 2752696393369293892
+    second: Willow fishing rod_3
+  - first:
+      213: 1948084986778377260
+    second: Willow fishing rod_4
+  - first:
+      213: -2466257862357686077
+    second: Willow fishing rod_5
+  - first:
+      213: -7181963863170166728
+    second: Willow fishing rod_6
+  - first:
+      213: -1317082006739952747
+    second: Willow fishing rod_7
+  - first:
+      213: -9090114987208010132
+    second: Willow fishing rod_8
+  - first:
+      213: -6665500008888988925
+    second: Willow fishing rod_9
+  - first:
+      213: -412587508927266981
+    second: Willow fishing rod_10
+  - first:
+      213: -1840293602305927317
+    second: Willow fishing rod_11
+  - first:
+      213: -4095495582073003176
+    second: Willow fishing rod_12
+  - first:
+      213: -1098211137464377226
+    second: Willow fishing rod_13
+  - first:
+      213: -3553956782851620813
+    second: Willow fishing rod_14
+  - first:
+      213: 956959667866589781
+    second: Willow fishing rod_15
+  - first:
+      213: 4942891900781288015
+    second: Willow fishing rod_16
+  - first:
+      213: -1388392797798434523
+    second: Willow fishing rod_17
+  - first:
+      213: 1756299037223660833
+    second: Willow fishing rod_18
+  - first:
+      213: -6716759964201473575
+    second: Willow fishing rod_19
+  - first:
+      213: 1994012328731917185
+    second: Willow fishing rod_20
+  - first:
+      213: 4031214174356689312
+    second: Willow fishing rod_21
+  - first:
+      213: 3980717332663748067
+    second: Willow fishing rod_22
+  - first:
+      213: -5967041297559817097
+    second: Willow fishing rod_23
+  - first:
+      213: 638040561281885231
+    second: Willow fishing rod_24
+  - first:
+      213: -4362760835794473497
+    second: Willow fishing rod_25
+  - first:
+      213: 5631480385456467797
+    second: Willow fishing rod_26
+  - first:
+      213: -7912443175610537393
+    second: Willow fishing rod_27
+  - first:
+      213: 994431691346944382
+    second: Willow fishing rod_28
+  - first:
+      213: 6815029561714470583
+    second: Willow fishing rod_29
+  - first:
+      213: 8127005676475829878
+    second: Willow fishing rod_30
+  - first:
+      213: 517525954772851773
+    second: Willow fishing rod_31
+  - first:
+      213: 291917596853906896
+    second: Willow fishing rod_32
+  - first:
+      213: 6713329768111308923
+    second: Willow fishing rod_33
+  - first:
+      213: 7401966700323575159
+    second: Willow fishing rod_34
+  - first:
+      213: 3683404255020669173
+    second: Willow fishing rod_35
+  - first:
+      213: 2438876486835585093
+    second: Willow fishing rod_36
+  - first:
+      213: 5466897399341477408
+    second: Willow fishing rod_37
+  - first:
+      213: -5857911036893692751
+    second: Willow fishing rod_38
+  - first:
+      213: 1898756905271103843
+    second: Willow fishing rod_39
+  - first:
+      213: -5724965935270633063
+    second: Willow fishing rod_40
+  - first:
+      213: 115395162530024041
+    second: Willow fishing rod_41
+  - first:
+      213: 1306318328837717192
+    second: Willow fishing rod_42
+  - first:
+      213: 4500546232499988000
+    second: Willow fishing rod_43
+  - first:
+      213: -1553441597251302704
+    second: Willow fishing rod_44
+  - first:
+      213: -6582149600990260715
+    second: Willow fishing rod_45
+  - first:
+      213: -8791172656109186153
+    second: Willow fishing rod_46
+  - first:
+      213: 5835543763846378918
+    second: Willow fishing rod_47
+  - first:
+      213: 9142298606361705037
+    second: Willow fishing rod_48
+  - first:
+      213: 4141936559524582408
+    second: Willow fishing rod_49
+  - first:
+      213: -4914923953839164692
+    second: Willow fishing rod_50
+  - first:
+      213: 3618019487420010707
+    second: Willow fishing rod_51
+  - first:
+      213: -6543149080373238421
+    second: Willow fishing rod_52
+  - first:
+      213: 6260415033655902352
+    second: Willow fishing rod_53
+  - first:
+      213: -3916401089748590476
+    second: Willow fishing rod_54
+  - first:
+      213: -1371957682423440043
+    second: Willow fishing rod_55
+  - first:
+      213: -6771383994343340997
+    second: Willow fishing rod_56
+  - first:
+      213: 6856397037405617018
+    second: Willow fishing rod_57
+  - first:
+      213: 7681887777241100206
+    second: Willow fishing rod_58
+  - first:
+      213: -4606770303668591839
+    second: Willow fishing rod_59
+  - first:
+      213: -8468851405490310022
+    second: Willow fishing rod_60
+  - first:
+      213: -4595835644878309272
+    second: Willow fishing rod_61
+  - first:
+      213: -1899852228584904883
+    second: Willow fishing rod_62
+  - first:
+      213: 6136522352241703470
+    second: Willow fishing rod_63
+  - first:
+      213: -982453054802999184
+    second: Willow fishing rod_64
+  - first:
+      213: 7520942835050610309
+    second: Willow fishing rod_65
+  - first:
+      213: 6544636446801729661
+    second: Willow fishing rod_66
+  - first:
+      213: -4501363690753382509
+    second: Willow fishing rod_67
+  - first:
+      213: -3575763124065515335
+    second: Willow fishing rod_68
+  - first:
+      213: 8183474331464669949
+    second: Willow fishing rod_69
+  - first:
+      213: 8457488669469615249
+    second: Willow fishing rod_70
+  - first:
+      213: 362419836584313608
+    second: Willow fishing rod_71
+  - first:
+      213: 7844446114621547019
+    second: Willow fishing rod_72
+  - first:
+      213: -474776932960494048
+    second: Willow fishing rod_73
+  - first:
+      213: 4090338554904256819
+    second: Willow fishing rod_74
+  - first:
+      213: -9208733816072174114
+    second: Willow fishing rod_75
+  - first:
+      213: 2747386466180126960
+    second: Willow fishing rod_76
+  - first:
+      213: 1101375795856900313
+    second: Willow fishing rod_77
+  - first:
+      213: 4892487019863097128
+    second: Willow fishing rod_78
+  - first:
+      213: 7023731891747453158
+    second: Willow fishing rod_79
+  - first:
+      213: 237263712147151401
+    second: Willow fishing rod_80
+  - first:
+      213: 1615397690973865249
+    second: Willow fishing rod_81
+  - first:
+      213: 2512790159490108939
+    second: Willow fishing rod_82
+  - first:
+      213: 6433138535811904768
+    second: Willow fishing rod_83
+  - first:
+      213: 2193250118676214309
+    second: Willow fishing rod_84
+  - first:
+      213: -996682537515852729
+    second: Willow fishing rod_85
+  - first:
+      213: -7906083354183275177
+    second: Willow fishing rod_86
+  - first:
+      213: 4672245665027034169
+    second: Willow fishing rod_87
+  - first:
+      213: 5684293745413227325
+    second: Willow fishing rod_88
+  - first:
+      213: 4990369544076363213
+    second: Willow fishing rod_89
+  - first:
+      213: -2972017812536227046
+    second: Willow fishing rod_90
+  - first:
+      213: -5842627450391448187
+    second: Willow fishing rod_91
+  - first:
+      213: 2787123203307040055
+    second: Willow fishing rod_92
+  - first:
+      213: -3842385808014234061
+    second: Willow fishing rod_93
+  - first:
+      213: -1021424489765321509
+    second: Willow fishing rod_94
+  - first:
+      213: -4078511017509648388
+    second: Willow fishing rod_95
+  - first:
+      213: 5650022489168737214
+    second: Willow fishing rod_96
+  - first:
+      213: -6431089316373881186
+    second: Willow fishing rod_97
+  - first:
+      213: -1895077947687063867
+    second: Willow fishing rod_98
+  - first:
+      213: 8884215492349604368
+    second: Willow fishing rod_99
+  - first:
+      213: -8241518570271406892
+    second: Willow fishing rod_100
+  - first:
+      213: -271149393147431850
+    second: Willow fishing rod_101
+  - first:
+      213: -1778520372146906869
+    second: Willow fishing rod_102
+  - first:
+      213: 3696459947778452963
+    second: Willow fishing rod_103
+  - first:
+      213: -5061322010451769402
+    second: Willow fishing rod_104
+  - first:
+      213: 7206582733595567338
+    second: Willow fishing rod_105
+  - first:
+      213: 7561088980149491790
+    second: Willow fishing rod_106
+  - first:
+      213: -5485814726579201576
+    second: Willow fishing rod_107
+  - first:
+      213: 7746741856452033766
+    second: Willow fishing rod_108
+  - first:
+      213: 4943910568922743019
+    second: Willow fishing rod_109
+  - first:
+      213: 6939504054193818001
+    second: Willow fishing rod_110
+  - first:
+      213: -6359603036803466348
+    second: Willow fishing rod_111
+  - first:
+      213: -572951909349442351
+    second: Willow fishing rod_112
+  - first:
+      213: 3106588167869728537
+    second: Willow fishing rod_113
+  - first:
+      213: 4416441841833183474
+    second: Willow fishing rod_114
+  - first:
+      213: -2561767309422108923
+    second: Willow fishing rod_115
+  - first:
+      213: -2894809570934202100
+    second: Willow fishing rod_116
+  - first:
+      213: -8778773415642541987
+    second: Willow fishing rod_117
+  - first:
+      213: 8105936412839642724
+    second: Willow fishing rod_118
+  - first:
+      213: -4086609531431648630
+    second: Willow fishing rod_119
+  - first:
+      213: 7405925258517317365
+    second: Willow fishing rod_120
+  - first:
+      213: -5651273276349656445
+    second: Willow fishing rod_121
+  - first:
+      213: 5836380437350973708
+    second: Willow fishing rod_122
+  - first:
+      213: -4029973707618766365
+    second: Willow fishing rod_123
+  - first:
+      213: 2496230061323452112
+    second: Willow fishing rod_124
+  - first:
+      213: 451249073762847679
+    second: Willow fishing rod_125
+  - first:
+      213: -6461259089577615493
+    second: Willow fishing rod_126
+  - first:
+      213: 3573994678811365622
+    second: Willow fishing rod_127
+  - first:
+      213: -8784010487007680393
+    second: Willow fishing rod_128
+  - first:
+      213: 7737787830032976623
+    second: Willow fishing rod_129
+  - first:
+      213: 3307655237094032408
+    second: Willow fishing rod_130
+  - first:
+      213: -4399928037940952045
+    second: Willow fishing rod_131
+  - first:
+      213: -4615276323619817623
+    second: Willow fishing rod_132
+  - first:
+      213: 1777428726785143805
+    second: Willow fishing rod_133
+  - first:
+      213: -7950706094586853564
+    second: Willow fishing rod_134
+  - first:
+      213: 2759319089689489080
+    second: Willow fishing rod_135
+  - first:
+      213: -375253790152176782
+    second: Willow fishing rod_136
+  - first:
+      213: 1536134294815740096
+    second: Willow fishing rod_137
+  - first:
+      213: -6027143726931958380
+    second: Willow fishing rod_138
+  - first:
+      213: 5243058732298544648
+    second: Willow fishing rod_139
+  - first:
+      213: 7056659439441706165
+    second: Willow fishing rod_140
+  - first:
+      213: -1821630871254261931
+    second: Willow fishing rod_141
+  - first:
+      213: 2490756535594741536
+    second: Willow fishing rod_142
+  - first:
+      213: 5750817351259088854
+    second: Willow fishing rod_143
+  - first:
+      213: -7510545426461320035
+    second: Willow fishing rod_144
+  - first:
+      213: -1831147921151772445
+    second: Willow fishing rod_145
+  - first:
+      213: 3658251665407218341
+    second: Willow fishing rod_146
+  - first:
+      213: -1544835269686502327
+    second: Willow fishing rod_147
+  - first:
+      213: -3320690519406031755
+    second: Willow fishing rod_148
+  - first:
+      213: 3266352517252669925
+    second: Willow fishing rod_149
+  - first:
+      213: 8849102680433014073
+    second: Willow fishing rod_150
+  - first:
+      213: 1943148979275491015
+    second: Willow fishing rod_151
+  - first:
+      213: 7136692427346669795
+    second: Willow fishing rod_152
+  - first:
+      213: -4054361376649217089
+    second: Willow fishing rod_153
+  - first:
+      213: -7136592549399396692
+    second: Willow fishing rod_154
+  - first:
+      213: -1256098683753193181
+    second: Willow fishing rod_155
+  - first:
+      213: -3775674547892163992
+    second: Willow fishing rod_156
+  - first:
+      213: 8129249504455410752
+    second: Willow fishing rod_157
+  - first:
+      213: 5534139331954427127
+    second: Willow fishing rod_158
+  - first:
+      213: -4652236607173027084
+    second: Willow fishing rod_159
+  - first:
+      213: 253339056682518465
+    second: Willow fishing rod_160
+  - first:
+      213: 2752525568897635902
+    second: Willow fishing rod_161
+  - first:
+      213: 3288244946865688154
+    second: Willow fishing rod_162
+  - first:
+      213: 2715817621904438100
+    second: Willow fishing rod_163
+  - first:
+      213: 6248663233801733024
+    second: Willow fishing rod_164
+  - first:
+      213: 5422129813786996187
+    second: Willow fishing rod_165
+  - first:
+      213: -7214194512622617800
+    second: Willow fishing rod_166
+  - first:
+      213: -4081728112890969303
+    second: Willow fishing rod_167
+  - first:
+      213: 5493527696221745005
+    second: Willow fishing rod_168
+  - first:
+      213: -8014248957836610631
+    second: Willow fishing rod_169
+  - first:
+      213: -5338965008065722624
+    second: Willow fishing rod_170
+  - first:
+      213: 5055371524149112660
+    second: Willow fishing rod_171
+  - first:
+      213: 8921448063704860133
+    second: Willow fishing rod_172
+  - first:
+      213: 642779981320507467
+    second: Willow fishing rod_173
+  - first:
+      213: 700722479420077260
+    second: Willow fishing rod_174
+  - first:
+      213: 658184476077055499
+    second: Willow fishing rod_175
+  - first:
+      213: -4915677770459992984
+    second: Willow fishing rod_176
+  - first:
+      213: 3334845521392097585
+    second: Willow fishing rod_177
+  - first:
+      213: -2525457574089104773
+    second: Willow fishing rod_178
+  - first:
+      213: 1169766785971376401
+    second: Willow fishing rod_179
+  - first:
+      213: -6780598327015352325
+    second: Willow fishing rod_180
+  - first:
+      213: 6404934917826699072
+    second: Willow fishing rod_181
+  - first:
+      213: -3087851066750786967
+    second: Willow fishing rod_182
+  - first:
+      213: -4587271522124491835
+    second: Willow fishing rod_183
+  - first:
+      213: -6904358648511358690
+    second: Willow fishing rod_184
+  - first:
+      213: -4012492248018436103
+    second: Willow fishing rod_185
+  - first:
+      213: -7050348449638587222
+    second: Willow fishing rod_186
+  - first:
+      213: 6374680466549889032
+    second: Willow fishing rod_187
+  - first:
+      213: -1861981086168039941
+    second: Willow fishing rod_188
+  - first:
+      213: -6109667875780638856
+    second: Willow fishing rod_189
+  - first:
+      213: -77990645805220157
+    second: Willow fishing rod_190
+  - first:
+      213: -5560759432393208680
+    second: Willow fishing rod_191
+  - first:
+      213: -5052205844118859161
+    second: Willow fishing rod_192
+  - first:
+      213: 902706431165045965
+    second: Willow fishing rod_193
+  - first:
+      213: -8139594738673210297
+    second: Willow fishing rod_194
+  - first:
+      213: 6026539381432817923
+    second: Willow fishing rod_195
+  - first:
+      213: -6026856316941464115
+    second: Willow fishing rod_196
+  - first:
+      213: 8260357949611931925
+    second: Willow fishing rod_197
+  - first:
+      213: 2158781415894957927
+    second: Willow fishing rod_198
+  - first:
+      213: 8724824840314899423
+    second: Willow fishing rod_199
+  - first:
+      213: -8691508795139077930
+    second: Willow fishing rod_200
+  - first:
+      213: -6268980685975011570
+    second: Willow fishing rod_201
+  - first:
+      213: 559789929198033484
+    second: Willow fishing rod_202
+  - first:
+      213: 2288735770839942756
+    second: Willow fishing rod_203
+  - first:
+      213: 5034724074967187903
+    second: Willow fishing rod_204
+  - first:
+      213: 7864321969570829251
+    second: Willow fishing rod_205
+  - first:
+      213: 5659948021401729891
+    second: Willow fishing rod_206
+  - first:
+      213: 2055075843750211339
+    second: Willow fishing rod_207
+  - first:
+      213: 7757183202924705332
+    second: Willow fishing rod_208
+  - first:
+      213: -2447654307773713178
+    second: Willow fishing rod_209
+  - first:
+      213: 8459114120415277126
+    second: Willow fishing rod_210
+  - first:
+      213: -2040739345143605518
+    second: Willow fishing rod_211
+  - first:
+      213: -4913371375068742906
+    second: Willow fishing rod_212
+  - first:
+      213: -7028843211322361375
+    second: Willow fishing rod_213
+  - first:
+      213: 672727642285910195
+    second: Willow fishing rod_214
+  - first:
+      213: -8426559949244609169
+    second: Willow fishing rod_215
+  - first:
+      213: -269630383724918255
+    second: Willow fishing rod_216
+  - first:
+      213: -4159178427274351755
+    second: Willow fishing rod_217
+  - first:
+      213: 6892806123015230911
+    second: Willow fishing rod_218
+  - first:
+      213: -5474796692538953215
+    second: Willow fishing rod_219
+  - first:
+      213: -41767554546405021
+    second: Willow fishing rod_220
+  - first:
+      213: 7473738339729103496
+    second: Willow fishing rod_221
+  - first:
+      213: -2623663069364473908
+    second: Willow fishing rod_222
+  - first:
+      213: -743328507062098155
+    second: Willow fishing rod_223
+  - first:
+      213: -1582852303825972839
+    second: Willow fishing rod_224
+  - first:
+      213: -4564131777454693635
+    second: Willow fishing rod_225
+  - first:
+      213: -655239335938059203
+    second: Willow fishing rod_226
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Willow fishing rod_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1851
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a944074b14e905d00800000000000000
+      internalID: 959440725667234970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_1
+      rect:
+        serializedVersion: 2
+        x: 443
+        y: 2039
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e9dc6dcce04acb70800000000000000
+      internalID: 8920013397763611107
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_2
+      rect:
+        serializedVersion: 2
+        x: 1824
+        y: 0
+        width: 224
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a2022e964e4982740800000000000000
+      internalID: 5127511884511191082
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_3
+      rect:
+        serializedVersion: 2
+        x: 2022
+        y: 1958
+        width: 26
+        height: 90
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 444964d09ca833620800000000000000
+      internalID: 2752696393369293892
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_4
+      rect:
+        serializedVersion: 2
+        x: 1601
+        y: 2012
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c2c523d59fcf80b10800000000000000
+      internalID: 1948084986778377260
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_5
+      rect:
+        serializedVersion: 2
+        x: 719
+        y: 1993
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c8e7ad7a8716cdd0800000000000000
+      internalID: -2466257862357686077
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_6
+      rect:
+        serializedVersion: 2
+        x: 1608
+        y: 1999
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 830dc0a0be9845c90800000000000000
+      internalID: -7181963863170166728
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_7
+      rect:
+        serializedVersion: 2
+        x: 1668
+        y: 1998
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 59bd430a4e8c8bde0800000000000000
+      internalID: -1317082006739952747
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_8
+      rect:
+        serializedVersion: 2
+        x: 1678
+        y: 1993
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c661304a49c69d180800000000000000
+      internalID: -9090114987208010132
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_9
+      rect:
+        serializedVersion: 2
+        x: 787
+        y: 1985
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 30b0fc7ae036f73a0800000000000000
+      internalID: -6665500008888988925
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_10
+      rect:
+        serializedVersion: 2
+        x: 893
+        y: 1984
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b5f70abb8d1364af0800000000000000
+      internalID: -412587508927266981
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_11
+      rect:
+        serializedVersion: 2
+        x: 1053
+        y: 1984
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b67912018b6f576e0800000000000000
+      internalID: -1840293602305927317
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_12
+      rect:
+        serializedVersion: 2
+        x: 1147
+        y: 1987
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8536b5b8770e927c0800000000000000
+      internalID: -4095495582073003176
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_13
+      rect:
+        serializedVersion: 2
+        x: 1338
+        y: 1983
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 670ee0ff9ce52c0f0800000000000000
+      internalID: -1098211137464377226
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_14
+      rect:
+        serializedVersion: 2
+        x: 1563
+        y: 1987
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3300a0bb22fcdaec0800000000000000
+      internalID: -3553956782851620813
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_15
+      rect:
+        serializedVersion: 2
+        x: 1579
+        y: 1991
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55a509b6fbdc74d00800000000000000
+      internalID: 956959667866589781
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_16
+      rect:
+        serializedVersion: 2
+        x: 1619
+        y: 1985
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f4a5935cefda89440800000000000000
+      internalID: 4942891900781288015
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_17
+      rect:
+        serializedVersion: 2
+        x: 1664
+        y: 1983
+        width: 11
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 529738e3b107bbce0800000000000000
+      internalID: -1388392797798434523
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_18
+      rect:
+        serializedVersion: 2
+        x: 375
+        y: 1975
+        width: 12
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 12da3194ba0af5810800000000000000
+      internalID: 1756299037223660833
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_19
+      rect:
+        serializedVersion: 2
+        x: 431
+        y: 1983
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9d9a434466649c2a0800000000000000
+      internalID: -6716759964201473575
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_20
+      rect:
+        serializedVersion: 2
+        x: 461
+        y: 1984
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 18bb0d3f5a72cab10800000000000000
+      internalID: 1994012328731917185
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_21
+      rect:
+        serializedVersion: 2
+        x: 835
+        y: 1981
+        width: 12
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0a1dc0ceeefb1f730800000000000000
+      internalID: 4031214174356689312
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_22
+      rect:
+        serializedVersion: 2
+        x: 59
+        y: 1967
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e5c9a4c2595e3730800000000000000
+      internalID: 3980717332663748067
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_23
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1937
+        width: 5
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7747cdafd8fc03da0800000000000000
+      internalID: -5967041297559817097
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_24
+      rect:
+        serializedVersion: 2
+        x: 2023
+        y: 1911
+        width: 25
+        height: 47
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f246f7f8286cad800800000000000000
+      internalID: 638040561281885231
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_25
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1880
+        width: 13
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7edeb7e722c5473c0800000000000000
+      internalID: -4362760835794473497
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_26
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1765
+        width: 5
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55f66bed299072e40800000000000000
+      internalID: 5631480385456467797
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_27
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1745
+        width: 5
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f4a254c8ada513290800000000000000
+      internalID: -7912443175610537393
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_28
+      rect:
+        serializedVersion: 2
+        x: 21
+        y: 1753
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e712024ca5eeccd00800000000000000
+      internalID: 994431691346944382
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_29
+      rect:
+        serializedVersion: 2
+        x: 45
+        y: 1854
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7bee6cf5749d39e50800000000000000
+      internalID: 6815029561714470583
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_30
+      rect:
+        serializedVersion: 2
+        x: 122
+        y: 1832
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 67ecce1aa9ce8c070800000000000000
+      internalID: 8127005676475829878
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_31
+      rect:
+        serializedVersion: 2
+        x: 2030
+        y: 1731
+        width: 18
+        height: 152
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d3cd7482d1f9e2700800000000000000
+      internalID: 517525954772851773
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_32
+      rect:
+        serializedVersion: 2
+        x: 57
+        y: 1715
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0dda928f1891d0400800000000000000
+      internalID: 291917596853906896
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_33
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1651
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b708458fad98a2d50800000000000000
+      internalID: 6713329768111308923
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_34
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1623
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7759e042f7119b660800000000000000
+      internalID: 7401966700323575159
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_35
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1622
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f85ba887a41e1330800000000000000
+      internalID: 3683404255020669173
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_36
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 1609
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 54043e83e31a8d120800000000000000
+      internalID: 2438876486835585093
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_37
+      rect:
+        serializedVersion: 2
+        x: 43
+        y: 1591
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 02e614748325edb40800000000000000
+      internalID: 5466897399341477408
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_38
+      rect:
+        serializedVersion: 2
+        x: 5
+        y: 1554
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1bc7c10d2f484bea0800000000000000
+      internalID: -5857911036893692751
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_39
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 1553
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3611185685db95a10800000000000000
+      internalID: 1898756905271103843
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_40
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 1547
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9916bf460d5dc80b0800000000000000
+      internalID: -5724965935270633063
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_41
+      rect:
+        serializedVersion: 2
+        x: 2027
+        y: 1517
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 96a8667f947f99100800000000000000
+      internalID: 115395162530024041
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_42
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1471
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8cc34f15999f02210800000000000000
+      internalID: 1306318328837717192
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_43
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1477
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 026626b14f6257e30800000000000000
+      internalID: 4500546232499988000
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_44
+      rect:
+        serializedVersion: 2
+        x: 35
+        y: 1453
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0da45880911117ae0800000000000000
+      internalID: -1553441597251302704
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_45
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1452
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5121f76cfc187a4a0800000000000000
+      internalID: -6582149600990260715
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_46
+      rect:
+        serializedVersion: 2
+        x: 6
+        y: 1441
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7931c710c0b7ff580800000000000000
+      internalID: -8791172656109186153
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_47
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1429
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6a53f4b92240cf050800000000000000
+      internalID: 5835543763846378918
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_48
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1404
+        width: 5
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4afcbef428ffde70800000000000000
+      internalID: 9142298606361705037
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_49
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 1416
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8049aa02b5d1b7930800000000000000
+      internalID: 4141936559524582408
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_50
+      rect:
+        serializedVersion: 2
+        x: 2037
+        y: 1403
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce2bb5154beaacbb0800000000000000
+      internalID: -4914923953839164692
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_51
+      rect:
+        serializedVersion: 2
+        x: 2010
+        y: 1375
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3d05c120e89c53230800000000000000
+      internalID: 3618019487420010707
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_52
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 1325
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b65ede714901235a0800000000000000
+      internalID: -6543149080373238421
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_53
+      rect:
+        serializedVersion: 2
+        x: 2043
+        y: 1298
+        width: 5
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0904393dd4671e650800000000000000
+      internalID: 6260415033655902352
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_54
+      rect:
+        serializedVersion: 2
+        x: 55
+        y: 1273
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 470259775f526a9c0800000000000000
+      internalID: -3916401089748590476
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_55
+      rect:
+        serializedVersion: 2
+        x: 124
+        y: 1271
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55d584cb1c3d5fce0800000000000000
+      internalID: -1371957682423440043
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_56
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1275
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b34466b22263702a0800000000000000
+      internalID: -6771383994343340997
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_57
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1270
+        width: 11
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a7b3a9d57c0d62f50800000000000000
+      internalID: 6856397037405617018
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_58
+      rect:
+        serializedVersion: 2
+        x: 20
+        y: 1233
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eafeed6ab3c8b9a60800000000000000
+      internalID: 7681887777241100206
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_59
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 1214
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 123e30801d67110c0800000000000000
+      internalID: -4606770303668591839
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_60
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1202
+        width: 5
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a74be204488987a80800000000000000
+      internalID: -8468851405490310022
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_61
+      rect:
+        serializedVersion: 2
+        x: 1870
+        y: 1192
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 86833fca4df4830c0800000000000000
+      internalID: -4595835644878309272
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_62
+      rect:
+        serializedVersion: 2
+        x: 2027
+        y: 1175
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d476675c67e52a5e0800000000000000
+      internalID: -1899852228584904883
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_63
+      rect:
+        serializedVersion: 2
+        x: 2031
+        y: 1181
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e2a7c91119e492550800000000000000
+      internalID: 6136522352241703470
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_64
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1159
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07848f3e620ad52f0800000000000000
+      internalID: -982453054802999184
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_65
+      rect:
+        serializedVersion: 2
+        x: 119
+        y: 1165
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58ef53b29a1cf5860800000000000000
+      internalID: 7520942835050610309
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_66
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1145
+        width: 5
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d7811b36c2833da50800000000000000
+      internalID: 6544636446801729661
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_67
+      rect:
+        serializedVersion: 2
+        x: 36
+        y: 1149
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 397adcf8291f781c0800000000000000
+      internalID: -4501363690753382509
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_68
+      rect:
+        serializedVersion: 2
+        x: 1877
+        y: 1150
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9b842254266506ec0800000000000000
+      internalID: -3575763124065515335
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_69
+      rect:
+        serializedVersion: 2
+        x: 29
+        y: 1132
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dfa9a7beb8a819170800000000000000
+      internalID: 8183474331464669949
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_70
+      rect:
+        serializedVersion: 2
+        x: 67
+        y: 1107
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 194a0ab92290f5570800000000000000
+      internalID: 8457488669469615249
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_71
+      rect:
+        serializedVersion: 2
+        x: 1904
+        y: 1111
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 803c923dbe2970500800000000000000
+      internalID: 362419836584313608
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_72
+      rect:
+        serializedVersion: 2
+        x: 1903
+        y: 1048
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b02e5b9fd221ddc60800000000000000
+      internalID: 7844446114621547019
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_73
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 1019
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 02e175b15e04969f0800000000000000
+      internalID: -474776932960494048
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_74
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1002
+        width: 12
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 33127208e3dc3c830800000000000000
+      internalID: 4090338554904256819
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_75
+      rect:
+        serializedVersion: 2
+        x: 2043
+        y: 994
+        width: 5
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed504ed5261043080800000000000000
+      internalID: -9208733816072174114
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_76
+      rect:
+        serializedVersion: 2
+        x: 2033
+        y: 980
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f8d1694f6da02620800000000000000
+      internalID: 2747386466180126960
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_77
+      rect:
+        serializedVersion: 2
+        x: 5
+        y: 911
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9d08344737fd84f00800000000000000
+      internalID: 1101375795856900313
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_78
+      rect:
+        serializedVersion: 2
+        x: 2036
+        y: 853
+        width: 11
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82f3627e50b95e340800000000000000
+      internalID: 4892487019863097128
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_79
+      rect:
+        serializedVersion: 2
+        x: 1905
+        y: 842
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6e8703531fe497160800000000000000
+      internalID: 7023731891747453158
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_80
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 836
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92a1f90d61eea4300800000000000000
+      internalID: 237263712147151401
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_81
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 825
+        width: 5
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 125cb7524ab0b6610800000000000000
+      internalID: 1615397690973865249
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_82
+      rect:
+        serializedVersion: 2
+        x: 61
+        y: 806
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b0e418336593fd220800000000000000
+      internalID: 2512790159490108939
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_83
+      rect:
+        serializedVersion: 2
+        x: 56
+        y: 791
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 005f1f10a69174950800000000000000
+      internalID: 6433138535811904768
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_84
+      rect:
+        serializedVersion: 2
+        x: 2037
+        y: 769
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5227743dc5dff6e10800000000000000
+      internalID: 2193250118676214309
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_85
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 732
+        width: 9
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 74c588543821b22f0800000000000000
+      internalID: -996682537515852729
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_86
+      rect:
+        serializedVersion: 2
+        x: 44
+        y: 685
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 75de64dd313f74290800000000000000
+      internalID: -7906083354183275177
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_87
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 635
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 93c8b4f7da627d040800000000000000
+      internalID: 4672245665027034169
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_88
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 615
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d3384567b0ba2ee40800000000000000
+      internalID: 5684293745413227325
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_89
+      rect:
+        serializedVersion: 2
+        x: 4
+        y: 603
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc5899409aa514540800000000000000
+      internalID: 4990369544076363213
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_90
+      rect:
+        serializedVersion: 2
+        x: 1897
+        y: 585
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1b05a1cb8541c6d0800000000000000
+      internalID: -2972017812536227046
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_91
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 587
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 585b8781a41daeea0800000000000000
+      internalID: -5842627450391448187
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_92
+      rect:
+        serializedVersion: 2
+        x: 2036
+        y: 579
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 73d6d5e59c9dda620800000000000000
+      internalID: 2787123203307040055
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_93
+      rect:
+        serializedVersion: 2
+        x: 40
+        y: 567
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 33e2f47277a1daac0800000000000000
+      internalID: -3842385808014234061
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_94
+      rect:
+        serializedVersion: 2
+        x: 1868
+        y: 565
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd447aa96db23d1f0800000000000000
+      internalID: -1021424489765321509
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_95
+      rect:
+        serializedVersion: 2
+        x: 2040
+        y: 563
+        width: 7
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cf702d4a6d73667c0800000000000000
+      internalID: -4078511017509648388
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_96
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 555
+        width: 5
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb3fedfc489e86e40800000000000000
+      internalID: 5650022489168737214
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_97
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 463
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e9e99b2175e20c6a0800000000000000
+      internalID: -6431089316373881186
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_98
+      rect:
+        serializedVersion: 2
+        x: 2040
+        y: 453
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5ceaf6aa5a453b5e0800000000000000
+      internalID: -1895077947687063867
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_99
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 401
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 01235817be21b4b70800000000000000
+      internalID: 8884215492349604368
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_100
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 370
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4d40039968e30ad80800000000000000
+      internalID: -8241518570271406892
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_101
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 363
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6547264401fac3cf0800000000000000
+      internalID: -271149393147431850
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_102
+      rect:
+        serializedVersion: 2
+        x: 23
+        y: 360
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b095360052d6157e0800000000000000
+      internalID: -1778520372146906869
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_103
+      rect:
+        serializedVersion: 2
+        x: 29
+        y: 349
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3ed2bc1ecb67c4330800000000000000
+      internalID: 3696459947778452963
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_104
+      rect:
+        serializedVersion: 2
+        x: 33
+        y: 347
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6c70821927292c9b0800000000000000
+      internalID: -5061322010451769402
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_105
+      rect:
+        serializedVersion: 2
+        x: 8
+        y: 327
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ae46d6860dce20460800000000000000
+      internalID: 7206582733595567338
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_106
+      rect:
+        serializedVersion: 2
+        x: 68
+        y: 317
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e485ee8fd526ee860800000000000000
+      internalID: 7561088980149491790
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_107
+      rect:
+        serializedVersion: 2
+        x: 9
+        y: 293
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d9d3ae32987ed3b0800000000000000
+      internalID: -5485814726579201576
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_108
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 281
+        width: 5
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ec3978aca4f18b60800000000000000
+      internalID: 7746741856452033766
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_109
+      rect:
+        serializedVersion: 2
+        x: 8
+        y: 278
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be080fde77c4c9440800000000000000
+      internalID: 4943910568922743019
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_110
+      rect:
+        serializedVersion: 2
+        x: 16
+        y: 279
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1990b939b221e4060800000000000000
+      internalID: 6939504054193818001
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_111
+      rect:
+        serializedVersion: 2
+        x: 36
+        y: 285
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 49b75de8bb62eb7a0800000000000000
+      internalID: -6359603036803466348
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_112
+      rect:
+        serializedVersion: 2
+        x: 47
+        y: 283
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1dc38d926477c08f0800000000000000
+      internalID: -572951909349442351
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_113
+      rect:
+        serializedVersion: 2
+        x: 127
+        y: 279
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9178e41ba71dc1b20800000000000000
+      internalID: 3106588167869728537
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_114
+      rect:
+        serializedVersion: 2
+        x: 37
+        y: 275
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f883a1b47a5a4d30800000000000000
+      internalID: 4416441841833183474
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_115
+      rect:
+        serializedVersion: 2
+        x: 118
+        y: 273
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 50fdfa47436c27cd0800000000000000
+      internalID: -2561767309422108923
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_116
+      rect:
+        serializedVersion: 2
+        x: 26
+        y: 257
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c01e018580293d7d0800000000000000
+      internalID: -2894809570934202100
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_117
+      rect:
+        serializedVersion: 2
+        x: 35
+        y: 255
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d50dbf427188b2680800000000000000
+      internalID: -8778773415642541987
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_118
+      rect:
+        serializedVersion: 2
+        x: 69
+        y: 263
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 466063b68321e7070800000000000000
+      internalID: 8105936412839642724
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_119
+      rect:
+        serializedVersion: 2
+        x: 121
+        y: 263
+        width: 12
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a828a4f68427947c0800000000000000
+      internalID: -4086609531431648630
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_120
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 259
+        width: 10
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f6840bc8c127c660800000000000000
+      internalID: 7405925258517317365
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_121
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 262
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 382558a95e4a291b0800000000000000
+      internalID: -5651273276349656445
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_122
+      rect:
+        serializedVersion: 2
+        x: 25
+        y: 241
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c010856d51dfef050800000000000000
+      internalID: 5836380437350973708
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_123
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 249
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e1383fb348a218c0800000000000000
+      internalID: -4029973707618766365
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_124
+      rect:
+        serializedVersion: 2
+        x: 53
+        y: 248
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0def5d2e30464a220800000000000000
+      internalID: 2496230061323452112
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_125
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 248
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fbbcbda44a8234600800000000000000
+      internalID: 451249073762847679
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_126
+      rect:
+        serializedVersion: 2
+        x: 122
+        y: 239
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b7f56fb571ff456a0800000000000000
+      internalID: -6461259089577615493
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_127
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 233
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6f010bb7931699130800000000000000
+      internalID: 3573994678811365622
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_128
+      rect:
+        serializedVersion: 2
+        x: 37
+        y: 223
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 778e992700de81680800000000000000
+      internalID: -8784010487007680393
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_129
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: feac47ce805226b60800000000000000
+      internalID: 7737787830032976623
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_130
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8144376d9e627ed20800000000000000
+      internalID: 3307655237094032408
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_131
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3148f35e2c050f2c0800000000000000
+      internalID: -4399928037940952045
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_132
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 196
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 967be5ee2ae33ffb0800000000000000
+      internalID: -4615276323619817623
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_133
+      rect:
+        serializedVersion: 2
+        x: 75
+        y: 199
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: df37a918202baa810800000000000000
+      internalID: 1777428726785143805
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_134
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 181
+        width: 5
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4470e9e7eea69a190800000000000000
+      internalID: -7950706094586853564
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_135
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 181
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8be65e2b7121b4620800000000000000
+      internalID: 2759319089689489080
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_136
+      rect:
+        serializedVersion: 2
+        x: 19
+        y: 157
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 27b4c518aa4dacaf0800000000000000
+      internalID: -375253790152176782
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_137
+      rect:
+        serializedVersion: 2
+        x: 69
+        y: 161
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c099c99002715510800000000000000
+      internalID: 1536134294815740096
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_138
+      rect:
+        serializedVersion: 2
+        x: 1795
+        y: 157
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4952ff9a6b84b5ca0800000000000000
+      internalID: -6027143726931958380
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_139
+      rect:
+        serializedVersion: 2
+        x: 19
+        y: 151
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8062a2b532613c840800000000000000
+      internalID: 5243058732298544648
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_140
+      rect:
+        serializedVersion: 2
+        x: 77
+        y: 145
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5bc74d45f5a4ee160800000000000000
+      internalID: 7056659439441706165
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_141
+      rect:
+        serializedVersion: 2
+        x: 108
+        y: 149
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55f110fbf5448b6e0800000000000000
+      internalID: -1821630871254261931
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_142
+      rect:
+        serializedVersion: 2
+        x: 3
+        y: 143
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 02f6b1e5fd1f09220800000000000000
+      internalID: 2490756535594741536
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_143
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 133
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d763fd69e10fcf40800000000000000
+      internalID: 5750817351259088854
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_144
+      rect:
+        serializedVersion: 2
+        x: 99
+        y: 139
+        width: 12
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d9c965a2abe25c790800000000000000
+      internalID: -7510545426461320035
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_145
+      rect:
+        serializedVersion: 2
+        x: 2038
+        y: 131
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e8bd84eaa47696e0800000000000000
+      internalID: -1831147921151772445
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_146
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 122
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5a21497e188b4c230800000000000000
+      internalID: 3658251665407218341
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_147
+      rect:
+        serializedVersion: 2
+        x: 1947
+        y: 120
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 94c57d1d184af8ae0800000000000000
+      internalID: -1544835269686502327
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_148
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 109
+        width: 5
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 57ccbcdf0998ae1d0800000000000000
+      internalID: -3320690519406031755
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_149
+      rect:
+        serializedVersion: 2
+        x: 9
+        y: 108
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5e16c0efe4a645d20800000000000000
+      internalID: 3266352517252669925
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_150
+      rect:
+        serializedVersion: 2
+        x: 5
+        y: 82
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 935ba28d0045eca70800000000000000
+      internalID: 8849102680433014073
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_151
+      rect:
+        serializedVersion: 2
+        x: 1804
+        y: 82
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7c6e06f83b377fa10800000000000000
+      internalID: 1943148979275491015
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_152
+      rect:
+        serializedVersion: 2
+        x: 1864
+        y: 80
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e0f73b63ff9a0360800000000000000
+      internalID: 7136692427346669795
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_153
+      rect:
+        serializedVersion: 2
+        x: 373
+        y: 59
+        width: 8
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fbb72c11fc30cb7c0800000000000000
+      internalID: -4054361376649217089
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_154
+      rect:
+        serializedVersion: 2
+        x: 410
+        y: 62
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cae795a33eab5fc90800000000000000
+      internalID: -7136592549399396692
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_155
+      rect:
+        serializedVersion: 2
+        x: 1911
+        y: 69
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3212e08f6e0719ee0800000000000000
+      internalID: -1256098683753193181
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_156
+      rect:
+        serializedVersion: 2
+        x: 82
+        y: 61
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 86a6769c00c1a9bc0800000000000000
+      internalID: -3775674547892163992
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_157
+      rect:
+        serializedVersion: 2
+        x: 365
+        y: 51
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 044c59b8a55e0d070800000000000000
+      internalID: 8129249504455410752
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_158
+      rect:
+        serializedVersion: 2
+        x: 2037
+        y: 55
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f449aab6663dcc40800000000000000
+      internalID: 5534139331954427127
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_159
+      rect:
+        serializedVersion: 2
+        x: 67
+        y: 47
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4fa1262547fef6fb0800000000000000
+      internalID: -4652236607173027084
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_160
+      rect:
+        serializedVersion: 2
+        x: 78
+        y: 50
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1c74b41a78a048300800000000000000
+      internalID: 253339056682518465
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_161
+      rect:
+        serializedVersion: 2
+        x: 689
+        y: 49
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e36d251eb6fe23620800000000000000
+      internalID: 2752525568897635902
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_162
+      rect:
+        serializedVersion: 2
+        x: 1984
+        y: 49
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a5e07687b5132ad20800000000000000
+      internalID: 3288244946865688154
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_163
+      rect:
+        serializedVersion: 2
+        x: 1995
+        y: 40
+        width: 13
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4533c54fcb580b520800000000000000
+      internalID: 2715817621904438100
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_164
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 39
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0a3cbc3ba16b7b650800000000000000
+      internalID: 6248663233801733024
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_165
+      rect:
+        serializedVersion: 2
+        x: 131
+        y: 39
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bdd24d486564f3b40800000000000000
+      internalID: 5422129813786996187
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_166
+      rect:
+        serializedVersion: 2
+        x: 139
+        y: 31
+        width: 10
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83b7e8e205802eb90800000000000000
+      internalID: -7214194512622617800
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_167
+      rect:
+        serializedVersion: 2
+        x: 149
+        y: 31
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 923886148e9ca57c0800000000000000
+      internalID: -4081728112890969303
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_168
+      rect:
+        serializedVersion: 2
+        x: 274
+        y: 33
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d6f2111755eec3c40800000000000000
+      internalID: 5493527696221745005
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_169
+      rect:
+        serializedVersion: 2
+        x: 297
+        y: 36
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9b3ba9eb80ba7c090800000000000000
+      internalID: -8014248957836610631
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_170
+      rect:
+        serializedVersion: 2
+        x: 317
+        y: 41
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 007800abc9f28e5b0800000000000000
+      internalID: -5338965008065722624
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_171
+      rect:
+        serializedVersion: 2
+        x: 333
+        y: 37
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45f6880ed99482640800000000000000
+      internalID: 5055371524149112660
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_172
+      rect:
+        serializedVersion: 2
+        x: 359
+        y: 31
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5e5893ffeb95fcb70800000000000000
+      internalID: 8921448063704860133
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_173
+      rect:
+        serializedVersion: 2
+        x: 1204
+        y: 33
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b405757ccfc9be800800000000000000
+      internalID: 642779981320507467
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_174
+      rect:
+        serializedVersion: 2
+        x: 1539
+        y: 33
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cc4f6f7e16779b900800000000000000
+      internalID: 700722479420077260
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_175
+      rect:
+        serializedVersion: 2
+        x: 1672
+        y: 40
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b0edf353b47522900800000000000000
+      internalID: 658184476077055499
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_176
+      rect:
+        serializedVersion: 2
+        x: 1683
+        y: 35
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 86ca275bc1108cbb0800000000000000
+      internalID: -4915677770459992984
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_177
+      rect:
+        serializedVersion: 2
+        x: 1832
+        y: 39
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 139d06b3550c74e20800000000000000
+      internalID: 3334845521392097585
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_178
+      rect:
+        serializedVersion: 2
+        x: 1990
+        y: 41
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b72691187b5c3fcd0800000000000000
+      internalID: -2525457574089104773
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_179
+      rect:
+        serializedVersion: 2
+        x: 15
+        y: 23
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 111dfd3b1b8db3010800000000000000
+      internalID: 1169766785971376401
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_180
+      rect:
+        serializedVersion: 2
+        x: 91
+        y: 31
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bf754a92fb976e1a0800000000000000
+      internalID: -6780598327015352325
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_181
+      rect:
+        serializedVersion: 2
+        x: 170
+        y: 23
+        width: 9
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 04f5e8a7f56e2e850800000000000000
+      internalID: 6404934917826699072
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_182
+      rect:
+        serializedVersion: 2
+        x: 234
+        y: 27
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 962220f90dfb525d0800000000000000
+      internalID: -3087851066750786967
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_183
+      rect:
+        serializedVersion: 2
+        x: 241
+        y: 28
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c31183eadcb650c0800000000000000
+      internalID: -4587271522124491835
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_184
+      rect:
+        serializedVersion: 2
+        x: 277
+        y: 27
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e199599d36ace20a0800000000000000
+      internalID: -6904358648511358690
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_185
+      rect:
+        serializedVersion: 2
+        x: 307
+        y: 27
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9ff3adc3f83c058c0800000000000000
+      internalID: -4012492248018436103
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_186
+      rect:
+        serializedVersion: 2
+        x: 345
+        y: 26
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa4e09c7071282e90800000000000000
+      internalID: -7050348449638587222
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_187
+      rect:
+        serializedVersion: 2
+        x: 436
+        y: 31
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 808d35d1c1a677850800000000000000
+      internalID: 6374680466549889032
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_188
+      rect:
+        serializedVersion: 2
+        x: 607
+        y: 28
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bfd357c311ae826e0800000000000000
+      internalID: -1861981086168039941
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_189
+      rect:
+        serializedVersion: 2
+        x: 709
+        y: 33
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 877ca78ff69163ba0800000000000000
+      internalID: -6109667875780638856
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_190
+      rect:
+        serializedVersion: 2
+        x: 753
+        y: 27
+        width: 7
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3cef9fcbbebeaeef0800000000000000
+      internalID: -77990645805220157
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_191
+      rect:
+        serializedVersion: 2
+        x: 771
+        y: 33
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 89cccc622c634d2b0800000000000000
+      internalID: -5560759432393208680
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_192
+      rect:
+        serializedVersion: 2
+        x: 805
+        y: 28
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76294217d85f2e9b0800000000000000
+      internalID: -5052205844118859161
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_193
+      rect:
+        serializedVersion: 2
+        x: 875
+        y: 31
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dcc9d0667be078c00800000000000000
+      internalID: 902706431165045965
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_194
+      rect:
+        serializedVersion: 2
+        x: 1131
+        y: 31
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 74caeb9e5b95a0f80800000000000000
+      internalID: -8139594738673210297
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_195
+      rect:
+        serializedVersion: 2
+        x: 1163
+        y: 33
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 309943f23a192a350800000000000000
+      internalID: 6026539381432817923
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_196
+      rect:
+        serializedVersion: 2
+        x: 1194
+        y: 26
+        width: 9
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dcd82648c1e4c5ca0800000000000000
+      internalID: -6026856316941464115
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_197
+      rect:
+        serializedVersion: 2
+        x: 1329
+        y: 33
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51971383acfa2a270800000000000000
+      internalID: 8260357949611931925
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_198
+      rect:
+        serializedVersion: 2
+        x: 1389
+        y: 32
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76f3222924885fd10800000000000000
+      internalID: 2158781415894957927
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_199
+      rect:
+        serializedVersion: 2
+        x: 1394
+        y: 30
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fdb497657fdc41970800000000000000
+      internalID: 8724824840314899423
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_200
+      rect:
+        serializedVersion: 2
+        x: 1429
+        y: 33
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d84d87ecce816780800000000000000
+      internalID: -8691508795139077930
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_201
+      rect:
+        serializedVersion: 2
+        x: 1462
+        y: 25
+        width: 13
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e0fbca4d74b1009a0800000000000000
+      internalID: -6268980685975011570
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_202
+      rect:
+        serializedVersion: 2
+        x: 1471
+        y: 31
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c4a90b689f5c4c700800000000000000
+      internalID: 559789929198033484
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_203
+      rect:
+        serializedVersion: 2
+        x: 1555
+        y: 31
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 46605adae0933cf10800000000000000
+      internalID: 2288735770839942756
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_204
+      rect:
+        serializedVersion: 2
+        x: 1571
+        y: 25
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb1c68efedeeed540800000000000000
+      internalID: 5034724074967187903
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_205
+      rect:
+        serializedVersion: 2
+        x: 1591
+        y: 29
+        width: 12
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c3d1931a2fa32d60800000000000000
+      internalID: 7864321969570829251
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_206
+      rect:
+        serializedVersion: 2
+        x: 1597
+        y: 25
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36b33dedcbc2c8e40800000000000000
+      internalID: 5659948021401729891
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_207
+      rect:
+        serializedVersion: 2
+        x: 1615
+        y: 30
+        width: 12
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b0fa7357798158c10800000000000000
+      internalID: 2055075843750211339
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_208
+      rect:
+        serializedVersion: 2
+        x: 1647
+        y: 30
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 43634f3160d07ab60800000000000000
+      internalID: 7757183202924705332
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_209
+      rect:
+        serializedVersion: 2
+        x: 1690
+        y: 28
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6e47134106f280ed0800000000000000
+      internalID: -2447654307773713178
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_210
+      rect:
+        serializedVersion: 2
+        x: 1817
+        y: 28
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 640f7d5697fc46570800000000000000
+      internalID: 8459114120415277126
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_211
+      rect:
+        serializedVersion: 2
+        x: 1835
+        y: 31
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f65d8db066dda3e0800000000000000
+      internalID: -2040739345143605518
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_212
+      rect:
+        serializedVersion: 2
+        x: 191
+        y: 21
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 60b747b34c230dbb0800000000000000
+      internalID: -4913371375068742906
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_213
+      rect:
+        serializedVersion: 2
+        x: 223
+        y: 20
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1e9f637f658847e90800000000000000
+      internalID: -7028843211322361375
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_214
+      rect:
+        serializedVersion: 2
+        x: 251
+        y: 13
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3b8a905f932065900800000000000000
+      internalID: 672727642285910195
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_215
+      rect:
+        serializedVersion: 2
+        x: 262
+        y: 17
+        width: 9
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6dcdba3f58de0b80800000000000000
+      internalID: -8426559949244609169
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_216
+      rect:
+        serializedVersion: 2
+        x: 335
+        y: 19
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 11a8c653894124cf0800000000000000
+      internalID: -269630383724918255
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_217
+      rect:
+        serializedVersion: 2
+        x: 611
+        y: 21
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 57b28d4b141a746c0800000000000000
+      internalID: -4159178427274351755
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_218
+      rect:
+        serializedVersion: 2
+        x: 869
+        y: 16
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb5d5f336aa28af50800000000000000
+      internalID: 6892806123015230911
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_219
+      rect:
+        serializedVersion: 2
+        x: 1879
+        y: 21
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1027bb33a6d9504b0800000000000000
+      internalID: -5474796692538953215
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_220
+      rect:
+        serializedVersion: 2
+        x: 1945
+        y: 7
+        width: 10
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 361ff1461ac9b6ff0800000000000000
+      internalID: -41767554546405021
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_221
+      rect:
+        serializedVersion: 2
+        x: 1989
+        y: 19
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 88a55c32c6d08b760800000000000000
+      internalID: 7473738339729103496
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_222
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 9
+        width: 11
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ccf2834d650e69bd0800000000000000
+      internalID: -2623663069364473908
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_223
+      rect:
+        serializedVersion: 2
+        x: 185
+        y: 7
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 517642149aa2fa5f0800000000000000
+      internalID: -743328507062098155
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_224
+      rect:
+        serializedVersion: 2
+        x: 215
+        y: 14
+        width: 10
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9915b8a4734980ae0800000000000000
+      internalID: -1582852303825972839
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_225
+      rect:
+        serializedVersion: 2
+        x: 271
+        y: 10
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: df2adb88452f8a0c0800000000000000
+      internalID: -4564131777454693635
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Willow fishing rod_226
+      rect:
+        serializedVersion: 2
+        x: 177
+        y: 6
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d349c8aab4f18e6f0800000000000000
+      internalID: -655239335938059203
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Willow fishing rod_0: 959440725667234970
+      Willow fishing rod_1: 8920013397763611107
+      Willow fishing rod_10: -412587508927266981
+      Willow fishing rod_100: -8241518570271406892
+      Willow fishing rod_101: -271149393147431850
+      Willow fishing rod_102: -1778520372146906869
+      Willow fishing rod_103: 3696459947778452963
+      Willow fishing rod_104: -5061322010451769402
+      Willow fishing rod_105: 7206582733595567338
+      Willow fishing rod_106: 7561088980149491790
+      Willow fishing rod_107: -5485814726579201576
+      Willow fishing rod_108: 7746741856452033766
+      Willow fishing rod_109: 4943910568922743019
+      Willow fishing rod_11: -1840293602305927317
+      Willow fishing rod_110: 6939504054193818001
+      Willow fishing rod_111: -6359603036803466348
+      Willow fishing rod_112: -572951909349442351
+      Willow fishing rod_113: 3106588167869728537
+      Willow fishing rod_114: 4416441841833183474
+      Willow fishing rod_115: -2561767309422108923
+      Willow fishing rod_116: -2894809570934202100
+      Willow fishing rod_117: -8778773415642541987
+      Willow fishing rod_118: 8105936412839642724
+      Willow fishing rod_119: -4086609531431648630
+      Willow fishing rod_12: -4095495582073003176
+      Willow fishing rod_120: 7405925258517317365
+      Willow fishing rod_121: -5651273276349656445
+      Willow fishing rod_122: 5836380437350973708
+      Willow fishing rod_123: -4029973707618766365
+      Willow fishing rod_124: 2496230061323452112
+      Willow fishing rod_125: 451249073762847679
+      Willow fishing rod_126: -6461259089577615493
+      Willow fishing rod_127: 3573994678811365622
+      Willow fishing rod_128: -8784010487007680393
+      Willow fishing rod_129: 7737787830032976623
+      Willow fishing rod_13: -1098211137464377226
+      Willow fishing rod_130: 3307655237094032408
+      Willow fishing rod_131: -4399928037940952045
+      Willow fishing rod_132: -4615276323619817623
+      Willow fishing rod_133: 1777428726785143805
+      Willow fishing rod_134: -7950706094586853564
+      Willow fishing rod_135: 2759319089689489080
+      Willow fishing rod_136: -375253790152176782
+      Willow fishing rod_137: 1536134294815740096
+      Willow fishing rod_138: -6027143726931958380
+      Willow fishing rod_139: 5243058732298544648
+      Willow fishing rod_14: -3553956782851620813
+      Willow fishing rod_140: 7056659439441706165
+      Willow fishing rod_141: -1821630871254261931
+      Willow fishing rod_142: 2490756535594741536
+      Willow fishing rod_143: 5750817351259088854
+      Willow fishing rod_144: -7510545426461320035
+      Willow fishing rod_145: -1831147921151772445
+      Willow fishing rod_146: 3658251665407218341
+      Willow fishing rod_147: -1544835269686502327
+      Willow fishing rod_148: -3320690519406031755
+      Willow fishing rod_149: 3266352517252669925
+      Willow fishing rod_15: 956959667866589781
+      Willow fishing rod_150: 8849102680433014073
+      Willow fishing rod_151: 1943148979275491015
+      Willow fishing rod_152: 7136692427346669795
+      Willow fishing rod_153: -4054361376649217089
+      Willow fishing rod_154: -7136592549399396692
+      Willow fishing rod_155: -1256098683753193181
+      Willow fishing rod_156: -3775674547892163992
+      Willow fishing rod_157: 8129249504455410752
+      Willow fishing rod_158: 5534139331954427127
+      Willow fishing rod_159: -4652236607173027084
+      Willow fishing rod_16: 4942891900781288015
+      Willow fishing rod_160: 253339056682518465
+      Willow fishing rod_161: 2752525568897635902
+      Willow fishing rod_162: 3288244946865688154
+      Willow fishing rod_163: 2715817621904438100
+      Willow fishing rod_164: 6248663233801733024
+      Willow fishing rod_165: 5422129813786996187
+      Willow fishing rod_166: -7214194512622617800
+      Willow fishing rod_167: -4081728112890969303
+      Willow fishing rod_168: 5493527696221745005
+      Willow fishing rod_169: -8014248957836610631
+      Willow fishing rod_17: -1388392797798434523
+      Willow fishing rod_170: -5338965008065722624
+      Willow fishing rod_171: 5055371524149112660
+      Willow fishing rod_172: 8921448063704860133
+      Willow fishing rod_173: 642779981320507467
+      Willow fishing rod_174: 700722479420077260
+      Willow fishing rod_175: 658184476077055499
+      Willow fishing rod_176: -4915677770459992984
+      Willow fishing rod_177: 3334845521392097585
+      Willow fishing rod_178: -2525457574089104773
+      Willow fishing rod_179: 1169766785971376401
+      Willow fishing rod_18: 1756299037223660833
+      Willow fishing rod_180: -6780598327015352325
+      Willow fishing rod_181: 6404934917826699072
+      Willow fishing rod_182: -3087851066750786967
+      Willow fishing rod_183: -4587271522124491835
+      Willow fishing rod_184: -6904358648511358690
+      Willow fishing rod_185: -4012492248018436103
+      Willow fishing rod_186: -7050348449638587222
+      Willow fishing rod_187: 6374680466549889032
+      Willow fishing rod_188: -1861981086168039941
+      Willow fishing rod_189: -6109667875780638856
+      Willow fishing rod_19: -6716759964201473575
+      Willow fishing rod_190: -77990645805220157
+      Willow fishing rod_191: -5560759432393208680
+      Willow fishing rod_192: -5052205844118859161
+      Willow fishing rod_193: 902706431165045965
+      Willow fishing rod_194: -8139594738673210297
+      Willow fishing rod_195: 6026539381432817923
+      Willow fishing rod_196: -6026856316941464115
+      Willow fishing rod_197: 8260357949611931925
+      Willow fishing rod_198: 2158781415894957927
+      Willow fishing rod_199: 8724824840314899423
+      Willow fishing rod_2: 5127511884511191082
+      Willow fishing rod_20: 1994012328731917185
+      Willow fishing rod_200: -8691508795139077930
+      Willow fishing rod_201: -6268980685975011570
+      Willow fishing rod_202: 559789929198033484
+      Willow fishing rod_203: 2288735770839942756
+      Willow fishing rod_204: 5034724074967187903
+      Willow fishing rod_205: 7864321969570829251
+      Willow fishing rod_206: 5659948021401729891
+      Willow fishing rod_207: 2055075843750211339
+      Willow fishing rod_208: 7757183202924705332
+      Willow fishing rod_209: -2447654307773713178
+      Willow fishing rod_21: 4031214174356689312
+      Willow fishing rod_210: 8459114120415277126
+      Willow fishing rod_211: -2040739345143605518
+      Willow fishing rod_212: -4913371375068742906
+      Willow fishing rod_213: -7028843211322361375
+      Willow fishing rod_214: 672727642285910195
+      Willow fishing rod_215: -8426559949244609169
+      Willow fishing rod_216: -269630383724918255
+      Willow fishing rod_217: -4159178427274351755
+      Willow fishing rod_218: 6892806123015230911
+      Willow fishing rod_219: -5474796692538953215
+      Willow fishing rod_22: 3980717332663748067
+      Willow fishing rod_220: -41767554546405021
+      Willow fishing rod_221: 7473738339729103496
+      Willow fishing rod_222: -2623663069364473908
+      Willow fishing rod_223: -743328507062098155
+      Willow fishing rod_224: -1582852303825972839
+      Willow fishing rod_225: -4564131777454693635
+      Willow fishing rod_226: -655239335938059203
+      Willow fishing rod_23: -5967041297559817097
+      Willow fishing rod_24: 638040561281885231
+      Willow fishing rod_25: -4362760835794473497
+      Willow fishing rod_26: 5631480385456467797
+      Willow fishing rod_27: -7912443175610537393
+      Willow fishing rod_28: 994431691346944382
+      Willow fishing rod_29: 6815029561714470583
+      Willow fishing rod_3: 2752696393369293892
+      Willow fishing rod_30: 8127005676475829878
+      Willow fishing rod_31: 517525954772851773
+      Willow fishing rod_32: 291917596853906896
+      Willow fishing rod_33: 6713329768111308923
+      Willow fishing rod_34: 7401966700323575159
+      Willow fishing rod_35: 3683404255020669173
+      Willow fishing rod_36: 2438876486835585093
+      Willow fishing rod_37: 5466897399341477408
+      Willow fishing rod_38: -5857911036893692751
+      Willow fishing rod_39: 1898756905271103843
+      Willow fishing rod_4: 1948084986778377260
+      Willow fishing rod_40: -5724965935270633063
+      Willow fishing rod_41: 115395162530024041
+      Willow fishing rod_42: 1306318328837717192
+      Willow fishing rod_43: 4500546232499988000
+      Willow fishing rod_44: -1553441597251302704
+      Willow fishing rod_45: -6582149600990260715
+      Willow fishing rod_46: -8791172656109186153
+      Willow fishing rod_47: 5835543763846378918
+      Willow fishing rod_48: 9142298606361705037
+      Willow fishing rod_49: 4141936559524582408
+      Willow fishing rod_5: -2466257862357686077
+      Willow fishing rod_50: -4914923953839164692
+      Willow fishing rod_51: 3618019487420010707
+      Willow fishing rod_52: -6543149080373238421
+      Willow fishing rod_53: 6260415033655902352
+      Willow fishing rod_54: -3916401089748590476
+      Willow fishing rod_55: -1371957682423440043
+      Willow fishing rod_56: -6771383994343340997
+      Willow fishing rod_57: 6856397037405617018
+      Willow fishing rod_58: 7681887777241100206
+      Willow fishing rod_59: -4606770303668591839
+      Willow fishing rod_6: -7181963863170166728
+      Willow fishing rod_60: -8468851405490310022
+      Willow fishing rod_61: -4595835644878309272
+      Willow fishing rod_62: -1899852228584904883
+      Willow fishing rod_63: 6136522352241703470
+      Willow fishing rod_64: -982453054802999184
+      Willow fishing rod_65: 7520942835050610309
+      Willow fishing rod_66: 6544636446801729661
+      Willow fishing rod_67: -4501363690753382509
+      Willow fishing rod_68: -3575763124065515335
+      Willow fishing rod_69: 8183474331464669949
+      Willow fishing rod_7: -1317082006739952747
+      Willow fishing rod_70: 8457488669469615249
+      Willow fishing rod_71: 362419836584313608
+      Willow fishing rod_72: 7844446114621547019
+      Willow fishing rod_73: -474776932960494048
+      Willow fishing rod_74: 4090338554904256819
+      Willow fishing rod_75: -9208733816072174114
+      Willow fishing rod_76: 2747386466180126960
+      Willow fishing rod_77: 1101375795856900313
+      Willow fishing rod_78: 4892487019863097128
+      Willow fishing rod_79: 7023731891747453158
+      Willow fishing rod_8: -9090114987208010132
+      Willow fishing rod_80: 237263712147151401
+      Willow fishing rod_81: 1615397690973865249
+      Willow fishing rod_82: 2512790159490108939
+      Willow fishing rod_83: 6433138535811904768
+      Willow fishing rod_84: 2193250118676214309
+      Willow fishing rod_85: -996682537515852729
+      Willow fishing rod_86: -7906083354183275177
+      Willow fishing rod_87: 4672245665027034169
+      Willow fishing rod_88: 5684293745413227325
+      Willow fishing rod_89: 4990369544076363213
+      Willow fishing rod_9: -6665500008888988925
+      Willow fishing rod_90: -2972017812536227046
+      Willow fishing rod_91: -5842627450391448187
+      Willow fishing rod_92: 2787123203307040055
+      Willow fishing rod_93: -3842385808014234061
+      Willow fishing rod_94: -1021424489765321509
+      Willow fishing rod_95: -4078511017509648388
+      Willow fishing rod_96: 5650022489168737214
+      Willow fishing rod_97: -6431089316373881186
+      Willow fishing rod_98: -1895077947687063867
+      Willow fishing rod_99: 8884215492349604368
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

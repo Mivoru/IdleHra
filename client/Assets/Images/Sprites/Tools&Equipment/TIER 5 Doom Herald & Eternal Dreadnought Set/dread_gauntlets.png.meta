@@ -1,0 +1,676 @@
+fileFormatVersion: 2
+guid: 0a1185f9bffe99b4daaf44bf9d358dfd
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 4657118552779661355
+    second: dread_gauntlets_0
+  - first:
+      213: 612148310075525832
+    second: dread_gauntlets_1
+  - first:
+      213: -7272040608167708013
+    second: dread_gauntlets_2
+  - first:
+      213: -5136106967075613543
+    second: dread_gauntlets_3
+  - first:
+      213: -174969743678373891
+    second: dread_gauntlets_4
+  - first:
+      213: -526735886142664174
+    second: dread_gauntlets_5
+  - first:
+      213: -6673730459146626578
+    second: dread_gauntlets_6
+  - first:
+      213: 1245259831330487687
+    second: dread_gauntlets_7
+  - first:
+      213: 665387350255111358
+    second: dread_gauntlets_8
+  - first:
+      213: 6546881354454072589
+    second: dread_gauntlets_9
+  - first:
+      213: 4295187965902367191
+    second: dread_gauntlets_10
+  - first:
+      213: -7449455429990201279
+    second: dread_gauntlets_11
+  - first:
+      213: 5172833343554105756
+    second: dread_gauntlets_12
+  - first:
+      213: -3800348495029524309
+    second: dread_gauntlets_13
+  - first:
+      213: 7951949925142187702
+    second: dread_gauntlets_14
+  - first:
+      213: 6055343222857326568
+    second: dread_gauntlets_15
+  - first:
+      213: 843772499833259621
+    second: dread_gauntlets_16
+  - first:
+      213: 8957739827951223053
+    second: dread_gauntlets_17
+  - first:
+      213: -1185016630088520759
+    second: dread_gauntlets_18
+  - first:
+      213: 5211547650835734935
+    second: dread_gauntlets_19
+  - first:
+      213: 5821524106066550234
+    second: dread_gauntlets_20
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: dread_gauntlets_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1015
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b20205736a861a040800000000000000
+      internalID: 4657118552779661355
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_1
+      rect:
+        serializedVersion: 2
+        x: 738
+        y: 1918
+        width: 22
+        height: 130
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8ca48eb05a9ce7800800000000000000
+      internalID: 612148310075525832
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_2
+      rect:
+        serializedVersion: 2
+        x: 775
+        y: 1915
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 39ab2f58895841b90800000000000000
+      internalID: -7272040608167708013
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_3
+      rect:
+        serializedVersion: 2
+        x: 781
+        y: 1913
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9949c0bfce1e8b8b0800000000000000
+      internalID: -5136106967075613543
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_4
+      rect:
+        serializedVersion: 2
+        x: 906
+        y: 0
+        width: 1141
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dfffb95f1f1629df0800000000000000
+      internalID: -174969743678373891
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_5
+      rect:
+        serializedVersion: 2
+        x: 1267
+        y: 1914
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 21214089088a0b8f0800000000000000
+      internalID: -526735886142664174
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_6
+      rect:
+        serializedVersion: 2
+        x: 735
+        y: 1903
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ee95cdf91852263a0800000000000000
+      internalID: -6673730459146626578
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_7
+      rect:
+        serializedVersion: 2
+        x: 1339
+        y: 1906
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 78d348b083d084110800000000000000
+      internalID: 1245259831330487687
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_8
+      rect:
+        serializedVersion: 2
+        x: 787
+        y: 1894
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ebc8ef9054eeb3900800000000000000
+      internalID: 665387350255111358
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_9
+      rect:
+        serializedVersion: 2
+        x: 1270
+        y: 1895
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d0dfcdea7e13bda50800000000000000
+      internalID: 6546881354454072589
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_10
+      rect:
+        serializedVersion: 2
+        x: 1284
+        y: 1896
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d9a427b2b29b9b30800000000000000
+      internalID: 4295187965902367191
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_11
+      rect:
+        serializedVersion: 2
+        x: 2
+        y: 1317
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 148445d51c73e9890800000000000000
+      internalID: -7449455429990201279
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_12
+      rect:
+        serializedVersion: 2
+        x: 9
+        y: 261
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c91b6d4e48899c740800000000000000
+      internalID: 5172833343554105756
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_13
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 260
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ba8231bcd23724bc0800000000000000
+      internalID: -3800348495029524309
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_14
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 262
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6be4bcf53500b5e60800000000000000
+      internalID: 7951949925142187702
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_15
+      rect:
+        serializedVersion: 2
+        x: 1777
+        y: 248
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8efda7f1496e80450800000000000000
+      internalID: 6055343222857326568
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_16
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 248
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5660ecb3e9ea5bb00800000000000000
+      internalID: 843772499833259621
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_17
+      rect:
+        serializedVersion: 2
+        x: 1777
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d01c663d9e8405c70800000000000000
+      internalID: 8957739827951223053
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_18
+      rect:
+        serializedVersion: 2
+        x: 1803
+        y: 191
+        width: 26
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9cba4a647a9fd8fe0800000000000000
+      internalID: -1185016630088520759
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_19
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 791e51af9f2235840800000000000000
+      internalID: 5211547650835734935
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: dread_gauntlets_20
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 198
+        width: 15
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: add5879a4553ac050800000000000000
+      internalID: 5821524106066550234
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      dread_gauntlets_0: 4657118552779661355
+      dread_gauntlets_1: 612148310075525832
+      dread_gauntlets_10: 4295187965902367191
+      dread_gauntlets_11: -7449455429990201279
+      dread_gauntlets_12: 5172833343554105756
+      dread_gauntlets_13: -3800348495029524309
+      dread_gauntlets_14: 7951949925142187702
+      dread_gauntlets_15: 6055343222857326568
+      dread_gauntlets_16: 843772499833259621
+      dread_gauntlets_17: 8957739827951223053
+      dread_gauntlets_18: -1185016630088520759
+      dread_gauntlets_19: 5211547650835734935
+      dread_gauntlets_2: -7272040608167708013
+      dread_gauntlets_20: 5821524106066550234
+      dread_gauntlets_3: -5136106967075613543
+      dread_gauntlets_4: -174969743678373891
+      dread_gauntlets_5: -526735886142664174
+      dread_gauntlets_6: -6673730459146626578
+      dread_gauntlets_7: 1245259831330487687
+      dread_gauntlets_8: 665387350255111358
+      dread_gauntlets_9: 6546881354454072589
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

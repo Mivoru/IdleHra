@@ -1,0 +1,2548 @@
+fileFormatVersion: 2
+guid: 242ced552dc415b44b7c860c179ecf63
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 7288571944767215090
+    second: Malakor_0
+  - first:
+      213: 5400593369000345477
+    second: Malakor_1
+  - first:
+      213: 6795837317850740752
+    second: Malakor_2
+  - first:
+      213: -7379122875937827861
+    second: Malakor_3
+  - first:
+      213: -5112681759029894716
+    second: Malakor_4
+  - first:
+      213: 7555225429743923612
+    second: Malakor_5
+  - first:
+      213: 383291730896136645
+    second: Malakor_6
+  - first:
+      213: -6161247924357666570
+    second: Malakor_7
+  - first:
+      213: 6600736381074294111
+    second: Malakor_8
+  - first:
+      213: 8072474719791266664
+    second: Malakor_9
+  - first:
+      213: 1426890745965826925
+    second: Malakor_10
+  - first:
+      213: 1524487754817769436
+    second: Malakor_11
+  - first:
+      213: -6826758811105940814
+    second: Malakor_12
+  - first:
+      213: 8780621808018279554
+    second: Malakor_13
+  - first:
+      213: -598436589457558180
+    second: Malakor_14
+  - first:
+      213: -8806287309820931367
+    second: Malakor_15
+  - first:
+      213: -6594055653347255154
+    second: Malakor_16
+  - first:
+      213: -7283944192396332481
+    second: Malakor_17
+  - first:
+      213: -6881194254942880243
+    second: Malakor_18
+  - first:
+      213: -7039073514998648901
+    second: Malakor_19
+  - first:
+      213: 8267100329643393255
+    second: Malakor_20
+  - first:
+      213: 8705635758991850821
+    second: Malakor_21
+  - first:
+      213: 8666268576205446751
+    second: Malakor_22
+  - first:
+      213: 2119486291723336704
+    second: Malakor_23
+  - first:
+      213: 3111328152946723761
+    second: Malakor_24
+  - first:
+      213: 8043076054415225953
+    second: Malakor_25
+  - first:
+      213: -8024063066968419585
+    second: Malakor_26
+  - first:
+      213: 6671812748089726535
+    second: Malakor_27
+  - first:
+      213: 3968188772206515681
+    second: Malakor_28
+  - first:
+      213: 6023796873112646920
+    second: Malakor_29
+  - first:
+      213: -7710910151127349411
+    second: Malakor_30
+  - first:
+      213: -560470134883544540
+    second: Malakor_31
+  - first:
+      213: 4274970452838993436
+    second: Malakor_32
+  - first:
+      213: -728402859553951790
+    second: Malakor_33
+  - first:
+      213: -67292729176531785
+    second: Malakor_34
+  - first:
+      213: 148344922184708916
+    second: Malakor_35
+  - first:
+      213: -3717864618886508931
+    second: Malakor_36
+  - first:
+      213: 9135917995843421150
+    second: Malakor_37
+  - first:
+      213: 1723950688721542936
+    second: Malakor_38
+  - first:
+      213: 794887960092383217
+    second: Malakor_39
+  - first:
+      213: 8112327867535896144
+    second: Malakor_40
+  - first:
+      213: -7606578748076850007
+    second: Malakor_41
+  - first:
+      213: 4755551128734231557
+    second: Malakor_42
+  - first:
+      213: -6344392971184501720
+    second: Malakor_43
+  - first:
+      213: -8508836391907049460
+    second: Malakor_44
+  - first:
+      213: 7352677376680537710
+    second: Malakor_45
+  - first:
+      213: 1732276090183110367
+    second: Malakor_46
+  - first:
+      213: 7015035497292344373
+    second: Malakor_47
+  - first:
+      213: -6160359817784935053
+    second: Malakor_48
+  - first:
+      213: 6882696693343390007
+    second: Malakor_49
+  - first:
+      213: -6457450276207807923
+    second: Malakor_50
+  - first:
+      213: -6151553486010340758
+    second: Malakor_51
+  - first:
+      213: 3199607339046447962
+    second: Malakor_52
+  - first:
+      213: 6623131502976599878
+    second: Malakor_53
+  - first:
+      213: 2956144012912558182
+    second: Malakor_54
+  - first:
+      213: 4527935204067712794
+    second: Malakor_55
+  - first:
+      213: -6920617765424838753
+    second: Malakor_56
+  - first:
+      213: -2227507680118987756
+    second: Malakor_57
+  - first:
+      213: -8241927165877853921
+    second: Malakor_58
+  - first:
+      213: 394144752250894446
+    second: Malakor_59
+  - first:
+      213: 7598884176461957027
+    second: Malakor_60
+  - first:
+      213: -6792815858819897017
+    second: Malakor_61
+  - first:
+      213: -4882209389228651178
+    second: Malakor_62
+  - first:
+      213: -3816729684548852302
+    second: Malakor_63
+  - first:
+      213: 4940771920572781691
+    second: Malakor_64
+  - first:
+      213: 4858299514768573307
+    second: Malakor_65
+  - first:
+      213: 8378611773414298820
+    second: Malakor_66
+  - first:
+      213: -3216026477400505363
+    second: Malakor_67
+  - first:
+      213: 4509575797405188638
+    second: Malakor_68
+  - first:
+      213: -7723970974888246134
+    second: Malakor_69
+  - first:
+      213: -3587689526143133905
+    second: Malakor_70
+  - first:
+      213: -4243540960026539654
+    second: Malakor_71
+  - first:
+      213: -468450484843610016
+    second: Malakor_72
+  - first:
+      213: -1812526225414455947
+    second: Malakor_73
+  - first:
+      213: -6402691128190881240
+    second: Malakor_74
+  - first:
+      213: 3133817844965058986
+    second: Malakor_75
+  - first:
+      213: -2464945546956093676
+    second: Malakor_76
+  - first:
+      213: -1339205139208614885
+    second: Malakor_77
+  - first:
+      213: 1601684869127278690
+    second: Malakor_78
+  - first:
+      213: 6175510252764398500
+    second: Malakor_79
+  - first:
+      213: 9015863590334403136
+    second: Malakor_80
+  - first:
+      213: -8418586388388905773
+    second: Malakor_81
+  - first:
+      213: 1379339341951799215
+    second: Malakor_82
+  - first:
+      213: 1693819062241975471
+    second: Malakor_83
+  - first:
+      213: 7008580293138639470
+    second: Malakor_84
+  - first:
+      213: 1511534810732665538
+    second: Malakor_85
+  - first:
+      213: 68975559800918638
+    second: Malakor_86
+  - first:
+      213: -3063963617086768705
+    second: Malakor_87
+  - first:
+      213: -6835471961896737062
+    second: Malakor_88
+  - first:
+      213: 3277975985127983849
+    second: Malakor_89
+  - first:
+      213: -2588249828852001442
+    second: Malakor_90
+  - first:
+      213: 830652304213998338
+    second: Malakor_91
+  - first:
+      213: 5323003764775982538
+    second: Malakor_92
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Malakor_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 139
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f55ab73195362560800000000000000
+      internalID: 7288571944767215090
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_1
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1404
+        width: 44
+        height: 132
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58f78973e03c2fa40800000000000000
+      internalID: 5400593369000345477
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_2
+      rect:
+        serializedVersion: 2
+        x: 114
+        y: 0
+        width: 2702
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 01836d1e80aaf4e50800000000000000
+      internalID: 6795837317850740752
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_3
+      rect:
+        serializedVersion: 2
+        x: 915
+        y: 1521
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be354c137d6189990800000000000000
+      internalID: -7379122875937827861
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_4
+      rect:
+        serializedVersion: 2
+        x: 941
+        y: 1520
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c1676f370b1c09b0800000000000000
+      internalID: -5112681759029894716
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_5
+      rect:
+        serializedVersion: 2
+        x: 2043
+        y: 1519
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c9172e1cf7d89d860800000000000000
+      internalID: 7555225429743923612
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_6
+      rect:
+        serializedVersion: 2
+        x: 2101
+        y: 1515
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c9a8696cc9b15500800000000000000
+      internalID: 383291730896136645
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_7
+      rect:
+        serializedVersion: 2
+        x: 2695
+        y: 32
+        width: 121
+        height: 1504
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6f86c8f08a9de7aa0800000000000000
+      internalID: -6161247924357666570
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_8
+      rect:
+        serializedVersion: 2
+        x: 866
+        y: 1511
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f554ee134c68a9b50800000000000000
+      internalID: 6600736381074294111
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_9
+      rect:
+        serializedVersion: 2
+        x: 1762
+        y: 1507
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 86bba73ecf0370070800000000000000
+      internalID: 8072474719791266664
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_10
+      rect:
+        serializedVersion: 2
+        x: 2086
+        y: 1508
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d63d59ec2955dc310800000000000000
+      internalID: 1426890745965826925
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_11
+      rect:
+        serializedVersion: 2
+        x: 2111
+        y: 1509
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cdf88523981182510800000000000000
+      internalID: 1524487754817769436
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_12
+      rect:
+        serializedVersion: 2
+        x: 1062
+        y: 1493
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ba23c0f70b7241a0800000000000000
+      internalID: -6826758811105940814
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_13
+      rect:
+        serializedVersion: 2
+        x: 1377
+        y: 1499
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28c4afd33090bd970800000000000000
+      internalID: 8780621808018279554
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_14
+      rect:
+        serializedVersion: 2
+        x: 1571
+        y: 1498
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c5539c0b71de1b7f0800000000000000
+      internalID: -598436589457558180
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_15
+      rect:
+        serializedVersion: 2
+        x: 313
+        y: 1443
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9d2d7147958c9c580800000000000000
+      internalID: -8806287309820931367
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_16
+      rect:
+        serializedVersion: 2
+        x: 2786
+        y: 1437
+        width: 12
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e8c9411f1553d74a0800000000000000
+      internalID: -6594055653347255154
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_17
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1037
+        width: 50
+        height: 364
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f327278595b3aea90800000000000000
+      internalID: -7283944192396332481
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_18
+      rect:
+        serializedVersion: 2
+        x: 73
+        y: 1246
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d0ebba388461180a0800000000000000
+      internalID: -6881194254942880243
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_19
+      rect:
+        serializedVersion: 2
+        x: 102
+        y: 1377
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bbf25a6ceef205e90800000000000000
+      internalID: -7039073514998648901
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_20
+      rect:
+        serializedVersion: 2
+        x: 179
+        y: 1277
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7e0c8e6e2f3aab270800000000000000
+      internalID: 8267100329643393255
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_21
+      rect:
+        serializedVersion: 2
+        x: 187
+        y: 1173
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 54db5ae2991a0d870800000000000000
+      internalID: 8705635758991850821
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_22
+      rect:
+        serializedVersion: 2
+        x: 279
+        y: 1290
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f5e1bdcaa55c44870800000000000000
+      internalID: 8666268576205446751
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_23
+      rect:
+        serializedVersion: 2
+        x: 2752
+        y: 1240
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00cba748d8de96d10800000000000000
+      internalID: 2119486291723336704
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_24
+      rect:
+        serializedVersion: 2
+        x: 2753
+        y: 1289
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1bbcf087878ad2b20800000000000000
+      internalID: 3111328152946723761
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_25
+      rect:
+        serializedVersion: 2
+        x: 2763
+        y: 1356
+        width: 13
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 164bed4be0fbe9f60800000000000000
+      internalID: 8043076054415225953
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_26
+      rect:
+        serializedVersion: 2
+        x: 2770
+        y: 1364
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff21406672dc4a090800000000000000
+      internalID: -8024063066968419585
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_27
+      rect:
+        serializedVersion: 2
+        x: 2775
+        y: 1085
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7469fc9785a079c50800000000000000
+      internalID: 6671812748089726535
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_28
+      rect:
+        serializedVersion: 2
+        x: 2773
+        y: 1027
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1e51019f9a6d11730800000000000000
+      internalID: 3968188772206515681
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_29
+      rect:
+        serializedVersion: 2
+        x: 294
+        y: 1019
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 805fcf43753d89350800000000000000
+      internalID: 6023796873112646920
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_30
+      rect:
+        serializedVersion: 2
+        x: 184
+        y: 1010
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d57c91b52185df490800000000000000
+      internalID: -7710910151127349411
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_31
+      rect:
+        serializedVersion: 2
+        x: 2775
+        y: 1001
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4221d0fb16fc838f0800000000000000
+      internalID: -560470134883544540
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_32
+      rect:
+        serializedVersion: 2
+        x: 144
+        y: 961
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c1e42c22afeb35b30800000000000000
+      internalID: 4274970452838993436
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_33
+      rect:
+        serializedVersion: 2
+        x: 2721
+        y: 956
+        width: 16
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2df68ee557134e5f0800000000000000
+      internalID: -728402859553951790
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_34
+      rect:
+        serializedVersion: 2
+        x: 321
+        y: 925
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7bc577d8e9de01ff0800000000000000
+      internalID: -67292729176531785
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_35
+      rect:
+        serializedVersion: 2
+        x: 2763
+        y: 925
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4337d07bbe60f0200800000000000000
+      internalID: 148344922184708916
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_36
+      rect:
+        serializedVersion: 2
+        x: 2790
+        y: 913
+        width: 7
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d7ec644c3dd776cc0800000000000000
+      internalID: -3717864618886508931
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_37
+      rect:
+        serializedVersion: 2
+        x: 67
+        y: 881
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed38857530d49ce70800000000000000
+      internalID: 9135917995843421150
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_38
+      rect:
+        serializedVersion: 2
+        x: 171
+        y: 881
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 81f998b7404bce710800000000000000
+      internalID: 1723950688721542936
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_39
+      rect:
+        serializedVersion: 2
+        x: 183
+        y: 847
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1f79a816362080b00800000000000000
+      internalID: 794887960092383217
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_40
+      rect:
+        serializedVersion: 2
+        x: 2790
+        y: 770
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 05eaafde637c49070800000000000000
+      internalID: 8112327867535896144
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_41
+      rect:
+        serializedVersion: 2
+        x: 154
+        y: 760
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9a408d41ee0007690800000000000000
+      internalID: -7606578748076850007
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_42
+      rect:
+        serializedVersion: 2
+        x: 217
+        y: 758
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 50c696b3e8c1ff140800000000000000
+      internalID: 4755551128734231557
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_43
+      rect:
+        serializedVersion: 2
+        x: 2741
+        y: 748
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82c001de43034f7a0800000000000000
+      internalID: -6344392971184501720
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_44
+      rect:
+        serializedVersion: 2
+        x: 2731
+        y: 692
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c00c670226a8ae980800000000000000
+      internalID: -8508836391907049460
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_45
+      rect:
+        serializedVersion: 2
+        x: 2770
+        y: 695
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e6e28113e15f90660800000000000000
+      internalID: 7352677376680537710
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_46
+      rect:
+        serializedVersion: 2
+        x: 162
+        y: 680
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fde44401de74a0810800000000000000
+      internalID: 1732276090183110367
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_47
+      rect:
+        serializedVersion: 2
+        x: 2771
+        y: 644
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 53cadd61e996a5160800000000000000
+      internalID: 7015035497292344373
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_48
+      rect:
+        serializedVersion: 2
+        x: 2771
+        y: 637
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 37db65c7261028aa0800000000000000
+      internalID: -6160359817784935053
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_49
+      rect:
+        serializedVersion: 2
+        x: 2743
+        y: 567
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7390d7f2d20448f50800000000000000
+      internalID: 6882696693343390007
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_50
+      rect:
+        serializedVersion: 2
+        x: 2750
+        y: 565
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d42b2e3df278266a0800000000000000
+      internalID: -6457450276207807923
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_51
+      rect:
+        serializedVersion: 2
+        x: 2755
+        y: 544
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a6aa98162ba41aaa0800000000000000
+      internalID: -6151553486010340758
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_52
+      rect:
+        serializedVersion: 2
+        x: 2767
+        y: 533
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a5ba8903ce9476c20800000000000000
+      internalID: 3199607339046447962
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_53
+      rect:
+        serializedVersion: 2
+        x: 275
+        y: 521
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6478e97d2071aeb50800000000000000
+      internalID: 6623131502976599878
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_54
+      rect:
+        serializedVersion: 2
+        x: 77
+        y: 496
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6600d824155560920800000000000000
+      internalID: 2956144012912558182
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_55
+      rect:
+        serializedVersion: 2
+        x: 321
+        y: 448
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1f117cf31576de30800000000000000
+      internalID: 4527935204067712794
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_56
+      rect:
+        serializedVersion: 2
+        x: 321
+        y: 427
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f9748913fc605ff90800000000000000
+      internalID: -6920617765424838753
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_57
+      rect:
+        serializedVersion: 2
+        x: 279
+        y: 417
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 414ad08119d4611e0800000000000000
+      internalID: -2227507680118987756
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_58
+      rect:
+        serializedVersion: 2
+        x: 2797
+        y: 334
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f11653509eace9d80800000000000000
+      internalID: -8241927165877853921
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_59
+      rect:
+        serializedVersion: 2
+        x: 2759
+        y: 324
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e68bffb5098487500800000000000000
+      internalID: 394144752250894446
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_60
+      rect:
+        serializedVersion: 2
+        x: 130
+        y: 203
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a70a5bd5e8a47960800000000000000
+      internalID: 7598884176461957027
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_61
+      rect:
+        serializedVersion: 2
+        x: 258
+        y: 172
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 749666e57f11bb1a0800000000000000
+      internalID: -6792815858819897017
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_62
+      rect:
+        serializedVersion: 2
+        x: 308
+        y: 177
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 65d03f37d68ee3cb0800000000000000
+      internalID: -4882209389228651178
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_63
+      rect:
+        serializedVersion: 2
+        x: 2747
+        y: 137
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b5e6c4e290480bc0800000000000000
+      internalID: -3816729684548852302
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_64
+      rect:
+        serializedVersion: 2
+        x: 243
+        y: 88
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b7417f962e5219440800000000000000
+      internalID: 4940771920572781691
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_65
+      rect:
+        serializedVersion: 2
+        x: 117
+        y: 69
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b73cb361ba52c6340800000000000000
+      internalID: 4858299514768573307
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_66
+      rect:
+        serializedVersion: 2
+        x: 67
+        y: 41
+        width: 9
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c4d341240fc64470800000000000000
+      internalID: 8378611773414298820
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_67
+      rect:
+        serializedVersion: 2
+        x: 299
+        y: 44
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: de3ca4245f06e53d0800000000000000
+      internalID: -3216026477400505363
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_68
+      rect:
+        serializedVersion: 2
+        x: 11
+        y: 24
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e1209048b4b359e30800000000000000
+      internalID: 4509575797405188638
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_69
+      rect:
+        serializedVersion: 2
+        x: 203
+        y: 24
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a84cb5a5251fec490800000000000000
+      internalID: -7723970974888246134
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_70
+      rect:
+        serializedVersion: 2
+        x: 261
+        y: 25
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f2759d56267f53ec0800000000000000
+      internalID: -3587689526143133905
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_71
+      rect:
+        serializedVersion: 2
+        x: 567
+        y: 18
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a794cc7eaf9eb15c0800000000000000
+      internalID: -4243540960026539654
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_72
+      rect:
+        serializedVersion: 2
+        x: 1042
+        y: 15
+        width: 6
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 060890814cabf79f0800000000000000
+      internalID: -468450484843610016
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_73
+      rect:
+        serializedVersion: 2
+        x: 1078
+        y: 26
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 57d771c400d98d6e0800000000000000
+      internalID: -1812526225414455947
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_74
+      rect:
+        serializedVersion: 2
+        x: 2096
+        y: 23
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82233a187521527a0800000000000000
+      internalID: -6402691128190881240
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_75
+      rect:
+        serializedVersion: 2
+        x: 251
+        y: 14
+        width: 12
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa92cefe9be8d7b20800000000000000
+      internalID: 3133817844965058986
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_76
+      rect:
+        serializedVersion: 2
+        x: 529
+        y: 14
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 417400bb511cacdd0800000000000000
+      internalID: -2464945546956093676
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_77
+      rect:
+        serializedVersion: 2
+        x: 578
+        y: 15
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b1cc71475003a6de0800000000000000
+      internalID: -1339205139208614885
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_78
+      rect:
+        serializedVersion: 2
+        x: 743
+        y: 10
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 260137207e35a3610800000000000000
+      internalID: 1601684869127278690
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_79
+      rect:
+        serializedVersion: 2
+        x: 882
+        y: 13
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a30eca0bd1d3b550800000000000000
+      internalID: 6175510252764398500
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_80
+      rect:
+        serializedVersion: 2
+        x: 1005
+        y: 16
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0429245da28ce1d70800000000000000
+      internalID: 9015863590334403136
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_81
+      rect:
+        serializedVersion: 2
+        x: 1068
+        y: 18
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3dcf329884c2b2b80800000000000000
+      internalID: -8418586388388905773
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_82
+      rect:
+        serializedVersion: 2
+        x: 1575
+        y: 14
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: faf02cdc2d5642310800000000000000
+      internalID: 1379339341951799215
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_83
+      rect:
+        serializedVersion: 2
+        x: 1827
+        y: 16
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: facd7be7677a18710800000000000000
+      internalID: 1693819062241975471
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_84
+      rect:
+        serializedVersion: 2
+        x: 1907
+        y: 16
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e6ae450c4aa734160800000000000000
+      internalID: 7008580293138639470
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_85
+      rect:
+        serializedVersion: 2
+        x: 2142
+        y: 10
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ca9b53e6ec0af410800000000000000
+      internalID: 1511534810732665538
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_86
+      rect:
+        serializedVersion: 2
+        x: 2177
+        y: 11
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e621e1cf7ec05f000800000000000000
+      internalID: 68975559800918638
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_87
+      rect:
+        serializedVersion: 2
+        x: 2268
+        y: 18
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb972d6e25d9a75d0800000000000000
+      internalID: -3063963617086768705
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_88
+      rect:
+        serializedVersion: 2
+        x: 2370
+        y: 15
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ad6a00f67768321a0800000000000000
+      internalID: -6835471961896737062
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_89
+      rect:
+        serializedVersion: 2
+        x: 2442
+        y: 13
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9ea80df7ac5bd7d20800000000000000
+      internalID: 3277975985127983849
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_90
+      rect:
+        serializedVersion: 2
+        x: 2584
+        y: 14
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e559f496e70b41cd0800000000000000
+      internalID: -2588249828852001442
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_91
+      rect:
+        serializedVersion: 2
+        x: 613
+        y: 9
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 20bf884aed1178b00800000000000000
+      internalID: 830652304213998338
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Malakor_92
+      rect:
+        serializedVersion: 2
+        x: 2731
+        y: 9
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac51a89b8bb1fd940800000000000000
+      internalID: 5323003764775982538
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Malakor_0: 7288571944767215090
+      Malakor_1: 5400593369000345477
+      Malakor_10: 1426890745965826925
+      Malakor_11: 1524487754817769436
+      Malakor_12: -6826758811105940814
+      Malakor_13: 8780621808018279554
+      Malakor_14: -598436589457558180
+      Malakor_15: -8806287309820931367
+      Malakor_16: -6594055653347255154
+      Malakor_17: -7283944192396332481
+      Malakor_18: -6881194254942880243
+      Malakor_19: -7039073514998648901
+      Malakor_2: 6795837317850740752
+      Malakor_20: 8267100329643393255
+      Malakor_21: 8705635758991850821
+      Malakor_22: 8666268576205446751
+      Malakor_23: 2119486291723336704
+      Malakor_24: 3111328152946723761
+      Malakor_25: 8043076054415225953
+      Malakor_26: -8024063066968419585
+      Malakor_27: 6671812748089726535
+      Malakor_28: 3968188772206515681
+      Malakor_29: 6023796873112646920
+      Malakor_3: -7379122875937827861
+      Malakor_30: -7710910151127349411
+      Malakor_31: -560470134883544540
+      Malakor_32: 4274970452838993436
+      Malakor_33: -728402859553951790
+      Malakor_34: -67292729176531785
+      Malakor_35: 148344922184708916
+      Malakor_36: -3717864618886508931
+      Malakor_37: 9135917995843421150
+      Malakor_38: 1723950688721542936
+      Malakor_39: 794887960092383217
+      Malakor_4: -5112681759029894716
+      Malakor_40: 8112327867535896144
+      Malakor_41: -7606578748076850007
+      Malakor_42: 4755551128734231557
+      Malakor_43: -6344392971184501720
+      Malakor_44: -8508836391907049460
+      Malakor_45: 7352677376680537710
+      Malakor_46: 1732276090183110367
+      Malakor_47: 7015035497292344373
+      Malakor_48: -6160359817784935053
+      Malakor_49: 6882696693343390007
+      Malakor_5: 7555225429743923612
+      Malakor_50: -6457450276207807923
+      Malakor_51: -6151553486010340758
+      Malakor_52: 3199607339046447962
+      Malakor_53: 6623131502976599878
+      Malakor_54: 2956144012912558182
+      Malakor_55: 4527935204067712794
+      Malakor_56: -6920617765424838753
+      Malakor_57: -2227507680118987756
+      Malakor_58: -8241927165877853921
+      Malakor_59: 394144752250894446
+      Malakor_6: 383291730896136645
+      Malakor_60: 7598884176461957027
+      Malakor_61: -6792815858819897017
+      Malakor_62: -4882209389228651178
+      Malakor_63: -3816729684548852302
+      Malakor_64: 4940771920572781691
+      Malakor_65: 4858299514768573307
+      Malakor_66: 8378611773414298820
+      Malakor_67: -3216026477400505363
+      Malakor_68: 4509575797405188638
+      Malakor_69: -7723970974888246134
+      Malakor_7: -6161247924357666570
+      Malakor_70: -3587689526143133905
+      Malakor_71: -4243540960026539654
+      Malakor_72: -468450484843610016
+      Malakor_73: -1812526225414455947
+      Malakor_74: -6402691128190881240
+      Malakor_75: 3133817844965058986
+      Malakor_76: -2464945546956093676
+      Malakor_77: -1339205139208614885
+      Malakor_78: 1601684869127278690
+      Malakor_79: 6175510252764398500
+      Malakor_8: 6600736381074294111
+      Malakor_80: 9015863590334403136
+      Malakor_81: -8418586388388905773
+      Malakor_82: 1379339341951799215
+      Malakor_83: 1693819062241975471
+      Malakor_84: 7008580293138639470
+      Malakor_85: 1511534810732665538
+      Malakor_86: 68975559800918638
+      Malakor_87: -3063963617086768705
+      Malakor_88: -6835471961896737062
+      Malakor_89: 3277975985127983849
+      Malakor_9: 8072474719791266664
+      Malakor_90: -2588249828852001442
+      Malakor_91: 830652304213998338
+      Malakor_92: 5323003764775982538
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

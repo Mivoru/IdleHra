@@ -1,0 +1,598 @@
+fileFormatVersion: 2
+guid: a13dda23adc8a4f4dbdca59ce0853783
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -8451927108483057195
+    second: yeti meat platter_0
+  - first:
+      213: -1395825768873037627
+    second: yeti meat platter_1
+  - first:
+      213: 2170002998749970510
+    second: yeti meat platter_2
+  - first:
+      213: -7657394727367426034
+    second: yeti meat platter_3
+  - first:
+      213: 5098059519358923510
+    second: yeti meat platter_4
+  - first:
+      213: 8617854713588204474
+    second: yeti meat platter_5
+  - first:
+      213: -5510380243213970933
+    second: yeti meat platter_6
+  - first:
+      213: -1923658140313702998
+    second: yeti meat platter_7
+  - first:
+      213: -7763001032485153998
+    second: yeti meat platter_8
+  - first:
+      213: -832382713435377501
+    second: yeti meat platter_9
+  - first:
+      213: -2721475629719519821
+    second: yeti meat platter_10
+  - first:
+      213: -6576250163048696084
+    second: yeti meat platter_11
+  - first:
+      213: -1603945424565935016
+    second: yeti meat platter_12
+  - first:
+      213: 5629463330960885431
+    second: yeti meat platter_13
+  - first:
+      213: 3851569833559128116
+    second: yeti meat platter_14
+  - first:
+      213: -3586075992235576039
+    second: yeti meat platter_15
+  - first:
+      213: 945374305053310305
+    second: yeti meat platter_16
+  - first:
+      213: 657139850702466635
+    second: yeti meat platter_17
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: yeti meat platter_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 313
+        width: 1424
+        height: 1735
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d97f573319b4ba80800000000000000
+      internalID: -8451927108483057195
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_1
+      rect:
+        serializedVersion: 2
+        x: 138
+        y: 0
+        width: 1910
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c07cfdcbd701ace0800000000000000
+      internalID: -1395825768873037627
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_2
+      rect:
+        serializedVersion: 2
+        x: 1269
+        y: 1883
+        width: 33
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e40460eea366d1e10800000000000000
+      internalID: 2170002998749970510
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_3
+      rect:
+        serializedVersion: 2
+        x: 1488
+        y: 1893
+        width: 18
+        height: 19
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e00c05ae0187bb590800000000000000
+      internalID: -7657394727367426034
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_4
+      rect:
+        serializedVersion: 2
+        x: 1446
+        y: 1846
+        width: 21
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6f2ff274f12ffb640800000000000000
+      internalID: 5098059519358923510
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_5
+      rect:
+        serializedVersion: 2
+        x: 92
+        y: 998
+        width: 20
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab3c951e335c89770800000000000000
+      internalID: 8617854713588204474
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_6
+      rect:
+        serializedVersion: 2
+        x: 232
+        y: 685
+        width: 19
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b0296e13d523783b0800000000000000
+      internalID: -5510380243213970933
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_7
+      rect:
+        serializedVersion: 2
+        x: 230
+        y: 649
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aad20550d1bcd45e0800000000000000
+      internalID: -1923658140313702998
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_8
+      rect:
+        serializedVersion: 2
+        x: 217
+        y: 558
+        width: 27
+        height: 31
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2335bbbe0b7444490800000000000000
+      internalID: -7763001032485153998
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_9
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 47
+        height: 312
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a032801558c274f0800000000000000
+      internalID: -832382713435377501
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_10
+      rect:
+        serializedVersion: 2
+        x: 236
+        y: 244
+        width: 323
+        height: 156
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3bd7fa175506b3ad0800000000000000
+      internalID: -2721475629719519821
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_11
+      rect:
+        serializedVersion: 2
+        x: 556
+        y: 226
+        width: 23
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce6b065b1577cb4a0800000000000000
+      internalID: -6576250163048696084
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_12
+      rect:
+        serializedVersion: 2
+        x: 575
+        y: 246
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85462a96224adb9e0800000000000000
+      internalID: -1603945424565935016
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_13
+      rect:
+        serializedVersion: 2
+        x: 1298
+        y: 232
+        width: 23
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7b6c206c21fdf1e40800000000000000
+      internalID: 5629463330960885431
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_14
+      rect:
+        serializedVersion: 2
+        x: 1777
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 438f6ec6b56837530800000000000000
+      internalID: 3851569833559128116
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_15
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 198
+        width: 15
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 915fd3982e2bb3ec0800000000000000
+      internalID: -3586075992235576039
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_16
+      rect:
+        serializedVersion: 2
+        x: 1803
+        y: 191
+        width: 23
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 16dfb70fbe4ae1d00800000000000000
+      internalID: 945374305053310305
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: yeti meat platter_17
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b4eafd86631ae1900800000000000000
+      internalID: 657139850702466635
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      yeti meat platter_0: -8451927108483057195
+      yeti meat platter_1: -1395825768873037627
+      yeti meat platter_10: -2721475629719519821
+      yeti meat platter_11: -6576250163048696084
+      yeti meat platter_12: -1603945424565935016
+      yeti meat platter_13: 5629463330960885431
+      yeti meat platter_14: 3851569833559128116
+      yeti meat platter_15: -3586075992235576039
+      yeti meat platter_16: 945374305053310305
+      yeti meat platter_17: 657139850702466635
+      yeti meat platter_2: 2170002998749970510
+      yeti meat platter_3: -7657394727367426034
+      yeti meat platter_4: 5098059519358923510
+      yeti meat platter_5: 8617854713588204474
+      yeti meat platter_6: -5510380243213970933
+      yeti meat platter_7: -1923658140313702998
+      yeti meat platter_8: -7763001032485153998
+      yeti meat platter_9: -832382713435377501
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

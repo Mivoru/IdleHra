@@ -1,0 +1,6422 @@
+fileFormatVersion: 2
+guid: c0223259c90db1547ab0a2795903ad2a
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 2883599170015735156
+    second: Birch fishing rod_0
+  - first:
+      213: 1362621905899955301
+    second: Birch fishing rod_1
+  - first:
+      213: 372835796308119130
+    second: Birch fishing rod_2
+  - first:
+      213: 4352174140047798879
+    second: Birch fishing rod_3
+  - first:
+      213: 3388346462563174613
+    second: Birch fishing rod_4
+  - first:
+      213: 5775650040669688996
+    second: Birch fishing rod_5
+  - first:
+      213: -7970974185058970990
+    second: Birch fishing rod_6
+  - first:
+      213: -2139179041518324124
+    second: Birch fishing rod_7
+  - first:
+      213: 5749663308132041541
+    second: Birch fishing rod_8
+  - first:
+      213: -4623139999184351972
+    second: Birch fishing rod_9
+  - first:
+      213: -6318392511786851604
+    second: Birch fishing rod_10
+  - first:
+      213: 2284497718846171192
+    second: Birch fishing rod_11
+  - first:
+      213: -6295603081513860733
+    second: Birch fishing rod_12
+  - first:
+      213: -5703953588880615079
+    second: Birch fishing rod_13
+  - first:
+      213: -8100746041333545657
+    second: Birch fishing rod_14
+  - first:
+      213: -6539916158157341214
+    second: Birch fishing rod_15
+  - first:
+      213: 3220613474368793348
+    second: Birch fishing rod_16
+  - first:
+      213: 2365612860945705182
+    second: Birch fishing rod_17
+  - first:
+      213: -8289080901151769182
+    second: Birch fishing rod_18
+  - first:
+      213: -865638218298585332
+    second: Birch fishing rod_19
+  - first:
+      213: 1192618135823181370
+    second: Birch fishing rod_20
+  - first:
+      213: -8846729395169314197
+    second: Birch fishing rod_21
+  - first:
+      213: -5630324226857357814
+    second: Birch fishing rod_22
+  - first:
+      213: -8661004484550495460
+    second: Birch fishing rod_23
+  - first:
+      213: -3477421463481938047
+    second: Birch fishing rod_24
+  - first:
+      213: -5488137157688070778
+    second: Birch fishing rod_25
+  - first:
+      213: -6589637197631039536
+    second: Birch fishing rod_26
+  - first:
+      213: -3874688157312218181
+    second: Birch fishing rod_27
+  - first:
+      213: -8929153787190535878
+    second: Birch fishing rod_28
+  - first:
+      213: 7031405297673007601
+    second: Birch fishing rod_29
+  - first:
+      213: 9112583348240032773
+    second: Birch fishing rod_30
+  - first:
+      213: 8441364375385686840
+    second: Birch fishing rod_31
+  - first:
+      213: 1238488969831909326
+    second: Birch fishing rod_32
+  - first:
+      213: 7940861483893559681
+    second: Birch fishing rod_33
+  - first:
+      213: -1655198070691503797
+    second: Birch fishing rod_34
+  - first:
+      213: 3808470180237126187
+    second: Birch fishing rod_35
+  - first:
+      213: 6567294078408251790
+    second: Birch fishing rod_36
+  - first:
+      213: 7966134590042542148
+    second: Birch fishing rod_37
+  - first:
+      213: 8187740006387679921
+    second: Birch fishing rod_38
+  - first:
+      213: -7256991678662750330
+    second: Birch fishing rod_39
+  - first:
+      213: -7372602948992596815
+    second: Birch fishing rod_40
+  - first:
+      213: 5859999064132561237
+    second: Birch fishing rod_41
+  - first:
+      213: -3527906062358692184
+    second: Birch fishing rod_42
+  - first:
+      213: -8942018519610413981
+    second: Birch fishing rod_43
+  - first:
+      213: 1219140089023789848
+    second: Birch fishing rod_44
+  - first:
+      213: 6538777533542249371
+    second: Birch fishing rod_45
+  - first:
+      213: 4690567689232883202
+    second: Birch fishing rod_46
+  - first:
+      213: 5292542317413564342
+    second: Birch fishing rod_47
+  - first:
+      213: 1270310957450655234
+    second: Birch fishing rod_48
+  - first:
+      213: -4953209375374928884
+    second: Birch fishing rod_49
+  - first:
+      213: 3347810775493921165
+    second: Birch fishing rod_50
+  - first:
+      213: 3635842078901594407
+    second: Birch fishing rod_51
+  - first:
+      213: 3112602425766774985
+    second: Birch fishing rod_52
+  - first:
+      213: -1527215256914449151
+    second: Birch fishing rod_53
+  - first:
+      213: 4298623018858658991
+    second: Birch fishing rod_54
+  - first:
+      213: 8176906453389845227
+    second: Birch fishing rod_55
+  - first:
+      213: -3206021284946219957
+    second: Birch fishing rod_56
+  - first:
+      213: -3187755970724439957
+    second: Birch fishing rod_57
+  - first:
+      213: 5723112399513970474
+    second: Birch fishing rod_58
+  - first:
+      213: 7597514180153516001
+    second: Birch fishing rod_59
+  - first:
+      213: 2729142392126850927
+    second: Birch fishing rod_60
+  - first:
+      213: -651457489005355847
+    second: Birch fishing rod_61
+  - first:
+      213: -1692693572571315454
+    second: Birch fishing rod_62
+  - first:
+      213: -6734118291193494936
+    second: Birch fishing rod_63
+  - first:
+      213: 3969272494876279948
+    second: Birch fishing rod_64
+  - first:
+      213: -3969808653317516741
+    second: Birch fishing rod_65
+  - first:
+      213: -1300260696034052886
+    second: Birch fishing rod_66
+  - first:
+      213: 3148568830454608814
+    second: Birch fishing rod_67
+  - first:
+      213: -553984223119449231
+    second: Birch fishing rod_68
+  - first:
+      213: 7860633779575878768
+    second: Birch fishing rod_69
+  - first:
+      213: -3778584313064360104
+    second: Birch fishing rod_70
+  - first:
+      213: 4014535851665462703
+    second: Birch fishing rod_71
+  - first:
+      213: 7557106990115007706
+    second: Birch fishing rod_72
+  - first:
+      213: 8132231526201164031
+    second: Birch fishing rod_73
+  - first:
+      213: 1455526960638334645
+    second: Birch fishing rod_74
+  - first:
+      213: -1365836009300077851
+    second: Birch fishing rod_75
+  - first:
+      213: 7499818487196596819
+    second: Birch fishing rod_76
+  - first:
+      213: 4277663293258411957
+    second: Birch fishing rod_77
+  - first:
+      213: 8739631679843498440
+    second: Birch fishing rod_78
+  - first:
+      213: 8895156534459760970
+    second: Birch fishing rod_79
+  - first:
+      213: 6732034320379052673
+    second: Birch fishing rod_80
+  - first:
+      213: 4441286903737703189
+    second: Birch fishing rod_81
+  - first:
+      213: 7244524480154435133
+    second: Birch fishing rod_82
+  - first:
+      213: -2723174168012551325
+    second: Birch fishing rod_83
+  - first:
+      213: 4460826552187161728
+    second: Birch fishing rod_84
+  - first:
+      213: 8710631453807133869
+    second: Birch fishing rod_85
+  - first:
+      213: -5815709714746259085
+    second: Birch fishing rod_86
+  - first:
+      213: -958125233400927390
+    second: Birch fishing rod_87
+  - first:
+      213: 1148967858149776991
+    second: Birch fishing rod_88
+  - first:
+      213: -1505621454822913807
+    second: Birch fishing rod_89
+  - first:
+      213: -4527717718921000757
+    second: Birch fishing rod_90
+  - first:
+      213: -2763931449720147986
+    second: Birch fishing rod_91
+  - first:
+      213: 4029623030605907483
+    second: Birch fishing rod_92
+  - first:
+      213: 6070019701060637921
+    second: Birch fishing rod_93
+  - first:
+      213: -7713902151474117739
+    second: Birch fishing rod_94
+  - first:
+      213: -5112300223558148457
+    second: Birch fishing rod_95
+  - first:
+      213: 3869374586418025198
+    second: Birch fishing rod_96
+  - first:
+      213: 448844766306505936
+    second: Birch fishing rod_97
+  - first:
+      213: 4140398435625370733
+    second: Birch fishing rod_98
+  - first:
+      213: 6178594951907239491
+    second: Birch fishing rod_99
+  - first:
+      213: 7885301255381946126
+    second: Birch fishing rod_100
+  - first:
+      213: -3006537572516066222
+    second: Birch fishing rod_101
+  - first:
+      213: -1255282228295769998
+    second: Birch fishing rod_102
+  - first:
+      213: 5309938299437424097
+    second: Birch fishing rod_103
+  - first:
+      213: 7065047752569248030
+    second: Birch fishing rod_104
+  - first:
+      213: 3901981327164932746
+    second: Birch fishing rod_105
+  - first:
+      213: -2475713273394785864
+    second: Birch fishing rod_106
+  - first:
+      213: -2757994639711344025
+    second: Birch fishing rod_107
+  - first:
+      213: -8379569761008013785
+    second: Birch fishing rod_108
+  - first:
+      213: 2037411296444374098
+    second: Birch fishing rod_109
+  - first:
+      213: -4592995662870543472
+    second: Birch fishing rod_110
+  - first:
+      213: -8563869432153540140
+    second: Birch fishing rod_111
+  - first:
+      213: 7076434628379038661
+    second: Birch fishing rod_112
+  - first:
+      213: 4990733401578124401
+    second: Birch fishing rod_113
+  - first:
+      213: 817603530835485394
+    second: Birch fishing rod_114
+  - first:
+      213: -1211836749956705878
+    second: Birch fishing rod_115
+  - first:
+      213: -884333933621678115
+    second: Birch fishing rod_116
+  - first:
+      213: -9216703591582958898
+    second: Birch fishing rod_117
+  - first:
+      213: 3479346638242442520
+    second: Birch fishing rod_118
+  - first:
+      213: 7321361773437612486
+    second: Birch fishing rod_119
+  - first:
+      213: 2558773416513123416
+    second: Birch fishing rod_120
+  - first:
+      213: -1887282050947837276
+    second: Birch fishing rod_121
+  - first:
+      213: -2263643771793953661
+    second: Birch fishing rod_122
+  - first:
+      213: -2502950517844388473
+    second: Birch fishing rod_123
+  - first:
+      213: -5851695162460360192
+    second: Birch fishing rod_124
+  - first:
+      213: 8949227633322578858
+    second: Birch fishing rod_125
+  - first:
+      213: 2880579248472761506
+    second: Birch fishing rod_126
+  - first:
+      213: 4023648670588004067
+    second: Birch fishing rod_127
+  - first:
+      213: 5145158939145953870
+    second: Birch fishing rod_128
+  - first:
+      213: -1172713427101759181
+    second: Birch fishing rod_129
+  - first:
+      213: 5707201245694934295
+    second: Birch fishing rod_130
+  - first:
+      213: 1961473024992408413
+    second: Birch fishing rod_131
+  - first:
+      213: -8574807590356375580
+    second: Birch fishing rod_132
+  - first:
+      213: 8698412085334691065
+    second: Birch fishing rod_133
+  - first:
+      213: 7597067296037140506
+    second: Birch fishing rod_134
+  - first:
+      213: -7842539344250455192
+    second: Birch fishing rod_135
+  - first:
+      213: 1829994486070488873
+    second: Birch fishing rod_136
+  - first:
+      213: 1984756668394071690
+    second: Birch fishing rod_137
+  - first:
+      213: 1814029783681291711
+    second: Birch fishing rod_138
+  - first:
+      213: -2961543987415456428
+    second: Birch fishing rod_139
+  - first:
+      213: -4634558877524162632
+    second: Birch fishing rod_140
+  - first:
+      213: -3290776508259173473
+    second: Birch fishing rod_141
+  - first:
+      213: 3080808753798224487
+    second: Birch fishing rod_142
+  - first:
+      213: 3332718833920199467
+    second: Birch fishing rod_143
+  - first:
+      213: -6942990658045543606
+    second: Birch fishing rod_144
+  - first:
+      213: 60909724308575370
+    second: Birch fishing rod_145
+  - first:
+      213: 784186075806860899
+    second: Birch fishing rod_146
+  - first:
+      213: 2788015600330934263
+    second: Birch fishing rod_147
+  - first:
+      213: -2788941620524857446
+    second: Birch fishing rod_148
+  - first:
+      213: 6309331459120202028
+    second: Birch fishing rod_149
+  - first:
+      213: -3332875042249113721
+    second: Birch fishing rod_150
+  - first:
+      213: -534339520583442518
+    second: Birch fishing rod_151
+  - first:
+      213: -4589677222305753569
+    second: Birch fishing rod_152
+  - first:
+      213: -3020954090215781402
+    second: Birch fishing rod_153
+  - first:
+      213: 3303512232133612695
+    second: Birch fishing rod_154
+  - first:
+      213: 7051291413188743625
+    second: Birch fishing rod_155
+  - first:
+      213: 8518652177230573832
+    second: Birch fishing rod_156
+  - first:
+      213: 3372318851775227597
+    second: Birch fishing rod_157
+  - first:
+      213: 5398244218144328361
+    second: Birch fishing rod_158
+  - first:
+      213: -8182577540732487675
+    second: Birch fishing rod_159
+  - first:
+      213: -850981689795912468
+    second: Birch fishing rod_160
+  - first:
+      213: 6475992920225684894
+    second: Birch fishing rod_161
+  - first:
+      213: -7028398263359221031
+    second: Birch fishing rod_162
+  - first:
+      213: -3533979204971333108
+    second: Birch fishing rod_163
+  - first:
+      213: 7143419427573497371
+    second: Birch fishing rod_164
+  - first:
+      213: 2755647039154701932
+    second: Birch fishing rod_165
+  - first:
+      213: -4606434888443644558
+    second: Birch fishing rod_166
+  - first:
+      213: 1611435401548503443
+    second: Birch fishing rod_167
+  - first:
+      213: -4497736983036410386
+    second: Birch fishing rod_168
+  - first:
+      213: -1079158375103109638
+    second: Birch fishing rod_169
+  - first:
+      213: 2621802925691702111
+    second: Birch fishing rod_170
+  - first:
+      213: -7022781548463049450
+    second: Birch fishing rod_171
+  - first:
+      213: 5895187388137591279
+    second: Birch fishing rod_172
+  - first:
+      213: -5556716263801655953
+    second: Birch fishing rod_173
+  - first:
+      213: 5152945771149630429
+    second: Birch fishing rod_174
+  - first:
+      213: 5360018581854883808
+    second: Birch fishing rod_175
+  - first:
+      213: 4798793667285285671
+    second: Birch fishing rod_176
+  - first:
+      213: -9053590721573114663
+    second: Birch fishing rod_177
+  - first:
+      213: -7007004504862421513
+    second: Birch fishing rod_178
+  - first:
+      213: -6121361927877179062
+    second: Birch fishing rod_179
+  - first:
+      213: 1800495631399383972
+    second: Birch fishing rod_180
+  - first:
+      213: 7531789865268235877
+    second: Birch fishing rod_181
+  - first:
+      213: -3980749143230461222
+    second: Birch fishing rod_182
+  - first:
+      213: 5826093732971118684
+    second: Birch fishing rod_183
+  - first:
+      213: -2654528611702266452
+    second: Birch fishing rod_184
+  - first:
+      213: 5699412230278750418
+    second: Birch fishing rod_185
+  - first:
+      213: -5695680242434331339
+    second: Birch fishing rod_186
+  - first:
+      213: -1926140101870438454
+    second: Birch fishing rod_187
+  - first:
+      213: -343058094357515368
+    second: Birch fishing rod_188
+  - first:
+      213: 4146566087978110119
+    second: Birch fishing rod_189
+  - first:
+      213: -4558096291620382657
+    second: Birch fishing rod_190
+  - first:
+      213: -1854225321705602041
+    second: Birch fishing rod_191
+  - first:
+      213: -1494276391419000618
+    second: Birch fishing rod_192
+  - first:
+      213: 6842142043268386344
+    second: Birch fishing rod_193
+  - first:
+      213: -6778394374128940322
+    second: Birch fishing rod_194
+  - first:
+      213: 8802330867246134107
+    second: Birch fishing rod_195
+  - first:
+      213: 4477239807207148341
+    second: Birch fishing rod_196
+  - first:
+      213: 3490419149118586165
+    second: Birch fishing rod_197
+  - first:
+      213: 5010745904583181127
+    second: Birch fishing rod_198
+  - first:
+      213: -8089704914068787125
+    second: Birch fishing rod_199
+  - first:
+      213: -6434629769754822040
+    second: Birch fishing rod_200
+  - first:
+      213: 7504944939435978816
+    second: Birch fishing rod_201
+  - first:
+      213: 7945697951658995285
+    second: Birch fishing rod_202
+  - first:
+      213: -8440262833217595017
+    second: Birch fishing rod_203
+  - first:
+      213: 6565190837591272244
+    second: Birch fishing rod_204
+  - first:
+      213: 1586815382626638906
+    second: Birch fishing rod_205
+  - first:
+      213: -2932738620668843667
+    second: Birch fishing rod_206
+  - first:
+      213: -9130650845128122257
+    second: Birch fishing rod_207
+  - first:
+      213: 979723496177125722
+    second: Birch fishing rod_208
+  - first:
+      213: -3267842352810838114
+    second: Birch fishing rod_209
+  - first:
+      213: 3566617943270482837
+    second: Birch fishing rod_210
+  - first:
+      213: -5477311200365466103
+    second: Birch fishing rod_211
+  - first:
+      213: 6625812956723203495
+    second: Birch fishing rod_212
+  - first:
+      213: -5927201095145826438
+    second: Birch fishing rod_213
+  - first:
+      213: 6554836870262147051
+    second: Birch fishing rod_214
+  - first:
+      213: 877781108722822045
+    second: Birch fishing rod_215
+  - first:
+      213: -4501174628915850144
+    second: Birch fishing rod_216
+  - first:
+      213: -2549351151673883763
+    second: Birch fishing rod_217
+  - first:
+      213: 7731147555231578752
+    second: Birch fishing rod_218
+  - first:
+      213: -2826773496765718082
+    second: Birch fishing rod_219
+  - first:
+      213: 4178974308425366489
+    second: Birch fishing rod_220
+  - first:
+      213: 58598194215582529
+    second: Birch fishing rod_221
+  - first:
+      213: -3079269856691191759
+    second: Birch fishing rod_222
+  - first:
+      213: 5634841926632970845
+    second: Birch fishing rod_223
+  - first:
+      213: 2411418469386188177
+    second: Birch fishing rod_224
+  - first:
+      213: -307875779311281852
+    second: Birch fishing rod_225
+  - first:
+      213: 757908867454871281
+    second: Birch fishing rod_226
+  - first:
+      213: -6116752629663199357
+    second: Birch fishing rod_227
+  - first:
+      213: -5142003104789503998
+    second: Birch fishing rod_228
+  - first:
+      213: -6984318749667916212
+    second: Birch fishing rod_229
+  - first:
+      213: -7510927812774544628
+    second: Birch fishing rod_230
+  - first:
+      213: 1947533194571065252
+    second: Birch fishing rod_231
+  - first:
+      213: -6874421694858779574
+    second: Birch fishing rod_232
+  - first:
+      213: -4477895032150628367
+    second: Birch fishing rod_233
+  - first:
+      213: -1034487451922559064
+    second: Birch fishing rod_234
+  - first:
+      213: -1821095499912737381
+    second: Birch fishing rod_235
+  - first:
+      213: 3553531965836857480
+    second: Birch fishing rod_236
+  - first:
+      213: -2746760386595297954
+    second: Birch fishing rod_237
+  - first:
+      213: 869827095103829607
+    second: Birch fishing rod_238
+  - first:
+      213: -1293954063298618400
+    second: Birch fishing rod_239
+  - first:
+      213: 4133459422894029332
+    second: Birch fishing rod_240
+  - first:
+      213: 453855247522201394
+    second: Birch fishing rod_241
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Birch fishing rod_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1829
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 47d266bca2a940820800000000000000
+      internalID: 2883599170015735156
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_1
+      rect:
+        serializedVersion: 2
+        x: 391
+        y: 2033
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5642558676109e210800000000000000
+      internalID: 1362621905899955301
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_2
+      rect:
+        serializedVersion: 2
+        x: 764
+        y: 1987
+        width: 179
+        height: 61
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a5ece7e6e249c2500800000000000000
+      internalID: 372835796308119130
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_3
+      rect:
+        serializedVersion: 2
+        x: 1028
+        y: 1977
+        width: 119
+        height: 71
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f52b0325257066c30800000000000000
+      internalID: 4352174140047798879
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_4
+      rect:
+        serializedVersion: 2
+        x: 1222
+        y: 1982
+        width: 53
+        height: 66
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d8870dc723d50f20800000000000000
+      internalID: 3388346462563174613
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_5
+      rect:
+        serializedVersion: 2
+        x: 1371
+        y: 1981
+        width: 214
+        height: 67
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a4561d7c1b372050800000000000000
+      internalID: 5775650040669688996
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_6
+      rect:
+        serializedVersion: 2
+        x: 1668
+        y: 0
+        width: 380
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 29250c1f539616190800000000000000
+      internalID: -7970974185058970990
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_7
+      rect:
+        serializedVersion: 2
+        x: 1976
+        y: 1910
+        width: 72
+        height: 138
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 466f65fdefb1052e0800000000000000
+      internalID: -2139179041518324124
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_8
+      rect:
+        serializedVersion: 2
+        x: 337
+        y: 2009
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 543ce43d058eacf40800000000000000
+      internalID: 5749663308132041541
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_9
+      rect:
+        serializedVersion: 2
+        x: 123
+        y: 1989
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c1d87b94aae47dfb0800000000000000
+      internalID: -4623139999184351972
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_10
+      rect:
+        serializedVersion: 2
+        x: 267
+        y: 1989
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce2e47f9c7f8058a0800000000000000
+      internalID: -6318392511786851604
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_11
+      rect:
+        serializedVersion: 2
+        x: 395
+        y: 1987
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 838240e429a24bf10800000000000000
+      internalID: 2284497718846171192
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_12
+      rect:
+        serializedVersion: 2
+        x: 607
+        y: 1993
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 38103875a5681a8a0800000000000000
+      internalID: -6295603081513860733
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_13
+      rect:
+        serializedVersion: 2
+        x: 620
+        y: 1988
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 959d4778e6c77d0b0800000000000000
+      internalID: -5703953588880615079
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_14
+      rect:
+        serializedVersion: 2
+        x: 817
+        y: 1987
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 74589ae156e549f80800000000000000
+      internalID: -8100746041333545657
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_15
+      rect:
+        serializedVersion: 2
+        x: 1043
+        y: 1991
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2edb13477ec8d35a0800000000000000
+      internalID: -6539916158157341214
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_16
+      rect:
+        serializedVersion: 2
+        x: 87
+        y: 1979
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 40ba69234eae1bc20800000000000000
+      internalID: 3220613474368793348
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_17
+      rect:
+        serializedVersion: 2
+        x: 267
+        y: 1983
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed8a3cc0d5854d020800000000000000
+      internalID: 2365612860945705182
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_18
+      rect:
+        serializedVersion: 2
+        x: 428
+        y: 1981
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2adbf5c76d447fc80800000000000000
+      internalID: -8289080901151769182
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_19
+      rect:
+        serializedVersion: 2
+        x: 693
+        y: 1981
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0f8f4670a2acf3f0800000000000000
+      internalID: -865638218298585332
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_20
+      rect:
+        serializedVersion: 2
+        x: 987
+        y: 1981
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a36ed6230e70d8010800000000000000
+      internalID: 1192618135823181370
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_21
+      rect:
+        serializedVersion: 2
+        x: 1052
+        y: 1986
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b6a3de0bc7a1a3580800000000000000
+      internalID: -8846729395169314197
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_22
+      rect:
+        serializedVersion: 2
+        x: 1072
+        y: 1977
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a0e24e742f11dd1b0800000000000000
+      internalID: -5630324226857357814
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_23
+      rect:
+        serializedVersion: 2
+        x: 2012
+        y: 1879
+        width: 36
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c137d4c2f4eedc780800000000000000
+      internalID: -8661004484550495460
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_24
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 1925
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 18f07d66a97bdbfc0800000000000000
+      internalID: -3477421463481938047
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_25
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1918
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 68d616d155836d3b0800000000000000
+      internalID: -5488137157688070778
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_26
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1900
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0d75084d1e7ec84a0800000000000000
+      internalID: -6589637197631039536
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_27
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 1897
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bbb0eff56a75a3ac0800000000000000
+      internalID: -3874688157312218181
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_28
+      rect:
+        serializedVersion: 2
+        x: 1963
+        y: 875
+        width: 85
+        height: 1013
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a399ca170f5451480800000000000000
+      internalID: -8929153787190535878
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_29
+      rect:
+        serializedVersion: 2
+        x: 2040
+        y: 1887
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1f1799f3dd1949160800000000000000
+      internalID: 7031405297673007601
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_30
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1825
+        width: 5
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 504acf15646667e70800000000000000
+      internalID: 9112583348240032773
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_31
+      rect:
+        serializedVersion: 2
+        x: 2036
+        y: 1792
+        width: 12
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8334086dc20c52570800000000000000
+      internalID: 8441364375385686840
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_32
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 1786
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ec70211082fff2110800000000000000
+      internalID: 1238488969831909326
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_33
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1765
+        width: 5
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1819e06727b933e60800000000000000
+      internalID: 7940861483893559681
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_34
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1769
+        width: 12
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b416583df1e8709e0800000000000000
+      internalID: -1655198070691503797
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_35
+      rect:
+        serializedVersion: 2
+        x: 44
+        y: 1733
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b2aa3b663776ad430800000000000000
+      internalID: 3808470180237126187
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_36
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1683
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e89dc075b27b32b50800000000000000
+      internalID: 6567294078408251790
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_37
+      rect:
+        serializedVersion: 2
+        x: 2043
+        y: 1635
+        width: 5
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 440107804356d8e60800000000000000
+      internalID: 7966134590042542148
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_38
+      rect:
+        serializedVersion: 2
+        x: 59
+        y: 1607
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b20ef1c722b0a170800000000000000
+      internalID: 8187740006387679921
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_39
+      rect:
+        serializedVersion: 2
+        x: 2027
+        y: 1592
+        width: 21
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 68f4757748cf94b90800000000000000
+      internalID: -7256991678662750330
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_40
+      rect:
+        serializedVersion: 2
+        x: 2036
+        y: 1581
+        width: 11
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b48c4bfda04fa990800000000000000
+      internalID: -7372602948992596815
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_41
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 1563
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5592eb9e916e25150800000000000000
+      internalID: 5859999064132561237
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_42
+      rect:
+        serializedVersion: 2
+        x: 2038
+        y: 1532
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8aeb920c02c5a0fc0800000000000000
+      internalID: -3527906062358692184
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_43
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 1541
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36c28a3888197e380800000000000000
+      internalID: -8942018519610413981
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_44
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1525
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 81b73b1a3714be010800000000000000
+      internalID: 1219140089023789848
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_45
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1511
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b933718d5876eba50800000000000000
+      internalID: 6538777533542249371
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_46
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1489
+        width: 5
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 20e96af267e381140800000000000000
+      internalID: 4690567689232883202
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_47
+      rect:
+        serializedVersion: 2
+        x: 1991
+        y: 1461
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6bf78245233e27940800000000000000
+      internalID: 5292542317413564342
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_48
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1448
+        width: 5
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 206f12dd51d01a110800000000000000
+      internalID: 1270310957450655234
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_49
+      rect:
+        serializedVersion: 2
+        x: 1912
+        y: 1447
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0494aaf05aa24bb0800000000000000
+      internalID: -4953209375374928884
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_50
+      rect:
+        serializedVersion: 2
+        x: 2034
+        y: 1449
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d894a80b920d57e20800000000000000
+      internalID: 3347810775493921165
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_51
+      rect:
+        serializedVersion: 2
+        x: 2024
+        y: 1433
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 729e8547b1b157230800000000000000
+      internalID: 3635842078901594407
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_52
+      rect:
+        serializedVersion: 2
+        x: 1879
+        y: 1424
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9c809da3a6f223b20800000000000000
+      internalID: 3112602425766774985
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_53
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1409
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 10dae0cb0dd3ecae0800000000000000
+      internalID: -1527215256914449151
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_54
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1401
+        width: 5
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fac336e4cd6c7ab30800000000000000
+      internalID: 4298623018858658991
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_55
+      rect:
+        serializedVersion: 2
+        x: 73
+        y: 1409
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be2a6e3a8153a7170800000000000000
+      internalID: 8176906453389845227
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_56
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1411
+        width: 12
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b4c6078a0ace183d0800000000000000
+      internalID: -3206021284946219957
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_57
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 1360
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b68d65685d0d2c3d0800000000000000
+      internalID: -3187755970724439957
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_58
+      rect:
+        serializedVersion: 2
+        x: 1839
+        y: 1348
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a27e9aea7649c6f40800000000000000
+      internalID: 5723112399513970474
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_59
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 1335
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ef1b0cb4eacf6960800000000000000
+      internalID: 7597514180153516001
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_60
+      rect:
+        serializedVersion: 2
+        x: 1924
+        y: 1297
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f674e28cb8cdfd520800000000000000
+      internalID: 2729142392126850927
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_61
+      rect:
+        serializedVersion: 2
+        x: 2037
+        y: 1299
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9bc51958dde85f6f0800000000000000
+      internalID: -651457489005355847
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_62
+      rect:
+        serializedVersion: 2
+        x: 2038
+        y: 1260
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 203cc4df9285288e0800000000000000
+      internalID: -1692693572571315454
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_63
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1251
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 86283f1d71b9b82a0800000000000000
+      internalID: -6734118291193494936
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_64
+      rect:
+        serializedVersion: 2
+        x: 2026
+        y: 1249
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c8444d1dd40b51730800000000000000
+      internalID: 3969272494876279948
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_65
+      rect:
+        serializedVersion: 2
+        x: 2023
+        y: 1242
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b32dcb0101868e8c0800000000000000
+      internalID: -3969808653317516741
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_66
+      rect:
+        serializedVersion: 2
+        x: 1868
+        y: 1218
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ae4fc7939cb84fde0800000000000000
+      internalID: -1300260696034052886
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_67
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1198
+        width: 5
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ea33d126ba6f1bb20800000000000000
+      internalID: 3148568830454608814
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_68
+      rect:
+        serializedVersion: 2
+        x: 1829
+        y: 1194
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1736bc1c84adf48f0800000000000000
+      internalID: -553984223119449231
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_69
+      rect:
+        serializedVersion: 2
+        x: 1821
+        y: 1165
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0747e0d66c4961d60800000000000000
+      internalID: 7860633779575878768
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_70
+      rect:
+        serializedVersion: 2
+        x: 1907
+        y: 1160
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8577fe94695cf8bc0800000000000000
+      internalID: -3778584313064360104
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_71
+      rect:
+        serializedVersion: 2
+        x: 1917
+        y: 1167
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fa51790561f76b730800000000000000
+      internalID: 4014535851665462703
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_72
+      rect:
+        serializedVersion: 2
+        x: 2011
+        y: 1164
+        width: 8
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: adc2d6ba4cc30e860800000000000000
+      internalID: 7557106990115007706
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_73
+      rect:
+        serializedVersion: 2
+        x: 2043
+        y: 1165
+        width: 5
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff004769c7d7bd070800000000000000
+      internalID: 8132231526201164031
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_74
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1149
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5b61ad91f02133410800000000000000
+      internalID: 1455526960638334645
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_75
+      rect:
+        serializedVersion: 2
+        x: 35
+        y: 1151
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5e25b34d2639b0de0800000000000000
+      internalID: -1365836009300077851
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_76
+      rect:
+        serializedVersion: 2
+        x: 1867
+        y: 1148
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 35ab249ad25b41860800000000000000
+      internalID: 7499818487196596819
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_77
+      rect:
+        serializedVersion: 2
+        x: 2023
+        y: 1154
+        width: 10
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5bf2567e9105d5b30800000000000000
+      internalID: 4277663293258411957
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_78
+      rect:
+        serializedVersion: 2
+        x: 2033
+        y: 1149
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8c972d055b8694970800000000000000
+      internalID: 8739631679843498440
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_79
+      rect:
+        serializedVersion: 2
+        x: 1919
+        y: 1145
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a4108f15db1f17b70800000000000000
+      internalID: 8895156534459760970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_80
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1141
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1828ee9eb8dfc6d50800000000000000
+      internalID: 6732034320379052673
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_81
+      rect:
+        serializedVersion: 2
+        x: 3
+        y: 1119
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51b51e278ee92ad30800000000000000
+      internalID: 4441286903737703189
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_82
+      rect:
+        serializedVersion: 2
+        x: 93
+        y: 1113
+        width: 6
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d3ef93ea1a8b98460800000000000000
+      internalID: 7244524480154435133
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_83
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 1113
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36b871ea587553ad0800000000000000
+      internalID: -2723174168012551325
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_84
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 1101
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 08c0fbf5d1a08ed30800000000000000
+      internalID: 4460826552187161728
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_85
+      rect:
+        serializedVersion: 2
+        x: 2043
+        y: 1097
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da4c485082162e870800000000000000
+      internalID: 8710631453807133869
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_86
+      rect:
+        serializedVersion: 2
+        x: 2007
+        y: 1081
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 379c2cfc3d27a4fa0800000000000000
+      internalID: -5815709714746259085
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_87
+      rect:
+        serializedVersion: 2
+        x: 2043
+        y: 1079
+        width: 5
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 26bacc43d2e04b2f0800000000000000
+      internalID: -958125233400927390
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_88
+      rect:
+        serializedVersion: 2
+        x: 1830
+        y: 1041
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f5edb53fd24f1ff00800000000000000
+      internalID: 1148967858149776991
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_89
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1025
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1f8c2139345fa1be0800000000000000
+      internalID: -1505621454822913807
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_90
+      rect:
+        serializedVersion: 2
+        x: 1824
+        y: 1004
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bc8c87839b05a21c0800000000000000
+      internalID: -4527717718921000757
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_91
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 971
+        width: 8
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eef66eb8dfa84a9d0800000000000000
+      internalID: -2763931449720147986
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_92
+      rect:
+        serializedVersion: 2
+        x: 76
+        y: 940
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b168ff5ebc81ce730800000000000000
+      internalID: 4029623030605907483
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_93
+      rect:
+        serializedVersion: 2
+        x: 1810
+        y: 943
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1e4975df1ca0d3450800000000000000
+      internalID: 6070019701060637921
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_94
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 947
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 593834dfcd6b2f490800000000000000
+      internalID: -7713902151474117739
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_95
+      rect:
+        serializedVersion: 2
+        x: 2043
+        y: 929
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79e9aa568067d09b0800000000000000
+      internalID: -5112300223558148457
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_96
+      rect:
+        serializedVersion: 2
+        x: 49
+        y: 907
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ee2de5e7fa7c2b530800000000000000
+      internalID: 3869374586418025198
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_97
+      rect:
+        serializedVersion: 2
+        x: 2037
+        y: 890
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0d41ef6dfed9a3600800000000000000
+      internalID: 448844766306505936
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_98
+      rect:
+        serializedVersion: 2
+        x: 1900
+        y: 881
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d648800c076a57930800000000000000
+      internalID: 4140398435625370733
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_99
+      rect:
+        serializedVersion: 2
+        x: 1984
+        y: 771
+        width: 32
+        height: 99
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 346e3778f57ceb550800000000000000
+      internalID: 6178594951907239491
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_100
+      rect:
+        serializedVersion: 2
+        x: 2024
+        y: 843
+        width: 23
+        height: 33
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e0f8bf1b6b73e6d60800000000000000
+      internalID: 7885301255381946126
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_101
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 751
+        width: 5
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 25c8052d102a646d0800000000000000
+      internalID: -3006537572516066222
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_102
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 628
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 270e191d677549ee0800000000000000
+      internalID: -1255282228295769998
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_103
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 385
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ed953500c0b0b940800000000000000
+      internalID: 5309938299437424097
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_104
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 370
+        width: 5
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e19df0daf771c0260800000000000000
+      internalID: 7065047752569248030
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_105
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 343
+        width: 5
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a828fdde75f962630800000000000000
+      internalID: 3901981327164932746
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_106
+      rect:
+        serializedVersion: 2
+        x: 3
+        y: 507
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b1959d05ef74add0800000000000000
+      internalID: -2475713273394785864
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_107
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 491
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76ae297dc72a9b9d0800000000000000
+      internalID: -2757994639711344025
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_108
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 367
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 72e238003b9c5bb80800000000000000
+      internalID: -8379569761008013785
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_109
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 301
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 25c5fe987c6564c10800000000000000
+      internalID: 2037411296444374098
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_110
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 276
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 09301b387c66240c0800000000000000
+      internalID: -4592995662870543472
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_111
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 218
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4d979a1ff16072980800000000000000
+      internalID: -8563869432153540140
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_112
+      rect:
+        serializedVersion: 2
+        x: 8
+        y: 645
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c35ecc4dcb843260800000000000000
+      internalID: 7076434628379038661
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_113
+      rect:
+        serializedVersion: 2
+        x: 8
+        y: 261
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 174bdb13695a24540800000000000000
+      internalID: 4990733401578124401
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_114
+      rect:
+        serializedVersion: 2
+        x: 20
+        y: 327
+        width: 19
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2d2ed865416b85b00800000000000000
+      internalID: 817603530835485394
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_115
+      rect:
+        serializedVersion: 2
+        x: 28
+        y: 309
+        width: 8
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa1111185e0be2fe0800000000000000
+      internalID: -1211836749956705878
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_116
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 355
+        width: 10
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ddfe7a709f63ab3f0800000000000000
+      internalID: -884333933621678115
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_117
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 253
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eca71a76ae0b71080800000000000000
+      internalID: -9216703591582958898
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_118
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 336
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 81de3e6455f194030800000000000000
+      internalID: 3479346638242442520
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_119
+      rect:
+        serializedVersion: 2
+        x: 36
+        y: 313
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6c17fd12eb3ba9560800000000000000
+      internalID: 7321361773437612486
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_120
+      rect:
+        serializedVersion: 2
+        x: 37
+        y: 378
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8543af78dd6928320800000000000000
+      internalID: 2558773416513123416
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_121
+      rect:
+        serializedVersion: 2
+        x: 37
+        y: 321
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a2984259f60fc5e0800000000000000
+      internalID: -1887282050947837276
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_122
+      rect:
+        serializedVersion: 2
+        x: 37
+        y: 274
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 38c223c9bfbe590e0800000000000000
+      internalID: -2263643771793953661
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_123
+      rect:
+        serializedVersion: 2
+        x: 42
+        y: 782
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7855185e3cbb34dd0800000000000000
+      internalID: -2502950517844388473
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_124
+      rect:
+        serializedVersion: 2
+        x: 45
+        y: 438
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 002bdabd04a9acea0800000000000000
+      internalID: -5851695162460360192
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_125
+      rect:
+        serializedVersion: 2
+        x: 47
+        y: 359
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa35d421e1b023c70800000000000000
+      internalID: 8949227633322578858
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_126
+      rect:
+        serializedVersion: 2
+        x: 50
+        y: 575
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a4a494809fd9f720800000000000000
+      internalID: 2880579248472761506
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_127
+      rect:
+        serializedVersion: 2
+        x: 51
+        y: 298
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e6ee5fc52fd6d730800000000000000
+      internalID: 4023648670588004067
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_128
+      rect:
+        serializedVersion: 2
+        x: 58
+        y: 301
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e4268b08bc6476740800000000000000
+      internalID: 5145158939145953870
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_129
+      rect:
+        serializedVersion: 2
+        x: 59
+        y: 223
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 339c442f95fa9bfe0800000000000000
+      internalID: -1172713427101759181
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_130
+      rect:
+        serializedVersion: 2
+        x: 61
+        y: 212
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 71d305f7b4d043f40800000000000000
+      internalID: 5707201245694934295
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_131
+      rect:
+        serializedVersion: 2
+        x: 67
+        y: 319
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d53fe2be25d883b10800000000000000
+      internalID: 1961473024992408413
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_132
+      rect:
+        serializedVersion: 2
+        x: 77
+        y: 346
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4e72c778de9200980800000000000000
+      internalID: -8574807590356375580
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_133
+      rect:
+        serializedVersion: 2
+        x: 83
+        y: 285
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9fcc65894b7f6b870800000000000000
+      internalID: 8698412085334691065
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_134
+      rect:
+        serializedVersion: 2
+        x: 102
+        y: 269
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a18f70b64743e6960800000000000000
+      internalID: 7597067296037140506
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_135
+      rect:
+        serializedVersion: 2
+        x: 113
+        y: 237
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 86b3de89404b92390800000000000000
+      internalID: -7842539344250455192
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_136
+      rect:
+        serializedVersion: 2
+        x: 119
+        y: 243
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92fa7231a42756910800000000000000
+      internalID: 1829994486070488873
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_137
+      rect:
+        serializedVersion: 2
+        x: 123
+        y: 317
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a8667399ca54b8b10800000000000000
+      internalID: 1984756668394071690
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_138
+      rect:
+        serializedVersion: 2
+        x: 123
+        y: 235
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb55d442a7abc2910800000000000000
+      internalID: 1814029783681291711
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_139
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 260
+        width: 10
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45568633f6b76e6d0800000000000000
+      internalID: -2961543987415456428
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_140
+      rect:
+        serializedVersion: 2
+        x: 1792
+        y: 208
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b70a8e714dbeafb0800000000000000
+      internalID: -4634558877524162632
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_141
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 262
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f9bf2067330d452d0800000000000000
+      internalID: -3290776508259173473
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_142
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76a9e0f1d3b31ca20800000000000000
+      internalID: 3080808753798224487
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_143
+      rect:
+        serializedVersion: 2
+        x: 1827
+        y: 222
+        width: 12
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b2b41183f12304e20800000000000000
+      internalID: 3332718833920199467
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_144
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 246
+        width: 16
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a4bf65438ca85af90800000000000000
+      internalID: -6942990658045543606
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_145
+      rect:
+        serializedVersion: 2
+        x: 1831
+        y: 455
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a8497c0521568d000800000000000000
+      internalID: 60909724308575370
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_146
+      rect:
+        serializedVersion: 2
+        x: 1840
+        y: 708
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3668646c41df1ea00800000000000000
+      internalID: 784186075806860899
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_147
+      rect:
+        serializedVersion: 2
+        x: 1979
+        y: 213
+        width: 69
+        height: 628
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f709fdba6501b620800000000000000
+      internalID: 2788015600330934263
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_148
+      rect:
+        serializedVersion: 2
+        x: 2006
+        y: 593
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9740516f50bb49d0800000000000000
+      internalID: -2788941620524857446
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_149
+      rect:
+        serializedVersion: 2
+        x: 2008
+        y: 663
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c218e07a88f3f8750800000000000000
+      internalID: 6309331459120202028
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_150
+      rect:
+        serializedVersion: 2
+        x: 2015
+        y: 190
+        width: 32
+        height: 30
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 78ff9f1becf3fb1d0800000000000000
+      internalID: -3332875042249113721
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_151
+      rect:
+        serializedVersion: 2
+        x: 2026
+        y: 788
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aafdb2e7905a598f0800000000000000
+      internalID: -534339520583442518
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_152
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 359
+        width: 12
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f1693ca22e03e40c0800000000000000
+      internalID: -4589677222305753569
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_153
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 242
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ebcce9b24a6316d0800000000000000
+      internalID: -3020954090215781402
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_154
+      rect:
+        serializedVersion: 2
+        x: 2037
+        y: 817
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7945b735fde68dd20800000000000000
+      internalID: 3303512232133612695
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_155
+      rect:
+        serializedVersion: 2
+        x: 2037
+        y: 561
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9c190e25e283bd160800000000000000
+      internalID: 7051291413188743625
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_156
+      rect:
+        serializedVersion: 2
+        x: 2038
+        y: 615
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 801bfec7505583670800000000000000
+      internalID: 8518652177230573832
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_157
+      rect:
+        serializedVersion: 2
+        x: 2040
+        y: 704
+        width: 8
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc66a6dd022ecce20800000000000000
+      internalID: 3372318851775227597
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_158
+      rect:
+        serializedVersion: 2
+        x: 2040
+        y: 320
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9aa8c49e38a6aea40800000000000000
+      internalID: 5398244218144328361
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_159
+      rect:
+        serializedVersion: 2
+        x: 2040
+        y: 247
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 508fc817415a17e80800000000000000
+      internalID: -8182577540732487675
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_160
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 808
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cec5a5d69a4b034f0800000000000000
+      internalID: -850981689795912468
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_161
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 503
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e9d1ff9ef395fd950800000000000000
+      internalID: 6475992920225684894
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_162
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 336
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9d2508c740d167e90800000000000000
+      internalID: -7028398263359221031
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_163
+      rect:
+        serializedVersion: 2
+        x: 2043
+        y: 591
+        width: 5
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0af01c03a8c4fec0800000000000000
+      internalID: -3533979204971333108
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_164
+      rect:
+        serializedVersion: 2
+        x: 2043
+        y: 545
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b1e74263f16822360800000000000000
+      internalID: 7143419427573497371
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_165
+      rect:
+        serializedVersion: 2
+        x: 24
+        y: 197
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c664c2fc1660e3620800000000000000
+      internalID: 2755647039154701932
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_166
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 167
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 275b959ffd7a210c0800000000000000
+      internalID: -4606434888443644558
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_167
+      rect:
+        serializedVersion: 2
+        x: 83
+        y: 191
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 39999cfb5f7fc5610800000000000000
+      internalID: 1611435401548503443
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_168
+      rect:
+        serializedVersion: 2
+        x: 93
+        y: 179
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ee54af04b04d491c0800000000000000
+      internalID: -4497736983036410386
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_169
+      rect:
+        serializedVersion: 2
+        x: 101
+        y: 139
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: af5679bec2f0601f0800000000000000
+      internalID: -1079158375103109638
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_170
+      rect:
+        serializedVersion: 2
+        x: 102
+        y: 185
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f5b0fe8bed3826420800000000000000
+      internalID: 2621802925691702111
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_171
+      rect:
+        serializedVersion: 2
+        x: 113
+        y: 195
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61531b4d3611a8e90800000000000000
+      internalID: -7022781548463049450
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_172
+      rect:
+        serializedVersion: 2
+        x: 113
+        y: 145
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe1dd4a02b9efc150800000000000000
+      internalID: 5895187388137591279
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_173
+      rect:
+        serializedVersion: 2
+        x: 2023
+        y: 33
+        width: 25
+        height: 116
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6d6772bff392e2b0800000000000000
+      internalID: -5556716263801655953
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_174
+      rect:
+        serializedVersion: 2
+        x: 2024
+        y: 142
+        width: 24
+        height: 68
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ddb993c90e0f28740800000000000000
+      internalID: 5152945771149630429
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_175
+      rect:
+        serializedVersion: 2
+        x: 40
+        y: 133
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ef04f8608c926a40800000000000000
+      internalID: 5360018581854883808
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_176
+      rect:
+        serializedVersion: 2
+        x: 99
+        y: 125
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 72bfee05a6db89240800000000000000
+      internalID: 4798793667285285671
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_177
+      rect:
+        serializedVersion: 2
+        x: 1797
+        y: 128
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9dcacdae43f2b5280800000000000000
+      internalID: -9053590721573114663
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_178
+      rect:
+        serializedVersion: 2
+        x: 6
+        y: 119
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7fd0d1c078e12ce90800000000000000
+      internalID: -7007004504862421513
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_179
+      rect:
+        serializedVersion: 2
+        x: 1988
+        y: 124
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a49c74b42cd8c0ba0800000000000000
+      internalID: -6121361927877179062
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_180
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 111
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a3f331cc35acf810800000000000000
+      internalID: 1800495631399383972
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_181
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 117
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 56e43323afa468860800000000000000
+      internalID: 7531789865268235877
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_182
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 91
+        width: 5
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: adacec1ceb981c8c0800000000000000
+      internalID: -3980749143230461222
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_183
+      rect:
+        serializedVersion: 2
+        x: 46
+        y: 104
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c508fd5d1617ad050800000000000000
+      internalID: 5826093732971118684
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_184
+      rect:
+        serializedVersion: 2
+        x: 20
+        y: 91
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca5206dba48392bd0800000000000000
+      internalID: -2654528611702266452
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_185
+      rect:
+        serializedVersion: 2
+        x: 37
+        y: 87
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2d028460a31681f40800000000000000
+      internalID: 5699412230278750418
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_186
+      rect:
+        serializedVersion: 2
+        x: 1332
+        y: 84
+        width: 11
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 53dad7b1ff0e4f0b0800000000000000
+      internalID: -5695680242434331339
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_187
+      rect:
+        serializedVersion: 2
+        x: 5
+        y: 76
+        width: 10
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac7b06058c9f445e0800000000000000
+      internalID: -1926140101870438454
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_188
+      rect:
+        serializedVersion: 2
+        x: 15
+        y: 77
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8937f741b763d3bf0800000000000000
+      internalID: -343058094357515368
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_189
+      rect:
+        serializedVersion: 2
+        x: 43
+        y: 63
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7accd9733ef8b8930800000000000000
+      internalID: 4146566087978110119
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_190
+      rect:
+        serializedVersion: 2
+        x: 1691
+        y: 61
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f3811f592936eb0c0800000000000000
+      internalID: -4558096291620382657
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_191
+      rect:
+        serializedVersion: 2
+        x: 39
+        y: 51
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 704043ed4e77446e0800000000000000
+      internalID: -1854225321705602041
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_192
+      rect:
+        serializedVersion: 2
+        x: 334
+        y: 45
+        width: 14
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d8c73df983434be0800000000000000
+      internalID: -1494276391419000618
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_193
+      rect:
+        serializedVersion: 2
+        x: 73
+        y: 40
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82e07c7efeb24fe50800000000000000
+      internalID: 6842142043268386344
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_194
+      rect:
+        serializedVersion: 2
+        x: 211
+        y: 41
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: edac98eea3e4ee1a0800000000000000
+      internalID: -6778394374128940322
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_195
+      rect:
+        serializedVersion: 2
+        x: 785
+        y: 39
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b5379a97949282a70800000000000000
+      internalID: 8802330867246134107
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_196
+      rect:
+        serializedVersion: 2
+        x: 1491
+        y: 38
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 53b02da12e9522e30800000000000000
+      internalID: 4477239807207148341
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_197
+      rect:
+        serializedVersion: 2
+        x: 1851
+        y: 34
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 53d3f6c19b5707030800000000000000
+      internalID: 3490419149118586165
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_198
+      rect:
+        serializedVersion: 2
+        x: 2023
+        y: 43
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7438c662adeb98540800000000000000
+      internalID: 5010745904583181127
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_199
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 33
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b40b233ed389bbf80800000000000000
+      internalID: -8089704914068787125
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_200
+      rect:
+        serializedVersion: 2
+        x: 71
+        y: 34
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 86a3c98015a93b6a0800000000000000
+      internalID: -6434629769754822040
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_201
+      rect:
+        serializedVersion: 2
+        x: 95
+        y: 27
+        width: 8
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 04072f5d8abe62860800000000000000
+      internalID: 7504944939435978816
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_202
+      rect:
+        serializedVersion: 2
+        x: 111
+        y: 24
+        width: 10
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55eee2d503ac44e60800000000000000
+      internalID: 7945697951658995285
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_203
+      rect:
+        serializedVersion: 2
+        x: 409
+        y: 25
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 779122feba92eda80800000000000000
+      internalID: -8440262833217595017
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_204
+      rect:
+        serializedVersion: 2
+        x: 729
+        y: 28
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 43be64d684e3c1b50800000000000000
+      internalID: 6565190837591272244
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_205
+      rect:
+        serializedVersion: 2
+        x: 749
+        y: 24
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a3c1695ee20850610800000000000000
+      internalID: 1586815382626638906
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_206
+      rect:
+        serializedVersion: 2
+        x: 757
+        y: 25
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d69e6f743c1dc47d0800000000000000
+      internalID: -2932738620668843667
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_207
+      rect:
+        serializedVersion: 2
+        x: 801
+        y: 31
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f60a400ce69694180800000000000000
+      internalID: -9130650845128122257
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_208
+      rect:
+        serializedVersion: 2
+        x: 877
+        y: 25
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a59cdb7345da89d00800000000000000
+      internalID: 979723496177125722
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_209
+      rect:
+        serializedVersion: 2
+        x: 913
+        y: 31
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e97bbb2a1ba46a2d0800000000000000
+      internalID: -3267842352810838114
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_210
+      rect:
+        serializedVersion: 2
+        x: 949
+        y: 34
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 593eb266f1c2f7130800000000000000
+      internalID: 3566617943270482837
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_211
+      rect:
+        serializedVersion: 2
+        x: 968
+        y: 29
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 90ea2f9bb7eacf3b0800000000000000
+      internalID: -5477311200365466103
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_212
+      rect:
+        serializedVersion: 2
+        x: 1002
+        y: 24
+        width: 16
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7adcaa177cd93fb50800000000000000
+      internalID: 6625812956723203495
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_213
+      rect:
+        serializedVersion: 2
+        x: 1059
+        y: 33
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a77d683f10a5ebda0800000000000000
+      internalID: -5927201095145826438
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_214
+      rect:
+        serializedVersion: 2
+        x: 1133
+        y: 28
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be7cb9c876577fa50800000000000000
+      internalID: 6554836870262147051
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_215
+      rect:
+        serializedVersion: 2
+        x: 1218
+        y: 21
+        width: 12
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d9be8f784418e2c00800000000000000
+      internalID: 877781108722822045
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_216
+      rect:
+        serializedVersion: 2
+        x: 1235
+        y: 30
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0645873f58d9881c0800000000000000
+      internalID: -4501174628915850144
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_217
+      rect:
+        serializedVersion: 2
+        x: 1239
+        y: 29
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d83ceb472a2ee9cd0800000000000000
+      internalID: -2549351151673883763
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_218
+      rect:
+        serializedVersion: 2
+        x: 1307
+        y: 31
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 08a35b77dbd8a4b60800000000000000
+      internalID: 7731147555231578752
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_219
+      rect:
+        serializedVersion: 2
+        x: 1311
+        y: 26
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb16ac84b7845c8d0800000000000000
+      internalID: -2826773496765718082
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_220
+      rect:
+        serializedVersion: 2
+        x: 1378
+        y: 27
+        width: 13
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9db7d2b0ef2bef930800000000000000
+      internalID: 4178974308425366489
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_221
+      rect:
+        serializedVersion: 2
+        x: 1428
+        y: 27
+        width: 14
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 14bf2b64fbe20d000800000000000000
+      internalID: 58598194215582529
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_222
+      rect:
+        serializedVersion: 2
+        x: 1490
+        y: 33
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1308a58416c3445d0800000000000000
+      internalID: -3079269856691191759
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_223
+      rect:
+        serializedVersion: 2
+        x: 1496
+        y: 29
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d5a9f6aa0eaf23e40800000000000000
+      internalID: 5634841926632970845
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_224
+      rect:
+        serializedVersion: 2
+        x: 1523
+        y: 27
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 19574985254177120800000000000000
+      internalID: 2411418469386188177
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_225
+      rect:
+        serializedVersion: 2
+        x: 1696
+        y: 31
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 44954332c943abbf0800000000000000
+      internalID: -307875779311281852
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_226
+      rect:
+        serializedVersion: 2
+        x: 1747
+        y: 26
+        width: 13
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1f624c07912a48a00800000000000000
+      internalID: 757908867454871281
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_227
+      rect:
+        serializedVersion: 2
+        x: 1764
+        y: 27
+        width: 11
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 38f0df924edec1ba0800000000000000
+      internalID: -6116752629663199357
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_228
+      rect:
+        serializedVersion: 2
+        x: 1791
+        y: 27
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 200e0117b6fe3a8b0800000000000000
+      internalID: -5142003104789503998
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_229
+      rect:
+        serializedVersion: 2
+        x: 1813
+        y: 31
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c4681f70a17b21f90800000000000000
+      internalID: -6984318749667916212
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_230
+      rect:
+        serializedVersion: 2
+        x: 1859
+        y: 33
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0bb8f9e2f2d3c790800000000000000
+      internalID: -7510927812774544628
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_231
+      rect:
+        serializedVersion: 2
+        x: 1867
+        y: 32
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a7a0ba3f17070b10800000000000000
+      internalID: 1947533194571065252
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_232
+      rect:
+        serializedVersion: 2
+        x: 1875
+        y: 31
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a4424b904e52990a0800000000000000
+      internalID: -6874421694858779574
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_233
+      rect:
+        serializedVersion: 2
+        x: 1879
+        y: 21
+        width: 8
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1f7ec2371325bd1c0800000000000000
+      internalID: -4477895032150628367
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_234
+      rect:
+        serializedVersion: 2
+        x: 1897
+        y: 31
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8af8e87b423c4a1f0800000000000000
+      internalID: -1034487451922559064
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_235
+      rect:
+        serializedVersion: 2
+        x: 2019
+        y: 31
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9d83a99a4b2ab6e0800000000000000
+      internalID: -1821095499912737381
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_236
+      rect:
+        serializedVersion: 2
+        x: 24
+        y: 18
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 88093b9de7ea05130800000000000000
+      internalID: 3553531965836857480
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_237
+      rect:
+        serializedVersion: 2
+        x: 38
+        y: 19
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e556fd93bfb81e9d0800000000000000
+      internalID: -2746760386595297954
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_238
+      rect:
+        serializedVersion: 2
+        x: 1463
+        y: 25
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7667cab622f321c00800000000000000
+      internalID: 869827095103829607
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_239
+      rect:
+        serializedVersion: 2
+        x: 1573
+        y: 23
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0eb996592a3fa0ee0800000000000000
+      internalID: -1293954063298618400
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_240
+      rect:
+        serializedVersion: 2
+        x: 23
+        y: 5
+        width: 10
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 41af613f17ffc5930800000000000000
+      internalID: 4133459422894029332
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Birch fishing rod_241
+      rect:
+        serializedVersion: 2
+        x: 193
+        y: 17
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 23ff10861fa6c4600800000000000000
+      internalID: 453855247522201394
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Birch fishing rod_0: 2883599170015735156
+      Birch fishing rod_1: 1362621905899955301
+      Birch fishing rod_10: -6318392511786851604
+      Birch fishing rod_100: 7885301255381946126
+      Birch fishing rod_101: -3006537572516066222
+      Birch fishing rod_102: -1255282228295769998
+      Birch fishing rod_103: 5309938299437424097
+      Birch fishing rod_104: 7065047752569248030
+      Birch fishing rod_105: 3901981327164932746
+      Birch fishing rod_106: -2475713273394785864
+      Birch fishing rod_107: -2757994639711344025
+      Birch fishing rod_108: -8379569761008013785
+      Birch fishing rod_109: 2037411296444374098
+      Birch fishing rod_11: 2284497718846171192
+      Birch fishing rod_110: -4592995662870543472
+      Birch fishing rod_111: -8563869432153540140
+      Birch fishing rod_112: 7076434628379038661
+      Birch fishing rod_113: 4990733401578124401
+      Birch fishing rod_114: 817603530835485394
+      Birch fishing rod_115: -1211836749956705878
+      Birch fishing rod_116: -884333933621678115
+      Birch fishing rod_117: -9216703591582958898
+      Birch fishing rod_118: 3479346638242442520
+      Birch fishing rod_119: 7321361773437612486
+      Birch fishing rod_12: -6295603081513860733
+      Birch fishing rod_120: 2558773416513123416
+      Birch fishing rod_121: -1887282050947837276
+      Birch fishing rod_122: -2263643771793953661
+      Birch fishing rod_123: -2502950517844388473
+      Birch fishing rod_124: -5851695162460360192
+      Birch fishing rod_125: 8949227633322578858
+      Birch fishing rod_126: 2880579248472761506
+      Birch fishing rod_127: 4023648670588004067
+      Birch fishing rod_128: 5145158939145953870
+      Birch fishing rod_129: -1172713427101759181
+      Birch fishing rod_13: -5703953588880615079
+      Birch fishing rod_130: 5707201245694934295
+      Birch fishing rod_131: 1961473024992408413
+      Birch fishing rod_132: -8574807590356375580
+      Birch fishing rod_133: 8698412085334691065
+      Birch fishing rod_134: 7597067296037140506
+      Birch fishing rod_135: -7842539344250455192
+      Birch fishing rod_136: 1829994486070488873
+      Birch fishing rod_137: 1984756668394071690
+      Birch fishing rod_138: 1814029783681291711
+      Birch fishing rod_139: -2961543987415456428
+      Birch fishing rod_14: -8100746041333545657
+      Birch fishing rod_140: -4634558877524162632
+      Birch fishing rod_141: -3290776508259173473
+      Birch fishing rod_142: 3080808753798224487
+      Birch fishing rod_143: 3332718833920199467
+      Birch fishing rod_144: -6942990658045543606
+      Birch fishing rod_145: 60909724308575370
+      Birch fishing rod_146: 784186075806860899
+      Birch fishing rod_147: 2788015600330934263
+      Birch fishing rod_148: -2788941620524857446
+      Birch fishing rod_149: 6309331459120202028
+      Birch fishing rod_15: -6539916158157341214
+      Birch fishing rod_150: -3332875042249113721
+      Birch fishing rod_151: -534339520583442518
+      Birch fishing rod_152: -4589677222305753569
+      Birch fishing rod_153: -3020954090215781402
+      Birch fishing rod_154: 3303512232133612695
+      Birch fishing rod_155: 7051291413188743625
+      Birch fishing rod_156: 8518652177230573832
+      Birch fishing rod_157: 3372318851775227597
+      Birch fishing rod_158: 5398244218144328361
+      Birch fishing rod_159: -8182577540732487675
+      Birch fishing rod_16: 3220613474368793348
+      Birch fishing rod_160: -850981689795912468
+      Birch fishing rod_161: 6475992920225684894
+      Birch fishing rod_162: -7028398263359221031
+      Birch fishing rod_163: -3533979204971333108
+      Birch fishing rod_164: 7143419427573497371
+      Birch fishing rod_165: 2755647039154701932
+      Birch fishing rod_166: -4606434888443644558
+      Birch fishing rod_167: 1611435401548503443
+      Birch fishing rod_168: -4497736983036410386
+      Birch fishing rod_169: -1079158375103109638
+      Birch fishing rod_17: 2365612860945705182
+      Birch fishing rod_170: 2621802925691702111
+      Birch fishing rod_171: -7022781548463049450
+      Birch fishing rod_172: 5895187388137591279
+      Birch fishing rod_173: -5556716263801655953
+      Birch fishing rod_174: 5152945771149630429
+      Birch fishing rod_175: 5360018581854883808
+      Birch fishing rod_176: 4798793667285285671
+      Birch fishing rod_177: -9053590721573114663
+      Birch fishing rod_178: -7007004504862421513
+      Birch fishing rod_179: -6121361927877179062
+      Birch fishing rod_18: -8289080901151769182
+      Birch fishing rod_180: 1800495631399383972
+      Birch fishing rod_181: 7531789865268235877
+      Birch fishing rod_182: -3980749143230461222
+      Birch fishing rod_183: 5826093732971118684
+      Birch fishing rod_184: -2654528611702266452
+      Birch fishing rod_185: 5699412230278750418
+      Birch fishing rod_186: -5695680242434331339
+      Birch fishing rod_187: -1926140101870438454
+      Birch fishing rod_188: -343058094357515368
+      Birch fishing rod_189: 4146566087978110119
+      Birch fishing rod_19: -865638218298585332
+      Birch fishing rod_190: -4558096291620382657
+      Birch fishing rod_191: -1854225321705602041
+      Birch fishing rod_192: -1494276391419000618
+      Birch fishing rod_193: 6842142043268386344
+      Birch fishing rod_194: -6778394374128940322
+      Birch fishing rod_195: 8802330867246134107
+      Birch fishing rod_196: 4477239807207148341
+      Birch fishing rod_197: 3490419149118586165
+      Birch fishing rod_198: 5010745904583181127
+      Birch fishing rod_199: -8089704914068787125
+      Birch fishing rod_2: 372835796308119130
+      Birch fishing rod_20: 1192618135823181370
+      Birch fishing rod_200: -6434629769754822040
+      Birch fishing rod_201: 7504944939435978816
+      Birch fishing rod_202: 7945697951658995285
+      Birch fishing rod_203: -8440262833217595017
+      Birch fishing rod_204: 6565190837591272244
+      Birch fishing rod_205: 1586815382626638906
+      Birch fishing rod_206: -2932738620668843667
+      Birch fishing rod_207: -9130650845128122257
+      Birch fishing rod_208: 979723496177125722
+      Birch fishing rod_209: -3267842352810838114
+      Birch fishing rod_21: -8846729395169314197
+      Birch fishing rod_210: 3566617943270482837
+      Birch fishing rod_211: -5477311200365466103
+      Birch fishing rod_212: 6625812956723203495
+      Birch fishing rod_213: -5927201095145826438
+      Birch fishing rod_214: 6554836870262147051
+      Birch fishing rod_215: 877781108722822045
+      Birch fishing rod_216: -4501174628915850144
+      Birch fishing rod_217: -2549351151673883763
+      Birch fishing rod_218: 7731147555231578752
+      Birch fishing rod_219: -2826773496765718082
+      Birch fishing rod_22: -5630324226857357814
+      Birch fishing rod_220: 4178974308425366489
+      Birch fishing rod_221: 58598194215582529
+      Birch fishing rod_222: -3079269856691191759
+      Birch fishing rod_223: 5634841926632970845
+      Birch fishing rod_224: 2411418469386188177
+      Birch fishing rod_225: -307875779311281852
+      Birch fishing rod_226: 757908867454871281
+      Birch fishing rod_227: -6116752629663199357
+      Birch fishing rod_228: -5142003104789503998
+      Birch fishing rod_229: -6984318749667916212
+      Birch fishing rod_23: -8661004484550495460
+      Birch fishing rod_230: -7510927812774544628
+      Birch fishing rod_231: 1947533194571065252
+      Birch fishing rod_232: -6874421694858779574
+      Birch fishing rod_233: -4477895032150628367
+      Birch fishing rod_234: -1034487451922559064
+      Birch fishing rod_235: -1821095499912737381
+      Birch fishing rod_236: 3553531965836857480
+      Birch fishing rod_237: -2746760386595297954
+      Birch fishing rod_238: 869827095103829607
+      Birch fishing rod_239: -1293954063298618400
+      Birch fishing rod_24: -3477421463481938047
+      Birch fishing rod_240: 4133459422894029332
+      Birch fishing rod_241: 453855247522201394
+      Birch fishing rod_25: -5488137157688070778
+      Birch fishing rod_26: -6589637197631039536
+      Birch fishing rod_27: -3874688157312218181
+      Birch fishing rod_28: -8929153787190535878
+      Birch fishing rod_29: 7031405297673007601
+      Birch fishing rod_3: 4352174140047798879
+      Birch fishing rod_30: 9112583348240032773
+      Birch fishing rod_31: 8441364375385686840
+      Birch fishing rod_32: 1238488969831909326
+      Birch fishing rod_33: 7940861483893559681
+      Birch fishing rod_34: -1655198070691503797
+      Birch fishing rod_35: 3808470180237126187
+      Birch fishing rod_36: 6567294078408251790
+      Birch fishing rod_37: 7966134590042542148
+      Birch fishing rod_38: 8187740006387679921
+      Birch fishing rod_39: -7256991678662750330
+      Birch fishing rod_4: 3388346462563174613
+      Birch fishing rod_40: -7372602948992596815
+      Birch fishing rod_41: 5859999064132561237
+      Birch fishing rod_42: -3527906062358692184
+      Birch fishing rod_43: -8942018519610413981
+      Birch fishing rod_44: 1219140089023789848
+      Birch fishing rod_45: 6538777533542249371
+      Birch fishing rod_46: 4690567689232883202
+      Birch fishing rod_47: 5292542317413564342
+      Birch fishing rod_48: 1270310957450655234
+      Birch fishing rod_49: -4953209375374928884
+      Birch fishing rod_5: 5775650040669688996
+      Birch fishing rod_50: 3347810775493921165
+      Birch fishing rod_51: 3635842078901594407
+      Birch fishing rod_52: 3112602425766774985
+      Birch fishing rod_53: -1527215256914449151
+      Birch fishing rod_54: 4298623018858658991
+      Birch fishing rod_55: 8176906453389845227
+      Birch fishing rod_56: -3206021284946219957
+      Birch fishing rod_57: -3187755970724439957
+      Birch fishing rod_58: 5723112399513970474
+      Birch fishing rod_59: 7597514180153516001
+      Birch fishing rod_6: -7970974185058970990
+      Birch fishing rod_60: 2729142392126850927
+      Birch fishing rod_61: -651457489005355847
+      Birch fishing rod_62: -1692693572571315454
+      Birch fishing rod_63: -6734118291193494936
+      Birch fishing rod_64: 3969272494876279948
+      Birch fishing rod_65: -3969808653317516741
+      Birch fishing rod_66: -1300260696034052886
+      Birch fishing rod_67: 3148568830454608814
+      Birch fishing rod_68: -553984223119449231
+      Birch fishing rod_69: 7860633779575878768
+      Birch fishing rod_7: -2139179041518324124
+      Birch fishing rod_70: -3778584313064360104
+      Birch fishing rod_71: 4014535851665462703
+      Birch fishing rod_72: 7557106990115007706
+      Birch fishing rod_73: 8132231526201164031
+      Birch fishing rod_74: 1455526960638334645
+      Birch fishing rod_75: -1365836009300077851
+      Birch fishing rod_76: 7499818487196596819
+      Birch fishing rod_77: 4277663293258411957
+      Birch fishing rod_78: 8739631679843498440
+      Birch fishing rod_79: 8895156534459760970
+      Birch fishing rod_8: 5749663308132041541
+      Birch fishing rod_80: 6732034320379052673
+      Birch fishing rod_81: 4441286903737703189
+      Birch fishing rod_82: 7244524480154435133
+      Birch fishing rod_83: -2723174168012551325
+      Birch fishing rod_84: 4460826552187161728
+      Birch fishing rod_85: 8710631453807133869
+      Birch fishing rod_86: -5815709714746259085
+      Birch fishing rod_87: -958125233400927390
+      Birch fishing rod_88: 1148967858149776991
+      Birch fishing rod_89: -1505621454822913807
+      Birch fishing rod_9: -4623139999184351972
+      Birch fishing rod_90: -4527717718921000757
+      Birch fishing rod_91: -2763931449720147986
+      Birch fishing rod_92: 4029623030605907483
+      Birch fishing rod_93: 6070019701060637921
+      Birch fishing rod_94: -7713902151474117739
+      Birch fishing rod_95: -5112300223558148457
+      Birch fishing rod_96: 3869374586418025198
+      Birch fishing rod_97: 448844766306505936
+      Birch fishing rod_98: 4140398435625370733
+      Birch fishing rod_99: 6178594951907239491
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

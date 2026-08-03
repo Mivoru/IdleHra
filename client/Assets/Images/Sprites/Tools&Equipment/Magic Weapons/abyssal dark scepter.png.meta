@@ -1,0 +1,7618 @@
+fileFormatVersion: 2
+guid: 320f848cc5f3dee48902b6e1e58fd9df
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 8930827108805075190
+    second: abyssal dark scepter_0
+  - first:
+      213: -1048646766909968475
+    second: abyssal dark scepter_1
+  - first:
+      213: 4092343709502850303
+    second: abyssal dark scepter_2
+  - first:
+      213: 4425705185362465222
+    second: abyssal dark scepter_3
+  - first:
+      213: -3848294227136670019
+    second: abyssal dark scepter_4
+  - first:
+      213: 3144693074487655791
+    second: abyssal dark scepter_5
+  - first:
+      213: 3920010255217222150
+    second: abyssal dark scepter_6
+  - first:
+      213: 3060096202284044585
+    second: abyssal dark scepter_7
+  - first:
+      213: 783221439481873364
+    second: abyssal dark scepter_8
+  - first:
+      213: 1819975096687351420
+    second: abyssal dark scepter_9
+  - first:
+      213: 8604411106047808407
+    second: abyssal dark scepter_10
+  - first:
+      213: 2826248690266753448
+    second: abyssal dark scepter_11
+  - first:
+      213: 4151871175252617455
+    second: abyssal dark scepter_12
+  - first:
+      213: 5936473005478842311
+    second: abyssal dark scepter_13
+  - first:
+      213: 1985090940634117055
+    second: abyssal dark scepter_14
+  - first:
+      213: 1599342877976014979
+    second: abyssal dark scepter_15
+  - first:
+      213: -4089355415122607860
+    second: abyssal dark scepter_16
+  - first:
+      213: -8635553883974969587
+    second: abyssal dark scepter_17
+  - first:
+      213: 318655821829038287
+    second: abyssal dark scepter_18
+  - first:
+      213: 3944550681605130179
+    second: abyssal dark scepter_19
+  - first:
+      213: -7151618119355725601
+    second: abyssal dark scepter_20
+  - first:
+      213: 5876722521301483722
+    second: abyssal dark scepter_21
+  - first:
+      213: 1022724882721954363
+    second: abyssal dark scepter_22
+  - first:
+      213: 8675825920163453381
+    second: abyssal dark scepter_23
+  - first:
+      213: -7616371515579203480
+    second: abyssal dark scepter_24
+  - first:
+      213: 6328317254766817652
+    second: abyssal dark scepter_25
+  - first:
+      213: 3592429059024396327
+    second: abyssal dark scepter_26
+  - first:
+      213: -8366623838728273397
+    second: abyssal dark scepter_27
+  - first:
+      213: -8537868013026626932
+    second: abyssal dark scepter_28
+  - first:
+      213: -6199086603670390338
+    second: abyssal dark scepter_29
+  - first:
+      213: 248003642448016153
+    second: abyssal dark scepter_30
+  - first:
+      213: -387535196540831327
+    second: abyssal dark scepter_31
+  - first:
+      213: -8923220821307820404
+    second: abyssal dark scepter_32
+  - first:
+      213: 5911258934421173409
+    second: abyssal dark scepter_33
+  - first:
+      213: -4338683476345720503
+    second: abyssal dark scepter_34
+  - first:
+      213: 7462946778257892568
+    second: abyssal dark scepter_35
+  - first:
+      213: -8929394728146142256
+    second: abyssal dark scepter_36
+  - first:
+      213: 8890923787257760919
+    second: abyssal dark scepter_37
+  - first:
+      213: -6973673812908069395
+    second: abyssal dark scepter_38
+  - first:
+      213: -6827438984915087002
+    second: abyssal dark scepter_39
+  - first:
+      213: 7632352259980403460
+    second: abyssal dark scepter_40
+  - first:
+      213: 3094786658756847440
+    second: abyssal dark scepter_41
+  - first:
+      213: -7147325079009035002
+    second: abyssal dark scepter_42
+  - first:
+      213: -5504362261489666970
+    second: abyssal dark scepter_43
+  - first:
+      213: -7480956965453836458
+    second: abyssal dark scepter_44
+  - first:
+      213: -4927846386836326262
+    second: abyssal dark scepter_45
+  - first:
+      213: -254905271161339129
+    second: abyssal dark scepter_46
+  - first:
+      213: -5994757914687478054
+    second: abyssal dark scepter_47
+  - first:
+      213: -7146488049385442179
+    second: abyssal dark scepter_48
+  - first:
+      213: 8021662881136499042
+    second: abyssal dark scepter_49
+  - first:
+      213: -6718171625834086960
+    second: abyssal dark scepter_50
+  - first:
+      213: 8327928445995950532
+    second: abyssal dark scepter_51
+  - first:
+      213: -5674280420630026846
+    second: abyssal dark scepter_52
+  - first:
+      213: -9013796881545904291
+    second: abyssal dark scepter_53
+  - first:
+      213: -6315904735631051807
+    second: abyssal dark scepter_54
+  - first:
+      213: -8309528817338638414
+    second: abyssal dark scepter_55
+  - first:
+      213: 7527452957817315984
+    second: abyssal dark scepter_56
+  - first:
+      213: 7731839139231980537
+    second: abyssal dark scepter_57
+  - first:
+      213: -8530991810861455804
+    second: abyssal dark scepter_58
+  - first:
+      213: 6419434799926104040
+    second: abyssal dark scepter_59
+  - first:
+      213: 371324068274675592
+    second: abyssal dark scepter_60
+  - first:
+      213: -6722355945846945497
+    second: abyssal dark scepter_61
+  - first:
+      213: -7667329513668673595
+    second: abyssal dark scepter_62
+  - first:
+      213: 237883023810084096
+    second: abyssal dark scepter_63
+  - first:
+      213: -4828996087457223072
+    second: abyssal dark scepter_64
+  - first:
+      213: -4140577381657901546
+    second: abyssal dark scepter_65
+  - first:
+      213: -4578659935890387665
+    second: abyssal dark scepter_66
+  - first:
+      213: 5700934977508726363
+    second: abyssal dark scepter_67
+  - first:
+      213: -3346617824054990472
+    second: abyssal dark scepter_68
+  - first:
+      213: -98827075064012242
+    second: abyssal dark scepter_69
+  - first:
+      213: -8538314297527354933
+    second: abyssal dark scepter_70
+  - first:
+      213: 984538933064459640
+    second: abyssal dark scepter_71
+  - first:
+      213: -7044298711463347314
+    second: abyssal dark scepter_72
+  - first:
+      213: 5270894067488986050
+    second: abyssal dark scepter_73
+  - first:
+      213: -4760701891786815485
+    second: abyssal dark scepter_74
+  - first:
+      213: 6729153337844292696
+    second: abyssal dark scepter_75
+  - first:
+      213: 8544939802413328300
+    second: abyssal dark scepter_76
+  - first:
+      213: -6160286590793988845
+    second: abyssal dark scepter_77
+  - first:
+      213: 7463660633643903862
+    second: abyssal dark scepter_78
+  - first:
+      213: 315947914316521794
+    second: abyssal dark scepter_79
+  - first:
+      213: 5145682843899253504
+    second: abyssal dark scepter_80
+  - first:
+      213: 4738900443390299226
+    second: abyssal dark scepter_81
+  - first:
+      213: -9211234662114914041
+    second: abyssal dark scepter_82
+  - first:
+      213: 7253865131161192216
+    second: abyssal dark scepter_83
+  - first:
+      213: -887454715316134920
+    second: abyssal dark scepter_84
+  - first:
+      213: -606767433035337846
+    second: abyssal dark scepter_85
+  - first:
+      213: 8747567149238559832
+    second: abyssal dark scepter_86
+  - first:
+      213: 1708778798496967224
+    second: abyssal dark scepter_87
+  - first:
+      213: -7830189155918171909
+    second: abyssal dark scepter_88
+  - first:
+      213: 5607973875005034006
+    second: abyssal dark scepter_89
+  - first:
+      213: -4312599727787401191
+    second: abyssal dark scepter_90
+  - first:
+      213: 3719714041849465366
+    second: abyssal dark scepter_91
+  - first:
+      213: 8874358969910656902
+    second: abyssal dark scepter_92
+  - first:
+      213: -6520412164878350613
+    second: abyssal dark scepter_93
+  - first:
+      213: 8320330813262161021
+    second: abyssal dark scepter_94
+  - first:
+      213: 4364219267313768733
+    second: abyssal dark scepter_95
+  - first:
+      213: 2511924339059337470
+    second: abyssal dark scepter_96
+  - first:
+      213: 5953265015655954619
+    second: abyssal dark scepter_97
+  - first:
+      213: -4274594774558656659
+    second: abyssal dark scepter_98
+  - first:
+      213: -7766209907254867471
+    second: abyssal dark scepter_99
+  - first:
+      213: -2992144806526848436
+    second: abyssal dark scepter_100
+  - first:
+      213: 5768488495731666453
+    second: abyssal dark scepter_101
+  - first:
+      213: 7901120845241886677
+    second: abyssal dark scepter_102
+  - first:
+      213: 2621375774499663707
+    second: abyssal dark scepter_103
+  - first:
+      213: -5586976896981553443
+    second: abyssal dark scepter_104
+  - first:
+      213: -3237640271560270117
+    second: abyssal dark scepter_105
+  - first:
+      213: -1183678958887698826
+    second: abyssal dark scepter_106
+  - first:
+      213: -7633109204428612041
+    second: abyssal dark scepter_107
+  - first:
+      213: 8085301033314794682
+    second: abyssal dark scepter_108
+  - first:
+      213: -7753172019761763476
+    second: abyssal dark scepter_109
+  - first:
+      213: 182745460931904391
+    second: abyssal dark scepter_110
+  - first:
+      213: -7979591617670800339
+    second: abyssal dark scepter_111
+  - first:
+      213: -4499140195549623295
+    second: abyssal dark scepter_112
+  - first:
+      213: -8320989031719138622
+    second: abyssal dark scepter_113
+  - first:
+      213: 5060916364903101996
+    second: abyssal dark scepter_114
+  - first:
+      213: 4643438705976138387
+    second: abyssal dark scepter_115
+  - first:
+      213: -5213199091392270970
+    second: abyssal dark scepter_116
+  - first:
+      213: -1329496219654920824
+    second: abyssal dark scepter_117
+  - first:
+      213: 7977431529643122769
+    second: abyssal dark scepter_118
+  - first:
+      213: -4857429625788287268
+    second: abyssal dark scepter_119
+  - first:
+      213: -7830286162644313883
+    second: abyssal dark scepter_120
+  - first:
+      213: -2148775187885394227
+    second: abyssal dark scepter_121
+  - first:
+      213: -5094839341603290126
+    second: abyssal dark scepter_122
+  - first:
+      213: -788618952593179750
+    second: abyssal dark scepter_123
+  - first:
+      213: -1363858086879269470
+    second: abyssal dark scepter_124
+  - first:
+      213: -3803278277540781842
+    second: abyssal dark scepter_125
+  - first:
+      213: 4033938968200857824
+    second: abyssal dark scepter_126
+  - first:
+      213: -7342570383144721202
+    second: abyssal dark scepter_127
+  - first:
+      213: -2283258010781559308
+    second: abyssal dark scepter_128
+  - first:
+      213: 2082621975185155970
+    second: abyssal dark scepter_129
+  - first:
+      213: -1637771950574576375
+    second: abyssal dark scepter_130
+  - first:
+      213: -7194057335629110916
+    second: abyssal dark scepter_131
+  - first:
+      213: 1925519771560585139
+    second: abyssal dark scepter_132
+  - first:
+      213: -445937279799220338
+    second: abyssal dark scepter_133
+  - first:
+      213: -2234425880238021890
+    second: abyssal dark scepter_134
+  - first:
+      213: 4179364714845942107
+    second: abyssal dark scepter_135
+  - first:
+      213: -597958731432723495
+    second: abyssal dark scepter_136
+  - first:
+      213: 1948113353703660411
+    second: abyssal dark scepter_137
+  - first:
+      213: 1803259192753308931
+    second: abyssal dark scepter_138
+  - first:
+      213: 2134796383328177322
+    second: abyssal dark scepter_139
+  - first:
+      213: 5820933630701303281
+    second: abyssal dark scepter_140
+  - first:
+      213: -6190164215960965522
+    second: abyssal dark scepter_141
+  - first:
+      213: -764869049518969718
+    second: abyssal dark scepter_142
+  - first:
+      213: -5603949965382823664
+    second: abyssal dark scepter_143
+  - first:
+      213: 6584632211714226979
+    second: abyssal dark scepter_144
+  - first:
+      213: 3935889166750652338
+    second: abyssal dark scepter_145
+  - first:
+      213: -7847559361315739625
+    second: abyssal dark scepter_146
+  - first:
+      213: -4524829557074708960
+    second: abyssal dark scepter_147
+  - first:
+      213: 4674832037496353787
+    second: abyssal dark scepter_148
+  - first:
+      213: 1569650376987862685
+    second: abyssal dark scepter_149
+  - first:
+      213: -2188624615715704046
+    second: abyssal dark scepter_150
+  - first:
+      213: 7181996627053848271
+    second: abyssal dark scepter_151
+  - first:
+      213: 3496079298258758687
+    second: abyssal dark scepter_152
+  - first:
+      213: -6608476561546211540
+    second: abyssal dark scepter_153
+  - first:
+      213: 3732468114149147970
+    second: abyssal dark scepter_154
+  - first:
+      213: -7675951731592926202
+    second: abyssal dark scepter_155
+  - first:
+      213: 4390443833216128464
+    second: abyssal dark scepter_156
+  - first:
+      213: 5255141820564238622
+    second: abyssal dark scepter_157
+  - first:
+      213: 1963394872158778426
+    second: abyssal dark scepter_158
+  - first:
+      213: -7685750986642727443
+    second: abyssal dark scepter_159
+  - first:
+      213: 8463094108262676259
+    second: abyssal dark scepter_160
+  - first:
+      213: 492823542915909596
+    second: abyssal dark scepter_161
+  - first:
+      213: -6621188583589835785
+    second: abyssal dark scepter_162
+  - first:
+      213: 7410755197216682243
+    second: abyssal dark scepter_163
+  - first:
+      213: -7912247668352807865
+    second: abyssal dark scepter_164
+  - first:
+      213: -6434931637898069008
+    second: abyssal dark scepter_165
+  - first:
+      213: 7510419412647591772
+    second: abyssal dark scepter_166
+  - first:
+      213: -5534775003571268903
+    second: abyssal dark scepter_167
+  - first:
+      213: 4939879585144345895
+    second: abyssal dark scepter_168
+  - first:
+      213: -254515904449695578
+    second: abyssal dark scepter_169
+  - first:
+      213: -6149801796913590671
+    second: abyssal dark scepter_170
+  - first:
+      213: -5988259793162153640
+    second: abyssal dark scepter_171
+  - first:
+      213: 3932954776210870727
+    second: abyssal dark scepter_172
+  - first:
+      213: -7968783063923065526
+    second: abyssal dark scepter_173
+  - first:
+      213: 5258733767287731594
+    second: abyssal dark scepter_174
+  - first:
+      213: 5180397648357851737
+    second: abyssal dark scepter_175
+  - first:
+      213: -3231207912902997716
+    second: abyssal dark scepter_176
+  - first:
+      213: -767771355246164800
+    second: abyssal dark scepter_177
+  - first:
+      213: -3695460672015624933
+    second: abyssal dark scepter_178
+  - first:
+      213: -3129948982494663165
+    second: abyssal dark scepter_179
+  - first:
+      213: -4767559623613058590
+    second: abyssal dark scepter_180
+  - first:
+      213: -8261066305351608618
+    second: abyssal dark scepter_181
+  - first:
+      213: 1040949476935245859
+    second: abyssal dark scepter_182
+  - first:
+      213: 5697773075943468615
+    second: abyssal dark scepter_183
+  - first:
+      213: 1712894910814652795
+    second: abyssal dark scepter_184
+  - first:
+      213: 9058441284618330504
+    second: abyssal dark scepter_185
+  - first:
+      213: -3065177047174763333
+    second: abyssal dark scepter_186
+  - first:
+      213: 632747431322747647
+    second: abyssal dark scepter_187
+  - first:
+      213: -5276397705324048235
+    second: abyssal dark scepter_188
+  - first:
+      213: -1315972505104021675
+    second: abyssal dark scepter_189
+  - first:
+      213: -1441621787039992550
+    second: abyssal dark scepter_190
+  - first:
+      213: 4633106919281386122
+    second: abyssal dark scepter_191
+  - first:
+      213: 8949839175189958879
+    second: abyssal dark scepter_192
+  - first:
+      213: 9026525794175046690
+    second: abyssal dark scepter_193
+  - first:
+      213: -6923420545734843623
+    second: abyssal dark scepter_194
+  - first:
+      213: -644955994812954464
+    second: abyssal dark scepter_195
+  - first:
+      213: -7822219575291487306
+    second: abyssal dark scepter_196
+  - first:
+      213: 7054161771201652089
+    second: abyssal dark scepter_197
+  - first:
+      213: -7295419072051724489
+    second: abyssal dark scepter_198
+  - first:
+      213: -4128334044527597323
+    second: abyssal dark scepter_199
+  - first:
+      213: 1424425288026598066
+    second: abyssal dark scepter_200
+  - first:
+      213: -7614424437766322129
+    second: abyssal dark scepter_201
+  - first:
+      213: 4139389429448881809
+    second: abyssal dark scepter_202
+  - first:
+      213: 3183671133801742763
+    second: abyssal dark scepter_203
+  - first:
+      213: -2941952719284707377
+    second: abyssal dark scepter_204
+  - first:
+      213: -1366771101680200518
+    second: abyssal dark scepter_205
+  - first:
+      213: -6420325097381222253
+    second: abyssal dark scepter_206
+  - first:
+      213: 616520855376319781
+    second: abyssal dark scepter_207
+  - first:
+      213: 5560499259068667400
+    second: abyssal dark scepter_208
+  - first:
+      213: 3766017696098804715
+    second: abyssal dark scepter_209
+  - first:
+      213: 8107286254559377107
+    second: abyssal dark scepter_210
+  - first:
+      213: -4062790978774126225
+    second: abyssal dark scepter_211
+  - first:
+      213: 5327209014572066315
+    second: abyssal dark scepter_212
+  - first:
+      213: 2820199008074275763
+    second: abyssal dark scepter_213
+  - first:
+      213: 8115721968405774621
+    second: abyssal dark scepter_214
+  - first:
+      213: 8335719127795689821
+    second: abyssal dark scepter_215
+  - first:
+      213: 7623801041718957903
+    second: abyssal dark scepter_216
+  - first:
+      213: -946522994743776877
+    second: abyssal dark scepter_217
+  - first:
+      213: -2682895993302000698
+    second: abyssal dark scepter_218
+  - first:
+      213: -1615292881389781164
+    second: abyssal dark scepter_219
+  - first:
+      213: 8580884884156226675
+    second: abyssal dark scepter_220
+  - first:
+      213: 4230730332255835282
+    second: abyssal dark scepter_221
+  - first:
+      213: -6797825301291030670
+    second: abyssal dark scepter_222
+  - first:
+      213: 4519708456664748159
+    second: abyssal dark scepter_223
+  - first:
+      213: 8485657036560179510
+    second: abyssal dark scepter_224
+  - first:
+      213: -4454232273596668217
+    second: abyssal dark scepter_225
+  - first:
+      213: -311002281890637146
+    second: abyssal dark scepter_226
+  - first:
+      213: -7051552978561515575
+    second: abyssal dark scepter_227
+  - first:
+      213: 8296456591640568027
+    second: abyssal dark scepter_228
+  - first:
+      213: -8785098897489473480
+    second: abyssal dark scepter_229
+  - first:
+      213: 7199668112087783566
+    second: abyssal dark scepter_230
+  - first:
+      213: -2033627424870203150
+    second: abyssal dark scepter_231
+  - first:
+      213: 3494572328733350571
+    second: abyssal dark scepter_232
+  - first:
+      213: -7381222481764084920
+    second: abyssal dark scepter_233
+  - first:
+      213: -5163227295706175930
+    second: abyssal dark scepter_234
+  - first:
+      213: 9092370863765126342
+    second: abyssal dark scepter_235
+  - first:
+      213: -7018601240693520053
+    second: abyssal dark scepter_236
+  - first:
+      213: -2718153352834589285
+    second: abyssal dark scepter_237
+  - first:
+      213: -3686920680676829433
+    second: abyssal dark scepter_238
+  - first:
+      213: 4113171074246663160
+    second: abyssal dark scepter_239
+  - first:
+      213: -4244267539238310886
+    second: abyssal dark scepter_240
+  - first:
+      213: 4772921720097902199
+    second: abyssal dark scepter_241
+  - first:
+      213: -5309727741460754347
+    second: abyssal dark scepter_242
+  - first:
+      213: 7624512332226991024
+    second: abyssal dark scepter_243
+  - first:
+      213: -4790166443375011139
+    second: abyssal dark scepter_244
+  - first:
+      213: 5441799949302440291
+    second: abyssal dark scepter_245
+  - first:
+      213: -5967347364042684510
+    second: abyssal dark scepter_246
+  - first:
+      213: 1183471116282007502
+    second: abyssal dark scepter_247
+  - first:
+      213: 6718387806364924071
+    second: abyssal dark scepter_248
+  - first:
+      213: 110576677519491541
+    second: abyssal dark scepter_249
+  - first:
+      213: -9037775558589747359
+    second: abyssal dark scepter_250
+  - first:
+      213: -1383963626037599554
+    second: abyssal dark scepter_251
+  - first:
+      213: 4051861033119869495
+    second: abyssal dark scepter_252
+  - first:
+      213: -4766509647016156450
+    second: abyssal dark scepter_253
+  - first:
+      213: -7263127783809420505
+    second: abyssal dark scepter_254
+  - first:
+      213: -593477853865032338
+    second: abyssal dark scepter_255
+  - first:
+      213: 4196155253676308336
+    second: abyssal dark scepter_256
+  - first:
+      213: -5012728277166009149
+    second: abyssal dark scepter_257
+  - first:
+      213: 769254195480859712
+    second: abyssal dark scepter_258
+  - first:
+      213: -2052284783420415774
+    second: abyssal dark scepter_259
+  - first:
+      213: 4349768829025861060
+    second: abyssal dark scepter_260
+  - first:
+      213: -975357663630093550
+    second: abyssal dark scepter_261
+  - first:
+      213: 555541428392768012
+    second: abyssal dark scepter_262
+  - first:
+      213: 5665778683530988193
+    second: abyssal dark scepter_263
+  - first:
+      213: -2742155916348555277
+    second: abyssal dark scepter_264
+  - first:
+      213: 4652541823821130196
+    second: abyssal dark scepter_265
+  - first:
+      213: -5428648498233245652
+    second: abyssal dark scepter_266
+  - first:
+      213: 355010658989379098
+    second: abyssal dark scepter_267
+  - first:
+      213: 5600734348260483645
+    second: abyssal dark scepter_268
+  - first:
+      213: 9085628495645782777
+    second: abyssal dark scepter_269
+  - first:
+      213: 7752032593311638178
+    second: abyssal dark scepter_270
+  - first:
+      213: 6679022193854172802
+    second: abyssal dark scepter_271
+  - first:
+      213: 3318040979461591583
+    second: abyssal dark scepter_272
+  - first:
+      213: -3265089448163407384
+    second: abyssal dark scepter_273
+  - first:
+      213: 6501942893649146740
+    second: abyssal dark scepter_274
+  - first:
+      213: 3335340056168601520
+    second: abyssal dark scepter_275
+  - first:
+      213: 8288056936014273078
+    second: abyssal dark scepter_276
+  - first:
+      213: -6279616195839342734
+    second: abyssal dark scepter_277
+  - first:
+      213: -7114153345246194878
+    second: abyssal dark scepter_278
+  - first:
+      213: -700316455482093899
+    second: abyssal dark scepter_279
+  - first:
+      213: -1042093158862509445
+    second: abyssal dark scepter_280
+  - first:
+      213: 7718654169595953965
+    second: abyssal dark scepter_281
+  - first:
+      213: -3727087493804244967
+    second: abyssal dark scepter_282
+  - first:
+      213: 4022080515580137748
+    second: abyssal dark scepter_283
+  - first:
+      213: 1169320509285508406
+    second: abyssal dark scepter_284
+  - first:
+      213: 293709616510839067
+    second: abyssal dark scepter_285
+  - first:
+      213: -3691622523907333827
+    second: abyssal dark scepter_286
+  - first:
+      213: 6390908942883035463
+    second: abyssal dark scepter_287
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: abyssal dark scepter_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 2048
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6f061ca10fba0fb70800000000000000
+      internalID: 8930827108805075190
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_1
+      rect:
+        serializedVersion: 2
+        x: 1563
+        y: 1892
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5af287b42557271f0800000000000000
+      internalID: -1048646766909968475
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_2
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 1639
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff4c8bfebeceac830800000000000000
+      internalID: 4092343709502850303
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_3
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1611
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6c1522eea634b6d30800000000000000
+      internalID: 4425705185362465222
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_4
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 1609
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: db615502acc189ac0800000000000000
+      internalID: -3848294227136670019
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_5
+      rect:
+        serializedVersion: 2
+        x: 1878
+        y: 1589
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6db770a0b134ab20800000000000000
+      internalID: 3144693074487655791
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_6
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 1577
+        width: 6
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6026c1ade8ca66630800000000000000
+      internalID: 3920010255217222150
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_7
+      rect:
+        serializedVersion: 2
+        x: 1864
+        y: 1568
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92199ab6845a77a20800000000000000
+      internalID: 3060096202284044585
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_8
+      rect:
+        serializedVersion: 2
+        x: 1839
+        y: 1551
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4d389c0efbf8eda00800000000000000
+      internalID: 783221439481873364
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_9
+      rect:
+        serializedVersion: 2
+        x: 1861
+        y: 1551
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c765b1235b9d14910800000000000000
+      internalID: 1819975096687351420
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_10
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1529
+        width: 7
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 793d7651052096770800000000000000
+      internalID: 8604411106047808407
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_11
+      rect:
+        serializedVersion: 2
+        x: 1875
+        y: 1537
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8a9434ea53ad83720800000000000000
+      internalID: 2826248690266753448
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_12
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1537
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe8ad1a16d86e9930800000000000000
+      internalID: 4151871175252617455
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_13
+      rect:
+        serializedVersion: 2
+        x: 1855
+        y: 1521
+        width: 10
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7cf0346eeb6926250800000000000000
+      internalID: 5936473005478842311
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_14
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1505
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb3b75b61b57c8b10800000000000000
+      internalID: 1985090940634117055
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_15
+      rect:
+        serializedVersion: 2
+        x: 1863
+        y: 1501
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 380bfc3bfd1023610800000000000000
+      internalID: 1599342877976014979
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_16
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1503
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c010c419ae0bf37c0800000000000000
+      internalID: -4089355415122607860
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_17
+      rect:
+        serializedVersion: 2
+        x: 1855
+        y: 1483
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d075de2ee79582880800000000000000
+      internalID: -8635553883974969587
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_18
+      rect:
+        serializedVersion: 2
+        x: 1887
+        y: 1487
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fc0eab918c71c6400800000000000000
+      internalID: 318655821829038287
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_19
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 1479
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c7499f12fbddb630800000000000000
+      internalID: 3944550681605130179
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_20
+      rect:
+        serializedVersion: 2
+        x: 5
+        y: 1466
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd80e8a163950cc90800000000000000
+      internalID: -7151618119355725601
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_21
+      rect:
+        serializedVersion: 2
+        x: 1859
+        y: 1471
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac086b53fff4e8150800000000000000
+      internalID: 5876722521301483722
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_22
+      rect:
+        serializedVersion: 2
+        x: 3
+        y: 1449
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b3a5899bcd2713e00800000000000000
+      internalID: 1022724882721954363
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_23
+      rect:
+        serializedVersion: 2
+        x: 28
+        y: 1451
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c9187835b9b66870800000000000000
+      internalID: 8675825920163453381
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_24
+      rect:
+        serializedVersion: 2
+        x: 164
+        y: 1451
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8608f78b5763d4690800000000000000
+      internalID: -7616371515579203480
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_25
+      rect:
+        serializedVersion: 2
+        x: 1847
+        y: 1456
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 471f95ca303b2d750800000000000000
+      internalID: 6328317254766817652
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_26
+      rect:
+        serializedVersion: 2
+        x: 1855
+        y: 1448
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 720a0f7123fdad130800000000000000
+      internalID: 3592429059024396327
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_27
+      rect:
+        serializedVersion: 2
+        x: 2019
+        y: 1453
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b02494b62f7c3eb80800000000000000
+      internalID: -8366623838728273397
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_28
+      rect:
+        serializedVersion: 2
+        x: 2024
+        y: 1453
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c82b0681746638980800000000000000
+      internalID: -8537868013026626932
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_29
+      rect:
+        serializedVersion: 2
+        x: 8
+        y: 1445
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb9f750049b68f9a0800000000000000
+      internalID: -6199086603670390338
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_30
+      rect:
+        serializedVersion: 2
+        x: 85
+        y: 1445
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 913fd13bff5117300800000000000000
+      internalID: 248003642448016153
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_31
+      rect:
+        serializedVersion: 2
+        x: 157
+        y: 1445
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1a9f830cac23f9af0800000000000000
+      internalID: -387535196540831327
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_32
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1433
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c86f395b0f95a2480800000000000000
+      internalID: -8923220821307820404
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_33
+      rect:
+        serializedVersion: 2
+        x: 1837
+        y: 1435
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1a437818ea2090250800000000000000
+      internalID: 5911258934421173409
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_34
+      rect:
+        serializedVersion: 2
+        x: 1879
+        y: 1427
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9417e879d56e9c3c0800000000000000
+      internalID: -4338683476345720503
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_35
+      rect:
+        serializedVersion: 2
+        x: 2026
+        y: 1429
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d425bfed86b19760800000000000000
+      internalID: 7462946778257892568
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_36
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1425
+        width: 5
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0db7a910eca641480800000000000000
+      internalID: -8929394728146142256
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_37
+      rect:
+        serializedVersion: 2
+        x: 1855
+        y: 1417
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79cc1901418e26b70800000000000000
+      internalID: 8890923787257760919
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_38
+      rect:
+        serializedVersion: 2
+        x: 1868
+        y: 1419
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dedab228d98883f90800000000000000
+      internalID: -6973673812908069395
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_39
+      rect:
+        serializedVersion: 2
+        x: 151
+        y: 1417
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6619b72aa601041a0800000000000000
+      internalID: -6827438984915087002
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_40
+      rect:
+        serializedVersion: 2
+        x: 2029
+        y: 1413
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 40328c841ff8be960800000000000000
+      internalID: 7632352259980403460
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_41
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1405
+        width: 10
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 057e1dab114e2fa20800000000000000
+      internalID: 3094786658756847440
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_42
+      rect:
+        serializedVersion: 2
+        x: 1841
+        y: 1405
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 60dfc6375b99fcc90800000000000000
+      internalID: -7147325079009035002
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_43
+      rect:
+        serializedVersion: 2
+        x: 1888
+        y: 1399
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 664b7d0cfa39c93b0800000000000000
+      internalID: -5504362261489666970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_44
+      rect:
+        serializedVersion: 2
+        x: 33
+        y: 1389
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 65fc326964d4e2890800000000000000
+      internalID: -7480956965453836458
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_45
+      rect:
+        serializedVersion: 2
+        x: 1845
+        y: 1385
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a88bdece1d5cc9bb0800000000000000
+      internalID: -4927846386836326262
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_46
+      rect:
+        serializedVersion: 2
+        x: 1885
+        y: 1369
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 703cd05a105667cf0800000000000000
+      internalID: -254905271161339129
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_47
+      rect:
+        serializedVersion: 2
+        x: 43
+        y: 1342
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ad6679c20775ecca0800000000000000
+      internalID: -5994757914687478054
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_48
+      rect:
+        serializedVersion: 2
+        x: 1931
+        y: 1321
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d747ec89bf292dc90800000000000000
+      internalID: -7146488049385442179
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_49
+      rect:
+        serializedVersion: 2
+        x: 2033
+        y: 1328
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 269d31ac3eba25f60800000000000000
+      internalID: 8021662881136499042
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_50
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1321
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ddfc0e208244c2a0800000000000000
+      internalID: -6718171625834086960
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_51
+      rect:
+        serializedVersion: 2
+        x: 27
+        y: 1311
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c1a5726cceb29370800000000000000
+      internalID: 8327928445995950532
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_52
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 1284
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a5a4646508e041b0800000000000000
+      internalID: -5674280420630026846
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_53
+      rect:
+        serializedVersion: 2
+        x: 52
+        y: 1275
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d5fbeed4e7f88e280800000000000000
+      internalID: -9013796881545904291
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_54
+      rect:
+        serializedVersion: 2
+        x: 123
+        y: 1271
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1e3f0852b166958a0800000000000000
+      internalID: -6315904735631051807
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_55
+      rect:
+        serializedVersion: 2
+        x: 2037
+        y: 1237
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2bf98aff09f9eac80800000000000000
+      internalID: -8309528817338638414
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_56
+      rect:
+        serializedVersion: 2
+        x: 155
+        y: 1207
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0922a2e3592e67860800000000000000
+      internalID: 7527452957817315984
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_57
+      rect:
+        serializedVersion: 2
+        x: 2043
+        y: 1213
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9fb526a6bb20d4b60800000000000000
+      internalID: 7731839139231980537
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_58
+      rect:
+        serializedVersion: 2
+        x: 1935
+        y: 1183
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 44626dba524db9980800000000000000
+      internalID: -8530991810861455804
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_59
+      rect:
+        serializedVersion: 2
+        x: 2037
+        y: 1186
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8ef406c50f9661950800000000000000
+      internalID: 6419434799926104040
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_60
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1153
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 88f9012d545372500800000000000000
+      internalID: 371324068274675592
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_61
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1119
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 729ce0242e465b2a0800000000000000
+      internalID: -6722355945846945497
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_62
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1083
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5cff8e93e6c289590800000000000000
+      internalID: -7667329513668673595
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_63
+      rect:
+        serializedVersion: 2
+        x: 1974
+        y: 1087
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00dbb4c89512d4300800000000000000
+      internalID: 237883023810084096
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_64
+      rect:
+        serializedVersion: 2
+        x: 8
+        y: 1031
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 06e6c51c4a5fbfcb0800000000000000
+      internalID: -4828996087457223072
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_65
+      rect:
+        serializedVersion: 2
+        x: 2006
+        y: 1023
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61683412fc6b986c0800000000000000
+      internalID: -4140577381657901546
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_66
+      rect:
+        serializedVersion: 2
+        x: 156
+        y: 1024
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f2dc0fd0c055570c0800000000000000
+      internalID: -4578659935890387665
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_67
+      rect:
+        serializedVersion: 2
+        x: 1889
+        y: 1021
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b56d10e382acd1f40800000000000000
+      internalID: 5700934977508726363
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_68
+      rect:
+        serializedVersion: 2
+        x: 1868
+        y: 1013
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8792636f1dc6e81d0800000000000000
+      internalID: -3346617824054990472
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_69
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 1013
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e226e908c45e0aef0800000000000000
+      internalID: -98827075064012242
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_70
+      rect:
+        serializedVersion: 2
+        x: 145
+        y: 1003
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bc93e336260d18980800000000000000
+      internalID: -8538314297527354933
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_71
+      rect:
+        serializedVersion: 2
+        x: 139
+        y: 983
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 87569dc71f8c9ad00800000000000000
+      internalID: 984538933064459640
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_72
+      rect:
+        serializedVersion: 2
+        x: 1919
+        y: 993
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e8b3c7be4af9d3e90800000000000000
+      internalID: -7044298711463347314
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_73
+      rect:
+        serializedVersion: 2
+        x: 2023
+        y: 978
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c3156d5a3af52940800000000000000
+      internalID: 5270894067488986050
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_74
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 979
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 308448a4ad69eedb0800000000000000
+      internalID: -4760701891786815485
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_75
+      rect:
+        serializedVersion: 2
+        x: 51
+        y: 967
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85cd755ee41c26d50800000000000000
+      internalID: 6729153337844292696
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_76
+      rect:
+        serializedVersion: 2
+        x: 2022
+        y: 953
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca761fd2a79b59670800000000000000
+      internalID: 8544939802413328300
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_77
+      rect:
+        serializedVersion: 2
+        x: 1947
+        y: 935
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3154f19fbf3428aa0800000000000000
+      internalID: -6160286590793988845
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_78
+      rect:
+        serializedVersion: 2
+        x: 1976
+        y: 940
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 67b69685dcf349760800000000000000
+      internalID: 7463660633643903862
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_79
+      rect:
+        serializedVersion: 2
+        x: 21
+        y: 927
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 241ac5044f8726400800000000000000
+      internalID: 315947914316521794
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_80
+      rect:
+        serializedVersion: 2
+        x: 11
+        y: 911
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 003df659843296740800000000000000
+      internalID: 5145682843899253504
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_81
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 871
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a5c483278d4f3c140800000000000000
+      internalID: 4738900443390299226
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_82
+      rect:
+        serializedVersion: 2
+        x: 4
+        y: 863
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 70110e5c0ee1b2080800000000000000
+      internalID: -9211234662114914041
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_83
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 863
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 817847777e7eaa460800000000000000
+      internalID: 7253865131161192216
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_84
+      rect:
+        serializedVersion: 2
+        x: 1915
+        y: 857
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8fb165b63a02fa3f0800000000000000
+      internalID: -887454715316134920
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_85
+      rect:
+        serializedVersion: 2
+        x: 1917
+        y: 863
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a8f27a40c345497f0800000000000000
+      internalID: -606767433035337846
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_86
+      rect:
+        serializedVersion: 2
+        x: 171
+        y: 849
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 854ad33c9f9956970800000000000000
+      internalID: 8747567149238559832
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_87
+      rect:
+        serializedVersion: 2
+        x: 1897
+        y: 855
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83a6124834dc6b710800000000000000
+      internalID: 1708778798496967224
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_88
+      rect:
+        serializedVersion: 2
+        x: 2037
+        y: 823
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bf0b165e274955390800000000000000
+      internalID: -7830189155918171909
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_89
+      rect:
+        serializedVersion: 2
+        x: 81
+        y: 804
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61e8859e68683dd40800000000000000
+      internalID: 5607973875005034006
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_90
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 790
+        width: 5
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 91029ce85619624c0800000000000000
+      internalID: -4312599727787401191
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_91
+      rect:
+        serializedVersion: 2
+        x: 45
+        y: 769
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61a487296341f9330800000000000000
+      internalID: 3719714041849465366
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_92
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 761
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 68f73daf67e082b70800000000000000
+      internalID: 8874358969910656902
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_93
+      rect:
+        serializedVersion: 2
+        x: 2032
+        y: 716
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be64a43cea7d285a0800000000000000
+      internalID: -6520412164878350613
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_94
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 699
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d746a3aaac0c77370800000000000000
+      internalID: 8320330813262161021
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_95
+      rect:
+        serializedVersion: 2
+        x: 1905
+        y: 703
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d19172e0d42d09c30800000000000000
+      internalID: 4364219267313768733
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_96
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 697
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ef82a4ca0e52cd220800000000000000
+      internalID: 2511924339059337470
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_97
+      rect:
+        serializedVersion: 2
+        x: 2042
+        y: 702
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bb8feef6dfe3e9250800000000000000
+      internalID: 5953265015655954619
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_98
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 691
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d67b0b743b69da4c0800000000000000
+      internalID: -4274594774558656659
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_99
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 655
+        width: 5
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1f944fa8c31e83490800000000000000
+      internalID: -7766209907254867471
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_100
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 661
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c42ff6ac624c976d0800000000000000
+      internalID: -2992144806526848436
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_101
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 649
+        width: 5
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51e630f59b9cd0050800000000000000
+      internalID: 5768488495731666453
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_102
+      rect:
+        serializedVersion: 2
+        x: 1869
+        y: 627
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d7a31cfb8b66ad60800000000000000
+      internalID: 7901120845241886677
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_103
+      rect:
+        serializedVersion: 2
+        x: 1
+        y: 614
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b5fedd5d06ff06420800000000000000
+      internalID: 2621375774499663707
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_104
+      rect:
+        serializedVersion: 2
+        x: 6
+        y: 611
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ddea91ffc121772b0800000000000000
+      internalID: -5586976896981553443
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_105
+      rect:
+        serializedVersion: 2
+        x: 1965
+        y: 583
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bde9627a3579113d0800000000000000
+      internalID: -3237640271560270117
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_106
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 569
+        width: 8
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 67ef46f124ab29fe0800000000000000
+      internalID: -1183678958887698826
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_107
+      rect:
+        serializedVersion: 2
+        x: 140
+        y: 510
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 73e944ade9fb11690800000000000000
+      internalID: -7633109204428612041
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_108
+      rect:
+        serializedVersion: 2
+        x: 2043
+        y: 482
+        width: 5
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: abcb3d8b372c43070800000000000000
+      internalID: 8085301033314794682
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_109
+      rect:
+        serializedVersion: 2
+        x: 2040
+        y: 447
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c6b2a974023376490800000000000000
+      internalID: -7753172019761763476
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_110
+      rect:
+        serializedVersion: 2
+        x: 4
+        y: 426
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 783492b470e398200800000000000000
+      internalID: 182745460931904391
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_111
+      rect:
+        serializedVersion: 2
+        x: 122
+        y: 429
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2c1c0093bbc24190800000000000000
+      internalID: -7979591617670800339
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_112
+      rect:
+        serializedVersion: 2
+        x: 33
+        y: 415
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 10c459164d7df81c0800000000000000
+      internalID: -4499140195549623295
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_113
+      rect:
+        serializedVersion: 2
+        x: 160
+        y: 413
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ca8578ef88e58c80800000000000000
+      internalID: -8320989031719138622
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_114
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 399
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c26b208be9cfb3640800000000000000
+      internalID: 5060916364903101996
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_115
+      rect:
+        serializedVersion: 2
+        x: 25
+        y: 385
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 39ad10ea6eec07040800000000000000
+      internalID: 4643438705976138387
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_116
+      rect:
+        serializedVersion: 2
+        x: 135
+        y: 392
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 68dac2e0c0ff6a7b0800000000000000
+      internalID: -5213199091392270970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_117
+      rect:
+        serializedVersion: 2
+        x: 9
+        y: 377
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8856e317b3eac8de0800000000000000
+      internalID: -1329496219654920824
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_118
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 379
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1502160c5b785be60800000000000000
+      internalID: 7977431529643122769
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_119
+      rect:
+        serializedVersion: 2
+        x: 74
+        y: 379
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cd63e69bd71f69cb0800000000000000
+      internalID: -4857429625788287268
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_120
+      rect:
+        serializedVersion: 2
+        x: 83
+        y: 350
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5e8dde1c83c355390800000000000000
+      internalID: -7830286162644313883
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_121
+      rect:
+        serializedVersion: 2
+        x: 169
+        y: 353
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc6faefe9540e22e0800000000000000
+      internalID: -2148775187885394227
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_122
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 344
+        width: 5
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f30d08cc9e7b49b0800000000000000
+      internalID: -5094839341603290126
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_123
+      rect:
+        serializedVersion: 2
+        x: 58
+        y: 337
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9bfa8bad334e05f0800000000000000
+      internalID: -788618952593179750
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_124
+      rect:
+        serializedVersion: 2
+        x: 81
+        y: 343
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ad6487cb4a921de0800000000000000
+      internalID: -1363858086879269470
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_125
+      rect:
+        serializedVersion: 2
+        x: 35
+        y: 327
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ee0e835ae8a083bc0800000000000000
+      internalID: -3803278277540781842
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_126
+      rect:
+        serializedVersion: 2
+        x: 69
+        y: 321
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0e8c73d6e1e6bf730800000000000000
+      internalID: 4033938968200857824
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_127
+      rect:
+        serializedVersion: 2
+        x: 167
+        y: 327
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ec4ea5e9323f91a90800000000000000
+      internalID: -7342570383144721202
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_128
+      rect:
+        serializedVersion: 2
+        x: 43
+        y: 319
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4f5dcc8bfec3050e0800000000000000
+      internalID: -2283258010781559308
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_129
+      rect:
+        serializedVersion: 2
+        x: 59
+        y: 287
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2876558f6a5f6ec10800000000000000
+      internalID: 2082621975185155970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_130
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 277
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 90d57e696177549e0800000000000000
+      internalID: -1637771950574576375
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_131
+      rect:
+        serializedVersion: 2
+        x: 175
+        y: 273
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c71a80018f2992c90800000000000000
+      internalID: -7194057335629110916
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_132
+      rect:
+        serializedVersion: 2
+        x: 69
+        y: 265
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3b72cd7c702d8ba10800000000000000
+      internalID: 1925519771560585139
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_133
+      rect:
+        serializedVersion: 2
+        x: 131
+        y: 265
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e87a67d1866bfc9f0800000000000000
+      internalID: -445937279799220338
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_134
+      rect:
+        serializedVersion: 2
+        x: 137
+        y: 263
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ef2297b1089bdf0e0800000000000000
+      internalID: -2234425880238021890
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_135
+      rect:
+        serializedVersion: 2
+        x: 174
+        y: 266
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b51b13f9016100a30800000000000000
+      internalID: 4179364714845942107
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_136
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 257
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9dbfb9ea3bf93b7f0800000000000000
+      internalID: -597958731432723495
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_137
+      rect:
+        serializedVersion: 2
+        x: 166
+        y: 256
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b7b93bd06c6190b10800000000000000
+      internalID: 1948113353703660411
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_138
+      rect:
+        serializedVersion: 2
+        x: 2040
+        y: 233
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 305c4068ea6760910800000000000000
+      internalID: 1803259192753308931
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_139
+      rect:
+        serializedVersion: 2
+        x: 6
+        y: 224
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aac8010000250ad10800000000000000
+      internalID: 2134796383328177322
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_140
+      rect:
+        serializedVersion: 2
+        x: 2035
+        y: 217
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1f57317eb4c18c050800000000000000
+      internalID: 5820933630701303281
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_141
+      rect:
+        serializedVersion: 2
+        x: 2040
+        y: 217
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e6eef46417e181aa0800000000000000
+      internalID: -6190164215960965522
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_142
+      rect:
+        serializedVersion: 2
+        x: 37
+        y: 203
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a8c2bb3e6a3a265f0800000000000000
+      internalID: -764869049518969718
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_143
+      rect:
+        serializedVersion: 2
+        x: 2039
+        y: 191
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0115b4e8235ca32b0800000000000000
+      internalID: -5603949965382823664
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_144
+      rect:
+        serializedVersion: 2
+        x: 4
+        y: 173
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 32b32d31c10516b50800000000000000
+      internalID: 6584632211714226979
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_145
+      rect:
+        serializedVersion: 2
+        x: 60
+        y: 172
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b71b7b08561f9630800000000000000
+      internalID: 3935889166750652338
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_146
+      rect:
+        serializedVersion: 2
+        x: 1361
+        y: 175
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 718ebfac65ed71390800000000000000
+      internalID: -7847559361315739625
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_147
+      rect:
+        serializedVersion: 2
+        x: 1909
+        y: 178
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 026bf5dcd739431c0800000000000000
+      internalID: -4524829557074708960
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_148
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 158
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bf3f59348f650e040800000000000000
+      internalID: 4674832037496353787
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_149
+      rect:
+        serializedVersion: 2
+        x: 1375
+        y: 169
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d966be593b488c510800000000000000
+      internalID: 1569650376987862685
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_150
+      rect:
+        serializedVersion: 2
+        x: 1947
+        y: 167
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 213f691028170a1e0800000000000000
+      internalID: -2188624615715704046
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_151
+      rect:
+        serializedVersion: 2
+        x: 5
+        y: 161
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fc6299561e39ba360800000000000000
+      internalID: 7181996627053848271
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_152
+      rect:
+        serializedVersion: 2
+        x: 49
+        y: 153
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f1c6f474991948030800000000000000
+      internalID: 3496079298258758687
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_153
+      rect:
+        serializedVersion: 2
+        x: 639
+        y: 155
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c2f0b8a9499f944a0800000000000000
+      internalID: -6608476561546211540
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_154
+      rect:
+        serializedVersion: 2
+        x: 771
+        y: 161
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 245055f69f36cc330800000000000000
+      internalID: 3732468114149147970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_155
+      rect:
+        serializedVersion: 2
+        x: 1271
+        y: 155
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 60ceb5da19a897590800000000000000
+      internalID: -7675951731592926202
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_156
+      rect:
+        serializedVersion: 2
+        x: 1520
+        y: 153
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0d5d62d976dfdec30800000000000000
+      internalID: 4390443833216128464
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_157
+      rect:
+        serializedVersion: 2
+        x: 1935
+        y: 153
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e11f70394a30ee840800000000000000
+      internalID: 5255141820564238622
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_158
+      rect:
+        serializedVersion: 2
+        x: 770
+        y: 149
+        width: 11
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a34f8d4db316f3b10800000000000000
+      internalID: 1963394872158778426
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_159
+      rect:
+        serializedVersion: 2
+        x: 1071
+        y: 153
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ded5d01d23ab65590800000000000000
+      internalID: -7685750986642727443
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_160
+      rect:
+        serializedVersion: 2
+        x: 1089
+        y: 153
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 327b2b78043f27570800000000000000
+      internalID: 8463094108262676259
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_161
+      rect:
+        serializedVersion: 2
+        x: 1619
+        y: 149
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cd7c374b66cd6d600800000000000000
+      internalID: 492823542915909596
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_162
+      rect:
+        serializedVersion: 2
+        x: 538
+        y: 145
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7fb81445010dc14a0800000000000000
+      internalID: -6621188583589835785
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_163
+      rect:
+        serializedVersion: 2
+        x: 1125
+        y: 141
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 301fa77869a48d660800000000000000
+      internalID: 7410755197216682243
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_164
+      rect:
+        serializedVersion: 2
+        x: 1195
+        y: 139
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 74c0be0aaac023290800000000000000
+      internalID: -7912247668352807865
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_165
+      rect:
+        serializedVersion: 2
+        x: 1347
+        y: 137
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0fbb921e4c782b6a0800000000000000
+      internalID: -6434931637898069008
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_166
+      rect:
+        serializedVersion: 2
+        x: 1440
+        y: 139
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c5fbe05f9ae5a3860800000000000000
+      internalID: 7510419412647591772
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_167
+      rect:
+        serializedVersion: 2
+        x: 1464
+        y: 135
+        width: 12
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9d25c6075778033b0800000000000000
+      internalID: -5534775003571268903
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_168
+      rect:
+        serializedVersion: 2
+        x: 1653
+        y: 137
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7259bb16f4afd8440800000000000000
+      internalID: 4939879585144345895
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_169
+      rect:
+        serializedVersion: 2
+        x: 891
+        y: 131
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6a0b6952227c77cf0800000000000000
+      internalID: -254515904449695578
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_170
+      rect:
+        serializedVersion: 2
+        x: 1252
+        y: 133
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 17e08e749d387aaa0800000000000000
+      internalID: -6149801796913590671
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_171
+      rect:
+        serializedVersion: 2
+        x: 1483
+        y: 129
+        width: 12
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 851d0ddf17d65eca0800000000000000
+      internalID: -5988259793162153640
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_172
+      rect:
+        serializedVersion: 2
+        x: 1861
+        y: 134
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7c199b10889a49630800000000000000
+      internalID: 3932954776210870727
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_173
+      rect:
+        serializedVersion: 2
+        x: 763
+        y: 121
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a4d77b61602396190800000000000000
+      internalID: -7968783063923065526
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_174
+      rect:
+        serializedVersion: 2
+        x: 1329
+        y: 121
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a857987df76caf840800000000000000
+      internalID: 5258733767287731594
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_175
+      rect:
+        serializedVersion: 2
+        x: 1513
+        y: 123
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 95283a9d63874e740800000000000000
+      internalID: 5180397648357851737
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_176
+      rect:
+        serializedVersion: 2
+        x: 1547
+        y: 125
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c294cfbd5817823d0800000000000000
+      internalID: -3231207912902997716
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_177
+      rect:
+        serializedVersion: 2
+        x: 1564
+        y: 125
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c405dd25045855f0800000000000000
+      internalID: -767771355246164800
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_178
+      rect:
+        serializedVersion: 2
+        x: 1613
+        y: 127
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b151513291617bcc0800000000000000
+      internalID: -3695460672015624933
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_179
+      rect:
+        serializedVersion: 2
+        x: 1901
+        y: 127
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 30e6f4dcbff2094d0800000000000000
+      internalID: -3129948982494663165
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_180
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 116
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e17c0d28c936ddb0800000000000000
+      internalID: -4767559623613058590
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_181
+      rect:
+        serializedVersion: 2
+        x: 1151
+        y: 117
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d6919bd6fbca5d80800000000000000
+      internalID: -8261066305351608618
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_182
+      rect:
+        serializedVersion: 2
+        x: 2041
+        y: 119
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 320aad9b802327e00800000000000000
+      internalID: 1040949476935245859
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_183
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 105
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 74e256aac6e821f40800000000000000
+      internalID: 5697773075943468615
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_184
+      rect:
+        serializedVersion: 2
+        x: 924
+        y: 109
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b798ea898dc65c710800000000000000
+      internalID: 1712894910814652795
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_185
+      rect:
+        serializedVersion: 2
+        x: 1301
+        y: 103
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 881a86cca5c06bd70800000000000000
+      internalID: 9058441284618330504
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_186
+      rect:
+        serializedVersion: 2
+        x: 1873
+        y: 109
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bbca77137bd4675d0800000000000000
+      internalID: -3065177047174763333
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_187
+      rect:
+        serializedVersion: 2
+        x: 571
+        y: 99
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff28884bf68f7c800800000000000000
+      internalID: 632747431322747647
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_188
+      rect:
+        serializedVersion: 2
+        x: 1863
+        y: 101
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 59059781e3876c6b0800000000000000
+      internalID: -5276397705324048235
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_189
+      rect:
+        serializedVersion: 2
+        x: 30
+        y: 91
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 557081b9af9bcbde0800000000000000
+      internalID: -1315972505104021675
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_190
+      rect:
+        serializedVersion: 2
+        x: 1301
+        y: 89
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a15740b6f945efbe0800000000000000
+      internalID: -1441621787039992550
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_191
+      rect:
+        serializedVersion: 2
+        x: 1329
+        y: 89
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a82eb22223a1c4040800000000000000
+      internalID: 4633106919281386122
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_192
+      rect:
+        serializedVersion: 2
+        x: 275
+        y: 71
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd09212cf47343c70800000000000000
+      internalID: 8949839175189958879
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_193
+      rect:
+        serializedVersion: 2
+        x: 322
+        y: 70
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 22454bd9269a44d70800000000000000
+      internalID: 9026525794175046690
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_194
+      rect:
+        serializedVersion: 2
+        x: 451
+        y: 76
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 91365dc02b11bef90800000000000000
+      internalID: -6923420545734843623
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_195
+      rect:
+        serializedVersion: 2
+        x: 555
+        y: 71
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0a84a6990f7ac07f0800000000000000
+      internalID: -644955994812954464
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_196
+      rect:
+        serializedVersion: 2
+        x: 211
+        y: 63
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6bbd4ab7db4e17390800000000000000
+      internalID: -7822219575291487306
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_197
+      rect:
+        serializedVersion: 2
+        x: 247
+        y: 66
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9756d90a1ca65e160800000000000000
+      internalID: 7054161771201652089
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_198
+      rect:
+        serializedVersion: 2
+        x: 659
+        y: 64
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 73f3fbab10771ca90800000000000000
+      internalID: -7295419072051724489
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_199
+      rect:
+        serializedVersion: 2
+        x: 723
+        y: 62
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f8e7c13f0635b6c0800000000000000
+      internalID: -4128334044527597323
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_200
+      rect:
+        serializedVersion: 2
+        x: 2002
+        y: 59
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2baa8e5a04394c310800000000000000
+      internalID: 1424425288026598066
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_201
+      rect:
+        serializedVersion: 2
+        x: 2007
+        y: 67
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f2882e91151245690800000000000000
+      internalID: -7614424437766322129
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_202
+      rect:
+        serializedVersion: 2
+        x: 35
+        y: 51
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 196be4131c0127930800000000000000
+      internalID: 4139389429448881809
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_203
+      rect:
+        serializedVersion: 2
+        x: 47
+        y: 57
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ba10be3470cae2c20800000000000000
+      internalID: 3183671133801742763
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_204
+      rect:
+        serializedVersion: 2
+        x: 340
+        y: 46
+        width: 11
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fcf5a05c6951c27d0800000000000000
+      internalID: -2941952719284707377
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_205
+      rect:
+        serializedVersion: 2
+        x: 355
+        y: 51
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab4151bace0480de0800000000000000
+      internalID: -1366771101680200518
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_206
+      rect:
+        serializedVersion: 2
+        x: 367
+        y: 54
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 398211c175c66e6a0800000000000000
+      internalID: -6420325097381222253
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_207
+      rect:
+        serializedVersion: 2
+        x: 1643
+        y: 49
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 525535593725e8800800000000000000
+      internalID: 616520855376319781
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_208
+      rect:
+        serializedVersion: 2
+        x: 2014
+        y: 47
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8065c968d9cda2d40800000000000000
+      internalID: 5560499259068667400
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_209
+      rect:
+        serializedVersion: 2
+        x: 207
+        y: 49
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be3edc13425934430800000000000000
+      internalID: 3766017696098804715
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_210
+      rect:
+        serializedVersion: 2
+        x: 560
+        y: 46
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3d63b6fe4edd28070800000000000000
+      internalID: 8107286254559377107
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_211
+      rect:
+        serializedVersion: 2
+        x: 905
+        y: 46
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f61b18161211e97c0800000000000000
+      internalID: -4062790978774126225
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_212
+      rect:
+        serializedVersion: 2
+        x: 1205
+        y: 37
+        width: 10
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b06a3ddbf5c0ee940800000000000000
+      internalID: 5327209014572066315
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_213
+      rect:
+        serializedVersion: 2
+        x: 1435
+        y: 42
+        width: 11
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3bb1d284e0c532720800000000000000
+      internalID: 2820199008074275763
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_214
+      rect:
+        serializedVersion: 2
+        x: 1855
+        y: 43
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d1109ae9126d0a070800000000000000
+      internalID: 8115721968405774621
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_215
+      rect:
+        serializedVersion: 2
+        x: 2021
+        y: 41
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d59e0b7d16c6ea370800000000000000
+      internalID: 8335719127795689821
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_216
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 31
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f4759e1a7ae2dc960800000000000000
+      internalID: 7623801041718957903
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_217
+      rect:
+        serializedVersion: 2
+        x: 21
+        y: 37
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 399ee86e9564dd2f0800000000000000
+      internalID: -946522994743776877
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_218
+      rect:
+        serializedVersion: 2
+        x: 211
+        y: 37
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6cb5ae50f4074cad0800000000000000
+      internalID: -2682895993302000698
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_219
+      rect:
+        serializedVersion: 2
+        x: 211
+        y: 33
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45f7b8cbea35599e0800000000000000
+      internalID: -1615292881389781164
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_220
+      rect:
+        serializedVersion: 2
+        x: 237
+        y: 33
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 37c96a2b65d651770800000000000000
+      internalID: 8580884884156226675
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_221
+      rect:
+        serializedVersion: 2
+        x: 391
+        y: 36
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 294549262d296ba30800000000000000
+      internalID: 4230730332255835282
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_222
+      rect:
+        serializedVersion: 2
+        x: 397
+        y: 33
+        width: 12
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 277a267a7e549a1a0800000000000000
+      internalID: -6797825301291030670
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_223
+      rect:
+        serializedVersion: 2
+        x: 1062
+        y: 39
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f70d4d715ea39be30800000000000000
+      internalID: 4519708456664748159
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_224
+      rect:
+        serializedVersion: 2
+        x: 1095
+        y: 38
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 631a6f5ad1c13c570800000000000000
+      internalID: 8485657036560179510
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_225
+      rect:
+        serializedVersion: 2
+        x: 1235
+        y: 30
+        width: 7
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7c6a031c8536f22c0800000000000000
+      internalID: -4454232273596668217
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_226
+      rect:
+        serializedVersion: 2
+        x: 1427
+        y: 34
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6aa929782191fabf0800000000000000
+      internalID: -311002281890637146
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_227
+      rect:
+        serializedVersion: 2
+        x: 1541
+        y: 38
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9cf3efd3de9d32e90800000000000000
+      internalID: -7051552978561515575
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_228
+      rect:
+        serializedVersion: 2
+        x: 1639
+        y: 41
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd02f27405fe22370800000000000000
+      internalID: 8296456591640568027
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_229
+      rect:
+        serializedVersion: 2
+        x: 1683
+        y: 32
+        width: 8
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 830d672291f051680800000000000000
+      internalID: -8785098897489473480
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_230
+      rect:
+        serializedVersion: 2
+        x: 1719
+        y: 41
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e8813b1a00c5ae360800000000000000
+      internalID: 7199668112087783566
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_231
+      rect:
+        serializedVersion: 2
+        x: 1827
+        y: 39
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f08e17b1aa17c3e0800000000000000
+      internalID: -2033627424870203150
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_232
+      rect:
+        serializedVersion: 2
+        x: 1875
+        y: 31
+        width: 8
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: baa9f0894073f7030800000000000000
+      internalID: 3494572328733350571
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_233
+      rect:
+        serializedVersion: 2
+        x: 203
+        y: 26
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 843135e9241a09990800000000000000
+      internalID: -7381222481764084920
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_234
+      rect:
+        serializedVersion: 2
+        x: 230
+        y: 23
+        width: 8
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 64625d861288858b0800000000000000
+      internalID: -5163227295706175930
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_235
+      rect:
+        serializedVersion: 2
+        x: 237
+        y: 27
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ccf4dc80279e2e70800000000000000
+      internalID: 9092370863765126342
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_236
+      rect:
+        serializedVersion: 2
+        x: 407
+        y: 27
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b49c8549b5be89e90800000000000000
+      internalID: -7018601240693520053
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_237
+      rect:
+        serializedVersion: 2
+        x: 466
+        y: 27
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9dd14f4ded274ad0800000000000000
+      internalID: -2718153352834589285
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_238
+      rect:
+        serializedVersion: 2
+        x: 598
+        y: 27
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7075731dc2d65dcc0800000000000000
+      internalID: -3686920680676829433
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_239
+      rect:
+        serializedVersion: 2
+        x: 621
+        y: 27
+        width: 10
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8fb52ecac4be41930800000000000000
+      internalID: 4113171074246663160
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_240
+      rect:
+        serializedVersion: 2
+        x: 642
+        y: 29
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1caafff8255915c0800000000000000
+      internalID: -4244267539238310886
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_241
+      rect:
+        serializedVersion: 2
+        x: 655
+        y: 27
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 77e8e233403dc3240800000000000000
+      internalID: 4772921720097902199
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_242
+      rect:
+        serializedVersion: 2
+        x: 693
+        y: 31
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 550d13450ce0056b0800000000000000
+      internalID: -5309727741460754347
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_243
+      rect:
+        serializedVersion: 2
+        x: 799
+        y: 25
+        width: 13
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0b399fbd195bfc960800000000000000
+      internalID: 7624512332226991024
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_244
+      rect:
+        serializedVersion: 2
+        x: 837
+        y: 33
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dbad2a7cff8e58db0800000000000000
+      internalID: -4790166443375011139
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_245
+      rect:
+        serializedVersion: 2
+        x: 980
+        y: 32
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36129e4d838258b40800000000000000
+      internalID: 5441799949302440291
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_246
+      rect:
+        serializedVersion: 2
+        x: 1093
+        y: 33
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a74fd25039bf2da0800000000000000
+      internalID: -5967347364042684510
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_247
+      rect:
+        serializedVersion: 2
+        x: 1120
+        y: 25
+        width: 15
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ecf8cefb5b88c6010800000000000000
+      internalID: 1183471116282007502
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_248
+      rect:
+        serializedVersion: 2
+        x: 1131
+        y: 30
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7a872b54d128c3d50800000000000000
+      internalID: 6718387806364924071
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_249
+      rect:
+        serializedVersion: 2
+        x: 1192
+        y: 29
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d10efff6e8d88100800000000000000
+      internalID: 110576677519491541
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_250
+      rect:
+        serializedVersion: 2
+        x: 1300
+        y: 27
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 16fec8e730f539280800000000000000
+      internalID: -9037775558589747359
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_251
+      rect:
+        serializedVersion: 2
+        x: 1379
+        y: 27
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb2a7f72a6c2bcce0800000000000000
+      internalID: -1383963626037599554
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_252
+      rect:
+        serializedVersion: 2
+        x: 1463
+        y: 19
+        width: 12
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 73a6b56542a1b3830800000000000000
+      internalID: 4051861033119869495
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_253
+      rect:
+        serializedVersion: 2
+        x: 1546
+        y: 29
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed22127eab4f9ddb0800000000000000
+      internalID: -4766509647016156450
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_254
+      rect:
+        serializedVersion: 2
+        x: 1679
+        y: 33
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 723f4c723cf243b90800000000000000
+      internalID: -7263127783809420505
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_255
+      rect:
+        serializedVersion: 2
+        x: 1709
+        y: 32
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e65405a490b83c7f0800000000000000
+      internalID: -593477853865032338
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_256
+      rect:
+        serializedVersion: 2
+        x: 1755
+        y: 31
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 077f3c598fcbb3a30800000000000000
+      internalID: 4196155253676308336
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_257
+      rect:
+        serializedVersion: 2
+        x: 1930
+        y: 27
+        width: 13
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c4d6f3c0363f6ab0800000000000000
+      internalID: -5012728277166009149
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_258
+      rect:
+        serializedVersion: 2
+        x: 165
+        y: 24
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0449d977d90fcaa00800000000000000
+      internalID: 769254195480859712
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_259
+      rect:
+        serializedVersion: 2
+        x: 173
+        y: 23
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e0694aecd1d483e0800000000000000
+      internalID: -2052284783420415774
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_260
+      rect:
+        serializedVersion: 2
+        x: 207
+        y: 19
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4cd372534bb7d5c30800000000000000
+      internalID: 4349768829025861060
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_261
+      rect:
+        serializedVersion: 2
+        x: 451
+        y: 21
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2139f526f55d672f0800000000000000
+      internalID: -975357663630093550
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_262
+      rect:
+        serializedVersion: 2
+        x: 579
+        y: 23
+        width: 10
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c023d595cfda5b700800000000000000
+      internalID: 555541428392768012
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_263
+      rect:
+        serializedVersion: 2
+        x: 594
+        y: 24
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1aa48dfa1b3e0ae40800000000000000
+      internalID: 5665778683530988193
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_264
+      rect:
+        serializedVersion: 2
+        x: 609
+        y: 19
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3fffe4ff8b7e1f9d0800000000000000
+      internalID: -2742155916348555277
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_265
+      rect:
+        serializedVersion: 2
+        x: 683
+        y: 23
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4d9a1877326219040800000000000000
+      internalID: 4652541823821130196
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_266
+      rect:
+        serializedVersion: 2
+        x: 1167
+        y: 22
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c20895cf3f099a4b0800000000000000
+      internalID: -5428648498233245652
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_267
+      rect:
+        serializedVersion: 2
+        x: 1215
+        y: 23
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1e0a8c30504de400800000000000000
+      internalID: 355010658989379098
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_268
+      rect:
+        serializedVersion: 2
+        x: 1238
+        y: 19
+        width: 13
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d32256d373ec9bd40800000000000000
+      internalID: 5600734348260483645
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_269
+      rect:
+        serializedVersion: 2
+        x: 1269
+        y: 23
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9f23224aaf2a61e70800000000000000
+      internalID: 9085628495645782777
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_270
+      rect:
+        serializedVersion: 2
+        x: 1309
+        y: 23
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a227935290c49b60800000000000000
+      internalID: 7752032593311638178
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_271
+      rect:
+        serializedVersion: 2
+        x: 1363
+        y: 23
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28ec0af5c47a0bc50800000000000000
+      internalID: 6679022193854172802
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_272
+      rect:
+        serializedVersion: 2
+        x: 1397
+        y: 19
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f125ffae0bc0c0e20800000000000000
+      internalID: 3318040979461591583
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_273
+      rect:
+        serializedVersion: 2
+        x: 1511
+        y: 24
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8e90852327210b2d0800000000000000
+      internalID: -3265089448163407384
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_274
+      rect:
+        serializedVersion: 2
+        x: 1557
+        y: 19
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 47335ddec9a8b3a50800000000000000
+      internalID: 6501942893649146740
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_275
+      rect:
+        serializedVersion: 2
+        x: 1598
+        y: 19
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0b79f051c12894e20800000000000000
+      internalID: 3335340056168601520
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_276
+      rect:
+        serializedVersion: 2
+        x: 1691
+        y: 19
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 63ad75d0fd7150370800000000000000
+      internalID: 8288056936014273078
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_277
+      rect:
+        serializedVersion: 2
+        x: 1726
+        y: 20
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 277c43937525ad8a0800000000000000
+      internalID: -6279616195839342734
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_278
+      rect:
+        serializedVersion: 2
+        x: 1847
+        y: 25
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 24391f29933754d90800000000000000
+      internalID: -7114153345246194878
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_279
+      rect:
+        serializedVersion: 2
+        x: 1923
+        y: 20
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5be01a8e4e9f746f0800000000000000
+      internalID: -700316455482093899
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_280
+      rect:
+        serializedVersion: 2
+        x: 1940
+        y: 17
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b7aa2231bcdb981f0800000000000000
+      internalID: -1042093158862509445
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_281
+      rect:
+        serializedVersion: 2
+        x: 2011
+        y: 21
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d23cad2721b2e1b60800000000000000
+      internalID: 7718654169595953965
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_282
+      rect:
+        serializedVersion: 2
+        x: 2015
+        y: 19
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9104ffcdba9b64cc0800000000000000
+      internalID: -3727087493804244967
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_283
+      rect:
+        serializedVersion: 2
+        x: 10
+        y: 11
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4119c254bec41d730800000000000000
+      internalID: 4022080515580137748
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_284
+      rect:
+        serializedVersion: 2
+        x: 1129
+        y: 9
+        width: 11
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 635aa80dec24a3010800000000000000
+      internalID: 1169320509285508406
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_285
+      rect:
+        serializedVersion: 2
+        x: 1137
+        y: 14
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b19ae3f0757731400800000000000000
+      internalID: 293709616510839067
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_286
+      rect:
+        serializedVersion: 2
+        x: 21
+        y: 1
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d312ca1afd8b4ccc0800000000000000
+      internalID: -3691622523907333827
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: abyssal dark scepter_287
+      rect:
+        serializedVersion: 2
+        x: 2040
+        y: 0
+        width: 8
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7491964b2d111b850800000000000000
+      internalID: 6390908942883035463
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      abyssal dark scepter_0: 8930827108805075190
+      abyssal dark scepter_1: -1048646766909968475
+      abyssal dark scepter_10: 8604411106047808407
+      abyssal dark scepter_100: -2992144806526848436
+      abyssal dark scepter_101: 5768488495731666453
+      abyssal dark scepter_102: 7901120845241886677
+      abyssal dark scepter_103: 2621375774499663707
+      abyssal dark scepter_104: -5586976896981553443
+      abyssal dark scepter_105: -3237640271560270117
+      abyssal dark scepter_106: -1183678958887698826
+      abyssal dark scepter_107: -7633109204428612041
+      abyssal dark scepter_108: 8085301033314794682
+      abyssal dark scepter_109: -7753172019761763476
+      abyssal dark scepter_11: 2826248690266753448
+      abyssal dark scepter_110: 182745460931904391
+      abyssal dark scepter_111: -7979591617670800339
+      abyssal dark scepter_112: -4499140195549623295
+      abyssal dark scepter_113: -8320989031719138622
+      abyssal dark scepter_114: 5060916364903101996
+      abyssal dark scepter_115: 4643438705976138387
+      abyssal dark scepter_116: -5213199091392270970
+      abyssal dark scepter_117: -1329496219654920824
+      abyssal dark scepter_118: 7977431529643122769
+      abyssal dark scepter_119: -4857429625788287268
+      abyssal dark scepter_12: 4151871175252617455
+      abyssal dark scepter_120: -7830286162644313883
+      abyssal dark scepter_121: -2148775187885394227
+      abyssal dark scepter_122: -5094839341603290126
+      abyssal dark scepter_123: -788618952593179750
+      abyssal dark scepter_124: -1363858086879269470
+      abyssal dark scepter_125: -3803278277540781842
+      abyssal dark scepter_126: 4033938968200857824
+      abyssal dark scepter_127: -7342570383144721202
+      abyssal dark scepter_128: -2283258010781559308
+      abyssal dark scepter_129: 2082621975185155970
+      abyssal dark scepter_13: 5936473005478842311
+      abyssal dark scepter_130: -1637771950574576375
+      abyssal dark scepter_131: -7194057335629110916
+      abyssal dark scepter_132: 1925519771560585139
+      abyssal dark scepter_133: -445937279799220338
+      abyssal dark scepter_134: -2234425880238021890
+      abyssal dark scepter_135: 4179364714845942107
+      abyssal dark scepter_136: -597958731432723495
+      abyssal dark scepter_137: 1948113353703660411
+      abyssal dark scepter_138: 1803259192753308931
+      abyssal dark scepter_139: 2134796383328177322
+      abyssal dark scepter_14: 1985090940634117055
+      abyssal dark scepter_140: 5820933630701303281
+      abyssal dark scepter_141: -6190164215960965522
+      abyssal dark scepter_142: -764869049518969718
+      abyssal dark scepter_143: -5603949965382823664
+      abyssal dark scepter_144: 6584632211714226979
+      abyssal dark scepter_145: 3935889166750652338
+      abyssal dark scepter_146: -7847559361315739625
+      abyssal dark scepter_147: -4524829557074708960
+      abyssal dark scepter_148: 4674832037496353787
+      abyssal dark scepter_149: 1569650376987862685
+      abyssal dark scepter_15: 1599342877976014979
+      abyssal dark scepter_150: -2188624615715704046
+      abyssal dark scepter_151: 7181996627053848271
+      abyssal dark scepter_152: 3496079298258758687
+      abyssal dark scepter_153: -6608476561546211540
+      abyssal dark scepter_154: 3732468114149147970
+      abyssal dark scepter_155: -7675951731592926202
+      abyssal dark scepter_156: 4390443833216128464
+      abyssal dark scepter_157: 5255141820564238622
+      abyssal dark scepter_158: 1963394872158778426
+      abyssal dark scepter_159: -7685750986642727443
+      abyssal dark scepter_16: -4089355415122607860
+      abyssal dark scepter_160: 8463094108262676259
+      abyssal dark scepter_161: 492823542915909596
+      abyssal dark scepter_162: -6621188583589835785
+      abyssal dark scepter_163: 7410755197216682243
+      abyssal dark scepter_164: -7912247668352807865
+      abyssal dark scepter_165: -6434931637898069008
+      abyssal dark scepter_166: 7510419412647591772
+      abyssal dark scepter_167: -5534775003571268903
+      abyssal dark scepter_168: 4939879585144345895
+      abyssal dark scepter_169: -254515904449695578
+      abyssal dark scepter_17: -8635553883974969587
+      abyssal dark scepter_170: -6149801796913590671
+      abyssal dark scepter_171: -5988259793162153640
+      abyssal dark scepter_172: 3932954776210870727
+      abyssal dark scepter_173: -7968783063923065526
+      abyssal dark scepter_174: 5258733767287731594
+      abyssal dark scepter_175: 5180397648357851737
+      abyssal dark scepter_176: -3231207912902997716
+      abyssal dark scepter_177: -767771355246164800
+      abyssal dark scepter_178: -3695460672015624933
+      abyssal dark scepter_179: -3129948982494663165
+      abyssal dark scepter_18: 318655821829038287
+      abyssal dark scepter_180: -4767559623613058590
+      abyssal dark scepter_181: -8261066305351608618
+      abyssal dark scepter_182: 1040949476935245859
+      abyssal dark scepter_183: 5697773075943468615
+      abyssal dark scepter_184: 1712894910814652795
+      abyssal dark scepter_185: 9058441284618330504
+      abyssal dark scepter_186: -3065177047174763333
+      abyssal dark scepter_187: 632747431322747647
+      abyssal dark scepter_188: -5276397705324048235
+      abyssal dark scepter_189: -1315972505104021675
+      abyssal dark scepter_19: 3944550681605130179
+      abyssal dark scepter_190: -1441621787039992550
+      abyssal dark scepter_191: 4633106919281386122
+      abyssal dark scepter_192: 8949839175189958879
+      abyssal dark scepter_193: 9026525794175046690
+      abyssal dark scepter_194: -6923420545734843623
+      abyssal dark scepter_195: -644955994812954464
+      abyssal dark scepter_196: -7822219575291487306
+      abyssal dark scepter_197: 7054161771201652089
+      abyssal dark scepter_198: -7295419072051724489
+      abyssal dark scepter_199: -4128334044527597323
+      abyssal dark scepter_2: 4092343709502850303
+      abyssal dark scepter_20: -7151618119355725601
+      abyssal dark scepter_200: 1424425288026598066
+      abyssal dark scepter_201: -7614424437766322129
+      abyssal dark scepter_202: 4139389429448881809
+      abyssal dark scepter_203: 3183671133801742763
+      abyssal dark scepter_204: -2941952719284707377
+      abyssal dark scepter_205: -1366771101680200518
+      abyssal dark scepter_206: -6420325097381222253
+      abyssal dark scepter_207: 616520855376319781
+      abyssal dark scepter_208: 5560499259068667400
+      abyssal dark scepter_209: 3766017696098804715
+      abyssal dark scepter_21: 5876722521301483722
+      abyssal dark scepter_210: 8107286254559377107
+      abyssal dark scepter_211: -4062790978774126225
+      abyssal dark scepter_212: 5327209014572066315
+      abyssal dark scepter_213: 2820199008074275763
+      abyssal dark scepter_214: 8115721968405774621
+      abyssal dark scepter_215: 8335719127795689821
+      abyssal dark scepter_216: 7623801041718957903
+      abyssal dark scepter_217: -946522994743776877
+      abyssal dark scepter_218: -2682895993302000698
+      abyssal dark scepter_219: -1615292881389781164
+      abyssal dark scepter_22: 1022724882721954363
+      abyssal dark scepter_220: 8580884884156226675
+      abyssal dark scepter_221: 4230730332255835282
+      abyssal dark scepter_222: -6797825301291030670
+      abyssal dark scepter_223: 4519708456664748159
+      abyssal dark scepter_224: 8485657036560179510
+      abyssal dark scepter_225: -4454232273596668217
+      abyssal dark scepter_226: -311002281890637146
+      abyssal dark scepter_227: -7051552978561515575
+      abyssal dark scepter_228: 8296456591640568027
+      abyssal dark scepter_229: -8785098897489473480
+      abyssal dark scepter_23: 8675825920163453381
+      abyssal dark scepter_230: 7199668112087783566
+      abyssal dark scepter_231: -2033627424870203150
+      abyssal dark scepter_232: 3494572328733350571
+      abyssal dark scepter_233: -7381222481764084920
+      abyssal dark scepter_234: -5163227295706175930
+      abyssal dark scepter_235: 9092370863765126342
+      abyssal dark scepter_236: -7018601240693520053
+      abyssal dark scepter_237: -2718153352834589285
+      abyssal dark scepter_238: -3686920680676829433
+      abyssal dark scepter_239: 4113171074246663160
+      abyssal dark scepter_24: -7616371515579203480
+      abyssal dark scepter_240: -4244267539238310886
+      abyssal dark scepter_241: 4772921720097902199
+      abyssal dark scepter_242: -5309727741460754347
+      abyssal dark scepter_243: 7624512332226991024
+      abyssal dark scepter_244: -4790166443375011139
+      abyssal dark scepter_245: 5441799949302440291
+      abyssal dark scepter_246: -5967347364042684510
+      abyssal dark scepter_247: 1183471116282007502
+      abyssal dark scepter_248: 6718387806364924071
+      abyssal dark scepter_249: 110576677519491541
+      abyssal dark scepter_25: 6328317254766817652
+      abyssal dark scepter_250: -9037775558589747359
+      abyssal dark scepter_251: -1383963626037599554
+      abyssal dark scepter_252: 4051861033119869495
+      abyssal dark scepter_253: -4766509647016156450
+      abyssal dark scepter_254: -7263127783809420505
+      abyssal dark scepter_255: -593477853865032338
+      abyssal dark scepter_256: 4196155253676308336
+      abyssal dark scepter_257: -5012728277166009149
+      abyssal dark scepter_258: 769254195480859712
+      abyssal dark scepter_259: -2052284783420415774
+      abyssal dark scepter_26: 3592429059024396327
+      abyssal dark scepter_260: 4349768829025861060
+      abyssal dark scepter_261: -975357663630093550
+      abyssal dark scepter_262: 555541428392768012
+      abyssal dark scepter_263: 5665778683530988193
+      abyssal dark scepter_264: -2742155916348555277
+      abyssal dark scepter_265: 4652541823821130196
+      abyssal dark scepter_266: -5428648498233245652
+      abyssal dark scepter_267: 355010658989379098
+      abyssal dark scepter_268: 5600734348260483645
+      abyssal dark scepter_269: 9085628495645782777
+      abyssal dark scepter_27: -8366623838728273397
+      abyssal dark scepter_270: 7752032593311638178
+      abyssal dark scepter_271: 6679022193854172802
+      abyssal dark scepter_272: 3318040979461591583
+      abyssal dark scepter_273: -3265089448163407384
+      abyssal dark scepter_274: 6501942893649146740
+      abyssal dark scepter_275: 3335340056168601520
+      abyssal dark scepter_276: 8288056936014273078
+      abyssal dark scepter_277: -6279616195839342734
+      abyssal dark scepter_278: -7114153345246194878
+      abyssal dark scepter_279: -700316455482093899
+      abyssal dark scepter_28: -8537868013026626932
+      abyssal dark scepter_280: -1042093158862509445
+      abyssal dark scepter_281: 7718654169595953965
+      abyssal dark scepter_282: -3727087493804244967
+      abyssal dark scepter_283: 4022080515580137748
+      abyssal dark scepter_284: 1169320509285508406
+      abyssal dark scepter_285: 293709616510839067
+      abyssal dark scepter_286: -3691622523907333827
+      abyssal dark scepter_287: 6390908942883035463
+      abyssal dark scepter_29: -6199086603670390338
+      abyssal dark scepter_3: 4425705185362465222
+      abyssal dark scepter_30: 248003642448016153
+      abyssal dark scepter_31: -387535196540831327
+      abyssal dark scepter_32: -8923220821307820404
+      abyssal dark scepter_33: 5911258934421173409
+      abyssal dark scepter_34: -4338683476345720503
+      abyssal dark scepter_35: 7462946778257892568
+      abyssal dark scepter_36: -8929394728146142256
+      abyssal dark scepter_37: 8890923787257760919
+      abyssal dark scepter_38: -6973673812908069395
+      abyssal dark scepter_39: -6827438984915087002
+      abyssal dark scepter_4: -3848294227136670019
+      abyssal dark scepter_40: 7632352259980403460
+      abyssal dark scepter_41: 3094786658756847440
+      abyssal dark scepter_42: -7147325079009035002
+      abyssal dark scepter_43: -5504362261489666970
+      abyssal dark scepter_44: -7480956965453836458
+      abyssal dark scepter_45: -4927846386836326262
+      abyssal dark scepter_46: -254905271161339129
+      abyssal dark scepter_47: -5994757914687478054
+      abyssal dark scepter_48: -7146488049385442179
+      abyssal dark scepter_49: 8021662881136499042
+      abyssal dark scepter_5: 3144693074487655791
+      abyssal dark scepter_50: -6718171625834086960
+      abyssal dark scepter_51: 8327928445995950532
+      abyssal dark scepter_52: -5674280420630026846
+      abyssal dark scepter_53: -9013796881545904291
+      abyssal dark scepter_54: -6315904735631051807
+      abyssal dark scepter_55: -8309528817338638414
+      abyssal dark scepter_56: 7527452957817315984
+      abyssal dark scepter_57: 7731839139231980537
+      abyssal dark scepter_58: -8530991810861455804
+      abyssal dark scepter_59: 6419434799926104040
+      abyssal dark scepter_6: 3920010255217222150
+      abyssal dark scepter_60: 371324068274675592
+      abyssal dark scepter_61: -6722355945846945497
+      abyssal dark scepter_62: -7667329513668673595
+      abyssal dark scepter_63: 237883023810084096
+      abyssal dark scepter_64: -4828996087457223072
+      abyssal dark scepter_65: -4140577381657901546
+      abyssal dark scepter_66: -4578659935890387665
+      abyssal dark scepter_67: 5700934977508726363
+      abyssal dark scepter_68: -3346617824054990472
+      abyssal dark scepter_69: -98827075064012242
+      abyssal dark scepter_7: 3060096202284044585
+      abyssal dark scepter_70: -8538314297527354933
+      abyssal dark scepter_71: 984538933064459640
+      abyssal dark scepter_72: -7044298711463347314
+      abyssal dark scepter_73: 5270894067488986050
+      abyssal dark scepter_74: -4760701891786815485
+      abyssal dark scepter_75: 6729153337844292696
+      abyssal dark scepter_76: 8544939802413328300
+      abyssal dark scepter_77: -6160286590793988845
+      abyssal dark scepter_78: 7463660633643903862
+      abyssal dark scepter_79: 315947914316521794
+      abyssal dark scepter_8: 783221439481873364
+      abyssal dark scepter_80: 5145682843899253504
+      abyssal dark scepter_81: 4738900443390299226
+      abyssal dark scepter_82: -9211234662114914041
+      abyssal dark scepter_83: 7253865131161192216
+      abyssal dark scepter_84: -887454715316134920
+      abyssal dark scepter_85: -606767433035337846
+      abyssal dark scepter_86: 8747567149238559832
+      abyssal dark scepter_87: 1708778798496967224
+      abyssal dark scepter_88: -7830189155918171909
+      abyssal dark scepter_89: 5607973875005034006
+      abyssal dark scepter_9: 1819975096687351420
+      abyssal dark scepter_90: -4312599727787401191
+      abyssal dark scepter_91: 3719714041849465366
+      abyssal dark scepter_92: 8874358969910656902
+      abyssal dark scepter_93: -6520412164878350613
+      abyssal dark scepter_94: 8320330813262161021
+      abyssal dark scepter_95: 4364219267313768733
+      abyssal dark scepter_96: 2511924339059337470
+      abyssal dark scepter_97: 5953265015655954619
+      abyssal dark scepter_98: -4274594774558656659
+      abyssal dark scepter_99: -7766209907254867471
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

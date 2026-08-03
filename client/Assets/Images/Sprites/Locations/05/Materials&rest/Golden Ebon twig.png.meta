@@ -1,0 +1,5070 @@
+fileFormatVersion: 2
+guid: 8b74edc482ee0e348acd5ec115ee05c9
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 5204983651914067303
+    second: Golden Ebon twig_0
+  - first:
+      213: -3495143183124150423
+    second: Golden Ebon twig_1
+  - first:
+      213: -3564036553223234379
+    second: Golden Ebon twig_2
+  - first:
+      213: 2511654202994520254
+    second: Golden Ebon twig_3
+  - first:
+      213: 5643366168292569605
+    second: Golden Ebon twig_4
+  - first:
+      213: -6726113003347240846
+    second: Golden Ebon twig_5
+  - first:
+      213: 896011024924305621
+    second: Golden Ebon twig_6
+  - first:
+      213: -1533351442849257242
+    second: Golden Ebon twig_7
+  - first:
+      213: -3920768391748052329
+    second: Golden Ebon twig_8
+  - first:
+      213: -5184426004226350442
+    second: Golden Ebon twig_9
+  - first:
+      213: 1235830591608405515
+    second: Golden Ebon twig_10
+  - first:
+      213: 3741785867653064111
+    second: Golden Ebon twig_11
+  - first:
+      213: 2662050285643360784
+    second: Golden Ebon twig_12
+  - first:
+      213: -4452036727938702194
+    second: Golden Ebon twig_13
+  - first:
+      213: -2154500831422057827
+    second: Golden Ebon twig_14
+  - first:
+      213: 8260346218791043723
+    second: Golden Ebon twig_15
+  - first:
+      213: 2024813931475069202
+    second: Golden Ebon twig_16
+  - first:
+      213: -5412053910153984219
+    second: Golden Ebon twig_17
+  - first:
+      213: -3151872794796063462
+    second: Golden Ebon twig_18
+  - first:
+      213: 6963492231717657505
+    second: Golden Ebon twig_19
+  - first:
+      213: -457535201405680287
+    second: Golden Ebon twig_20
+  - first:
+      213: -6734123519463817809
+    second: Golden Ebon twig_21
+  - first:
+      213: -3884175578595535314
+    second: Golden Ebon twig_22
+  - first:
+      213: -1808074412689098876
+    second: Golden Ebon twig_23
+  - first:
+      213: 450398669153897573
+    second: Golden Ebon twig_24
+  - first:
+      213: 5224549087804772778
+    second: Golden Ebon twig_25
+  - first:
+      213: -193011023139471041
+    second: Golden Ebon twig_26
+  - first:
+      213: 2108490075423405309
+    second: Golden Ebon twig_27
+  - first:
+      213: -4647033027229964424
+    second: Golden Ebon twig_28
+  - first:
+      213: -8839184523408210764
+    second: Golden Ebon twig_29
+  - first:
+      213: -4203641849540724135
+    second: Golden Ebon twig_30
+  - first:
+      213: -96458050223125893
+    second: Golden Ebon twig_31
+  - first:
+      213: -7598952169931492238
+    second: Golden Ebon twig_32
+  - first:
+      213: -2910441325113503165
+    second: Golden Ebon twig_33
+  - first:
+      213: 3433740537242465448
+    second: Golden Ebon twig_34
+  - first:
+      213: -4731096182504098479
+    second: Golden Ebon twig_35
+  - first:
+      213: 6469464989191580397
+    second: Golden Ebon twig_36
+  - first:
+      213: -3003145209462857678
+    second: Golden Ebon twig_37
+  - first:
+      213: -8979136508505864381
+    second: Golden Ebon twig_38
+  - first:
+      213: -7653382762326618465
+    second: Golden Ebon twig_39
+  - first:
+      213: 392183067829770674
+    second: Golden Ebon twig_40
+  - first:
+      213: 4799007347035132459
+    second: Golden Ebon twig_41
+  - first:
+      213: 13242046412194283
+    second: Golden Ebon twig_42
+  - first:
+      213: 827446617966818642
+    second: Golden Ebon twig_43
+  - first:
+      213: -8547264814008998051
+    second: Golden Ebon twig_44
+  - first:
+      213: -7842098952804895761
+    second: Golden Ebon twig_45
+  - first:
+      213: -7234655835539133820
+    second: Golden Ebon twig_46
+  - first:
+      213: -647480043718767467
+    second: Golden Ebon twig_47
+  - first:
+      213: -4687055646296089637
+    second: Golden Ebon twig_48
+  - first:
+      213: 2619989106822634511
+    second: Golden Ebon twig_49
+  - first:
+      213: -7565210448751852333
+    second: Golden Ebon twig_50
+  - first:
+      213: -2502225869508265022
+    second: Golden Ebon twig_51
+  - first:
+      213: -6311447329318020890
+    second: Golden Ebon twig_52
+  - first:
+      213: -3828424327166266159
+    second: Golden Ebon twig_53
+  - first:
+      213: 1166498720608755246
+    second: Golden Ebon twig_54
+  - first:
+      213: -3089960553669443537
+    second: Golden Ebon twig_55
+  - first:
+      213: -7359965379328773770
+    second: Golden Ebon twig_56
+  - first:
+      213: 1252502148805798207
+    second: Golden Ebon twig_57
+  - first:
+      213: 6648903476991300109
+    second: Golden Ebon twig_58
+  - first:
+      213: -2494850130397308514
+    second: Golden Ebon twig_59
+  - first:
+      213: 7848216499857734256
+    second: Golden Ebon twig_60
+  - first:
+      213: 1757833792463415689
+    second: Golden Ebon twig_61
+  - first:
+      213: 5861495522129542
+    second: Golden Ebon twig_62
+  - first:
+      213: -6796070292339535169
+    second: Golden Ebon twig_63
+  - first:
+      213: 619838458185383247
+    second: Golden Ebon twig_64
+  - first:
+      213: -5384577043097581036
+    second: Golden Ebon twig_65
+  - first:
+      213: 4922887615810369210
+    second: Golden Ebon twig_66
+  - first:
+      213: 8275042820394061724
+    second: Golden Ebon twig_67
+  - first:
+      213: -879001588508273727
+    second: Golden Ebon twig_68
+  - first:
+      213: -2066570673828678414
+    second: Golden Ebon twig_69
+  - first:
+      213: 252129606065219440
+    second: Golden Ebon twig_70
+  - first:
+      213: -1505537768194917804
+    second: Golden Ebon twig_71
+  - first:
+      213: 799687201142745167
+    second: Golden Ebon twig_72
+  - first:
+      213: -3459334189855487662
+    second: Golden Ebon twig_73
+  - first:
+      213: 5743295666846907113
+    second: Golden Ebon twig_74
+  - first:
+      213: 3954898916585167661
+    second: Golden Ebon twig_75
+  - first:
+      213: -1367819098052153730
+    second: Golden Ebon twig_76
+  - first:
+      213: -572936708951022220
+    second: Golden Ebon twig_77
+  - first:
+      213: 5235364683993880563
+    second: Golden Ebon twig_78
+  - first:
+      213: -7068842190622512703
+    second: Golden Ebon twig_79
+  - first:
+      213: -1985038506584284629
+    second: Golden Ebon twig_80
+  - first:
+      213: -8288515666294952225
+    second: Golden Ebon twig_81
+  - first:
+      213: -910409886634928445
+    second: Golden Ebon twig_82
+  - first:
+      213: 7188845634745472077
+    second: Golden Ebon twig_83
+  - first:
+      213: -1108092289663671866
+    second: Golden Ebon twig_84
+  - first:
+      213: -4438932963291153756
+    second: Golden Ebon twig_85
+  - first:
+      213: -2230507446884981470
+    second: Golden Ebon twig_86
+  - first:
+      213: 830828126651929688
+    second: Golden Ebon twig_87
+  - first:
+      213: 68574857296101671
+    second: Golden Ebon twig_88
+  - first:
+      213: 4708284302226150153
+    second: Golden Ebon twig_89
+  - first:
+      213: -6814285315598187807
+    second: Golden Ebon twig_90
+  - first:
+      213: 1763230654852235840
+    second: Golden Ebon twig_91
+  - first:
+      213: 4385650949203700009
+    second: Golden Ebon twig_92
+  - first:
+      213: 5708844402319776970
+    second: Golden Ebon twig_93
+  - first:
+      213: 3880981138302549849
+    second: Golden Ebon twig_94
+  - first:
+      213: -1973563125753400061
+    second: Golden Ebon twig_95
+  - first:
+      213: -6879308118472151274
+    second: Golden Ebon twig_96
+  - first:
+      213: -447316563496053522
+    second: Golden Ebon twig_97
+  - first:
+      213: -352936185511912546
+    second: Golden Ebon twig_98
+  - first:
+      213: 6257259717622738554
+    second: Golden Ebon twig_99
+  - first:
+      213: 6649186857348705222
+    second: Golden Ebon twig_100
+  - first:
+      213: -4606564042989965584
+    second: Golden Ebon twig_101
+  - first:
+      213: 327072463427176634
+    second: Golden Ebon twig_102
+  - first:
+      213: -370132063938928192
+    second: Golden Ebon twig_103
+  - first:
+      213: -5723966253487690282
+    second: Golden Ebon twig_104
+  - first:
+      213: 3763026250584821475
+    second: Golden Ebon twig_105
+  - first:
+      213: -8586621454082989473
+    second: Golden Ebon twig_106
+  - first:
+      213: 6927941014212131356
+    second: Golden Ebon twig_107
+  - first:
+      213: -5873944893175532716
+    second: Golden Ebon twig_108
+  - first:
+      213: 2612272556819039023
+    second: Golden Ebon twig_109
+  - first:
+      213: 6086133217012016342
+    second: Golden Ebon twig_110
+  - first:
+      213: -7440841104793032733
+    second: Golden Ebon twig_111
+  - first:
+      213: 7742151660096676027
+    second: Golden Ebon twig_112
+  - first:
+      213: -2628933327651141756
+    second: Golden Ebon twig_113
+  - first:
+      213: 573152831645772618
+    second: Golden Ebon twig_114
+  - first:
+      213: 3852410432356485206
+    second: Golden Ebon twig_115
+  - first:
+      213: -4462427124313939229
+    second: Golden Ebon twig_116
+  - first:
+      213: -3807688598249467212
+    second: Golden Ebon twig_117
+  - first:
+      213: -2301329307344298115
+    second: Golden Ebon twig_118
+  - first:
+      213: -1105443975803394417
+    second: Golden Ebon twig_119
+  - first:
+      213: 3338925767560981789
+    second: Golden Ebon twig_120
+  - first:
+      213: 6004367086095649162
+    second: Golden Ebon twig_121
+  - first:
+      213: -6550425328325163358
+    second: Golden Ebon twig_122
+  - first:
+      213: 2472929739776462517
+    second: Golden Ebon twig_123
+  - first:
+      213: -202861656869419738
+    second: Golden Ebon twig_124
+  - first:
+      213: 7735506899955196842
+    second: Golden Ebon twig_125
+  - first:
+      213: 5643057896939166661
+    second: Golden Ebon twig_126
+  - first:
+      213: -4246836587033524648
+    second: Golden Ebon twig_127
+  - first:
+      213: -7035001967247680926
+    second: Golden Ebon twig_128
+  - first:
+      213: 3113413542510987546
+    second: Golden Ebon twig_129
+  - first:
+      213: 985925799474492407
+    second: Golden Ebon twig_130
+  - first:
+      213: 1162419273913773862
+    second: Golden Ebon twig_131
+  - first:
+      213: 3755440649167012420
+    second: Golden Ebon twig_132
+  - first:
+      213: 3166034892055718295
+    second: Golden Ebon twig_133
+  - first:
+      213: 7504163565391374981
+    second: Golden Ebon twig_134
+  - first:
+      213: 8741057323754330628
+    second: Golden Ebon twig_135
+  - first:
+      213: 8876447772053961389
+    second: Golden Ebon twig_136
+  - first:
+      213: 2980192192382995464
+    second: Golden Ebon twig_137
+  - first:
+      213: 4534305839401395180
+    second: Golden Ebon twig_138
+  - first:
+      213: 2631791223807468950
+    second: Golden Ebon twig_139
+  - first:
+      213: 6190205715135560723
+    second: Golden Ebon twig_140
+  - first:
+      213: -4473176072669992700
+    second: Golden Ebon twig_141
+  - first:
+      213: -2151206452684785177
+    second: Golden Ebon twig_142
+  - first:
+      213: -2598419010680461011
+    second: Golden Ebon twig_143
+  - first:
+      213: -2304399175870915805
+    second: Golden Ebon twig_144
+  - first:
+      213: 2455177459958836735
+    second: Golden Ebon twig_145
+  - first:
+      213: -4122705807091617702
+    second: Golden Ebon twig_146
+  - first:
+      213: 8350029309961174115
+    second: Golden Ebon twig_147
+  - first:
+      213: 3010081886396267125
+    second: Golden Ebon twig_148
+  - first:
+      213: 7120013092554537559
+    second: Golden Ebon twig_149
+  - first:
+      213: 7732787707727256539
+    second: Golden Ebon twig_150
+  - first:
+      213: -1250209499287159841
+    second: Golden Ebon twig_151
+  - first:
+      213: -9180564950995845303
+    second: Golden Ebon twig_152
+  - first:
+      213: 917124240193131820
+    second: Golden Ebon twig_153
+  - first:
+      213: 8872825338058453390
+    second: Golden Ebon twig_154
+  - first:
+      213: -1560096770383607424
+    second: Golden Ebon twig_155
+  - first:
+      213: -708178173624032249
+    second: Golden Ebon twig_156
+  - first:
+      213: -978167698359194380
+    second: Golden Ebon twig_157
+  - first:
+      213: 784012325564627571
+    second: Golden Ebon twig_158
+  - first:
+      213: 1517000785502924221
+    second: Golden Ebon twig_159
+  - first:
+      213: 3427526068560808652
+    second: Golden Ebon twig_160
+  - first:
+      213: 4690326881550457866
+    second: Golden Ebon twig_161
+  - first:
+      213: 1785821760251765798
+    second: Golden Ebon twig_162
+  - first:
+      213: 578388972557434020
+    second: Golden Ebon twig_163
+  - first:
+      213: 4437376179805020393
+    second: Golden Ebon twig_164
+  - first:
+      213: -3503103677536649081
+    second: Golden Ebon twig_165
+  - first:
+      213: 2526025515419815004
+    second: Golden Ebon twig_166
+  - first:
+      213: -1146178635118447863
+    second: Golden Ebon twig_167
+  - first:
+      213: 502256986425679997
+    second: Golden Ebon twig_168
+  - first:
+      213: -8401124222372301972
+    second: Golden Ebon twig_169
+  - first:
+      213: -523301158408255845
+    second: Golden Ebon twig_170
+  - first:
+      213: 8663998096782109984
+    second: Golden Ebon twig_171
+  - first:
+      213: 3109109669910971066
+    second: Golden Ebon twig_172
+  - first:
+      213: -7377127142516084683
+    second: Golden Ebon twig_173
+  - first:
+      213: 9170909227546581697
+    second: Golden Ebon twig_174
+  - first:
+      213: 3687241913388372753
+    second: Golden Ebon twig_175
+  - first:
+      213: 3817669176072210547
+    second: Golden Ebon twig_176
+  - first:
+      213: 3209330146653909261
+    second: Golden Ebon twig_177
+  - first:
+      213: -8945586828490410973
+    second: Golden Ebon twig_178
+  - first:
+      213: 507251740580052921
+    second: Golden Ebon twig_179
+  - first:
+      213: 3569645450270846334
+    second: Golden Ebon twig_180
+  - first:
+      213: 1867443390305924699
+    second: Golden Ebon twig_181
+  - first:
+      213: -4492248288470355413
+    second: Golden Ebon twig_182
+  - first:
+      213: -589187143307394419
+    second: Golden Ebon twig_183
+  - first:
+      213: 8988068853546606916
+    second: Golden Ebon twig_184
+  - first:
+      213: 2796341521037718408
+    second: Golden Ebon twig_185
+  - first:
+      213: -4370097452482054962
+    second: Golden Ebon twig_186
+  - first:
+      213: 7202800640961030450
+    second: Golden Ebon twig_187
+  - first:
+      213: -9116328450102534174
+    second: Golden Ebon twig_188
+  - first:
+      213: 5296458859870361811
+    second: Golden Ebon twig_189
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Golden Ebon twig_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 151
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76dad02ed01db3840800000000000000
+      internalID: 5204983651914067303
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_1
+      rect:
+        serializedVersion: 2
+        x: 12
+        y: 277
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 967c1c20bc1ce7fc0800000000000000
+      internalID: -3495143183124150423
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_2
+      rect:
+        serializedVersion: 2
+        x: 20
+        y: 166
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5bc1f9e43aff98ec0800000000000000
+      internalID: -3564036553223234379
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_3
+      rect:
+        serializedVersion: 2
+        x: 21
+        y: 153
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb0fa18b0303bd220800000000000000
+      internalID: 2511654202994520254
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_4
+      rect:
+        serializedVersion: 2
+        x: 33
+        y: 177
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 502398651a3415e40800000000000000
+      internalID: 5643366168292569605
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_5
+      rect:
+        serializedVersion: 2
+        x: 34
+        y: 256
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2781a542cdb08a2a0800000000000000
+      internalID: -6726113003347240846
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_6
+      rect:
+        serializedVersion: 2
+        x: 56
+        y: 62
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d86277a7454f6c00800000000000000
+      internalID: 896011024924305621
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_7
+      rect:
+        serializedVersion: 2
+        x: 57
+        y: 93
+        width: 11
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6e8232d9cf078bae0800000000000000
+      internalID: -1533351442849257242
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_8
+      rect:
+        serializedVersion: 2
+        x: 57
+        y: 29
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79a174bbbe1a699c0800000000000000
+      internalID: -3920768391748052329
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_9
+      rect:
+        serializedVersion: 2
+        x: 58
+        y: 40
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6926ac574083d08b0800000000000000
+      internalID: -5184426004226350442
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_10
+      rect:
+        serializedVersion: 2
+        x: 63
+        y: 215
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b0e3167106d862110800000000000000
+      internalID: 1235830591608405515
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_11
+      rect:
+        serializedVersion: 2
+        x: 81
+        y: 42
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fa5a90bfb6e7de330800000000000000
+      internalID: 3741785867653064111
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_12
+      rect:
+        serializedVersion: 2
+        x: 87
+        y: 1250
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 01aeff171a081f420800000000000000
+      internalID: 2662050285643360784
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_13
+      rect:
+        serializedVersion: 2
+        x: 87
+        y: 700
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e84a8301f203732c0800000000000000
+      internalID: -4452036727938702194
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_14
+      rect:
+        serializedVersion: 2
+        x: 114
+        y: 285
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d92fdcaa8eca912e0800000000000000
+      internalID: -2154500831422057827
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_15
+      rect:
+        serializedVersion: 2
+        x: 115
+        y: 0
+        width: 188
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b8208ccee15a2a270800000000000000
+      internalID: 8260346218791043723
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_16
+      rect:
+        serializedVersion: 2
+        x: 115
+        y: 949
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 21965d1fa85991c10800000000000000
+      internalID: 2024813931475069202
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_17
+      rect:
+        serializedVersion: 2
+        x: 119
+        y: 1082
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 527020c94a584e4b0800000000000000
+      internalID: -5412053910153984219
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_18
+      rect:
+        serializedVersion: 2
+        x: 155
+        y: 638
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1586f8746c4244d0800000000000000
+      internalID: -3151872794796063462
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_19
+      rect:
+        serializedVersion: 2
+        x: 165
+        y: 481
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ab19b36a4b43a060800000000000000
+      internalID: 6963492231717657505
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_20
+      rect:
+        serializedVersion: 2
+        x: 165
+        y: 196
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1654aff882286a9f0800000000000000
+      internalID: -457535201405680287
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_21
+      rect:
+        serializedVersion: 2
+        x: 179
+        y: 445
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fad71c486569b82a0800000000000000
+      internalID: -6734123519463817809
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_22
+      rect:
+        serializedVersion: 2
+        x: 199
+        y: 309
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e26d098f3e2a81ac0800000000000000
+      internalID: -3884175578595535314
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_23
+      rect:
+        serializedVersion: 2
+        x: 225
+        y: 439
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4877138b6ed68e6e0800000000000000
+      internalID: -1808074412689098876
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_24
+      rect:
+        serializedVersion: 2
+        x: 230
+        y: 221
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 56c0a3a0433204600800000000000000
+      internalID: 450398669153897573
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_25
+      rect:
+        serializedVersion: 2
+        x: 231
+        y: 1146
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa1d13ae6b3518840800000000000000
+      internalID: 5224549087804772778
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_26
+      rect:
+        serializedVersion: 2
+        x: 239
+        y: 1208
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f3189004f79425df0800000000000000
+      internalID: -193011023139471041
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_27
+      rect:
+        serializedVersion: 2
+        x: 248
+        y: 76
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: df47c066d8cd24d10800000000000000
+      internalID: 2108490075423405309
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_28
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 1101
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8772370351c628fb0800000000000000
+      internalID: -4647033027229964424
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_29
+      rect:
+        serializedVersion: 2
+        x: 260
+        y: 0
+        width: 572
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4b48f1a0288e45580800000000000000
+      internalID: -8839184523408210764
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_30
+      rect:
+        serializedVersion: 2
+        x: 263
+        y: 1485
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 95ab82b720aa9a5c0800000000000000
+      internalID: -4203641849540724135
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_31
+      rect:
+        serializedVersion: 2
+        x: 275
+        y: 887
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b7a49b41aef49aef0800000000000000
+      internalID: -96458050223125893
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_32
+      rect:
+        serializedVersion: 2
+        x: 291
+        y: 826
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 274bc0e23491b8690800000000000000
+      internalID: -7598952169931492238
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_33
+      rect:
+        serializedVersion: 2
+        x: 314
+        y: 173
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3421ef4f8090c97d0800000000000000
+      internalID: -2910441325113503165
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_34
+      rect:
+        serializedVersion: 2
+        x: 315
+        y: 952
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8a4323d63d817af20800000000000000
+      internalID: 3433740537242465448
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_35
+      rect:
+        serializedVersion: 2
+        x: 319
+        y: 16
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 155f2a3a615c75eb0800000000000000
+      internalID: -4731096182504098479
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_36
+      rect:
+        serializedVersion: 2
+        x: 339
+        y: 368
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dea2797812828c950800000000000000
+      internalID: 6469464989191580397
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_37
+      rect:
+        serializedVersion: 2
+        x: 340
+        y: 277
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 230ec05e75fa256d0800000000000000
+      internalID: -3003145209462857678
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_38
+      rect:
+        serializedVersion: 2
+        x: 355
+        y: 1392
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 34744c44be2b36380800000000000000
+      internalID: -8979136508505864381
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_39
+      rect:
+        serializedVersion: 2
+        x: 377
+        y: 1457
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f9e8c615de8b9c590800000000000000
+      internalID: -7653382762326618465
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_40
+      rect:
+        serializedVersion: 2
+        x: 377
+        y: 477
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b99aec1c60517500800000000000000
+      internalID: 392183067829770674
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_41
+      rect:
+        serializedVersion: 2
+        x: 387
+        y: 1195
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b22d48281cf799240800000000000000
+      internalID: 4799007347035132459
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_42
+      rect:
+        serializedVersion: 2
+        x: 392
+        y: 1282
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be18f70329b0f2000800000000000000
+      internalID: 13242046412194283
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_43
+      rect:
+        serializedVersion: 2
+        x: 393
+        y: 426
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 255b286a05eab7b00800000000000000
+      internalID: 827446617966818642
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_44
+      rect:
+        serializedVersion: 2
+        x: 417
+        y: 188
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d576ccfdfe3026980800000000000000
+      internalID: -8547264814008998051
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_45
+      rect:
+        serializedVersion: 2
+        x: 423
+        y: 409
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe3f9983d844b2390800000000000000
+      internalID: -7842098952804895761
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_46
+      rect:
+        serializedVersion: 2
+        x: 425
+        y: 18
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48aab7239d6599b90800000000000000
+      internalID: -7234655835539133820
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_47
+      rect:
+        serializedVersion: 2
+        x: 451
+        y: 771
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 59c0dfaa450b307f0800000000000000
+      internalID: -647480043718767467
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_48
+      rect:
+        serializedVersion: 2
+        x: 454
+        y: 679
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bdb580809bb34feb0800000000000000
+      internalID: -4687055646296089637
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_49
+      rect:
+        serializedVersion: 2
+        x: 464
+        y: 223
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0c5e8b16321c5420800000000000000
+      internalID: 2619989106822634511
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_50
+      rect:
+        serializedVersion: 2
+        x: 474
+        y: 765
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3d48217dd29f20790800000000000000
+      internalID: -7565210448751852333
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_51
+      rect:
+        serializedVersion: 2
+        x: 487
+        y: 407
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2cbba2c34de464dd0800000000000000
+      internalID: -2502225869508265022
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_52
+      rect:
+        serializedVersion: 2
+        x: 490
+        y: 1001
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6e8596de71c3968a0800000000000000
+      internalID: -6311447329318020890
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_53
+      rect:
+        serializedVersion: 2
+        x: 500
+        y: 1221
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1d47ac9bb54bedac0800000000000000
+      internalID: -3828424327166266159
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_54
+      rect:
+        serializedVersion: 2
+        x: 504
+        y: 129
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e2e15d0f76c303010800000000000000
+      internalID: 1166498720608755246
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_55
+      rect:
+        serializedVersion: 2
+        x: 515
+        y: 68
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f20409c6f314e15d0800000000000000
+      internalID: -3089960553669443537
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_56
+      rect:
+        serializedVersion: 2
+        x: 519
+        y: 43
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6717fe57b762cd990800000000000000
+      internalID: -7359965379328773770
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_57
+      rect:
+        serializedVersion: 2
+        x: 550
+        y: 44
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f39abfb7118c16110800000000000000
+      internalID: 1252502148805798207
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_58
+      rect:
+        serializedVersion: 2
+        x: 551
+        y: 411
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d021de32c76a54c50800000000000000
+      internalID: 6648903476991300109
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_59
+      rect:
+        serializedVersion: 2
+        x: 551
+        y: 75
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e99d4d15603806dd0800000000000000
+      internalID: -2494850130397308514
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_60
+      rect:
+        serializedVersion: 2
+        x: 571
+        y: 32
+        width: 12
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07a316233577aec60800000000000000
+      internalID: 7848216499857734256
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_61
+      rect:
+        serializedVersion: 2
+        x: 577
+        y: 804
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 989a5f55584156810800000000000000
+      internalID: 1757833792463415689
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_62
+      rect:
+        serializedVersion: 2
+        x: 577
+        y: 469
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 686f276cff2d41000800000000000000
+      internalID: 5861495522129542
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_63
+      rect:
+        serializedVersion: 2
+        x: 586
+        y: 1070
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb2548483128fa1a0800000000000000
+      internalID: -6796070292339535169
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_64
+      rect:
+        serializedVersion: 2
+        x: 609
+        y: 625
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f4df34e2bcb1a9800800000000000000
+      internalID: 619838458185383247
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_65
+      rect:
+        serializedVersion: 2
+        x: 615
+        y: 1130
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 41a027045b32645b0800000000000000
+      internalID: -5384577043097581036
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_66
+      rect:
+        serializedVersion: 2
+        x: 631
+        y: 1069
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab6fb89343c915440800000000000000
+      internalID: 4922887615810369210
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_67
+      rect:
+        serializedVersion: 2
+        x: 640
+        y: 538
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c9f0cb22a9bd6d270800000000000000
+      internalID: 8275042820394061724
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_68
+      rect:
+        serializedVersion: 2
+        x: 646
+        y: 1488
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1c3d5ff56b82dc3f0800000000000000
+      internalID: -879001588508273727
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_69
+      rect:
+        serializedVersion: 2
+        x: 650
+        y: 348
+        width: 11
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f4b33bdbe01253e0800000000000000
+      internalID: -2066570673828678414
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_70
+      rect:
+        serializedVersion: 2
+        x: 651
+        y: 558
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07760e67a8ebf7300800000000000000
+      internalID: 252129606065219440
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_71
+      rect:
+        serializedVersion: 2
+        x: 679
+        y: 1258
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45abec260614b1be0800000000000000
+      internalID: -1505537768194917804
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_72
+      rect:
+        serializedVersion: 2
+        x: 685
+        y: 1183
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f482a83c54f091b00800000000000000
+      internalID: 799687201142745167
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_73
+      rect:
+        serializedVersion: 2
+        x: 686
+        y: 1488
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 259cc46f1e9fdffc0800000000000000
+      internalID: -3459334189855487662
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_74
+      rect:
+        serializedVersion: 2
+        x: 686
+        y: 1144
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9ea337ecaf844bf40800000000000000
+      internalID: 5743295666846907113
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_75
+      rect:
+        serializedVersion: 2
+        x: 706
+        y: 0
+        width: 1469
+        height: 1390
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2bd2a55c9f92e630800000000000000
+      internalID: 3954898916585167661
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_76
+      rect:
+        serializedVersion: 2
+        x: 711
+        y: 442
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7e2b9ff6c7840de0800000000000000
+      internalID: -1367819098052153730
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_77
+      rect:
+        serializedVersion: 2
+        x: 717
+        y: 199
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 475613849158c08f0800000000000000
+      internalID: -572936708951022220
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_78
+      rect:
+        serializedVersion: 2
+        x: 729
+        y: 10
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f794132170c7a840800000000000000
+      internalID: 5235364683993880563
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_79
+      rect:
+        serializedVersion: 2
+        x: 730
+        y: 1133
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1c9a6aeda7d66ed90800000000000000
+      internalID: -7068842190622512703
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_80
+      rect:
+        serializedVersion: 2
+        x: 731
+        y: 228
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b226295def9b374e0800000000000000
+      internalID: -1985038506584284629
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_81
+      rect:
+        serializedVersion: 2
+        x: 819
+        y: 16
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fdeaa3b7ae649fc80800000000000000
+      internalID: -8288515666294952225
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_82
+      rect:
+        serializedVersion: 2
+        x: 832
+        y: 1387
+        width: 272
+        height: 149
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c61f1b18039d53f0800000000000000
+      internalID: -910409886634928445
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_83
+      rect:
+        serializedVersion: 2
+        x: 866
+        y: 1479
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d441f144409e3c360800000000000000
+      internalID: 7188845634745472077
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_84
+      rect:
+        serializedVersion: 2
+        x: 895
+        y: 43
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6c16f38fee34f90f0800000000000000
+      internalID: -1108092289663671866
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_85
+      rect:
+        serializedVersion: 2
+        x: 977
+        y: 115
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4aa32450dfdb562c0800000000000000
+      internalID: -4438932963291153756
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_86
+      rect:
+        serializedVersion: 2
+        x: 977
+        y: 105
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 225ae877b45ab01e0800000000000000
+      internalID: -2230507446884981470
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_87
+      rect:
+        serializedVersion: 2
+        x: 979
+        y: 32
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 854dd7e77c1b78b00800000000000000
+      internalID: 830828126651929688
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_88
+      rect:
+        serializedVersion: 2
+        x: 992
+        y: 16
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 72148a92870a3f000800000000000000
+      internalID: 68574857296101671
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_89
+      rect:
+        serializedVersion: 2
+        x: 1003
+        y: 95
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 903dcb790af275140800000000000000
+      internalID: 4708284302226150153
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_90
+      rect:
+        serializedVersion: 2
+        x: 1030
+        y: 45
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1e20c9deb9bce61a0800000000000000
+      internalID: -6814285315598187807
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_91
+      rect:
+        serializedVersion: 2
+        x: 1046
+        y: 46
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0420c8740f0487810800000000000000
+      internalID: 1763230654852235840
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_92
+      rect:
+        serializedVersion: 2
+        x: 1047
+        y: 33
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 92924285d46fcdc30800000000000000
+      internalID: 4385650949203700009
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_93
+      rect:
+        serializedVersion: 2
+        x: 1059
+        y: 1393
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: acc5f36bcb3e93f40800000000000000
+      internalID: 5708844402319776970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_94
+      rect:
+        serializedVersion: 2
+        x: 1098
+        y: 27
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 95fb38078c30cd530800000000000000
+      internalID: 3880981138302549849
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_95
+      rect:
+        serializedVersion: 2
+        x: 1101
+        y: 0
+        width: 1715
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 305b8a32bce7c94e0800000000000000
+      internalID: -1973563125753400061
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_96
+      rect:
+        serializedVersion: 2
+        x: 1101
+        y: 7
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61fa102e6b9c780a0800000000000000
+      internalID: -6879308118472151274
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_97
+      rect:
+        serializedVersion: 2
+        x: 1129
+        y: 31
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ee45baa94ffcac9f0800000000000000
+      internalID: -447316563496053522
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_98
+      rect:
+        serializedVersion: 2
+        x: 1151
+        y: 49
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e9b5e22c86e1a1bf0800000000000000
+      internalID: -352936185511912546
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_99
+      rect:
+        serializedVersion: 2
+        x: 1151
+        y: 14
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a7ea3409f8046d650800000000000000
+      internalID: 6257259717622738554
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_100
+      rect:
+        serializedVersion: 2
+        x: 1318
+        y: 90
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6cb2775c738a64c50800000000000000
+      internalID: 6649186857348705222
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_101
+      rect:
+        serializedVersion: 2
+        x: 1364
+        y: 1388
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0feee76d8623210c0800000000000000
+      internalID: -4606564042989965584
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_102
+      rect:
+        serializedVersion: 2
+        x: 1378
+        y: 61
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab8836e2caef98400800000000000000
+      internalID: 327072463427176634
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_103
+      rect:
+        serializedVersion: 2
+        x: 1523
+        y: 45
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c120f059d60ddaf0800000000000000
+      internalID: -370132063938928192
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_104
+      rect:
+        serializedVersion: 2
+        x: 1534
+        y: 1439
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ddea82f4036090b0800000000000000
+      internalID: -5723966253487690282
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_105
+      rect:
+        serializedVersion: 2
+        x: 1555
+        y: 1390
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3ee04920074f83430800000000000000
+      internalID: 3763026250584821475
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_106
+      rect:
+        serializedVersion: 2
+        x: 1584
+        y: 1398
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f52a2a8084136d880800000000000000
+      internalID: -8586621454082989473
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_107
+      rect:
+        serializedVersion: 2
+        x: 1613
+        y: 12
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c1a39f885adf42060800000000000000
+      internalID: 6927941014212131356
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_108
+      rect:
+        serializedVersion: 2
+        x: 1616
+        y: 109
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4537d0cbd3e8b7ea0800000000000000
+      internalID: -5873944893175532716
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_109
+      rect:
+        serializedVersion: 2
+        x: 1747
+        y: 31
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f2343bdcc08a04420800000000000000
+      internalID: 2612272556819039023
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_110
+      rect:
+        serializedVersion: 2
+        x: 1783
+        y: 1292
+        width: 83
+        height: 110
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d4e4b74ae9467450800000000000000
+      internalID: 6086133217012016342
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_111
+      rect:
+        serializedVersion: 2
+        x: 1795
+        y: 1412
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e7afae3072dcb890800000000000000
+      internalID: -7440841104793032733
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_112
+      rect:
+        serializedVersion: 2
+        x: 1797
+        y: 84
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bb063494ae5a17b60800000000000000
+      internalID: 7742151660096676027
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_113
+      rect:
+        serializedVersion: 2
+        x: 1826
+        y: 1459
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4870b233117248bd0800000000000000
+      internalID: -2628933327651141756
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_114
+      rect:
+        serializedVersion: 2
+        x: 1827
+        y: 34
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a4b6144b67f34f700800000000000000
+      internalID: 573152831645772618
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_115
+      rect:
+        serializedVersion: 2
+        x: 1875
+        y: 1348
+        width: 55
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6580e9590e2867530800000000000000
+      internalID: 3852410432356485206
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_116
+      rect:
+        serializedVersion: 2
+        x: 1935
+        y: 62
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e223336c264212c0800000000000000
+      internalID: -4462427124313939229
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_117
+      rect:
+        serializedVersion: 2
+        x: 1967
+        y: 47
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4b21906d46f582bc0800000000000000
+      internalID: -3807688598249467212
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_118
+      rect:
+        serializedVersion: 2
+        x: 1972
+        y: 115
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d7f1c8c10390010e0800000000000000
+      internalID: -2301329307344298115
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_119
+      rect:
+        serializedVersion: 2
+        x: 1998
+        y: 1410
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f86a4279f8ca8a0f0800000000000000
+      internalID: -1105443975803394417
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_120
+      rect:
+        serializedVersion: 2
+        x: 2052
+        y: 1388
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d1deed29b4f365e20800000000000000
+      internalID: 3338925767560981789
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_121
+      rect:
+        serializedVersion: 2
+        x: 2098
+        y: 1406
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a8947c36d0cc35350800000000000000
+      internalID: 6004367086095649162
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_122
+      rect:
+        serializedVersion: 2
+        x: 2124
+        y: 19
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a605799ed63815a0800000000000000
+      internalID: -6550425328325163358
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_123
+      rect:
+        serializedVersion: 2
+        x: 2136
+        y: 26
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5be00e50f7c915220800000000000000
+      internalID: 2472929739776462517
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_124
+      rect:
+        serializedVersion: 2
+        x: 2144
+        y: 27
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 62540cbd56a4f2df0800000000000000
+      internalID: -202861656869419738
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_125
+      rect:
+        serializedVersion: 2
+        x: 2155
+        y: 501
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa3a9618a8a0a5b60800000000000000
+      internalID: 7735506899955196842
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_126
+      rect:
+        serializedVersion: 2
+        x: 2163
+        y: 17
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5cb9502524b205e40800000000000000
+      internalID: 5643057896939166661
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_127
+      rect:
+        serializedVersion: 2
+        x: 2175
+        y: 899
+        width: 12
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8560cb2ff943015c0800000000000000
+      internalID: -4246836587033524648
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_128
+      rect:
+        serializedVersion: 2
+        x: 2188
+        y: 94
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 26a170cdbf6ae5e90800000000000000
+      internalID: -7035001967247680926
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_129
+      rect:
+        serializedVersion: 2
+        x: 2217
+        y: 1113
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1902401f11153b20800000000000000
+      internalID: 3113413542510987546
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_130
+      rect:
+        serializedVersion: 2
+        x: 2224
+        y: 172
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f3f19c7a46bead00800000000000000
+      internalID: 985925799474492407
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_131
+      rect:
+        serializedVersion: 2
+        x: 2225
+        y: 328
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 62fa2bdbb2eb12010800000000000000
+      internalID: 1162419273913773862
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_132
+      rect:
+        serializedVersion: 2
+        x: 2226
+        y: 27
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 44289ac8f510e1430800000000000000
+      internalID: 3755440649167012420
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_133
+      rect:
+        serializedVersion: 2
+        x: 2230
+        y: 1451
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 799297fb5f300fb20800000000000000
+      internalID: 3166034892055718295
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_134
+      rect:
+        serializedVersion: 2
+        x: 2235
+        y: 205
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58ae4930105242860800000000000000
+      internalID: 7504163565391374981
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_135
+      rect:
+        serializedVersion: 2
+        x: 2235
+        y: 35
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 40a14b7e2597e4970800000000000000
+      internalID: 8741057323754330628
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_136
+      rect:
+        serializedVersion: 2
+        x: 2251
+        y: 1057
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: daa7590283a7f2b70800000000000000
+      internalID: 8876447772053961389
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_137
+      rect:
+        serializedVersion: 2
+        x: 2257
+        y: 31
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 80c816d5205cb5920800000000000000
+      internalID: 2980192192382995464
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_138
+      rect:
+        serializedVersion: 2
+        x: 2274
+        y: 989
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce3ef7c13271dee30800000000000000
+      internalID: 4534305839401395180
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_139
+      rect:
+        serializedVersion: 2
+        x: 2283
+        y: 1224
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 695e80a9c20068420800000000000000
+      internalID: 2631791223807468950
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_140
+      rect:
+        serializedVersion: 2
+        x: 2293
+        y: 154
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 31c7f310d4708e550800000000000000
+      internalID: 6190205715135560723
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_141
+      rect:
+        serializedVersion: 2
+        x: 2294
+        y: 371
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4096ab2df061ce1c0800000000000000
+      internalID: -4473176072669992700
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_142
+      rect:
+        serializedVersion: 2
+        x: 2320
+        y: 1269
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7e9f13df0216522e0800000000000000
+      internalID: -2151206452684785177
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_143
+      rect:
+        serializedVersion: 2
+        x: 2323
+        y: 728
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d29e4c24daf80fbd0800000000000000
+      internalID: -2598419010680461011
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_144
+      rect:
+        serializedVersion: 2
+        x: 2347
+        y: 311
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 32bd285a8212500e0800000000000000
+      internalID: -2304399175870915805
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_145
+      rect:
+        serializedVersion: 2
+        x: 2375
+        y: 1159
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ffd646944ea821220800000000000000
+      internalID: 2455177459958836735
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_146
+      rect:
+        serializedVersion: 2
+        x: 2398
+        y: 1147
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a503dd659e439c6c0800000000000000
+      internalID: -4122705807091617702
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_147
+      rect:
+        serializedVersion: 2
+        x: 2403
+        y: 16
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36cf554ca6341e370800000000000000
+      internalID: 8350029309961174115
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_148
+      rect:
+        serializedVersion: 2
+        x: 2419
+        y: 71
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 57abc7f0785f5c920800000000000000
+      internalID: 3010081886396267125
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_149
+      rect:
+        serializedVersion: 2
+        x: 2423
+        y: 1106
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 75af7d92f2e5fc260800000000000000
+      internalID: 7120013092554537559
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_150
+      rect:
+        serializedVersion: 2
+        x: 2448
+        y: 753
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bdb179a3371605b60800000000000000
+      internalID: 7732787707727256539
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_151
+      rect:
+        serializedVersion: 2
+        x: 2451
+        y: 778
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fdb7b24951d56aee0800000000000000
+      internalID: -1250209499287159841
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_152
+      rect:
+        serializedVersion: 2
+        x: 2463
+        y: 1395
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 94fbd7a51d4189080800000000000000
+      internalID: -9180564950995845303
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_153
+      rect:
+        serializedVersion: 2
+        x: 2465
+        y: 471
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c259c9723a74abc00800000000000000
+      internalID: 917124240193131820
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_154
+      rect:
+        serializedVersion: 2
+        x: 2466
+        y: 1257
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e813f0d72ab922b70800000000000000
+      internalID: 8872825338058453390
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_155
+      rect:
+        serializedVersion: 2
+        x: 2468
+        y: 135
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0890d0ac04c695ae0800000000000000
+      internalID: -1560096770383607424
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_156
+      rect:
+        serializedVersion: 2
+        x: 2479
+        y: 804
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 704647304bb0c26f0800000000000000
+      internalID: -708178173624032249
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_157
+      rect:
+        serializedVersion: 2
+        x: 2479
+        y: 35
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4fce98039a9dc62f0800000000000000
+      internalID: -978167698359194380
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_158
+      rect:
+        serializedVersion: 2
+        x: 2481
+        y: 478
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 37abec46e0f51ea00800000000000000
+      internalID: 784012325564627571
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_159
+      rect:
+        serializedVersion: 2
+        x: 2482
+        y: 765
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dbde3ef4d287d0510800000000000000
+      internalID: 1517000785502924221
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_160
+      rect:
+        serializedVersion: 2
+        x: 2487
+        y: 1319
+        width: 7
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cca45feacc4019f20800000000000000
+      internalID: 3427526068560808652
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_161
+      rect:
+        serializedVersion: 2
+        x: 2487
+        y: 885
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a0cd747c273671140800000000000000
+      internalID: 4690326881550457866
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_162
+      rect:
+        serializedVersion: 2
+        x: 2488
+        y: 59
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 62428f3ed6388c810800000000000000
+      internalID: 1785821760251765798
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_163
+      rect:
+        serializedVersion: 2
+        x: 2519
+        y: 671
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4acf943c4b9d60800800000000000000
+      internalID: 578388972557434020
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_164
+      rect:
+        serializedVersion: 2
+        x: 2523
+        y: 172
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9e0ee04102ab49d30800000000000000
+      internalID: 4437376179805020393
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_165
+      rect:
+        serializedVersion: 2
+        x: 2532
+        y: 242
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7804019f3c9726fc0800000000000000
+      internalID: -3503103677536649081
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_166
+      rect:
+        serializedVersion: 2
+        x: 2545
+        y: 248
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c5ccb24a2de3e0320800000000000000
+      internalID: 2526025515419815004
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_167
+      rect:
+        serializedVersion: 2
+        x: 2545
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9037f94aa94f710f0800000000000000
+      internalID: -1146178635118447863
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_168
+      rect:
+        serializedVersion: 2
+        x: 2555
+        y: 203
+        width: 15
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d706cdd611068f600800000000000000
+      internalID: 502256986425679997
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_169
+      rect:
+        serializedVersion: 2
+        x: 2558
+        y: 260
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c63b193e706396b80800000000000000
+      internalID: -8401124222372301972
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_170
+      rect:
+        serializedVersion: 2
+        x: 2583
+        y: 260
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9686867e5cdcb8f0800000000000000
+      internalID: -523301158408255845
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_171
+      rect:
+        serializedVersion: 2
+        x: 2584
+        y: 208
+        width: 11
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 02dab5d7d54bc3870800000000000000
+      internalID: 8663998096782109984
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_172
+      rect:
+        serializedVersion: 2
+        x: 2595
+        y: 1049
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab286c2a5c6c52b20800000000000000
+      internalID: 3109109669910971066
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_173
+      rect:
+        serializedVersion: 2
+        x: 2595
+        y: 989
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 530bf6713fd2f9990800000000000000
+      internalID: -7377127142516084683
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_174
+      rect:
+        serializedVersion: 2
+        x: 2596
+        y: 248
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ca14475a5d954f70800000000000000
+      internalID: 9170909227546581697
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_175
+      rect:
+        serializedVersion: 2
+        x: 2596
+        y: 221
+        width: 17
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 11312700cf6bb2330800000000000000
+      internalID: 3687241913388372753
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_176
+      rect:
+        serializedVersion: 2
+        x: 2604
+        y: 1170
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3780eb583e51bf430800000000000000
+      internalID: 3817669176072210547
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_177
+      rect:
+        serializedVersion: 2
+        x: 2626
+        y: 1105
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d01324eb3c4d98c20800000000000000
+      internalID: 3209330146653909261
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_178
+      rect:
+        serializedVersion: 2
+        x: 2638
+        y: 59
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3247a6cdc24ead380800000000000000
+      internalID: -8945586828490410973
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_179
+      rect:
+        serializedVersion: 2
+        x: 2664
+        y: 469
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9bff8f045ce1a0700800000000000000
+      internalID: 507251740580052921
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_180
+      rect:
+        serializedVersion: 2
+        x: 2682
+        y: 887
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7dab7dcf9de98130800000000000000
+      internalID: 3569645450270846334
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_181
+      rect:
+        serializedVersion: 2
+        x: 2683
+        y: 1325
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b56f55d8edd7ae910800000000000000
+      internalID: 1867443390305924699
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_182
+      rect:
+        serializedVersion: 2
+        x: 2694
+        y: 487
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b223eda8bf358a1c0800000000000000
+      internalID: -4492248288470355413
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_183
+      rect:
+        serializedVersion: 2
+        x: 2695
+        y: 16
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d828fe03a69c2d7f0800000000000000
+      internalID: -589187143307394419
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_184
+      rect:
+        serializedVersion: 2
+        x: 2720
+        y: 566
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 441e56060090cbc70800000000000000
+      internalID: 8988068853546606916
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_185
+      rect:
+        serializedVersion: 2
+        x: 2759
+        y: 43
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 883f0283cc99ec620800000000000000
+      internalID: 2796341521037718408
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_186
+      rect:
+        serializedVersion: 2
+        x: 2772
+        y: 1164
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ec4b7fe458b4a53c0800000000000000
+      internalID: -4370097452482054962
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_187
+      rect:
+        serializedVersion: 2
+        x: 2773
+        y: 807
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2392078550d75f360800000000000000
+      internalID: 7202800640961030450
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_188
+      rect:
+        serializedVersion: 2
+        x: 2773
+        y: 44
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2efd9d3339b4c7180800000000000000
+      internalID: -9116328450102534174
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golden Ebon twig_189
+      rect:
+        serializedVersion: 2
+        x: 2790
+        y: 962
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3d81b0e654dc08940800000000000000
+      internalID: 5296458859870361811
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Golden Ebon twig_0: 5204983651914067303
+      Golden Ebon twig_1: -3495143183124150423
+      Golden Ebon twig_10: 1235830591608405515
+      Golden Ebon twig_100: 6649186857348705222
+      Golden Ebon twig_101: -4606564042989965584
+      Golden Ebon twig_102: 327072463427176634
+      Golden Ebon twig_103: -370132063938928192
+      Golden Ebon twig_104: -5723966253487690282
+      Golden Ebon twig_105: 3763026250584821475
+      Golden Ebon twig_106: -8586621454082989473
+      Golden Ebon twig_107: 6927941014212131356
+      Golden Ebon twig_108: -5873944893175532716
+      Golden Ebon twig_109: 2612272556819039023
+      Golden Ebon twig_11: 3741785867653064111
+      Golden Ebon twig_110: 6086133217012016342
+      Golden Ebon twig_111: -7440841104793032733
+      Golden Ebon twig_112: 7742151660096676027
+      Golden Ebon twig_113: -2628933327651141756
+      Golden Ebon twig_114: 573152831645772618
+      Golden Ebon twig_115: 3852410432356485206
+      Golden Ebon twig_116: -4462427124313939229
+      Golden Ebon twig_117: -3807688598249467212
+      Golden Ebon twig_118: -2301329307344298115
+      Golden Ebon twig_119: -1105443975803394417
+      Golden Ebon twig_12: 2662050285643360784
+      Golden Ebon twig_120: 3338925767560981789
+      Golden Ebon twig_121: 6004367086095649162
+      Golden Ebon twig_122: -6550425328325163358
+      Golden Ebon twig_123: 2472929739776462517
+      Golden Ebon twig_124: -202861656869419738
+      Golden Ebon twig_125: 7735506899955196842
+      Golden Ebon twig_126: 5643057896939166661
+      Golden Ebon twig_127: -4246836587033524648
+      Golden Ebon twig_128: -7035001967247680926
+      Golden Ebon twig_129: 3113413542510987546
+      Golden Ebon twig_13: -4452036727938702194
+      Golden Ebon twig_130: 985925799474492407
+      Golden Ebon twig_131: 1162419273913773862
+      Golden Ebon twig_132: 3755440649167012420
+      Golden Ebon twig_133: 3166034892055718295
+      Golden Ebon twig_134: 7504163565391374981
+      Golden Ebon twig_135: 8741057323754330628
+      Golden Ebon twig_136: 8876447772053961389
+      Golden Ebon twig_137: 2980192192382995464
+      Golden Ebon twig_138: 4534305839401395180
+      Golden Ebon twig_139: 2631791223807468950
+      Golden Ebon twig_14: -2154500831422057827
+      Golden Ebon twig_140: 6190205715135560723
+      Golden Ebon twig_141: -4473176072669992700
+      Golden Ebon twig_142: -2151206452684785177
+      Golden Ebon twig_143: -2598419010680461011
+      Golden Ebon twig_144: -2304399175870915805
+      Golden Ebon twig_145: 2455177459958836735
+      Golden Ebon twig_146: -4122705807091617702
+      Golden Ebon twig_147: 8350029309961174115
+      Golden Ebon twig_148: 3010081886396267125
+      Golden Ebon twig_149: 7120013092554537559
+      Golden Ebon twig_15: 8260346218791043723
+      Golden Ebon twig_150: 7732787707727256539
+      Golden Ebon twig_151: -1250209499287159841
+      Golden Ebon twig_152: -9180564950995845303
+      Golden Ebon twig_153: 917124240193131820
+      Golden Ebon twig_154: 8872825338058453390
+      Golden Ebon twig_155: -1560096770383607424
+      Golden Ebon twig_156: -708178173624032249
+      Golden Ebon twig_157: -978167698359194380
+      Golden Ebon twig_158: 784012325564627571
+      Golden Ebon twig_159: 1517000785502924221
+      Golden Ebon twig_16: 2024813931475069202
+      Golden Ebon twig_160: 3427526068560808652
+      Golden Ebon twig_161: 4690326881550457866
+      Golden Ebon twig_162: 1785821760251765798
+      Golden Ebon twig_163: 578388972557434020
+      Golden Ebon twig_164: 4437376179805020393
+      Golden Ebon twig_165: -3503103677536649081
+      Golden Ebon twig_166: 2526025515419815004
+      Golden Ebon twig_167: -1146178635118447863
+      Golden Ebon twig_168: 502256986425679997
+      Golden Ebon twig_169: -8401124222372301972
+      Golden Ebon twig_17: -5412053910153984219
+      Golden Ebon twig_170: -523301158408255845
+      Golden Ebon twig_171: 8663998096782109984
+      Golden Ebon twig_172: 3109109669910971066
+      Golden Ebon twig_173: -7377127142516084683
+      Golden Ebon twig_174: 9170909227546581697
+      Golden Ebon twig_175: 3687241913388372753
+      Golden Ebon twig_176: 3817669176072210547
+      Golden Ebon twig_177: 3209330146653909261
+      Golden Ebon twig_178: -8945586828490410973
+      Golden Ebon twig_179: 507251740580052921
+      Golden Ebon twig_18: -3151872794796063462
+      Golden Ebon twig_180: 3569645450270846334
+      Golden Ebon twig_181: 1867443390305924699
+      Golden Ebon twig_182: -4492248288470355413
+      Golden Ebon twig_183: -589187143307394419
+      Golden Ebon twig_184: 8988068853546606916
+      Golden Ebon twig_185: 2796341521037718408
+      Golden Ebon twig_186: -4370097452482054962
+      Golden Ebon twig_187: 7202800640961030450
+      Golden Ebon twig_188: -9116328450102534174
+      Golden Ebon twig_189: 5296458859870361811
+      Golden Ebon twig_19: 6963492231717657505
+      Golden Ebon twig_2: -3564036553223234379
+      Golden Ebon twig_20: -457535201405680287
+      Golden Ebon twig_21: -6734123519463817809
+      Golden Ebon twig_22: -3884175578595535314
+      Golden Ebon twig_23: -1808074412689098876
+      Golden Ebon twig_24: 450398669153897573
+      Golden Ebon twig_25: 5224549087804772778
+      Golden Ebon twig_26: -193011023139471041
+      Golden Ebon twig_27: 2108490075423405309
+      Golden Ebon twig_28: -4647033027229964424
+      Golden Ebon twig_29: -8839184523408210764
+      Golden Ebon twig_3: 2511654202994520254
+      Golden Ebon twig_30: -4203641849540724135
+      Golden Ebon twig_31: -96458050223125893
+      Golden Ebon twig_32: -7598952169931492238
+      Golden Ebon twig_33: -2910441325113503165
+      Golden Ebon twig_34: 3433740537242465448
+      Golden Ebon twig_35: -4731096182504098479
+      Golden Ebon twig_36: 6469464989191580397
+      Golden Ebon twig_37: -3003145209462857678
+      Golden Ebon twig_38: -8979136508505864381
+      Golden Ebon twig_39: -7653382762326618465
+      Golden Ebon twig_4: 5643366168292569605
+      Golden Ebon twig_40: 392183067829770674
+      Golden Ebon twig_41: 4799007347035132459
+      Golden Ebon twig_42: 13242046412194283
+      Golden Ebon twig_43: 827446617966818642
+      Golden Ebon twig_44: -8547264814008998051
+      Golden Ebon twig_45: -7842098952804895761
+      Golden Ebon twig_46: -7234655835539133820
+      Golden Ebon twig_47: -647480043718767467
+      Golden Ebon twig_48: -4687055646296089637
+      Golden Ebon twig_49: 2619989106822634511
+      Golden Ebon twig_5: -6726113003347240846
+      Golden Ebon twig_50: -7565210448751852333
+      Golden Ebon twig_51: -2502225869508265022
+      Golden Ebon twig_52: -6311447329318020890
+      Golden Ebon twig_53: -3828424327166266159
+      Golden Ebon twig_54: 1166498720608755246
+      Golden Ebon twig_55: -3089960553669443537
+      Golden Ebon twig_56: -7359965379328773770
+      Golden Ebon twig_57: 1252502148805798207
+      Golden Ebon twig_58: 6648903476991300109
+      Golden Ebon twig_59: -2494850130397308514
+      Golden Ebon twig_6: 896011024924305621
+      Golden Ebon twig_60: 7848216499857734256
+      Golden Ebon twig_61: 1757833792463415689
+      Golden Ebon twig_62: 5861495522129542
+      Golden Ebon twig_63: -6796070292339535169
+      Golden Ebon twig_64: 619838458185383247
+      Golden Ebon twig_65: -5384577043097581036
+      Golden Ebon twig_66: 4922887615810369210
+      Golden Ebon twig_67: 8275042820394061724
+      Golden Ebon twig_68: -879001588508273727
+      Golden Ebon twig_69: -2066570673828678414
+      Golden Ebon twig_7: -1533351442849257242
+      Golden Ebon twig_70: 252129606065219440
+      Golden Ebon twig_71: -1505537768194917804
+      Golden Ebon twig_72: 799687201142745167
+      Golden Ebon twig_73: -3459334189855487662
+      Golden Ebon twig_74: 5743295666846907113
+      Golden Ebon twig_75: 3954898916585167661
+      Golden Ebon twig_76: -1367819098052153730
+      Golden Ebon twig_77: -572936708951022220
+      Golden Ebon twig_78: 5235364683993880563
+      Golden Ebon twig_79: -7068842190622512703
+      Golden Ebon twig_8: -3920768391748052329
+      Golden Ebon twig_80: -1985038506584284629
+      Golden Ebon twig_81: -8288515666294952225
+      Golden Ebon twig_82: -910409886634928445
+      Golden Ebon twig_83: 7188845634745472077
+      Golden Ebon twig_84: -1108092289663671866
+      Golden Ebon twig_85: -4438932963291153756
+      Golden Ebon twig_86: -2230507446884981470
+      Golden Ebon twig_87: 830828126651929688
+      Golden Ebon twig_88: 68574857296101671
+      Golden Ebon twig_89: 4708284302226150153
+      Golden Ebon twig_9: -5184426004226350442
+      Golden Ebon twig_90: -6814285315598187807
+      Golden Ebon twig_91: 1763230654852235840
+      Golden Ebon twig_92: 4385650949203700009
+      Golden Ebon twig_93: 5708844402319776970
+      Golden Ebon twig_94: 3880981138302549849
+      Golden Ebon twig_95: -1973563125753400061
+      Golden Ebon twig_96: -6879308118472151274
+      Golden Ebon twig_97: -447316563496053522
+      Golden Ebon twig_98: -352936185511912546
+      Golden Ebon twig_99: 6257259717622738554
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -1,0 +1,2756 @@
+fileFormatVersion: 2
+guid: 6bc6a4d329842ff49b77154e5515ebf0
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -554615387535122227
+    second: magus_circlet_0
+  - first:
+      213: 227313318347566132
+    second: magus_circlet_1
+  - first:
+      213: -4731386761051643040
+    second: magus_circlet_2
+  - first:
+      213: 6842561850261210609
+    second: magus_circlet_3
+  - first:
+      213: -8542539357984956799
+    second: magus_circlet_4
+  - first:
+      213: -2527605446426876537
+    second: magus_circlet_5
+  - first:
+      213: -3943963701236944839
+    second: magus_circlet_6
+  - first:
+      213: -2408518368620875926
+    second: magus_circlet_7
+  - first:
+      213: 5083239021116198216
+    second: magus_circlet_8
+  - first:
+      213: -2237580067094128140
+    second: magus_circlet_9
+  - first:
+      213: 8004765259979342618
+    second: magus_circlet_10
+  - first:
+      213: -2092985958352533013
+    second: magus_circlet_11
+  - first:
+      213: -7699338384590146874
+    second: magus_circlet_12
+  - first:
+      213: -2139544568600550438
+    second: magus_circlet_13
+  - first:
+      213: -1551152725018393645
+    second: magus_circlet_14
+  - first:
+      213: -5678644545094987110
+    second: magus_circlet_15
+  - first:
+      213: -6324996076651897735
+    second: magus_circlet_16
+  - first:
+      213: -3140824930917092572
+    second: magus_circlet_17
+  - first:
+      213: 8379228503000775594
+    second: magus_circlet_18
+  - first:
+      213: -8408940516204843457
+    second: magus_circlet_19
+  - first:
+      213: 7171750011000505589
+    second: magus_circlet_20
+  - first:
+      213: 4648794729412607229
+    second: magus_circlet_21
+  - first:
+      213: -7873265851870125821
+    second: magus_circlet_22
+  - first:
+      213: -3573668767904239403
+    second: magus_circlet_23
+  - first:
+      213: 2918708161588206279
+    second: magus_circlet_24
+  - first:
+      213: 3102035004301198664
+    second: magus_circlet_25
+  - first:
+      213: -1677305174818686483
+    second: magus_circlet_26
+  - first:
+      213: 4279308330416592902
+    second: magus_circlet_27
+  - first:
+      213: 5185455023764215662
+    second: magus_circlet_28
+  - first:
+      213: 4627561228320797644
+    second: magus_circlet_29
+  - first:
+      213: -6330481606829894250
+    second: magus_circlet_30
+  - first:
+      213: -4058246107036691559
+    second: magus_circlet_31
+  - first:
+      213: 7584628662618079348
+    second: magus_circlet_32
+  - first:
+      213: -5692674890724023964
+    second: magus_circlet_33
+  - first:
+      213: -3028546842853982294
+    second: magus_circlet_34
+  - first:
+      213: 6947177118745989666
+    second: magus_circlet_35
+  - first:
+      213: 4532578592566407257
+    second: magus_circlet_36
+  - first:
+      213: 5158370257953984344
+    second: magus_circlet_37
+  - first:
+      213: 6205171264939162744
+    second: magus_circlet_38
+  - first:
+      213: -9144680584282024281
+    second: magus_circlet_39
+  - first:
+      213: 3922695439747061908
+    second: magus_circlet_40
+  - first:
+      213: 3693875539445149543
+    second: magus_circlet_41
+  - first:
+      213: -7802974567090628593
+    second: magus_circlet_42
+  - first:
+      213: 959552087401492413
+    second: magus_circlet_43
+  - first:
+      213: -1519321354552596378
+    second: magus_circlet_44
+  - first:
+      213: 7880063293257255454
+    second: magus_circlet_45
+  - first:
+      213: -7012971757415665320
+    second: magus_circlet_46
+  - first:
+      213: -125287121740580839
+    second: magus_circlet_47
+  - first:
+      213: -5256888594538825576
+    second: magus_circlet_48
+  - first:
+      213: 2746547668320714591
+    second: magus_circlet_49
+  - first:
+      213: 1410873808450016707
+    second: magus_circlet_50
+  - first:
+      213: -5357211297084397828
+    second: magus_circlet_51
+  - first:
+      213: 739763651590806570
+    second: magus_circlet_52
+  - first:
+      213: -5210811773913418015
+    second: magus_circlet_53
+  - first:
+      213: 6613778035731495929
+    second: magus_circlet_54
+  - first:
+      213: -1663379796352985558
+    second: magus_circlet_55
+  - first:
+      213: 5675017411956836857
+    second: magus_circlet_56
+  - first:
+      213: -6101657167216224678
+    second: magus_circlet_57
+  - first:
+      213: -7535429348274162083
+    second: magus_circlet_58
+  - first:
+      213: -8520008273810261051
+    second: magus_circlet_59
+  - first:
+      213: -3471590912275320146
+    second: magus_circlet_60
+  - first:
+      213: 5473080450358005143
+    second: magus_circlet_61
+  - first:
+      213: -1311910123095745073
+    second: magus_circlet_62
+  - first:
+      213: -6096080494693300835
+    second: magus_circlet_63
+  - first:
+      213: -3171605794346887313
+    second: magus_circlet_64
+  - first:
+      213: -1198810496318509449
+    second: magus_circlet_65
+  - first:
+      213: -4755296903488512827
+    second: magus_circlet_66
+  - first:
+      213: -1238346532662901508
+    second: magus_circlet_67
+  - first:
+      213: -5329303477289061671
+    second: magus_circlet_68
+  - first:
+      213: -5877275182409153671
+    second: magus_circlet_69
+  - first:
+      213: -1940565243326499256
+    second: magus_circlet_70
+  - first:
+      213: -6407326005826994355
+    second: magus_circlet_71
+  - first:
+      213: -5310937039043164796
+    second: magus_circlet_72
+  - first:
+      213: -8025346480329669662
+    second: magus_circlet_73
+  - first:
+      213: -8749428945153060392
+    second: magus_circlet_74
+  - first:
+      213: 2554761399375125907
+    second: magus_circlet_75
+  - first:
+      213: -5890875462952858082
+    second: magus_circlet_76
+  - first:
+      213: 6075149116638609602
+    second: magus_circlet_77
+  - first:
+      213: -6569457920844219392
+    second: magus_circlet_78
+  - first:
+      213: 6009401304538752896
+    second: magus_circlet_79
+  - first:
+      213: 1389742395301304844
+    second: magus_circlet_80
+  - first:
+      213: 5585542725221841075
+    second: magus_circlet_81
+  - first:
+      213: -6893908396796453288
+    second: magus_circlet_82
+  - first:
+      213: 1405712718762885898
+    second: magus_circlet_83
+  - first:
+      213: -1173463499146083018
+    second: magus_circlet_84
+  - first:
+      213: 817244059117971984
+    second: magus_circlet_85
+  - first:
+      213: -7860541193617847766
+    second: magus_circlet_86
+  - first:
+      213: -6113068667611016767
+    second: magus_circlet_87
+  - first:
+      213: -8493474817663414665
+    second: magus_circlet_88
+  - first:
+      213: -5591385089909487463
+    second: magus_circlet_89
+  - first:
+      213: 2211132012761249625
+    second: magus_circlet_90
+  - first:
+      213: 1091877985855279637
+    second: magus_circlet_91
+  - first:
+      213: 233942149229532971
+    second: magus_circlet_92
+  - first:
+      213: 581441365970364222
+    second: magus_circlet_93
+  - first:
+      213: -3138215314675978440
+    second: magus_circlet_94
+  - first:
+      213: -909554982594100710
+    second: magus_circlet_95
+  - first:
+      213: 3733029124503873080
+    second: magus_circlet_96
+  - first:
+      213: 3334821068072263349
+    second: magus_circlet_97
+  - first:
+      213: 8573407867159563108
+    second: magus_circlet_98
+  - first:
+      213: -5126954402799738337
+    second: magus_circlet_99
+  - first:
+      213: 3801074166054005324
+    second: magus_circlet_100
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: magus_circlet_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 2048
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc0e0075e3c9d48f0800000000000000
+      internalID: -554615387535122227
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_1
+      rect:
+        serializedVersion: 2
+        x: 1146
+        y: 1713
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 43c62d83244972300800000000000000
+      internalID: 227313318347566132
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_2
+      rect:
+        serializedVersion: 2
+        x: 1161
+        y: 1716
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 063e78c0fccb65eb0800000000000000
+      internalID: -4731386761051643040
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_3
+      rect:
+        serializedVersion: 2
+        x: 1296
+        y: 1713
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1f58576dfb9a5fe50800000000000000
+      internalID: 6842561850261210609
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_4
+      rect:
+        serializedVersion: 2
+        x: 1125
+        y: 1692
+        width: 23
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 18e5387d6bdc27980800000000000000
+      internalID: -8542539357984956799
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_5
+      rect:
+        serializedVersion: 2
+        x: 1147
+        y: 1698
+        width: 12
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 78522610d342cecd0800000000000000
+      internalID: -2527605446426876537
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_6
+      rect:
+        serializedVersion: 2
+        x: 1173
+        y: 1701
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 930bcb4e8e93449c0800000000000000
+      internalID: -3943963701236944839
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_7
+      rect:
+        serializedVersion: 2
+        x: 1181
+        y: 1703
+        width: 20
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a6f695bfd49339ed0800000000000000
+      internalID: -2408518368620875926
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_8
+      rect:
+        serializedVersion: 2
+        x: 1209
+        y: 1698
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84d090225fa4b8640800000000000000
+      internalID: 5083239021116198216
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_9
+      rect:
+        serializedVersion: 2
+        x: 1911
+        y: 1119
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4f91c50c8c482f0e0800000000000000
+      internalID: -2237580067094128140
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_10
+      rect:
+        serializedVersion: 2
+        x: 163
+        y: 1084
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a13c477c793a61f60800000000000000
+      internalID: 8004765259979342618
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_11
+      rect:
+        serializedVersion: 2
+        x: 151
+        y: 1023
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: be944882c5834f2e0800000000000000
+      internalID: -2092985958352533013
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_12
+      rect:
+        serializedVersion: 2
+        x: 158
+        y: 985
+        width: 8
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6c279f43884762590800000000000000
+      internalID: -7699338384590146874
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_13
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 974
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ad3a277fc8fce42e0800000000000000
+      internalID: -2139544568600550438
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_14
+      rect:
+        serializedVersion: 2
+        x: 163
+        y: 959
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3d346e0a0d2397ae0800000000000000
+      internalID: -1551152725018393645
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_15
+      rect:
+        serializedVersion: 2
+        x: 1915
+        y: 957
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9257eb7fd66131b0800000000000000
+      internalID: -5678644545094987110
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_16
+      rect:
+        serializedVersion: 2
+        x: 1906
+        y: 931
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 97c9c6d54991938a0800000000000000
+      internalID: -6324996076651897735
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_17
+      rect:
+        serializedVersion: 2
+        x: 707
+        y: 549
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 423fefabd5c8964d0800000000000000
+      internalID: -3140824930917092572
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_18
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 530
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aab703dadeff84470800000000000000
+      internalID: 8379228503000775594
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_19
+      rect:
+        serializedVersion: 2
+        x: 1582
+        y: 521
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f3e683a27217d4b80800000000000000
+      internalID: -8408940516204843457
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_20
+      rect:
+        serializedVersion: 2
+        x: 1986
+        y: 513
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f4c69f23ac278360800000000000000
+      internalID: 7171750011000505589
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_21
+      rect:
+        serializedVersion: 2
+        x: 702
+        y: 476
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dfcb8501d26d38040800000000000000
+      internalID: 4648794729412607229
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_22
+      rect:
+        serializedVersion: 2
+        x: 665
+        y: 468
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 301611d0c6a8cb290800000000000000
+      internalID: -7873265851870125821
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_23
+      rect:
+        serializedVersion: 2
+        x: 817
+        y: 459
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d0f8209037c76ec0800000000000000
+      internalID: -3573668767904239403
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_24
+      rect:
+        serializedVersion: 2
+        x: 729
+        y: 459
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7ca9f76eb95518820800000000000000
+      internalID: 2918708161588206279
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_25
+      rect:
+        serializedVersion: 2
+        x: 1260
+        y: 453
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8454330b664ac0b20800000000000000
+      internalID: 3102035004301198664
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_26
+      rect:
+        serializedVersion: 2
+        x: 769
+        y: 448
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: de9f10b84d309b8e0800000000000000
+      internalID: -1677305174818686483
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_27
+      rect:
+        serializedVersion: 2
+        x: 877
+        y: 449
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 608d9d6f048236b30800000000000000
+      internalID: 4279308330416592902
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_28
+      rect:
+        serializedVersion: 2
+        x: 1380
+        y: 451
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e671b32dedf66f740800000000000000
+      internalID: 5185455023764215662
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_29
+      rect:
+        serializedVersion: 2
+        x: 1077
+        y: 439
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cc37e665b66683040800000000000000
+      internalID: 4627561228320797644
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_30
+      rect:
+        serializedVersion: 2
+        x: 1311
+        y: 402
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 69592c7d48c9528a0800000000000000
+      internalID: -6330481606829894250
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_31
+      rect:
+        serializedVersion: 2
+        x: 515
+        y: 392
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 99357facaa63ea7c0800000000000000
+      internalID: -4058246107036691559
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_32
+      rect:
+        serializedVersion: 2
+        x: 1883
+        y: 395
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 470c8946593024960800000000000000
+      internalID: 7584628662618079348
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_33
+      rect:
+        serializedVersion: 2
+        x: 1008
+        y: 368
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 461eb94195e8ff0b0800000000000000
+      internalID: -5692674890724023964
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_34
+      rect:
+        serializedVersion: 2
+        x: 1582
+        y: 346
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aafbe0e31b078f5d0800000000000000
+      internalID: -3028546842853982294
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_35
+      rect:
+        serializedVersion: 2
+        x: 899
+        y: 314
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 222939228c4596060800000000000000
+      internalID: 6947177118745989666
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_36
+      rect:
+        serializedVersion: 2
+        x: 766
+        y: 306
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 950f57e1734f6ee30800000000000000
+      internalID: 4532578592566407257
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_37
+      rect:
+        serializedVersion: 2
+        x: 1077
+        y: 297
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85f894d5b66369740800000000000000
+      internalID: 5158370257953984344
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_38
+      rect:
+        serializedVersion: 2
+        x: 1189
+        y: 299
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 87cf82993623d1650800000000000000
+      internalID: 6205171264939162744
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_39
+      rect:
+        serializedVersion: 2
+        x: 1076
+        y: 281
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7a6557d8571971180800000000000000
+      internalID: -9144680584282024281
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_40
+      rect:
+        serializedVersion: 2
+        x: 1174
+        y: 278
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4981b2818b6307630800000000000000
+      internalID: 3922695439747061908
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_41
+      rect:
+        serializedVersion: 2
+        x: 1639
+        y: 287
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76fe12d6b38434330800000000000000
+      internalID: 3693875539445149543
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_42
+      rect:
+        serializedVersion: 2
+        x: 1927
+        y: 284
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f08d72129f346b390800000000000000
+      internalID: -7802974567090628593
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_43
+      rect:
+        serializedVersion: 2
+        x: 698
+        y: 274
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dbfec012a83015d00800000000000000
+      internalID: 959552087401492413
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_44
+      rect:
+        serializedVersion: 2
+        x: 1604
+        y: 277
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6682a3a17494aeae0800000000000000
+      internalID: -1519321354552596378
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_45
+      rect:
+        serializedVersion: 2
+        x: 141
+        y: 261
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e1a813a90db9b5d60800000000000000
+      internalID: 7880063293257255454
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_46
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 260
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 851746bc75becae90800000000000000
+      internalID: -7012971757415665320
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_47
+      rect:
+        serializedVersion: 2
+        x: 1815
+        y: 262
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 918b8bdc604e24ef0800000000000000
+      internalID: -125287121740580839
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_48
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 250
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 898f5baeca7cb07b0800000000000000
+      internalID: -5256888594538825576
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_49
+      rect:
+        serializedVersion: 2
+        x: 1777
+        y: 247
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f5ffee07d82bd1620800000000000000
+      internalID: 2746547668320714591
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_50
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 248
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3c5d09fe04e649310800000000000000
+      internalID: 1410873808450016707
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_51
+      rect:
+        serializedVersion: 2
+        x: 703
+        y: 234
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cf6239285bc57a5b0800000000000000
+      internalID: -5357211297084397828
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_52
+      rect:
+        serializedVersion: 2
+        x: 1843
+        y: 243
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a2cd0d62f1b244a00800000000000000
+      internalID: 739763651590806570
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_53
+      rect:
+        serializedVersion: 2
+        x: 683
+        y: 226
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1e6b778bc4a7fa7b0800000000000000
+      internalID: -5210811773913418015
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_54
+      rect:
+        serializedVersion: 2
+        x: 1249
+        y: 221
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9fb7e0b051cd8cb50800000000000000
+      internalID: 6613778035731495929
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_55
+      rect:
+        serializedVersion: 2
+        x: 1772
+        y: 222
+        width: 16
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a2691df53ec7ae8e0800000000000000
+      internalID: -1663379796352985558
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_56
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 222
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9f908d5c446b1ce40800000000000000
+      internalID: 5675017411956836857
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_57
+      rect:
+        serializedVersion: 2
+        x: 1922
+        y: 223
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a565cd6622f825ba0800000000000000
+      internalID: -6101657167216224678
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_58
+      rect:
+        serializedVersion: 2
+        x: 1991
+        y: 224
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d56b012aee6cc6790800000000000000
+      internalID: -7535429348274162083
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_59
+      rect:
+        serializedVersion: 2
+        x: 267
+        y: 217
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5cb762cad99d2c980800000000000000
+      internalID: -8520008273810261051
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_60
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ea2fa54657e62dfc0800000000000000
+      internalID: -3471590912275320146
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_61
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79d49b60ca944fb40800000000000000
+      internalID: 5473080450358005143
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_62
+      rect:
+        serializedVersion: 2
+        x: 502
+        y: 199
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fcd93af91b82bcde0800000000000000
+      internalID: -1311910123095745073
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_63
+      rect:
+        serializedVersion: 2
+        x: 1858
+        y: 199
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d954e97a61f566ba0800000000000000
+      internalID: -6096080494693300835
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_64
+      rect:
+        serializedVersion: 2
+        x: 1259
+        y: 191
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f67126c75513cf3d0800000000000000
+      internalID: -3171605794346887313
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_65
+      rect:
+        serializedVersion: 2
+        x: 1783
+        y: 155
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 77eece58438fc5fe0800000000000000
+      internalID: -1198810496318509449
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_66
+      rect:
+        serializedVersion: 2
+        x: 179
+        y: 146
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5cc5d0239aac10eb0800000000000000
+      internalID: -4755296903488512827
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_67
+      rect:
+        serializedVersion: 2
+        x: 1085
+        y: 143
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cf48acbb36280dee0800000000000000
+      internalID: -1238346532662901508
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_68
+      rect:
+        serializedVersion: 2
+        x: 1475
+        y: 144
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9d27ee729b28a06b0800000000000000
+      internalID: -5329303477289061671
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_69
+      rect:
+        serializedVersion: 2
+        x: 144
+        y: 138
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 97388495c59bf6ea0800000000000000
+      internalID: -5877275182409153671
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_70
+      rect:
+        serializedVersion: 2
+        x: 837
+        y: 138
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 846fd08513ab115e0800000000000000
+      internalID: -1940565243326499256
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_71
+      rect:
+        serializedVersion: 2
+        x: 437
+        y: 126
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4f3f86f1fa9417a0800000000000000
+      internalID: -6407326005826994355
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_72
+      rect:
+        serializedVersion: 2
+        x: 554
+        y: 109
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4850e5bc6e2cb46b0800000000000000
+      internalID: -5310937039043164796
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_73
+      rect:
+        serializedVersion: 2
+        x: 1079
+        y: 105
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e3c48075ed30a090800000000000000
+      internalID: -8025346480329669662
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_74
+      rect:
+        serializedVersion: 2
+        x: 1987
+        y: 97
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d191a81bb8c39680800000000000000
+      internalID: -8749428945153060392
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_75
+      rect:
+        serializedVersion: 2
+        x: 1079
+        y: 88
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 39d52aff4f5547320800000000000000
+      internalID: 2554761399375125907
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_76
+      rect:
+        serializedVersion: 2
+        x: 1955
+        y: 85
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e1e41a64af76f3ea0800000000000000
+      internalID: -5890875462952858082
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_77
+      rect:
+        serializedVersion: 2
+        x: 1970
+        y: 88
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c0c5ce1fe34f4450800000000000000
+      internalID: 6075149116638609602
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_78
+      rect:
+        serializedVersion: 2
+        x: 1715
+        y: 71
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00c3435d3d894d4a0800000000000000
+      internalID: -6569457920844219392
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_79
+      rect:
+        serializedVersion: 2
+        x: 1930
+        y: 76
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0872dc5b5aea56350800000000000000
+      internalID: 6009401304538752896
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_80
+      rect:
+        serializedVersion: 2
+        x: 103
+        y: 61
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0a1c39685b594310800000000000000
+      internalID: 1389742395301304844
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_81
+      rect:
+        serializedVersion: 2
+        x: 950
+        y: 57
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3b87d9ed385d38d40800000000000000
+      internalID: 5585542725221841075
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_82
+      rect:
+        serializedVersion: 2
+        x: 1874
+        y: 56
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85e5ddea6dae350a0800000000000000
+      internalID: -6893908396796453288
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_83
+      rect:
+        serializedVersion: 2
+        x: 86
+        y: 44
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a034c1a1548128310800000000000000
+      internalID: 1405712718762885898
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_84
+      rect:
+        serializedVersion: 2
+        x: 340
+        y: 49
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 635c2803a2507bfe0800000000000000
+      internalID: -1173463499146083018
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_85
+      rect:
+        serializedVersion: 2
+        x: 707
+        y: 50
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 01a668e442f675b00800000000000000
+      internalID: 817244059117971984
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_86
+      rect:
+        serializedVersion: 2
+        x: 1028
+        y: 43
+        width: 7
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a2a451c6e6fb9e290800000000000000
+      internalID: -7860541193617847766
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_87
+      rect:
+        serializedVersion: 2
+        x: 1105
+        y: 44
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1c1997b6f640a2ba0800000000000000
+      internalID: -6113068667611016767
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_88
+      rect:
+        serializedVersion: 2
+        x: 1205
+        y: 42
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 77e427857ad112a80800000000000000
+      internalID: -8493474817663414665
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_89
+      rect:
+        serializedVersion: 2
+        x: 1846
+        y: 40
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 998878992e86762b0800000000000000
+      internalID: -5591385089909487463
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_90
+      rect:
+        serializedVersion: 2
+        x: 1859
+        y: 44
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 957f02cb9d48fae10800000000000000
+      internalID: 2211132012761249625
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_91
+      rect:
+        serializedVersion: 2
+        x: 1951
+        y: 44
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51219fc3e31272f00800000000000000
+      internalID: 1091877985855279637
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_92
+      rect:
+        serializedVersion: 2
+        x: 485
+        y: 35
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b2751de25212f3300800000000000000
+      internalID: 233942149229532971
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_93
+      rect:
+        serializedVersion: 2
+        x: 1378
+        y: 31
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e37a16c77d1b11800800000000000000
+      internalID: 581441365970364222
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_94
+      rect:
+        serializedVersion: 2
+        x: 1462
+        y: 29
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83f2c0c5cc1d274d0800000000000000
+      internalID: -3138215314675978440
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_95
+      rect:
+        serializedVersion: 2
+        x: 1808
+        y: 35
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a12cac6ff8c9063f0800000000000000
+      internalID: -909554982594100710
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_96
+      rect:
+        serializedVersion: 2
+        x: 31
+        y: 18
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 836ad36d5326ec330800000000000000
+      internalID: 3733029124503873080
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_97
+      rect:
+        serializedVersion: 2
+        x: 1285
+        y: 13
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5be9fefb71aa74e20800000000000000
+      internalID: 3334821068072263349
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_98
+      rect:
+        serializedVersion: 2
+        x: 1379
+        y: 17
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 46bc594080ddaf670800000000000000
+      internalID: 8573407867159563108
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_99
+      rect:
+        serializedVersion: 2
+        x: 1527
+        y: 23
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f122f79622669d8b0800000000000000
+      internalID: -5126954402799738337
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_circlet_100
+      rect:
+        serializedVersion: 2
+        x: 1733
+        y: 19
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c4a2098a0d020c430800000000000000
+      internalID: 3801074166054005324
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      magus_circlet_0: -554615387535122227
+      magus_circlet_1: 227313318347566132
+      magus_circlet_10: 8004765259979342618
+      magus_circlet_100: 3801074166054005324
+      magus_circlet_11: -2092985958352533013
+      magus_circlet_12: -7699338384590146874
+      magus_circlet_13: -2139544568600550438
+      magus_circlet_14: -1551152725018393645
+      magus_circlet_15: -5678644545094987110
+      magus_circlet_16: -6324996076651897735
+      magus_circlet_17: -3140824930917092572
+      magus_circlet_18: 8379228503000775594
+      magus_circlet_19: -8408940516204843457
+      magus_circlet_2: -4731386761051643040
+      magus_circlet_20: 7171750011000505589
+      magus_circlet_21: 4648794729412607229
+      magus_circlet_22: -7873265851870125821
+      magus_circlet_23: -3573668767904239403
+      magus_circlet_24: 2918708161588206279
+      magus_circlet_25: 3102035004301198664
+      magus_circlet_26: -1677305174818686483
+      magus_circlet_27: 4279308330416592902
+      magus_circlet_28: 5185455023764215662
+      magus_circlet_29: 4627561228320797644
+      magus_circlet_3: 6842561850261210609
+      magus_circlet_30: -6330481606829894250
+      magus_circlet_31: -4058246107036691559
+      magus_circlet_32: 7584628662618079348
+      magus_circlet_33: -5692674890724023964
+      magus_circlet_34: -3028546842853982294
+      magus_circlet_35: 6947177118745989666
+      magus_circlet_36: 4532578592566407257
+      magus_circlet_37: 5158370257953984344
+      magus_circlet_38: 6205171264939162744
+      magus_circlet_39: -9144680584282024281
+      magus_circlet_4: -8542539357984956799
+      magus_circlet_40: 3922695439747061908
+      magus_circlet_41: 3693875539445149543
+      magus_circlet_42: -7802974567090628593
+      magus_circlet_43: 959552087401492413
+      magus_circlet_44: -1519321354552596378
+      magus_circlet_45: 7880063293257255454
+      magus_circlet_46: -7012971757415665320
+      magus_circlet_47: -125287121740580839
+      magus_circlet_48: -5256888594538825576
+      magus_circlet_49: 2746547668320714591
+      magus_circlet_5: -2527605446426876537
+      magus_circlet_50: 1410873808450016707
+      magus_circlet_51: -5357211297084397828
+      magus_circlet_52: 739763651590806570
+      magus_circlet_53: -5210811773913418015
+      magus_circlet_54: 6613778035731495929
+      magus_circlet_55: -1663379796352985558
+      magus_circlet_56: 5675017411956836857
+      magus_circlet_57: -6101657167216224678
+      magus_circlet_58: -7535429348274162083
+      magus_circlet_59: -8520008273810261051
+      magus_circlet_6: -3943963701236944839
+      magus_circlet_60: -3471590912275320146
+      magus_circlet_61: 5473080450358005143
+      magus_circlet_62: -1311910123095745073
+      magus_circlet_63: -6096080494693300835
+      magus_circlet_64: -3171605794346887313
+      magus_circlet_65: -1198810496318509449
+      magus_circlet_66: -4755296903488512827
+      magus_circlet_67: -1238346532662901508
+      magus_circlet_68: -5329303477289061671
+      magus_circlet_69: -5877275182409153671
+      magus_circlet_7: -2408518368620875926
+      magus_circlet_70: -1940565243326499256
+      magus_circlet_71: -6407326005826994355
+      magus_circlet_72: -5310937039043164796
+      magus_circlet_73: -8025346480329669662
+      magus_circlet_74: -8749428945153060392
+      magus_circlet_75: 2554761399375125907
+      magus_circlet_76: -5890875462952858082
+      magus_circlet_77: 6075149116638609602
+      magus_circlet_78: -6569457920844219392
+      magus_circlet_79: 6009401304538752896
+      magus_circlet_8: 5083239021116198216
+      magus_circlet_80: 1389742395301304844
+      magus_circlet_81: 5585542725221841075
+      magus_circlet_82: -6893908396796453288
+      magus_circlet_83: 1405712718762885898
+      magus_circlet_84: -1173463499146083018
+      magus_circlet_85: 817244059117971984
+      magus_circlet_86: -7860541193617847766
+      magus_circlet_87: -6113068667611016767
+      magus_circlet_88: -8493474817663414665
+      magus_circlet_89: -5591385089909487463
+      magus_circlet_9: -2237580067094128140
+      magus_circlet_90: 2211132012761249625
+      magus_circlet_91: 1091877985855279637
+      magus_circlet_92: 233942149229532971
+      magus_circlet_93: 581441365970364222
+      magus_circlet_94: -3138215314675978440
+      magus_circlet_95: -909554982594100710
+      magus_circlet_96: 3733029124503873080
+      magus_circlet_97: 3334821068072263349
+      magus_circlet_98: 8573407867159563108
+      magus_circlet_99: -5126954402799738337
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

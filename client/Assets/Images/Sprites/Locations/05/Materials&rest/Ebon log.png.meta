@@ -1,0 +1,5174 @@
+fileFormatVersion: 2
+guid: 83cc208bc07936c49a7006246e4f183f
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -5385541647122347058
+    second: Ebon log_0
+  - first:
+      213: -7702164586345829631
+    second: Ebon log_1
+  - first:
+      213: -6931672878220497534
+    second: Ebon log_2
+  - first:
+      213: -1675912092877730665
+    second: Ebon log_3
+  - first:
+      213: 6826582134614877022
+    second: Ebon log_4
+  - first:
+      213: -1595679007459307962
+    second: Ebon log_5
+  - first:
+      213: 6376114262218764833
+    second: Ebon log_6
+  - first:
+      213: -2897367216586918558
+    second: Ebon log_7
+  - first:
+      213: 93201951022478912
+    second: Ebon log_8
+  - first:
+      213: -5650244286713404849
+    second: Ebon log_9
+  - first:
+      213: 6430968215030974429
+    second: Ebon log_10
+  - first:
+      213: 4276008206700208893
+    second: Ebon log_11
+  - first:
+      213: -4634340829083972944
+    second: Ebon log_12
+  - first:
+      213: -5019876166545388420
+    second: Ebon log_13
+  - first:
+      213: -7261476823874249379
+    second: Ebon log_14
+  - first:
+      213: 7224505445040524142
+    second: Ebon log_15
+  - first:
+      213: 278059725838262004
+    second: Ebon log_16
+  - first:
+      213: 7836602319324733140
+    second: Ebon log_17
+  - first:
+      213: -2670295513936612241
+    second: Ebon log_18
+  - first:
+      213: 2700891083092729487
+    second: Ebon log_19
+  - first:
+      213: -7325573396869932044
+    second: Ebon log_20
+  - first:
+      213: 313348041262010431
+    second: Ebon log_21
+  - first:
+      213: 3191726021133723136
+    second: Ebon log_22
+  - first:
+      213: -4607443528723395589
+    second: Ebon log_23
+  - first:
+      213: -4925194297914417336
+    second: Ebon log_24
+  - first:
+      213: 4547001406005122220
+    second: Ebon log_25
+  - first:
+      213: 5348443692210463278
+    second: Ebon log_26
+  - first:
+      213: 5956940071045058879
+    second: Ebon log_27
+  - first:
+      213: 8716219192946506602
+    second: Ebon log_28
+  - first:
+      213: -5543378301455230755
+    second: Ebon log_29
+  - first:
+      213: 7952081677075016332
+    second: Ebon log_30
+  - first:
+      213: 4867009077294549693
+    second: Ebon log_31
+  - first:
+      213: -6257803985824949886
+    second: Ebon log_32
+  - first:
+      213: -5369594080727643031
+    second: Ebon log_33
+  - first:
+      213: -1025919921445007924
+    second: Ebon log_34
+  - first:
+      213: -4171583507584662686
+    second: Ebon log_35
+  - first:
+      213: -6382457304619624642
+    second: Ebon log_36
+  - first:
+      213: 3224004826425923773
+    second: Ebon log_37
+  - first:
+      213: 6587754480785669341
+    second: Ebon log_38
+  - first:
+      213: -4314156652012657208
+    second: Ebon log_39
+  - first:
+      213: 3883264247730209368
+    second: Ebon log_40
+  - first:
+      213: -1834934765389553689
+    second: Ebon log_41
+  - first:
+      213: 3034516309451511431
+    second: Ebon log_42
+  - first:
+      213: 9205145501090990025
+    second: Ebon log_43
+  - first:
+      213: 7750913384001814896
+    second: Ebon log_44
+  - first:
+      213: 5182400300786033600
+    second: Ebon log_45
+  - first:
+      213: -2097117431510175079
+    second: Ebon log_46
+  - first:
+      213: -3922893759004756378
+    second: Ebon log_47
+  - first:
+      213: -8727956200393957568
+    second: Ebon log_48
+  - first:
+      213: 6764855495249398517
+    second: Ebon log_49
+  - first:
+      213: -7358676936145686673
+    second: Ebon log_50
+  - first:
+      213: -9123184351632450832
+    second: Ebon log_51
+  - first:
+      213: 2773207117992848881
+    second: Ebon log_52
+  - first:
+      213: -1844937902366829770
+    second: Ebon log_53
+  - first:
+      213: 4252074570721786593
+    second: Ebon log_54
+  - first:
+      213: -4838827882404083168
+    second: Ebon log_55
+  - first:
+      213: 4959137757994536565
+    second: Ebon log_56
+  - first:
+      213: -4682900458560022258
+    second: Ebon log_57
+  - first:
+      213: -5394207320545179394
+    second: Ebon log_58
+  - first:
+      213: 7076227876704047634
+    second: Ebon log_59
+  - first:
+      213: 9009906369557638855
+    second: Ebon log_60
+  - first:
+      213: 1134166956244620253
+    second: Ebon log_61
+  - first:
+      213: 8692187558884280132
+    second: Ebon log_62
+  - first:
+      213: 1249906794583066947
+    second: Ebon log_63
+  - first:
+      213: -7410240908247990707
+    second: Ebon log_64
+  - first:
+      213: 2039701972496974001
+    second: Ebon log_65
+  - first:
+      213: 3112216921923222617
+    second: Ebon log_66
+  - first:
+      213: -8470789697380650032
+    second: Ebon log_67
+  - first:
+      213: -4599500645073974227
+    second: Ebon log_68
+  - first:
+      213: 1008518597272080508
+    second: Ebon log_69
+  - first:
+      213: -5456973285573265252
+    second: Ebon log_70
+  - first:
+      213: 6068087953018260148
+    second: Ebon log_71
+  - first:
+      213: 2508719553124588449
+    second: Ebon log_72
+  - first:
+      213: 2046981412029987642
+    second: Ebon log_73
+  - first:
+      213: 4497115901288822345
+    second: Ebon log_74
+  - first:
+      213: -173546321580121534
+    second: Ebon log_75
+  - first:
+      213: -7328484428356853037
+    second: Ebon log_76
+  - first:
+      213: -5576244432816980103
+    second: Ebon log_77
+  - first:
+      213: 3797240907951313877
+    second: Ebon log_78
+  - first:
+      213: 2102011307977574187
+    second: Ebon log_79
+  - first:
+      213: -2465183978145840638
+    second: Ebon log_80
+  - first:
+      213: -8107514127560772038
+    second: Ebon log_81
+  - first:
+      213: 6240688789136761750
+    second: Ebon log_82
+  - first:
+      213: 4934683636781249356
+    second: Ebon log_83
+  - first:
+      213: -6006423604759228392
+    second: Ebon log_84
+  - first:
+      213: -5660104202301972237
+    second: Ebon log_85
+  - first:
+      213: -3810186537078088619
+    second: Ebon log_86
+  - first:
+      213: -8720476056541356179
+    second: Ebon log_87
+  - first:
+      213: -7896065720793820136
+    second: Ebon log_88
+  - first:
+      213: 1640217910470373678
+    second: Ebon log_89
+  - first:
+      213: -8069249810017346879
+    second: Ebon log_90
+  - first:
+      213: -5053729997411074114
+    second: Ebon log_91
+  - first:
+      213: 4617948258025037496
+    second: Ebon log_92
+  - first:
+      213: -4308683633956289572
+    second: Ebon log_93
+  - first:
+      213: -1577568925747751064
+    second: Ebon log_94
+  - first:
+      213: -6161161056565375189
+    second: Ebon log_95
+  - first:
+      213: -1820505418693482652
+    second: Ebon log_96
+  - first:
+      213: 22026114629236908
+    second: Ebon log_97
+  - first:
+      213: 2781274100129778839
+    second: Ebon log_98
+  - first:
+      213: 7410812256445486567
+    second: Ebon log_99
+  - first:
+      213: -4468279868608926077
+    second: Ebon log_100
+  - first:
+      213: -4191968889409667162
+    second: Ebon log_101
+  - first:
+      213: 6644121488505116895
+    second: Ebon log_102
+  - first:
+      213: 8992691014935445233
+    second: Ebon log_103
+  - first:
+      213: 7723510799177173117
+    second: Ebon log_104
+  - first:
+      213: -7873523739642992731
+    second: Ebon log_105
+  - first:
+      213: -4758558321149923221
+    second: Ebon log_106
+  - first:
+      213: -8606544005797951335
+    second: Ebon log_107
+  - first:
+      213: -7645887335933611412
+    second: Ebon log_108
+  - first:
+      213: -5980630875234610886
+    second: Ebon log_109
+  - first:
+      213: -2708157786450977808
+    second: Ebon log_110
+  - first:
+      213: -5408545162806479415
+    second: Ebon log_111
+  - first:
+      213: 5235978763385542272
+    second: Ebon log_112
+  - first:
+      213: 4791972969749527079
+    second: Ebon log_113
+  - first:
+      213: -9084876945834446687
+    second: Ebon log_114
+  - first:
+      213: -4590742810945577988
+    second: Ebon log_115
+  - first:
+      213: -4054787486476874441
+    second: Ebon log_116
+  - first:
+      213: -4430665978140282355
+    second: Ebon log_117
+  - first:
+      213: -4974638941672347027
+    second: Ebon log_118
+  - first:
+      213: -8959803457304936010
+    second: Ebon log_119
+  - first:
+      213: 1237688886811404073
+    second: Ebon log_120
+  - first:
+      213: -4310141033941650683
+    second: Ebon log_121
+  - first:
+      213: -6907337564532278449
+    second: Ebon log_122
+  - first:
+      213: -8254177073629727353
+    second: Ebon log_123
+  - first:
+      213: 622184680350472741
+    second: Ebon log_124
+  - first:
+      213: 1265441723414277504
+    second: Ebon log_125
+  - first:
+      213: -412416954015980213
+    second: Ebon log_126
+  - first:
+      213: 2228673044803498849
+    second: Ebon log_127
+  - first:
+      213: -135284586001932552
+    second: Ebon log_128
+  - first:
+      213: -705961461135659121
+    second: Ebon log_129
+  - first:
+      213: -3698282972077401643
+    second: Ebon log_130
+  - first:
+      213: -1829465343210874191
+    second: Ebon log_131
+  - first:
+      213: 8240802652776229819
+    second: Ebon log_132
+  - first:
+      213: -560497251828114493
+    second: Ebon log_133
+  - first:
+      213: -5059791265332425089
+    second: Ebon log_134
+  - first:
+      213: -1337844506767707608
+    second: Ebon log_135
+  - first:
+      213: -2176160306792166687
+    second: Ebon log_136
+  - first:
+      213: 8711597943742438984
+    second: Ebon log_137
+  - first:
+      213: -6038318084891580424
+    second: Ebon log_138
+  - first:
+      213: 6774763842506114064
+    second: Ebon log_139
+  - first:
+      213: -7492582768439374031
+    second: Ebon log_140
+  - first:
+      213: 1448214910459707081
+    second: Ebon log_141
+  - first:
+      213: -337171547420413847
+    second: Ebon log_142
+  - first:
+      213: 5313834426250701927
+    second: Ebon log_143
+  - first:
+      213: 6367757097221313586
+    second: Ebon log_144
+  - first:
+      213: -1118798329053817583
+    second: Ebon log_145
+  - first:
+      213: 6014649059351413637
+    second: Ebon log_146
+  - first:
+      213: 5497089456730044227
+    second: Ebon log_147
+  - first:
+      213: -600684900106468008
+    second: Ebon log_148
+  - first:
+      213: 4449631988313379681
+    second: Ebon log_149
+  - first:
+      213: -4603376265553934131
+    second: Ebon log_150
+  - first:
+      213: 783069760695804972
+    second: Ebon log_151
+  - first:
+      213: 7587046621823298392
+    second: Ebon log_152
+  - first:
+      213: 3259220257167138970
+    second: Ebon log_153
+  - first:
+      213: -1971631876885887954
+    second: Ebon log_154
+  - first:
+      213: 3199850295957993568
+    second: Ebon log_155
+  - first:
+      213: -8504898982336398483
+    second: Ebon log_156
+  - first:
+      213: 5174246488244807906
+    second: Ebon log_157
+  - first:
+      213: -7570578271007747593
+    second: Ebon log_158
+  - first:
+      213: -9122811167362187768
+    second: Ebon log_159
+  - first:
+      213: 6406245414557302104
+    second: Ebon log_160
+  - first:
+      213: 6997206221756060130
+    second: Ebon log_161
+  - first:
+      213: 368729498281956385
+    second: Ebon log_162
+  - first:
+      213: 6953991945805326628
+    second: Ebon log_163
+  - first:
+      213: 1546762609642899093
+    second: Ebon log_164
+  - first:
+      213: -136018712984683159
+    second: Ebon log_165
+  - first:
+      213: -3376002907771225676
+    second: Ebon log_166
+  - first:
+      213: -6607339136420969160
+    second: Ebon log_167
+  - first:
+      213: -6093740197949977747
+    second: Ebon log_168
+  - first:
+      213: -4826860474416493865
+    second: Ebon log_169
+  - first:
+      213: -7908333815803744817
+    second: Ebon log_170
+  - first:
+      213: -7460297946346544978
+    second: Ebon log_171
+  - first:
+      213: -133562641105895416
+    second: Ebon log_172
+  - first:
+      213: 2827467657056893988
+    second: Ebon log_173
+  - first:
+      213: -7153752480767481220
+    second: Ebon log_174
+  - first:
+      213: -180506516245882741
+    second: Ebon log_175
+  - first:
+      213: -503979225287314739
+    second: Ebon log_176
+  - first:
+      213: 7930674412293719262
+    second: Ebon log_177
+  - first:
+      213: 7543851204889727926
+    second: Ebon log_178
+  - first:
+      213: 6896673501157562996
+    second: Ebon log_179
+  - first:
+      213: -2030840073136538714
+    second: Ebon log_180
+  - first:
+      213: 3141615180245942614
+    second: Ebon log_181
+  - first:
+      213: -3428155161334069922
+    second: Ebon log_182
+  - first:
+      213: -6964657973469679009
+    second: Ebon log_183
+  - first:
+      213: 628720296558899864
+    second: Ebon log_184
+  - first:
+      213: -3846039841949288489
+    second: Ebon log_185
+  - first:
+      213: -7640561538710567066
+    second: Ebon log_186
+  - first:
+      213: -2865033457698453750
+    second: Ebon log_187
+  - first:
+      213: -2269250811511983950
+    second: Ebon log_188
+  - first:
+      213: 6635761550479624671
+    second: Ebon log_189
+  - first:
+      213: 7830331633776399345
+    second: Ebon log_190
+  - first:
+      213: 7639030619458051718
+    second: Ebon log_191
+  - first:
+      213: 6850679852095279039
+    second: Ebon log_192
+  - first:
+      213: 9185652481025658445
+    second: Ebon log_193
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Ebon log_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 127
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ecb4330e766b245b0800000000000000
+      internalID: -5385541647122347058
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_1
+      rect:
+        serializedVersion: 2
+        x: 123
+        y: 0
+        width: 320
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 10b6345dd1a6c1590800000000000000
+      internalID: -7702164586345829631
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_2
+      rect:
+        serializedVersion: 2
+        x: 412
+        y: 0
+        width: 2135
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28d257a2e30cdcf90800000000000000
+      internalID: -6931672878220497534
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_3
+      rect:
+        serializedVersion: 2
+        x: 811
+        y: 1529
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79ccd35b4d6fdb8e0800000000000000
+      internalID: -1675912092877730665
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_4
+      rect:
+        serializedVersion: 2
+        x: 1135
+        y: 1531
+        width: 6
+        height: 5
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e536fbb5844ecbe50800000000000000
+      internalID: 6826582134614877022
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_5
+      rect:
+        serializedVersion: 2
+        x: 2524
+        y: 0
+        width: 155
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 64e07d0a5620bd9e0800000000000000
+      internalID: -1595679007459307962
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_6
+      rect:
+        serializedVersion: 2
+        x: 2635
+        y: 0
+        width: 181
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 122f9dea3228c7850800000000000000
+      internalID: 6376114262218764833
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_7
+      rect:
+        serializedVersion: 2
+        x: 823
+        y: 1503
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 265797f0edb7ac7d0800000000000000
+      internalID: -2897367216586918558
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_8
+      rect:
+        serializedVersion: 2
+        x: 883
+        y: 1500
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 046711f3eae1b4100800000000000000
+      internalID: 93201951022478912
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_9
+      rect:
+        serializedVersion: 2
+        x: 839
+        y: 1489
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f42644ce1cc4691b0800000000000000
+      internalID: -5650244286713404849
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_10
+      rect:
+        serializedVersion: 2
+        x: 899
+        y: 1477
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dd7cfb2d4836f3950800000000000000
+      internalID: 6430968215030974429
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_11
+      rect:
+        serializedVersion: 2
+        x: 2767
+        y: 1450
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: df265090fce675b30800000000000000
+      internalID: 4276008206700208893
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_12
+      rect:
+        serializedVersion: 2
+        x: 1091
+        y: 1431
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ba4c5ad1938fafb0800000000000000
+      internalID: -4634340829083972944
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_13
+      rect:
+        serializedVersion: 2
+        x: 2653
+        y: 1436
+        width: 11
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c7ccc941931d55ab0800000000000000
+      internalID: -5019876166545388420
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_14
+      rect:
+        serializedVersion: 2
+        x: 435
+        y: 1426
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d5d5e383d4d0a3b90800000000000000
+      internalID: -7261476823874249379
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_15
+      rect:
+        serializedVersion: 2
+        x: 453
+        y: 1426
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e6b0489dc69924460800000000000000
+      internalID: 7224505445040524142
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_16
+      rect:
+        serializedVersion: 2
+        x: 402
+        y: 1380
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4fe9ee0f8dddbd300800000000000000
+      internalID: 278059725838262004
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_17
+      rect:
+        serializedVersion: 2
+        x: 1301
+        y: 1075
+        width: 417
+        height: 311
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4de5a511a4431cc60800000000000000
+      internalID: 7836602319324733140
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_18
+      rect:
+        serializedVersion: 2
+        x: 1877
+        y: 1273
+        width: 77
+        height: 122
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f643d7eb06431fad0800000000000000
+      internalID: -2670295513936612241
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_19
+      rect:
+        serializedVersion: 2
+        x: 2763
+        y: 1351
+        width: 8
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f8e13c0512e7b7520800000000000000
+      internalID: 2700891083092729487
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_20
+      rect:
+        serializedVersion: 2
+        x: 211
+        y: 1333
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4fb148fdec5565a90800000000000000
+      internalID: -7325573396869932044
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_21
+      rect:
+        serializedVersion: 2
+        x: 213
+        y: 1339
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f309c72226c395400800000000000000
+      internalID: 313348041262010431
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_22
+      rect:
+        serializedVersion: 2
+        x: 497
+        y: 1336
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 006eb0ed7e94b4c20800000000000000
+      internalID: 3191726021133723136
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_23
+      rect:
+        serializedVersion: 2
+        x: 524
+        y: 1334
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bfb05cb95821f00c0800000000000000
+      internalID: -4607443528723395589
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_24
+      rect:
+        serializedVersion: 2
+        x: 2240
+        y: 1339
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84f180f71e136abb0800000000000000
+      internalID: -4925194297914417336
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_25
+      rect:
+        serializedVersion: 2
+        x: 2426
+        y: 1335
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca4132e00b13a1f30800000000000000
+      internalID: 4547001406005122220
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_26
+      rect:
+        serializedVersion: 2
+        x: 2386
+        y: 1326
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e222267633d793a40800000000000000
+      internalID: 5348443692210463278
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_27
+      rect:
+        serializedVersion: 2
+        x: 2438
+        y: 1313
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f315ee2fe6d4ba250800000000000000
+      internalID: 5956940071045058879
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_28
+      rect:
+        serializedVersion: 2
+        x: 352
+        y: 1277
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a6bb40cec2b36f870800000000000000
+      internalID: 8716219192946506602
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_29
+      rect:
+        serializedVersion: 2
+        x: 2755
+        y: 1278
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dd8172e0ec6f113b0800000000000000
+      internalID: -5543378301455230755
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_30
+      rect:
+        serializedVersion: 2
+        x: 2695
+        y: 1247
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c8ae2f247287b5e60800000000000000
+      internalID: 7952081677075016332
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_31
+      rect:
+        serializedVersion: 2
+        x: 2749
+        y: 1250
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dba4eb228f61b8340800000000000000
+      internalID: 4867009077294549693
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_32
+      rect:
+        serializedVersion: 2
+        x: 2276
+        y: 1221
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 28951ee1e60d729a0800000000000000
+      internalID: -6257803985824949886
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_33
+      rect:
+        serializedVersion: 2
+        x: 2392
+        y: 1208
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 96c403602ae5b75b0800000000000000
+      internalID: -5369594080727643031
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_34
+      rect:
+        serializedVersion: 2
+        x: 165
+        y: 1175
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ccd064a544333c1f0800000000000000
+      internalID: -1025919921445007924
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_35
+      rect:
+        serializedVersion: 2
+        x: 558
+        y: 1181
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 263c98fd6ee8b16c0800000000000000
+      internalID: -4171583507584662686
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_36
+      rect:
+        serializedVersion: 2
+        x: 250
+        y: 1165
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e37dc0ca5e4fc67a0800000000000000
+      internalID: -6382457304619624642
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_37
+      rect:
+        serializedVersion: 2
+        x: 2599
+        y: 1172
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: db81341ee47fdbc20800000000000000
+      internalID: 3224004826425923773
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_38
+      rect:
+        serializedVersion: 2
+        x: 2358
+        y: 1164
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ddcb7befbc76c6b50800000000000000
+      internalID: 6587754480785669341
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_39
+      rect:
+        serializedVersion: 2
+        x: 2376
+        y: 1160
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8c5a563e1690124c0800000000000000
+      internalID: -4314156652012657208
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_40
+      rect:
+        serializedVersion: 2
+        x: 400
+        y: 1149
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8520fe6424024e530800000000000000
+      internalID: 3883264247730209368
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_41
+      rect:
+        serializedVersion: 2
+        x: 2395
+        y: 1151
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7efd0f28d800986e0800000000000000
+      internalID: -1834934765389553689
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_42
+      rect:
+        serializedVersion: 2
+        x: 326
+        y: 1133
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7869cf18184cc1a20800000000000000
+      internalID: 3034516309451511431
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_43
+      rect:
+        serializedVersion: 2
+        x: 511
+        y: 1124
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9c74052ff0f3fbf70800000000000000
+      internalID: 9205145501090990025
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_44
+      rect:
+        serializedVersion: 2
+        x: 2553
+        y: 1083
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 071cf3a18a6c09b60800000000000000
+      internalID: 7750913384001814896
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_45
+      rect:
+        serializedVersion: 2
+        x: 452
+        y: 1055
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c3aa34bd959be740800000000000000
+      internalID: 5182400300786033600
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_46
+      rect:
+        serializedVersion: 2
+        x: 36
+        y: 1034
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9927e8a9eca85e2e0800000000000000
+      internalID: -2097117431510175079
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_47
+      rect:
+        serializedVersion: 2
+        x: 452
+        y: 1008
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 666bcea19e41f89c0800000000000000
+      internalID: -3922893759004756378
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_48
+      rect:
+        serializedVersion: 2
+        x: 547
+        y: 1005
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 04f9954141210e680800000000000000
+      internalID: -8727956200393957568
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_49
+      rect:
+        serializedVersion: 2
+        x: 442
+        y: 989
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5fa803f2b3891ed50800000000000000
+      internalID: 6764855495249398517
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_50
+      rect:
+        serializedVersion: 2
+        x: 2436
+        y: 964
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f6f2d24805ab0e990800000000000000
+      internalID: -7358676936145686673
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_51
+      rect:
+        serializedVersion: 2
+        x: 2763
+        y: 972
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0fa9b8c3b20f36180800000000000000
+      internalID: -9123184351632450832
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_52
+      rect:
+        serializedVersion: 2
+        x: 72
+        y: 941
+        width: 10
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1fd6c844e296c7620800000000000000
+      internalID: 2773207117992848881
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_53
+      rect:
+        serializedVersion: 2
+        x: 2567
+        y: 952
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 63355c0b0c67566e0800000000000000
+      internalID: -1844937902366829770
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_54
+      rect:
+        serializedVersion: 2
+        x: 2753
+        y: 942
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1eaf75a2b47620b30800000000000000
+      internalID: 4252074570721786593
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_55
+      rect:
+        serializedVersion: 2
+        x: 2751
+        y: 923
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 02a8c0c9da709dcb0800000000000000
+      internalID: -4838827882404083168
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_56
+      rect:
+        serializedVersion: 2
+        x: 454
+        y: 915
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 57ecd79248562d440800000000000000
+      internalID: 4959137757994536565
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_57
+      rect:
+        serializedVersion: 2
+        x: 2344
+        y: 901
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e09140118def20fb0800000000000000
+      internalID: -4682900458560022258
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_58
+      rect:
+        serializedVersion: 2
+        x: 2750
+        y: 905
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ef8c71e850de325b0800000000000000
+      internalID: -5394207320545179394
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_59
+      rect:
+        serializedVersion: 2
+        x: 2563
+        y: 887
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 21259ac23cfc33260800000000000000
+      internalID: 7076227876704047634
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_60
+      rect:
+        serializedVersion: 2
+        x: 47
+        y: 854
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7ce23094b1e990d70800000000000000
+      internalID: 9009906369557638855
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_61
+      rect:
+        serializedVersion: 2
+        x: 2369
+        y: 851
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dd352fe66de5dbf00800000000000000
+      internalID: 1134166956244620253
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_62
+      rect:
+        serializedVersion: 2
+        x: 573
+        y: 811
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4470e58188ad0a870800000000000000
+      internalID: 8692187558884280132
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_63
+      rect:
+        serializedVersion: 2
+        x: 243
+        y: 785
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 349887d7b9f885110800000000000000
+      internalID: 1249906794583066947
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_64
+      rect:
+        serializedVersion: 2
+        x: 614
+        y: 770
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4e7fc3b729892990800000000000000
+      internalID: -7410240908247990707
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_65
+      rect:
+        serializedVersion: 2
+        x: 229
+        y: 751
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b0885e132a7e4c10800000000000000
+      internalID: 2039701972496974001
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_66
+      rect:
+        serializedVersion: 2
+        x: 75
+        y: 738
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 95c713f1dc0d03b20800000000000000
+      internalID: 3112216921923222617
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_67
+      rect:
+        serializedVersion: 2
+        x: 452
+        y: 677
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0d3769086a5b17a80800000000000000
+      internalID: -8470789697380650032
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_68
+      rect:
+        serializedVersion: 2
+        x: 2401
+        y: 651
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2c8f22588a4b20c0800000000000000
+      internalID: -4599500645073974227
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_69
+      rect:
+        serializedVersion: 2
+        x: 402
+        y: 633
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c7017c3225afefd00800000000000000
+      internalID: 1008518597272080508
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_70
+      rect:
+        serializedVersion: 2
+        x: 235
+        y: 581
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c98fb9485bfe444b0800000000000000
+      internalID: -5456973285573265252
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_71
+      rect:
+        serializedVersion: 2
+        x: 2389
+        y: 571
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4ba0b79d7dd263450800000000000000
+      internalID: 6068087953018260148
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_72
+      rect:
+        serializedVersion: 2
+        x: 499
+        y: 561
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ab511d4423c0d220800000000000000
+      internalID: 2508719553124588449
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_73
+      rect:
+        serializedVersion: 2
+        x: 293
+        y: 550
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a3bffd5bfb6586c10800000000000000
+      internalID: 2046981412029987642
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_74
+      rect:
+        serializedVersion: 2
+        x: 2345
+        y: 552
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 946b412e517f86e30800000000000000
+      internalID: 4497115901288822345
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_75
+      rect:
+        serializedVersion: 2
+        x: 2239
+        y: 541
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 242242e3a80779df0800000000000000
+      internalID: -173546321580121534
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_76
+      rect:
+        serializedVersion: 2
+        x: 35
+        y: 524
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3d2eec98d3efb4a90800000000000000
+      internalID: -7328484428356853037
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_77
+      rect:
+        serializedVersion: 2
+        x: 2759
+        y: 519
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 97fb1398b333d92b0800000000000000
+      internalID: -5576244432816980103
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_78
+      rect:
+        serializedVersion: 2
+        x: 455
+        y: 501
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d31505bc7282b430800000000000000
+      internalID: 3797240907951313877
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_79
+      rect:
+        serializedVersion: 2
+        x: 584
+        y: 503
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b278bddc528db2d10800000000000000
+      internalID: 2102011307977574187
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_80
+      rect:
+        serializedVersion: 2
+        x: 2478
+        y: 456
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 20202a4ab38e9cdd0800000000000000
+      internalID: -2465183978145840638
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_81
+      rect:
+        serializedVersion: 2
+        x: 2475
+        y: 443
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a36774f3bd25c7f80800000000000000
+      internalID: -8107514127560772038
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_82
+      rect:
+        serializedVersion: 2
+        x: 516
+        y: 426
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 693624e93616b9650800000000000000
+      internalID: 6240688789136761750
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_83
+      rect:
+        serializedVersion: 2
+        x: 294
+        y: 412
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c4377416f948b7440800000000000000
+      internalID: 4934683636781249356
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_84
+      rect:
+        serializedVersion: 2
+        x: 2413
+        y: 399
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8101ecb0e85e4aca0800000000000000
+      internalID: -6006423604759228392
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_85
+      rect:
+        serializedVersion: 2
+        x: 67
+        y: 381
+        width: 12
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f0681e67354371b0800000000000000
+      internalID: -5660104202301972237
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_86
+      rect:
+        serializedVersion: 2
+        x: 2618
+        y: 381
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55c1c71288f7f1bc0800000000000000
+      internalID: -3810186537078088619
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_87
+      rect:
+        serializedVersion: 2
+        x: 2326
+        y: 364
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d6f9d89ca35aaf680800000000000000
+      internalID: -8720476056541356179
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_88
+      rect:
+        serializedVersion: 2
+        x: 193
+        y: 314
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 81412f4ef0a8b6290800000000000000
+      internalID: -7896065720793820136
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_89
+      rect:
+        serializedVersion: 2
+        x: 2425
+        y: 320
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e21f1d3df7933c610800000000000000
+      internalID: 1640217910470373678
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_90
+      rect:
+        serializedVersion: 2
+        x: 2338
+        y: 307
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ca170eec04440090800000000000000
+      internalID: -8069249810017346879
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_91
+      rect:
+        serializedVersion: 2
+        x: 2771
+        y: 301
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ebfb399d75b8dd9b0800000000000000
+      internalID: -5053729997411074114
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_92
+      rect:
+        serializedVersion: 2
+        x: 2558
+        y: 260
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8be57b6497f361040800000000000000
+      internalID: 4617948258025037496
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_93
+      rect:
+        serializedVersion: 2
+        x: 2582
+        y: 260
+        width: 14
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cd30f74301b7434c0800000000000000
+      internalID: -4308683633956289572
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_94
+      rect:
+        serializedVersion: 2
+        x: 2759
+        y: 265
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8675c1c9b695b1ae0800000000000000
+      internalID: -1577568925747751064
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_95
+      rect:
+        serializedVersion: 2
+        x: 2531
+        y: 241
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b2f437b89a82f7aa0800000000000000
+      internalID: -6161161056565375189
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_96
+      rect:
+        serializedVersion: 2
+        x: 2545
+        y: 248
+        width: 13
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 467e91797f34cb6e0800000000000000
+      internalID: -1820505418693482652
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_97
+      rect:
+        serializedVersion: 2
+        x: 2596
+        y: 247
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca8f14272a04e4000800000000000000
+      internalID: 22026114629236908
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_98
+      rect:
+        serializedVersion: 2
+        x: 2710
+        y: 243
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79cca39ee02199620800000000000000
+      internalID: 2781274100129778839
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_99
+      rect:
+        serializedVersion: 2
+        x: 38
+        y: 235
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7e55b8aab7e78d660800000000000000
+      internalID: 7410812256445486567
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_100
+      rect:
+        serializedVersion: 2
+        x: 423
+        y: 234
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 38e298a222b7df1c0800000000000000
+      internalID: -4468279868608926077
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_101
+      rect:
+        serializedVersion: 2
+        x: 2545
+        y: 217
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6af7f3d418223d5c0800000000000000
+      internalID: -4191968889409667162
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_102
+      rect:
+        serializedVersion: 2
+        x: 2596
+        y: 222
+        width: 16
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd813eeaa49a43c50800000000000000
+      internalID: 6644121488505116895
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_103
+      rect:
+        serializedVersion: 2
+        x: 2232
+        y: 204
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1fef21035d47ccc70800000000000000
+      internalID: 8992691014935445233
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_104
+      rect:
+        serializedVersion: 2
+        x: 2558
+        y: 208
+        width: 9
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d7849d3a62c6f2b60800000000000000
+      internalID: 7723510799177173117
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_105
+      rect:
+        serializedVersion: 2
+        x: 2584
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5a769ffdfdf9bb290800000000000000
+      internalID: -7873523739642992731
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_106
+      rect:
+        serializedVersion: 2
+        x: 2756
+        y: 211
+        width: 11
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b6031e83b6436fdb0800000000000000
+      internalID: -4758558321149923221
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_107
+      rect:
+        serializedVersion: 2
+        x: 2567
+        y: 191
+        width: 9
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 99845ae73d96f8880800000000000000
+      internalID: -8606544005797951335
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_108
+      rect:
+        serializedVersion: 2
+        x: 2787
+        y: 179
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c62f4054af954e590800000000000000
+      internalID: -7645887335933611412
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_109
+      rect:
+        serializedVersion: 2
+        x: 471
+        y: 169
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a3158ecd7e7800da0800000000000000
+      internalID: -5980630875234610886
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_110
+      rect:
+        serializedVersion: 2
+        x: 1722
+        y: 163
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0fb91e677d0ba6ad0800000000000000
+      internalID: -2708157786450977808
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_111
+      rect:
+        serializedVersion: 2
+        x: 2354
+        y: 170
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9c5334384dcf0f4b0800000000000000
+      internalID: -5408545162806479415
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_112
+      rect:
+        serializedVersion: 2
+        x: 1231
+        y: 141
+        width: 10
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0869513a1fee9a840800000000000000
+      internalID: 5235978763385542272
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_113
+      rect:
+        serializedVersion: 2
+        x: 1646
+        y: 139
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 72ab13be602808240800000000000000
+      internalID: 4791972969749527079
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_114
+      rect:
+        serializedVersion: 2
+        x: 1819
+        y: 143
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1a0f66f2d880ce180800000000000000
+      internalID: -9084876945834446687
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_115
+      rect:
+        serializedVersion: 2
+        x: 2403
+        y: 139
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cfb196a7cb76a40c0800000000000000
+      internalID: -4590742810945577988
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_116
+      rect:
+        serializedVersion: 2
+        x: 470
+        y: 129
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 73dc8d4a3408ab7c0800000000000000
+      internalID: -4054787486476874441
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_117
+      rect:
+        serializedVersion: 2
+        x: 1566
+        y: 120
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d023a8e74cc1382c0800000000000000
+      internalID: -4430665978140282355
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_118
+      rect:
+        serializedVersion: 2
+        x: 890
+        y: 109
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d6a6bc34d3886fab0800000000000000
+      internalID: -4974638941672347027
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_119
+      rect:
+        serializedVersion: 2
+        x: 911
+        y: 109
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6b1c5060a3268a380800000000000000
+      internalID: -8959803457304936010
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_120
+      rect:
+        serializedVersion: 2
+        x: 1427
+        y: 93
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 927a7d82c772d2110800000000000000
+      internalID: 1237688886811404073
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_121
+      rect:
+        serializedVersion: 2
+        x: 1615
+        y: 89
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 503b214d09d4f24c0800000000000000
+      internalID: -4310141033941650683
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_122
+      rect:
+        serializedVersion: 2
+        x: 2419
+        y: 96
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f4b775ae4153420a0800000000000000
+      internalID: -6907337564532278449
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_123
+      rect:
+        serializedVersion: 2
+        x: 390
+        y: 85
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 785702d1fa5437d80800000000000000
+      internalID: -8254177073629727353
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_124
+      rect:
+        serializedVersion: 2
+        x: 1167
+        y: 89
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 52adaf89ba172a800800000000000000
+      internalID: 622184680350472741
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_125
+      rect:
+        serializedVersion: 2
+        x: 1571
+        y: 87
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 08de018fa80cf8110800000000000000
+      internalID: 1265441723414277504
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_126
+      rect:
+        serializedVersion: 2
+        x: 1923
+        y: 81
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b45678427fcc64af0800000000000000
+      internalID: -412416954015980213
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_127
+      rect:
+        serializedVersion: 2
+        x: 2719
+        y: 87
+        width: 12
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 16330048356ddee10800000000000000
+      internalID: 2228673044803498849
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_128
+      rect:
+        serializedVersion: 2
+        x: 2767
+        y: 86
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8fed4c3c26f5f1ef0800000000000000
+      internalID: -135284586001932552
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_129
+      rect:
+        serializedVersion: 2
+        x: 336
+        y: 80
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f8fa4eb9acbe336f0800000000000000
+      internalID: -705961461135659121
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_130
+      rect:
+        serializedVersion: 2
+        x: 729
+        y: 82
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d953723b3f0dacc0800000000000000
+      internalID: -3698282972077401643
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_131
+      rect:
+        serializedVersion: 2
+        x: 1827
+        y: 80
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ba170996fe6c96e0800000000000000
+      internalID: -1829465343210874191
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_132
+      rect:
+        serializedVersion: 2
+        x: 2761
+        y: 81
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bbbe2ded9563d5270800000000000000
+      internalID: 8240802652776229819
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_133
+      rect:
+        serializedVersion: 2
+        x: 558
+        y: 67
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3cbd33718b6b838f0800000000000000
+      internalID: -560497251828114493
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_134
+      rect:
+        serializedVersion: 2
+        x: 1922
+        y: 69
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f7e8c30f6a208c9b0800000000000000
+      internalID: -5059791265332425089
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_135
+      rect:
+        serializedVersion: 2
+        x: 2051
+        y: 64
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 822376162850f6de0800000000000000
+      internalID: -1337844506767707608
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_136
+      rect:
+        serializedVersion: 2
+        x: 2200
+        y: 67
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ea09531bb9bcc1e0800000000000000
+      internalID: -2176160306792166687
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_137
+      rect:
+        serializedVersion: 2
+        x: 2365
+        y: 63
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84e9ace7c20d5e870800000000000000
+      internalID: 8711597943742438984
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_138
+      rect:
+        serializedVersion: 2
+        x: 213
+        y: 56
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8f76835b1b5933ca0800000000000000
+      internalID: -6038318084891580424
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_139
+      rect:
+        serializedVersion: 2
+        x: 275
+        y: 58
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 014ccbd02dbc40e50800000000000000
+      internalID: 6774763842506114064
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_140
+      rect:
+        serializedVersion: 2
+        x: 595
+        y: 60
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 13f45f46baff40890800000000000000
+      internalID: -7492582768439374031
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_141
+      rect:
+        serializedVersion: 2
+        x: 885
+        y: 58
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9ceff50c9c7191410800000000000000
+      internalID: 1448214910459707081
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_142
+      rect:
+        serializedVersion: 2
+        x: 1221
+        y: 59
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 96033a79340225bf0800000000000000
+      internalID: -337171547420413847
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_143
+      rect:
+        serializedVersion: 2
+        x: 1465
+        y: 57
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76c2aebb1488eb940800000000000000
+      internalID: 5313834426250701927
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_144
+      rect:
+        serializedVersion: 2
+        x: 1643
+        y: 58
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 23459d39751de5850800000000000000
+      internalID: 6367757097221313586
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_145
+      rect:
+        serializedVersion: 2
+        x: 1698
+        y: 56
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 115527de8da3970f0800000000000000
+      internalID: -1118798329053817583
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_146
+      rect:
+        serializedVersion: 2
+        x: 1768
+        y: 59
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5834747d373587350800000000000000
+      internalID: 6014649059351413637
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_147
+      rect:
+        serializedVersion: 2
+        x: 2467
+        y: 59
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 34770fe6cb5994c40800000000000000
+      internalID: 5497089456730044227
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_148
+      rect:
+        serializedVersion: 2
+        x: 2549
+        y: 57
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85586331440f9a7f0800000000000000
+      internalID: -600684900106468008
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_149
+      rect:
+        serializedVersion: 2
+        x: 2631
+        y: 61
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 16352acd7b440cd30800000000000000
+      internalID: 4449631988313379681
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_150
+      rect:
+        serializedVersion: 2
+        x: 2754
+        y: 57
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc8813c1da58d10c0800000000000000
+      internalID: -4603376265553934131
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_151
+      rect:
+        serializedVersion: 2
+        x: 120
+        y: 53
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c24af986cc50eda00800000000000000
+      internalID: 783069760695804972
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_152
+      rect:
+        serializedVersion: 2
+        x: 500
+        y: 52
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85bea1464ba9a4960800000000000000
+      internalID: 7587046621823298392
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_153
+      rect:
+        serializedVersion: 2
+        x: 594
+        y: 45
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9064394e831b3d20800000000000000
+      internalID: 3259220257167138970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_154
+      rect:
+        serializedVersion: 2
+        x: 818
+        y: 44
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e24416e014b53a4e0800000000000000
+      internalID: -1971631876885887954
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_155
+      rect:
+        serializedVersion: 2
+        x: 1723
+        y: 49
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 068310104e6286c20800000000000000
+      internalID: 3199850295957993568
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_156
+      rect:
+        serializedVersion: 2
+        x: 1805
+        y: 36
+        width: 11
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d6bf14bbf6788f980800000000000000
+      internalID: -8504898982336398483
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_157
+      rect:
+        serializedVersion: 2
+        x: 2255
+        y: 47
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e8e42844cd9ec740800000000000000
+      internalID: 5174246488244807906
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_158
+      rect:
+        serializedVersion: 2
+        x: 36
+        y: 42
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f1da445c27efe690800000000000000
+      internalID: -7570578271007747593
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_159
+      rect:
+        serializedVersion: 2
+        x: 67
+        y: 40
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 80ef868f393456180800000000000000
+      internalID: -9122811167362187768
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_160
+      rect:
+        serializedVersion: 2
+        x: 99
+        y: 42
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85db9a6434e87e850800000000000000
+      internalID: 6406245414557302104
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_161
+      rect:
+        serializedVersion: 2
+        x: 338
+        y: 40
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e15ce36cf11b1160800000000000000
+      internalID: 6997206221756060130
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_162
+      rect:
+        serializedVersion: 2
+        x: 559
+        y: 41
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 124dd4b668dfd1500800000000000000
+      internalID: 368729498281956385
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_163
+      rect:
+        serializedVersion: 2
+        x: 802
+        y: 36
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 42967a4b4da818060800000000000000
+      internalID: 6953991945805326628
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_164
+      rect:
+        serializedVersion: 2
+        x: 1027
+        y: 43
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5960f9bf564377510800000000000000
+      internalID: 1546762609642899093
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_165
+      rect:
+        serializedVersion: 2
+        x: 1172
+        y: 39
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 96dfdb183b3cc1ef0800000000000000
+      internalID: -136018712984683159
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_166
+      rect:
+        serializedVersion: 2
+        x: 1201
+        y: 41
+        width: 11
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4b93c910e370621d0800000000000000
+      internalID: -3376002907771225676
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_167
+      rect:
+        serializedVersion: 2
+        x: 1307
+        y: 41
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 835871700140e44a0800000000000000
+      internalID: -6607339136420969160
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_168
+      rect:
+        serializedVersion: 2
+        x: 1360
+        y: 35
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d6b4ca3739fae6ba0800000000000000
+      internalID: -6093740197949977747
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_169
+      rect:
+        serializedVersion: 2
+        x: 1525
+        y: 43
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7da080ae8fb830db0800000000000000
+      internalID: -4826860474416493865
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_170
+      rect:
+        serializedVersion: 2
+        x: 1679
+        y: 41
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fcdeecf6b44ff3290800000000000000
+      internalID: -7908333815803744817
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_171
+      rect:
+        serializedVersion: 2
+        x: 1743
+        y: 42
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ea0207d4b82b77890800000000000000
+      internalID: -7460297946346544978
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_172
+      rect:
+        serializedVersion: 2
+        x: 1883
+        y: 39
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 800ce9d4c7d752ef0800000000000000
+      internalID: -133562641105895416
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_173
+      rect:
+        serializedVersion: 2
+        x: 1983
+        y: 36
+        width: 8
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 42c38c08ade2d3720800000000000000
+      internalID: 2827467657056893988
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_174
+      rect:
+        serializedVersion: 2
+        x: 2086
+        y: 41
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c7ae8cc5504c8bc90800000000000000
+      internalID: -7153752480767481220
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_175
+      rect:
+        serializedVersion: 2
+        x: 2185
+        y: 38
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b885583a746be7df0800000000000000
+      internalID: -180506516245882741
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_176
+      rect:
+        serializedVersion: 2
+        x: 2439
+        y: 39
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc2b29690918109f0800000000000000
+      internalID: -503979225287314739
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_177
+      rect:
+        serializedVersion: 2
+        x: 2689
+        y: 45
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed40c060c5a6f0e60800000000000000
+      internalID: 7930674412293719262
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_178
+      rect:
+        serializedVersion: 2
+        x: 2691
+        y: 42
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6b3dad9a3b421b860800000000000000
+      internalID: 7543851204889727926
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_179
+      rect:
+        serializedVersion: 2
+        x: 2754
+        y: 39
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 47a98585208e5bf50800000000000000
+      internalID: 6896673501157562996
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_180
+      rect:
+        serializedVersion: 2
+        x: 2084
+        y: 34
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ab711d96b101d3e0800000000000000
+      internalID: -2030840073136538714
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_181
+      rect:
+        serializedVersion: 2
+        x: 2151
+        y: 35
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 651c8878c52499b20800000000000000
+      internalID: 3141615180245942614
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_182
+      rect:
+        serializedVersion: 2
+        x: 2767
+        y: 28
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e55c2cd3b0fbc60d0800000000000000
+      internalID: -3428155161334069922
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_183
+      rect:
+        serializedVersion: 2
+        x: 276
+        y: 26
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f527f353970985f90800000000000000
+      internalID: -6964657973469679009
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_184
+      rect:
+        serializedVersion: 2
+        x: 311
+        y: 27
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 892b87357c9a9b800800000000000000
+      internalID: 628720296558899864
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_185
+      rect:
+        serializedVersion: 2
+        x: 524
+        y: 20
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d7fc94142f10aac0800000000000000
+      internalID: -3846039841949288489
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_186
+      rect:
+        serializedVersion: 2
+        x: 577
+        y: 21
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 66705a013c547f590800000000000000
+      internalID: -7640561538710567066
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_187
+      rect:
+        serializedVersion: 2
+        x: 1102
+        y: 25
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a074644ff3b5d38d0800000000000000
+      internalID: -2865033457698453750
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_188
+      rect:
+        serializedVersion: 2
+        x: 1922
+        y: 23
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2b0bf81f8600280e0800000000000000
+      internalID: -2269250811511983950
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_189
+      rect:
+        serializedVersion: 2
+        x: 2581
+        y: 18
+        width: 6
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd9888ee8f5f61c50800000000000000
+      internalID: 6635761550479624671
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_190
+      rect:
+        serializedVersion: 2
+        x: 2005
+        y: 19
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1f31fb0522deaac60800000000000000
+      internalID: 7830331633776399345
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_191
+      rect:
+        serializedVersion: 2
+        x: 2236
+        y: 14
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 68e112500e9430a60800000000000000
+      internalID: 7639030619458051718
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_192
+      rect:
+        serializedVersion: 2
+        x: 344
+        y: 9
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fbf801e6701821f50800000000000000
+      internalID: 6850679852095279039
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon log_193
+      rect:
+        serializedVersion: 2
+        x: 1255
+        y: 7
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d4e48b9834ef97f70800000000000000
+      internalID: 9185652481025658445
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Ebon log_0: -5385541647122347058
+      Ebon log_1: -7702164586345829631
+      Ebon log_10: 6430968215030974429
+      Ebon log_100: -4468279868608926077
+      Ebon log_101: -4191968889409667162
+      Ebon log_102: 6644121488505116895
+      Ebon log_103: 8992691014935445233
+      Ebon log_104: 7723510799177173117
+      Ebon log_105: -7873523739642992731
+      Ebon log_106: -4758558321149923221
+      Ebon log_107: -8606544005797951335
+      Ebon log_108: -7645887335933611412
+      Ebon log_109: -5980630875234610886
+      Ebon log_11: 4276008206700208893
+      Ebon log_110: -2708157786450977808
+      Ebon log_111: -5408545162806479415
+      Ebon log_112: 5235978763385542272
+      Ebon log_113: 4791972969749527079
+      Ebon log_114: -9084876945834446687
+      Ebon log_115: -4590742810945577988
+      Ebon log_116: -4054787486476874441
+      Ebon log_117: -4430665978140282355
+      Ebon log_118: -4974638941672347027
+      Ebon log_119: -8959803457304936010
+      Ebon log_12: -4634340829083972944
+      Ebon log_120: 1237688886811404073
+      Ebon log_121: -4310141033941650683
+      Ebon log_122: -6907337564532278449
+      Ebon log_123: -8254177073629727353
+      Ebon log_124: 622184680350472741
+      Ebon log_125: 1265441723414277504
+      Ebon log_126: -412416954015980213
+      Ebon log_127: 2228673044803498849
+      Ebon log_128: -135284586001932552
+      Ebon log_129: -705961461135659121
+      Ebon log_13: -5019876166545388420
+      Ebon log_130: -3698282972077401643
+      Ebon log_131: -1829465343210874191
+      Ebon log_132: 8240802652776229819
+      Ebon log_133: -560497251828114493
+      Ebon log_134: -5059791265332425089
+      Ebon log_135: -1337844506767707608
+      Ebon log_136: -2176160306792166687
+      Ebon log_137: 8711597943742438984
+      Ebon log_138: -6038318084891580424
+      Ebon log_139: 6774763842506114064
+      Ebon log_14: -7261476823874249379
+      Ebon log_140: -7492582768439374031
+      Ebon log_141: 1448214910459707081
+      Ebon log_142: -337171547420413847
+      Ebon log_143: 5313834426250701927
+      Ebon log_144: 6367757097221313586
+      Ebon log_145: -1118798329053817583
+      Ebon log_146: 6014649059351413637
+      Ebon log_147: 5497089456730044227
+      Ebon log_148: -600684900106468008
+      Ebon log_149: 4449631988313379681
+      Ebon log_15: 7224505445040524142
+      Ebon log_150: -4603376265553934131
+      Ebon log_151: 783069760695804972
+      Ebon log_152: 7587046621823298392
+      Ebon log_153: 3259220257167138970
+      Ebon log_154: -1971631876885887954
+      Ebon log_155: 3199850295957993568
+      Ebon log_156: -8504898982336398483
+      Ebon log_157: 5174246488244807906
+      Ebon log_158: -7570578271007747593
+      Ebon log_159: -9122811167362187768
+      Ebon log_16: 278059725838262004
+      Ebon log_160: 6406245414557302104
+      Ebon log_161: 6997206221756060130
+      Ebon log_162: 368729498281956385
+      Ebon log_163: 6953991945805326628
+      Ebon log_164: 1546762609642899093
+      Ebon log_165: -136018712984683159
+      Ebon log_166: -3376002907771225676
+      Ebon log_167: -6607339136420969160
+      Ebon log_168: -6093740197949977747
+      Ebon log_169: -4826860474416493865
+      Ebon log_17: 7836602319324733140
+      Ebon log_170: -7908333815803744817
+      Ebon log_171: -7460297946346544978
+      Ebon log_172: -133562641105895416
+      Ebon log_173: 2827467657056893988
+      Ebon log_174: -7153752480767481220
+      Ebon log_175: -180506516245882741
+      Ebon log_176: -503979225287314739
+      Ebon log_177: 7930674412293719262
+      Ebon log_178: 7543851204889727926
+      Ebon log_179: 6896673501157562996
+      Ebon log_18: -2670295513936612241
+      Ebon log_180: -2030840073136538714
+      Ebon log_181: 3141615180245942614
+      Ebon log_182: -3428155161334069922
+      Ebon log_183: -6964657973469679009
+      Ebon log_184: 628720296558899864
+      Ebon log_185: -3846039841949288489
+      Ebon log_186: -7640561538710567066
+      Ebon log_187: -2865033457698453750
+      Ebon log_188: -2269250811511983950
+      Ebon log_189: 6635761550479624671
+      Ebon log_19: 2700891083092729487
+      Ebon log_190: 7830331633776399345
+      Ebon log_191: 7639030619458051718
+      Ebon log_192: 6850679852095279039
+      Ebon log_193: 9185652481025658445
+      Ebon log_2: -6931672878220497534
+      Ebon log_20: -7325573396869932044
+      Ebon log_21: 313348041262010431
+      Ebon log_22: 3191726021133723136
+      Ebon log_23: -4607443528723395589
+      Ebon log_24: -4925194297914417336
+      Ebon log_25: 4547001406005122220
+      Ebon log_26: 5348443692210463278
+      Ebon log_27: 5956940071045058879
+      Ebon log_28: 8716219192946506602
+      Ebon log_29: -5543378301455230755
+      Ebon log_3: -1675912092877730665
+      Ebon log_30: 7952081677075016332
+      Ebon log_31: 4867009077294549693
+      Ebon log_32: -6257803985824949886
+      Ebon log_33: -5369594080727643031
+      Ebon log_34: -1025919921445007924
+      Ebon log_35: -4171583507584662686
+      Ebon log_36: -6382457304619624642
+      Ebon log_37: 3224004826425923773
+      Ebon log_38: 6587754480785669341
+      Ebon log_39: -4314156652012657208
+      Ebon log_4: 6826582134614877022
+      Ebon log_40: 3883264247730209368
+      Ebon log_41: -1834934765389553689
+      Ebon log_42: 3034516309451511431
+      Ebon log_43: 9205145501090990025
+      Ebon log_44: 7750913384001814896
+      Ebon log_45: 5182400300786033600
+      Ebon log_46: -2097117431510175079
+      Ebon log_47: -3922893759004756378
+      Ebon log_48: -8727956200393957568
+      Ebon log_49: 6764855495249398517
+      Ebon log_5: -1595679007459307962
+      Ebon log_50: -7358676936145686673
+      Ebon log_51: -9123184351632450832
+      Ebon log_52: 2773207117992848881
+      Ebon log_53: -1844937902366829770
+      Ebon log_54: 4252074570721786593
+      Ebon log_55: -4838827882404083168
+      Ebon log_56: 4959137757994536565
+      Ebon log_57: -4682900458560022258
+      Ebon log_58: -5394207320545179394
+      Ebon log_59: 7076227876704047634
+      Ebon log_6: 6376114262218764833
+      Ebon log_60: 9009906369557638855
+      Ebon log_61: 1134166956244620253
+      Ebon log_62: 8692187558884280132
+      Ebon log_63: 1249906794583066947
+      Ebon log_64: -7410240908247990707
+      Ebon log_65: 2039701972496974001
+      Ebon log_66: 3112216921923222617
+      Ebon log_67: -8470789697380650032
+      Ebon log_68: -4599500645073974227
+      Ebon log_69: 1008518597272080508
+      Ebon log_7: -2897367216586918558
+      Ebon log_70: -5456973285573265252
+      Ebon log_71: 6068087953018260148
+      Ebon log_72: 2508719553124588449
+      Ebon log_73: 2046981412029987642
+      Ebon log_74: 4497115901288822345
+      Ebon log_75: -173546321580121534
+      Ebon log_76: -7328484428356853037
+      Ebon log_77: -5576244432816980103
+      Ebon log_78: 3797240907951313877
+      Ebon log_79: 2102011307977574187
+      Ebon log_8: 93201951022478912
+      Ebon log_80: -2465183978145840638
+      Ebon log_81: -8107514127560772038
+      Ebon log_82: 6240688789136761750
+      Ebon log_83: 4934683636781249356
+      Ebon log_84: -6006423604759228392
+      Ebon log_85: -5660104202301972237
+      Ebon log_86: -3810186537078088619
+      Ebon log_87: -8720476056541356179
+      Ebon log_88: -7896065720793820136
+      Ebon log_89: 1640217910470373678
+      Ebon log_9: -5650244286713404849
+      Ebon log_90: -8069249810017346879
+      Ebon log_91: -5053729997411074114
+      Ebon log_92: 4617948258025037496
+      Ebon log_93: -4308683633956289572
+      Ebon log_94: -1577568925747751064
+      Ebon log_95: -6161161056565375189
+      Ebon log_96: -1820505418693482652
+      Ebon log_97: 22026114629236908
+      Ebon log_98: 2781274100129778839
+      Ebon log_99: 7410812256445486567
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -1,0 +1,546 @@
+fileFormatVersion: 2
+guid: 738e1954d525a3047b684990922751b4
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 8263426861110487324
+    second: resistance potion_0
+  - first:
+      213: -8963774006691017849
+    second: resistance potion_1
+  - first:
+      213: -1768802067359974464
+    second: resistance potion_2
+  - first:
+      213: -1591608421306273189
+    second: resistance potion_3
+  - first:
+      213: -5660396413534644061
+    second: resistance potion_4
+  - first:
+      213: 8345279607889394414
+    second: resistance potion_5
+  - first:
+      213: -1977380976017120017
+    second: resistance potion_6
+  - first:
+      213: 3079764342206087440
+    second: resistance potion_7
+  - first:
+      213: 3537160352485534513
+    second: resistance potion_8
+  - first:
+      213: 1624942716981653217
+    second: resistance potion_9
+  - first:
+      213: 5226583333355253604
+    second: resistance potion_10
+  - first:
+      213: -6335762194585346416
+    second: resistance potion_11
+  - first:
+      213: 6566427139539232418
+    second: resistance potion_12
+  - first:
+      213: -8511186647994705901
+    second: resistance potion_13
+  - first:
+      213: 6467779325403309278
+    second: resistance potion_14
+  - first:
+      213: 2399413571880130122
+    second: resistance potion_15
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: resistance potion_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 1424
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c1969ebd2f69da270800000000000000
+      internalID: 8263426861110487324
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_1
+      rect:
+        serializedVersion: 2
+        x: 303
+        y: 0
+        width: 1745
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 78b4d4478074a9380800000000000000
+      internalID: -8963774006691017849
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_2
+      rect:
+        serializedVersion: 2
+        x: 1270
+        y: 1887
+        width: 32
+        height: 25
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0cb380924e3f377e0800000000000000
+      internalID: -1768802067359974464
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_3
+      rect:
+        serializedVersion: 2
+        x: 1488
+        y: 1894
+        width: 18
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b52f482d29879e9e0800000000000000
+      internalID: -1591608421306273189
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_4
+      rect:
+        serializedVersion: 2
+        x: 1446
+        y: 1846
+        width: 21
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a85f53b37b3271b0800000000000000
+      internalID: -5660396413534644061
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_5
+      rect:
+        serializedVersion: 2
+        x: 92
+        y: 998
+        width: 20
+        height: 20
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eeafe83969360d370800000000000000
+      internalID: 8345279607889394414
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_6
+      rect:
+        serializedVersion: 2
+        x: 232
+        y: 679
+        width: 20
+        height: 26
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fe462ea9a7eee84e0800000000000000
+      internalID: -1977380976017120017
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_7
+      rect:
+        serializedVersion: 2
+        x: 230
+        y: 649
+        width: 16
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 011cb191a558dba20800000000000000
+      internalID: 3079764342206087440
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_8
+      rect:
+        serializedVersion: 2
+        x: 248
+        y: 583
+        width: 69
+        height: 79
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 13bee739994861130800000000000000
+      internalID: 3537160352485534513
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_9
+      rect:
+        serializedVersion: 2
+        x: 216
+        y: 558
+        width: 28
+        height: 32
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1eeac02bac4fc8610800000000000000
+      internalID: 1624942716981653217
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_10
+      rect:
+        serializedVersion: 2
+        x: 255
+        y: 554
+        width: 40
+        height: 29
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 46fed9d99dd888840800000000000000
+      internalID: 5226583333355253604
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_11
+      rect:
+        serializedVersion: 2
+        x: 294
+        y: 534
+        width: 36
+        height: 35
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 09e14623ad9d218a0800000000000000
+      internalID: -6335762194585346416
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_12
+      rect:
+        serializedVersion: 2
+        x: 230
+        y: 238
+        width: 330
+        height: 161
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a668b761b2a02b50800000000000000
+      internalID: 6566427139539232418
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_13
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 393
+        width: 95
+        height: 108
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3185a3d76d032e980800000000000000
+      internalID: -8511186647994705901
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_14
+      rect:
+        serializedVersion: 2
+        x: 833
+        y: 180
+        width: 67
+        height: 43
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed4a748570b22c950800000000000000
+      internalID: 6467779325403309278
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: resistance potion_15
+      rect:
+        serializedVersion: 2
+        x: 1247
+        y: 180
+        width: 52
+        height: 45
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a469a255eed6c4120800000000000000
+      internalID: 2399413571880130122
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      resistance potion_0: 8263426861110487324
+      resistance potion_1: -8963774006691017849
+      resistance potion_10: 5226583333355253604
+      resistance potion_11: -6335762194585346416
+      resistance potion_12: 6566427139539232418
+      resistance potion_13: -8511186647994705901
+      resistance potion_14: 6467779325403309278
+      resistance potion_15: 2399413571880130122
+      resistance potion_2: -1768802067359974464
+      resistance potion_3: -1591608421306273189
+      resistance potion_4: -5660396413534644061
+      resistance potion_5: 8345279607889394414
+      resistance potion_6: -1977380976017120017
+      resistance potion_7: 3079764342206087440
+      resistance potion_8: 3537160352485534513
+      resistance potion_9: 1624942716981653217
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

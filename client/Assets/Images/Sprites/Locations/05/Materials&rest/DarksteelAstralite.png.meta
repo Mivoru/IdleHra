@@ -1,0 +1,3848 @@
+fileFormatVersion: 2
+guid: 70ecdc88a1518e246baaa4ac2ae33312
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 6172848047945073766
+    second: DarksteelAstralite_0
+  - first:
+      213: 7978463083801493640
+    second: DarksteelAstralite_1
+  - first:
+      213: -2074876714766701569
+    second: DarksteelAstralite_2
+  - first:
+      213: -6008241585327137545
+    second: DarksteelAstralite_3
+  - first:
+      213: 5701480961428566828
+    second: DarksteelAstralite_4
+  - first:
+      213: 1140293521581821257
+    second: DarksteelAstralite_5
+  - first:
+      213: 5681272749293786263
+    second: DarksteelAstralite_6
+  - first:
+      213: 7994855912676880283
+    second: DarksteelAstralite_7
+  - first:
+      213: -2891658972591523804
+    second: DarksteelAstralite_8
+  - first:
+      213: -3108554954409840687
+    second: DarksteelAstralite_9
+  - first:
+      213: 601750630456957995
+    second: DarksteelAstralite_10
+  - first:
+      213: -6084454703794913359
+    second: DarksteelAstralite_11
+  - first:
+      213: -1799831015298011190
+    second: DarksteelAstralite_12
+  - first:
+      213: 7306419581428811614
+    second: DarksteelAstralite_13
+  - first:
+      213: -5193971234289458420
+    second: DarksteelAstralite_14
+  - first:
+      213: 7855097262833271884
+    second: DarksteelAstralite_15
+  - first:
+      213: 8089857721814832421
+    second: DarksteelAstralite_16
+  - first:
+      213: 6218572225915705159
+    second: DarksteelAstralite_17
+  - first:
+      213: 8684560570305685724
+    second: DarksteelAstralite_18
+  - first:
+      213: -3621151806650442436
+    second: DarksteelAstralite_19
+  - first:
+      213: 2415469512298940888
+    second: DarksteelAstralite_20
+  - first:
+      213: -7270607115219631689
+    second: DarksteelAstralite_21
+  - first:
+      213: -8348959804486708945
+    second: DarksteelAstralite_22
+  - first:
+      213: -2116321856471585601
+    second: DarksteelAstralite_23
+  - first:
+      213: 6161273634310312638
+    second: DarksteelAstralite_24
+  - first:
+      213: -8899874892618381759
+    second: DarksteelAstralite_25
+  - first:
+      213: -6339272588047186098
+    second: DarksteelAstralite_26
+  - first:
+      213: 565485156631603641
+    second: DarksteelAstralite_27
+  - first:
+      213: 2788224034872501616
+    second: DarksteelAstralite_28
+  - first:
+      213: 5076213001687713340
+    second: DarksteelAstralite_29
+  - first:
+      213: -6897130202734523535
+    second: DarksteelAstralite_30
+  - first:
+      213: 4824117387066301160
+    second: DarksteelAstralite_31
+  - first:
+      213: 3348126590092880090
+    second: DarksteelAstralite_32
+  - first:
+      213: -4872532763238431595
+    second: DarksteelAstralite_33
+  - first:
+      213: -7266087495673257650
+    second: DarksteelAstralite_34
+  - first:
+      213: 4896266253448273657
+    second: DarksteelAstralite_35
+  - first:
+      213: -1803703721980836914
+    second: DarksteelAstralite_36
+  - first:
+      213: -8940612789890927934
+    second: DarksteelAstralite_37
+  - first:
+      213: -5690809327763989745
+    second: DarksteelAstralite_38
+  - first:
+      213: -1572650305505370969
+    second: DarksteelAstralite_39
+  - first:
+      213: 4869740811693781039
+    second: DarksteelAstralite_40
+  - first:
+      213: 28758044186357857
+    second: DarksteelAstralite_41
+  - first:
+      213: 4682980764163495876
+    second: DarksteelAstralite_42
+  - first:
+      213: -6044146866202883201
+    second: DarksteelAstralite_43
+  - first:
+      213: 5882929505913522975
+    second: DarksteelAstralite_44
+  - first:
+      213: -1160803184232989172
+    second: DarksteelAstralite_45
+  - first:
+      213: 5527578153936500316
+    second: DarksteelAstralite_46
+  - first:
+      213: 1184697367142679702
+    second: DarksteelAstralite_47
+  - first:
+      213: 5304904438769758513
+    second: DarksteelAstralite_48
+  - first:
+      213: -3044158072962843725
+    second: DarksteelAstralite_49
+  - first:
+      213: -2691647843940037081
+    second: DarksteelAstralite_50
+  - first:
+      213: 3180649816501502434
+    second: DarksteelAstralite_51
+  - first:
+      213: 4261528928100031569
+    second: DarksteelAstralite_52
+  - first:
+      213: 3247037643978443518
+    second: DarksteelAstralite_53
+  - first:
+      213: 3816345386611760627
+    second: DarksteelAstralite_54
+  - first:
+      213: 5534300718171981068
+    second: DarksteelAstralite_55
+  - first:
+      213: 5273332306255382226
+    second: DarksteelAstralite_56
+  - first:
+      213: -1617840206257850110
+    second: DarksteelAstralite_57
+  - first:
+      213: 8202577243069710190
+    second: DarksteelAstralite_58
+  - first:
+      213: 1314897555872089987
+    second: DarksteelAstralite_59
+  - first:
+      213: -1966152253492735711
+    second: DarksteelAstralite_60
+  - first:
+      213: -6852790966593122622
+    second: DarksteelAstralite_61
+  - first:
+      213: 7006487918230115696
+    second: DarksteelAstralite_62
+  - first:
+      213: 1217190432390996828
+    second: DarksteelAstralite_63
+  - first:
+      213: 4309430074828262556
+    second: DarksteelAstralite_64
+  - first:
+      213: -514912546647433616
+    second: DarksteelAstralite_65
+  - first:
+      213: 873088997434928699
+    second: DarksteelAstralite_66
+  - first:
+      213: -3442576463934119132
+    second: DarksteelAstralite_67
+  - first:
+      213: -5459594121908232049
+    second: DarksteelAstralite_68
+  - first:
+      213: -8864598756340513725
+    second: DarksteelAstralite_69
+  - first:
+      213: 470305011958789187
+    second: DarksteelAstralite_70
+  - first:
+      213: 4541489714564331725
+    second: DarksteelAstralite_71
+  - first:
+      213: -5038834792692055305
+    second: DarksteelAstralite_72
+  - first:
+      213: -1888220837126163596
+    second: DarksteelAstralite_73
+  - first:
+      213: -2148257847539277714
+    second: DarksteelAstralite_74
+  - first:
+      213: 273279036659695391
+    second: DarksteelAstralite_75
+  - first:
+      213: 4537748440638455096
+    second: DarksteelAstralite_76
+  - first:
+      213: -4231646520708882536
+    second: DarksteelAstralite_77
+  - first:
+      213: -1485093501694130206
+    second: DarksteelAstralite_78
+  - first:
+      213: 33431611664090561
+    second: DarksteelAstralite_79
+  - first:
+      213: 1864696288225782714
+    second: DarksteelAstralite_80
+  - first:
+      213: -3705255253785718376
+    second: DarksteelAstralite_81
+  - first:
+      213: -36715832358736450
+    second: DarksteelAstralite_82
+  - first:
+      213: 8871304823243830632
+    second: DarksteelAstralite_83
+  - first:
+      213: 2843238413367236361
+    second: DarksteelAstralite_84
+  - first:
+      213: 982861138486367825
+    second: DarksteelAstralite_85
+  - first:
+      213: 7665884542837179461
+    second: DarksteelAstralite_86
+  - first:
+      213: -1246444243376556808
+    second: DarksteelAstralite_87
+  - first:
+      213: 6360404312212794621
+    second: DarksteelAstralite_88
+  - first:
+      213: -5604876134905607582
+    second: DarksteelAstralite_89
+  - first:
+      213: -4728559472011073036
+    second: DarksteelAstralite_90
+  - first:
+      213: -2636068650549987136
+    second: DarksteelAstralite_91
+  - first:
+      213: 4098794084273396852
+    second: DarksteelAstralite_92
+  - first:
+      213: -2661710263520627486
+    second: DarksteelAstralite_93
+  - first:
+      213: -2836173358266016077
+    second: DarksteelAstralite_94
+  - first:
+      213: -1921471840459628280
+    second: DarksteelAstralite_95
+  - first:
+      213: -6448565535567716510
+    second: DarksteelAstralite_96
+  - first:
+      213: 3766488349331283091
+    second: DarksteelAstralite_97
+  - first:
+      213: -7670811414734304948
+    second: DarksteelAstralite_98
+  - first:
+      213: 8955080639909946753
+    second: DarksteelAstralite_99
+  - first:
+      213: -109486347059633718
+    second: DarksteelAstralite_100
+  - first:
+      213: -2586057506334153141
+    second: DarksteelAstralite_101
+  - first:
+      213: -8343679095891826593
+    second: DarksteelAstralite_102
+  - first:
+      213: -7596658243694742534
+    second: DarksteelAstralite_103
+  - first:
+      213: -917057275625949831
+    second: DarksteelAstralite_104
+  - first:
+      213: 6561063410857214255
+    second: DarksteelAstralite_105
+  - first:
+      213: 1002101359276560263
+    second: DarksteelAstralite_106
+  - first:
+      213: -7082008097550525908
+    second: DarksteelAstralite_107
+  - first:
+      213: 572047031287390866
+    second: DarksteelAstralite_108
+  - first:
+      213: -7269197895948955901
+    second: DarksteelAstralite_109
+  - first:
+      213: -2852611317090857774
+    second: DarksteelAstralite_110
+  - first:
+      213: 7744476478605339257
+    second: DarksteelAstralite_111
+  - first:
+      213: -6406408185457240592
+    second: DarksteelAstralite_112
+  - first:
+      213: 2994454620087579189
+    second: DarksteelAstralite_113
+  - first:
+      213: -8333293638243798417
+    second: DarksteelAstralite_114
+  - first:
+      213: 1257438711727447157
+    second: DarksteelAstralite_115
+  - first:
+      213: -536205726089188597
+    second: DarksteelAstralite_116
+  - first:
+      213: -3575795919576582028
+    second: DarksteelAstralite_117
+  - first:
+      213: 8467403608436326649
+    second: DarksteelAstralite_118
+  - first:
+      213: -8975301946842570817
+    second: DarksteelAstralite_119
+  - first:
+      213: 2190921001199838751
+    second: DarksteelAstralite_120
+  - first:
+      213: -3376363208336011459
+    second: DarksteelAstralite_121
+  - first:
+      213: -6719855953026127196
+    second: DarksteelAstralite_122
+  - first:
+      213: -5257910158855575816
+    second: DarksteelAstralite_123
+  - first:
+      213: -3415971300431305849
+    second: DarksteelAstralite_124
+  - first:
+      213: 1433353333041262058
+    second: DarksteelAstralite_125
+  - first:
+      213: -7532225616028609544
+    second: DarksteelAstralite_126
+  - first:
+      213: 8084444622547190733
+    second: DarksteelAstralite_127
+  - first:
+      213: 4531962495028657212
+    second: DarksteelAstralite_128
+  - first:
+      213: 6126316354037475562
+    second: DarksteelAstralite_129
+  - first:
+      213: -904508399099380136
+    second: DarksteelAstralite_130
+  - first:
+      213: 1130484705987578099
+    second: DarksteelAstralite_131
+  - first:
+      213: -8504440859858317040
+    second: DarksteelAstralite_132
+  - first:
+      213: -9137169188090411284
+    second: DarksteelAstralite_133
+  - first:
+      213: 3533244671563012462
+    second: DarksteelAstralite_134
+  - first:
+      213: -682392842888216355
+    second: DarksteelAstralite_135
+  - first:
+      213: 2427358547004804617
+    second: DarksteelAstralite_136
+  - first:
+      213: 620062885482755525
+    second: DarksteelAstralite_137
+  - first:
+      213: 5603692842524134455
+    second: DarksteelAstralite_138
+  - first:
+      213: 4432432619313608335
+    second: DarksteelAstralite_139
+  - first:
+      213: -4887902574067972469
+    second: DarksteelAstralite_140
+  - first:
+      213: -2624828515135422915
+    second: DarksteelAstralite_141
+  - first:
+      213: -2982711745485730930
+    second: DarksteelAstralite_142
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: DarksteelAstralite_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 232
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 664ca3e289c5aa550800000000000000
+      internalID: 6172848047945073766
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_1
+      rect:
+        serializedVersion: 2
+        x: 199
+        y: 0
+        width: 2329
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8804e8b27e139be60800000000000000
+      internalID: 7978463083801493640
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_2
+      rect:
+        serializedVersion: 2
+        x: 1607
+        y: 1515
+        width: 53
+        height: 21
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ffbe99ffe9e8433e0800000000000000
+      internalID: -2074876714766701569
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_3
+      rect:
+        serializedVersion: 2
+        x: 1735
+        y: 1487
+        width: 52
+        height: 49
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7fc98d57c107e9ca0800000000000000
+      internalID: -6008241585327137545
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_4
+      rect:
+        serializedVersion: 2
+        x: 1848
+        y: 1480
+        width: 83
+        height: 56
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c233a970ababf1f40800000000000000
+      internalID: 5701480961428566828
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_5
+      rect:
+        serializedVersion: 2
+        x: 2094
+        y: 1464
+        width: 101
+        height: 72
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 94d40959ae223df00800000000000000
+      internalID: 1140293521581821257
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_6
+      rect:
+        serializedVersion: 2
+        x: 2210
+        y: 1517
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79453cdf67fe7de40800000000000000
+      internalID: 5681272749293786263
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_7
+      rect:
+        serializedVersion: 2
+        x: 2224
+        y: 1518
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9f6981181f63fe60800000000000000
+      internalID: 7994855912676880283
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_8
+      rect:
+        serializedVersion: 2
+        x: 2303
+        y: 1391
+        width: 124
+        height: 145
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4287c1f2c73ced7d0800000000000000
+      internalID: -2891658972591523804
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_9
+      rect:
+        serializedVersion: 2
+        x: 2521
+        y: 0
+        width: 295
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1dfee912db13cd4d0800000000000000
+      internalID: -3108554954409840687
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_10
+      rect:
+        serializedVersion: 2
+        x: 2748
+        y: 1139
+        width: 68
+        height: 397
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b2c11cb9209d95800800000000000000
+      internalID: 601750630456957995
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_11
+      rect:
+        serializedVersion: 2
+        x: 825
+        y: 1497
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1bf79580facaf8ba0800000000000000
+      internalID: -6084454703794913359
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_12
+      rect:
+        serializedVersion: 2
+        x: 1861
+        y: 1463
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: acf6e6d3a37b507e0800000000000000
+      internalID: -1799831015298011190
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_13
+      rect:
+        serializedVersion: 2
+        x: 2584
+        y: 1467
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e57c503f5ed956560800000000000000
+      internalID: 7306419581428811614
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_14
+      rect:
+        serializedVersion: 2
+        x: 381
+        y: 1459
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0364966eae4be7b0800000000000000
+      internalID: -5193971234289458420
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_15
+      rect:
+        serializedVersion: 2
+        x: 2756
+        y: 1460
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c44025ba759e20d60800000000000000
+      internalID: 7855097262833271884
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_16
+      rect:
+        serializedVersion: 2
+        x: 1533
+        y: 1439
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 52559307cb2f44070800000000000000
+      internalID: 8089857721814832421
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_17
+      rect:
+        serializedVersion: 2
+        x: 2802
+        y: 1437
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 747d0d7fd7ecc4650800000000000000
+      internalID: 6218572225915705159
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_18
+      rect:
+        serializedVersion: 2
+        x: 1799
+        y: 1411
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cd82f6f63d1c58870800000000000000
+      internalID: 8684560570305685724
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_19
+      rect:
+        serializedVersion: 2
+        x: 1825
+        y: 1417
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c3d16d61e951fbdc0800000000000000
+      internalID: -3621151806650442436
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_20
+      rect:
+        serializedVersion: 2
+        x: 1387
+        y: 1405
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d94d5649b8758120800000000000000
+      internalID: 2415469512298940888
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_21
+      rect:
+        serializedVersion: 2
+        x: 2330
+        y: 1401
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7b108eb995d991b90800000000000000
+      internalID: -7270607115219631689
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_22
+      rect:
+        serializedVersion: 2
+        x: 129
+        y: 1388
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f211e81ea49822c80800000000000000
+      internalID: -8348959804486708945
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_23
+      rect:
+        serializedVersion: 2
+        x: 1418
+        y: 1390
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fbcad9afb7051a2e0800000000000000
+      internalID: -2116321856471585601
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_24
+      rect:
+        serializedVersion: 2
+        x: 1858
+        y: 1388
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb2db010abd318550800000000000000
+      internalID: 6161273634310312638
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_25
+      rect:
+        serializedVersion: 2
+        x: 2535
+        y: 1387
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 146401050fa4d7480800000000000000
+      internalID: -8899874892618381759
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_26
+      rect:
+        serializedVersion: 2
+        x: 2691
+        y: 1393
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e4783170b216608a0800000000000000
+      internalID: -6339272588047186098
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_27
+      rect:
+        serializedVersion: 2
+        x: 250
+        y: 1386
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9b968cef0c109d700800000000000000
+      internalID: 565485156631603641
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_28
+      rect:
+        serializedVersion: 2
+        x: 1924
+        y: 1379
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07528c0bcf2c1b620800000000000000
+      internalID: 2788224034872501616
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_29
+      rect:
+        serializedVersion: 2
+        x: 2023
+        y: 1376
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c36c0d184d4527640800000000000000
+      internalID: 5076213001687713340
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_30
+      rect:
+        serializedVersion: 2
+        x: 295
+        y: 1321
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 17b04688f987840a0800000000000000
+      internalID: -6897130202734523535
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_31
+      rect:
+        serializedVersion: 2
+        x: 353
+        y: 1320
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8ea5fda4435b2f240800000000000000
+      internalID: 4824117387066301160
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_32
+      rect:
+        serializedVersion: 2
+        x: 2638
+        y: 1318
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ad8a681056fe67e20800000000000000
+      internalID: 3348126590092880090
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_33
+      rect:
+        serializedVersion: 2
+        x: 202
+        y: 1289
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 59488b28449416cb0800000000000000
+      internalID: -4872532763238431595
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_34
+      rect:
+        serializedVersion: 2
+        x: 2601
+        y: 1288
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e41ec798beba92b90800000000000000
+      internalID: -7266087495673257650
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_35
+      rect:
+        serializedVersion: 2
+        x: 2659
+        y: 1256
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9fe548a473803f340800000000000000
+      internalID: 4896266253448273657
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_36
+      rect:
+        serializedVersion: 2
+        x: 2659
+        y: 1244
+        width: 9
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ec348437505f7f6e0800000000000000
+      internalID: -1803703721980836914
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_37
+      rect:
+        serializedVersion: 2
+        x: 2699
+        y: 1154
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c2bc3879009ce380800000000000000
+      internalID: -8940612789890927934
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_38
+      rect:
+        serializedVersion: 2
+        x: 264
+        y: 1127
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0bd52e411f2601b0800000000000000
+      internalID: -5690809327763989745
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_39
+      rect:
+        serializedVersion: 2
+        x: 76
+        y: 1049
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7ac517021e2dc2ae0800000000000000
+      internalID: -1572650305505370969
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_40
+      rect:
+        serializedVersion: 2
+        x: 390
+        y: 980
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f20fa3d977bc49340800000000000000
+      internalID: 4869740811693781039
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_41
+      rect:
+        serializedVersion: 2
+        x: 194
+        y: 968
+        width: 13
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 160b920f94b266000800000000000000
+      internalID: 28758044186357857
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_42
+      rect:
+        serializedVersion: 2
+        x: 2647
+        y: 941
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c7d3f9813a4df040800000000000000
+      internalID: 4682980764163495876
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_43
+      rect:
+        serializedVersion: 2
+        x: 2491
+        y: 919
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f7bcfadc270ee1ca0800000000000000
+      internalID: -6044146866202883201
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_44
+      rect:
+        serializedVersion: 2
+        x: 2567
+        y: 923
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f1bc3ae673d54a150800000000000000
+      internalID: 5882929505913522975
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_45
+      rect:
+        serializedVersion: 2
+        x: 38
+        y: 890
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0e76a577aff3efe0800000000000000
+      internalID: -1160803184232989172
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_46
+      rect:
+        serializedVersion: 2
+        x: 2511
+        y: 891
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c56389d6b07e5bc40800000000000000
+      internalID: 5527578153936500316
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_47
+      rect:
+        serializedVersion: 2
+        x: 2527
+        y: 889
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 69441e68af3e07010800000000000000
+      internalID: 1184697367142679702
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_48
+      rect:
+        serializedVersion: 2
+        x: 2742
+        y: 891
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 131b3400b7ece9940800000000000000
+      internalID: 5304904438769758513
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_49
+      rect:
+        serializedVersion: 2
+        x: 261
+        y: 877
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3bb79ec7c5af0c5d0800000000000000
+      internalID: -3044158072962843725
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_50
+      rect:
+        serializedVersion: 2
+        x: 261
+        y: 827
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 72e02810c8855aad0800000000000000
+      internalID: -2691647843940037081
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_51
+      rect:
+        serializedVersion: 2
+        x: 192
+        y: 755
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e1cb730820f32c20800000000000000
+      internalID: 3180649816501502434
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_52
+      rect:
+        serializedVersion: 2
+        x: 245
+        y: 694
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 15c14774bfdf32b30800000000000000
+      internalID: 4261528928100031569
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_53
+      rect:
+        serializedVersion: 2
+        x: 2491
+        y: 691
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: efa08ad988bcf0d20800000000000000
+      internalID: 3247037643978443518
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_54
+      rect:
+        serializedVersion: 2
+        x: 178
+        y: 664
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3fdd135c8e166f430800000000000000
+      internalID: 3816345386611760627
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_55
+      rect:
+        serializedVersion: 2
+        x: 199
+        y: 657
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c0584d26e29cdcc40800000000000000
+      internalID: 5534300718171981068
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_56
+      rect:
+        serializedVersion: 2
+        x: 2507
+        y: 635
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2d681f01bc3ae2940800000000000000
+      internalID: 5273332306255382226
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_57
+      rect:
+        serializedVersion: 2
+        x: 2697
+        y: 635
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 209f7a277e64c89e0800000000000000
+      internalID: -1617840206257850110
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_58
+      rect:
+        serializedVersion: 2
+        x: 2745
+        y: 447
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e6f7fdf1b8865d170800000000000000
+      internalID: 8202577243069710190
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_59
+      rect:
+        serializedVersion: 2
+        x: 313
+        y: 391
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 38709c54c547f3210800000000000000
+      internalID: 1314897555872089987
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_60
+      rect:
+        serializedVersion: 2
+        x: 80
+        y: 360
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1215b3c41f2d6b4e0800000000000000
+      internalID: -1966152253492735711
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_61
+      rect:
+        serializedVersion: 2
+        x: 262
+        y: 367
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ce063c6ceef5e0a0800000000000000
+      internalID: -6852790966593122622
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_62
+      rect:
+        serializedVersion: 2
+        x: 314
+        y: 358
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0751c21c3ab0c3160800000000000000
+      internalID: 7006487918230115696
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_63
+      rect:
+        serializedVersion: 2
+        x: 2646
+        y: 341
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c536ba2df3454e010800000000000000
+      internalID: 1217190432390996828
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_64
+      rect:
+        serializedVersion: 2
+        x: 2659
+        y: 341
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c9c068a12db2ecb30800000000000000
+      internalID: 4309430074828262556
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_65
+      rect:
+        serializedVersion: 2
+        x: 2772
+        y: 322
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07e10b654c9aad8f0800000000000000
+      internalID: -514912546647433616
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_66
+      rect:
+        serializedVersion: 2
+        x: 220
+        y: 290
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b3e296d31d5dd1c00800000000000000
+      internalID: 873088997434928699
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_67
+      rect:
+        serializedVersion: 2
+        x: 246
+        y: 284
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 423261312f28930d0800000000000000
+      internalID: -3442576463934119132
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_68
+      rect:
+        serializedVersion: 2
+        x: 2570
+        y: 284
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f8069d18210ab34b0800000000000000
+      internalID: -5459594121908232049
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_69
+      rect:
+        serializedVersion: 2
+        x: 2574
+        y: 281
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 34444f3d56e9af480800000000000000
+      internalID: -8864598756340513725
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_70
+      rect:
+        serializedVersion: 2
+        x: 2578
+        y: 262
+        width: 14
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 344b3e5aaebd68600800000000000000
+      internalID: 470305011958789187
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_71
+      rect:
+        serializedVersion: 2
+        x: 219
+        y: 269
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc872b365dc960f30800000000000000
+      internalID: 4541489714564331725
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_72
+      rect:
+        serializedVersion: 2
+        x: 2558
+        y: 260
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f206b3f376721ab0800000000000000
+      internalID: -5038834792692055305
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_73
+      rect:
+        serializedVersion: 2
+        x: 105
+        y: 255
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 473ba912721bbc5e0800000000000000
+      internalID: -1888220837126163596
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_74
+      rect:
+        serializedVersion: 2
+        x: 2545
+        y: 248
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e60e97f9edadf22e0800000000000000
+      internalID: -2148257847539277714
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_75
+      rect:
+        serializedVersion: 2
+        x: 2596
+        y: 246
+        width: 16
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f1f79a006d1eac300800000000000000
+      internalID: 273279036659695391
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_76
+      rect:
+        serializedVersion: 2
+        x: 2729
+        y: 251
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 83d765c2a2259fe30800000000000000
+      internalID: 4537748440638455096
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_77
+      rect:
+        serializedVersion: 2
+        x: 2791
+        y: 248
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 89f112ed8eb2645c0800000000000000
+      internalID: -4231646520708882536
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_78
+      rect:
+        serializedVersion: 2
+        x: 69
+        y: 237
+        width: 12
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e7c74d1453e36be0800000000000000
+      internalID: -1485093501694130206
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_79
+      rect:
+        serializedVersion: 2
+        x: 2609
+        y: 239
+        width: 16
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1c5c189afd5c67000800000000000000
+      internalID: 33431611664090561
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_80
+      rect:
+        serializedVersion: 2
+        x: 2545
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: abbefa1056bb0e910800000000000000
+      internalID: 1864696288225782714
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_81
+      rect:
+        serializedVersion: 2
+        x: 2596
+        y: 221
+        width: 12
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 891d3fb5af9449cc0800000000000000
+      internalID: -3705255253785718376
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_82
+      rect:
+        serializedVersion: 2
+        x: 2560
+        y: 209
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ebdef9e152f8d7ff0800000000000000
+      internalID: -36715832358736450
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_83
+      rect:
+        serializedVersion: 2
+        x: 2584
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 86578ab0cb43d1b70800000000000000
+      internalID: 8871304823243830632
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_84
+      rect:
+        serializedVersion: 2
+        x: 2778
+        y: 179
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 907df78d546357720800000000000000
+      internalID: 2843238413367236361
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_85
+      rect:
+        serializedVersion: 2
+        x: 2753
+        y: 169
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 156140f7ff2d3ad00800000000000000
+      internalID: 982861138486367825
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_86
+      rect:
+        serializedVersion: 2
+        x: 2748
+        y: 137
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 544c7f84061b26a60800000000000000
+      internalID: 7665884542837179461
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_87
+      rect:
+        serializedVersion: 2
+        x: 247
+        y: 111
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8f4b539809db3bee0800000000000000
+      internalID: -1246444243376556808
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_88
+      rect:
+        serializedVersion: 2
+        x: 1573
+        y: 88
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dfc6e49e502b44850800000000000000
+      internalID: 6360404312212794621
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_89
+      rect:
+        serializedVersion: 2
+        x: 1862
+        y: 96
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 26a03e8e9da7732b0800000000000000
+      internalID: -5604876134905607582
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_90
+      rect:
+        serializedVersion: 2
+        x: 177
+        y: 81
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4f9a8739638c06eb0800000000000000
+      internalID: -4728559472011073036
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_91
+      rect:
+        serializedVersion: 2
+        x: 616
+        y: 82
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0c8bc60678dca6bd0800000000000000
+      internalID: -2636068650549987136
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_92
+      rect:
+        serializedVersion: 2
+        x: 1417
+        y: 82
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 47c9698d087d1e830800000000000000
+      internalID: 4098794084273396852
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_93
+      rect:
+        serializedVersion: 2
+        x: 1858
+        y: 84
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e477df1e94bf0bd0800000000000000
+      internalID: -2661710263520627486
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_94
+      rect:
+        serializedVersion: 2
+        x: 2175
+        y: 85
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3be902b7b53e3a8d0800000000000000
+      internalID: -2836173358266016077
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_95
+      rect:
+        serializedVersion: 2
+        x: 2601
+        y: 86
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 801ec7f9a8f8555e0800000000000000
+      internalID: -1921471840459628280
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_96
+      rect:
+        serializedVersion: 2
+        x: 1043
+        y: 77
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 26fd8a5bfc71286a0800000000000000
+      internalID: -6448565535567716510
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_97
+      rect:
+        serializedVersion: 2
+        x: 663
+        y: 69
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 39cd980b231454430800000000000000
+      internalID: 3766488349331283091
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_98
+      rect:
+        serializedVersion: 2
+        x: 1087
+        y: 63
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c4900c5f8adcb8590800000000000000
+      internalID: -7670811414734304948
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_99
+      rect:
+        serializedVersion: 2
+        x: 1624
+        y: 61
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1856fcc5566d64c70800000000000000
+      internalID: 8955080639909946753
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_100
+      rect:
+        serializedVersion: 2
+        x: 8
+        y: 58
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac161c75fb60b7ef0800000000000000
+      internalID: -109486347059633718
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_101
+      rect:
+        serializedVersion: 2
+        x: 1126
+        y: 62
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b466836466a7c1cd0800000000000000
+      internalID: -2586057506334153141
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_102
+      rect:
+        serializedVersion: 2
+        x: 2136
+        y: 56
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f58e389a11c453c80800000000000000
+      internalID: -8343679095891826593
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_103
+      rect:
+        serializedVersion: 2
+        x: 131
+        y: 48
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: af33880839f339690800000000000000
+      internalID: -7596658243694742534
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_104
+      rect:
+        serializedVersion: 2
+        x: 266
+        y: 49
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 975b0af3445f543f0800000000000000
+      internalID: -917057275625949831
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_105
+      rect:
+        serializedVersion: 2
+        x: 458
+        y: 49
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f2105f009649d0b50800000000000000
+      internalID: 6561063410857214255
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_106
+      rect:
+        serializedVersion: 2
+        x: 695
+        y: 48
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 78f8d9c70ed28ed00800000000000000
+      internalID: 1002101359276560263
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_107
+      rect:
+        serializedVersion: 2
+        x: 1027
+        y: 44
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c2a9f094827a7bd90800000000000000
+      internalID: -7082008097550525908
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_108
+      rect:
+        serializedVersion: 2
+        x: 1075
+        y: 49
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 292a3be7eb150f700800000000000000
+      internalID: 572047031287390866
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_109
+      rect:
+        serializedVersion: 2
+        x: 1667
+        y: 50
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 30f02f9070f9e1b90800000000000000
+      internalID: -7269197895948955901
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_110
+      rect:
+        serializedVersion: 2
+        x: 2059
+        y: 40
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2dc4a82fe1d7968d0800000000000000
+      internalID: -2852611317090857774
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_111
+      rect:
+        serializedVersion: 2
+        x: 2212
+        y: 50
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 97aa3a64358e97b60800000000000000
+      internalID: 7744476478605339257
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_112
+      rect:
+        serializedVersion: 2
+        x: 2455
+        y: 45
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f59aaba2bdd717a0800000000000000
+      internalID: -6406408185457240592
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_113
+      rect:
+        serializedVersion: 2
+        x: 2471
+        y: 44
+        width: 8
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 532f8569c907e8920800000000000000
+      internalID: 2994454620087579189
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_114
+      rect:
+        serializedVersion: 2
+        x: 2567
+        y: 49
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f62b47376913a5c80800000000000000
+      internalID: -8333293638243798417
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_115
+      rect:
+        serializedVersion: 2
+        x: 2745
+        y: 51
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 57cd65b98d1537110800000000000000
+      internalID: 1257438711727447157
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_116
+      rect:
+        serializedVersion: 2
+        x: 755
+        y: 43
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b0b6ce9abb30f88f0800000000000000
+      internalID: -536205726089188597
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_117
+      rect:
+        serializedVersion: 2
+        x: 946
+        y: 36
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 478b8587e88306ec0800000000000000
+      internalID: -3575795919576582028
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_118
+      rect:
+        serializedVersion: 2
+        x: 1248
+        y: 37
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9f045ba38b2428570800000000000000
+      internalID: 8467403608436326649
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_119
+      rect:
+        serializedVersion: 2
+        x: 1317
+        y: 40
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fbf939abe62517380800000000000000
+      internalID: -8975301946842570817
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_120
+      rect:
+        serializedVersion: 2
+        x: 1427
+        y: 37
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f16a577ea07b76e10800000000000000
+      internalID: 2190921001199838751
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_121
+      rect:
+        serializedVersion: 2
+        x: 1483
+        y: 37
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d3f0f6efc8fb421d0800000000000000
+      internalID: -3376363208336011459
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_122
+      rect:
+        serializedVersion: 2
+        x: 1562
+        y: 37
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4aa65123d964eb2a0800000000000000
+      internalID: -6719855953026127196
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_123
+      rect:
+        serializedVersion: 2
+        x: 1658
+        y: 36
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8f6ee7071962807b0800000000000000
+      internalID: -5257910158855575816
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_124
+      rect:
+        serializedVersion: 2
+        x: 2079
+        y: 41
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 783ecda63380890d0800000000000000
+      internalID: -3415971300431305849
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_125
+      rect:
+        serializedVersion: 2
+        x: 2390
+        y: 37
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aedeb8d134b44e310800000000000000
+      internalID: 1433353333041262058
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_126
+      rect:
+        serializedVersion: 2
+        x: 2709
+        y: 43
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8f3548ca5b8287790800000000000000
+      internalID: -7532225616028609544
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_127
+      rect:
+        serializedVersion: 2
+        x: 1083
+        y: 35
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc30e3d0d87b13070800000000000000
+      internalID: 8084444622547190733
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_128
+      rect:
+        serializedVersion: 2
+        x: 1351
+        y: 34
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c3c739bb0e3c4ee30800000000000000
+      internalID: 4531962495028657212
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_129
+      rect:
+        serializedVersion: 2
+        x: 2024
+        y: 35
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ae8e110f34c050550800000000000000
+      internalID: 6126316354037475562
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_130
+      rect:
+        serializedVersion: 2
+        x: 247
+        y: 26
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85ef25f376a8273f0800000000000000
+      internalID: -904508399099380136
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_131
+      rect:
+        serializedVersion: 2
+        x: 865
+        y: 27
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f8c66cb9d940bf00800000000000000
+      internalID: 1130484705987578099
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_132
+      rect:
+        serializedVersion: 2
+        x: 1075
+        y: 25
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 011d3dea8182af980800000000000000
+      internalID: -8504440859858317040
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_133
+      rect:
+        serializedVersion: 2
+        x: 1559
+        y: 25
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce60a33c801423180800000000000000
+      internalID: -9137169188090411284
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_134
+      rect:
+        serializedVersion: 2
+        x: 2417
+        y: 26
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e691e011f4b980130800000000000000
+      internalID: 3533244671563012462
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_135
+      rect:
+        serializedVersion: 2
+        x: 2485
+        y: 28
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dd0016a2357a786f0800000000000000
+      internalID: -682392842888216355
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_136
+      rect:
+        serializedVersion: 2
+        x: 891
+        y: 9
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 90ecab0ecb5bfa120800000000000000
+      internalID: 2427358547004804617
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_137
+      rect:
+        serializedVersion: 2
+        x: 998
+        y: 10
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c57a9bb8e7ea9800800000000000000
+      internalID: 620062885482755525
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_138
+      rect:
+        serializedVersion: 2
+        x: 1281
+        y: 10
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 73ccc0d53f054cd40800000000000000
+      internalID: 5603692842524134455
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_139
+      rect:
+        serializedVersion: 2
+        x: 1324
+        y: 11
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f86ba05bbf9238d30800000000000000
+      internalID: 4432432619313608335
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_140
+      rect:
+        serializedVersion: 2
+        x: 2179
+        y: 12
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b8606ff818eaa2cb0800000000000000
+      internalID: -4887902574067972469
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_141
+      rect:
+        serializedVersion: 2
+        x: 2556
+        y: 12
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d3e79075f5cb29bd0800000000000000
+      internalID: -2624828515135422915
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: DarksteelAstralite_142
+      rect:
+        serializedVersion: 2
+        x: 2239
+        y: 3
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e8b00f678774b96d0800000000000000
+      internalID: -2982711745485730930
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      DarksteelAstralite_0: 6172848047945073766
+      DarksteelAstralite_1: 7978463083801493640
+      DarksteelAstralite_10: 601750630456957995
+      DarksteelAstralite_100: -109486347059633718
+      DarksteelAstralite_101: -2586057506334153141
+      DarksteelAstralite_102: -8343679095891826593
+      DarksteelAstralite_103: -7596658243694742534
+      DarksteelAstralite_104: -917057275625949831
+      DarksteelAstralite_105: 6561063410857214255
+      DarksteelAstralite_106: 1002101359276560263
+      DarksteelAstralite_107: -7082008097550525908
+      DarksteelAstralite_108: 572047031287390866
+      DarksteelAstralite_109: -7269197895948955901
+      DarksteelAstralite_11: -6084454703794913359
+      DarksteelAstralite_110: -2852611317090857774
+      DarksteelAstralite_111: 7744476478605339257
+      DarksteelAstralite_112: -6406408185457240592
+      DarksteelAstralite_113: 2994454620087579189
+      DarksteelAstralite_114: -8333293638243798417
+      DarksteelAstralite_115: 1257438711727447157
+      DarksteelAstralite_116: -536205726089188597
+      DarksteelAstralite_117: -3575795919576582028
+      DarksteelAstralite_118: 8467403608436326649
+      DarksteelAstralite_119: -8975301946842570817
+      DarksteelAstralite_12: -1799831015298011190
+      DarksteelAstralite_120: 2190921001199838751
+      DarksteelAstralite_121: -3376363208336011459
+      DarksteelAstralite_122: -6719855953026127196
+      DarksteelAstralite_123: -5257910158855575816
+      DarksteelAstralite_124: -3415971300431305849
+      DarksteelAstralite_125: 1433353333041262058
+      DarksteelAstralite_126: -7532225616028609544
+      DarksteelAstralite_127: 8084444622547190733
+      DarksteelAstralite_128: 4531962495028657212
+      DarksteelAstralite_129: 6126316354037475562
+      DarksteelAstralite_13: 7306419581428811614
+      DarksteelAstralite_130: -904508399099380136
+      DarksteelAstralite_131: 1130484705987578099
+      DarksteelAstralite_132: -8504440859858317040
+      DarksteelAstralite_133: -9137169188090411284
+      DarksteelAstralite_134: 3533244671563012462
+      DarksteelAstralite_135: -682392842888216355
+      DarksteelAstralite_136: 2427358547004804617
+      DarksteelAstralite_137: 620062885482755525
+      DarksteelAstralite_138: 5603692842524134455
+      DarksteelAstralite_139: 4432432619313608335
+      DarksteelAstralite_14: -5193971234289458420
+      DarksteelAstralite_140: -4887902574067972469
+      DarksteelAstralite_141: -2624828515135422915
+      DarksteelAstralite_142: -2982711745485730930
+      DarksteelAstralite_15: 7855097262833271884
+      DarksteelAstralite_16: 8089857721814832421
+      DarksteelAstralite_17: 6218572225915705159
+      DarksteelAstralite_18: 8684560570305685724
+      DarksteelAstralite_19: -3621151806650442436
+      DarksteelAstralite_2: -2074876714766701569
+      DarksteelAstralite_20: 2415469512298940888
+      DarksteelAstralite_21: -7270607115219631689
+      DarksteelAstralite_22: -8348959804486708945
+      DarksteelAstralite_23: -2116321856471585601
+      DarksteelAstralite_24: 6161273634310312638
+      DarksteelAstralite_25: -8899874892618381759
+      DarksteelAstralite_26: -6339272588047186098
+      DarksteelAstralite_27: 565485156631603641
+      DarksteelAstralite_28: 2788224034872501616
+      DarksteelAstralite_29: 5076213001687713340
+      DarksteelAstralite_3: -6008241585327137545
+      DarksteelAstralite_30: -6897130202734523535
+      DarksteelAstralite_31: 4824117387066301160
+      DarksteelAstralite_32: 3348126590092880090
+      DarksteelAstralite_33: -4872532763238431595
+      DarksteelAstralite_34: -7266087495673257650
+      DarksteelAstralite_35: 4896266253448273657
+      DarksteelAstralite_36: -1803703721980836914
+      DarksteelAstralite_37: -8940612789890927934
+      DarksteelAstralite_38: -5690809327763989745
+      DarksteelAstralite_39: -1572650305505370969
+      DarksteelAstralite_4: 5701480961428566828
+      DarksteelAstralite_40: 4869740811693781039
+      DarksteelAstralite_41: 28758044186357857
+      DarksteelAstralite_42: 4682980764163495876
+      DarksteelAstralite_43: -6044146866202883201
+      DarksteelAstralite_44: 5882929505913522975
+      DarksteelAstralite_45: -1160803184232989172
+      DarksteelAstralite_46: 5527578153936500316
+      DarksteelAstralite_47: 1184697367142679702
+      DarksteelAstralite_48: 5304904438769758513
+      DarksteelAstralite_49: -3044158072962843725
+      DarksteelAstralite_5: 1140293521581821257
+      DarksteelAstralite_50: -2691647843940037081
+      DarksteelAstralite_51: 3180649816501502434
+      DarksteelAstralite_52: 4261528928100031569
+      DarksteelAstralite_53: 3247037643978443518
+      DarksteelAstralite_54: 3816345386611760627
+      DarksteelAstralite_55: 5534300718171981068
+      DarksteelAstralite_56: 5273332306255382226
+      DarksteelAstralite_57: -1617840206257850110
+      DarksteelAstralite_58: 8202577243069710190
+      DarksteelAstralite_59: 1314897555872089987
+      DarksteelAstralite_6: 5681272749293786263
+      DarksteelAstralite_60: -1966152253492735711
+      DarksteelAstralite_61: -6852790966593122622
+      DarksteelAstralite_62: 7006487918230115696
+      DarksteelAstralite_63: 1217190432390996828
+      DarksteelAstralite_64: 4309430074828262556
+      DarksteelAstralite_65: -514912546647433616
+      DarksteelAstralite_66: 873088997434928699
+      DarksteelAstralite_67: -3442576463934119132
+      DarksteelAstralite_68: -5459594121908232049
+      DarksteelAstralite_69: -8864598756340513725
+      DarksteelAstralite_7: 7994855912676880283
+      DarksteelAstralite_70: 470305011958789187
+      DarksteelAstralite_71: 4541489714564331725
+      DarksteelAstralite_72: -5038834792692055305
+      DarksteelAstralite_73: -1888220837126163596
+      DarksteelAstralite_74: -2148257847539277714
+      DarksteelAstralite_75: 273279036659695391
+      DarksteelAstralite_76: 4537748440638455096
+      DarksteelAstralite_77: -4231646520708882536
+      DarksteelAstralite_78: -1485093501694130206
+      DarksteelAstralite_79: 33431611664090561
+      DarksteelAstralite_8: -2891658972591523804
+      DarksteelAstralite_80: 1864696288225782714
+      DarksteelAstralite_81: -3705255253785718376
+      DarksteelAstralite_82: -36715832358736450
+      DarksteelAstralite_83: 8871304823243830632
+      DarksteelAstralite_84: 2843238413367236361
+      DarksteelAstralite_85: 982861138486367825
+      DarksteelAstralite_86: 7665884542837179461
+      DarksteelAstralite_87: -1246444243376556808
+      DarksteelAstralite_88: 6360404312212794621
+      DarksteelAstralite_89: -5604876134905607582
+      DarksteelAstralite_9: -3108554954409840687
+      DarksteelAstralite_90: -4728559472011073036
+      DarksteelAstralite_91: -2636068650549987136
+      DarksteelAstralite_92: 4098794084273396852
+      DarksteelAstralite_93: -2661710263520627486
+      DarksteelAstralite_94: -2836173358266016077
+      DarksteelAstralite_95: -1921471840459628280
+      DarksteelAstralite_96: -6448565535567716510
+      DarksteelAstralite_97: 3766488349331283091
+      DarksteelAstralite_98: -7670811414734304948
+      DarksteelAstralite_99: 8955080639909946753
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

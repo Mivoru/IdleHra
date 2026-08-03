@@ -1,0 +1,1066 @@
+fileFormatVersion: 2
+guid: 25ca2805715b74245a944680f3bde18e
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 4132023043829288320
+    second: Sulfur_0
+  - first:
+      213: 1911555226278524367
+    second: Sulfur_1
+  - first:
+      213: -670377077956868092
+    second: Sulfur_2
+  - first:
+      213: -3950663044210716475
+    second: Sulfur_3
+  - first:
+      213: 962651722039140634
+    second: Sulfur_4
+  - first:
+      213: 6646850389655206290
+    second: Sulfur_5
+  - first:
+      213: 4899656074245560363
+    second: Sulfur_6
+  - first:
+      213: 791244061671947593
+    second: Sulfur_7
+  - first:
+      213: -6780294365158509806
+    second: Sulfur_8
+  - first:
+      213: 3742360947712400081
+    second: Sulfur_9
+  - first:
+      213: 5061667302595373359
+    second: Sulfur_10
+  - first:
+      213: -5226372798296954158
+    second: Sulfur_11
+  - first:
+      213: -5348542095805368385
+    second: Sulfur_12
+  - first:
+      213: 6130808712568338379
+    second: Sulfur_13
+  - first:
+      213: 2584489316405142737
+    second: Sulfur_14
+  - first:
+      213: -6071323216297843090
+    second: Sulfur_15
+  - first:
+      213: 3934940847592040420
+    second: Sulfur_16
+  - first:
+      213: 1737259902832982210
+    second: Sulfur_17
+  - first:
+      213: 6983564389568758412
+    second: Sulfur_18
+  - first:
+      213: -5694501672660327748
+    second: Sulfur_19
+  - first:
+      213: -5239403701153664905
+    second: Sulfur_20
+  - first:
+      213: -2142778858136604513
+    second: Sulfur_21
+  - first:
+      213: 646365728595727436
+    second: Sulfur_22
+  - first:
+      213: 224216438804726801
+    second: Sulfur_23
+  - first:
+      213: 2624231198490484286
+    second: Sulfur_24
+  - first:
+      213: 477908127090252457
+    second: Sulfur_25
+  - first:
+      213: -3871835443351645554
+    second: Sulfur_26
+  - first:
+      213: -4027216580251992759
+    second: Sulfur_27
+  - first:
+      213: -3887905692068087072
+    second: Sulfur_28
+  - first:
+      213: 1325133055046741085
+    second: Sulfur_29
+  - first:
+      213: -5768852781080479626
+    second: Sulfur_30
+  - first:
+      213: 7617714526525936442
+    second: Sulfur_31
+  - first:
+      213: -8299945180576605603
+    second: Sulfur_32
+  - first:
+      213: 6777341523300571849
+    second: Sulfur_33
+  - first:
+      213: 1506592890871478535
+    second: Sulfur_34
+  - first:
+      213: 7212546044048049270
+    second: Sulfur_35
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Sulfur_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 2048
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 08d4c23e015e75930800000000000000
+      internalID: 4132023043829288320
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_1
+      rect:
+        serializedVersion: 2
+        x: 764
+        y: 1775
+        width: 30
+        height: 28
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fc57fd6b955378a10800000000000000
+      internalID: 1911555226278524367
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_2
+      rect:
+        serializedVersion: 2
+        x: 1316
+        y: 1760
+        width: 16
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 40801d2799752b6f0800000000000000
+      internalID: -670377077956868092
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_3
+      rect:
+        serializedVersion: 2
+        x: 1520
+        y: 1757
+        width: 19
+        height: 18
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c09e8e84ec6c29c0800000000000000
+      internalID: -3950663044210716475
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_4
+      rect:
+        serializedVersion: 2
+        x: 1326
+        y: 1731
+        width: 20
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a11af8e04a60c5d00800000000000000
+      internalID: 962651722039140634
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_5
+      rect:
+        serializedVersion: 2
+        x: 1419
+        y: 1698
+        width: 68
+        height: 67
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 299b09e763b5e3c50800000000000000
+      internalID: 6646850389655206290
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_6
+      rect:
+        serializedVersion: 2
+        x: 269
+        y: 1202
+        width: 16
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b28ddf27d331ff340800000000000000
+      internalID: 4899656074245560363
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_7
+      rect:
+        serializedVersion: 2
+        x: 1823
+        y: 1206
+        width: 17
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 94df79a28401bfa00800000000000000
+      internalID: 791244061671947593
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_8
+      rect:
+        serializedVersion: 2
+        x: 280
+        y: 1163
+        width: 15
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 213f42cc23e87e1a0800000000000000
+      internalID: -6780294365158509806
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_9
+      rect:
+        serializedVersion: 2
+        x: 1734
+        y: 1105
+        width: 83
+        height: 90
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1da11bd34798fe330800000000000000
+      internalID: 3742360947712400081
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_10
+      rect:
+        serializedVersion: 2
+        x: 1817
+        y: 1162
+        width: 16
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f2928660897ae3640800000000000000
+      internalID: 5061667302595373359
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_11
+      rect:
+        serializedVersion: 2
+        x: 170
+        y: 996
+        width: 67
+        height: 69
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2daeeb561a13877b0800000000000000
+      internalID: -5226372798296954158
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_12
+      rect:
+        serializedVersion: 2
+        x: 260
+        y: 963
+        width: 57
+        height: 60
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb73c493d4926c5b0800000000000000
+      internalID: -5348542095805368385
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_13
+      rect:
+        serializedVersion: 2
+        x: 1808
+        y: 1015
+        width: 63
+        height: 57
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bc7718aaa02051550800000000000000
+      internalID: 6130808712568338379
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_14
+      rect:
+        serializedVersion: 2
+        x: 1863
+        y: 1002
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1d4ee1e0753fdd320800000000000000
+      internalID: 2584489316405142737
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_15
+      rect:
+        serializedVersion: 2
+        x: 1826
+        y: 974
+        width: 18
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e662cf7b3b35ebba0800000000000000
+      internalID: -6071323216297843090
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_16
+      rect:
+        serializedVersion: 2
+        x: 184
+        y: 841
+        width: 81
+        height: 85
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4e7e5e84ad7bb9630800000000000000
+      internalID: 3934940847592040420
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_17
+      rect:
+        serializedVersion: 2
+        x: 1877
+        y: 899
+        width: 18
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c8b3ee5dacfb1810800000000000000
+      internalID: 1737259902832982210
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_18
+      rect:
+        serializedVersion: 2
+        x: 236
+        y: 765
+        width: 21
+        height: 23
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c824052dfca9ae060800000000000000
+      internalID: 6983564389568758412
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_19
+      rect:
+        serializedVersion: 2
+        x: 1786
+        y: 659
+        width: 57
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cb2a63446e019f0b0800000000000000
+      internalID: -5694501672660327748
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_20
+      rect:
+        serializedVersion: 2
+        x: 1821
+        y: 614
+        width: 50
+        height: 49
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7707ed5e716e947b0800000000000000
+      internalID: -5239403701153664905
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_21
+      rect:
+        serializedVersion: 2
+        x: 232
+        y: 400
+        width: 127
+        height: 113
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f90fc804bf15342e0800000000000000
+      internalID: -2142778858136604513
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_22
+      rect:
+        serializedVersion: 2
+        x: 1914
+        y: 479
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c445fef943a58f800800000000000000
+      internalID: 646365728595727436
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_23
+      rect:
+        serializedVersion: 2
+        x: 1778
+        y: 396
+        width: 45
+        height: 37
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 11442c3c9a39c1300800000000000000
+      internalID: 224216438804726801
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_24
+      rect:
+        serializedVersion: 2
+        x: 183
+        y: 321
+        width: 68
+        height: 46
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e3ed58a0f542b6420800000000000000
+      internalID: 2624231198490484286
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_25
+      rect:
+        serializedVersion: 2
+        x: 417
+        y: 191
+        width: 234
+        height: 157
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9aa9c76d8eed1a600800000000000000
+      internalID: 477908127090252457
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_26
+      rect:
+        serializedVersion: 2
+        x: 679
+        y: 210
+        width: 54
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e82124a9d2a744ac0800000000000000
+      internalID: -3871835443351645554
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_27
+      rect:
+        serializedVersion: 2
+        x: 1106
+        y: 229
+        width: 101
+        height: 79
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 94d348c7bd37c18c0800000000000000
+      internalID: -4027216580251992759
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_28
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 262
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0eaff004f526b0ac0800000000000000
+      internalID: -3887905692068087072
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_29
+      rect:
+        serializedVersion: 2
+        x: 1266
+        y: 199
+        width: 56
+        height: 50
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d5c60322e71d36210800000000000000
+      internalID: 1325133055046741085
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_30
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 248
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6787c26d5fae0ffa0800000000000000
+      internalID: -5768852781080479626
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_31
+      rect:
+        serializedVersion: 2
+        x: 668
+        y: 228
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a3359e1600f87b960800000000000000
+      internalID: 7617714526525936442
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_32
+      rect:
+        serializedVersion: 2
+        x: 1777
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d5a148055dba0dc80800000000000000
+      internalID: -8299945180576605603
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_33
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 222
+        width: 11
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9cad5d12534fd0e50800000000000000
+      internalID: 6777341523300571849
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_34
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 209
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 709f581804e78e410800000000000000
+      internalID: 1506592890871478535
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Sulfur_35
+      rect:
+        serializedVersion: 2
+        x: 1814
+        y: 204
+        width: 12
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 67402a1d96c181460800000000000000
+      internalID: 7212546044048049270
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Sulfur_0: 4132023043829288320
+      Sulfur_1: 1911555226278524367
+      Sulfur_10: 5061667302595373359
+      Sulfur_11: -5226372798296954158
+      Sulfur_12: -5348542095805368385
+      Sulfur_13: 6130808712568338379
+      Sulfur_14: 2584489316405142737
+      Sulfur_15: -6071323216297843090
+      Sulfur_16: 3934940847592040420
+      Sulfur_17: 1737259902832982210
+      Sulfur_18: 6983564389568758412
+      Sulfur_19: -5694501672660327748
+      Sulfur_2: -670377077956868092
+      Sulfur_20: -5239403701153664905
+      Sulfur_21: -2142778858136604513
+      Sulfur_22: 646365728595727436
+      Sulfur_23: 224216438804726801
+      Sulfur_24: 2624231198490484286
+      Sulfur_25: 477908127090252457
+      Sulfur_26: -3871835443351645554
+      Sulfur_27: -4027216580251992759
+      Sulfur_28: -3887905692068087072
+      Sulfur_29: 1325133055046741085
+      Sulfur_3: -3950663044210716475
+      Sulfur_30: -5768852781080479626
+      Sulfur_31: 7617714526525936442
+      Sulfur_32: -8299945180576605603
+      Sulfur_33: 6777341523300571849
+      Sulfur_34: 1506592890871478535
+      Sulfur_35: 7212546044048049270
+      Sulfur_4: 962651722039140634
+      Sulfur_5: 6646850389655206290
+      Sulfur_6: 4899656074245560363
+      Sulfur_7: 791244061671947593
+      Sulfur_8: -6780294365158509806
+      Sulfur_9: 3742360947712400081
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

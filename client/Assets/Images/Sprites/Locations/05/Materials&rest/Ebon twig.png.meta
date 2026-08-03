@@ -1,0 +1,7800 @@
+fileFormatVersion: 2
+guid: 280221ab7d4a5c94887b32db98827185
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -7434788714687787513
+    second: Ebon twig_0
+  - first:
+      213: -387756719901197096
+    second: Ebon twig_1
+  - first:
+      213: -1770460211218974840
+    second: Ebon twig_2
+  - first:
+      213: 2312350879658104735
+    second: Ebon twig_3
+  - first:
+      213: 8632235756555701903
+    second: Ebon twig_4
+  - first:
+      213: -339397386039937860
+    second: Ebon twig_5
+  - first:
+      213: 7480972133011193456
+    second: Ebon twig_6
+  - first:
+      213: -5546574590784456603
+    second: Ebon twig_7
+  - first:
+      213: -6688506340290518187
+    second: Ebon twig_8
+  - first:
+      213: -2344307960691836983
+    second: Ebon twig_9
+  - first:
+      213: 6155790317373104906
+    second: Ebon twig_10
+  - first:
+      213: -5395666264763796549
+    second: Ebon twig_11
+  - first:
+      213: -4490346162488823068
+    second: Ebon twig_12
+  - first:
+      213: -3745250020247190265
+    second: Ebon twig_13
+  - first:
+      213: 142219111085567141
+    second: Ebon twig_14
+  - first:
+      213: -2167473190476116287
+    second: Ebon twig_15
+  - first:
+      213: 7446083074338792340
+    second: Ebon twig_16
+  - first:
+      213: -456371829983664964
+    second: Ebon twig_17
+  - first:
+      213: -3450258952183471441
+    second: Ebon twig_18
+  - first:
+      213: 8924360107932212974
+    second: Ebon twig_19
+  - first:
+      213: 8103642280084782952
+    second: Ebon twig_20
+  - first:
+      213: -2538799694418950487
+    second: Ebon twig_21
+  - first:
+      213: -1827959729837970939
+    second: Ebon twig_22
+  - first:
+      213: -1991333076079472356
+    second: Ebon twig_23
+  - first:
+      213: -4541080584681699446
+    second: Ebon twig_24
+  - first:
+      213: -7630438901025116446
+    second: Ebon twig_25
+  - first:
+      213: -8249270497052261339
+    second: Ebon twig_26
+  - first:
+      213: 6801173731276320655
+    second: Ebon twig_27
+  - first:
+      213: -4798818819645826100
+    second: Ebon twig_28
+  - first:
+      213: -7888109535675887038
+    second: Ebon twig_29
+  - first:
+      213: 4595494916254558439
+    second: Ebon twig_30
+  - first:
+      213: 4289906936516292392
+    second: Ebon twig_31
+  - first:
+      213: 5853023547672818395
+    second: Ebon twig_32
+  - first:
+      213: -3975066334438102033
+    second: Ebon twig_33
+  - first:
+      213: -4232592104544949851
+    second: Ebon twig_34
+  - first:
+      213: -1326987389575569700
+    second: Ebon twig_35
+  - first:
+      213: 2938994402822839401
+    second: Ebon twig_36
+  - first:
+      213: -2741321388276105401
+    second: Ebon twig_37
+  - first:
+      213: 4233026618377321068
+    second: Ebon twig_38
+  - first:
+      213: 1717386551461667116
+    second: Ebon twig_39
+  - first:
+      213: -3608836594936001293
+    second: Ebon twig_40
+  - first:
+      213: -6178449297329392574
+    second: Ebon twig_41
+  - first:
+      213: -4719275328479764969
+    second: Ebon twig_42
+  - first:
+      213: -4165456226292764103
+    second: Ebon twig_43
+  - first:
+      213: 7020551161365683431
+    second: Ebon twig_44
+  - first:
+      213: -1158042425641558380
+    second: Ebon twig_45
+  - first:
+      213: 3874756156602875069
+    second: Ebon twig_46
+  - first:
+      213: 1653402503256463873
+    second: Ebon twig_47
+  - first:
+      213: 7881087538277702307
+    second: Ebon twig_48
+  - first:
+      213: 5687527727961411331
+    second: Ebon twig_49
+  - first:
+      213: 7759466110357187916
+    second: Ebon twig_50
+  - first:
+      213: -6798563359132835486
+    second: Ebon twig_51
+  - first:
+      213: 6101914143934903677
+    second: Ebon twig_52
+  - first:
+      213: -5126960824301457113
+    second: Ebon twig_53
+  - first:
+      213: 2868364549823112577
+    second: Ebon twig_54
+  - first:
+      213: 7437827032103901285
+    second: Ebon twig_55
+  - first:
+      213: -7269815109615220648
+    second: Ebon twig_56
+  - first:
+      213: 7921292937639419149
+    second: Ebon twig_57
+  - first:
+      213: -4824395962918578112
+    second: Ebon twig_58
+  - first:
+      213: -1907912309820057927
+    second: Ebon twig_59
+  - first:
+      213: -759811762584680240
+    second: Ebon twig_60
+  - first:
+      213: -6194118510975511074
+    second: Ebon twig_61
+  - first:
+      213: -1571263994296347659
+    second: Ebon twig_62
+  - first:
+      213: -6676424504093372945
+    second: Ebon twig_63
+  - first:
+      213: 3260101577340004466
+    second: Ebon twig_64
+  - first:
+      213: 2490910927090005958
+    second: Ebon twig_65
+  - first:
+      213: -2343586122662147049
+    second: Ebon twig_66
+  - first:
+      213: 4471106379558023265
+    second: Ebon twig_67
+  - first:
+      213: -965556253872049211
+    second: Ebon twig_68
+  - first:
+      213: 1169823603813974054
+    second: Ebon twig_69
+  - first:
+      213: 5464390122631810873
+    second: Ebon twig_70
+  - first:
+      213: -3935687009895951420
+    second: Ebon twig_71
+  - first:
+      213: 5934033390637611166
+    second: Ebon twig_72
+  - first:
+      213: 1182029779411878357
+    second: Ebon twig_73
+  - first:
+      213: -3171430930965466946
+    second: Ebon twig_74
+  - first:
+      213: -7650392208950625506
+    second: Ebon twig_75
+  - first:
+      213: 981428087856241645
+    second: Ebon twig_76
+  - first:
+      213: 1427991419908799434
+    second: Ebon twig_77
+  - first:
+      213: 3125069811094386727
+    second: Ebon twig_78
+  - first:
+      213: -3942626465718741602
+    second: Ebon twig_79
+  - first:
+      213: 3242032966419486092
+    second: Ebon twig_80
+  - first:
+      213: 2234625655284840774
+    second: Ebon twig_81
+  - first:
+      213: -8021190626624022003
+    second: Ebon twig_82
+  - first:
+      213: 9065333532086807570
+    second: Ebon twig_83
+  - first:
+      213: 1964331018102169507
+    second: Ebon twig_84
+  - first:
+      213: -2080945550076095838
+    second: Ebon twig_85
+  - first:
+      213: 5480248054472583431
+    second: Ebon twig_86
+  - first:
+      213: 757976045436021424
+    second: Ebon twig_87
+  - first:
+      213: -1258601091004167653
+    second: Ebon twig_88
+  - first:
+      213: 5719415911152803776
+    second: Ebon twig_89
+  - first:
+      213: 5304796436315360897
+    second: Ebon twig_90
+  - first:
+      213: -1045643365039970742
+    second: Ebon twig_91
+  - first:
+      213: -4132491773151698317
+    second: Ebon twig_92
+  - first:
+      213: 8023541117252605983
+    second: Ebon twig_93
+  - first:
+      213: -355902837861189153
+    second: Ebon twig_94
+  - first:
+      213: -8109814374529655626
+    second: Ebon twig_95
+  - first:
+      213: -3238727092775823871
+    second: Ebon twig_96
+  - first:
+      213: -6094468429001678352
+    second: Ebon twig_97
+  - first:
+      213: -4650000959432784092
+    second: Ebon twig_98
+  - first:
+      213: 3889710260746375587
+    second: Ebon twig_99
+  - first:
+      213: 6830126270122457784
+    second: Ebon twig_100
+  - first:
+      213: -5416497401885349676
+    second: Ebon twig_101
+  - first:
+      213: -4040366033589429278
+    second: Ebon twig_102
+  - first:
+      213: -7405573393066904733
+    second: Ebon twig_103
+  - first:
+      213: 9172101620441453456
+    second: Ebon twig_104
+  - first:
+      213: 1314901547804963736
+    second: Ebon twig_105
+  - first:
+      213: -4789062406766942853
+    second: Ebon twig_106
+  - first:
+      213: 8814166068229827988
+    second: Ebon twig_107
+  - first:
+      213: -682839234839850254
+    second: Ebon twig_108
+  - first:
+      213: 8416184033448356864
+    second: Ebon twig_109
+  - first:
+      213: -8098413745715972496
+    second: Ebon twig_110
+  - first:
+      213: 6736346611050565025
+    second: Ebon twig_111
+  - first:
+      213: 3250104971670780902
+    second: Ebon twig_112
+  - first:
+      213: 6813825555715685703
+    second: Ebon twig_113
+  - first:
+      213: -8921152780922815934
+    second: Ebon twig_114
+  - first:
+      213: 3673175922318419249
+    second: Ebon twig_115
+  - first:
+      213: 6907435953099111947
+    second: Ebon twig_116
+  - first:
+      213: -8276907572801590349
+    second: Ebon twig_117
+  - first:
+      213: 1459348494066603975
+    second: Ebon twig_118
+  - first:
+      213: 6034848677517052283
+    second: Ebon twig_119
+  - first:
+      213: -7412362188164703757
+    second: Ebon twig_120
+  - first:
+      213: -5896751290278084078
+    second: Ebon twig_121
+  - first:
+      213: -544269351670482878
+    second: Ebon twig_122
+  - first:
+      213: -7055200210776801821
+    second: Ebon twig_123
+  - first:
+      213: 7073684177822740824
+    second: Ebon twig_124
+  - first:
+      213: -6975304065170249614
+    second: Ebon twig_125
+  - first:
+      213: 403287273349573039
+    second: Ebon twig_126
+  - first:
+      213: 4574039883294806626
+    second: Ebon twig_127
+  - first:
+      213: 644798103768613574
+    second: Ebon twig_128
+  - first:
+      213: -9051311605388364097
+    second: Ebon twig_129
+  - first:
+      213: -1754091464562613203
+    second: Ebon twig_130
+  - first:
+      213: -3004024646526461531
+    second: Ebon twig_131
+  - first:
+      213: 5481779054030464876
+    second: Ebon twig_132
+  - first:
+      213: 7751258192796991400
+    second: Ebon twig_133
+  - first:
+      213: -5517866209094519068
+    second: Ebon twig_134
+  - first:
+      213: 693378235745962406
+    second: Ebon twig_135
+  - first:
+      213: 3282595033556937860
+    second: Ebon twig_136
+  - first:
+      213: 8655156731397176339
+    second: Ebon twig_137
+  - first:
+      213: -3797146511270057427
+    second: Ebon twig_138
+  - first:
+      213: 3613652971877854618
+    second: Ebon twig_139
+  - first:
+      213: 5103678251216490723
+    second: Ebon twig_140
+  - first:
+      213: -4604834164244256166
+    second: Ebon twig_141
+  - first:
+      213: -226603727459893855
+    second: Ebon twig_142
+  - first:
+      213: -6885438932202489977
+    second: Ebon twig_143
+  - first:
+      213: -1737321748475568810
+    second: Ebon twig_144
+  - first:
+      213: -7887938868978022578
+    second: Ebon twig_145
+  - first:
+      213: -3205515937559246873
+    second: Ebon twig_146
+  - first:
+      213: 8393671171106027227
+    second: Ebon twig_147
+  - first:
+      213: -4365553412859846181
+    second: Ebon twig_148
+  - first:
+      213: 4828052873496707453
+    second: Ebon twig_149
+  - first:
+      213: -1191921532507538452
+    second: Ebon twig_150
+  - first:
+      213: -6714525338680343674
+    second: Ebon twig_151
+  - first:
+      213: -3084982297885211618
+    second: Ebon twig_152
+  - first:
+      213: -3239006187985210710
+    second: Ebon twig_153
+  - first:
+      213: -230226874227709282
+    second: Ebon twig_154
+  - first:
+      213: 298960415638278564
+    second: Ebon twig_155
+  - first:
+      213: 1738150440283950463
+    second: Ebon twig_156
+  - first:
+      213: -8866730889002582533
+    second: Ebon twig_157
+  - first:
+      213: 4740669378375465935
+    second: Ebon twig_158
+  - first:
+      213: -1201552322007465213
+    second: Ebon twig_159
+  - first:
+      213: 705532772729913970
+    second: Ebon twig_160
+  - first:
+      213: -1232099743917336205
+    second: Ebon twig_161
+  - first:
+      213: 9144949815037034693
+    second: Ebon twig_162
+  - first:
+      213: -8631358533238275810
+    second: Ebon twig_163
+  - first:
+      213: 6377397283199800772
+    second: Ebon twig_164
+  - first:
+      213: -4963273782250047571
+    second: Ebon twig_165
+  - first:
+      213: 824953252563654052
+    second: Ebon twig_166
+  - first:
+      213: 4112459781861185789
+    second: Ebon twig_167
+  - first:
+      213: 806310050266295023
+    second: Ebon twig_168
+  - first:
+      213: 822721269436361390
+    second: Ebon twig_169
+  - first:
+      213: 942994796028403570
+    second: Ebon twig_170
+  - first:
+      213: -555695406656728869
+    second: Ebon twig_171
+  - first:
+      213: -8191939064505262763
+    second: Ebon twig_172
+  - first:
+      213: 1982113446734367114
+    second: Ebon twig_173
+  - first:
+      213: -7531834596625570957
+    second: Ebon twig_174
+  - first:
+      213: -5174193291736446547
+    second: Ebon twig_175
+  - first:
+      213: 7569930006957997484
+    second: Ebon twig_176
+  - first:
+      213: 2876983568914197005
+    second: Ebon twig_177
+  - first:
+      213: 2183616757246597631
+    second: Ebon twig_178
+  - first:
+      213: 7653052738954336855
+    second: Ebon twig_179
+  - first:
+      213: 6572564314888161369
+    second: Ebon twig_180
+  - first:
+      213: 8457819900560520290
+    second: Ebon twig_181
+  - first:
+      213: -7493773001999153362
+    second: Ebon twig_182
+  - first:
+      213: -6650319615143321561
+    second: Ebon twig_183
+  - first:
+      213: 9130657937078704397
+    second: Ebon twig_184
+  - first:
+      213: 269266921900717304
+    second: Ebon twig_185
+  - first:
+      213: -242161914682666088
+    second: Ebon twig_186
+  - first:
+      213: 3316466849239502231
+    second: Ebon twig_187
+  - first:
+      213: 7290376399246937745
+    second: Ebon twig_188
+  - first:
+      213: -1667839696293720463
+    second: Ebon twig_189
+  - first:
+      213: 8544519839244392717
+    second: Ebon twig_190
+  - first:
+      213: 2409364394684056432
+    second: Ebon twig_191
+  - first:
+      213: 6190856353373612115
+    second: Ebon twig_192
+  - first:
+      213: 7922649744755416857
+    second: Ebon twig_193
+  - first:
+      213: 4233412644586800885
+    second: Ebon twig_194
+  - first:
+      213: -6002525979321964918
+    second: Ebon twig_195
+  - first:
+      213: 1037641301838137128
+    second: Ebon twig_196
+  - first:
+      213: 8769101613678263854
+    second: Ebon twig_197
+  - first:
+      213: 3229816149421947008
+    second: Ebon twig_198
+  - first:
+      213: -332765603294808588
+    second: Ebon twig_199
+  - first:
+      213: 8556798690400691029
+    second: Ebon twig_200
+  - first:
+      213: -3753764756845303590
+    second: Ebon twig_201
+  - first:
+      213: 60604007878400687
+    second: Ebon twig_202
+  - first:
+      213: 6706004246590412494
+    second: Ebon twig_203
+  - first:
+      213: 177753840182124817
+    second: Ebon twig_204
+  - first:
+      213: 2976027079189950259
+    second: Ebon twig_205
+  - first:
+      213: -216271691479977217
+    second: Ebon twig_206
+  - first:
+      213: -606462394420607832
+    second: Ebon twig_207
+  - first:
+      213: 863446206017826248
+    second: Ebon twig_208
+  - first:
+      213: -1911887032939612273
+    second: Ebon twig_209
+  - first:
+      213: -3718132191598330967
+    second: Ebon twig_210
+  - first:
+      213: 7759582626099606077
+    second: Ebon twig_211
+  - first:
+      213: 8855078685940313232
+    second: Ebon twig_212
+  - first:
+      213: -694165727653333499
+    second: Ebon twig_213
+  - first:
+      213: 467318115806955752
+    second: Ebon twig_214
+  - first:
+      213: 7588282175145423622
+    second: Ebon twig_215
+  - first:
+      213: -8933615244726047537
+    second: Ebon twig_216
+  - first:
+      213: 7914492439546283796
+    second: Ebon twig_217
+  - first:
+      213: 4451325461876723770
+    second: Ebon twig_218
+  - first:
+      213: -3809725314233336795
+    second: Ebon twig_219
+  - first:
+      213: -5459620419150455063
+    second: Ebon twig_220
+  - first:
+      213: 7153094171875984641
+    second: Ebon twig_221
+  - first:
+      213: 2417953766510212697
+    second: Ebon twig_222
+  - first:
+      213: 504167746073638453
+    second: Ebon twig_223
+  - first:
+      213: -7926066190429511261
+    second: Ebon twig_224
+  - first:
+      213: -1086462752228819196
+    second: Ebon twig_225
+  - first:
+      213: 9203623634877491507
+    second: Ebon twig_226
+  - first:
+      213: 8509988222118682707
+    second: Ebon twig_227
+  - first:
+      213: -8504878391777115852
+    second: Ebon twig_228
+  - first:
+      213: 8162711557364434613
+    second: Ebon twig_229
+  - first:
+      213: 1542087827357479620
+    second: Ebon twig_230
+  - first:
+      213: 2908953374428813728
+    second: Ebon twig_231
+  - first:
+      213: 1733331190831485665
+    second: Ebon twig_232
+  - first:
+      213: -3127810816463368712
+    second: Ebon twig_233
+  - first:
+      213: 5877665529949404267
+    second: Ebon twig_234
+  - first:
+      213: -6849765611741859664
+    second: Ebon twig_235
+  - first:
+      213: -4827982422470182761
+    second: Ebon twig_236
+  - first:
+      213: -7304066810957195083
+    second: Ebon twig_237
+  - first:
+      213: -7030377788239497402
+    second: Ebon twig_238
+  - first:
+      213: 4800675038484083884
+    second: Ebon twig_239
+  - first:
+      213: -7000504842814598714
+    second: Ebon twig_240
+  - first:
+      213: -537306426237061290
+    second: Ebon twig_241
+  - first:
+      213: -6998673550721006843
+    second: Ebon twig_242
+  - first:
+      213: -2060600020300933585
+    second: Ebon twig_243
+  - first:
+      213: -5916160330636962111
+    second: Ebon twig_244
+  - first:
+      213: -7419292592601187523
+    second: Ebon twig_245
+  - first:
+      213: 2029225130228863541
+    second: Ebon twig_246
+  - first:
+      213: -3295445694078028707
+    second: Ebon twig_247
+  - first:
+      213: 8549323260886594013
+    second: Ebon twig_248
+  - first:
+      213: 4105914529464151878
+    second: Ebon twig_249
+  - first:
+      213: -4347791233314617701
+    second: Ebon twig_250
+  - first:
+      213: -1482391008822691938
+    second: Ebon twig_251
+  - first:
+      213: -1397266209159108101
+    second: Ebon twig_252
+  - first:
+      213: -697191895711056107
+    second: Ebon twig_253
+  - first:
+      213: 5862041008330938161
+    second: Ebon twig_254
+  - first:
+      213: 4139837520562068594
+    second: Ebon twig_255
+  - first:
+      213: 1390177725341831333
+    second: Ebon twig_256
+  - first:
+      213: -5402082933592477826
+    second: Ebon twig_257
+  - first:
+      213: 6140026805342395049
+    second: Ebon twig_258
+  - first:
+      213: -4810463065643150895
+    second: Ebon twig_259
+  - first:
+      213: 8844218836021162178
+    second: Ebon twig_260
+  - first:
+      213: -3406911899482516481
+    second: Ebon twig_261
+  - first:
+      213: -5776417971752178017
+    second: Ebon twig_262
+  - first:
+      213: -5397002117625224631
+    second: Ebon twig_263
+  - first:
+      213: 7250940215047566625
+    second: Ebon twig_264
+  - first:
+      213: -5486489553839612523
+    second: Ebon twig_265
+  - first:
+      213: -7690858994336664729
+    second: Ebon twig_266
+  - first:
+      213: 4225107546038410174
+    second: Ebon twig_267
+  - first:
+      213: 2873935137045324256
+    second: Ebon twig_268
+  - first:
+      213: 2428355757029798093
+    second: Ebon twig_269
+  - first:
+      213: 1479736312885629626
+    second: Ebon twig_270
+  - first:
+      213: 7131151565977236942
+    second: Ebon twig_271
+  - first:
+      213: -4731825657778856805
+    second: Ebon twig_272
+  - first:
+      213: 8783008544338874058
+    second: Ebon twig_273
+  - first:
+      213: 8917721501513280929
+    second: Ebon twig_274
+  - first:
+      213: 6891762486288192382
+    second: Ebon twig_275
+  - first:
+      213: -3763091779538469048
+    second: Ebon twig_276
+  - first:
+      213: 7503711543590200363
+    second: Ebon twig_277
+  - first:
+      213: 8701499741650123260
+    second: Ebon twig_278
+  - first:
+      213: -7318573561560612737
+    second: Ebon twig_279
+  - first:
+      213: 2422779542129298558
+    second: Ebon twig_280
+  - first:
+      213: 7003015646219913269
+    second: Ebon twig_281
+  - first:
+      213: -2496364596542890920
+    second: Ebon twig_282
+  - first:
+      213: -2418381808523147592
+    second: Ebon twig_283
+  - first:
+      213: 4371220286356240649
+    second: Ebon twig_284
+  - first:
+      213: -1289503324274751720
+    second: Ebon twig_285
+  - first:
+      213: -7423707689052816008
+    second: Ebon twig_286
+  - first:
+      213: -1876113321534218197
+    second: Ebon twig_287
+  - first:
+      213: 2016410005237186637
+    second: Ebon twig_288
+  - first:
+      213: 7637578542832176309
+    second: Ebon twig_289
+  - first:
+      213: -3467640012496143285
+    second: Ebon twig_290
+  - first:
+      213: 2076932031326722575
+    second: Ebon twig_291
+  - first:
+      213: -7817148567676627619
+    second: Ebon twig_292
+  - first:
+      213: 7199317801185036532
+    second: Ebon twig_293
+  - first:
+      213: -6583934104641820364
+    second: Ebon twig_294
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Ebon twig_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 170
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 70e83f02e0352d890800000000000000
+      internalID: -7434788714687787513
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_1
+      rect:
+        serializedVersion: 2
+        x: 4
+        y: 115
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8dcb40351596e9af0800000000000000
+      internalID: -387756719901197096
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_2
+      rect:
+        serializedVersion: 2
+        x: 11
+        y: 1196
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 887745571df0e67e0800000000000000
+      internalID: -1770460211218974840
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_3
+      rect:
+        serializedVersion: 2
+        x: 23
+        y: 511
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f97551aafde171020800000000000000
+      internalID: 2312350879658104735
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_4
+      rect:
+        serializedVersion: 2
+        x: 33
+        y: 595
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f8e8dee5facdbc770800000000000000
+      internalID: 8632235756555701903
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_5
+      rect:
+        serializedVersion: 2
+        x: 57
+        y: 218
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cb4b46720e73a4bf0800000000000000
+      internalID: -339397386039937860
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_6
+      rect:
+        serializedVersion: 2
+        x: 68
+        y: 1272
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07e7ab2e480c1d760800000000000000
+      internalID: 7480972133011193456
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_7
+      rect:
+        serializedVersion: 2
+        x: 69
+        y: 827
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 568b514fbcb9603b0800000000000000
+      internalID: -5546574590784456603
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_8
+      rect:
+        serializedVersion: 2
+        x: 80
+        y: 1469
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5532905bbe6ad23a0800000000000000
+      internalID: -6688506340290518187
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_9
+      rect:
+        serializedVersion: 2
+        x: 80
+        y: 1173
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9c7b7d69458577fd0800000000000000
+      internalID: -2344307960691836983
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_10
+      rect:
+        serializedVersion: 2
+        x: 83
+        y: 1306
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a0320dacda2cd6550800000000000000
+      internalID: 6155790317373104906
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_11
+      rect:
+        serializedVersion: 2
+        x: 83
+        y: 490
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bb3f132ae1ebe15b0800000000000000
+      internalID: -5395666264763796549
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_12
+      rect:
+        serializedVersion: 2
+        x: 84
+        y: 1144
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4e2b052c4f51fa1c0800000000000000
+      internalID: -4490346162488823068
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_13
+      rect:
+        serializedVersion: 2
+        x: 87
+        y: 453
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 705442423f2360cc0800000000000000
+      internalID: -3745250020247190265
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_14
+      rect:
+        serializedVersion: 2
+        x: 93
+        y: 1453
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5ace68c278349f100800000000000000
+      internalID: 142219111085567141
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_15
+      rect:
+        serializedVersion: 2
+        x: 95
+        y: 1354
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ce0d75fd969be1e0800000000000000
+      internalID: -2167473190476116287
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_16
+      rect:
+        serializedVersion: 2
+        x: 97
+        y: 339
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4932306ea1dc55760800000000000000
+      internalID: 7446083074338792340
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_17
+      rect:
+        serializedVersion: 2
+        x: 97
+        y: 96
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cb424541d34aaa9f0800000000000000
+      internalID: -456371829983664964
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_18
+      rect:
+        serializedVersion: 2
+        x: 129
+        y: 1319
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fa22ef363c73e10d0800000000000000
+      internalID: -3450258952183471441
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_19
+      rect:
+        serializedVersion: 2
+        x: 130
+        y: 148
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eee57f02c32b9db70800000000000000
+      internalID: 8924360107932212974
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_20
+      rect:
+        serializedVersion: 2
+        x: 144
+        y: 421
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 86f3a4308bbe57070800000000000000
+      internalID: 8103642280084782952
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_21
+      rect:
+        serializedVersion: 2
+        x: 151
+        y: 1076
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9a6c94a012f54ccd0800000000000000
+      internalID: -2538799694418950487
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_22
+      rect:
+        serializedVersion: 2
+        x: 153
+        y: 0
+        width: 253
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 50ae9478f48c1a6e0800000000000000
+      internalID: -1827959729837970939
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_23
+      rect:
+        serializedVersion: 2
+        x: 153
+        y: 1249
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c111cca2e1d5d54e0800000000000000
+      internalID: -1991333076079472356
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_24
+      rect:
+        serializedVersion: 2
+        x: 153
+        y: 536
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a87cf959447daf0c0800000000000000
+      internalID: -4541080584681699446
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_25
+      rect:
+        serializedVersion: 2
+        x: 178
+        y: 1055
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ee63105f3c3b1690800000000000000
+      internalID: -7630438901025116446
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_26
+      rect:
+        serializedVersion: 2
+        x: 185
+        y: 419
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 524071f7034b48d80800000000000000
+      internalID: -8249270497052261339
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_27
+      rect:
+        serializedVersion: 2
+        x: 192
+        y: 1309
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f8f6174797f926e50800000000000000
+      internalID: 6801173731276320655
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_28
+      rect:
+        serializedVersion: 2
+        x: 195
+        y: 749
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ccb1d8175bb276db0800000000000000
+      internalID: -4798818819645826100
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_29
+      rect:
+        serializedVersion: 2
+        x: 219
+        y: 167
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 242daa89b2ec78290800000000000000
+      internalID: -7888109535675887038
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_30
+      rect:
+        serializedVersion: 2
+        x: 227
+        y: 346
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7e86772474a76cf30800000000000000
+      internalID: 4595494916254558439
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_31
+      rect:
+        serializedVersion: 2
+        x: 230
+        y: 1115
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82fa98e31afc88b30800000000000000
+      internalID: 4289906936516292392
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_32
+      rect:
+        serializedVersion: 2
+        x: 232
+        y: 537
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd2f80de7ed1a3150800000000000000
+      internalID: 5853023547672818395
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_33
+      rect:
+        serializedVersion: 2
+        x: 240
+        y: 225
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: febe339ca3ab5d8c0800000000000000
+      internalID: -3975066334438102033
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_34
+      rect:
+        serializedVersion: 2
+        x: 243
+        y: 233
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5a9a979f7efc245c0800000000000000
+      internalID: -4232592104544949851
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_35
+      rect:
+        serializedVersion: 2
+        x: 248
+        y: 1025
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cdedce6fff7959de0800000000000000
+      internalID: -1326987389575569700
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_36
+      rect:
+        serializedVersion: 2
+        x: 263
+        y: 1165
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 96cdd1186d769c820800000000000000
+      internalID: 2938994402822839401
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_37
+      rect:
+        serializedVersion: 2
+        x: 271
+        y: 714
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 74f3f94b8bed4f9d0800000000000000
+      internalID: -2741321388276105401
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_38
+      rect:
+        serializedVersion: 2
+        x: 287
+        y: 37
+        width: 13
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c6a3729284bbeba30800000000000000
+      internalID: 4233026618377321068
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_39
+      rect:
+        serializedVersion: 2
+        x: 290
+        y: 473
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c21e7ed28f165d710800000000000000
+      internalID: 1717386551461667116
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_40
+      rect:
+        serializedVersion: 2
+        x: 295
+        y: 293
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3fcc862cc36daedc0800000000000000
+      internalID: -3608836594936001293
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_41
+      rect:
+        serializedVersion: 2
+        x: 301
+        y: 37
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2447be1591db14aa0800000000000000
+      internalID: -6178449297329392574
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_42
+      rect:
+        serializedVersion: 2
+        x: 311
+        y: 1187
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 71ed2b0b714c18eb0800000000000000
+      internalID: -4719275328479764969
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_43
+      rect:
+        serializedVersion: 2
+        x: 321
+        y: 831
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9327168b1a35136c0800000000000000
+      internalID: -4165456226292764103
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_44
+      rect:
+        serializedVersion: 2
+        x: 326
+        y: 1312
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7ec58a4b5120e6160800000000000000
+      internalID: 7020551161365683431
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_45
+      rect:
+        serializedVersion: 2
+        x: 327
+        y: 994
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 49e9dc8ac8ecdefe0800000000000000
+      internalID: -1158042425641558380
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_46
+      rect:
+        serializedVersion: 2
+        x: 335
+        y: 179
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dbc7291f136e5c530800000000000000
+      internalID: 3874756156602875069
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_47
+      rect:
+        serializedVersion: 2
+        x: 342
+        y: 430
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 10ad75d01d012f610800000000000000
+      internalID: 1653402503256463873
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_48
+      rect:
+        serializedVersion: 2
+        x: 357
+        y: 60
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3aadcca3c5f3f5d60800000000000000
+      internalID: 7881087538277702307
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_49
+      rect:
+        serializedVersion: 2
+        x: 368
+        y: 1400
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 30f0353b5582eee40800000000000000
+      internalID: 5687527727961411331
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_50
+      rect:
+        serializedVersion: 2
+        x: 377
+        y: 0
+        width: 150
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c4da582e0592fab60800000000000000
+      internalID: 7759466110357187916
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_51
+      rect:
+        serializedVersion: 2
+        x: 378
+        y: 1403
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 261a6eb25a6a6a1a0800000000000000
+      internalID: -6798563359132835486
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_52
+      rect:
+        serializedVersion: 2
+        x: 395
+        y: 529
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d75fb27a59a5ea450800000000000000
+      internalID: 6101914143934903677
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_53
+      rect:
+        serializedVersion: 2
+        x: 403
+        y: 412
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 721fa2a4b4069d8b0800000000000000
+      internalID: -5126960824301457113
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_54
+      rect:
+        serializedVersion: 2
+        x: 404
+        y: 1191
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 185a78e5c5a7ec720800000000000000
+      internalID: 2868364549823112577
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_55
+      rect:
+        serializedVersion: 2
+        x: 407
+        y: 691
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 568d9554748783760800000000000000
+      internalID: 7437827032103901285
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_56
+      rect:
+        serializedVersion: 2
+        x: 420
+        y: 1137
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8580e98ccad6c1b90800000000000000
+      internalID: -7269815109615220648
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_57
+      rect:
+        serializedVersion: 2
+        x: 422
+        y: 889
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d0ddecd35f51eed60800000000000000
+      internalID: 7921292937639419149
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_58
+      rect:
+        serializedVersion: 2
+        x: 423
+        y: 1351
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 048d866be6d4c0db0800000000000000
+      internalID: -4824395962918578112
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_59
+      rect:
+        serializedVersion: 2
+        x: 423
+        y: 353
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9b6949edcdbb585e0800000000000000
+      internalID: -1907912309820057927
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_60
+      rect:
+        serializedVersion: 2
+        x: 437
+        y: 365
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0d80af24a3b9475f0800000000000000
+      internalID: -759811762584680240
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_61
+      rect:
+        serializedVersion: 2
+        x: 443
+        y: 47
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed512a838021a0aa0800000000000000
+      internalID: -6194118510975511074
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_62
+      rect:
+        serializedVersion: 2
+        x: 445
+        y: 877
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f3da9bd8bfb13ae0800000000000000
+      internalID: -1571263994296347659
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_63
+      rect:
+        serializedVersion: 2
+        x: 461
+        y: 219
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fed0dc769439853a0800000000000000
+      internalID: -6676424504093372945
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_64
+      rect:
+        serializedVersion: 2
+        x: 472
+        y: 437
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 278aa01ac153e3d20800000000000000
+      internalID: 3260101577340004466
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_65
+      rect:
+        serializedVersion: 2
+        x: 476
+        y: 0
+        width: 192
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6c7b6507a4e719220800000000000000
+      internalID: 2490910927090005958
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_66
+      rect:
+        serializedVersion: 2
+        x: 477
+        y: 764
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 71c003a96d8e97fd0800000000000000
+      internalID: -2343586122662147049
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_67
+      rect:
+        serializedVersion: 2
+        x: 478
+        y: 221
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 160f982309f8c0e30800000000000000
+      internalID: 4471106379558023265
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_68
+      rect:
+        serializedVersion: 2
+        x: 488
+        y: 1435
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c3bc4de3b7a992f0800000000000000
+      internalID: -965556253872049211
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_69
+      rect:
+        serializedVersion: 2
+        x: 490
+        y: 810
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6200333ae5c0c3010800000000000000
+      internalID: 1169823603813974054
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_70
+      rect:
+        serializedVersion: 2
+        x: 512
+        y: 365
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 93f4f9d6dd965db40800000000000000
+      internalID: 5464390122631810873
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_71
+      rect:
+        serializedVersion: 2
+        x: 521
+        y: 164
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c358044481a169c0800000000000000
+      internalID: -3935687009895951420
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_72
+      rect:
+        serializedVersion: 2
+        x: 531
+        y: 683
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e98f24ecdebe95250800000000000000
+      internalID: 5934033390637611166
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_73
+      rect:
+        serializedVersion: 2
+        x: 536
+        y: 74
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5d147cb52d9676010800000000000000
+      internalID: 1182029779411878357
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_74
+      rect:
+        serializedVersion: 2
+        x: 537
+        y: 289
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb0fd1a0f50dcf3d0800000000000000
+      internalID: -3171430930965466946
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_75
+      rect:
+        serializedVersion: 2
+        x: 540
+        y: 1374
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e1bf419c1d854d590800000000000000
+      internalID: -7650392208950625506
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_76
+      rect:
+        serializedVersion: 2
+        x: 545
+        y: 836
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: deb134565abbe9d00800000000000000
+      internalID: 981428087856241645
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_77
+      rect:
+        serializedVersion: 2
+        x: 546
+        y: 654
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: acb38fd61ae31d310800000000000000
+      internalID: 1427991419908799434
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_78
+      rect:
+        serializedVersion: 2
+        x: 567
+        y: 540
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 728f3949f6a7e5b20800000000000000
+      internalID: 3125069811094386727
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_79
+      rect:
+        serializedVersion: 2
+        x: 571
+        y: 86
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e95d7cc4e1af849c0800000000000000
+      internalID: -3942626465718741602
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_80
+      rect:
+        serializedVersion: 2
+        x: 582
+        y: 843
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c851a815ec30efc20800000000000000
+      internalID: 3242032966419486092
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_81
+      rect:
+        serializedVersion: 2
+        x: 590
+        y: 549
+        width: 10
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6493a35a13cf20f10800000000000000
+      internalID: 2234625655284840774
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_82
+      rect:
+        serializedVersion: 2
+        x: 591
+        y: 742
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d0ad1688f910fa090800000000000000
+      internalID: -8021190626624022003
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_83
+      rect:
+        serializedVersion: 2
+        x: 592
+        y: 1164
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 21ca87631d88ecd70800000000000000
+      internalID: 9065333532086807570
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_84
+      rect:
+        serializedVersion: 2
+        x: 592
+        y: 528
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3afd24b47a4b24b10800000000000000
+      internalID: 1964331018102169507
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_85
+      rect:
+        serializedVersion: 2
+        x: 595
+        y: 1490
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2a2d8ca2c0ffe13e0800000000000000
+      internalID: -2080945550076095838
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_86
+      rect:
+        serializedVersion: 2
+        x: 605
+        y: 219
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7092dd7e190cd0c40800000000000000
+      internalID: 5480248054472583431
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_87
+      rect:
+        serializedVersion: 2
+        x: 609
+        y: 523
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ba2878823fd48a00800000000000000
+      internalID: 757976045436021424
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_88
+      rect:
+        serializedVersion: 2
+        x: 611
+        y: 1301
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b1a07c0e9fc888ee0800000000000000
+      internalID: -1258601091004167653
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_89
+      rect:
+        serializedVersion: 2
+        x: 614
+        y: 1339
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0cfdafae7727f5f40800000000000000
+      internalID: 5719415911152803776
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_90
+      rect:
+        serializedVersion: 2
+        x: 623
+        y: 160
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 18ec558b04c6e9940800000000000000
+      internalID: 5304796436315360897
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_91
+      rect:
+        serializedVersion: 2
+        x: 627
+        y: 226
+        width: 108
+        height: 1310
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a466c0946e02d71f0800000000000000
+      internalID: -1045643365039970742
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_92
+      rect:
+        serializedVersion: 2
+        x: 634
+        y: 1321
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 372a11090a076a6c0800000000000000
+      internalID: -4132491773151698317
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_93
+      rect:
+        serializedVersion: 2
+        x: 634
+        y: 29
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f181596b228595f60800000000000000
+      internalID: 8023541117252605983
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_94
+      rect:
+        serializedVersion: 2
+        x: 640
+        y: 861
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fd9fabe21449f0bf0800000000000000
+      internalID: -355902837861189153
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_95
+      rect:
+        serializedVersion: 2
+        x: 645
+        y: 127
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6bc9dc34bc6247f80800000000000000
+      internalID: -8109814374529655626
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_96
+      rect:
+        serializedVersion: 2
+        x: 645
+        y: 107
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 106d9ae5edabd03d0800000000000000
+      internalID: -3238727092775823871
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_97
+      rect:
+        serializedVersion: 2
+        x: 650
+        y: 347
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f1a582f0491c6ba0800000000000000
+      internalID: -6094468429001678352
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_98
+      rect:
+        serializedVersion: 2
+        x: 651
+        y: 795
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 42788cf93c0e77fb0800000000000000
+      internalID: -4650000959432784092
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_99
+      rect:
+        serializedVersion: 2
+        x: 654
+        y: 708
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a1daf2afd60bf530800000000000000
+      internalID: 3889710260746375587
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_100
+      rect:
+        serializedVersion: 2
+        x: 654
+        y: 439
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8ba76b5b7ab79ce50800000000000000
+      internalID: 6830126270122457784
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_101
+      rect:
+        serializedVersion: 2
+        x: 663
+        y: 217
+        width: 12
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4d82cc19f4cb4d4b0800000000000000
+      internalID: -5416497401885349676
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_102
+      rect:
+        serializedVersion: 2
+        x: 667
+        y: 0
+        width: 1521
+        height: 1393
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2eb195dcf7cbde7c0800000000000000
+      internalID: -4040366033589429278
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_103
+      rect:
+        serializedVersion: 2
+        x: 690
+        y: 943
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 363b9244c3e1a3990800000000000000
+      internalID: -7405573393066904733
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_104
+      rect:
+        serializedVersion: 2
+        x: 691
+        y: 423
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0939232f3d9d94f70800000000000000
+      internalID: 9172101620441453456
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_105
+      rect:
+        serializedVersion: 2
+        x: 692
+        y: 238
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 893b687bdf77f3210800000000000000
+      internalID: 1314901547804963736
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_106
+      rect:
+        serializedVersion: 2
+        x: 705
+        y: 42
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b75aa755d15d98db0800000000000000
+      internalID: -4789062406766942853
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_107
+      rect:
+        serializedVersion: 2
+        x: 708
+        y: 64
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 49de320f655325a70800000000000000
+      internalID: 8814166068229827988
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_108
+      rect:
+        serializedVersion: 2
+        x: 710
+        y: 59
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f2dba075511686f0800000000000000
+      internalID: -682839234839850254
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_109
+      rect:
+        serializedVersion: 2
+        x: 711
+        y: 1370
+        width: 244
+        height: 166
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00ce00e99ca4cc470800000000000000
+      internalID: 8416184033448356864
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_110
+      rect:
+        serializedVersion: 2
+        x: 717
+        y: 535
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07675720b97ac9f80800000000000000
+      internalID: -8098413745715972496
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_111
+      rect:
+        serializedVersion: 2
+        x: 735
+        y: 228
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ad43935d8f4c7d50800000000000000
+      internalID: 6736346611050565025
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_112
+      rect:
+        serializedVersion: 2
+        x: 759
+        y: 1484
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ebfa2f7041ba1d20800000000000000
+      internalID: 3250104971670780902
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_113
+      rect:
+        serializedVersion: 2
+        x: 775
+        y: 61
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 74d79e1ed329f8e50800000000000000
+      internalID: 6813825555715685703
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_114
+      rect:
+        serializedVersion: 2
+        x: 806
+        y: 73
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 24a7b12efc2b13480800000000000000
+      internalID: -8921152780922815934
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_115
+      rect:
+        serializedVersion: 2
+        x: 821
+        y: 28
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 135ae4f3a0eb9f230800000000000000
+      internalID: 3673175922318419249
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_116
+      rect:
+        serializedVersion: 2
+        x: 862
+        y: 1499
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b0efb35f6642cdf50800000000000000
+      internalID: 6907435953099111947
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_117
+      rect:
+        serializedVersion: 2
+        x: 871
+        y: 1426
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3bbab6c5a64822d80800000000000000
+      internalID: -8276907572801590349
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_118
+      rect:
+        serializedVersion: 2
+        x: 872
+        y: 56
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7c7575039b5a04410800000000000000
+      internalID: 1459348494066603975
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_119
+      rect:
+        serializedVersion: 2
+        x: 913
+        y: 115
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b79c3a0f5e610c350800000000000000
+      internalID: 6034848677517052283
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_120
+      rect:
+        serializedVersion: 2
+        x: 923
+        y: 66
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f9d7ebbcdff12990800000000000000
+      internalID: -7412362188164703757
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_121
+      rect:
+        serializedVersion: 2
+        x: 948
+        y: 48
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 212062e91f78a2ea0800000000000000
+      internalID: -5896751290278084078
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_122
+      rect:
+        serializedVersion: 2
+        x: 954
+        y: 1388
+        width: 442
+        height: 148
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2487c8788ed5278f0800000000000000
+      internalID: -544269351670482878
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_123
+      rect:
+        serializedVersion: 2
+        x: 962
+        y: 71
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3ed3361d9c4e61e90800000000000000
+      internalID: -7055200210776801821
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_124
+      rect:
+        serializedVersion: 2
+        x: 982
+        y: 42
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 851fc602846ca2260800000000000000
+      internalID: 7073684177822740824
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_125
+      rect:
+        serializedVersion: 2
+        x: 999
+        y: 62
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2786033d8edb23f90800000000000000
+      internalID: -6975304065170249614
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_126
+      rect:
+        serializedVersion: 2
+        x: 1112
+        y: 25
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fa9ef6e63a3c89500800000000000000
+      internalID: 403287273349573039
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_127
+      rect:
+        serializedVersion: 2
+        x: 1160
+        y: 27
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 26291402a014a7f30800000000000000
+      internalID: 4574039883294806626
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_128
+      rect:
+        serializedVersion: 2
+        x: 1222
+        y: 1407
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6c249f68578c2f800800000000000000
+      internalID: 644798103768613574
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_129
+      rect:
+        serializedVersion: 2
+        x: 1250
+        y: 32
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fb6b4710d08436280800000000000000
+      internalID: -9051311605388364097
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_130
+      rect:
+        serializedVersion: 2
+        x: 1275
+        y: 1450
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2463374b1738a7e0800000000000000
+      internalID: -1754091464562613203
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_131
+      rect:
+        serializedVersion: 2
+        x: 1283
+        y: 50
+        width: 10
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5a9954fff7f8f46d0800000000000000
+      internalID: -3004024646526461531
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_132
+      rect:
+        serializedVersion: 2
+        x: 1307
+        y: 36
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c67a9a48101331c40800000000000000
+      internalID: 5481779054030464876
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_133
+      rect:
+        serializedVersion: 2
+        x: 1323
+        y: 37
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8af30082240029b60800000000000000
+      internalID: 7751258192796991400
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_134
+      rect:
+        serializedVersion: 2
+        x: 1350
+        y: 10
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4e63ac0fae99c63b0800000000000000
+      internalID: -5517866209094519068
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_135
+      rect:
+        serializedVersion: 2
+        x: 1394
+        y: 1388
+        width: 381
+        height: 148
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6a900ace4df5f9900800000000000000
+      internalID: 693378235745962406
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_136
+      rect:
+        serializedVersion: 2
+        x: 1421
+        y: 30
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48c6f948ace1e8d20800000000000000
+      internalID: 3282595033556937860
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_137
+      rect:
+        serializedVersion: 2
+        x: 1475
+        y: 36
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 31c7242b03b4d1870800000000000000
+      internalID: 8655156731397176339
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_138
+      rect:
+        serializedVersion: 2
+        x: 1483
+        y: 26
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2a62abbd53dd4bc0800000000000000
+      internalID: -3797146511270057427
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_139
+      rect:
+        serializedVersion: 2
+        x: 1504
+        y: 1390
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9d60526b36462230800000000000000
+      internalID: 3613652971877854618
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_140
+      rect:
+        serializedVersion: 2
+        x: 1619
+        y: 36
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3e055ab3458e3d640800000000000000
+      internalID: 5103678251216490723
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_141
+      rect:
+        serializedVersion: 2
+        x: 1640
+        y: 118
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a5a63ae99b75810c0800000000000000
+      internalID: -4604834164244256166
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_142
+      rect:
+        serializedVersion: 2
+        x: 1664
+        y: 38
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1ad39f74c11fadcf0800000000000000
+      internalID: -226603727459893855
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_143
+      rect:
+        serializedVersion: 2
+        x: 1715
+        y: 56
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 787fc6395c10270a0800000000000000
+      internalID: -6885438932202489977
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_144
+      rect:
+        serializedVersion: 2
+        x: 1775
+        y: 1395
+        width: 232
+        height: 141
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 65d9d81131bc3e7e0800000000000000
+      internalID: -1737321748475568810
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_145
+      rect:
+        serializedVersion: 2
+        x: 1783
+        y: 1291
+        width: 88
+        height: 110
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e4781980469688290800000000000000
+      internalID: -7887938868978022578
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_146
+      rect:
+        serializedVersion: 2
+        x: 1803
+        y: 36
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7e78de30d38b383d0800000000000000
+      internalID: -3205515937559246873
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_147
+      rect:
+        serializedVersion: 2
+        x: 1808
+        y: 110
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd63633657f4c7470800000000000000
+      internalID: 8393671171106027227
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_148
+      rect:
+        serializedVersion: 2
+        x: 1824
+        y: 28
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd1ae7afc407a63c0800000000000000
+      internalID: -4365553412859846181
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_149
+      rect:
+        serializedVersion: 2
+        x: 1854
+        y: 73
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d7143912280b00340800000000000000
+      internalID: 4828052873496707453
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_150
+      rect:
+        serializedVersion: 2
+        x: 1855
+        y: 127
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cebbfb66ea1757fe0800000000000000
+      internalID: -1191921532507538452
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_151
+      rect:
+        serializedVersion: 2
+        x: 1873
+        y: 1347
+        width: 57
+        height: 53
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 683499097c631d2a0800000000000000
+      internalID: -6714525338680343674
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_152
+      rect:
+        serializedVersion: 2
+        x: 1887
+        y: 37
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e140f2ce1f0ff25d0800000000000000
+      internalID: -3084982297885211618
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_153
+      rect:
+        serializedVersion: 2
+        x: 1923
+        y: 75
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa279d3780dbc03d0800000000000000
+      internalID: -3239006187985210710
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_154
+      rect:
+        serializedVersion: 2
+        x: 1937
+        y: 63
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e9aa8efa0e11eccf0800000000000000
+      internalID: -230226874227709282
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_155
+      rect:
+        serializedVersion: 2
+        x: 1951
+        y: 32
+        width: 9
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a1d5000aee162400800000000000000
+      internalID: 298960415638278564
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_156
+      rect:
+        serializedVersion: 2
+        x: 1961
+        y: 37
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f7d4057cd962f1810800000000000000
+      internalID: 1738150440283950463
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_157
+      rect:
+        serializedVersion: 2
+        x: 1965
+        y: 1377
+        width: 9
+        height: 17
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bfd74020c3b03f480800000000000000
+      internalID: -8866730889002582533
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_158
+      rect:
+        serializedVersion: 2
+        x: 2005
+        y: 0
+        width: 330
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fcb34a7bead3ac140800000000000000
+      internalID: 4740669378375465935
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_159
+      rect:
+        serializedVersion: 2
+        x: 2056
+        y: 94
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 30303bb778a335fe0800000000000000
+      internalID: -1201552322007465213
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_160
+      rect:
+        serializedVersion: 2
+        x: 2077
+        y: 38
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 27286f7915e8ac900800000000000000
+      internalID: 705532772729913970
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_161
+      rect:
+        serializedVersion: 2
+        x: 2099
+        y: 100
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 37915f39fc3b6eee0800000000000000
+      internalID: -1232099743917336205
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_162
+      rect:
+        serializedVersion: 2
+        x: 2135
+        y: 59
+        width: 12
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5c08e0e976369ee70800000000000000
+      internalID: 9144949815037034693
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_163
+      rect:
+        serializedVersion: 2
+        x: 2139
+        y: 1390
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e11cb491521473880800000000000000
+      internalID: -8631358533238275810
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_164
+      rect:
+        serializedVersion: 2
+        x: 2163
+        y: 1295
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c55aa84a01118850800000000000000
+      internalID: 6377397283199800772
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_165
+      rect:
+        serializedVersion: 2
+        x: 2166
+        y: 1214
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da7f9f5aac8ee1bb0800000000000000
+      internalID: -4963273782250047571
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_166
+      rect:
+        serializedVersion: 2
+        x: 2175
+        y: 875
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4a51c57cc92d27b00800000000000000
+      internalID: 824953252563654052
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_167
+      rect:
+        serializedVersion: 2
+        x: 2180
+        y: 759
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: df89ae20264621930800000000000000
+      internalID: 4112459781861185789
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_168
+      rect:
+        serializedVersion: 2
+        x: 2183
+        y: 413
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fea23fcf7b6903b00800000000000000
+      internalID: 806310050266295023
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_169
+      rect:
+        serializedVersion: 2
+        x: 2189
+        y: 1274
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eaaa9e5b2a4ea6b00800000000000000
+      internalID: 822721269436361390
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_170
+      rect:
+        serializedVersion: 2
+        x: 2191
+        y: 542
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 27f905255c0361d00800000000000000
+      internalID: 942994796028403570
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_171
+      rect:
+        serializedVersion: 2
+        x: 2192
+        y: 843
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bd0d8eac8f5c948f0800000000000000
+      internalID: -555695406656728869
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_172
+      rect:
+        serializedVersion: 2
+        x: 2193
+        y: 1323
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55d9486d2d2605e80800000000000000
+      internalID: -8191939064505262763
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_173
+      rect:
+        serializedVersion: 2
+        x: 2198
+        y: 1336
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a8980299da1e18b10800000000000000
+      internalID: 1982113446734367114
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_174
+      rect:
+        serializedVersion: 2
+        x: 2210
+        y: 1170
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 373a229f65c897790800000000000000
+      internalID: -7531834596625570957
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_175
+      rect:
+        serializedVersion: 2
+        x: 2212
+        y: 1340
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da907de7d929138b0800000000000000
+      internalID: -5174193291736446547
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_176
+      rect:
+        serializedVersion: 2
+        x: 2214
+        y: 1500
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cad3d4feb3bcd0960800000000000000
+      internalID: 7569930006957997484
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_177
+      rect:
+        serializedVersion: 2
+        x: 2214
+        y: 954
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d0a24c120591de720800000000000000
+      internalID: 2876983568914197005
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_178
+      rect:
+        serializedVersion: 2
+        x: 2215
+        y: 1413
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff916451fd3cd4e10800000000000000
+      internalID: 2183616757246597631
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_179
+      rect:
+        serializedVersion: 2
+        x: 2216
+        y: 1180
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 75a14b02bea153a60800000000000000
+      internalID: 7653052738954336855
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_180
+      rect:
+        serializedVersion: 2
+        x: 2217
+        y: 817
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9584154eb60763b50800000000000000
+      internalID: 6572564314888161369
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_181
+      rect:
+        serializedVersion: 2
+        x: 2227
+        y: 1292
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 264b32b5366306570800000000000000
+      internalID: 8457819900560520290
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_182
+      rect:
+        serializedVersion: 2
+        x: 2234
+        y: 1177
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e278d6c8825c00890800000000000000
+      internalID: -7493773001999153362
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_183
+      rect:
+        serializedVersion: 2
+        x: 2235
+        y: 13
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 720e1908b8155b3a0800000000000000
+      internalID: -6650319615143321561
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_184
+      rect:
+        serializedVersion: 2
+        x: 2243
+        y: 36
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d095d29740d96be70800000000000000
+      internalID: 9130657937078704397
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_185
+      rect:
+        serializedVersion: 2
+        x: 2247
+        y: 987
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8f4b7adb6d0acb300800000000000000
+      internalID: 269266921900717304
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_186
+      rect:
+        serializedVersion: 2
+        x: 2258
+        y: 1197
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8931639850ba3acf0800000000000000
+      internalID: -242161914682666088
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_187
+      rect:
+        serializedVersion: 2
+        x: 2277
+        y: 49
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79d874a2705760e20800000000000000
+      internalID: 3316466849239502231
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_188
+      rect:
+        serializedVersion: 2
+        x: 2278
+        y: 1315
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 19e410485be9c2560800000000000000
+      internalID: 7290376399246937745
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_189
+      rect:
+        serializedVersion: 2
+        x: 2282
+        y: 853
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 17e0e1002a4aad8e0800000000000000
+      internalID: -1667839696293720463
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_190
+      rect:
+        serializedVersion: 2
+        x: 2283
+        y: 1498
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d099072e58b349670800000000000000
+      internalID: 8544519839244392717
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_191
+      rect:
+        serializedVersion: 2
+        x: 2295
+        y: 419
+        width: 7
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0730e9fc628cf6120800000000000000
+      internalID: 2409364394684056432
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_192
+      rect:
+        serializedVersion: 2
+        x: 2307
+        y: 75
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 358ed468d075ae550800000000000000
+      internalID: 6190856353373612115
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_193
+      rect:
+        serializedVersion: 2
+        x: 2315
+        y: 0
+        width: 250
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 91f5cf387f7e2fd60800000000000000
+      internalID: 7922649744755416857
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_194
+      rect:
+        serializedVersion: 2
+        x: 2324
+        y: 629
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f64e34ee5a10ca30800000000000000
+      internalID: 4233412644586800885
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_195
+      rect:
+        serializedVersion: 2
+        x: 2333
+        y: 202
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a86e57fac6eb2bca0800000000000000
+      internalID: -6002525979321964918
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_196
+      rect:
+        serializedVersion: 2
+        x: 2338
+        y: 1401
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82706503441766e00800000000000000
+      internalID: 1037641301838137128
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_197
+      rect:
+        serializedVersion: 2
+        x: 2338
+        y: 944
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e2ef89af47b12b970800000000000000
+      internalID: 8769101613678263854
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_198
+      rect:
+        serializedVersion: 2
+        x: 2338
+        y: 828
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0887d14fcac92dc20800000000000000
+      internalID: 3229816149421947008
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_199
+      rect:
+        serializedVersion: 2
+        x: 2338
+        y: 72
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4f5f4266277c16bf0800000000000000
+      internalID: -332765603294808588
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_200
+      rect:
+        serializedVersion: 2
+        x: 2347
+        y: 56
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5536cd3b21bdfb670800000000000000
+      internalID: 8556798690400691029
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_201
+      rect:
+        serializedVersion: 2
+        x: 2348
+        y: 1336
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ad8ead987d2f7ebc0800000000000000
+      internalID: -3753764756845303590
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_202
+      rect:
+        serializedVersion: 2
+        x: 2350
+        y: 75
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: faa9e89260f47d000800000000000000
+      internalID: 60604007878400687
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_203
+      rect:
+        serializedVersion: 2
+        x: 2351
+        y: 585
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ec658441553801d50800000000000000
+      internalID: 6706004246590412494
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_204
+      rect:
+        serializedVersion: 2
+        x: 2351
+        y: 61
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 11164850d22877200800000000000000
+      internalID: 177753840182124817
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_205
+      rect:
+        serializedVersion: 2
+        x: 2357
+        y: 38
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 33f6f016cd8fc4920800000000000000
+      internalID: 2976027079189950259
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_206
+      rect:
+        serializedVersion: 2
+        x: 2367
+        y: 25
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff2fc5eda06affcf0800000000000000
+      internalID: -216271691479977217
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_207
+      rect:
+        serializedVersion: 2
+        x: 2371
+        y: 460
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8a44dea5aa96597f0800000000000000
+      internalID: -606462394420607832
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_208
+      rect:
+        serializedVersion: 2
+        x: 2374
+        y: 712
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8cde958efb39bfb00800000000000000
+      internalID: 863446206017826248
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_209
+      rect:
+        serializedVersion: 2
+        x: 2375
+        y: 185
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f8775f68fdc9775e0800000000000000
+      internalID: -1911887032939612273
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_210
+      rect:
+        serializedVersion: 2
+        x: 2378
+        y: 528
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9ab36d3a87a866cc0800000000000000
+      internalID: -3718132191598330967
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_211
+      rect:
+        serializedVersion: 2
+        x: 2387
+        y: 1442
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d32b5f159439fab60800000000000000
+      internalID: 7759582626099606077
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_212
+      rect:
+        serializedVersion: 2
+        x: 2387
+        y: 366
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 09cea9d062f83ea70800000000000000
+      internalID: 8855078685940313232
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_213
+      rect:
+        serializedVersion: 2
+        x: 2388
+        y: 1159
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 506f8f3d2f3dd56f0800000000000000
+      internalID: -694165727653333499
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_214
+      rect:
+        serializedVersion: 2
+        x: 2391
+        y: 1349
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8e847c1b95f3c7600800000000000000
+      internalID: 467318115806955752
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_215
+      rect:
+        serializedVersion: 2
+        x: 2392
+        y: 58
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 603b8f01f6efe4960800000000000000
+      internalID: 7588282175145423622
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_216
+      rect:
+        serializedVersion: 2
+        x: 2397
+        y: 645
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fcce61a644c650480800000000000000
+      internalID: -8933615244726047537
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_217
+      rect:
+        serializedVersion: 2
+        x: 2401
+        y: 1182
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 417cba4e0fce5dd60800000000000000
+      internalID: 7914492439546283796
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_218
+      rect:
+        serializedVersion: 2
+        x: 2402
+        y: 1197
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a3050d66ce846cd30800000000000000
+      internalID: 4451325461876723770
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_219
+      rect:
+        serializedVersion: 2
+        x: 2403
+        y: 365
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 52cfe41f203212bc0800000000000000
+      internalID: -3809725314233336795
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_220
+      rect:
+        serializedVersion: 2
+        x: 2403
+        y: 255
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9ee5114b7288b34b0800000000000000
+      internalID: -5459620419150455063
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_221
+      rect:
+        serializedVersion: 2
+        x: 2408
+        y: 37
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 105c5972045e44360800000000000000
+      internalID: 7153094171875984641
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_222
+      rect:
+        serializedVersion: 2
+        x: 2410
+        y: 1299
+        width: 10
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 956b828c32c4e8120800000000000000
+      internalID: 2417953766510212697
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_223
+      rect:
+        serializedVersion: 2
+        x: 2417
+        y: 1062
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 536bde3d4e92ff600800000000000000
+      internalID: 504167746073638453
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_224
+      rect:
+        serializedVersion: 2
+        x: 2421
+        y: 25
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a1273d3bc4f00290800000000000000
+      internalID: -7926066190429511261
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_225
+      rect:
+        serializedVersion: 2
+        x: 2427
+        y: 1112
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 40f35b712eb1ce0f0800000000000000
+      internalID: -1086462752228819196
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_226
+      rect:
+        serializedVersion: 2
+        x: 2427
+        y: 977
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 339234bdee6d9bf70800000000000000
+      internalID: 9203623634877491507
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_227
+      rect:
+        serializedVersion: 2
+        x: 2427
+        y: 365
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 350642e333d891670800000000000000
+      internalID: 8509988222118682707
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_228
+      rect:
+        serializedVersion: 2
+        x: 2435
+        y: 217
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 431ca38d92a98f980800000000000000
+      internalID: -8504878391777115852
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_229
+      rect:
+        serializedVersion: 2
+        x: 2436
+        y: 87
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5b6ceacd9e6c74170800000000000000
+      internalID: 8162711557364434613
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_230
+      rect:
+        serializedVersion: 2
+        x: 2442
+        y: 167
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c2b81a65b8966510800000000000000
+      internalID: 1542087827357479620
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_231
+      rect:
+        serializedVersion: 2
+        x: 2449
+        y: 753
+        width: 11
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0a9d0078eadae5820800000000000000
+      internalID: 2908953374428813728
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_232
+      rect:
+        serializedVersion: 2
+        x: 2455
+        y: 227
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1e29d93d8870e0810800000000000000
+      internalID: 1733331190831485665
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_233
+      rect:
+        serializedVersion: 2
+        x: 2455
+        y: 46
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8fd831062a8c794d0800000000000000
+      internalID: -3127810816463368712
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_234
+      rect:
+        serializedVersion: 2
+        x: 2469
+        y: 921
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b6c313588a9a19150800000000000000
+      internalID: 5877665529949404267
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_235
+      rect:
+        serializedVersion: 2
+        x: 2477
+        y: 119
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0b0b07db77eb0f0a0800000000000000
+      internalID: -6849765611741859664
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_236
+      rect:
+        serializedVersion: 2
+        x: 2479
+        y: 446
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 798b5d6019f8ffcb0800000000000000
+      internalID: -4827982422470182761
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_237
+      rect:
+        serializedVersion: 2
+        x: 2491
+        y: 721
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5b81d2d1fedb2aa90800000000000000
+      internalID: -7304066810957195083
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_238
+      rect:
+        serializedVersion: 2
+        x: 2504
+        y: 897
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 647303f66a41f6e90800000000000000
+      internalID: -7030377788239497402
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_239
+      rect:
+        serializedVersion: 2
+        x: 2506
+        y: 467
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca4bdee238c6f9240800000000000000
+      internalID: 4800675038484083884
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_240
+      rect:
+        serializedVersion: 2
+        x: 2524
+        y: 38
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6c152ab8fe539de90800000000000000
+      internalID: -7000504842814598714
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_241
+      rect:
+        serializedVersion: 2
+        x: 2533
+        y: 243
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 657fa90f6aa1b88f0800000000000000
+      internalID: -537306426237061290
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_242
+      rect:
+        serializedVersion: 2
+        x: 2539
+        y: 246
+        width: 18
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5034a567c77bfde90800000000000000
+      internalID: -6998673550721006843
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_243
+      rect:
+        serializedVersion: 2
+        x: 2544
+        y: 222
+        width: 12
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f26dcc5f2374763e0800000000000000
+      internalID: -2060600020300933585
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_244
+      rect:
+        serializedVersion: 2
+        x: 2551
+        y: 0
+        width: 265
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1c65022468395eda0800000000000000
+      internalID: -5916160330636962111
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_245
+      rect:
+        serializedVersion: 2
+        x: 2558
+        y: 260
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d3bb15532b0690990800000000000000
+      internalID: -7419292592601187523
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_246
+      rect:
+        serializedVersion: 2
+        x: 2558
+        y: 198
+        width: 15
+        height: 22
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 53256903181492c10800000000000000
+      internalID: 2029225130228863541
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_247
+      rect:
+        serializedVersion: 2
+        x: 2567
+        y: 276
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d5473ebe9993442d0800000000000000
+      internalID: -3295445694078028707
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_248
+      rect:
+        serializedVersion: 2
+        x: 2577
+        y: 831
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dd13123a53c45a670800000000000000
+      internalID: 8549323260886594013
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_249
+      rect:
+        serializedVersion: 2
+        x: 2582
+        y: 262
+        width: 10
+        height: 15
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 64f63dea2832bf830800000000000000
+      internalID: 4105914529464151878
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_250
+      rect:
+        serializedVersion: 2
+        x: 2583
+        y: 209
+        width: 14
+        height: 14
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9689bca8ea89a3c0800000000000000
+      internalID: -4347791233314617701
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_251
+      rect:
+        serializedVersion: 2
+        x: 2591
+        y: 93
+        width: 12
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e97f3e44b3d7d6be0800000000000000
+      internalID: -1482391008822691938
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_252
+      rect:
+        serializedVersion: 2
+        x: 2594
+        y: 1272
+        width: 10
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bf92a6a29c9eb9ce0800000000000000
+      internalID: -1397266209159108101
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_253
+      rect:
+        serializedVersion: 2
+        x: 2595
+        y: 298
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51f7cdb2aa31356f0800000000000000
+      internalID: -697191895711056107
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_254
+      rect:
+        serializedVersion: 2
+        x: 2595
+        y: 248
+        width: 12
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 13796581d372a5150800000000000000
+      internalID: 5862041008330938161
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_255
+      rect:
+        serializedVersion: 2
+        x: 2596
+        y: 219
+        width: 16
+        height: 16
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 27c9fe88a48a37930800000000000000
+      internalID: 4139837520562068594
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_256
+      rect:
+        serializedVersion: 2
+        x: 2598
+        y: 1266
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5a019a59647ea4310800000000000000
+      internalID: 1390177725341831333
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_257
+      rect:
+        serializedVersion: 2
+        x: 2609
+        y: 1308
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7f25008132f705b0800000000000000
+      internalID: -5402082933592477826
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_258
+      rect:
+        serializedVersion: 2
+        x: 2610
+        y: 226
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9aa5fc329d1c53550800000000000000
+      internalID: 6140026805342395049
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_259
+      rect:
+        serializedVersion: 2
+        x: 2634
+        y: 1400
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1d11437245dcd3db0800000000000000
+      internalID: -4810463065643150895
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_260
+      rect:
+        serializedVersion: 2
+        x: 2637
+        y: 36
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2c03cd43c2afcba70800000000000000
+      internalID: 8844218836021162178
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_261
+      rect:
+        serializedVersion: 2
+        x: 2647
+        y: 48
+        width: 9
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff31b429da738b0d0800000000000000
+      internalID: -3406911899482516481
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_262
+      rect:
+        serializedVersion: 2
+        x: 2652
+        y: 1376
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f9e678f957a06dfa0800000000000000
+      internalID: -5776417971752178017
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_263
+      rect:
+        serializedVersion: 2
+        x: 2658
+        y: 111
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 942eae62b2ff915b0800000000000000
+      internalID: -5397002117625224631
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_264
+      rect:
+        serializedVersion: 2
+        x: 2658
+        y: 68
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 125318d55b380a460800000000000000
+      internalID: 7250940215047566625
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_265
+      rect:
+        serializedVersion: 2
+        x: 2659
+        y: 351
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 59d9f77c1d21cd3b0800000000000000
+      internalID: -5486489553839612523
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_266
+      rect:
+        serializedVersion: 2
+        x: 2659
+        y: 239
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 763f1f81e74944590800000000000000
+      internalID: -7690858994336664729
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_267
+      rect:
+        serializedVersion: 2
+        x: 2659
+        y: 232
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ebb11737de892aa30800000000000000
+      internalID: 4225107546038410174
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_268
+      rect:
+        serializedVersion: 2
+        x: 2659
+        y: 122
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0e1a917c7c442e720800000000000000
+      internalID: 2873935137045324256
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_269
+      rect:
+        serializedVersion: 2
+        x: 2671
+        y: 1319
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc0390ee1b043b120800000000000000
+      internalID: 2428355757029798093
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_270
+      rect:
+        serializedVersion: 2
+        x: 2673
+        y: 248
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab25bca2654198410800000000000000
+      internalID: 1479736312885629626
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_271
+      rect:
+        serializedVersion: 2
+        x: 2679
+        y: 69
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ec53b891190f6f260800000000000000
+      internalID: 7131151565977236942
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_272
+      rect:
+        serializedVersion: 2
+        x: 2683
+        y: 553
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b9c130172ad255eb0800000000000000
+      internalID: -4731825657778856805
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_273
+      rect:
+        serializedVersion: 2
+        x: 2708
+        y: 28
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ace0a889cb383e970800000000000000
+      internalID: 8783008544338874058
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_274
+      rect:
+        serializedVersion: 2
+        x: 2711
+        y: 889
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1adef8f157c12cb70800000000000000
+      internalID: 8917721501513280929
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_275
+      rect:
+        serializedVersion: 2
+        x: 2713
+        y: 1452
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e731297977574af50800000000000000
+      internalID: 6891762486288192382
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_276
+      rect:
+        serializedVersion: 2
+        x: 2719
+        y: 48
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84fba67d6ffc6cbc0800000000000000
+      internalID: -3763091779538469048
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_277
+      rect:
+        serializedVersion: 2
+        x: 2720
+        y: 37
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b2421bc74e9822860800000000000000
+      internalID: 7503711543590200363
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_278
+      rect:
+        serializedVersion: 2
+        x: 2753
+        y: 1449
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cf9753a99efe1c870800000000000000
+      internalID: 8701499741650123260
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_279
+      rect:
+        serializedVersion: 2
+        x: 2773
+        y: 877
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f704d980f143f6a90800000000000000
+      internalID: -7318573561560612737
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_280
+      rect:
+        serializedVersion: 2
+        x: 2775
+        y: 440
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7c43b938217f9120800000000000000
+      internalID: 2422779542129298558
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_281
+      rect:
+        serializedVersion: 2
+        x: 2775
+        y: 48
+        width: 9
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 538c07d60a5bf2160800000000000000
+      internalID: 7003015646219913269
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_282
+      rect:
+        serializedVersion: 2
+        x: 2776
+        y: 462
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 85c133130a12b5dd0800000000000000
+      internalID: -2496364596542890920
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_283
+      rect:
+        serializedVersion: 2
+        x: 2780
+        y: 896
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b606bbee8e207ed0800000000000000
+      internalID: -2418381808523147592
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_284
+      rect:
+        serializedVersion: 2
+        x: 2785
+        y: 1255
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 909be33d0b1b9ac30800000000000000
+      internalID: 4371220286356240649
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_285
+      rect:
+        serializedVersion: 2
+        x: 2786
+        y: 1482
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8170be30f83ca1ee0800000000000000
+      internalID: -1289503324274751720
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_286
+      rect:
+        serializedVersion: 2
+        x: 2786
+        y: 1241
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 87dbba57031b9f890800000000000000
+      internalID: -7423707689052816008
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_287
+      rect:
+        serializedVersion: 2
+        x: 2787
+        y: 635
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b202397cfd4b6f5e0800000000000000
+      internalID: -1876113321534218197
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_288
+      rect:
+        serializedVersion: 2
+        x: 2787
+        y: 313
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d40c4b3673abbfb10800000000000000
+      internalID: 2016410005237186637
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_289
+      rect:
+        serializedVersion: 2
+        x: 2788
+        y: 287
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5bc48a518312ef960800000000000000
+      internalID: 7637578542832176309
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_290
+      rect:
+        serializedVersion: 2
+        x: 2789
+        y: 862
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b4c7c3ee7c770efc0800000000000000
+      internalID: -3467640012496143285
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_291
+      rect:
+        serializedVersion: 2
+        x: 2791
+        y: 900
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f0a1cddadaeb2dc10800000000000000
+      internalID: 2076932031326722575
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_292
+      rect:
+        serializedVersion: 2
+        x: 2791
+        y: 496
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d555e237bc8e38390800000000000000
+      internalID: -7817148567676627619
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_293
+      rect:
+        serializedVersion: 2
+        x: 2802
+        y: 1353
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4f8c7c4856d19e360800000000000000
+      internalID: 7199317801185036532
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon twig_294
+      rect:
+        serializedVersion: 2
+        x: 2803
+        y: 437
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 439ae34a0da21a4a0800000000000000
+      internalID: -6583934104641820364
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Ebon twig_0: -7434788714687787513
+      Ebon twig_1: -387756719901197096
+      Ebon twig_10: 6155790317373104906
+      Ebon twig_100: 6830126270122457784
+      Ebon twig_101: -5416497401885349676
+      Ebon twig_102: -4040366033589429278
+      Ebon twig_103: -7405573393066904733
+      Ebon twig_104: 9172101620441453456
+      Ebon twig_105: 1314901547804963736
+      Ebon twig_106: -4789062406766942853
+      Ebon twig_107: 8814166068229827988
+      Ebon twig_108: -682839234839850254
+      Ebon twig_109: 8416184033448356864
+      Ebon twig_11: -5395666264763796549
+      Ebon twig_110: -8098413745715972496
+      Ebon twig_111: 6736346611050565025
+      Ebon twig_112: 3250104971670780902
+      Ebon twig_113: 6813825555715685703
+      Ebon twig_114: -8921152780922815934
+      Ebon twig_115: 3673175922318419249
+      Ebon twig_116: 6907435953099111947
+      Ebon twig_117: -8276907572801590349
+      Ebon twig_118: 1459348494066603975
+      Ebon twig_119: 6034848677517052283
+      Ebon twig_12: -4490346162488823068
+      Ebon twig_120: -7412362188164703757
+      Ebon twig_121: -5896751290278084078
+      Ebon twig_122: -544269351670482878
+      Ebon twig_123: -7055200210776801821
+      Ebon twig_124: 7073684177822740824
+      Ebon twig_125: -6975304065170249614
+      Ebon twig_126: 403287273349573039
+      Ebon twig_127: 4574039883294806626
+      Ebon twig_128: 644798103768613574
+      Ebon twig_129: -9051311605388364097
+      Ebon twig_13: -3745250020247190265
+      Ebon twig_130: -1754091464562613203
+      Ebon twig_131: -3004024646526461531
+      Ebon twig_132: 5481779054030464876
+      Ebon twig_133: 7751258192796991400
+      Ebon twig_134: -5517866209094519068
+      Ebon twig_135: 693378235745962406
+      Ebon twig_136: 3282595033556937860
+      Ebon twig_137: 8655156731397176339
+      Ebon twig_138: -3797146511270057427
+      Ebon twig_139: 3613652971877854618
+      Ebon twig_14: 142219111085567141
+      Ebon twig_140: 5103678251216490723
+      Ebon twig_141: -4604834164244256166
+      Ebon twig_142: -226603727459893855
+      Ebon twig_143: -6885438932202489977
+      Ebon twig_144: -1737321748475568810
+      Ebon twig_145: -7887938868978022578
+      Ebon twig_146: -3205515937559246873
+      Ebon twig_147: 8393671171106027227
+      Ebon twig_148: -4365553412859846181
+      Ebon twig_149: 4828052873496707453
+      Ebon twig_15: -2167473190476116287
+      Ebon twig_150: -1191921532507538452
+      Ebon twig_151: -6714525338680343674
+      Ebon twig_152: -3084982297885211618
+      Ebon twig_153: -3239006187985210710
+      Ebon twig_154: -230226874227709282
+      Ebon twig_155: 298960415638278564
+      Ebon twig_156: 1738150440283950463
+      Ebon twig_157: -8866730889002582533
+      Ebon twig_158: 4740669378375465935
+      Ebon twig_159: -1201552322007465213
+      Ebon twig_16: 7446083074338792340
+      Ebon twig_160: 705532772729913970
+      Ebon twig_161: -1232099743917336205
+      Ebon twig_162: 9144949815037034693
+      Ebon twig_163: -8631358533238275810
+      Ebon twig_164: 6377397283199800772
+      Ebon twig_165: -4963273782250047571
+      Ebon twig_166: 824953252563654052
+      Ebon twig_167: 4112459781861185789
+      Ebon twig_168: 806310050266295023
+      Ebon twig_169: 822721269436361390
+      Ebon twig_17: -456371829983664964
+      Ebon twig_170: 942994796028403570
+      Ebon twig_171: -555695406656728869
+      Ebon twig_172: -8191939064505262763
+      Ebon twig_173: 1982113446734367114
+      Ebon twig_174: -7531834596625570957
+      Ebon twig_175: -5174193291736446547
+      Ebon twig_176: 7569930006957997484
+      Ebon twig_177: 2876983568914197005
+      Ebon twig_178: 2183616757246597631
+      Ebon twig_179: 7653052738954336855
+      Ebon twig_18: -3450258952183471441
+      Ebon twig_180: 6572564314888161369
+      Ebon twig_181: 8457819900560520290
+      Ebon twig_182: -7493773001999153362
+      Ebon twig_183: -6650319615143321561
+      Ebon twig_184: 9130657937078704397
+      Ebon twig_185: 269266921900717304
+      Ebon twig_186: -242161914682666088
+      Ebon twig_187: 3316466849239502231
+      Ebon twig_188: 7290376399246937745
+      Ebon twig_189: -1667839696293720463
+      Ebon twig_19: 8924360107932212974
+      Ebon twig_190: 8544519839244392717
+      Ebon twig_191: 2409364394684056432
+      Ebon twig_192: 6190856353373612115
+      Ebon twig_193: 7922649744755416857
+      Ebon twig_194: 4233412644586800885
+      Ebon twig_195: -6002525979321964918
+      Ebon twig_196: 1037641301838137128
+      Ebon twig_197: 8769101613678263854
+      Ebon twig_198: 3229816149421947008
+      Ebon twig_199: -332765603294808588
+      Ebon twig_2: -1770460211218974840
+      Ebon twig_20: 8103642280084782952
+      Ebon twig_200: 8556798690400691029
+      Ebon twig_201: -3753764756845303590
+      Ebon twig_202: 60604007878400687
+      Ebon twig_203: 6706004246590412494
+      Ebon twig_204: 177753840182124817
+      Ebon twig_205: 2976027079189950259
+      Ebon twig_206: -216271691479977217
+      Ebon twig_207: -606462394420607832
+      Ebon twig_208: 863446206017826248
+      Ebon twig_209: -1911887032939612273
+      Ebon twig_21: -2538799694418950487
+      Ebon twig_210: -3718132191598330967
+      Ebon twig_211: 7759582626099606077
+      Ebon twig_212: 8855078685940313232
+      Ebon twig_213: -694165727653333499
+      Ebon twig_214: 467318115806955752
+      Ebon twig_215: 7588282175145423622
+      Ebon twig_216: -8933615244726047537
+      Ebon twig_217: 7914492439546283796
+      Ebon twig_218: 4451325461876723770
+      Ebon twig_219: -3809725314233336795
+      Ebon twig_22: -1827959729837970939
+      Ebon twig_220: -5459620419150455063
+      Ebon twig_221: 7153094171875984641
+      Ebon twig_222: 2417953766510212697
+      Ebon twig_223: 504167746073638453
+      Ebon twig_224: -7926066190429511261
+      Ebon twig_225: -1086462752228819196
+      Ebon twig_226: 9203623634877491507
+      Ebon twig_227: 8509988222118682707
+      Ebon twig_228: -8504878391777115852
+      Ebon twig_229: 8162711557364434613
+      Ebon twig_23: -1991333076079472356
+      Ebon twig_230: 1542087827357479620
+      Ebon twig_231: 2908953374428813728
+      Ebon twig_232: 1733331190831485665
+      Ebon twig_233: -3127810816463368712
+      Ebon twig_234: 5877665529949404267
+      Ebon twig_235: -6849765611741859664
+      Ebon twig_236: -4827982422470182761
+      Ebon twig_237: -7304066810957195083
+      Ebon twig_238: -7030377788239497402
+      Ebon twig_239: 4800675038484083884
+      Ebon twig_24: -4541080584681699446
+      Ebon twig_240: -7000504842814598714
+      Ebon twig_241: -537306426237061290
+      Ebon twig_242: -6998673550721006843
+      Ebon twig_243: -2060600020300933585
+      Ebon twig_244: -5916160330636962111
+      Ebon twig_245: -7419292592601187523
+      Ebon twig_246: 2029225130228863541
+      Ebon twig_247: -3295445694078028707
+      Ebon twig_248: 8549323260886594013
+      Ebon twig_249: 4105914529464151878
+      Ebon twig_25: -7630438901025116446
+      Ebon twig_250: -4347791233314617701
+      Ebon twig_251: -1482391008822691938
+      Ebon twig_252: -1397266209159108101
+      Ebon twig_253: -697191895711056107
+      Ebon twig_254: 5862041008330938161
+      Ebon twig_255: 4139837520562068594
+      Ebon twig_256: 1390177725341831333
+      Ebon twig_257: -5402082933592477826
+      Ebon twig_258: 6140026805342395049
+      Ebon twig_259: -4810463065643150895
+      Ebon twig_26: -8249270497052261339
+      Ebon twig_260: 8844218836021162178
+      Ebon twig_261: -3406911899482516481
+      Ebon twig_262: -5776417971752178017
+      Ebon twig_263: -5397002117625224631
+      Ebon twig_264: 7250940215047566625
+      Ebon twig_265: -5486489553839612523
+      Ebon twig_266: -7690858994336664729
+      Ebon twig_267: 4225107546038410174
+      Ebon twig_268: 2873935137045324256
+      Ebon twig_269: 2428355757029798093
+      Ebon twig_27: 6801173731276320655
+      Ebon twig_270: 1479736312885629626
+      Ebon twig_271: 7131151565977236942
+      Ebon twig_272: -4731825657778856805
+      Ebon twig_273: 8783008544338874058
+      Ebon twig_274: 8917721501513280929
+      Ebon twig_275: 6891762486288192382
+      Ebon twig_276: -3763091779538469048
+      Ebon twig_277: 7503711543590200363
+      Ebon twig_278: 8701499741650123260
+      Ebon twig_279: -7318573561560612737
+      Ebon twig_28: -4798818819645826100
+      Ebon twig_280: 2422779542129298558
+      Ebon twig_281: 7003015646219913269
+      Ebon twig_282: -2496364596542890920
+      Ebon twig_283: -2418381808523147592
+      Ebon twig_284: 4371220286356240649
+      Ebon twig_285: -1289503324274751720
+      Ebon twig_286: -7423707689052816008
+      Ebon twig_287: -1876113321534218197
+      Ebon twig_288: 2016410005237186637
+      Ebon twig_289: 7637578542832176309
+      Ebon twig_29: -7888109535675887038
+      Ebon twig_290: -3467640012496143285
+      Ebon twig_291: 2076932031326722575
+      Ebon twig_292: -7817148567676627619
+      Ebon twig_293: 7199317801185036532
+      Ebon twig_294: -6583934104641820364
+      Ebon twig_3: 2312350879658104735
+      Ebon twig_30: 4595494916254558439
+      Ebon twig_31: 4289906936516292392
+      Ebon twig_32: 5853023547672818395
+      Ebon twig_33: -3975066334438102033
+      Ebon twig_34: -4232592104544949851
+      Ebon twig_35: -1326987389575569700
+      Ebon twig_36: 2938994402822839401
+      Ebon twig_37: -2741321388276105401
+      Ebon twig_38: 4233026618377321068
+      Ebon twig_39: 1717386551461667116
+      Ebon twig_4: 8632235756555701903
+      Ebon twig_40: -3608836594936001293
+      Ebon twig_41: -6178449297329392574
+      Ebon twig_42: -4719275328479764969
+      Ebon twig_43: -4165456226292764103
+      Ebon twig_44: 7020551161365683431
+      Ebon twig_45: -1158042425641558380
+      Ebon twig_46: 3874756156602875069
+      Ebon twig_47: 1653402503256463873
+      Ebon twig_48: 7881087538277702307
+      Ebon twig_49: 5687527727961411331
+      Ebon twig_5: -339397386039937860
+      Ebon twig_50: 7759466110357187916
+      Ebon twig_51: -6798563359132835486
+      Ebon twig_52: 6101914143934903677
+      Ebon twig_53: -5126960824301457113
+      Ebon twig_54: 2868364549823112577
+      Ebon twig_55: 7437827032103901285
+      Ebon twig_56: -7269815109615220648
+      Ebon twig_57: 7921292937639419149
+      Ebon twig_58: -4824395962918578112
+      Ebon twig_59: -1907912309820057927
+      Ebon twig_6: 7480972133011193456
+      Ebon twig_60: -759811762584680240
+      Ebon twig_61: -6194118510975511074
+      Ebon twig_62: -1571263994296347659
+      Ebon twig_63: -6676424504093372945
+      Ebon twig_64: 3260101577340004466
+      Ebon twig_65: 2490910927090005958
+      Ebon twig_66: -2343586122662147049
+      Ebon twig_67: 4471106379558023265
+      Ebon twig_68: -965556253872049211
+      Ebon twig_69: 1169823603813974054
+      Ebon twig_7: -5546574590784456603
+      Ebon twig_70: 5464390122631810873
+      Ebon twig_71: -3935687009895951420
+      Ebon twig_72: 5934033390637611166
+      Ebon twig_73: 1182029779411878357
+      Ebon twig_74: -3171430930965466946
+      Ebon twig_75: -7650392208950625506
+      Ebon twig_76: 981428087856241645
+      Ebon twig_77: 1427991419908799434
+      Ebon twig_78: 3125069811094386727
+      Ebon twig_79: -3942626465718741602
+      Ebon twig_8: -6688506340290518187
+      Ebon twig_80: 3242032966419486092
+      Ebon twig_81: 2234625655284840774
+      Ebon twig_82: -8021190626624022003
+      Ebon twig_83: 9065333532086807570
+      Ebon twig_84: 1964331018102169507
+      Ebon twig_85: -2080945550076095838
+      Ebon twig_86: 5480248054472583431
+      Ebon twig_87: 757976045436021424
+      Ebon twig_88: -1258601091004167653
+      Ebon twig_89: 5719415911152803776
+      Ebon twig_9: -2344307960691836983
+      Ebon twig_90: 5304796436315360897
+      Ebon twig_91: -1045643365039970742
+      Ebon twig_92: -4132491773151698317
+      Ebon twig_93: 8023541117252605983
+      Ebon twig_94: -355902837861189153
+      Ebon twig_95: -8109814374529655626
+      Ebon twig_96: -3238727092775823871
+      Ebon twig_97: -6094468429001678352
+      Ebon twig_98: -4650000959432784092
+      Ebon twig_99: 3889710260746375587
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

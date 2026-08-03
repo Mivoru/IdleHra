@@ -1,0 +1,4498 @@
+fileFormatVersion: 2
+guid: 253812cf49e56ac45a4e520b03eb698a
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 3400627800615400021
+    second: magus_trousers_0
+  - first:
+      213: 7794402725575661691
+    second: magus_trousers_1
+  - first:
+      213: -6207423369786640347
+    second: magus_trousers_2
+  - first:
+      213: 4094051970308309143
+    second: magus_trousers_3
+  - first:
+      213: 2176417021134876767
+    second: magus_trousers_4
+  - first:
+      213: -1859689490411590903
+    second: magus_trousers_5
+  - first:
+      213: -6864587282387420356
+    second: magus_trousers_6
+  - first:
+      213: -7233262215726226644
+    second: magus_trousers_7
+  - first:
+      213: 7175563641408317184
+    second: magus_trousers_8
+  - first:
+      213: 380550941337215268
+    second: magus_trousers_9
+  - first:
+      213: -8034214833998218596
+    second: magus_trousers_10
+  - first:
+      213: -8365857924557750479
+    second: magus_trousers_11
+  - first:
+      213: 2753326976604789402
+    second: magus_trousers_12
+  - first:
+      213: 1610908507558783007
+    second: magus_trousers_13
+  - first:
+      213: -2390412777175389422
+    second: magus_trousers_14
+  - first:
+      213: -2239136388377551863
+    second: magus_trousers_15
+  - first:
+      213: 3484787798892687288
+    second: magus_trousers_16
+  - first:
+      213: -812143851675480712
+    second: magus_trousers_17
+  - first:
+      213: -5536320725738407469
+    second: magus_trousers_18
+  - first:
+      213: 4767077389427224788
+    second: magus_trousers_19
+  - first:
+      213: -1452496082873846692
+    second: magus_trousers_20
+  - first:
+      213: -2270563674648332840
+    second: magus_trousers_21
+  - first:
+      213: -3660679700819884510
+    second: magus_trousers_22
+  - first:
+      213: 1333723419113859761
+    second: magus_trousers_23
+  - first:
+      213: -3123627790967391587
+    second: magus_trousers_24
+  - first:
+      213: -3489188674224834145
+    second: magus_trousers_25
+  - first:
+      213: 6614598065865096305
+    second: magus_trousers_26
+  - first:
+      213: 5818249486197792745
+    second: magus_trousers_27
+  - first:
+      213: 6840628420993235920
+    second: magus_trousers_28
+  - first:
+      213: 8668558098794329842
+    second: magus_trousers_29
+  - first:
+      213: -33271630192597974
+    second: magus_trousers_30
+  - first:
+      213: -6389713147839317513
+    second: magus_trousers_31
+  - first:
+      213: -9039100828081925339
+    second: magus_trousers_32
+  - first:
+      213: -1452493876076027969
+    second: magus_trousers_33
+  - first:
+      213: -4902454525438750574
+    second: magus_trousers_34
+  - first:
+      213: 6185300870548488533
+    second: magus_trousers_35
+  - first:
+      213: -3923279222359124236
+    second: magus_trousers_36
+  - first:
+      213: -1695657607068089360
+    second: magus_trousers_37
+  - first:
+      213: 3033968925947401508
+    second: magus_trousers_38
+  - first:
+      213: -7660259625373943627
+    second: magus_trousers_39
+  - first:
+      213: 6938296082970254245
+    second: magus_trousers_40
+  - first:
+      213: 6467998637161950563
+    second: magus_trousers_41
+  - first:
+      213: 8063709205437712965
+    second: magus_trousers_42
+  - first:
+      213: 9139240580986485797
+    second: magus_trousers_43
+  - first:
+      213: 5684985145120172002
+    second: magus_trousers_44
+  - first:
+      213: -4748680364570723935
+    second: magus_trousers_45
+  - first:
+      213: 7895179154013809938
+    second: magus_trousers_46
+  - first:
+      213: 4010776754316581834
+    second: magus_trousers_47
+  - first:
+      213: 1642461106800367309
+    second: magus_trousers_48
+  - first:
+      213: -7060490096120764721
+    second: magus_trousers_49
+  - first:
+      213: 2224806753543692664
+    second: magus_trousers_50
+  - first:
+      213: -63964648973205756
+    second: magus_trousers_51
+  - first:
+      213: 3547604083304373011
+    second: magus_trousers_52
+  - first:
+      213: -7544621646676755782
+    second: magus_trousers_53
+  - first:
+      213: 7696816205442554119
+    second: magus_trousers_54
+  - first:
+      213: -1569868588114246145
+    second: magus_trousers_55
+  - first:
+      213: 8754827638587472875
+    second: magus_trousers_56
+  - first:
+      213: 6582807165269604980
+    second: magus_trousers_57
+  - first:
+      213: 6807449363863976519
+    second: magus_trousers_58
+  - first:
+      213: -7441772754399145343
+    second: magus_trousers_59
+  - first:
+      213: -648798493209730497
+    second: magus_trousers_60
+  - first:
+      213: 5922621427596566172
+    second: magus_trousers_61
+  - first:
+      213: 1428106034796299877
+    second: magus_trousers_62
+  - first:
+      213: -8148158584826207259
+    second: magus_trousers_63
+  - first:
+      213: 2250738635287077605
+    second: magus_trousers_64
+  - first:
+      213: -52963199441157050
+    second: magus_trousers_65
+  - first:
+      213: -5777927501756611119
+    second: magus_trousers_66
+  - first:
+      213: 7756213457715641294
+    second: magus_trousers_67
+  - first:
+      213: -2721883588616995660
+    second: magus_trousers_68
+  - first:
+      213: 6682662130874376535
+    second: magus_trousers_69
+  - first:
+      213: -4786189617043326516
+    second: magus_trousers_70
+  - first:
+      213: 1761501645663603126
+    second: magus_trousers_71
+  - first:
+      213: -1849059201180709355
+    second: magus_trousers_72
+  - first:
+      213: 8348439481890345342
+    second: magus_trousers_73
+  - first:
+      213: 1145318227574243879
+    second: magus_trousers_74
+  - first:
+      213: 6612576813065716773
+    second: magus_trousers_75
+  - first:
+      213: -4802182078153883919
+    second: magus_trousers_76
+  - first:
+      213: 6087899134796480248
+    second: magus_trousers_77
+  - first:
+      213: -4556316261153357029
+    second: magus_trousers_78
+  - first:
+      213: -3281829830043808666
+    second: magus_trousers_79
+  - first:
+      213: 1675587349727503481
+    second: magus_trousers_80
+  - first:
+      213: 1206859049705039500
+    second: magus_trousers_81
+  - first:
+      213: 8545201365631395573
+    second: magus_trousers_82
+  - first:
+      213: 8264626723450422168
+    second: magus_trousers_83
+  - first:
+      213: -103703229180320326
+    second: magus_trousers_84
+  - first:
+      213: 8276106691845652926
+    second: magus_trousers_85
+  - first:
+      213: 1270248746966865530
+    second: magus_trousers_86
+  - first:
+      213: 1907849315272166161
+    second: magus_trousers_87
+  - first:
+      213: 5605293818101740095
+    second: magus_trousers_88
+  - first:
+      213: 3214745902078191361
+    second: magus_trousers_89
+  - first:
+      213: -1563409554339413944
+    second: magus_trousers_90
+  - first:
+      213: 7493759018686779625
+    second: magus_trousers_91
+  - first:
+      213: 6457718407761044221
+    second: magus_trousers_92
+  - first:
+      213: 1875898239711689840
+    second: magus_trousers_93
+  - first:
+      213: -3131941840909307877
+    second: magus_trousers_94
+  - first:
+      213: -7827032297423075015
+    second: magus_trousers_95
+  - first:
+      213: 1314017398229478276
+    second: magus_trousers_96
+  - first:
+      213: -1016410124618931490
+    second: magus_trousers_97
+  - first:
+      213: 1733416257543364006
+    second: magus_trousers_98
+  - first:
+      213: 7853090824916371317
+    second: magus_trousers_99
+  - first:
+      213: -465821402239212420
+    second: magus_trousers_100
+  - first:
+      213: 1792040821011444761
+    second: magus_trousers_101
+  - first:
+      213: -7575315250499517419
+    second: magus_trousers_102
+  - first:
+      213: 1792784241619203885
+    second: magus_trousers_103
+  - first:
+      213: 6670983749527626922
+    second: magus_trousers_104
+  - first:
+      213: 252886977213277619
+    second: magus_trousers_105
+  - first:
+      213: 5108108987756157021
+    second: magus_trousers_106
+  - first:
+      213: -4000196554654765049
+    second: magus_trousers_107
+  - first:
+      213: -8023491997505261641
+    second: magus_trousers_108
+  - first:
+      213: 5489566713195840284
+    second: magus_trousers_109
+  - first:
+      213: 4270274719249579757
+    second: magus_trousers_110
+  - first:
+      213: 1515686485470557944
+    second: magus_trousers_111
+  - first:
+      213: -2308658569836287670
+    second: magus_trousers_112
+  - first:
+      213: 9095491734017051215
+    second: magus_trousers_113
+  - first:
+      213: 5512037143844763518
+    second: magus_trousers_114
+  - first:
+      213: -6597405905206085923
+    second: magus_trousers_115
+  - first:
+      213: -7763644815371947855
+    second: magus_trousers_116
+  - first:
+      213: -3308073760515102537
+    second: magus_trousers_117
+  - first:
+      213: -1324671835359862914
+    second: magus_trousers_118
+  - first:
+      213: -3417510470079788459
+    second: magus_trousers_119
+  - first:
+      213: 4945123034998965760
+    second: magus_trousers_120
+  - first:
+      213: 5986278023953487094
+    second: magus_trousers_121
+  - first:
+      213: -3676068745232057982
+    second: magus_trousers_122
+  - first:
+      213: 3873121842833948157
+    second: magus_trousers_123
+  - first:
+      213: -8851865970965197675
+    second: magus_trousers_124
+  - first:
+      213: 630891652116998021
+    second: magus_trousers_125
+  - first:
+      213: 2648338777844462066
+    second: magus_trousers_126
+  - first:
+      213: -2911253531318459964
+    second: magus_trousers_127
+  - first:
+      213: -8009488495116066505
+    second: magus_trousers_128
+  - first:
+      213: 1338867007500660764
+    second: magus_trousers_129
+  - first:
+      213: 4420678697682048534
+    second: magus_trousers_130
+  - first:
+      213: 781034437304089846
+    second: magus_trousers_131
+  - first:
+      213: 4686050766931249696
+    second: magus_trousers_132
+  - first:
+      213: 8368207719869828447
+    second: magus_trousers_133
+  - first:
+      213: -1121373029238881402
+    second: magus_trousers_134
+  - first:
+      213: -4420215110353618594
+    second: magus_trousers_135
+  - first:
+      213: 2658734034301121448
+    second: magus_trousers_136
+  - first:
+      213: 1018910564155969023
+    second: magus_trousers_137
+  - first:
+      213: 8302703003642388720
+    second: magus_trousers_138
+  - first:
+      213: 8899195150312021262
+    second: magus_trousers_139
+  - first:
+      213: 3426695277852196182
+    second: magus_trousers_140
+  - first:
+      213: -8519767553355587043
+    second: magus_trousers_141
+  - first:
+      213: 7343129291837169295
+    second: magus_trousers_142
+  - first:
+      213: -2945286218210974446
+    second: magus_trousers_143
+  - first:
+      213: -3566077544801687070
+    second: magus_trousers_144
+  - first:
+      213: -8437183073875219735
+    second: magus_trousers_145
+  - first:
+      213: -7026555819960394245
+    second: magus_trousers_146
+  - first:
+      213: 4788020274264050411
+    second: magus_trousers_147
+  - first:
+      213: 6835154560147278884
+    second: magus_trousers_148
+  - first:
+      213: -2291034407976512486
+    second: magus_trousers_149
+  - first:
+      213: 3129432887461009501
+    second: magus_trousers_150
+  - first:
+      213: 7415876014959660310
+    second: magus_trousers_151
+  - first:
+      213: 3462816815117851043
+    second: magus_trousers_152
+  - first:
+      213: 3647207597281341539
+    second: magus_trousers_153
+  - first:
+      213: 21873678573982029
+    second: magus_trousers_154
+  - first:
+      213: 1004447588604299596
+    second: magus_trousers_155
+  - first:
+      213: 3525730424798565443
+    second: magus_trousers_156
+  - first:
+      213: 7519733756743388594
+    second: magus_trousers_157
+  - first:
+      213: -3083419354243983756
+    second: magus_trousers_158
+  - first:
+      213: 7533001211545635711
+    second: magus_trousers_159
+  - first:
+      213: 9165872630493315604
+    second: magus_trousers_160
+  - first:
+      213: 4043742671881775923
+    second: magus_trousers_161
+  - first:
+      213: 9061614578874250044
+    second: magus_trousers_162
+  - first:
+      213: 2716918927584624086
+    second: magus_trousers_163
+  - first:
+      213: 4150349662732929996
+    second: magus_trousers_164
+  - first:
+      213: -5021191969743000539
+    second: magus_trousers_165
+  - first:
+      213: 4380903060480988301
+    second: magus_trousers_166
+  - first:
+      213: 5128954322012950189
+    second: magus_trousers_167
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: magus_trousers_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1902
+        width: 159
+        height: 146
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 552bff4a7f4713f20800000000000000
+      internalID: 3400627800615400021
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_1
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 1846
+        width: 23
+        height: 59
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b78164e7bf74b2c60800000000000000
+      internalID: 7794402725575661691
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_2
+      rect:
+        serializedVersion: 2
+        x: 99
+        y: 0
+        width: 1949
+        height: 2048
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 528b861655dcad9a0800000000000000
+      internalID: -6207423369786640347
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_3
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 107
+        height: 1851
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7900736639ef0d830800000000000000
+      internalID: 4094051970308309143
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_4
+      rect:
+        serializedVersion: 2
+        x: 7
+        y: 137
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f50bbd3efbf243e10800000000000000
+      internalID: 2176417021134876767
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_5
+      rect:
+        serializedVersion: 2
+        x: 10
+        y: 395
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 90b6d73f24e0136e0800000000000000
+      internalID: -1859689490411590903
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_6
+      rect:
+        serializedVersion: 2
+        x: 12
+        y: 86
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c3b32af9c361cb0a0800000000000000
+      internalID: -6864587282387420356
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_7
+      rect:
+        serializedVersion: 2
+        x: 17
+        y: 701
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c232268965a4e9b90800000000000000
+      internalID: -7233262215726226644
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_8
+      rect:
+        serializedVersion: 2
+        x: 17
+        y: 44
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 007e9553d19b49360800000000000000
+      internalID: 7175563641408317184
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_9
+      rect:
+        serializedVersion: 2
+        x: 33
+        y: 182
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 421685d901df74500800000000000000
+      internalID: 380550941337215268
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_10
+      rect:
+        serializedVersion: 2
+        x: 35
+        y: 434
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c9abc52fc2cb08090800000000000000
+      internalID: -8034214833998218596
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_11
+      rect:
+        serializedVersion: 2
+        x: 40
+        y: 1501
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 13f3955ba8086eb80800000000000000
+      internalID: -8365857924557750479
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_12
+      rect:
+        serializedVersion: 2
+        x: 59
+        y: 1389
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a9a57072c48c53620800000000000000
+      internalID: 2753326976604789402
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_13
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 797
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f1822bea0c81b5610800000000000000
+      internalID: 1610908507558783007
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_14
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 38
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 21be7ed7e3c83ded0800000000000000
+      internalID: -2390412777175389422
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_15
+      rect:
+        serializedVersion: 2
+        x: 75
+        y: 1118
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 90cda17715dfce0e0800000000000000
+      internalID: -2239136388377551863
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_16
+      rect:
+        serializedVersion: 2
+        x: 78
+        y: 315
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8bf2d963a047c5030800000000000000
+      internalID: 3484787798892687288
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_17
+      rect:
+        serializedVersion: 2
+        x: 79
+        y: 1160
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 87d8d56487faab4f0800000000000000
+      internalID: -812143851675480712
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_18
+      rect:
+        serializedVersion: 2
+        x: 92
+        y: 896
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3d9bab3f1a90b23b0800000000000000
+      internalID: -5536320725738407469
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_19
+      rect:
+        serializedVersion: 2
+        x: 102
+        y: 67
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4d03b9de0af082240800000000000000
+      internalID: 4767077389427224788
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_20
+      rect:
+        serializedVersion: 2
+        x: 121
+        y: 1146
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c5478ae1282b7dbe0800000000000000
+      internalID: -1452496082873846692
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_21
+      rect:
+        serializedVersion: 2
+        x: 123
+        y: 56
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8d53eac2e565d70e0800000000000000
+      internalID: -2270563674648332840
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_22
+      rect:
+        serializedVersion: 2
+        x: 143
+        y: 59
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 226c52c0537a23dc0800000000000000
+      internalID: -3660679700819884510
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_23
+      rect:
+        serializedVersion: 2
+        x: 193
+        y: 149
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1baa6e02266528210800000000000000
+      internalID: 1333723419113859761
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_24
+      rect:
+        serializedVersion: 2
+        x: 193
+        y: 9
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d9ab9d4e215a6a4d0800000000000000
+      internalID: -3123627790967391587
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_25
+      rect:
+        serializedVersion: 2
+        x: 200
+        y: 55
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f9933862369e39fc0800000000000000
+      internalID: -3489188674224834145
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_26
+      rect:
+        serializedVersion: 2
+        x: 216
+        y: 62
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 17cffdf25e5cbcb50800000000000000
+      internalID: 6614598065865096305
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_27
+      rect:
+        serializedVersion: 2
+        x: 217
+        y: 1186
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9ef1b6fc4139eb050800000000000000
+      internalID: 5818249486197792745
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_28
+      rect:
+        serializedVersion: 2
+        x: 229
+        y: 31
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0db3eb14e4bceee50800000000000000
+      internalID: 6840628420993235920
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_29
+      rect:
+        serializedVersion: 2
+        x: 229
+        y: 15
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f6b871b9a7ec4870800000000000000
+      internalID: 8668558098794329842
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_30
+      rect:
+        serializedVersion: 2
+        x: 233
+        y: 1077
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a24a54de0abc98ff0800000000000000
+      internalID: -33271630192597974
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_31
+      rect:
+        serializedVersion: 2
+        x: 240
+        y: 119
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f9f4660fbd2357a0800000000000000
+      internalID: -6389713147839317513
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_32
+      rect:
+        serializedVersion: 2
+        x: 242
+        y: 1303
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 523dc3520b9ae8280800000000000000
+      internalID: -9039100828081925339
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_33
+      rect:
+        serializedVersion: 2
+        x: 245
+        y: 476
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fbfde0ee384b7dbe0800000000000000
+      internalID: -1452493876076027969
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_34
+      rect:
+        serializedVersion: 2
+        x: 266
+        y: 685
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 29097bb559bf6fbb0800000000000000
+      internalID: -4902454525438750574
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_35
+      rect:
+        serializedVersion: 2
+        x: 270
+        y: 196
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55105f1ee5a96d550800000000000000
+      internalID: 6185300870548488533
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_36
+      rect:
+        serializedVersion: 2
+        x: 271
+        y: 192
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4f61d9c6556bd89c0800000000000000
+      internalID: -3923279222359124236
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_37
+      rect:
+        serializedVersion: 2
+        x: 286
+        y: 347
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f3840ee360d778e0800000000000000
+      internalID: -1695657607068089360
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_38
+      rect:
+        serializedVersion: 2
+        x: 287
+        y: 239
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4251baad9a2da1a20800000000000000
+      internalID: 3033968925947401508
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_39
+      rect:
+        serializedVersion: 2
+        x: 287
+        y: 45
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5b8b15ed47a41b590800000000000000
+      internalID: -7660259625373943627
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_40
+      rect:
+        serializedVersion: 2
+        x: 309
+        y: 28
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5ab1debd687c94060800000000000000
+      internalID: 6938296082970254245
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_41
+      rect:
+        serializedVersion: 2
+        x: 312
+        y: 301
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 36dafb7dd72f2c950800000000000000
+      internalID: 6467998637161950563
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_42
+      rect:
+        serializedVersion: 2
+        x: 340
+        y: 175
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 54a892a8ccc08ef60800000000000000
+      internalID: 8063709205437712965
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_43
+      rect:
+        serializedVersion: 2
+        x: 342
+        y: 881
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 52cb88af2ea15de70800000000000000
+      internalID: 9139240580986485797
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_44
+      rect:
+        serializedVersion: 2
+        x: 358
+        y: 459
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e7a2408edf15ee40800000000000000
+      internalID: 5684985145120172002
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_45
+      rect:
+        serializedVersion: 2
+        x: 362
+        y: 985
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1a9b3e53e5c491eb0800000000000000
+      internalID: -4748680364570723935
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_46
+      rect:
+        serializedVersion: 2
+        x: 382
+        y: 589
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 21def013c9f419d60800000000000000
+      internalID: 7895179154013809938
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_47
+      rect:
+        serializedVersion: 2
+        x: 389
+        y: 538
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: acb1f62453429a730800000000000000
+      internalID: 4010776754316581834
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_48
+      rect:
+        serializedVersion: 2
+        x: 397
+        y: 526
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dc61b3caca13bc610800000000000000
+      internalID: 1642461106800367309
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_49
+      rect:
+        serializedVersion: 2
+        x: 424
+        y: 63
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fc6ee886aa9140e90800000000000000
+      internalID: -7060490096120764721
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_50
+      rect:
+        serializedVersion: 2
+        x: 425
+        y: 1129
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 871acde64f910ee10800000000000000
+      internalID: 2224806753543692664
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_51
+      rect:
+        serializedVersion: 2
+        x: 429
+        y: 1007
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 40ff4cb9d70cc1ff0800000000000000
+      internalID: -63964648973205756
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_52
+      rect:
+        serializedVersion: 2
+        x: 449
+        y: 1064
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 31b15152e1f9b3130800000000000000
+      internalID: 3547604083304373011
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_53
+      rect:
+        serializedVersion: 2
+        x: 449
+        y: 760
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: abafb11e59e1c4790800000000000000
+      internalID: -7544621646676755782
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_54
+      rect:
+        serializedVersion: 2
+        x: 451
+        y: 434
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7099fd23f8590da60800000000000000
+      internalID: 7696816205442554119
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_55
+      rect:
+        serializedVersion: 2
+        x: 455
+        y: 701
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff5086d26d4b63ae0800000000000000
+      internalID: -1569868588114246145
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_56
+      rect:
+        serializedVersion: 2
+        x: 455
+        y: 13
+        width: 10
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: beb37cb2a556f7970800000000000000
+      internalID: 8754827638587472875
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_57
+      rect:
+        serializedVersion: 2
+        x: 484
+        y: 397
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 47a7ac65d34da5b50800000000000000
+      internalID: 6582807165269604980
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_58
+      rect:
+        serializedVersion: 2
+        x: 519
+        y: 765
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 74a3297012be87e50800000000000000
+      internalID: 6807449363863976519
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_59
+      rect:
+        serializedVersion: 2
+        x: 525
+        y: 1342
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 182dbdaab1389b890800000000000000
+      internalID: -7441772754399145343
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_60
+      rect:
+        serializedVersion: 2
+        x: 536
+        y: 933
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f32ec6935310ff6f0800000000000000
+      internalID: -648798493209730497
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_61
+      rect:
+        serializedVersion: 2
+        x: 551
+        y: 414
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c9e920b1fc0613250800000000000000
+      internalID: 5922621427596566172
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_62
+      rect:
+        serializedVersion: 2
+        x: 552
+        y: 54
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 56600a94fd6a1d310800000000000000
+      internalID: 1428106034796299877
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_63
+      rect:
+        serializedVersion: 2
+        x: 554
+        y: 439
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5e362e910fcebee80800000000000000
+      internalID: -8148158584826207259
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_64
+      rect:
+        serializedVersion: 2
+        x: 555
+        y: 429
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5e2a8862dda3c3f10800000000000000
+      internalID: 2250738635287077605
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_65
+      rect:
+        serializedVersion: 2
+        x: 562
+        y: 407
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 644442f2046d34ff0800000000000000
+      internalID: -52963199441157050
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_66
+      rect:
+        serializedVersion: 2
+        x: 565
+        y: 707
+        width: 7
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1d546d7cc8da0dfa0800000000000000
+      internalID: -5777927501756611119
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_67
+      rect:
+        serializedVersion: 2
+        x: 567
+        y: 826
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ecbbe3dab0b93ab60800000000000000
+      internalID: 7756213457715641294
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_68
+      rect:
+        serializedVersion: 2
+        x: 567
+        y: 80
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4bcb48c1c4de93ad0800000000000000
+      internalID: -2721883588616995660
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_69
+      rect:
+        serializedVersion: 2
+        x: 580
+        y: 1215
+        width: 7
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 751e8b04dc59dbc50800000000000000
+      internalID: 6682662130874376535
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_70
+      rect:
+        serializedVersion: 2
+        x: 585
+        y: 1152
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: cc93870d6e9049db0800000000000000
+      internalID: -4786189617043326516
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_71
+      rect:
+        serializedVersion: 2
+        x: 597
+        y: 1415
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6b98b05f96c127810800000000000000
+      internalID: 1761501645663603126
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_72
+      rect:
+        serializedVersion: 2
+        x: 597
+        y: 1385
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51ec4f80472d656e0800000000000000
+      internalID: -1849059201180709355
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_73
+      rect:
+        serializedVersion: 2
+        x: 608
+        y: 27
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e719be21a7d9bd370800000000000000
+      internalID: 8348439481890345342
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_74
+      rect:
+        serializedVersion: 2
+        x: 613
+        y: 33
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 722c75d1cdcf4ef00800000000000000
+      internalID: 1145318227574243879
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_75
+      rect:
+        serializedVersion: 2
+        x: 627
+        y: 67
+        width: 9
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 52444c8939794cb50800000000000000
+      internalID: 6612576813065716773
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_76
+      rect:
+        serializedVersion: 2
+        x: 663
+        y: 60
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1fef3ecc7d83b5db0800000000000000
+      internalID: -4802182078153883919
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_77
+      rect:
+        serializedVersion: 2
+        x: 753
+        y: 44
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8feb3fd02009c7450800000000000000
+      internalID: 6087899134796480248
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_78
+      rect:
+        serializedVersion: 2
+        x: 823
+        y: 56
+        width: 11
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b134e993086b4c0c0800000000000000
+      internalID: -4556316261153357029
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_79
+      rect:
+        serializedVersion: 2
+        x: 852
+        y: 91
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 66c45fe48299472d0800000000000000
+      internalID: -3281829830043808666
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_80
+      rect:
+        serializedVersion: 2
+        x: 1001
+        y: 10
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 97465a221d1e04710800000000000000
+      internalID: 1675587349727503481
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_81
+      rect:
+        serializedVersion: 2
+        x: 1057
+        y: 66
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c8662a759ef9fb010800000000000000
+      internalID: 1206859049705039500
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_82
+      rect:
+        serializedVersion: 2
+        x: 1079
+        y: 33
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5f664ac1e57a69670800000000000000
+      internalID: 8545201365631395573
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_83
+      rect:
+        serializedVersion: 2
+        x: 1130
+        y: 113
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8938674973ad1b270800000000000000
+      internalID: 8264626723450422168
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_84
+      rect:
+        serializedVersion: 2
+        x: 1142
+        y: 59
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab565a666729f8ef0800000000000000
+      internalID: -103703229180320326
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_85
+      rect:
+        serializedVersion: 2
+        x: 1154
+        y: 77
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb181b20033aad270800000000000000
+      internalID: 8276106691845652926
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_86
+      rect:
+        serializedVersion: 2
+        x: 1176
+        y: 160
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a76585b5184d0a110800000000000000
+      internalID: 1270248746966865530
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_87
+      rect:
+        serializedVersion: 2
+        x: 1177
+        y: 148
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 11b05c118da0a7a10800000000000000
+      internalID: 1907849315272166161
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_88
+      rect:
+        serializedVersion: 2
+        x: 1178
+        y: 109
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f32b5a987010acd40800000000000000
+      internalID: 5605293818101740095
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_89
+      rect:
+        serializedVersion: 2
+        x: 1233
+        y: 42
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 10763809d521d9c20800000000000000
+      internalID: 3214745902078191361
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_90
+      rect:
+        serializedVersion: 2
+        x: 1259
+        y: 9
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 840c52b2b47ad4ae0800000000000000
+      internalID: -1563409554339413944
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_91
+      rect:
+        serializedVersion: 2
+        x: 1376
+        y: 182
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9e09435bf1e2ff760800000000000000
+      internalID: 7493759018686779625
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_92
+      rect:
+        serializedVersion: 2
+        x: 1411
+        y: 56
+        width: 9
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: df2291a6dac6e9950800000000000000
+      internalID: 6457718407761044221
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_93
+      rect:
+        serializedVersion: 2
+        x: 1431
+        y: 375
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07cbbc49287880a10800000000000000
+      internalID: 1875898239711689840
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_94
+      rect:
+        serializedVersion: 2
+        x: 1442
+        y: 878
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b10fa6b4d7b1984d0800000000000000
+      internalID: -3131941840909307877
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_95
+      rect:
+        serializedVersion: 2
+        x: 1443
+        y: 467
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 939869a489bc06390800000000000000
+      internalID: -7827032297423075015
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_96
+      rect:
+        serializedVersion: 2
+        x: 1445
+        y: 1261
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48ba62a9cd35c3210800000000000000
+      internalID: 1314017398229478276
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_97
+      rect:
+        serializedVersion: 2
+        x: 1445
+        y: 756
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed26af7706cf4e1f0800000000000000
+      internalID: -1016410124618931490
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_98
+      rect:
+        serializedVersion: 2
+        x: 1448
+        y: 954
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6ad52c6f6e45e0810800000000000000
+      internalID: 1733416257543364006
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_99
+      rect:
+        serializedVersion: 2
+        x: 1449
+        y: 981
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 57705007f78cbfc60800000000000000
+      internalID: 7853090824916371317
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_100
+      rect:
+        serializedVersion: 2
+        x: 1451
+        y: 526
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c74e1c617e11989f0800000000000000
+      internalID: -465821402239212420
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_101
+      rect:
+        serializedVersion: 2
+        x: 1457
+        y: 744
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 914f26fc1ab9ed810800000000000000
+      internalID: 1792040821011444761
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_102
+      rect:
+        serializedVersion: 2
+        x: 1463
+        y: 566
+        width: 6
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 51480685ae21fd690800000000000000
+      internalID: -7575315250499517419
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_103
+      rect:
+        serializedVersion: 2
+        x: 1480
+        y: 77
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2771a8e4cf31e810800000000000000
+      internalID: 1792784241619203885
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_104
+      rect:
+        serializedVersion: 2
+        x: 1484
+        y: 339
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: aa46ff43068149c50800000000000000
+      internalID: 6670983749527626922
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_105
+      rect:
+        serializedVersion: 2
+        x: 1507
+        y: 594
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3b5ae1dad5f628300800000000000000
+      internalID: 252886977213277619
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_106
+      rect:
+        serializedVersion: 2
+        x: 1549
+        y: 1298
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d589f297f06a3e640800000000000000
+      internalID: 5108108987756157021
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_107
+      rect:
+        serializedVersion: 2
+        x: 1552
+        y: 250
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 700bf007d627c78c0800000000000000
+      internalID: -4000196554654765049
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_108
+      rect:
+        serializedVersion: 2
+        x: 1586
+        y: 1063
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7bf628ed984d6a090800000000000000
+      internalID: -8023491997505261641
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_109
+      rect:
+        serializedVersion: 2
+        x: 1587
+        y: 467
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c13c8d637dbde2c40800000000000000
+      internalID: 5489566713195840284
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_110
+      rect:
+        serializedVersion: 2
+        x: 1588
+        y: 500
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: deeb3367b30134b30800000000000000
+      internalID: 4270274719249579757
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_111
+      rect:
+        serializedVersion: 2
+        x: 1590
+        y: 685
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8f6355df3dcc80510800000000000000
+      internalID: 1515686485470557944
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_112
+      rect:
+        serializedVersion: 2
+        x: 1613
+        y: 10
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a492f35334ff5ffd0800000000000000
+      internalID: -2308658569836287670
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_113
+      rect:
+        serializedVersion: 2
+        x: 1631
+        y: 902
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f4a8697ca8da93e70800000000000000
+      internalID: 9095491734017051215
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_114
+      rect:
+        serializedVersion: 2
+        x: 1652
+        y: 1402
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7730ab0490be7c40800000000000000
+      internalID: 5512037143844763518
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_115
+      rect:
+        serializedVersion: 2
+        x: 1654
+        y: 1039
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dd67025a84e4174a0800000000000000
+      internalID: -6597405905206085923
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_116
+      rect:
+        serializedVersion: 2
+        x: 1657
+        y: 1279
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b0b3798c2ef14490800000000000000
+      internalID: -7763644815371947855
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_117
+      rect:
+        serializedVersion: 2
+        x: 1660
+        y: 1056
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7b8e4b5117c5712d0800000000000000
+      internalID: -3308073760515102537
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_118
+      rect:
+        serializedVersion: 2
+        x: 1660
+        y: 330
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7f1961fbf1dd9de0800000000000000
+      internalID: -1324671835359862914
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_119
+      rect:
+        serializedVersion: 2
+        x: 1667
+        y: 1076
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 55a47be85509290d0800000000000000
+      internalID: -3417510470079788459
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_120
+      rect:
+        serializedVersion: 2
+        x: 1697
+        y: 477
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00607bf233b90a440800000000000000
+      internalID: 4945123034998965760
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_121
+      rect:
+        serializedVersion: 2
+        x: 1715
+        y: 1244
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6f499786528831350800000000000000
+      internalID: 5986278023953487094
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_122
+      rect:
+        serializedVersion: 2
+        x: 1739
+        y: 430
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 289f68ee3fafbfcc0800000000000000
+      internalID: -3676068745232057982
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_123
+      rect:
+        serializedVersion: 2
+        x: 1755
+        y: 260
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dfd7ced9bc710c530800000000000000
+      internalID: 3873121842833948157
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_124
+      rect:
+        serializedVersion: 2
+        x: 1763
+        y: 409
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 59c40417ccad72580800000000000000
+      internalID: -8851865970965197675
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_125
+      rect:
+        serializedVersion: 2
+        x: 1765
+        y: 242
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 58761307d9061c800800000000000000
+      internalID: 630891652116998021
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_126
+      rect:
+        serializedVersion: 2
+        x: 1767
+        y: 263
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f1bf42461ac0c420800000000000000
+      internalID: 2648338777844462066
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_127
+      rect:
+        serializedVersion: 2
+        x: 1769
+        y: 735
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4c169a676562997d0800000000000000
+      internalID: -2911253531318459964
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_128
+      rect:
+        serializedVersion: 2
+        x: 1771
+        y: 229
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 731670856a498d090800000000000000
+      internalID: -8009488495116066505
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_129
+      rect:
+        serializedVersion: 2
+        x: 1773
+        y: 883
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c10319f137c949210800000000000000
+      internalID: 1338867007500660764
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_130
+      rect:
+        serializedVersion: 2
+        x: 1775
+        y: 221
+        width: 13
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61699719ad7695d30800000000000000
+      internalID: 4420678697682048534
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_131
+      rect:
+        serializedVersion: 2
+        x: 1776
+        y: 248
+        width: 12
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6fc7bd0ceaac6da00800000000000000
+      internalID: 781034437304089846
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_132
+      rect:
+        serializedVersion: 2
+        x: 1778
+        y: 293
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 02a42624852380140800000000000000
+      internalID: 4686050766931249696
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_133
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 260
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f5dc585a598d12470800000000000000
+      internalID: 8368207719869828447
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_134
+      rect:
+        serializedVersion: 2
+        x: 1790
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6834383db251070f0800000000000000
+      internalID: -1121373029238881402
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_135
+      rect:
+        serializedVersion: 2
+        x: 1791
+        y: 858
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e59fe84c6cd38a2c0800000000000000
+      internalID: -4420215110353618594
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_136
+      rect:
+        serializedVersion: 2
+        x: 1794
+        y: 883
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8a372c28488b5e420800000000000000
+      internalID: 2658734034301121448
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_137
+      rect:
+        serializedVersion: 2
+        x: 1797
+        y: 197
+        width: 9
+        height: 13
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ffdc86a72c5e32e00800000000000000
+      internalID: 1018910564155969023
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_138
+      rect:
+        serializedVersion: 2
+        x: 1800
+        y: 276
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f06ca76460293370800000000000000
+      internalID: 8302703003642388720
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_139
+      rect:
+        serializedVersion: 2
+        x: 1811
+        y: 271
+        width: 7
+        height: 12
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e0d1a39d6da408b70800000000000000
+      internalID: 8899195150312021262
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_140
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 260
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 65d73e523311e8f20800000000000000
+      internalID: 3426695277852196182
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_141
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 209
+        width: 10
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d126755cc84b3c980800000000000000
+      internalID: -8519767553355587043
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_142
+      rect:
+        serializedVersion: 2
+        x: 1821
+        y: 753
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f8e58b37f2908e560800000000000000
+      internalID: 7343129291837169295
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_143
+      rect:
+        serializedVersion: 2
+        x: 1827
+        y: 248
+        width: 13
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2156ea11acd3027d0800000000000000
+      internalID: -2945286218210974446
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_144
+      rect:
+        serializedVersion: 2
+        x: 1828
+        y: 221
+        width: 11
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2e9299ced5fb28ec0800000000000000
+      internalID: -3566077544801687070
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_145
+      rect:
+        serializedVersion: 2
+        x: 1835
+        y: 1090
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9eaaab842ba19ea80800000000000000
+      internalID: -8437183073875219735
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_146
+      rect:
+        serializedVersion: 2
+        x: 1841
+        y: 219
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bfd9ec4c5b8ac7e90800000000000000
+      internalID: -7026555819960394245
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_147
+      rect:
+        serializedVersion: 2
+        x: 1842
+        y: 767
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bea80e84217727240800000000000000
+      internalID: 4788020274264050411
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_148
+      rect:
+        serializedVersion: 2
+        x: 1843
+        y: 242
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 42c4876bbd85bde50800000000000000
+      internalID: 6835154560147278884
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_149
+      rect:
+        serializedVersion: 2
+        x: 1850
+        y: 348
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a14dc58285c9430e0800000000000000
+      internalID: -2291034407976512486
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_150
+      rect:
+        serializedVersion: 2
+        x: 1862
+        y: 387
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d58d98571aafd6b20800000000000000
+      internalID: 3129432887461009501
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_151
+      rect:
+        serializedVersion: 2
+        x: 1863
+        y: 762
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61d8202d1fb7ae660800000000000000
+      internalID: 7415876014959660310
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_152
+      rect:
+        serializedVersion: 2
+        x: 1889
+        y: 24
+        width: 7
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3a9595beb856e0030800000000000000
+      internalID: 3462816815117851043
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_153
+      rect:
+        serializedVersion: 2
+        x: 1923
+        y: 146
+        width: 8
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3607f0a6cfb7d9230800000000000000
+      internalID: 3647207597281341539
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_154
+      rect:
+        serializedVersion: 2
+        x: 1926
+        y: 747
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d415559aef5bd4000800000000000000
+      internalID: 21873678573982029
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_155
+      rect:
+        serializedVersion: 2
+        x: 1931
+        y: 96
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c49c14292c380fd00800000000000000
+      internalID: 1004447588604299596
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_156
+      rect:
+        serializedVersion: 2
+        x: 1946
+        y: 1117
+        width: 6
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 344d7e72429ede030800000000000000
+      internalID: 3525730424798565443
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_157
+      rect:
+        serializedVersion: 2
+        x: 1946
+        y: 90
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2bd0430b2067b5860800000000000000
+      internalID: 7519733756743388594
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_158
+      rect:
+        serializedVersion: 2
+        x: 1953
+        y: 803
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 47619b81f6e7535d0800000000000000
+      internalID: -3083419354243983756
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_159
+      rect:
+        serializedVersion: 2
+        x: 1956
+        y: 1362
+        width: 7
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f7bc3cab0b89a8860800000000000000
+      internalID: 7533001211545635711
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_160
+      rect:
+        serializedVersion: 2
+        x: 1965
+        y: 1345
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 41287053898b33f70800000000000000
+      internalID: 9165872630493315604
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_161
+      rect:
+        serializedVersion: 2
+        x: 1975
+        y: 83
+        width: 10
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 33b2a9019824e1830800000000000000
+      internalID: 4043742671881775923
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_162
+      rect:
+        serializedVersion: 2
+        x: 1977
+        y: 63
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c33fc41f27251cd70800000000000000
+      internalID: 9061614578874250044
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_163
+      rect:
+        serializedVersion: 2
+        x: 1977
+        y: 24
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6dd773aae5f64b520800000000000000
+      internalID: 2716918927584624086
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_164
+      rect:
+        serializedVersion: 2
+        x: 1984
+        y: 1259
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ccbcbdc5701099930800000000000000
+      internalID: 4150349662732929996
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_165
+      rect:
+        serializedVersion: 2
+        x: 1985
+        y: 57
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 52cac66c184215ab0800000000000000
+      internalID: -5021191969743000539
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_166
+      rect:
+        serializedVersion: 2
+        x: 1992
+        y: 78
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d84146b5f181ccc30800000000000000
+      internalID: 4380903060480988301
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: magus_trousers_167
+      rect:
+        serializedVersion: 2
+        x: 1995
+        y: 578
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: dae49c018c4bd2740800000000000000
+      internalID: 5128954322012950189
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      magus_trousers_0: 3400627800615400021
+      magus_trousers_1: 7794402725575661691
+      magus_trousers_10: -8034214833998218596
+      magus_trousers_100: -465821402239212420
+      magus_trousers_101: 1792040821011444761
+      magus_trousers_102: -7575315250499517419
+      magus_trousers_103: 1792784241619203885
+      magus_trousers_104: 6670983749527626922
+      magus_trousers_105: 252886977213277619
+      magus_trousers_106: 5108108987756157021
+      magus_trousers_107: -4000196554654765049
+      magus_trousers_108: -8023491997505261641
+      magus_trousers_109: 5489566713195840284
+      magus_trousers_11: -8365857924557750479
+      magus_trousers_110: 4270274719249579757
+      magus_trousers_111: 1515686485470557944
+      magus_trousers_112: -2308658569836287670
+      magus_trousers_113: 9095491734017051215
+      magus_trousers_114: 5512037143844763518
+      magus_trousers_115: -6597405905206085923
+      magus_trousers_116: -7763644815371947855
+      magus_trousers_117: -3308073760515102537
+      magus_trousers_118: -1324671835359862914
+      magus_trousers_119: -3417510470079788459
+      magus_trousers_12: 2753326976604789402
+      magus_trousers_120: 4945123034998965760
+      magus_trousers_121: 5986278023953487094
+      magus_trousers_122: -3676068745232057982
+      magus_trousers_123: 3873121842833948157
+      magus_trousers_124: -8851865970965197675
+      magus_trousers_125: 630891652116998021
+      magus_trousers_126: 2648338777844462066
+      magus_trousers_127: -2911253531318459964
+      magus_trousers_128: -8009488495116066505
+      magus_trousers_129: 1338867007500660764
+      magus_trousers_13: 1610908507558783007
+      magus_trousers_130: 4420678697682048534
+      magus_trousers_131: 781034437304089846
+      magus_trousers_132: 4686050766931249696
+      magus_trousers_133: 8368207719869828447
+      magus_trousers_134: -1121373029238881402
+      magus_trousers_135: -4420215110353618594
+      magus_trousers_136: 2658734034301121448
+      magus_trousers_137: 1018910564155969023
+      magus_trousers_138: 8302703003642388720
+      magus_trousers_139: 8899195150312021262
+      magus_trousers_14: -2390412777175389422
+      magus_trousers_140: 3426695277852196182
+      magus_trousers_141: -8519767553355587043
+      magus_trousers_142: 7343129291837169295
+      magus_trousers_143: -2945286218210974446
+      magus_trousers_144: -3566077544801687070
+      magus_trousers_145: -8437183073875219735
+      magus_trousers_146: -7026555819960394245
+      magus_trousers_147: 4788020274264050411
+      magus_trousers_148: 6835154560147278884
+      magus_trousers_149: -2291034407976512486
+      magus_trousers_15: -2239136388377551863
+      magus_trousers_150: 3129432887461009501
+      magus_trousers_151: 7415876014959660310
+      magus_trousers_152: 3462816815117851043
+      magus_trousers_153: 3647207597281341539
+      magus_trousers_154: 21873678573982029
+      magus_trousers_155: 1004447588604299596
+      magus_trousers_156: 3525730424798565443
+      magus_trousers_157: 7519733756743388594
+      magus_trousers_158: -3083419354243983756
+      magus_trousers_159: 7533001211545635711
+      magus_trousers_16: 3484787798892687288
+      magus_trousers_160: 9165872630493315604
+      magus_trousers_161: 4043742671881775923
+      magus_trousers_162: 9061614578874250044
+      magus_trousers_163: 2716918927584624086
+      magus_trousers_164: 4150349662732929996
+      magus_trousers_165: -5021191969743000539
+      magus_trousers_166: 4380903060480988301
+      magus_trousers_167: 5128954322012950189
+      magus_trousers_17: -812143851675480712
+      magus_trousers_18: -5536320725738407469
+      magus_trousers_19: 4767077389427224788
+      magus_trousers_2: -6207423369786640347
+      magus_trousers_20: -1452496082873846692
+      magus_trousers_21: -2270563674648332840
+      magus_trousers_22: -3660679700819884510
+      magus_trousers_23: 1333723419113859761
+      magus_trousers_24: -3123627790967391587
+      magus_trousers_25: -3489188674224834145
+      magus_trousers_26: 6614598065865096305
+      magus_trousers_27: 5818249486197792745
+      magus_trousers_28: 6840628420993235920
+      magus_trousers_29: 8668558098794329842
+      magus_trousers_3: 4094051970308309143
+      magus_trousers_30: -33271630192597974
+      magus_trousers_31: -6389713147839317513
+      magus_trousers_32: -9039100828081925339
+      magus_trousers_33: -1452493876076027969
+      magus_trousers_34: -4902454525438750574
+      magus_trousers_35: 6185300870548488533
+      magus_trousers_36: -3923279222359124236
+      magus_trousers_37: -1695657607068089360
+      magus_trousers_38: 3033968925947401508
+      magus_trousers_39: -7660259625373943627
+      magus_trousers_4: 2176417021134876767
+      magus_trousers_40: 6938296082970254245
+      magus_trousers_41: 6467998637161950563
+      magus_trousers_42: 8063709205437712965
+      magus_trousers_43: 9139240580986485797
+      magus_trousers_44: 5684985145120172002
+      magus_trousers_45: -4748680364570723935
+      magus_trousers_46: 7895179154013809938
+      magus_trousers_47: 4010776754316581834
+      magus_trousers_48: 1642461106800367309
+      magus_trousers_49: -7060490096120764721
+      magus_trousers_5: -1859689490411590903
+      magus_trousers_50: 2224806753543692664
+      magus_trousers_51: -63964648973205756
+      magus_trousers_52: 3547604083304373011
+      magus_trousers_53: -7544621646676755782
+      magus_trousers_54: 7696816205442554119
+      magus_trousers_55: -1569868588114246145
+      magus_trousers_56: 8754827638587472875
+      magus_trousers_57: 6582807165269604980
+      magus_trousers_58: 6807449363863976519
+      magus_trousers_59: -7441772754399145343
+      magus_trousers_6: -6864587282387420356
+      magus_trousers_60: -648798493209730497
+      magus_trousers_61: 5922621427596566172
+      magus_trousers_62: 1428106034796299877
+      magus_trousers_63: -8148158584826207259
+      magus_trousers_64: 2250738635287077605
+      magus_trousers_65: -52963199441157050
+      magus_trousers_66: -5777927501756611119
+      magus_trousers_67: 7756213457715641294
+      magus_trousers_68: -2721883588616995660
+      magus_trousers_69: 6682662130874376535
+      magus_trousers_7: -7233262215726226644
+      magus_trousers_70: -4786189617043326516
+      magus_trousers_71: 1761501645663603126
+      magus_trousers_72: -1849059201180709355
+      magus_trousers_73: 8348439481890345342
+      magus_trousers_74: 1145318227574243879
+      magus_trousers_75: 6612576813065716773
+      magus_trousers_76: -4802182078153883919
+      magus_trousers_77: 6087899134796480248
+      magus_trousers_78: -4556316261153357029
+      magus_trousers_79: -3281829830043808666
+      magus_trousers_8: 7175563641408317184
+      magus_trousers_80: 1675587349727503481
+      magus_trousers_81: 1206859049705039500
+      magus_trousers_82: 8545201365631395573
+      magus_trousers_83: 8264626723450422168
+      magus_trousers_84: -103703229180320326
+      magus_trousers_85: 8276106691845652926
+      magus_trousers_86: 1270248746966865530
+      magus_trousers_87: 1907849315272166161
+      magus_trousers_88: 5605293818101740095
+      magus_trousers_89: 3214745902078191361
+      magus_trousers_9: 380550941337215268
+      magus_trousers_90: -1563409554339413944
+      magus_trousers_91: 7493759018686779625
+      magus_trousers_92: 6457718407761044221
+      magus_trousers_93: 1875898239711689840
+      magus_trousers_94: -3131941840909307877
+      magus_trousers_95: -7827032297423075015
+      magus_trousers_96: 1314017398229478276
+      magus_trousers_97: -1016410124618931490
+      magus_trousers_98: 1733416257543364006
+      magus_trousers_99: 7853090824916371317
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

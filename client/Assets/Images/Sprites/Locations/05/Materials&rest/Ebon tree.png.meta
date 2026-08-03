@@ -1,0 +1,1326 @@
+fileFormatVersion: 2
+guid: 71191089d7c05ba4cadc5dcf3cdeebf4
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 5653662086604588457
+    second: Ebon tree_0
+  - first:
+      213: 2215158981933040436
+    second: Ebon tree_1
+  - first:
+      213: 7239235413753919328
+    second: Ebon tree_2
+  - first:
+      213: 9088305907111776151
+    second: Ebon tree_3
+  - first:
+      213: -2987412286779702850
+    second: Ebon tree_4
+  - first:
+      213: -3638798748254914389
+    second: Ebon tree_5
+  - first:
+      213: -5649967197252013705
+    second: Ebon tree_6
+  - first:
+      213: 5275188836709975217
+    second: Ebon tree_7
+  - first:
+      213: 7566239760184923208
+    second: Ebon tree_8
+  - first:
+      213: -9214515942972736196
+    second: Ebon tree_9
+  - first:
+      213: -5879547846261069446
+    second: Ebon tree_10
+  - first:
+      213: 6844166494933341101
+    second: Ebon tree_11
+  - first:
+      213: -3212671741110528210
+    second: Ebon tree_12
+  - first:
+      213: 3518123301622221446
+    second: Ebon tree_13
+  - first:
+      213: -6189084669450126623
+    second: Ebon tree_14
+  - first:
+      213: -3020786395351509389
+    second: Ebon tree_15
+  - first:
+      213: 7501284938718120710
+    second: Ebon tree_16
+  - first:
+      213: -7573560190965279101
+    second: Ebon tree_17
+  - first:
+      213: 696763062608326144
+    second: Ebon tree_18
+  - first:
+      213: -7834222701790384339
+    second: Ebon tree_19
+  - first:
+      213: 4343028147247073691
+    second: Ebon tree_20
+  - first:
+      213: -7359588358849001625
+    second: Ebon tree_21
+  - first:
+      213: 3240881227611955971
+    second: Ebon tree_22
+  - first:
+      213: -8886564895807885057
+    second: Ebon tree_23
+  - first:
+      213: -1724839708679580176
+    second: Ebon tree_24
+  - first:
+      213: -4749301760174786071
+    second: Ebon tree_25
+  - first:
+      213: 107691394842321697
+    second: Ebon tree_26
+  - first:
+      213: 1553095930820635395
+    second: Ebon tree_27
+  - first:
+      213: -3055063766864969877
+    second: Ebon tree_28
+  - first:
+      213: 3926058561166781656
+    second: Ebon tree_29
+  - first:
+      213: -1887778637211665728
+    second: Ebon tree_30
+  - first:
+      213: -2332373236084779604
+    second: Ebon tree_31
+  - first:
+      213: -5768535461387321676
+    second: Ebon tree_32
+  - first:
+      213: 2983762061297313574
+    second: Ebon tree_33
+  - first:
+      213: 2403636307455231219
+    second: Ebon tree_34
+  - first:
+      213: 4823102191805090132
+    second: Ebon tree_35
+  - first:
+      213: -2965637975333956112
+    second: Ebon tree_36
+  - first:
+      213: 2767225338469871432
+    second: Ebon tree_37
+  - first:
+      213: -72243650176776758
+    second: Ebon tree_38
+  - first:
+      213: 2139464618562710437
+    second: Ebon tree_39
+  - first:
+      213: 7099922288615612658
+    second: Ebon tree_40
+  - first:
+      213: -7495424449949128521
+    second: Ebon tree_41
+  - first:
+      213: -3703552729770629797
+    second: Ebon tree_42
+  - first:
+      213: -514085826532132178
+    second: Ebon tree_43
+  - first:
+      213: -15804591909648278
+    second: Ebon tree_44
+  - first:
+      213: -326056051352966196
+    second: Ebon tree_45
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Ebon tree_0
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 2728
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9a50920a6b7d57e40800000000000000
+      internalID: 5653662086604588457
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_1
+      rect:
+        serializedVersion: 2
+        x: 1143
+        y: 1518
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 433822f8b53ddbe10800000000000000
+      internalID: 2215158981933040436
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_2
+      rect:
+        serializedVersion: 2
+        x: 1571
+        y: 1521
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 067fa32f04ee67460800000000000000
+      internalID: 7239235413753919328
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_3
+      rect:
+        serializedVersion: 2
+        x: 2669
+        y: 1071
+        width: 87
+        height: 465
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 79f4b731216202e70800000000000000
+      internalID: 9088305907111776151
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_4
+      rect:
+        serializedVersion: 2
+        x: 2715
+        y: 0
+        width: 101
+        height: 1536
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb1cbd86a549a86d0800000000000000
+      internalID: -2987412286779702850
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_5
+      rect:
+        serializedVersion: 2
+        x: 1091
+        y: 1511
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ba8312151d3608dc0800000000000000
+      internalID: -3638798748254914389
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_6
+      rect:
+        serializedVersion: 2
+        x: 1123
+        y: 1511
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7713f27d4c84791b0800000000000000
+      internalID: -5649967197252013705
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_7
+      rect:
+        serializedVersion: 2
+        x: 1186
+        y: 1509
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1b4443f3c4c353940800000000000000
+      internalID: 5275188836709975217
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_8
+      rect:
+        serializedVersion: 2
+        x: 2131
+        y: 1512
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 844524769fea00960800000000000000
+      internalID: 7566239760184923208
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_9
+      rect:
+        serializedVersion: 2
+        x: 2560
+        y: 1512
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c3dbfe902967f1080800000000000000
+      internalID: -9214515942972736196
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_10
+      rect:
+        serializedVersion: 2
+        x: 2667
+        y: 1504
+        width: 8
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a7922bf8266a76ea0800000000000000
+      internalID: -5879547846261069446
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_11
+      rect:
+        serializedVersion: 2
+        x: 2677
+        y: 1504
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da3d12a4a2d5bfe50800000000000000
+      internalID: 6844166494933341101
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_12
+      rect:
+        serializedVersion: 2
+        x: 119
+        y: 1459
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e27db2ba21c4a63d0800000000000000
+      internalID: -3212671741110528210
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_13
+      rect:
+        serializedVersion: 2
+        x: 2796
+        y: 1419
+        width: 6
+        height: 11
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 68a8735c082e2d030800000000000000
+      internalID: 3518123301622221446
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_14
+      rect:
+        serializedVersion: 2
+        x: 2667
+        y: 1315
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1eafb98c844fb1aa0800000000000000
+      internalID: -6189084669450126623
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_15
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 1283
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3769dba37c20416d0800000000000000
+      internalID: -3020786395351509389
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_16
+      rect:
+        serializedVersion: 2
+        x: 2769
+        y: 1281
+        width: 9
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 60b084388eae91860800000000000000
+      internalID: 7501284938718120710
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_17
+      rect:
+        serializedVersion: 2
+        x: 2767
+        y: 1200
+        width: 8
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 386997cf12f45e690800000000000000
+      internalID: -7573560190965279101
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_18
+      rect:
+        serializedVersion: 2
+        x: 98
+        y: 1178
+        width: 6
+        height: 9
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00ee16750566ba900800000000000000
+      internalID: 696763062608326144
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_19
+      rect:
+        serializedVersion: 2
+        x: 123
+        y: 1111
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d2fab70d5ff374390800000000000000
+      internalID: -7834222701790384339
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_20
+      rect:
+        serializedVersion: 2
+        x: 2766
+        y: 1099
+        width: 9
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b994f2ee619854c30800000000000000
+      internalID: 4343028147247073691
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_21
+      rect:
+        serializedVersion: 2
+        x: 2707
+        y: 1089
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 76784b1616d7dd990800000000000000
+      internalID: -7359588358849001625
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_22
+      rect:
+        serializedVersion: 2
+        x: 74
+        y: 1059
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 303ea0b3e4ce9fc20800000000000000
+      internalID: 3240881227611955971
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_23
+      rect:
+        serializedVersion: 2
+        x: 2743
+        y: 1060
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ff03aef6f449ca480800000000000000
+      internalID: -8886564895807885057
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_24
+      rect:
+        serializedVersion: 2
+        x: 133
+        y: 1030
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f55aad6c632018e0800000000000000
+      internalID: -1724839708679580176
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_25
+      rect:
+        serializedVersion: 2
+        x: 2731
+        y: 1022
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9e9f4a54637171eb0800000000000000
+      internalID: -4749301760174786071
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_26
+      rect:
+        serializedVersion: 2
+        x: 2774
+        y: 1017
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 12361f6c0c89e7100800000000000000
+      internalID: 107691394842321697
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_27
+      rect:
+        serializedVersion: 2
+        x: 2740
+        y: 622
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 30b2baa3584bd8510800000000000000
+      internalID: 1553095930820635395
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_28
+      rect:
+        serializedVersion: 2
+        x: 133
+        y: 605
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b6fb8d1c0bb3a95d0800000000000000
+      internalID: -3055063766864969877
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_29
+      rect:
+        serializedVersion: 2
+        x: 2695
+        y: 537
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8dc2ab1d5792c7630800000000000000
+      internalID: 3926058561166781656
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_30
+      rect:
+        serializedVersion: 2
+        x: 2762
+        y: 427
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0ca7d62d4534dc5e0800000000000000
+      internalID: -1887778637211665728
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_31
+      rect:
+        serializedVersion: 2
+        x: 2765
+        y: 305
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ca5d98336eeb1afd0800000000000000
+      internalID: -2332373236084779604
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_32
+      rect:
+        serializedVersion: 2
+        x: 2772
+        y: 139
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4beb3c59f8b02ffa0800000000000000
+      internalID: -5768535461387321676
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_33
+      rect:
+        serializedVersion: 2
+        x: 102
+        y: 71
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 627e9ed39c3786920800000000000000
+      internalID: 2983762061297313574
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_34
+      rect:
+        serializedVersion: 2
+        x: 111
+        y: 71
+        width: 12
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3f4c9139c7e6b5120800000000000000
+      internalID: 2403636307455231219
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_35
+      rect:
+        serializedVersion: 2
+        x: 51
+        y: 47
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45943f9b3e91fe240800000000000000
+      internalID: 4823102191805090132
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_36
+      rect:
+        serializedVersion: 2
+        x: 2759
+        y: 40
+        width: 6
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0f59fcb59ffe7d6d0800000000000000
+      internalID: -2965637975333956112
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_37
+      rect:
+        serializedVersion: 2
+        x: 2751
+        y: 35
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 84fe4f0b8c8276620800000000000000
+      internalID: 2767225338469871432
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_38
+      rect:
+        serializedVersion: 2
+        x: 328
+        y: 12
+        width: 8
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ac58fed68c65ffef0800000000000000
+      internalID: -72243650176776758
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_39
+      rect:
+        serializedVersion: 2
+        x: 579
+        y: 7
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 5ab62f63cb7e0bd10800000000000000
+      internalID: 2139464618562710437
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_40
+      rect:
+        serializedVersion: 2
+        x: 1572
+        y: 11
+        width: 8
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f0efc954bdf78260800000000000000
+      internalID: 7099922288615612658
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_41
+      rect:
+        serializedVersion: 2
+        x: 1816
+        y: 10
+        width: 7
+        height: 7
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7b8210cdc27eaf790800000000000000
+      internalID: -7495424449949128521
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_42
+      rect:
+        serializedVersion: 2
+        x: 1927
+        y: 11
+        width: 7
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b55e71f1a665a9cc0800000000000000
+      internalID: -3703552729770629797
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_43
+      rect:
+        serializedVersion: 2
+        x: 1959
+        y: 17
+        width: 6
+        height: 8
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eaa3d7d1aa99dd8f0800000000000000
+      internalID: -514085826532132178
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_44
+      rect:
+        serializedVersion: 2
+        x: 931
+        y: 8
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a68c761bec9d7cff0800000000000000
+      internalID: -15804591909648278
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Ebon tree_45
+      rect:
+        serializedVersion: 2
+        x: 1554
+        y: 6
+        width: 6
+        height: 6
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ccb6d32bfbd997bf0800000000000000
+      internalID: -326056051352966196
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Ebon tree_0: 5653662086604588457
+      Ebon tree_1: 2215158981933040436
+      Ebon tree_10: -5879547846261069446
+      Ebon tree_11: 6844166494933341101
+      Ebon tree_12: -3212671741110528210
+      Ebon tree_13: 3518123301622221446
+      Ebon tree_14: -6189084669450126623
+      Ebon tree_15: -3020786395351509389
+      Ebon tree_16: 7501284938718120710
+      Ebon tree_17: -7573560190965279101
+      Ebon tree_18: 696763062608326144
+      Ebon tree_19: -7834222701790384339
+      Ebon tree_2: 7239235413753919328
+      Ebon tree_20: 4343028147247073691
+      Ebon tree_21: -7359588358849001625
+      Ebon tree_22: 3240881227611955971
+      Ebon tree_23: -8886564895807885057
+      Ebon tree_24: -1724839708679580176
+      Ebon tree_25: -4749301760174786071
+      Ebon tree_26: 107691394842321697
+      Ebon tree_27: 1553095930820635395
+      Ebon tree_28: -3055063766864969877
+      Ebon tree_29: 3926058561166781656
+      Ebon tree_3: 9088305907111776151
+      Ebon tree_30: -1887778637211665728
+      Ebon tree_31: -2332373236084779604
+      Ebon tree_32: -5768535461387321676
+      Ebon tree_33: 2983762061297313574
+      Ebon tree_34: 2403636307455231219
+      Ebon tree_35: 4823102191805090132
+      Ebon tree_36: -2965637975333956112
+      Ebon tree_37: 2767225338469871432
+      Ebon tree_38: -72243650176776758
+      Ebon tree_39: 2139464618562710437
+      Ebon tree_4: -2987412286779702850
+      Ebon tree_40: 7099922288615612658
+      Ebon tree_41: -7495424449949128521
+      Ebon tree_42: -3703552729770629797
+      Ebon tree_43: -514085826532132178
+      Ebon tree_44: -15804591909648278
+      Ebon tree_45: -326056051352966196
+      Ebon tree_5: -3638798748254914389
+      Ebon tree_6: -5649967197252013705
+      Ebon tree_7: 5275188836709975217
+      Ebon tree_8: 7566239760184923208
+      Ebon tree_9: -9214515942972736196
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
