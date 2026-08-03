@@ -35,3 +35,7 @@ telemetry.bin
 
 # Local dev server log
 server/FolkIdle.Server/server_dev.log
+
+# Test artefacts
+client_web/smoke-*.png
+client_web/screens-*.png

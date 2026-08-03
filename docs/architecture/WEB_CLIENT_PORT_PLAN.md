@@ -1,8 +1,12 @@
 # Web Client Port Plan
 
 Status: **Decision gate TAKEN 2026-08-02 - the web client is the direction.**
-Phases 0-5 and 7 built. **Phase 8 (protocol-gap audit) complete, 2026-08-02.**
-Phase 6 is now packaging only. **Unity is abandoned, not merely frozen.**
+Phases 0-11 built. **Unity is abandoned, not merely frozen.**
+
+The backpack is gone as of Phase 11 - everything a character produces lands in
+the unlimited village chest. Two things block balance work: the equipment drop
+rate does not match its own constants, and cooking/crafting are not yet
+assignable jobs. Both are detailed under Phase 11.
 
 ## Phase 8 - the protocol-gap audit (2026-08-02, DONE)
 
@@ -93,6 +97,88 @@ lifetime.
 
 Still not built: push, in-app purchase, icons and signing keys. Still not
 verified: the build has never run on a real phone or a touch screen.
+
+## Phase 10 - verification, purchases, polish (2026-08-02, DONE)
+
+**`scripts/exercise.mjs` is the important artefact of this phase.**
+`smoke-screens.mjs` proves a screen RENDERS; a screen full of buttons that all
+silently do nothing renders perfectly. exercise.mjs clicks through combat,
+forge, market, friends, chat, guild, world boss and equipping and asserts what
+CHANGED. Run it after any gameplay change.
+
+It immediately found that the dev fixture could not fight at all, which led to
+the whole of Phase 11.
+
+- **Purchases.** The server has two paths and only one is safe. REST
+  `/api/v1/billing/verify-receipt` validates the store signature and is
+  idempotent; opcode 39 grants diamonds on an unsigned transaction id and a
+  product hash. Opcode 39 is deliberately never used and a test pins that it
+  never reaches the wire. The store adapter is an interface, not a vendor -
+  picking one is a commercial decision.
+- **Sound** hangs off state events, not buttons: a cue tied to a click fires
+  when the player asks, a cue tied to state fires when it happened.
+- **The animation trap.** Keying a hit reaction on "the damage array is
+  non-empty" fires ~60x/sec, because the render loop rewrites that array
+  whenever it prunes. It starved the main thread so badly that EVERY OTHER
+  SCREEN stopped loading. Key on the newest event id. exercise.mjs now measures
+  frame latency during combat.
+
+## Phase 11 - the backpack is gone (2026-08-03, MOSTLY DONE)
+
+The backpack gave twenty slots shared between material types and equipment
+instances. Measured filling at ~28 equipment drops an hour, so an idle session
+hit the wall in about forty minutes and then produced nothing. Eight hours
+unattended would have needed 224 slots, and 224 rows of loot is not an
+inventory anyone wants to sort.
+
+**It was also unrecoverable.** `InventorySpaceRemaining` was refreshed only by
+a session load or a loot drop carrying a census, and `ProcessSubTick` returned
+while it was 0 - so a full backpack stopped combat, which stopped loot, which
+stopped the only thing that could recount. Bank deposits and mail claims
+changed the database without touching the live payload.
+
+Replaced by the **village chest**: one unlimited store, one screen, filters for
+equipment / weapons / materials / food. Everything is stored; nothing is
+destroyed on the way in, because a low-tier piece is fuel for a forge upgrade
+rather than junk. The only destruction in the game now happens on that screen,
+by the player, with a sell (40% of market value) or a bin.
+
+### Traps this phase produced and corrected
+
+- An intermediate version **auto-scrapped** below a rarity threshold. That was
+  invented, not designed, and it destroyed the forge upgrade path.
+- Loot was briefly routed to `BankEquipmentInstances` on the mistaken belief
+  that the backpack's cap was a property of its table. It is not - the cap was
+  in the census and the tick gate. That routing **broke equipping**, because
+  `EquipmentSlotEngine`, forge fusion, affix reroll and market listing all read
+  `EquipmentInstances`.
+- Removing the Inventory screen took equipping with it. Caught by exercise.mjs.
+- **Web rarity names were off by one from tier 4 up** (Fine/Rare/Superior
+  against the canonical Rare/Ultra Rare/Epic), so a player and the server used
+  the same word for different tiers.
+
+### Open, and blocking balance
+
+- **The equipment drop rate does not match its constants.** 60 rows from 61
+  kills observed, against `MeleeWeaponDropChance` and its three siblings
+  summing to 1.63%. Narrowed - one enqueue per kill, material drops match their
+  own constant exactly - but not solved. Every balance decision downstream
+  depends on this number.
+- `exercise.mjs` reports the monster health bar at 1 distinct width. Passed
+  earlier on the same code path; looks like sampling against a monster killed
+  between frames, but it is a failing assertion.
+
+### Not built
+
+- **Cooking and crafting as assignable jobs.** Activity bands 5000/6000 are
+  free, but crafting is a one-shot command today, not a ticking job - it needs
+  a tick handler, content and assignment UI.
+- **Forge: three identical pieces of the same rarity.** Today it takes a target
+  plus two sacrifices of any tier. `MaxQualityTier` is 13, not 14.
+- **Guild market tax endpoint.** `GuildRecord.TaxRatePct` exists and
+  `MarketEscrowEngine` applies it, but `SetGuildTaxRateAsync` is called from
+  nowhere - no leader can change it. Range is 5-20%.
+- **Market as a single icon on the main map.**
 
 Target: a browser-first client (Svelte + TypeScript), packaged for Android and
 iOS with Capacitor. The Unity client is abandoned.
