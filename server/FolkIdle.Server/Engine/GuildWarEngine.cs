@@ -391,7 +391,72 @@ namespace FolkIdle.Server.Engine
 
                 bool isScheduledWindow = now.DayOfWeek == DayOfWeek.Sunday && now.Hour == 23 && now.Minute == 30;
 
-                if (isScheduledWindow || hasOverdueMatch)
+                // Modul: THE FIRST MATCH USED TO BE UNREACHABLE.
+                //
+                // The overdue probe above made a MISSED window self-healing,
+                // which was the whole point of it - but it only ever sees
+                // matches that already exist. With none, neither branch was
+                // ever true, so two guilds that had never fought waited for
+                // Sunday 23:30, and a server that happened to be down for that
+                // one minute made them wait another week. A brand new
+                // deployment had no guild wars at all until the calendar
+                // agreed, which reads as the feature simply not working.
+                //
+                // Verified by creating a second guild and waiting: no match was
+                // created, because zero existed to be overdue.
+                //
+                // So pairing is also allowed whenever there are at least two
+                // guilds with no active match between them. That does not
+                // change the weekly cadence - an existing match still runs its
+                // full MatchCycleSeconds before it resolves - it only stops the
+                // FIRST one from depending on a single minute per week.
+                bool hasUnmatchedGuilds;
+                using (var probeScope = _serviceProvider.CreateScope())
+                {
+                    var probeDb = probeScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                    // Two flat projections and a client-side set rather than
+                    // one SelectMany over an array initialiser plus a negated
+                    // Contains. Both of those lean on LINQ translation, and
+                    // this probe sits OUTSIDE the pass try/catch in a loop
+                    // started as fire-and-forget (`_ = ExecuteAsync(...)`) - a
+                    // translation failure here would fault the loop task with
+                    // nobody observing it, silently stopping guild war
+                    // matchmaking AND resolution for the process lifetime.
+                    // Two guild ids per match is not enough data to be worth
+                    // that exposure.
+                    var busyA = await probeDb.GuildWarMatches
+                        .AsNoTracking()
+                        .Where(m => m.IsActive)
+                        .Select(m => m.GuildA_Id)
+                        .ToListAsync(stoppingToken);
+                    var busyB = await probeDb.GuildWarMatches
+                        .AsNoTracking()
+                        .Where(m => m.IsActive)
+                        .Select(m => m.GuildB_Id)
+                        .ToListAsync(stoppingToken);
+
+                    var busy = new System.Collections.Generic.HashSet<long>(busyA);
+                    busy.UnionWith(busyB);
+
+                    var allGuildIds = await probeDb.GuildRecords
+                        .AsNoTracking()
+                        .Select(g => g.Id)
+                        .ToListAsync(stoppingToken);
+
+                    int unmatched = 0;
+                    for (int i = 0; i < allGuildIds.Count; i++)
+                    {
+                        if (!busy.Contains(allGuildIds[i])) unmatched++;
+                    }
+
+                    // Two, because a war needs an opponent - one lonely guild
+                    // must not spin the pairing pass every sixty seconds
+                    // forever.
+                    hasUnmatchedGuilds = unmatched >= 2;
+                }
+
+                if (isScheduledWindow || hasOverdueMatch || hasUnmatchedGuilds)
                 {
                     using var scope = _serviceProvider.CreateScope();
                     var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -419,6 +484,7 @@ namespace FolkIdle.Server.Engine
                             .FromSqlRaw("SELECT * FROM \"GuildRecords\" FOR UPDATE")
                             .ToListAsync(stoppingToken);
                         var matched = new System.Collections.Generic.HashSet<long>();
+                        int created = 0;
 
                         foreach (var gA in guilds)
                         {
@@ -452,14 +518,28 @@ namespace FolkIdle.Server.Engine
                                     IsActive = true
                                 };
                                 dbContext.GuildWarMatches.Add(newMatch);
+                                created++;
                             }
+                        }
+
+                        if (created > 0)
+                        {
+                            Console.WriteLine($"GuildWar: paired {created} match(es).");
                         }
 
                         await dbContext.SaveChangesAsync(stoppingToken);
                         await transaction.CommitAsync(stoppingToken);
                     }
-                    catch (Exception)
+                    catch (Exception ex)
                     {
+                        // Modul: this used to be `catch (Exception)` with a bare
+                        // rollback and no message. Guild war matchmaking could
+                        // therefore fail on every single pass - forever - and
+                        // the only symptom anywhere was that no wars happened,
+                        // which is indistinguishable from "no window yet".
+                        // Diagnosing the first-match gate meant reading the
+                        // source because the log had nothing to say.
+                        Console.WriteLine($"GuildWar matchmaking pass failed: {ex.Message}");
                         await transaction.RollbackAsync(stoppingToken);
                     }
                     
