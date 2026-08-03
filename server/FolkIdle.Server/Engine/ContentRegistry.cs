@@ -731,6 +731,48 @@ namespace FolkIdle.Server.Engine
             return authored > 0 ? authored : ((monsterId - 1) % 30) / 6 + 1;
         }
 
+        /// <summary>The first of the 25 canonical monsters. Ids 1-90 are legacy.</summary>
+        public const int FirstCanonicalMonsterId = 91;
+
+        /// <summary>The last canonical monster.</summary>
+        public const int LastCanonicalMonsterId = 115;
+
+        /// <summary>Four ordinary monsters and a boss, five times over.</summary>
+        public const int MonstersPerRegion = 5;
+
+        /// <summary>
+        /// Whether a monster is the boss of its region - the FIFTH of each
+        /// group of five, so ids 95, 100, 105, 110 and 115.
+        ///
+        /// THIS REPLACES `monsterId % 6 == 0`, WHICH WAS WRONG IN BOTH
+        /// DIRECTIONS AND DROVE THREE SEPARATE REWARDS.
+        ///
+        /// None of the five real bosses is divisible by six, so no boss ever
+        /// paid a boss reward. Meanwhile 96, 102, 108 and 114 - four perfectly
+        /// ordinary monsters - matched it, and every kill of one of them
+        /// granted a guaranteed armour drop, 500 Guild War points instead of
+        /// 10, and TEN PREMIUM DIAMONDS. Thorny Vine is 96, and at the measured
+        /// kill rate that is roughly twenty thousand diamonds an hour of free
+        /// premium currency.
+        ///
+        /// The old heuristic was copied between call sites with a comment
+        /// saying it kept the meaning consistent everywhere, which is exactly
+        /// how one wrong idea reached three rewards. There is now one function
+        /// and the call sites ask it.
+        ///
+        /// Legacy monsters 1-90 are not part of any region and are never
+        /// bosses; the old rule made every sixth one of those a boss too.
+        /// </summary>
+        public static bool IsRegionalBoss(int monsterId)
+        {
+            if (monsterId < FirstCanonicalMonsterId || monsterId > LastCanonicalMonsterId)
+            {
+                return false;
+            }
+
+            return (monsterId - FirstCanonicalMonsterId + 1) % MonstersPerRegion == 0;
+        }
+
         // Modul: infinite endgame scaling - authored content currently only
         // defines RegionTier 1-10, so a player who out-levels the highest
         // authored region previously hit a hard content wall (RegionTier

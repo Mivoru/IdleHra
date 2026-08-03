@@ -5548,7 +5548,11 @@ namespace FolkIdle.Server.Domain.Combat
                     GainedXp = seasonalCombatXp
                 });
 
-                bool isRegionalBoss = activeMonster.Id % 6 == 0;
+                // Modul: one shared definition. This site and CombatLootEngine
+                // both used `% 6 == 0`, copied between them on the reasoning
+                // that it kept "regional boss" consistent - which it did, at
+                // the wrong monsters. See ContentRegistry.IsRegionalBoss.
+                bool isRegionalBoss = ContentRegistry.IsRegionalBoss(activeMonster.Id);
 
                 if (payload.ActiveGuildWarId > 0)
                 {
@@ -5564,7 +5568,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                 // Modul 03: 0.05% flat Premium Diamond drop from standard/elite
                 // monsters, guaranteed 10-diamond cluster from Regional Bosses
-                // (same activeMonster.Id % 6 == 0 heuristic used for Guild War
+                // (ContentRegistry.IsRegionalBoss, shared with Guild War
                 // Combat Vanguard WP above). PremiumCurrency is updated directly
                 // in-memory here (no DB access needed on the hot path) and
                 // persisted on the next checkpoint flush like gold.

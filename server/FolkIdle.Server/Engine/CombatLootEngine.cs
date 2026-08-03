@@ -321,11 +321,10 @@ namespace FolkIdle.Server.Engine
             int monsterRegion = ContentRegistry.GetMonsterRegionTier(monsterId);
             if (monsterRegion < 1) monsterRegion = 1;
 
-            // Modul 03: no dedicated "IsRegionalBoss" flag exists anywhere in
-            // ContentRegistry - this reuses the exact heuristic already
-            // established for Guild War Combat Vanguard WP (activeMonster.Id
-            // % 6 == 0), so "regional boss" means the same thing everywhere.
-            bool isRegionalBoss = monsterId % 6 == 0;
+            // Modul: ContentRegistry.IsRegionalBoss, not `% 6 == 0`. The old
+            // heuristic matched no real boss and four ordinary monsters - see
+            // that method for what it cost.
+            bool isRegionalBoss = ContentRegistry.IsRegionalBoss(monsterId);
 
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
