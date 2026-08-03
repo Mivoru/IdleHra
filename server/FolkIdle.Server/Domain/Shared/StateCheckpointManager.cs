@@ -699,7 +699,10 @@ namespace FolkIdle.Server.Domain.Shared
                 // above; capacity is carried separately so the difference can be
                 // recomputed rather than only decremented.
                 InventoryCapacity = backpackCapacity,
-                InventorySpaceRemaining = Math.Max(0, backpackCapacity - occupiedBackpackSlots),
+                // Modul: vestigial since the backpack was removed - materials go to
+                // the unbounded chest and equipment to the bank or to scrap. Full
+                // capacity keeps every remaining defensive decrement a no-op.
+                InventorySpaceRemaining = backpackCapacity,
 
                 // Modul: larder. Restores the three auto-eat slots and the
                 // player's chosen threshold. All four were previously

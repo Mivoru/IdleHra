@@ -3,7 +3,6 @@
   import {
     playerState,
     visualState,
-    lootLog,
     connectionStatus,
     observedMaxPlayerHp,
     damageEvents,
@@ -20,11 +19,11 @@
     type MonsterLootEntry,
   } from '../lib/net/content';
   import { authedGet } from '../lib/net/auth';
-  import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import { HALT_REASONS } from '../lib/ui/slots';
   import Bar from '../lib/ui/Bar.svelte';
   import FloatingDamage from '../lib/ui/FloatingDamage.svelte';
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
+  import SessionLoot from '../lib/ui/SessionLoot.svelte';
 
   let registry = $state<ContentRegistry | null>(null);
   let contentError = $state('');
@@ -172,10 +171,7 @@
           <span class="dim">Gold</span>
           <strong>{Math.floor(visual?.Gold ?? snap.Gold).toLocaleString()}</strong>
         </div>
-        <div>
-          <span class="dim">Backpack</span>
-          <strong>{snap.InventoryCapacity - snap.InventorySpaceRemaining}/{snap.InventoryCapacity}</strong>
-        </div>
+
       </div>
 
       <div class="hpblock">
@@ -285,28 +281,8 @@
       {/if}
     {/if}
 
-    <h3>Loot received</h3>
-    {#if $lootLog.length === 0}
-      <p class="dim">Nothing yet.</p>
-    {:else}
-      <ul class="drops">
-        {#each $lootLog as entry (entry.id)}
-          <li>
-            <span
-              style="color: {rarityColor(entry.qualityTier)}"
-              class:rarity-glow={shouldGlow(entry.qualityTier)}
-            >
-              {itemName(registry, entry.itemId)}
-              {#if entry.quantity > 1}&times;{entry.quantity}{/if}
-            </span>
-            <span class="dim">
-              {#if entry.qualityTier > 0}[{rarityName(entry.qualityTier)}]{/if}
-              from {monsterName(registry, entry.monsterId)}
-            </span>
-          </li>
-        {/each}
-      </ul>
-    {/if}
+    <SessionLoot {registry} />
+
   </section>
 </div>
 

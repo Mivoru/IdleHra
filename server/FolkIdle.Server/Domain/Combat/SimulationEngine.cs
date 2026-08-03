@@ -1025,9 +1025,22 @@ namespace FolkIdle.Server.Domain.Combat
                     ref var censusPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, census.PlayerId);
                     if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref censusPayload))
                     {
+                        // Modul: VESTIGIAL SINCE THE BACKPACK WAS REMOVED.
+                        //
+                        // Materials go to the unbounded village chest and
+                        // equipment to the bank or to scrap, so there is no
+                        // per-character carrying capacity left to run out of.
+                        // The field survives because a dozen gathering and
+                        // loot loops still decrement it defensively and the
+                        // wire still carries it; reporting full capacity keeps
+                        // every one of those a no-op without touching them, and
+                        // keeps the packet layout unchanged.
+                        //
+                        // It is deliberately NOT deleted in the same pass that
+                        // changed the loot routing - one behaviour change at a
+                        // time, and the layout guard pins this packet's size.
                         int capacity = censusPayload.InventoryCapacity > 0 ? censusPayload.InventoryCapacity : DefaultBackpackCapacity;
-                        int remaining = capacity - census.OccupiedSlots;
-                        censusPayload.InventorySpaceRemaining = remaining > 0 ? remaining : 0;
+                        censusPayload.InventorySpaceRemaining = capacity;
 
                         // Clearing the halt here as well as recomputing the
                         // number: the tick that follows only clears it when an
@@ -4906,10 +4919,10 @@ namespace FolkIdle.Server.Domain.Combat
         // overhead on the common single-character path.
         private static bool HasAnyWorkingSlot(ref TickStatePayload payload, int unlockedSlots)
         {
-            if (payload.InventorySpaceRemaining <= 0)
-            {
-                return false;
-            }
+            // Modul: the backpack no longer gates work. This used to return
+            // false with no room left, which stopped every slot on the account
+            // at once - the account-wide version of the same wall
+            // ProcessSubTick had.
 
             // Slot 0: exactly the original condition, no character requirement.
             if (payload.ActiveActivityId > 0)
@@ -4943,7 +4956,20 @@ namespace FolkIdle.Server.Domain.Combat
             //
             // The account-level prologue that used to live here now runs once
             // per tick in ProcessAccountTick.
-            if (payload.ActiveActivityId <= 0 || payload.InventorySpaceRemaining <= 0)
+            // Modul: THE BACKPACK NO LONGER GATES THE SIMULATION.
+            //
+            // This line used to read `|| payload.InventorySpaceRemaining <= 0`,
+            // which stopped combat, gathering, XP - everything - the moment a
+            // character had twenty things. It also made CombatLootEngine's own
+            // graceful-degradation path unreachable dead code: that engine
+            // already knew how to scrap an overflowing drop into stackable
+            // material, but no tick ever ran to ask it.
+            //
+            // Loot now routes by WHAT IT IS. Materials go to the unbounded
+            // village chest; equipment goes to the bank if it clears the keep
+            // threshold and scraps into material if it does not. There is no
+            // capacity left to run out of, so there is nothing here to gate on.
+            if (payload.ActiveActivityId <= 0)
             {
                 return;
             }
