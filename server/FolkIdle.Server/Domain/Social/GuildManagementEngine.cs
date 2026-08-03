@@ -54,11 +54,37 @@ namespace FolkIdle.Server.Domain.Social
         // Creates a new guild with the caller as its sole member and Leader.
         // Returns the new guild's id, or 0 if rejected (caller already in a
         // guild, empty/overlong name, or duplicate guild name).
-        public async Task<long> CreateGuildAsync(long playerId, string guildName)
+        /// <summary>
+        /// Why a guild could not be created.
+        ///
+        /// Modul: this method returned a bare 0 for four completely different
+        /// refusals - already in a guild, below the level gate, name taken,
+        /// name malformed - and the endpoint turned all four into a 409 with
+        /// no body. The player was told "Could not create" and nothing else,
+        /// with no way to find out that the requirement is level 20.
+        /// </summary>
+        public enum GuildCreateRefusal
+        {
+            None = 0,
+            NameInvalid = 1,
+            AlreadyInAGuild = 2,
+            LevelTooLow = 3,
+            NameTaken = 4,
+        }
+
+        public sealed class GuildCreateOutcome
+        {
+            public long GuildId;
+            public GuildCreateRefusal Refusal;
+            public int RequiredLevel;
+            public int CurrentLevel;
+        }
+
+        public async Task<GuildCreateOutcome> CreateGuildAsync(long playerId, string guildName)
         {
             if (string.IsNullOrWhiteSpace(guildName) || guildName.Length > 100)
             {
-                return 0;
+                return new GuildCreateOutcome { Refusal = GuildCreateRefusal.NameInvalid };
             }
 
             await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
@@ -66,7 +92,7 @@ namespace FolkIdle.Server.Domain.Social
 
             try
             {
-                long createdGuildId = await strategy.ExecuteAsync(async () =>
+                var outcome = await strategy.ExecuteAsync(async () =>
                 {
                     context.ChangeTracker.Clear();
                     using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
@@ -78,7 +104,7 @@ namespace FolkIdle.Server.Domain.Social
                     if (profile == null || profile.GuildId > 0)
                     {
                         await transaction.RollbackAsync();
-                        return 0L;
+                        return new GuildCreateOutcome { Refusal = GuildCreateRefusal.AlreadyInAGuild };
                     }
 
                     // Modul: Advanced Economy Refactoring, Part 3.1 -
@@ -86,7 +112,12 @@ namespace FolkIdle.Server.Domain.Social
                     if (profile.CurrentLevel < MinGuildInteractionLevel)
                     {
                         await transaction.RollbackAsync();
-                        return 0L;
+                        return new GuildCreateOutcome
+                        {
+                            Refusal = GuildCreateRefusal.LevelTooLow,
+                            RequiredLevel = MinGuildInteractionLevel,
+                            CurrentLevel = profile.CurrentLevel,
+                        };
                     }
 
                     // Serializable isolation turns this check-then-insert
@@ -99,7 +130,7 @@ namespace FolkIdle.Server.Domain.Social
                     if (nameTaken)
                     {
                         await transaction.RollbackAsync();
-                        return 0L;
+                        return new GuildCreateOutcome { Refusal = GuildCreateRefusal.NameTaken };
                     }
 
                     var guild = new GuildRecord
@@ -121,25 +152,25 @@ namespace FolkIdle.Server.Domain.Social
 
                     await context.SaveChangesAsync();
                     await transaction.CommitAsync();
-                    return guild.Id;
+                    return new GuildCreateOutcome { GuildId = guild.Id };
                 });
 
-                if (createdGuildId > 0)
+                if (outcome.GuildId > 0)
                 {
                     _playerRegistry.GuildMembershipChangeQueue.Enqueue(new GuildMembershipChangeNotification
                     {
                         PlayerId = playerId,
                         OldGuildId = 0,
-                        NewGuildId = createdGuildId
+                        NewGuildId = outcome.GuildId
                     });
                 }
 
-                return createdGuildId;
+                return outcome;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Guild creation failed - PlayerId {playerId}, Name '{guildName}': {ex.Message}");
-                return 0;
+                return new GuildCreateOutcome { Refusal = GuildCreateRefusal.NameInvalid };
             }
         }
 

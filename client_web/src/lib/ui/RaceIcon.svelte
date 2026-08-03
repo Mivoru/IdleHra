@@ -17,7 +17,7 @@
 
   interface Props {
     raceId: number;
-    size?: 'sm' | 'md';
+    size?: 'sm' | 'md' | 'xl';
     /** Show the race name beside the image. */
     label?: boolean;
   }
@@ -67,6 +67,18 @@
   .race[data-size='md'] .fallback {
     width: 4.4rem;
     height: 3rem;
+  }
+
+  /* The paper doll's centrepiece: the character stands between two columns of
+     equipment slots, so it has to be big enough to read as a figure rather
+     than an icon. */
+  .race[data-size='xl'] img,
+  .race[data-size='xl'] .fallback {
+    width: 100%;
+    max-width: 13rem;
+    height: auto;
+    aspect-ratio: 3 / 2;
+    object-fit: contain;
   }
 
   .fallback {

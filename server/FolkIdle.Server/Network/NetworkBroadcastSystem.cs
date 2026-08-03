@@ -1174,6 +1174,14 @@ namespace FolkIdle.Server.Network
             // screen only cares whether an item is available at all.
             public int EquippedByCharacterSlot { get; set; } = -1;
 
+            // Modul: WHICH equipment slot it is worn in, 0-6, or -1 if it is
+            // merely carried. The paper doll used to re-derive this from the
+            // BaseItemId with the client's port of ResolveSlotIndex - which
+            // disagreed with the character row for four of the seven pieces,
+            // so a fully equipped character showed three filled slots and four
+            // empty ones. The row already knows; it just was not being asked.
+            public int EquippedInSlotIndex { get; set; } = -1;
+
             // Modul: Affix System Unification. Without these the Inventory
             // screen could name an item and its rarity but say nothing about
             // what it actually does, which is the entire point of a rarity
@@ -1281,6 +1289,11 @@ namespace FolkIdle.Server.Network
         private sealed class GuildCreateResponse
         {
             public long GuildId { get; set; }
+        }
+
+        private sealed class GuildCreateRefusalResponse
+        {
+            public string Reason { get; set; } = string.Empty;
         }
 
         private sealed class GuildJoinResponse
@@ -3037,20 +3050,23 @@ namespace FolkIdle.Server.Network
                 // because the Roster screen is laid out by slot and would only
                 // have to map the Guid back anyway.
                 var wornItemSlotIndices = new Dictionary<long, int>();
+                var wornItemEquipSlots = new Dictionary<long, int>();
                 foreach (var rosterCharacter in await db.CharacterRecords.AsNoTracking().Where(c => c.PlayerId == playerId).ToListAsync())
                 {
-                    void RecordWorn(long? itemId)
+                    void RecordWorn(long? itemId, int equipSlotIndex)
                     {
-                        if (itemId.HasValue) wornItemSlotIndices[itemId.Value] = rosterCharacter.SlotIndex;
+                        if (!itemId.HasValue) return;
+                        wornItemSlotIndices[itemId.Value] = rosterCharacter.SlotIndex;
+                        wornItemEquipSlots[itemId.Value] = equipSlotIndex;
                     }
 
-                    RecordWorn(rosterCharacter.EquippedWeaponId);
-                    RecordWorn(rosterCharacter.EquippedHelmetId);
-                    RecordWorn(rosterCharacter.EquippedChestId);
-                    RecordWorn(rosterCharacter.EquippedGlovesId);
-                    RecordWorn(rosterCharacter.EquippedLeggingsId);
-                    RecordWorn(rosterCharacter.EquippedBootsId);
-                    RecordWorn(rosterCharacter.EquippedOffhandId);
+                    RecordWorn(rosterCharacter.EquippedWeaponId, EquipmentSlotEngine.SlotWeapon);
+                    RecordWorn(rosterCharacter.EquippedHelmetId, EquipmentSlotEngine.SlotHelmet);
+                    RecordWorn(rosterCharacter.EquippedChestId, EquipmentSlotEngine.SlotChest);
+                    RecordWorn(rosterCharacter.EquippedGlovesId, EquipmentSlotEngine.SlotGloves);
+                    RecordWorn(rosterCharacter.EquippedLeggingsId, EquipmentSlotEngine.SlotLeggings);
+                    RecordWorn(rosterCharacter.EquippedBootsId, EquipmentSlotEngine.SlotBoots);
+                    RecordWorn(rosterCharacter.EquippedOffhandId, EquipmentSlotEngine.SlotOffhand);
                 }
 
                 var response = new PlayerInventorySnapshotResponse
@@ -3098,6 +3114,7 @@ namespace FolkIdle.Server.Network
                         IsEquipped = wornItemSlotIndices.ContainsKey(item.Id),
                         // Modul: roster loadouts. -1 when carried rather than worn.
                         EquippedByCharacterSlot = wornItemSlotIndices.TryGetValue(item.Id, out int wearerSlotIndex) ? wearerSlotIndex : -1,
+                        EquippedInSlotIndex = wornItemEquipSlots.TryGetValue(item.Id, out int wornEquipSlot) ? wornEquipSlot : -1,
                         Affixes = affixes,
                         IsAffixLocked = item.IsAffixLocked || payloadLockFlag
                     });
@@ -4166,17 +4183,34 @@ namespace FolkIdle.Server.Network
                     _serviceProvider.GetRequiredService<RetryingDbContextOptions>(),
                     _playerSessionRegistry ?? throw new InvalidOperationException("NetworkBroadcastSystem: PlayerSessionRegistry not registered - call RegisterPlayerSessionRegistry before Start()."));
 
-                long guildId = await guildManagementEngine.CreateGuildAsync(playerId, guildName);
-                if (guildId <= 0)
+                var outcome = await guildManagementEngine.CreateGuildAsync(playerId, guildName);
+                if (outcome.GuildId <= 0)
                 {
+                    // Modul: the refusal now says which rule was broken. This
+                    // used to be a bare 409 with no body for four different
+                    // reasons, so the player was told "Could not create" and
+                    // had no way to discover that guilds need level 20.
+                    string reason = outcome.Refusal switch
+                    {
+                        GuildManagementEngine.GuildCreateRefusal.AlreadyInAGuild
+                            => "You are already in a guild. Leave it before founding another.",
+                        GuildManagementEngine.GuildCreateRefusal.LevelTooLow
+                            => $"Guilds open at level {outcome.RequiredLevel}. You are level {outcome.CurrentLevel}.",
+                        GuildManagementEngine.GuildCreateRefusal.NameTaken
+                            => "That name is taken.",
+                        _ => "That name will not do - one to a hundred characters.",
+                    };
+
                     context.Response.StatusCode = 409;
+                    context.Response.ContentType = "application/json";
+                    await JsonSerializer.SerializeAsync(context.Response.OutputStream, new GuildCreateRefusalResponse { Reason = reason });
                     context.Response.Close();
                     return;
                 }
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
-                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new GuildCreateResponse { GuildId = guildId });
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new GuildCreateResponse { GuildId = outcome.GuildId });
             }
             catch (Exception ex)
             {

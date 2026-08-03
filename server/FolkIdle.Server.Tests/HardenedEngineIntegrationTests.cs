@@ -4375,7 +4375,7 @@ namespace FolkIdle.Server.Tests
                 simulationEngine.InjectVirtualPlayer(new TickStatePayload { PlayerId = leaderPlayerId, GuildId = 0, CurrentLevel = 25 });
                 simulationEngine.InjectVirtualPlayer(new TickStatePayload { PlayerId = memberPlayerId, GuildId = 0, CurrentLevel = 25 });
 
-                long guildId = await managementEngine.CreateGuildAsync(leaderPlayerId, guildName);
+                long guildId = (await managementEngine.CreateGuildAsync(leaderPlayerId, guildName)).GuildId;
                 Assert.True(guildId > 0, "CreateGuildAsync must return the new guild's id.");
 
                 await WaitForConditionAsync(() => simulationEngine.IsPlayerInGuildIndex(guildId, leaderPlayerId),
@@ -4860,7 +4860,7 @@ namespace FolkIdle.Server.Tests
 
             var managementEngine = new GuildManagementEngine(_fixture.RetryingOptions, _fixture.PlayerRegistry);
 
-            long guildId = await managementEngine.CreateGuildAsync(leaderPlayerId, guildName);
+            long guildId = (await managementEngine.CreateGuildAsync(leaderPlayerId, guildName)).GuildId;
             Assert.True(guildId > 0);
 
             // Raise MaxMembers so the concurrent phase below exercises
@@ -6685,10 +6685,16 @@ namespace FolkIdle.Server.Tests
 
             var managementEngine = new GuildManagementEngine(_fixture.RetryingOptions, _fixture.PlayerRegistry);
 
-            long rejectedGuildId = await managementEngine.CreateGuildAsync(underLeveledId, "UnderLeveledGuild970005401");
+            // Modul: the refusal now carries a REASON. Asserted as well as the
+            // rejection itself - a bare 0 for four different rules is what left
+            // the player with "Could not create" and nothing else.
+            var rejected = await managementEngine.CreateGuildAsync(underLeveledId, "UnderLeveledGuild970005401");
+            long rejectedGuildId = rejected.GuildId;
+            Assert.Equal(GuildManagementEngine.GuildCreateRefusal.LevelTooLow, rejected.Refusal);
+            Assert.True(rejected.RequiredLevel > rejected.CurrentLevel);
             Assert.Equal(0L, rejectedGuildId);
 
-            long guildId = await managementEngine.CreateGuildAsync(leaderId, "AccessControlGuild970005402");
+            long guildId = (await managementEngine.CreateGuildAsync(leaderId, "AccessControlGuild970005402")).GuildId;
             Assert.True(guildId > 0L);
 
             // Leader raises the join bar to 40 and requires applications.

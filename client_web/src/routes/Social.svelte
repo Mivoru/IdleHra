@@ -98,8 +98,19 @@
       // The endpoint reads `guildName`, not `name` - a mismatch here is a
       // bare 400 with no body, which says nothing about which field was wrong.
       const response = await post('/api/v1/guilds/create', { guildName: name });
-      if (response.ok) pushLocalNotice(`Guild "${name}" created.`, 'info');
-      else pushLocalNotice(`Could not create "${name}".`);
+      if (response.ok) {
+        pushLocalNotice(`Guild "${name}" created.`, 'info');
+      } else {
+        // The endpoint answers a refusal with { reason }. It used to be a bare
+        // 409 with no body for four different rules, so "Could not create" was
+        // the whole of what a player could learn - including that guilds need
+        // level 20.
+        const reason = await response
+          .json()
+          .then((body: { Reason?: string; reason?: string }) => body.Reason ?? body.reason ?? '')
+          .catch(() => '');
+        pushLocalNotice(reason || `Could not create "${name}".`);
+      }
       if (response.ok) newGuildName = '';
       refreshGuilds();
     } finally {

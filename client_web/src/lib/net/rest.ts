@@ -61,6 +61,11 @@ export interface InventoryEquipment {
   IsEquipped: boolean;
   /** Which character slot (0-2) wears this, or -1 if it is merely carried. */
   EquippedByCharacterSlot: number;
+  /** Which of the seven equipment slots it is worn in, or -1. Sent by the
+   *  server rather than re-derived from the BaseItemId: the two disagreed for
+   *  four of the seven pieces, so a fully equipped character rendered three
+   *  filled slots and four empty ones. */
+  EquippedInSlotIndex: number;
   Affixes: AffixMap;
   IsAffixLocked: boolean;
 }

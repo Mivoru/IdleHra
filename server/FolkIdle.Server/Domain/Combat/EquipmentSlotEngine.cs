@@ -145,6 +145,74 @@ namespace FolkIdle.Server.Domain.Combat
         // Three-item variant for ForgeSplicingEngine, which locks a target and
         // two sacrifices together and would otherwise need three round trips
         // inside one Serializable transaction.
+        /// <summary>
+        /// Clears equip pointers to EquipmentInstances that no longer exist.
+        ///
+        /// Modul: found by the paper doll. The dev fixture's main character had
+        /// seven pieces on its row and only three of them were rows in
+        /// EquipmentInstances - it was "wearing" four items that had been
+        /// deleted out from under it. The screen rendered three filled slots
+        /// and four empty ones, which is the truth, and looked like a bug in
+        /// the screen.
+        ///
+        /// A dangling pointer is not merely cosmetic: every stat recompute
+        /// walks these fields, so the character silently loses the armour it
+        /// believes it is wearing with nothing anywhere saying so.
+        ///
+        /// Fixing the writers that can orphan a row is the real cure and the
+        /// forge already guards against it; this is the sweep that heals rows
+        /// already broken, and it runs at hydration where the cost is one query
+        /// per login rather than one per tick.
+        /// </summary>
+        public static async Task<int> ClearDanglingEquipReferencesAsync(FolkIdleDbContext db, long playerId)
+        {
+            var characters = await db.CharacterRecords.Where(c => c.PlayerId == playerId).ToListAsync();
+            if (characters.Count == 0) return 0;
+
+            var referenced = new HashSet<long>();
+            foreach (var character in characters)
+            {
+                void Note(long? id) { if (id.HasValue) referenced.Add(id.Value); }
+                Note(character.EquippedWeaponId);
+                Note(character.EquippedHelmetId);
+                Note(character.EquippedChestId);
+                Note(character.EquippedGlovesId);
+                Note(character.EquippedLeggingsId);
+                Note(character.EquippedBootsId);
+                Note(character.EquippedOffhandId);
+            }
+
+            if (referenced.Count == 0) return 0;
+
+            var alive = (await db.EquipmentInstances
+                .AsNoTracking()
+                .Where(e => referenced.Contains(e.Id))
+                .Select(e => e.Id)
+                .ToListAsync()).ToHashSet();
+
+            int cleared = 0;
+            foreach (var character in characters)
+            {
+                long? Keep(long? id)
+                {
+                    if (!id.HasValue || alive.Contains(id.Value)) return id;
+                    cleared++;
+                    return null;
+                }
+
+                character.EquippedWeaponId = Keep(character.EquippedWeaponId);
+                character.EquippedHelmetId = Keep(character.EquippedHelmetId);
+                character.EquippedChestId = Keep(character.EquippedChestId);
+                character.EquippedGlovesId = Keep(character.EquippedGlovesId);
+                character.EquippedLeggingsId = Keep(character.EquippedLeggingsId);
+                character.EquippedBootsId = Keep(character.EquippedBootsId);
+                character.EquippedOffhandId = Keep(character.EquippedOffhandId);
+            }
+
+            if (cleared > 0) await db.SaveChangesAsync();
+            return cleared;
+        }
+
         public static async Task<bool> IsAnyEquippedAnywhereAsync(FolkIdleDbContext db, long playerId, long firstItemId, long secondItemId, long thirdItemId)
         {
             return await db.CharacterRecords

@@ -418,9 +418,20 @@ namespace FolkIdle.Server.Domain.Progression
                 }
             }
 
-            int population = await db.VillageResidents
+            // Modul: THE VILLAGE COUNTED A TABLE NOTHING EVER WROTE TO.
+            //
+            // VillageResidents has no INSERT anywhere in the codebase - not in
+            // registration, not in breeding, not in the village engine. So
+            // every player's population read 0/10 forever while the Character
+            // screen listed the two humans they actually own, and every
+            // achievement and score keyed on it was dead.
+            //
+            // The people who live in your village ARE your characters. That is
+            // the table breeding writes, the roster reads and the tick
+            // simulates, so it is the one that answers "who lives here".
+            int population = await db.CharacterRecords
                 .AsNoTracking()
-                .CountAsync(v => v.PlayerId == playerId && v.IsActive);
+                .CountAsync(c => c.PlayerId == playerId && !c.IsLockedInEscrow);
 
             return new InfrastructureUpdateNotification
             {
@@ -451,9 +462,9 @@ namespace FolkIdle.Server.Domain.Progression
                 .Where(v => v.PlayerId == playerId)
                 .SumAsync(v => (int?)v.CurrentLevel) ?? 0;
 
-            int activeResidents = await db.VillageResidents
+            int activeResidents = await db.CharacterRecords
                 .AsNoTracking()
-                .CountAsync(v => v.PlayerId == playerId && v.IsActive);
+                .CountAsync(c => c.PlayerId == playerId && !c.IsLockedInEscrow);
 
             return infrastructureScore * 100 + activeResidents * 10;
         }

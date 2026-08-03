@@ -450,6 +450,10 @@ namespace FolkIdle.Server.Domain.Shared
             // SlotIndex the same thing, which is what every consumer already
             // assumed, and makes .Take(3) mean "the first three slots" rather
             // than "any three".
+            // Modul: heal dangling equip pointers before anything reads them.
+            // See EquipmentSlotEngine.ClearDanglingEquipReferencesAsync.
+            await Domain.Combat.EquipmentSlotEngine.ClearDanglingEquipReferencesAsync(dbContext, playerId);
+
             var characters = await dbContext.CharacterRecords
                 .Include(c => c.Lineage)
                 .Where(c => c.PlayerId == playerId && !c.IsLockedInEscrow && !dbContext.MentorshipAcademyAssignments.Any(m => m.CharacterId == c.Id))
@@ -599,9 +603,20 @@ namespace FolkIdle.Server.Domain.Shared
                 unlockedSkillsBitmask = ActiveSkillEngine.WithSkillUnlocked(unlockedSkillsBitmask, unlockedSkillRows[i].SkillId);
             }
 
-            int activeResidentCount = await dbContext.VillageResidents
+            // Modul: THE VILLAGE COUNTED A TABLE NOTHING EVER WROTE TO.
+            //
+            // VillageResidents has no INSERT anywhere in the codebase - not in
+            // registration, not in breeding, not in the village engine. So
+            // every player's population read 0/10 forever while the Character
+            // screen listed the two humans they actually own, and every
+            // achievement and score keyed on it was dead.
+            //
+            // The people who live in your village ARE your characters. That is
+            // the table breeding writes, the roster reads and the tick
+            // simulates, so it is the one that answers "who lives here".
+            int activeResidentCount = await dbContext.CharacterRecords
                 .AsNoTracking()
-                .CountAsync(v => v.PlayerId == playerId && v.IsActive);
+                .CountAsync(c => c.PlayerId == playerId && !c.IsLockedInEscrow);
 
             int activeMentorshipContracts = await dbContext.MentorshipContracts
                 .AsNoTracking()

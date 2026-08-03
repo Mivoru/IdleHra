@@ -356,6 +356,56 @@ await go('World Boss');
   }
 }
 
+// --- the paper doll ----------------------------------------------------------
+// Equipment used to be a LIST of seven rows, each with its own dropdown and
+// Equip button, in the same panel that handed out jobs. Dressing a character
+// and telling them what to do are different acts and looked identical.
+await go('Character');
+{
+  const text = await page.evaluate(() => document.body.innerText);
+  // The dev fixture is Town Hall 5, so all three slots are open and there is
+  // nothing to lock. Asserted as a conditional rather than dropped: a locked
+  // slot must NEVER render as a bare row again, which is what it did before -
+  // visible, unusable and silent about why.
+  const lockedRows = await page.locator('.rostercard.locked').count();
+  record(
+    'a locked character slot names what unlocks it',
+    lockedRows === 0 || /Town Hall \d/.test(text),
+    lockedRows === 0 ? 'all slots open at Town Hall 5' : `${lockedRows} locked`,
+  );
+
+  // A gear slot is a button now; clicking one opens its picker.
+  const gearSlot = page.locator('.gearslot').first();
+  const hasDoll = (await gearSlot.count()) > 0;
+  record('the character has a paper doll with clickable slots', hasDoll);
+
+  if (hasDoll) {
+    await gearSlot.click();
+    await page.waitForTimeout(500);
+    const opened = await page.evaluate(() => document.querySelector('.picker') !== null);
+    record('clicking a slot opens its item picker', opened);
+
+    const wear = page.getByRole('button', { name: 'Wear', exact: true });
+    if ((await wear.count()) > 0) {
+      await dismissToasts();
+      // The SLOT'S OWN TEXT, not the number of filled slots. The first slot on
+      // the doll is the weapon, which the fixture already has - so swapping it
+      // leaves the count unchanged and a count-based check reads as failure
+      // while the game is working correctly.
+      const before = await gearSlot.innerText();
+      await wear.first().click();
+      await page.waitForTimeout(2500);
+      const after = await gearSlot.innerText();
+      const msgs = await toasts();
+      record(
+        'wearing an item from the doll dresses the character',
+        after !== before || msgs.length > 0,
+        msgs.join(' | ') || `${before.split(String.fromCharCode(10)).join(' ')} -> ${after.split(String.fromCharCode(10)).join(' ')}`,
+      );
+    }
+  }
+}
+
 // --- inventory / equip -------------------------------------------------------
 await go('Chest');
 {

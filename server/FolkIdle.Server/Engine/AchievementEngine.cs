@@ -156,9 +156,12 @@ namespace FolkIdle.Server.Engine
                             diamondsToAward += 100;
                         }
 
-                        int population = await dbContext.VillageResidents
+                        // Modul: VillageResidents has no writer anywhere, so this
+                        // achievement could never fire. Population is the
+                        // player's characters - see VillageManagementEngine.
+                        int population = await dbContext.CharacterRecords
                             .AsNoTracking()
-                            .CountAsync(v => v.PlayerId == player.Id && v.IsActive, stoppingToken);
+                            .CountAsync(c => c.PlayerId == player.Id && !c.IsLockedInEscrow, stoppingToken);
                         if ((currentFlags & (1 << 2)) == 0 && population >= 50)
                         {
                             newFlags |= (1 << 2);
