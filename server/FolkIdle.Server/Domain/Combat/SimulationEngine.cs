@@ -134,6 +134,11 @@ namespace FolkIdle.Server.Domain.Combat
         // completion branch fire on every single tick.
         public const int MinCraftTicks = 2;
 
+        // A character out of combat refills from empty in this many seconds.
+        // Long enough that dying still costs real time, short enough that it
+        // is not a reason to close the game.
+        public const int BaselineOutOfCombatRegenSeconds = 120;
+
         public static int ActiveGlobalEventId { get; private set; }
 
         public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, MentorshipEngine mentorshipEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null)
@@ -4769,7 +4774,15 @@ namespace FolkIdle.Server.Domain.Combat
             //
             // PlayerHp is milli-HP, and the stat is HP per SECOND at 10Hz, so
             // one tick is stat * 1000 / 10 = stat * 100.
-            if (payload.ActiveActivityId == 0)
+            // Modul: OUT OF COMBAT MEANS OUT OF COMBAT.
+            //
+            // This used to require ActiveActivityId == 0 - completely idle. A
+            // character chopping wood or standing at a bench is not fighting
+            // anything, and healed at exactly zero. Combined with the second
+            // half of this fix it meant a character who came out of a fight
+            // hurt stayed hurt until the player noticed and stopped them doing
+            // anything at all.
+            if (!ActivityIdBands.IsCombatActivity(payload.ActiveActivityId))
             {
                 // Resolved the same way the combat path does it - slot 1 is the
                 // active character, and its race is the low byte of the
@@ -4786,9 +4799,18 @@ namespace FolkIdle.Server.Domain.Combat
                     payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
 
                 int regenMaxHp = 100000 + (regenStats.MaxHp * 1000);
-                if (payload.PlayerHp < regenMaxHp && regenStats.OutOfCombatHpRegen > 0f)
+                if (payload.PlayerHp < regenMaxHp)
                 {
-                    payload.PlayerHp += (int)(regenStats.OutOfCombatHpRegen * 100f);
+                    // Modul: and there is always a baseline. The stat is zero
+                    // for a character with no gear and no perks, so the whole
+                    // branch used to be a no-op for exactly the players who
+                    // most need it. Everyone recovers a share of their own
+                    // maximum per second; the stat adds to that rather than
+                    // being the entire supply of it.
+                    int baselinePerTick = regenMaxHp / (BaselineOutOfCombatRegenSeconds * 10);
+                    if (baselinePerTick < 1) baselinePerTick = 1;
+
+                    payload.PlayerHp += baselinePerTick + (int)(regenStats.OutOfCombatHpRegen * 100f);
                     if (payload.PlayerHp > regenMaxHp) payload.PlayerHp = regenMaxHp;
                     payload.IsDirty = true;
                 }

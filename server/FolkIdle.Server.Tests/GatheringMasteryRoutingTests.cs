@@ -32,7 +32,6 @@ namespace FolkIdle.Server.Tests
         [InlineData(Woodcutting)]
         [InlineData(Mining)]
         [InlineData(Fishing)]
-        [InlineData(Herbalism)]
         public void EachProfessionLevelsOnlyItself(int professionType)
         {
             var payload = new TickStatePayload();
@@ -66,13 +65,17 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void HerbalismHasItsOwnTrackToo()
+        public void TheRetiredHerbalismTrackStillRoutesAwayFromMining()
         {
+            // The track survives on the payload and the wire even though no
+            // node feeds it - deleting a field to remove content is how a
+            // packet layout breaks. What matters is that it never lands in
+            // Mining, which is the bug this suite exists for.
             var payload = new TickStatePayload();
             SimulationEngine.ApplyBulkMasteryXp(ref payload, Herbalism, 10_000);
 
             Assert.Equal(0, payload.MiningMasteryLevel);
-            Assert.True(payload.HerbalismMasteryLevel > 0, "herbalism should have levelled");
+            Assert.True(payload.HerbalismMasteryLevel > 0);
         }
 
         [Fact]
@@ -84,7 +87,14 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(ActivityIdBands.WoodcuttingBand, ActivityIdBands.GetBandForProfession(Woodcutting));
             Assert.Equal(ActivityIdBands.MiningBand, ActivityIdBands.GetBandForProfession(Mining));
             Assert.Equal(ActivityIdBands.FishingBand, ActivityIdBands.GetBandForProfession(Fishing));
-            Assert.Equal(ActivityIdBands.HerbalismBand, ActivityIdBands.GetBandForProfession(Herbalism));
+
+            // Modul: Herbalism retired - the design list has no herb in it and
+            // no herbalism tool where axes, pickaxes and rods all exist in five
+            // tiers. Its band stays RESERVED rather than reused, so a character
+            // row still holding activity 4003 resolves to nothing instead of
+            // quietly becoming a fishing node.
+            Assert.False(ContentRegistry.TryGetGatheringNode(ActivityIdBands.RetiredHerbalismBand + 1, out _));
+            Assert.False(ContentRegistry.TryGetGatheringNode(ActivityIdBands.RetiredHerbalismBand + 3, out _));
         }
 
         [Fact]

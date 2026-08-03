@@ -48,7 +48,7 @@ namespace FolkIdle.Server.Models
 
         // Minimum player level to join or apply, editable by the guild
         // Leader; never below the universal structural gate
-        // (GuildManagementEngine.MinGuildInteractionLevel = 20).
+        // (GuildManagementEngine.MinGuildInteractionLevel).
         public int MinApplicationLevel { get; set; } = 20;
     }
 }

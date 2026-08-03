@@ -169,9 +169,10 @@
              names for one balance, and only this one is live. -->
         <span class="wallet">
           <Money amount={snap.Gold} icon />
-          {#if Number(snap.PremiumCurrencyBalance) > 0}
-            <Money amount={snap.PremiumCurrencyBalance} kind="diamond" icon />
-          {/if}
+          <!-- Modul: shown at zero too. It used to be hidden below one, which
+               is precisely when a player goes looking for it - an empty purse
+               that renders as nothing reads as a missing feature. -->
+          <Money amount={snap.PremiumCurrencyBalance} kind="diamond" icon />
         </span>
       {/if}
 

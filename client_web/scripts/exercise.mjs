@@ -95,9 +95,19 @@ await page.waitForTimeout(4000);
 
   // The bar must MOVE, not merely exist - a filled Image that ignores its own
   // fill was the exact Unity bug this port was built to be free of.
+  // Modul: scoped to the MONSTER's bar, not to ".bar-fill" index 1.
+  //
+  // Index 1 assumed the player bar is always first and always present. The
+  // fight block only renders while a monster is alive, so a run where the
+  // target died between the click and the read shifted every index and this
+  // waited thirty seconds for an element that had never existed - reported as
+  // a timeout crash rather than as a failed check.
+  const monsterBar = page.locator('.fighting .bar-fill').first();
   const widths = [];
   for (let i = 0; i < 10; i++) {
-    widths.push(await page.locator('.bar-fill').nth(1).evaluate((el) => el.style.width));
+    widths.push(
+      await monsterBar.evaluate((el) => el.style.width).catch(() => 'gone'),
+    );
     await page.waitForTimeout(180);
   }
   record('monster health bar animates', new Set(widths).size > 2, `${new Set(widths).size} distinct widths`);
@@ -288,8 +298,8 @@ await go('Gathering');
   const miningBefore = await readMastery('Mining');
   record(
     'every profession has its own mastery track',
-    fishingBefore !== null && miningBefore !== null && (await readMastery('Herbalism')) !== null,
-    'Woodcutting, Mining, Fishing and Herbalism all shown',
+    fishingBefore !== null && miningBefore !== null && (await readMastery('Woodcutting')) !== null,
+    'Woodcutting, Mining and Fishing all shown',
   );
 
   // Scoped by the profession heading, not by button order. Every node button
@@ -358,6 +368,21 @@ await go('Gathering');
   );
 }
 
+// --- auto-eat accepts what you caught ----------------------------------------
+// Modul: food was "anything with _food in its BaseId", which no raw fish
+// carries - so a player could fish all day, watch the catch land in the chest,
+// and be told by the larder that they had no food. Cooking is not in the
+// design list; a fish IS the meal.
+await go('Auto-Eat');
+{
+  const text = await page.evaluate(() => document.body.innerText);
+  record(
+    'auto-eat can be stocked with the fish you caught',
+    !/No food in the chest/i.test(text),
+    text.match(/Choose food\.\.\./) ? 'food list offered' : 'panel shown',
+  );
+}
+
 // --- crafting as a job -------------------------------------------------------
 // Crafting used to be instant and needed no character: every recipe carried a
 // CraftingTimeMs that nothing read. It is now an activity in its own band, so
@@ -370,8 +395,10 @@ await go('Crafting');
     /Crafting takes time and needs a character/i.test(text),
   );
 
+  // Enabled only when the chest holds the recipe's materials, which a fresh
+  // fixture may not - a disabled button is a correct answer, not a stall.
   const work = page.getByRole('button', { name: /Put to work/i }).first();
-  const hasWork = (await work.count()) > 0;
+  const hasWork = (await work.count()) > 0 && (await work.isEnabled());
   if (hasWork) {
     await work.click();
     await page.waitForTimeout(1500);

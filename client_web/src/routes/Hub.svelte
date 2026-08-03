@@ -24,7 +24,9 @@
     { key: 'guildops', label: 'Guild', x: 78.5, y: 34.0 },
     { key: 'village', label: 'Village', x: 52.0, y: 54.5 },
     { key: 'market', label: 'Market', x: 27.8, y: 77.5 },
-    { key: 'worldboss', label: 'World Boss', x: 83.0, y: 81.5 },
+    // Two lines on purpose: WORLD over BOSS reads as one sign, where a single
+    // line has to shrink to fit the disc and stops matching the others.
+    { key: 'worldboss', label: 'World\nBoss', x: 83.0, y: 81.5 },
   ];
 
   const scene = backgroundUrl('main_hub');
@@ -103,6 +105,9 @@
     text-transform: uppercase;
     max-width: 76%;
     overflow-wrap: break-word;
+    /* The label carries its own line breaks - "World\nBoss" is two lines by
+       authorship, not by the box happening to be narrow. */
+    white-space: pre-line;
   }
 
   @media (prefers-reduced-motion: reduce) {

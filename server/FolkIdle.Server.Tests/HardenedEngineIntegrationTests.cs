@@ -8476,7 +8476,9 @@ namespace FolkIdle.Server.Tests
             // fish or herb - so "tier" was an unrelated ladder of one-item
             // nodes and the professions did not line up with the world or with
             // each other.
-            Assert.Equal(20, checkedNodes);
+            // Three professions x five locations. Herbalism went with the
+            // design list, which has no herb in it.
+            Assert.Equal(15, checkedNodes);
 
             // Every node drops exactly two materials: a common and a rare.
             foreach (var node in ContentRegistry.GatheringNodes.ToArray())
@@ -8488,7 +8490,7 @@ namespace FolkIdle.Server.Tests
             }
 
             // Four professions, five locations each, no gaps and no strays.
-            for (int profession = 0; profession < 4; profession++)
+            for (int profession = 0; profession < 3; profession++)
             {
                 for (int location = 1; location <= ContentRegistry.LocationCount; location++)
                 {
@@ -9037,7 +9039,8 @@ namespace FolkIdle.Server.Tests
         {
             const long testPlayerId = 970004201L;
             // copper_bar_crafting_material: 3x mat 93 + 1x mat 129, Smelting.
-            const int resultItemId = 184;
+            // 408 is the Birch Axe - see the note on the other crafting test.
+            const int resultItemId = 408;
 
             Assert.True(ContentRegistry.TryGetRecipe(resultItemId, out var recipe));
             string mat1BaseId = ContentRegistry.GetItemBaseId(recipe.Mat1Id);
@@ -9746,8 +9749,11 @@ namespace FolkIdle.Server.Tests
         {
             const long testPlayerId = 970009132L;
 
-            // Recipe 184 (copper_bar): 3 tin_ore + 1 coal_node.
-            Assert.True(ContentRegistry.TryGetRecipe(184, out var recipe));
+            // Modul: was recipe 184 (copper_bar, 3 tin_ore + 1 coal_node).
+            // Smelting went with the invented ores it was built on - see the
+            // recipe table's own note. 408 is the Birch Axe: 8 birch logs and
+            // 4 copper ore, both of which a Sunlit Plains node actually drops.
+            Assert.True(ContentRegistry.TryGetRecipe(408, out var recipe));
             string mat1BaseId = ContentRegistry.GetItemBaseId(recipe.Mat1Id);
             string mat2BaseId = ContentRegistry.GetItemBaseId(recipe.Mat2Id);
 
@@ -9764,7 +9770,7 @@ namespace FolkIdle.Server.Tests
             }
 
             var craftingEngine = new CraftingEngine(_fixture.DbContextFactory, _fixture.PlayerRegistry, _fixture.RetryingOptions);
-            await craftingEngine.ExecuteCraftingAsync(testPlayerId, 184);
+            await craftingEngine.ExecuteCraftingAsync(testPlayerId, 408);
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
 
@@ -9780,7 +9786,7 @@ namespace FolkIdle.Server.Tests
 
             Assert.True(_fixture.PlayerRegistry.CraftingCompletionQueue.TryDequeue(out var completion),
                 "A successful craft must enqueue a completion notification.");
-            Assert.Equal(184, completion.CraftedItemId);
+            Assert.Equal(408, completion.CraftedItemId);
             Assert.True(completion.Quantity >= 1);
         }
 

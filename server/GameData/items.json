@@ -3198,5 +3198,301 @@
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "abyssal_lanternfish_raw_fishing_material"
+  },
+  {
+    "Id": 401,
+    "RegionTier": 2,
+    "BaseValueGold": 20,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "golden_willow_log"
+  },
+  {
+    "Id": 402,
+    "RegionTier": 3,
+    "BaseValueGold": 80,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "golden_acacia_log"
+  },
+  {
+    "Id": 403,
+    "RegionTier": 4,
+    "BaseValueGold": 320,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "golden_frostpine_log"
+  },
+  {
+    "Id": 404,
+    "RegionTier": 5,
+    "BaseValueGold": 1280,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "golden_ebon_log"
+  },
+  {
+    "Id": 405,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "normal_axe_tool"
+  },
+  {
+    "Id": 406,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "normal_pickaxe_tool"
+  },
+  {
+    "Id": 407,
+    "RegionTier": 1,
+    "BaseValueGold": 10,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "normal_fishing_rod_tool"
+  },
+  {
+    "Id": 408,
+    "RegionTier": 1,
+    "BaseValueGold": 60,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "birch_axe_tool"
+  },
+  {
+    "Id": 409,
+    "RegionTier": 1,
+    "BaseValueGold": 60,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "golden_birch_axe_tool"
+  },
+  {
+    "Id": 410,
+    "RegionTier": 1,
+    "BaseValueGold": 60,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "birch_pickaxe_tool"
+  },
+  {
+    "Id": 411,
+    "RegionTier": 1,
+    "BaseValueGold": 60,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "golden_birch_pickaxe_tool"
+  },
+  {
+    "Id": 412,
+    "RegionTier": 1,
+    "BaseValueGold": 60,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "birch_fishing_rod_tool"
+  },
+  {
+    "Id": 413,
+    "RegionTier": 1,
+    "BaseValueGold": 60,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "golden_birch_fishing_rod_tool"
+  },
+  {
+    "Id": 414,
+    "RegionTier": 2,
+    "BaseValueGold": 240,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "willow_axe_tool"
+  },
+  {
+    "Id": 415,
+    "RegionTier": 2,
+    "BaseValueGold": 240,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "whisper_willow_axe_tool"
+  },
+  {
+    "Id": 416,
+    "RegionTier": 2,
+    "BaseValueGold": 240,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "willow_pickaxe_tool"
+  },
+  {
+    "Id": 417,
+    "RegionTier": 2,
+    "BaseValueGold": 240,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "whisper_willow_pickaxe_tool"
+  },
+  {
+    "Id": 418,
+    "RegionTier": 2,
+    "BaseValueGold": 240,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "willow_fishing_rod_tool"
+  },
+  {
+    "Id": 419,
+    "RegionTier": 2,
+    "BaseValueGold": 240,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "whisper_willow_fishing_rod_tool"
+  },
+  {
+    "Id": 420,
+    "RegionTier": 3,
+    "BaseValueGold": 960,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "acacia_axe_tool"
+  },
+  {
+    "Id": 421,
+    "RegionTier": 3,
+    "BaseValueGold": 960,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "ironwood_axe_tool"
+  },
+  {
+    "Id": 422,
+    "RegionTier": 3,
+    "BaseValueGold": 960,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "acacia_pickaxe_tool"
+  },
+  {
+    "Id": 423,
+    "RegionTier": 3,
+    "BaseValueGold": 960,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "ironwood_pickaxe_tool"
+  },
+  {
+    "Id": 424,
+    "RegionTier": 3,
+    "BaseValueGold": 960,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "acacia_fishing_rod_tool"
+  },
+  {
+    "Id": 425,
+    "RegionTier": 3,
+    "BaseValueGold": 960,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "ironwood_fishing_rod_tool"
+  },
+  {
+    "Id": 426,
+    "RegionTier": 4,
+    "BaseValueGold": 3840,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "frostpine_axe_tool"
+  },
+  {
+    "Id": 427,
+    "RegionTier": 4,
+    "BaseValueGold": 3840,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "glacier_pine_axe_tool"
+  },
+  {
+    "Id": 428,
+    "RegionTier": 4,
+    "BaseValueGold": 3840,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "frostpine_pickaxe_tool"
+  },
+  {
+    "Id": 429,
+    "RegionTier": 4,
+    "BaseValueGold": 3840,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "glacier_pine_pickaxe_tool"
+  },
+  {
+    "Id": 430,
+    "RegionTier": 4,
+    "BaseValueGold": 3840,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "frostpine_fishing_rod_tool"
+  },
+  {
+    "Id": 431,
+    "RegionTier": 4,
+    "BaseValueGold": 3840,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "glacier_pine_fishing_rod_tool"
+  },
+  {
+    "Id": 432,
+    "RegionTier": 5,
+    "BaseValueGold": 15360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "ebon_axe_tool"
+  },
+  {
+    "Id": 433,
+    "RegionTier": 5,
+    "BaseValueGold": 15360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "voidbark_axe_tool"
+  },
+  {
+    "Id": 434,
+    "RegionTier": 5,
+    "BaseValueGold": 15360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "ebon_pickaxe_tool"
+  },
+  {
+    "Id": 435,
+    "RegionTier": 5,
+    "BaseValueGold": 15360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "voidbark_pickaxe_tool"
+  },
+  {
+    "Id": 436,
+    "RegionTier": 5,
+    "BaseValueGold": 15360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "ebon_fishing_rod_tool"
+  },
+  {
+    "Id": 437,
+    "RegionTier": 5,
+    "BaseValueGold": 15360,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "voidbark_fishing_rod_tool"
   }
 ]

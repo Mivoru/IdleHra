@@ -185,8 +185,28 @@ namespace FolkIdle.Server.Tests
             // And it must still be able to craft, which is the whole reason the
             // materials are seeded at all. Stash + backpack is what a recipe
             // spends from.
-            int stashRows = await db.VillageStashInstances.CountAsync(s => s.PlayerId == playerId);
-            Assert.True(stashRows > 20, $"only {stashRows} crafting materials stashed");
+            // Modul: asserted as what it MEANS - every distinct recipe input is
+            // stocked - rather than as a row count. The count was "> 20", and
+            // the recipe table now has exactly twenty distinct inputs (ten logs
+            // and ten ores), so a correct fixture failed on an off-by-one in
+            // the test rather than on anything about the fixture.
+            var required = new System.Collections.Generic.HashSet<int>();
+            foreach (var recipe in ContentRegistry.Recipes.ToArray())
+            {
+                if (recipe.Mat1Id > 0) required.Add(recipe.Mat1Id);
+                if (recipe.Mat2Id > 0) required.Add(recipe.Mat2Id);
+            }
+
+            var stashed = (await db.VillageStashInstances
+                .Where(s => s.PlayerId == playerId)
+                .Select(s => s.ItemId)
+                .ToListAsync()).ToHashSet();
+
+            foreach (int materialId in required)
+            {
+                string baseId = ContentRegistry.GetItemBaseId(materialId);
+                Assert.True(stashed.Contains(baseId), $"recipe material {baseId} is not stocked");
+            }
         }
     }
 }

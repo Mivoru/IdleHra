@@ -76,6 +76,12 @@ namespace FolkIdle.Server.Engine
         //
         // Zero allocation and no string work for the cooked block: the tier is
         // the id's offset within it.
+        // Raw fish heals this share of what the same-tier cooked dish would.
+        // Cooking is not in the design list, so this is not a penalty pushing
+        // players towards a profession that does not exist - it is simply what
+        // a fish is worth.
+        private const int RawFishHealPercent = 60;
+
         public static int GetHealMilliHp(int itemId)
         {
             if (itemId >= FirstCookedFoodItemId && itemId <= LastCookedFoodItemId)
@@ -86,6 +92,18 @@ namespace FolkIdle.Server.Engine
             if (itemId <= 0 || itemId > ContentRegistry.ItemDefinitions.Length)
             {
                 return 0;
+            }
+
+            // Modul: raw fish is food. A caught fish heals by the tier of the
+            // water it came out of, on the same curve cooked food uses - just
+            // lower, because nobody cooked it. Without this the larder refused
+            // every fish in the game and the only edible item was a recipe
+            // output from a profession the design does not have.
+            if (ContentRegistry.IsRawFish(itemId))
+            {
+                int fishTier = ContentRegistry.ItemDefinitions[itemId - 1].RegionTier;
+                int fishIndex = Math.Clamp(fishTier - 1, 0, _healPayoutFlatHp.Length - 1);
+                return _healPayoutFlatHp[fishIndex] * RawFishHealPercent * 1000 / 100;
             }
 
             // Legacy "_food_consumable" items carry no authored heal value, so

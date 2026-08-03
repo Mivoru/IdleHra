@@ -132,7 +132,8 @@ export const PROFESSIONS: readonly { id: number; name: string; band: number }[] 
   { id: 0, name: 'Woodcutting', band: ACTIVITY_BANDS.woodcutting },
   { id: 1, name: 'Mining', band: ACTIVITY_BANDS.mining },
   { id: 2, name: 'Fishing', band: ACTIVITY_BANDS.fishing },
-  { id: 3, name: 'Herbalism', band: ACTIVITY_BANDS.herbalism },
+  // Modul: Herbalism is gone - the design list has no herb in it, and no
+  // herbalism tool where axes, pickaxes and rods all exist in five tiers.
 ];
 
 export function professionName(professionType: number): string {

@@ -46,7 +46,10 @@ namespace FolkIdle.Server.Domain.Social
         // single authoritative entry point for all guild membership
         // mutations (no guild-join wire command exists in
         // SimulationEngine's command loop to gate).
-        public const int MinGuildInteractionLevel = 20;
+        // Modul: 20 -> 10. Twenty put guilds behind most of the early game, and
+        // a guild is the trade licence - so a player could not use the market
+        // either, for a long time, with nothing saying why.
+        public const int MinGuildInteractionLevel = 10;
 
         public const int JoinTypeOpen = 0;
         public const int JoinTypeApplicationRequired = 1;
@@ -61,7 +64,7 @@ namespace FolkIdle.Server.Domain.Social
         /// refusals - already in a guild, below the level gate, name taken,
         /// name malformed - and the endpoint turned all four into a 409 with
         /// no body. The player was told "Could not create" and nothing else,
-        /// with no way to find out that the requirement is level 20.
+        /// with no way to find out what the level requirement even was.
         /// </summary>
         public enum GuildCreateRefusal
         {

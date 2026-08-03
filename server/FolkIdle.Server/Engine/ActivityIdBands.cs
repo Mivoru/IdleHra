@@ -34,15 +34,21 @@ namespace FolkIdle.Server.Engine
         public const long WoodcuttingBand = 1000L;
         public const long MiningBand = 2000L;
         public const long FishingBand = 3000L;
-        public const long HerbalismBand = 4000L;
+        // Modul: HERBALISM IS GONE. The design list has five locations of
+        // monsters, wood, ore, two fish, a food and a potion - and not one
+        // herb. There is no herbalism tool either, where axes, pickaxes and
+        // rods all exist in five tiers. The profession had twelve nodes of
+        // invented plants behind it and nothing to gather them with.
+        //
+        // The band is kept reserved rather than reused: a persisted
+        // ActiveActivityId of 4003 on some character's row must resolve to
+        // nothing, not to a fishing node.
+        public const long RetiredHerbalismBand = 4000L;
 
-        // The spec for this pass named Woodcutting, Mining and Fishing only.
-        // Herbalism exists as ProfessionType 3 with twelve authored nodes, so it
-        // gets the next band up rather than being left in the colliding space.
         public const long BandSize = 1000L;
 
         public const long GatheringFirst = WoodcuttingBand;
-        public const long GatheringLast = HerbalismBand + BandSize - 1L;
+        public const long GatheringLast = RetiredHerbalismBand + BandSize - 1L;
 
         // Modul: crafting is a JOB, not a button.
         //
@@ -86,8 +92,7 @@ namespace FolkIdle.Server.Engine
             {
                 0 => WoodcuttingBand,
                 1 => MiningBand,
-                2 => FishingBand,
-                _ => HerbalismBand
+                _ => FishingBand
             };
         }
 
@@ -105,7 +110,22 @@ namespace FolkIdle.Server.Engine
 
             long professionType = legacyActivityId / 100L - 1L;
             long index = legacyActivityId % 100L;
-            return GetBandForProfession((int)professionType) + index;
+
+            // Modul: the legacy re-key is HISTORY and must not follow the
+            // profession table. GetBandForProfession now answers Fishing for
+            // anything past 2, because Herbalism retired - but a persisted
+            // legacy id of 412 was a HERB node and has to keep mapping into the
+            // retired band, where it resolves to nothing. Routing it to 3012
+            // would silently turn one character's abandoned herb patch into a
+            // fishing spot.
+            long band = professionType switch
+            {
+                0 => WoodcuttingBand,
+                1 => MiningBand,
+                2 => FishingBand,
+                _ => RetiredHerbalismBand
+            };
+            return band + index;
         }
     }
 }

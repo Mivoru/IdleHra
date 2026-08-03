@@ -65,8 +65,34 @@ export interface ContentRegistry {
  * relied on rather than a fact being read - if a food item ever ships without
  * it, the larder simply will not offer it and nothing will say why.
  */
+/**
+ * The ten fish, by name.
+ *
+ * Modul: food used to be "anything with _food in its BaseId", which no raw
+ * fish carries - so a player could fish all day, watch the catch land in the
+ * chest, and be told by the larder that they had no food. Cooking is not in
+ * the design list, so a fish IS the meal.
+ *
+ * The server derives this from the fishing loot tables ("anything a fishing
+ * node drops"); this is the same set written out, because the client is never
+ * sent a loot table. ContentRegistryFishTests asserts the server's set is
+ * exactly these ten, so the two cannot drift apart quietly.
+ */
+export const RAW_FISH_BASE_IDS: readonly string[] = [
+  'sunlit_perch',
+  'shimmering_trout',
+  'moss_bass',
+  'ancient_eel',
+  'lava_carp',
+  'hellfire_salmon',
+  'frost_cod',
+  'glacier_halibut',
+  'void_ray',
+  'spectral_lanternfish',
+];
+
 export function isFood(baseItemId: string): boolean {
-  return baseItemId.includes('_food');
+  return baseItemId.includes('_food') || RAW_FISH_BASE_IDS.includes(baseItemId);
 }
 
 /**

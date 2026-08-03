@@ -43,7 +43,7 @@
     { id: 0, name: 'Woodcutting' },
     { id: 1, name: 'Mining' },
     { id: 2, name: 'Fishing' },
-    { id: 3, name: 'Herbalism' },
+    // Herbalism retired with the design list - see slots.ts.
   ];
 
   function masteryLevelOf(professionId: number): number {
@@ -386,7 +386,11 @@
 
   .nodes li {
     display: grid;
-    grid-template-columns: 2.4rem 1fr auto auto;
+    /* Modul: the first column was 2.4rem - sized for "T1", not for
+       "Whispering Woods". A two-word location name overflowed it and drew on
+       top of the rate and the xp beside it. It is the widest column now, and
+       the row's own height grows when a name wraps. */
+    grid-template-columns: minmax(7rem, 1.4fr) auto auto minmax(5rem, auto);
     gap: 0.5rem;
     align-items: center;
     font-size: 0.82rem;
@@ -398,8 +402,13 @@
     background: rgba(74, 163, 223, 0.08);
   }
 
+  /* Modul: the node rows were a flex line, and a two-word location name
+     ("Whispering Woods") wrapped underneath the rate and the xp, which then
+     overlapped it. A grid gives the name its own column and lets it wrap
+     inside it instead of into its neighbours. */
   .place {
     font-weight: 600;
+    line-height: 1.15;
   }
 
   li.locked {

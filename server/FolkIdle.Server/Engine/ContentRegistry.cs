@@ -442,63 +442,48 @@ namespace FolkIdle.Server.Engine
             new LootTableEntry { ItemId = 57, Weight = 22, MinQuantity = 1, MaxQuantity = 2 },  // index 75: obsidian_ore    (node 205)
             new LootTableEntry { ItemId = 75, Weight = 16 },                                    // index 76: celestial_ore   (node 205)
 
-            // Modul: gathering rebuilt around the five canonical locations.
+            // Modul: gathering drops the CANON materials.
             //
-            // Every node now drops exactly TWO materials: a common at 90% and
-            // a rare at 10%. Fishing had NINE nodes and Herbalism TWELVE, each
-            // dropping a single fish or herb - so "tier" meant an unrelated
-            // ladder of one-item nodes rather than a place you go, and the two
-            // professions did not line up with the world or with each other.
-            // Woodcutting and Mining had five nodes with three-to-four item
-            // tables, which was a third shape again.
+            // The tables used to point at invented items - "oak logs",
+            // "river trout", nine herbs - none of which the art, the
+            // design list or the item catalogue agree exist. Every entry
+            // below is an item that was already authored and had a picture
+            // drawn for it, in the location that picture belongs to.
             //
-            // Entries below are appended rather than replacing indices 0-76,
-            // because those indices are positional and everything authored
-            // after them would shift.
+            // Two per node: the common at 90% and the rare at 10%.
             // --- Woodcutting ---
-            new LootTableEntry { ItemId = 99, Weight = 90 },  // index 77: oak_logs - Whispering Woods (Woodcutting, common)
-            new LootTableEntry { ItemId = 31, Weight = 10 },  // index 78: heartwood_core - Whispering Woods (Woodcutting, rare)
-            new LootTableEntry { ItemId = 117, Weight = 90 },  // index 79: willow_logs - The Murky Swamps (Woodcutting, common)
-            new LootTableEntry { ItemId = 51, Weight = 10 },  // index 80: subterranean_sawdust - The Murky Swamps (Woodcutting, rare)
-            new LootTableEntry { ItemId = 135, Weight = 90 },  // index 81: pine_trees - Craggy Highlands (Woodcutting, common)
-            new LootTableEntry { ItemId = 69, Weight = 10 },  // index 82: berserker_blood_essence - Craggy Highlands (Woodcutting, rare)
-            new LootTableEntry { ItemId = 153, Weight = 90 },  // index 83: birch_trees - Ancient Ruins (Woodcutting, common)
-            new LootTableEntry { ItemId = 63, Weight = 10 },  // index 84: ancient_wood - Ancient Ruins (Woodcutting, rare)
-            new LootTableEntry { ItemId = 174, Weight = 90 },  // index 85: beech_logs - Abyssal Breach (Woodcutting, common)
-            new LootTableEntry { ItemId = 81, Weight = 10 },  // index 86: yggdrasil_burl - Abyssal Breach (Woodcutting, rare)
+            new LootTableEntry { ItemId = 267, Weight = 90 },  // index 77: birch_log - Sunlit Plains (Woodcutting, common)
+            new LootTableEntry { ItemId = 269, Weight = 10 },  // index 78: golden_birch_log - Sunlit Plains (Woodcutting, rare)
+            new LootTableEntry { ItemId = 291, Weight = 90 },  // index 79: willow_log - Whispering Woods (Woodcutting, common)
+            new LootTableEntry { ItemId = 401, Weight = 10 },  // index 80: golden_willow_log - Whispering Woods (Woodcutting, rare)
+            new LootTableEntry { ItemId = 315, Weight = 90 },  // index 81: acacia_log - Scorched Wasteland (Woodcutting, common)
+            new LootTableEntry { ItemId = 402, Weight = 10 },  // index 82: golden_acacia_log - Scorched Wasteland (Woodcutting, rare)
+            new LootTableEntry { ItemId = 340, Weight = 90 },  // index 83: frostpine_log - Frozen Peaks (Woodcutting, common)
+            new LootTableEntry { ItemId = 403, Weight = 10 },  // index 84: golden_frostpine_log - Frozen Peaks (Woodcutting, rare)
+            new LootTableEntry { ItemId = 364, Weight = 90 },  // index 85: ebon_log - Shadow Citadel (Woodcutting, common)
+            new LootTableEntry { ItemId = 404, Weight = 10 },  // index 86: golden_ebon_log - Shadow Citadel (Woodcutting, rare)
             // --- Mining ---
-            new LootTableEntry { ItemId = 165, Weight = 90 },  // index 87: copper_ore - Whispering Woods (Mining, common)
-            new LootTableEntry { ItemId = 129, Weight = 10 },  // index 88: coal_node - Whispering Woods (Mining, rare)
-            new LootTableEntry { ItemId = 93, Weight = 90 },  // index 89: tin_ore - The Murky Swamps (Mining, common)
-            new LootTableEntry { ItemId = 111, Weight = 10 },  // index 90: iron_ore - The Murky Swamps (Mining, rare)
-            new LootTableEntry { ItemId = 147, Weight = 90 },  // index 91: silver_ore - Craggy Highlands (Mining, common)
-            new LootTableEntry { ItemId = 1, Weight = 10 },  // index 92: gold_ore - Craggy Highlands (Mining, rare)
-            new LootTableEntry { ItemId = 57, Weight = 90 },  // index 93: obsidian_ore - Ancient Ruins (Mining, common)
-            new LootTableEntry { ItemId = 21, Weight = 10 },  // index 94: mithril_ore - Ancient Ruins (Mining, rare)
-            new LootTableEntry { ItemId = 75, Weight = 90 },  // index 95: celestial_ore - Abyssal Breach (Mining, common)
-            new LootTableEntry { ItemId = 39, Weight = 10 },  // index 96: adamantite_ore - Abyssal Breach (Mining, rare)
+            new LootTableEntry { ItemId = 165, Weight = 90 },  // index 87: copper_ore - Sunlit Plains (Mining, common)
+            new LootTableEntry { ItemId = 271, Weight = 10 },  // index 88: malachite_ore - Sunlit Plains (Mining, rare)
+            new LootTableEntry { ItemId = 111, Weight = 90 },  // index 89: iron_ore - Whispering Woods (Mining, common)
+            new LootTableEntry { ItemId = 295, Weight = 10 },  // index 90: hematite_ore - Whispering Woods (Mining, rare)
+            new LootTableEntry { ItemId = 319, Weight = 90 },  // index 91: sulfur_ore - Scorched Wasteland (Mining, common)
+            new LootTableEntry { ItemId = 57, Weight = 10 },  // index 92: obsidian_ore - Scorched Wasteland (Mining, rare)
+            new LootTableEntry { ItemId = 147, Weight = 90 },  // index 93: silver_ore - Frozen Peaks (Mining, common)
+            new LootTableEntry { ItemId = 344, Weight = 10 },  // index 94: cobalt_ore - Frozen Peaks (Mining, rare)
+            new LootTableEntry { ItemId = 368, Weight = 90 },  // index 95: darksteel_ore - Shadow Citadel (Mining, common)
+            new LootTableEntry { ItemId = 369, Weight = 10 },  // index 96: astralite_ore - Shadow Citadel (Mining, rare)
             // --- Fishing ---
-            new LootTableEntry { ItemId = 102, Weight = 90 },  // index 97: river_trout - Whispering Woods (Fishing, common)
-            new LootTableEntry { ItemId = 11, Weight = 10 },  // index 98: coastline_cod - Whispering Woods (Fishing, rare)
-            new LootTableEntry { ItemId = 120, Weight = 90 },  // index 99: mud_carp - The Murky Swamps (Fishing, common)
-            new LootTableEntry { ItemId = 30, Weight = 10 },  // index 100: deep_mire_eel - The Murky Swamps (Fishing, rare)
-            new LootTableEntry { ItemId = 156, Weight = 90 },  // index 101: steppe_salmon - Craggy Highlands (Fishing, common)
-            new LootTableEntry { ItemId = 48, Weight = 10 },  // index 102: canyon_catfish - Craggy Highlands (Fishing, rare)
-            new LootTableEntry { ItemId = 138, Weight = 90 },  // index 103: chasm_pike - Ancient Ruins (Fishing, common)
-            new LootTableEntry { ItemId = 66, Weight = 10 },  // index 104: fjord_shark - Ancient Ruins (Fishing, rare)
-            new LootTableEntry { ItemId = 400, Weight = 90 },  // index 105: abyssal_lanternfish - Abyssal Breach (Fishing, common)
-            new LootTableEntry { ItemId = 84, Weight = 10 },  // index 106: astral_whale - Abyssal Breach (Fishing, rare)
-            // --- Herbalism ---
-            new LootTableEntry { ItemId = 5, Weight = 90 },  // index 107: salt_lotus - Whispering Woods (Herbalism, common)
-            new LootTableEntry { ItemId = 9, Weight = 10 },  // index 108: condensation_essence - Whispering Woods (Herbalism, rare)
-            new LootTableEntry { ItemId = 24, Weight = 90 },  // index 109: screaming_mandrake - The Murky Swamps (Herbalism, common)
-            new LootTableEntry { ItemId = 14, Weight = 10 },  // index 110: peat_clump - The Murky Swamps (Herbalism, rare)
-            new LootTableEntry { ItemId = 42, Weight = 90 },  // index 111: jagged_bloodgrass - Craggy Highlands (Herbalism, common)
-            new LootTableEntry { ItemId = 28, Weight = 10 },  // index 112: spore_pod - Craggy Highlands (Herbalism, rare)
-            new LootTableEntry { ItemId = 60, Weight = 90 },  // index 113: frost_moonflower - Ancient Ruins (Herbalism, common)
-            new LootTableEntry { ItemId = 33, Weight = 10 },  // index 114: schrat_horn - Ancient Ruins (Herbalism, rare)
-            new LootTableEntry { ItemId = 150, Weight = 90 },  // index 115: wild_ginseng - Abyssal Breach (Herbalism, common)
-            new LootTableEntry { ItemId = 49, Weight = 10 },  // index 116: gargoyle_heart_shard - Abyssal Breach (Herbalism, rare)
+            new LootTableEntry { ItemId = 272, Weight = 90 },  // index 97: sunlit_perch - Sunlit Plains (Fishing, common)
+            new LootTableEntry { ItemId = 273, Weight = 10 },  // index 98: shimmering_trout - Sunlit Plains (Fishing, rare)
+            new LootTableEntry { ItemId = 296, Weight = 90 },  // index 99: moss_bass - Whispering Woods (Fishing, common)
+            new LootTableEntry { ItemId = 297, Weight = 10 },  // index 100: ancient_eel - Whispering Woods (Fishing, rare)
+            new LootTableEntry { ItemId = 321, Weight = 90 },  // index 101: lava_carp - Scorched Wasteland (Fishing, common)
+            new LootTableEntry { ItemId = 322, Weight = 10 },  // index 102: hellfire_salmon - Scorched Wasteland (Fishing, rare)
+            new LootTableEntry { ItemId = 345, Weight = 90 },  // index 103: frost_cod - Frozen Peaks (Fishing, common)
+            new LootTableEntry { ItemId = 346, Weight = 10 },  // index 104: glacier_halibut - Frozen Peaks (Fishing, rare)
+            new LootTableEntry { ItemId = 370, Weight = 90 },  // index 105: void_ray - Shadow Citadel (Fishing, common)
+            new LootTableEntry { ItemId = 371, Weight = 10 },  // index 106: spectral_lanternfish - Shadow Citadel (Fishing, rare)
         };
 
         // Modul: LootTableId -> (Start, Count) into _lootEntries, keyed by
@@ -538,26 +523,21 @@ namespace FolkIdle.Server.Engine
             // table like the rest, and index 21 is left in place rather than
             // removed so the indices of every entry authored after it stay
             // stable.
-            { 1001, (77, 2) }, // Whispering Woods
-            { 1002, (79, 2) }, // The Murky Swamps
-            { 1003, (81, 2) }, // Craggy Highlands
-            { 1004, (83, 2) }, // Ancient Ruins
-            { 1005, (85, 2) }, // Abyssal Breach
-            { 2001, (87, 2) }, // Whispering Woods
-            { 2002, (89, 2) }, // The Murky Swamps
-            { 2003, (91, 2) }, // Craggy Highlands
-            { 2004, (93, 2) }, // Ancient Ruins
-            { 2005, (95, 2) }, // Abyssal Breach
-            { 3001, (97, 2) }, // Whispering Woods
-            { 3002, (99, 2) }, // The Murky Swamps
-            { 3003, (101, 2) }, // Craggy Highlands
-            { 3004, (103, 2) }, // Ancient Ruins
-            { 3005, (105, 2) }, // Abyssal Breach
-            { 4001, (107, 2) }, // Whispering Woods
-            { 4002, (109, 2) }, // The Murky Swamps
-            { 4003, (111, 2) }, // Craggy Highlands
-            { 4004, (113, 2) }, // Ancient Ruins
-            { 4005, (115, 2) }, // Abyssal Breach
+            { 1001, (77, 2) }, // Sunlit Plains
+            { 1002, (79, 2) }, // Whispering Woods
+            { 1003, (81, 2) }, // Scorched Wasteland
+            { 1004, (83, 2) }, // Frozen Peaks
+            { 1005, (85, 2) }, // Shadow Citadel
+            { 2001, (87, 2) }, // Sunlit Plains
+            { 2002, (89, 2) }, // Whispering Woods
+            { 2003, (91, 2) }, // Scorched Wasteland
+            { 2004, (93, 2) }, // Frozen Peaks
+            { 2005, (95, 2) }, // Shadow Citadel
+            { 3001, (97, 2) }, // Sunlit Plains
+            { 3002, (99, 2) }, // Whispering Woods
+            { 3003, (101, 2) }, // Scorched Wasteland
+            { 3004, (103, 2) }, // Frozen Peaks
+            { 3005, (105, 2) }, // Shadow Citadel
 
             // Modul: Full-Stack Expansion, Part 2 - monster loot tables
             // for the 25 new regional monsters (monster ids 91-115). The
@@ -619,120 +599,55 @@ namespace FolkIdle.Server.Engine
 
         private static readonly RecipeDefinition[] _recipes = new RecipeDefinition[]
         {
-            new RecipeDefinition { ResultItemId = 184, ProfessionType = 2, RequiredLevel = 10, Mat1Id = 93, Mat1Count = 3, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 3000 }, // copper_bar_crafting_material
-            new RecipeDefinition { ResultItemId = 185, ProfessionType = 2, RequiredLevel = 20, Mat1Id = 1, Mat1Count = 3, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 3000 }, // bronze_bar_crafting_material
-            new RecipeDefinition { ResultItemId = 186, ProfessionType = 2, RequiredLevel = 30, Mat1Id = 111, Mat1Count = 3, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 3000 }, // iron_bar_crafting_material
-            new RecipeDefinition { ResultItemId = 187, ProfessionType = 2, RequiredLevel = 40, Mat1Id = 1, Mat1Count = 3, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 3000 }, // steel_bar_crafting_material
-            new RecipeDefinition { ResultItemId = 188, ProfessionType = 2, RequiredLevel = 50, Mat1Id = 147, Mat1Count = 3, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 3000 }, // silver_bar_crafting_material
-            new RecipeDefinition { ResultItemId = 189, ProfessionType = 2, RequiredLevel = 60, Mat1Id = 1, Mat1Count = 3, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 3000 }, // gold_bar_crafting_material
-            new RecipeDefinition { ResultItemId = 190, ProfessionType = 2, RequiredLevel = 70, Mat1Id = 21, Mat1Count = 3, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 3000 }, // mithril_bar_crafting_material
-            new RecipeDefinition { ResultItemId = 191, ProfessionType = 2, RequiredLevel = 80, Mat1Id = 39, Mat1Count = 3, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 3000 }, // adamantite_bar_crafting_material
-            new RecipeDefinition { ResultItemId = 192, ProfessionType = 2, RequiredLevel = 90, Mat1Id = 57, Mat1Count = 3, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 3000 }, // obsidian_bar_crafting_material
-            new RecipeDefinition { ResultItemId = 193, ProfessionType = 2, RequiredLevel = 100, Mat1Id = 75, Mat1Count = 3, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 3000 }, // celestial_bar_crafting_material
-            new RecipeDefinition { ResultItemId = 19, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 189, Mat1Count = 8, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 8000 }, // loch_crossbow_range_weapon_slot_base
-            new RecipeDefinition { ResultItemId = 37, ProfessionType = 3, RequiredLevel = 70, Mat1Id = 190, Mat1Count = 8, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 8000 }, // dullahan_greatsword_melee_weapon_slot_base
-            new RecipeDefinition { ResultItemId = 55, ProfessionType = 3, RequiredLevel = 80, Mat1Id = 191, Mat1Count = 8, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 8000 }, // volcanic_warhammer_blunt_weapon_slot_base
-            new RecipeDefinition { ResultItemId = 73, ProfessionType = 3, RequiredLevel = 90, Mat1Id = 192, Mat1Count = 8, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 8000 }, // northern_greataxe_melee_weapon_slot_base
-            new RecipeDefinition { ResultItemId = 91, ProfessionType = 3, RequiredLevel = 100, Mat1Id = 193, Mat1Count = 8, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 8000 }, // peruns_stormcaller_structural_weapon_slot_base___adapts_to_matching_high_weapon_skill_archetype_upon_compilation
-            new RecipeDefinition { ResultItemId = 95, ProfessionType = 3, RequiredLevel = 20, Mat1Id = 185, Mat1Count = 8, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 8000 }, // bronze_dagger_melee_weapon_slot_base
-            new RecipeDefinition { ResultItemId = 109, ProfessionType = 3, RequiredLevel = 10, Mat1Id = 184, Mat1Count = 8, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 8000 }, // vodnk_harpoon_range_weapon_slot_base
-            new RecipeDefinition { ResultItemId = 127, ProfessionType = 3, RequiredLevel = 30, Mat1Id = 186, Mat1Count = 8, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 8000 }, // kobold_sledge_blunt_weapon_slot_base
-            new RecipeDefinition { ResultItemId = 128, ProfessionType = 3, RequiredLevel = 30, Mat1Id = 186, Mat1Count = 8, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 8000 }, // spike_spatha_melee_weapon_slot_base
-            new RecipeDefinition { ResultItemId = 145, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 187, Mat1Count = 8, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 8000 }, // tatzel_crossbow_range_weapon_slot_base
-            new RecipeDefinition { ResultItemId = 163, ProfessionType = 3, RequiredLevel = 50, Mat1Id = 188, Mat1Count = 8, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 8000 }, // poludnica_scythe_melee_weapon_slot_base
-            new RecipeDefinition { ResultItemId = 173, ProfessionType = 3, RequiredLevel = 10, Mat1Id = 184, Mat1Count = 8, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 8000 }, // wooden_bow_ranged_weapon_slot_base
-            new RecipeDefinition { ResultItemId = 182, ProfessionType = 3, RequiredLevel = 10, Mat1Id = 184, Mat1Count = 8, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 8000 }, // troll_club_blunt_weapon_slot_base
-            new RecipeDefinition { ResultItemId = 183, ProfessionType = 3, RequiredLevel = 10, Mat1Id = 184, Mat1Count = 8, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 8000 }, // copper_greatsword_melee_weapon_slot_base
-            new RecipeDefinition { ResultItemId = 3, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 189, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // gilded_sabatons_boots_armor_slot_base
-            new RecipeDefinition { ResultItemId = 10, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 189, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // gilded_hauberk_chest_armor_slot_base
-            new RecipeDefinition { ResultItemId = 13, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 189, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // gilded_chausses_leggings_armor_slot_base
-            new RecipeDefinition { ResultItemId = 15, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 189, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // gilded_sallet_helmet_armor_slot_base
-            new RecipeDefinition { ResultItemId = 16, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 189, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // gilded_round_shield_shield_slot_base
-            new RecipeDefinition { ResultItemId = 23, ProfessionType = 3, RequiredLevel = 70, Mat1Id = 190, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // mithril_greaves_boots_armor_slot_base
-            new RecipeDefinition { ResultItemId = 29, ProfessionType = 3, RequiredLevel = 70, Mat1Id = 190, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // mithril_cuirass_chest_armor_slot_base
-            new RecipeDefinition { ResultItemId = 32, ProfessionType = 3, RequiredLevel = 70, Mat1Id = 190, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // mithril_platelegs_leggings_armor_slot_base
-            new RecipeDefinition { ResultItemId = 34, ProfessionType = 3, RequiredLevel = 70, Mat1Id = 190, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // mithril_armet_helmet_armor_slot_base
-            new RecipeDefinition { ResultItemId = 35, ProfessionType = 3, RequiredLevel = 70, Mat1Id = 190, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // mithril_scutum_shield_slot_base
-            new RecipeDefinition { ResultItemId = 41, ProfessionType = 3, RequiredLevel = 80, Mat1Id = 191, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // adamant_sollerets_boots_armor_slot_base
-            new RecipeDefinition { ResultItemId = 47, ProfessionType = 3, RequiredLevel = 80, Mat1Id = 191, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // adamant_plate_chest_armor_slot_base
-            new RecipeDefinition { ResultItemId = 50, ProfessionType = 3, RequiredLevel = 80, Mat1Id = 191, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // adamant_leggings_leggings_armor_slot_base
-            new RecipeDefinition { ResultItemId = 52, ProfessionType = 3, RequiredLevel = 80, Mat1Id = 191, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // adamant_helm_helmet_armor_slot_base
-            new RecipeDefinition { ResultItemId = 53, ProfessionType = 3, RequiredLevel = 80, Mat1Id = 191, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // adamant_tower_shield_shield_slot_base
-            new RecipeDefinition { ResultItemId = 59, ProfessionType = 3, RequiredLevel = 90, Mat1Id = 192, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // runed_boots_boots_armor_slot_base
-            new RecipeDefinition { ResultItemId = 65, ProfessionType = 3, RequiredLevel = 90, Mat1Id = 192, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // runed_hauberk_chest_armor_slot_base
-            new RecipeDefinition { ResultItemId = 68, ProfessionType = 3, RequiredLevel = 90, Mat1Id = 192, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // runed_cuisses_leggings_armor_slot_base
-            new RecipeDefinition { ResultItemId = 70, ProfessionType = 3, RequiredLevel = 90, Mat1Id = 192, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // runed_greathelm_helmet_armor_slot_base
-            new RecipeDefinition { ResultItemId = 71, ProfessionType = 3, RequiredLevel = 90, Mat1Id = 192, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // runed_aegis_shield_slot_base
-            new RecipeDefinition { ResultItemId = 77, ProfessionType = 3, RequiredLevel = 100, Mat1Id = 193, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // transcendent_sollerets_boots_armor_slot_base
-            new RecipeDefinition { ResultItemId = 83, ProfessionType = 3, RequiredLevel = 100, Mat1Id = 193, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // transcendent_cuirass_chest_armor_slot_base
-            new RecipeDefinition { ResultItemId = 86, ProfessionType = 3, RequiredLevel = 100, Mat1Id = 193, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // transcendent_platelegs_leggings_armor_slot_base
-            new RecipeDefinition { ResultItemId = 88, ProfessionType = 3, RequiredLevel = 100, Mat1Id = 193, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // transcendent_armet_helmet_armor_slot_base
-            new RecipeDefinition { ResultItemId = 89, ProfessionType = 3, RequiredLevel = 100, Mat1Id = 193, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // transcendent_greatshield_shield_slot_base
-            new RecipeDefinition { ResultItemId = 101, ProfessionType = 3, RequiredLevel = 20, Mat1Id = 185, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // bronze_cuirass_chest_armor_slot_base
-            new RecipeDefinition { ResultItemId = 104, ProfessionType = 3, RequiredLevel = 20, Mat1Id = 185, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // bronze_greaves_leggings_armor_slot_base
-            new RecipeDefinition { ResultItemId = 106, ProfessionType = 3, RequiredLevel = 20, Mat1Id = 185, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // bronze_helmet_helmet_armor_slot_base
-            new RecipeDefinition { ResultItemId = 107, ProfessionType = 3, RequiredLevel = 20, Mat1Id = 185, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // bronze_buckler_shield_slot_base
-            new RecipeDefinition { ResultItemId = 113, ProfessionType = 3, RequiredLevel = 30, Mat1Id = 186, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // iron_sabatons_boots_armor_slot_base
-            new RecipeDefinition { ResultItemId = 119, ProfessionType = 3, RequiredLevel = 30, Mat1Id = 186, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // iron_breastplate_chest_armor_slot_base
-            new RecipeDefinition { ResultItemId = 122, ProfessionType = 3, RequiredLevel = 30, Mat1Id = 186, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // iron_platelegs_leggings_armor_slot_base
-            new RecipeDefinition { ResultItemId = 124, ProfessionType = 3, RequiredLevel = 30, Mat1Id = 186, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // iron_armet_helmet_armor_slot_base
-            new RecipeDefinition { ResultItemId = 125, ProfessionType = 3, RequiredLevel = 30, Mat1Id = 186, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // iron_kite_shield_shield_slot_base
-            new RecipeDefinition { ResultItemId = 131, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 187, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // steel_sollerets_boots_armor_slot_base
-            new RecipeDefinition { ResultItemId = 137, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 187, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // steel_hauberk_chest_armor_slot_base
-            new RecipeDefinition { ResultItemId = 140, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 187, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // steel_chausses_leggings_armor_slot_base
-            new RecipeDefinition { ResultItemId = 142, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 187, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // steel_sallet_helmet_armor_slot_base
-            new RecipeDefinition { ResultItemId = 143, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 187, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // steel_heater_shield_shield_slot_base
-            new RecipeDefinition { ResultItemId = 149, ProfessionType = 3, RequiredLevel = 50, Mat1Id = 188, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // silvered_greaves_boots_armor_slot_base
-            new RecipeDefinition { ResultItemId = 155, ProfessionType = 3, RequiredLevel = 50, Mat1Id = 188, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // silvered_cuirass_chest_armor_slot_base
-            new RecipeDefinition { ResultItemId = 158, ProfessionType = 3, RequiredLevel = 50, Mat1Id = 188, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // silvered_platelegs_leggings_armor_slot_base
-            new RecipeDefinition { ResultItemId = 160, ProfessionType = 3, RequiredLevel = 50, Mat1Id = 188, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // silvered_helm_helmet_armor_slot_base
-            new RecipeDefinition { ResultItemId = 161, ProfessionType = 3, RequiredLevel = 50, Mat1Id = 188, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // silvered_pavise_shield_slot_base
-            new RecipeDefinition { ResultItemId = 167, ProfessionType = 3, RequiredLevel = 10, Mat1Id = 184, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // leather_boots_footwear_armor_slot_base
-            new RecipeDefinition { ResultItemId = 170, ProfessionType = 3, RequiredLevel = 10, Mat1Id = 184, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // leather_hood_helmet_armor_slot_base
-            new RecipeDefinition { ResultItemId = 176, ProfessionType = 3, RequiredLevel = 10, Mat1Id = 184, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // leather_tunic_chest_armor_slot_base
-            new RecipeDefinition { ResultItemId = 178, ProfessionType = 3, RequiredLevel = 10, Mat1Id = 184, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // leather_chaps_leggings_armor_slot_base
-            new RecipeDefinition { ResultItemId = 179, ProfessionType = 3, RequiredLevel = 10, Mat1Id = 184, Mat1Count = 6, Mat2Id = 0, Mat2Count = 0, CraftingTimeMs = 5000 }, // crude_copper_shield_shield_slot_base
-            // Modul: tiers 2-10 previously all repeated Mat1Id = 1
-            // (gold_ore_crafting_material, a Smithing-tier bar-refining
-            // input, not a fishing material at all) - an evident
-            // copy-paste authoring error, since every result item name
-            // already names the exact raw fish it should consume and
-            // items.json has a *_raw_fishing_material entry matching each
-            // name precisely. Corrected to the matching fish item id below;
-            // this is what actually makes Cooking craftable end to end once
-            // the Fishing gathering nodes (ActivityId 301-309) can supply
-            // these materials - unlike Alchemy's Mat1Id/Mat2Id chain, which
-            // was already internally consistent and required no fix.
-            new RecipeDefinition { ResultItemId = 194, ProfessionType = 4, RequiredLevel = 10, Mat1Id = 11, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_pond_minnow_t1_food (coastline_cod_raw_fishing_material)
-            new RecipeDefinition { ResultItemId = 195, ProfessionType = 4, RequiredLevel = 20, Mat1Id = 102, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_river_trout_t2_food (river_trout_raw_fishing_material)
-            new RecipeDefinition { ResultItemId = 196, ProfessionType = 4, RequiredLevel = 30, Mat1Id = 120, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_mud_carp_t3_food (mud_carp_raw_fishing_material)
-            new RecipeDefinition { ResultItemId = 197, ProfessionType = 4, RequiredLevel = 40, Mat1Id = 138, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_chasm_pike_t4_food (chasm_pike_raw_fishing_material)
-            new RecipeDefinition { ResultItemId = 198, ProfessionType = 4, RequiredLevel = 50, Mat1Id = 156, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_steppe_salmon_t5_food (steppe_salmon_raw_fishing_material)
-            new RecipeDefinition { ResultItemId = 199, ProfessionType = 4, RequiredLevel = 60, Mat1Id = 11, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_coastline_cod_t6_food (coastline_cod_raw_fishing_material)
-            new RecipeDefinition { ResultItemId = 200, ProfessionType = 4, RequiredLevel = 70, Mat1Id = 30, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_deep_mire_eel_t7_food (deep_mire_eel_raw_fishing_material)
-            new RecipeDefinition { ResultItemId = 201, ProfessionType = 4, RequiredLevel = 80, Mat1Id = 48, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_canyon_catfish_t8_food (canyon_catfish_raw_fishing_material)
-            new RecipeDefinition { ResultItemId = 202, ProfessionType = 4, RequiredLevel = 90, Mat1Id = 66, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_fjord_shark_t9_food (fjord_shark_raw_fishing_material)
-            new RecipeDefinition { ResultItemId = 203, ProfessionType = 4, RequiredLevel = 100, Mat1Id = 84, Mat1Count = 1, Mat2Id = 129, Mat2Count = 1, CraftingTimeMs = 4000 }, // cooked_astral_whale_t10_food (astral_whale_raw_fishing_material)
-            new RecipeDefinition { ResultItemId = 204, ProfessionType = 5, RequiredLevel = 10, Mat1Id = 5, Mat1Count = 2, Mat2Id = 14, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_off_t01
-            new RecipeDefinition { ResultItemId = 205, ProfessionType = 5, RequiredLevel = 10, Mat1Id = 5, Mat1Count = 2, Mat2Id = 14, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_def_t01
-            new RecipeDefinition { ResultItemId = 206, ProfessionType = 5, RequiredLevel = 20, Mat1Id = 9, Mat1Count = 2, Mat2Id = 24, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_off_t02
-            new RecipeDefinition { ResultItemId = 207, ProfessionType = 5, RequiredLevel = 20, Mat1Id = 9, Mat1Count = 2, Mat2Id = 24, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_def_t02
-            new RecipeDefinition { ResultItemId = 208, ProfessionType = 5, RequiredLevel = 30, Mat1Id = 14, Mat1Count = 2, Mat2Id = 28, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_off_t03
-            new RecipeDefinition { ResultItemId = 209, ProfessionType = 5, RequiredLevel = 30, Mat1Id = 14, Mat1Count = 2, Mat2Id = 28, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_def_t03
-            new RecipeDefinition { ResultItemId = 210, ProfessionType = 5, RequiredLevel = 40, Mat1Id = 24, Mat1Count = 2, Mat2Id = 31, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_off_t04
-            new RecipeDefinition { ResultItemId = 211, ProfessionType = 5, RequiredLevel = 40, Mat1Id = 24, Mat1Count = 2, Mat2Id = 31, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_def_t04
-            new RecipeDefinition { ResultItemId = 212, ProfessionType = 5, RequiredLevel = 50, Mat1Id = 28, Mat1Count = 2, Mat2Id = 33, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_off_t05
-            new RecipeDefinition { ResultItemId = 213, ProfessionType = 5, RequiredLevel = 50, Mat1Id = 28, Mat1Count = 2, Mat2Id = 33, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_def_t05
-            new RecipeDefinition { ResultItemId = 214, ProfessionType = 5, RequiredLevel = 60, Mat1Id = 31, Mat1Count = 2, Mat2Id = 42, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_off_t06
-            new RecipeDefinition { ResultItemId = 215, ProfessionType = 5, RequiredLevel = 60, Mat1Id = 31, Mat1Count = 2, Mat2Id = 42, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_def_t06
-            new RecipeDefinition { ResultItemId = 216, ProfessionType = 5, RequiredLevel = 70, Mat1Id = 33, Mat1Count = 2, Mat2Id = 49, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_off_t07
-            new RecipeDefinition { ResultItemId = 217, ProfessionType = 5, RequiredLevel = 70, Mat1Id = 33, Mat1Count = 2, Mat2Id = 49, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_def_t07
-            new RecipeDefinition { ResultItemId = 218, ProfessionType = 5, RequiredLevel = 80, Mat1Id = 42, Mat1Count = 2, Mat2Id = 51, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_off_t08
-            new RecipeDefinition { ResultItemId = 219, ProfessionType = 5, RequiredLevel = 80, Mat1Id = 42, Mat1Count = 2, Mat2Id = 51, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_def_t08
-            new RecipeDefinition { ResultItemId = 220, ProfessionType = 5, RequiredLevel = 90, Mat1Id = 49, Mat1Count = 2, Mat2Id = 60, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_off_t09
-            new RecipeDefinition { ResultItemId = 221, ProfessionType = 5, RequiredLevel = 90, Mat1Id = 49, Mat1Count = 2, Mat2Id = 60, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_def_t09
-            new RecipeDefinition { ResultItemId = 222, ProfessionType = 5, RequiredLevel = 100, Mat1Id = 51, Mat1Count = 2, Mat2Id = 69, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_off_t10
-            new RecipeDefinition { ResultItemId = 223, ProfessionType = 5, RequiredLevel = 100, Mat1Id = 51, Mat1Count = 2, Mat2Id = 69, Mat2Count = 1, CraftingTimeMs = 6000 }, // alc_def_t10
+            // Modul: CRAFTING IS TOOLS.
+            //
+            // The table used to hold ten Smelting, ten Cooking and twenty
+            // Alchemy recipes plus sixty-three equipment ones, built on
+            // materials the game does not contain - tin, coal, mithril,
+            // adamantite and celestial ore for the bars; nine invented fish
+            // for the meals; a dozen herbs and essences for the potions. After
+            // gathering was repointed at the canon, NOT ONE of the hundred and
+            // three recipes could be fulfilled: every input resolved to an
+            // item that drops nowhere. The crafting screen listed them anyway.
+            //
+            // These are what the five locations can actually feed. Every tool
+            // has had a picture drawn for it since the art pass and no item
+            // behind it until now: three kinds, five tiers, and a common and a
+            // rare wood at each - which is exactly the thirty files in
+            // Tools&Equipment.
+            //
+            // Equipment is a DROP, not a craft, so it is not here.
+            new RecipeDefinition { ResultItemId = 408, ProfessionType = 2, RequiredLevel = 1, Mat1Id = 267, Mat1Count = 8, Mat2Id = 165, Mat2Count = 4, CraftingTimeMs = 5000 }, // birch_axe_tool
+            new RecipeDefinition { ResultItemId = 409, ProfessionType = 2, RequiredLevel = 1, Mat1Id = 269, Mat1Count = 8, Mat2Id = 271, Mat2Count = 4, CraftingTimeMs = 5000 }, // golden_birch_axe_tool
+            new RecipeDefinition { ResultItemId = 410, ProfessionType = 2, RequiredLevel = 1, Mat1Id = 267, Mat1Count = 8, Mat2Id = 165, Mat2Count = 4, CraftingTimeMs = 5000 }, // birch_pickaxe_tool
+            new RecipeDefinition { ResultItemId = 411, ProfessionType = 2, RequiredLevel = 1, Mat1Id = 269, Mat1Count = 8, Mat2Id = 271, Mat2Count = 4, CraftingTimeMs = 5000 }, // golden_birch_pickaxe_tool
+            new RecipeDefinition { ResultItemId = 412, ProfessionType = 2, RequiredLevel = 1, Mat1Id = 267, Mat1Count = 8, Mat2Id = 165, Mat2Count = 4, CraftingTimeMs = 5000 }, // birch_fishing_rod_tool
+            new RecipeDefinition { ResultItemId = 413, ProfessionType = 2, RequiredLevel = 1, Mat1Id = 269, Mat1Count = 8, Mat2Id = 271, Mat2Count = 4, CraftingTimeMs = 5000 }, // golden_birch_fishing_rod_tool
+            new RecipeDefinition { ResultItemId = 414, ProfessionType = 2, RequiredLevel = 20, Mat1Id = 291, Mat1Count = 8, Mat2Id = 111, Mat2Count = 4, CraftingTimeMs = 10000 }, // willow_axe_tool
+            new RecipeDefinition { ResultItemId = 415, ProfessionType = 2, RequiredLevel = 20, Mat1Id = 401, Mat1Count = 8, Mat2Id = 295, Mat2Count = 4, CraftingTimeMs = 10000 }, // whisper_willow_axe_tool
+            new RecipeDefinition { ResultItemId = 416, ProfessionType = 2, RequiredLevel = 20, Mat1Id = 291, Mat1Count = 8, Mat2Id = 111, Mat2Count = 4, CraftingTimeMs = 10000 }, // willow_pickaxe_tool
+            new RecipeDefinition { ResultItemId = 417, ProfessionType = 2, RequiredLevel = 20, Mat1Id = 401, Mat1Count = 8, Mat2Id = 295, Mat2Count = 4, CraftingTimeMs = 10000 }, // whisper_willow_pickaxe_tool
+            new RecipeDefinition { ResultItemId = 418, ProfessionType = 2, RequiredLevel = 20, Mat1Id = 291, Mat1Count = 8, Mat2Id = 111, Mat2Count = 4, CraftingTimeMs = 10000 }, // willow_fishing_rod_tool
+            new RecipeDefinition { ResultItemId = 419, ProfessionType = 2, RequiredLevel = 20, Mat1Id = 401, Mat1Count = 8, Mat2Id = 295, Mat2Count = 4, CraftingTimeMs = 10000 }, // whisper_willow_fishing_rod_tool
+            new RecipeDefinition { ResultItemId = 420, ProfessionType = 2, RequiredLevel = 40, Mat1Id = 315, Mat1Count = 8, Mat2Id = 319, Mat2Count = 4, CraftingTimeMs = 15000 }, // acacia_axe_tool
+            new RecipeDefinition { ResultItemId = 421, ProfessionType = 2, RequiredLevel = 40, Mat1Id = 402, Mat1Count = 8, Mat2Id = 57, Mat2Count = 4, CraftingTimeMs = 15000 }, // ironwood_axe_tool
+            new RecipeDefinition { ResultItemId = 422, ProfessionType = 2, RequiredLevel = 40, Mat1Id = 315, Mat1Count = 8, Mat2Id = 319, Mat2Count = 4, CraftingTimeMs = 15000 }, // acacia_pickaxe_tool
+            new RecipeDefinition { ResultItemId = 423, ProfessionType = 2, RequiredLevel = 40, Mat1Id = 402, Mat1Count = 8, Mat2Id = 57, Mat2Count = 4, CraftingTimeMs = 15000 }, // ironwood_pickaxe_tool
+            new RecipeDefinition { ResultItemId = 424, ProfessionType = 2, RequiredLevel = 40, Mat1Id = 315, Mat1Count = 8, Mat2Id = 319, Mat2Count = 4, CraftingTimeMs = 15000 }, // acacia_fishing_rod_tool
+            new RecipeDefinition { ResultItemId = 425, ProfessionType = 2, RequiredLevel = 40, Mat1Id = 402, Mat1Count = 8, Mat2Id = 57, Mat2Count = 4, CraftingTimeMs = 15000 }, // ironwood_fishing_rod_tool
+            new RecipeDefinition { ResultItemId = 426, ProfessionType = 2, RequiredLevel = 60, Mat1Id = 340, Mat1Count = 8, Mat2Id = 147, Mat2Count = 4, CraftingTimeMs = 20000 }, // frostpine_axe_tool
+            new RecipeDefinition { ResultItemId = 427, ProfessionType = 2, RequiredLevel = 60, Mat1Id = 403, Mat1Count = 8, Mat2Id = 344, Mat2Count = 4, CraftingTimeMs = 20000 }, // glacier_pine_axe_tool
+            new RecipeDefinition { ResultItemId = 428, ProfessionType = 2, RequiredLevel = 60, Mat1Id = 340, Mat1Count = 8, Mat2Id = 147, Mat2Count = 4, CraftingTimeMs = 20000 }, // frostpine_pickaxe_tool
+            new RecipeDefinition { ResultItemId = 429, ProfessionType = 2, RequiredLevel = 60, Mat1Id = 403, Mat1Count = 8, Mat2Id = 344, Mat2Count = 4, CraftingTimeMs = 20000 }, // glacier_pine_pickaxe_tool
+            new RecipeDefinition { ResultItemId = 430, ProfessionType = 2, RequiredLevel = 60, Mat1Id = 340, Mat1Count = 8, Mat2Id = 147, Mat2Count = 4, CraftingTimeMs = 20000 }, // frostpine_fishing_rod_tool
+            new RecipeDefinition { ResultItemId = 431, ProfessionType = 2, RequiredLevel = 60, Mat1Id = 403, Mat1Count = 8, Mat2Id = 344, Mat2Count = 4, CraftingTimeMs = 20000 }, // glacier_pine_fishing_rod_tool
+            new RecipeDefinition { ResultItemId = 432, ProfessionType = 2, RequiredLevel = 80, Mat1Id = 364, Mat1Count = 8, Mat2Id = 368, Mat2Count = 4, CraftingTimeMs = 25000 }, // ebon_axe_tool
+            new RecipeDefinition { ResultItemId = 433, ProfessionType = 2, RequiredLevel = 80, Mat1Id = 404, Mat1Count = 8, Mat2Id = 369, Mat2Count = 4, CraftingTimeMs = 25000 }, // voidbark_axe_tool
+            new RecipeDefinition { ResultItemId = 434, ProfessionType = 2, RequiredLevel = 80, Mat1Id = 364, Mat1Count = 8, Mat2Id = 368, Mat2Count = 4, CraftingTimeMs = 25000 }, // ebon_pickaxe_tool
+            new RecipeDefinition { ResultItemId = 435, ProfessionType = 2, RequiredLevel = 80, Mat1Id = 404, Mat1Count = 8, Mat2Id = 369, Mat2Count = 4, CraftingTimeMs = 25000 }, // voidbark_pickaxe_tool
+            new RecipeDefinition { ResultItemId = 436, ProfessionType = 2, RequiredLevel = 80, Mat1Id = 364, Mat1Count = 8, Mat2Id = 368, Mat2Count = 4, CraftingTimeMs = 25000 }, // ebon_fishing_rod_tool
+            new RecipeDefinition { ResultItemId = 437, ProfessionType = 2, RequiredLevel = 80, Mat1Id = 404, Mat1Count = 8, Mat2Id = 369, Mat2Count = 4, CraftingTimeMs = 25000 }, // voidbark_fishing_rod_tool
+        
         };
         public static ReadOnlySpan<RecipeDefinition> Recipes => _recipes;
 
@@ -847,11 +762,11 @@ namespace FolkIdle.Server.Engine
         // and this is the only place they are written down server-side.
         public static readonly string[] LocationNames =
         {
+            "Sunlit Plains",
             "Whispering Woods",
-            "The Murky Swamps",
-            "Craggy Highlands",
-            "Ancient Ruins",
-            "Abyssal Breach",
+            "Scorched Wasteland",
+            "Frozen Peaks",
+            "Shadow Citadel",
         };
 
         public const int LocationCount = 5;
@@ -894,6 +809,39 @@ namespace FolkIdle.Server.Engine
             int location = (int)(activityId % ActivityIdBands.BandSize);
             return location >= 1 && location <= LocationCount ? location : 0;
         }
+
+        // Modul: YOU CAN EAT WHAT YOU CATCH.
+        //
+        // Food used to be identified by a "_food" marker in the BaseId, which
+        // no raw fish carries - so a player could fish all day, watch the fish
+        // land in the chest, and be told by the larder that they had no food.
+        // The only edible things in the game were cooked, and cooking is a
+        // profession the design list does not have.
+        //
+        // Derived from the fishing loot tables rather than a hand-written id
+        // list: the rule is "anything a fishing node drops", so a new fish is
+        // edible the moment it is authored, and a list cannot go stale the way
+        // AlchemyCompendium's seven legacy ids did.
+        private static readonly System.Collections.Generic.HashSet<int> _rawFishItemIds = BuildRawFishSet();
+
+        private static System.Collections.Generic.HashSet<int> BuildRawFishSet()
+        {
+            var fish = new System.Collections.Generic.HashSet<int>();
+            for (int location = 1; location <= LocationCount; location++)
+            {
+                long nodeId = ActivityIdBands.FishingBand + location;
+                foreach (var entry in GetLootTable((int)nodeId))
+                {
+                    fish.Add(entry.ItemId);
+                }
+            }
+
+            return fish;
+        }
+
+        public static bool IsRawFish(int itemId) => _rawFishItemIds.Contains(itemId);
+
+        public static System.Collections.Generic.IReadOnlyCollection<int> RawFishItemIds => _rawFishItemIds;
 
         public static bool IsRegionalBoss(int monsterId)
         {

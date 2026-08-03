@@ -88,35 +88,5 @@
     "ProfessionType": 2,
     "BaseTickThreshold": 100,
     "BaseMasteryXpReward": 140
-  },
-  {
-    "ActivityId": 4001,
-    "ProfessionType": 3,
-    "BaseTickThreshold": 30,
-    "BaseMasteryXpReward": 15
-  },
-  {
-    "ActivityId": 4002,
-    "ProfessionType": 3,
-    "BaseTickThreshold": 45,
-    "BaseMasteryXpReward": 30
-  },
-  {
-    "ActivityId": 4003,
-    "ProfessionType": 3,
-    "BaseTickThreshold": 60,
-    "BaseMasteryXpReward": 55
-  },
-  {
-    "ActivityId": 4004,
-    "ProfessionType": 3,
-    "BaseTickThreshold": 80,
-    "BaseMasteryXpReward": 90
-  },
-  {
-    "ActivityId": 4005,
-    "ProfessionType": 3,
-    "BaseTickThreshold": 100,
-    "BaseMasteryXpReward": 140
   }
 ]
