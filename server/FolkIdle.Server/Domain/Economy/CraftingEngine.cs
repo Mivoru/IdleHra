@@ -99,19 +99,26 @@ namespace FolkIdle.Server.Domain.Economy
             return RarityTierCount - 1;
         }
 
-        // Modul: Full-Stack Expansion, Part 4. Hard forge/affix-upgrade
-        // tier caps by the item's structural gear band, derived from the
-        // same RequiredLevel axis EquipmentLevelGate anchors to (region
-        // tier bands of 20 levels): band 1 caps at tier 5, band 2 at 10,
-        // and bands 3+ at the global MaxQualityTier ceiling (the task's
-        // nominal caps of 15/20/25 exceed the 14-tier system's hard
-        // maximum of 13 and clamp to it). ForgeSplicingEngine rejects any
-        // fusion whose target already sits at its band cap.
+        // Modul: Full-Stack Expansion, Part 4. Hard forge/affix-upgrade tier
+        // caps by the item's structural gear band - two region tiers per band:
+        // band 1 caps at tier 5, band 2 at 10, and bands 3+ at the global
+        // MaxQualityTier ceiling (the task's nominal caps of 15/20/25 exceed
+        // the 14-tier system's hard maximum of 13 and clamp to it).
+        // ForgeSplicingEngine rejects any fusion whose target already sits at
+        // its band cap.
+        //
+        // This is a property of the ITEM, not a gate on the player, which is
+        // why the region-unlock rework left it alone. It used to be phrased as
+        // EquipmentLevelGate.DeriveRequiredLevel(regionTier, 0) < 20 - which
+        // was only ever (regionTier - 1) * 10 < 20 with the quality term zeroed
+        // out, i.e. an arithmetic trick for "first two regions" wearing the
+        // costume of a level check. Same bands, same numbers, said directly:
+        // reading it the old way invited someone to "unify" it with a
+        // progression gate it never belonged to.
         public static int GetMaxForgeTierForRegion(int regionTier)
         {
-            int requiredLevelBase = EquipmentLevelGate.DeriveRequiredLevel(regionTier, 0);
-            if (requiredLevelBase < 20) return 5;
-            if (requiredLevelBase < 40) return 10;
+            if (regionTier <= 2) return 5;
+            if (regionTier <= 4) return 10;
             return ForgeSplicingEngine.MaxQualityTier;
         }
 

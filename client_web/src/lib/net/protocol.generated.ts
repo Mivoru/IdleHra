@@ -91,7 +91,7 @@ export interface ClientCommand {
   RerollStopAffixIndex: number;
 }
 
-/** StateUpdatePacket - 760 bytes on the binary wire. */
+/** StateUpdatePacket - 761 bytes on the binary wire. */
 export interface StateUpdate {
   readonly type: typeof PacketType.StateUpdate;
   PlayerId: number;
@@ -137,6 +137,7 @@ export interface StateUpdate {
   GatheringProgressTicks: number;
   CompletedAreaFlags: number;
   HighestLocationReached: number;
+  HighestUnlockedRegion: number;
   HumanMasteryLevel: number;
   VilaMasteryLevel: number;
   DraugrMasteryLevel: number;
@@ -387,7 +388,7 @@ export type CommandTypeName = keyof typeof CommandType;
 export const PACKET_BYTE_SIZE = {
   AuthHandshake: 530,
   ClientCommand: 359,
-  StateUpdate: 760,
+  StateUpdate: 761,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
   ResponseLootDrop: 22,

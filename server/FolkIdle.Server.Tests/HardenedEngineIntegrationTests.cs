@@ -148,6 +148,34 @@ namespace FolkIdle.Server.Tests
             _fixture = fixture;
         }
 
+        // Modul: region unlock fixture. Equipping stopped asking for a level
+        // and started asking which region bosses are down - see
+        // RegionUnlockGate. A test whose subject is set bonuses, slot
+        // round-tripping or equip concurrency has no business also proving the
+        // progression gate, so these open every region and take it out of the
+        // measurement, exactly the role CurrentLevel = 100 played before.
+        //
+        // Adds to the caller's context WITHOUT saving: every one of these tests
+        // already builds its player and items in one context and saves once, so
+        // an inner SaveChangesAsync here would split that into two round trips
+        // and, worse, commit a player whose items had not been written yet.
+        //
+        // Note this seeds the gate's inputs (codex kills) rather than the gate's
+        // answer. A helper that stamped "unlocked = 5" somewhere would pass even
+        // if HighestUnlockedRegion stopped reading the codex at all.
+        private static void SeedAllRegionBossKills(FolkIdleDbContext db, long playerId)
+        {
+            for (int region = RaceUnlockRegistry.FirstRegion; region <= RaceUnlockRegistry.LastRegion; region++)
+            {
+                db.MonsterCodexEntries.Add(new MonsterCodexEntry
+                {
+                    PlayerId = playerId,
+                    MonsterId = RaceUnlockRegistry.GetRegionBossMonsterId(region),
+                    KillCount = 1
+                });
+            }
+        }
+
         /// <summary>
         /// Fusion takes THREE ITEMS OF THE SAME RARITY, and charges the tier
         /// curve with no fodder-quality modifier.
@@ -6516,22 +6544,33 @@ namespace FolkIdle.Server.Tests
             }
         }
 
-        // Modul: Advanced Economy Refactoring, Part 2.2/2.3/4. Anti-cheese
-        // level locks - a low-level buyer cannot purchase over-leveled
-        // market gear (region-9 T5 derives RequiredLevel 90), and the
-        // same gate blocks equipping such gear acquired through any other
-        // channel.
+        // Modul: anti-cheese region locks. A buyer who has not opened a
+        // region can neither purchase its gear on the market nor equip a
+        // copy acquired through any other channel - the two ends of one
+        // rule, which is why they are asserted together.
+        //
+        // The probe is region-9 legacy gear, deliberately. It is the case
+        // that has no boss of its own, so it is the one where a gate can
+        // most easily end up absent rather than merely lenient - and it is
+        // also among the strongest gear in the game, which is what makes an
+        // absent gate here worth a test rather than a comment.
+        //
+        // Was a LEVEL lock (region-9 T5 derived RequiredLevel 90 and the
+        // buyer sat at 10). The subject is the same; only what the gate
+        // reads has changed, from CurrentLevel and QualityTier to which
+        // bosses are down.
         [Fact]
-        public async Task Test_Market_LowLevelPlayerBlockedFromBuyingAndEquippingOverLeveledGear()
+        public async Task Test_Market_UnclearedPlayerBlockedFromBuyingAndEquippingLockedRegionGear()
         {
             const long lowLevelBuyerId = 970005201L;
             const long sellerId = 970005202L;
             const long buyerGuildId = 970005250L;
             const string highTierBaseId = "northern_greataxe_melee_weapon_slot_base";
 
-            Assert.Equal(90, EquipmentLevelGate.DeriveRequiredLevel(9, 5));
-            Assert.Equal(90, EquipmentLevelGate.DeriveRequiredLevel(highTierBaseId, 5));
-            Assert.Equal(0, EquipmentLevelGate.DeriveRequiredLevel(1, 0));
+            // The buyer below has beaten nothing, so both calls must refuse.
+            var noBossesDown = new HashSet<int>();
+            Assert.False(RegionUnlockGate.CanWearItem(highTierBaseId, noBossesDown));
+            Assert.Equal(1, RegionUnlockGate.HighestUnlockedRegion(noBossesDown));
 
             long openOrderId;
             long ownedHighTierItemId;
@@ -7539,15 +7578,22 @@ namespace FolkIdle.Server.Tests
         }
 
         // Modul: Economy Polish, Part 1/3. The varchar(255) expansion: a
-        // base item id longer than the old 100-character limit (the real
-        // 113-character region-10 development weapon string that
-        // previously threw a data-truncation error on insert) round-trips
-        // through "EquipmentInstances" intact.
+        // base item id longer than the old 100-character limit round-trips
+        // through "EquipmentInstances" intact rather than throwing a
+        // data-truncation error on insert.
+        //
+        // The probe used to BE the offending content string - a region-10
+        // weapon whose BaseId had an English design note pasted onto it,
+        // 113 characters long. That id has since been repaired in
+        // items.json, so the probe is synthetic now: the column's capacity
+        // is worth pinning on its own, and tying it to a specific content
+        // row meant the guarantee quietly depended on a defect staying
+        // unfixed.
         [Fact]
         public async Task Test_VarcharExpansion_LongBaseItemIdRoundTripsThroughEquipmentInstances()
         {
             const long testPlayerId = 970008001L;
-            const string longBaseId = "peruns_stormcaller_structural_weapon_slot_base___adapts_to_matching_high_weapon_skill_archetype_upon_compilation";
+            const string longBaseId = "probe_base_id_exceeding_one_hundred_characters_so_the_varchar_255_column_is_actually_exercised_end_to_end_weapon_slot_base";
             Assert.True(longBaseId.Length > 100, "The probe id must exceed the old varchar(100) limit to prove anything.");
 
             long instanceId;
@@ -8117,6 +8163,7 @@ namespace FolkIdle.Server.Tests
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = characterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
+                SeedAllRegionBossKills(db, testPlayerId);
                 db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 0 });
 
                 // Real BaseIds out of items.json: tier 1 AP 12, tier 5 AP 972.
@@ -8196,6 +8243,7 @@ namespace FolkIdle.Server.Tests
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = mainCharacterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
+                SeedAllRegionBossKills(db, testPlayerId);
                 db.CharacterRecords.Add(new CharacterRecord { Id = mainCharacterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 0 });
                 db.CharacterRecords.Add(new CharacterRecord { Id = secondCharacterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 1 });
 
@@ -8547,6 +8595,7 @@ namespace FolkIdle.Server.Tests
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = mainCharacterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
+                SeedAllRegionBossKills(db, testPlayerId);
                 db.CharacterRecords.Add(new CharacterRecord { Id = mainCharacterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 0 });
 
                 foreach (string baseId in baseIds)
@@ -9877,6 +9926,7 @@ namespace FolkIdle.Server.Tests
                 // fixture has to create it or the gear has nowhere to land.
                 var setBonusMainCharacterId = Guid.NewGuid();
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = setBonusMainCharacterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60 });
+                SeedAllRegionBossKills(db, testPlayerId);
                 db.CharacterRecords.Add(new CharacterRecord { Id = setBonusMainCharacterId, PlayerId = testPlayerId, Level = 60, AgePhase = 1, SlotIndex = 0 });
                 var weapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "bronze_dagger_melee_weapon_slot_base", QualityTier = 0, AffixPayload = "{}", SetId = SetBonusEngine.ChimingSteelSetId };
                 var armor = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "iron_breastplate_chest_armor_slot_base", QualityTier = 0, AffixPayload = "{}", SetId = SetBonusEngine.ChimingSteelSetId };
@@ -9941,6 +9991,7 @@ namespace FolkIdle.Server.Tests
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = characterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60 });
+                SeedAllRegionBossKills(db, testPlayerId);
                 db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, Level = 60, AgePhase = 1, SlotIndex = 0 });
 
                 for (int i = 0; i < pieces.Length; i++)

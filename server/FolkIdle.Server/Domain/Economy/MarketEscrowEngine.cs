@@ -257,17 +257,24 @@ namespace FolkIdle.Server.Domain.Economy
                     return;
                 }
 
-                // Modul: Advanced Economy Refactoring, Part 2.3. Anti-cheese
-                // level lock - a buyer below the item's derived
-                // RequiredLevel (see EquipmentLevelGate) cannot buy it at
-                // all, closing the "buy over-leveled gear cheap and coast"
-                // loop at the purchase gate rather than only at equip time.
-                int requiredLevel = EquipmentLevelGate.DeriveRequiredLevel(order.BaseItemId, order.QualityTier);
-                if (buyer.CurrentLevel < requiredLevel)
+                // Modul: region gate at the purchase, matching the one at equip
+                // time - a buyer who has not opened the item's region cannot
+                // buy it at all, closing the "buy ahead of your progress and
+                // coast" loop at the shop front rather than only when the item
+                // is worn.
+                //
+                // Was a level lock keyed on RegionTier AND QualityTier. It moved
+                // with EquipmentSlotEngine's and for the same reason: leaving
+                // one end asking about levels and rarity while the other asked
+                // about bosses would have let a player buy gear the equip path
+                // then refused, which is a worse failure than either rule alone
+                // - the gold is gone and the item is dead weight.
+                var buyerDefeatedBosses = await RegionUnlockGate.LoadDefeatedBossesAsync(db, buyerId);
+                if (!RegionUnlockGate.CanWearItem(order.BaseItemId, buyerDefeatedBosses))
                 {
                     await transaction.RollbackAsync();
-                    Console.WriteLine($"MarketBuyItem failed: buyer level {buyer.CurrentLevel} below required {requiredLevel} for {order.BaseItemId} T{order.QualityTier}.");
-                    _playerRegistry.EnqueueCommandResult(buyerId, (byte)FolkIdle.Server.Network.CommandResultCode.LevelTooLow);
+                    Console.WriteLine($"MarketBuyItem failed: buyer {buyerId} has not unlocked the region for {order.BaseItemId} (highest unlocked {RegionUnlockGate.HighestUnlockedRegion(buyerDefeatedBosses)}).");
+                    _playerRegistry.EnqueueCommandResult(buyerId, (byte)FolkIdle.Server.Network.CommandResultCode.RegionLocked);
                     return;
                 }
 

@@ -360,6 +360,23 @@ namespace FolkIdle.Server.Engine
         //
         // One kill anywhere in a location is what counts as having reached it.
         public int HighestLocationReached;
+
+        // Modul: region progression. The highest region this player may ENTER,
+        // which is also the highest RegionTier of gear they may wear - see
+        // RegionUnlockGate. 1 for a new account, rising by one each time a
+        // region boss falls.
+        //
+        // Cached on the payload rather than read per command because the
+        // ChangeActivity handler has a synchronous branch with no database in
+        // reach, and because the client needs the number too: without it the
+        // map cannot grey out what is closed, and the only way a player learns
+        // a region is locked is by being refused after choosing it.
+        //
+        // Distinct from HighestLocationReached, which is descriptive ("I have
+        // killed something there") and follows you around. This one is
+        // permissive ("I am allowed there") and is the thing that stops
+        // HighestLocationReached from wandering into region 5 on day one.
+        public int HighestUnlockedRegion;
         public int ClaimedAchievementFlags;
         public uint TotalAchievementsClaimedCount;
 

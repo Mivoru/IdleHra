@@ -31,6 +31,24 @@ namespace FolkIdle.Server.Engine
             return 90 + regionTier * 5;
         }
 
+        // Which region a boss id belongs to, or 0 if the monster is not a
+        // region boss. The inverse of GetRegionBossMonsterId, and written as a
+        // search over that method rather than as its arithmetic inverse
+        // ((monsterId - 90) / 5): the inverse would happily answer 4 for
+        // monster 111, which is a real monster and not a boss at all.
+        public static int GetRegionForBossMonsterId(int monsterId)
+        {
+            for (int region = FirstRegion; region <= LastRegion; region++)
+            {
+                if (GetRegionBossMonsterId(region) == monsterId)
+                {
+                    return region;
+                }
+            }
+
+            return 0;
+        }
+
         // Which race a given monster's first kill unlocks, or 0 if that monster
         // is not a region boss. Deliberately keyed on the boss id rather than
         // derived from RegionTier: RegionTier spans 1-10 across the 90 legacy

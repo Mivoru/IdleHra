@@ -321,6 +321,17 @@ namespace FolkIdle.Server.Domain.Shared
                 var defaultPayload = new TickStatePayload
                 {
                     PlayerId = playerId,
+                    // Modul: both "where may I be" fields start at region 1
+                    // EXPLICITLY. Left at the struct default they are 0, and
+                    // every gate here is a `requested > held` comparison - so a
+                    // zero does not mean "no progress", it means region 1 is
+                    // shut and the player has nowhere to go at all. That was
+                    // already true of HighestLocationReached before
+                    // HighestUnlockedRegion joined it; setting only the new one
+                    // would have left the older trap armed next to a comment
+                    // claiming location 1 is always open.
+                    HighestLocationReached = 1,
+                    HighestUnlockedRegion = RegionUnlockGate.StartingRegion,
                     ActiveActivityId = 1,
                     CurrentProgressTicks = 0,
                     RequiredProgressTicks = 50,
@@ -472,12 +483,28 @@ namespace FolkIdle.Server.Domain.Shared
             // answers. Location 1 is always open, so a player with no kills
             // at all still has somewhere to gather.
             int highestLocationReached = 1;
+            var defeatedBosses = new HashSet<int>();
             for (int i = 0; i < codexEntries.Count; i++)
             {
                 if (codexEntries[i].KillCount <= 0) continue;
                 int location = ContentRegistry.GetCanonicalLocation(codexEntries[i].MonsterId);
                 if (location > highestLocationReached) highestLocationReached = location;
+
+                // Modul: region progression. Collected in the same pass rather
+                // than by a second query - the codex is already in hand, and
+                // the gate wants five booleans out of it.
+                if (RaceUnlockRegistry.GetRegionForBossMonsterId(codexEntries[i].MonsterId) > 0)
+                {
+                    defeatedBosses.Add(codexEntries[i].MonsterId);
+                }
             }
+
+            // The durable answer. SimulationEngine raises this live when a boss
+            // falls so the door opens immediately; here it is rebuilt from the
+            // codex, which is what makes the live raise safe to be optimistic -
+            // anything it got wrong is corrected on the next hydration rather
+            // than persisting as a permanently wrong permission.
+            int highestUnlockedRegion = RegionUnlockGate.HighestUnlockedRegion(defeatedBosses);
 
             // Modul: the tools the ACTIVE CHARACTER IS WEARING.
             //
@@ -798,6 +825,7 @@ namespace FolkIdle.Server.Domain.Shared
                 ToolGatherYieldPct = toolLoadout.GatherYieldPct,
                 ToolRareFindPct = toolLoadout.RareFindPct,
                 HighestLocationReached = highestLocationReached,
+                HighestUnlockedRegion = highestUnlockedRegion,
                 HumanMasteryLevel = humanMastery,
                 VilaMasteryLevel = vilaMastery,
                 DraugrMasteryLevel = draugrMastery,

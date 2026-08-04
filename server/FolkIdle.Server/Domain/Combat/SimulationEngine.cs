@@ -1845,6 +1845,32 @@ namespace FolkIdle.Server.Domain.Combat
                             continue;
                         }
 
+                        // Modul: region progression. A region opens when the
+                        // previous region's boss falls, and until then its
+                        // monsters cannot be picked at all. Nothing used to
+                        // stop this: a level-4 character could target Malakor,
+                        // and the only thing in the way was the fight itself.
+                        //
+                        // Gated here rather than deeper because this is the one
+                        // place a target is CHOSEN. The kill path raises
+                        // HighestLocationReached, so leaving entry open would
+                        // have let a player unlock every gathering node in the
+                        // game by landing one lucky hit in region 5.
+                        //
+                        // Only combat-band ids are checked, and only canonical
+                        // ones: the 90 legacy monsters carry RegionTiers 1-10
+                        // that are not this progression, and refusing them here
+                        // would lock away content that was never behind a boss.
+                        if (cmd.TargetId >= ActivityIdBands.CombatFirst && cmd.TargetId <= ActivityIdBands.CombatLast)
+                        {
+                            int targetRegion = ContentRegistry.GetCanonicalLocation((int)cmd.TargetId);
+                            if (targetRegion > 0 && targetRegion > currentPayload.HighestUnlockedRegion)
+                            {
+                                _playerRegistry.EnqueueCommandResult(routingPlayerId, (byte)CommandResultCode.RegionLocked);
+                                continue;
+                            }
+                        }
+
                         // Modul: Architecture Overhaul, Part 2. A non-empty
                         // TargetGuid selects which of the player's up to 3
                         // characters is changing activity; the slot-level
@@ -3201,6 +3227,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 GatheringProgressTicks = currentPayload.GatheringProgressTicks,
                                 CompletedAreaFlags = currentPayload.CompletedAreaFlags,
                                 HighestLocationReached = (byte)currentPayload.HighestLocationReached,
+                                HighestUnlockedRegion = (byte)currentPayload.HighestUnlockedRegion,
                                 HumanMasteryLevel = currentPayload.HumanMasteryLevel,
                                 VilaMasteryLevel = currentPayload.VilaMasteryLevel,
                                 DraugrMasteryLevel = currentPayload.DraugrMasteryLevel,
@@ -5701,6 +5728,26 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     payload.HighestLocationReached = killedLocation;
                 }
+
+                // Modul: region progression. Felling a region's boss opens the
+                // next region - to enter, and to wear its gear. Raised live for
+                // the same reason the line above is: the reward for a boss is
+                // the door opening, and a door that opens on next login does
+                // not read as a reward at all.
+                //
+                // Only ever raised, never recomputed from the codex here. The
+                // codex write for this kill happens on CodexEngine's own cron
+                // and has not landed yet, so asking it now would answer with
+                // the state before the boss died. Hydration reconciles from the
+                // codex; this keeps the live session honest in between.
+                int clearedBossRegion = RaceUnlockRegistry.GetRegionForBossMonsterId(activeMonster.Id);
+                if (clearedBossRegion > 0
+                    && clearedBossRegion < RaceUnlockRegistry.LastRegion
+                    && payload.HighestUnlockedRegion < clearedBossRegion + 1)
+                {
+                    payload.HighestUnlockedRegion = clearedBossRegion + 1;
+                }
+
                 AddSeasonalXp(ref payload, seasonalCombatXp);
                 
                 if (liveSessionContexts.TryGetValue(payload.PlayerId, out var sessionCtx))

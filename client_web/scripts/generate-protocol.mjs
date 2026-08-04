@@ -14,15 +14,38 @@
 // regenerate.
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..', '..');
 const serverProject = resolve(repoRoot, 'server', 'FolkIdle.Server', 'FolkIdle.Server.csproj');
-const prebuiltDll = resolve(repoRoot, 'server', 'FolkIdle.Server', 'bin', 'Debug', 'net8.0', 'FolkIdle.Server.dll');
 const outputPath = resolve(here, '..', 'src', 'lib', 'net', 'protocol.generated.ts');
+
+// Whichever of Debug/Release was built most recently.
+//
+// This used to be Debug, unconditionally, and that is a quiet way to generate
+// a WRONG protocol rather than a failure: add a packet field, build Release
+// (because a server process is holding the Debug output open, which is the
+// normal state while anything is running locally), regenerate - and the stale
+// Debug DLL reports the old layout. The file is written, the build is green,
+// and the client then reads every field after the new one at the wrong offset.
+//
+// The whole point of generating this from the server is that the two cannot
+// disagree; picking an arbitrary build configuration reintroduced exactly the
+// disagreement it removes.
+function newestPrebuiltDll() {
+  const candidates = ['Debug', 'Release']
+    .map((configuration) =>
+      resolve(repoRoot, 'server', 'FolkIdle.Server', 'bin', configuration, 'net8.0', 'FolkIdle.Server.dll'),
+    )
+    .filter((path) => existsSync(path))
+    .map((path) => ({ path, mtimeMs: statSync(path).mtimeMs }))
+    .sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+  return candidates.length > 0 ? candidates[0].path : null;
+}
 
 const checkOnly = process.argv.includes('--check');
 
@@ -31,8 +54,10 @@ function dumpSchema() {
   // `dotnet run`, and `dotnet run` would rebuild - which fails outright while
   // a server process is holding the output DLL open, a trap this repo hits
   // often enough to be worth avoiding here.
-  if (existsSync(prebuiltDll)) {
+  const prebuiltDll = newestPrebuiltDll();
+  if (prebuiltDll) {
     try {
+      console.log(`reading protocol from ${prebuiltDll}`);
       return execFileSync('dotnet', [prebuiltDll, '--dump-protocol'], {
         encoding: 'utf8',
         maxBuffer: 32 * 1024 * 1024,

@@ -35,9 +35,18 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   // stale code cannot render as a bare number.
   11: 'That could not be stored.',
   12: 'Trading requires an active guild membership.',
+  // Equipping and buying stopped asking about levels when the region gate
+  // replaced the level gate (18 below). Kept mapped so an in-flight or
+  // replayed result cannot render as a bare number, the same reason 11 is.
   13: 'Your level is too low for that item.',
   14: 'Another character is already on that node.',
   15: 'That relationship already exists.',
+  // 16 and 17 existed server-side with nothing here to render them, so the
+  // player saw a number. Added with 18 rather than left for later: an
+  // unexplained refusal is the failure this whole gate was meant to stop.
+  16: 'Fusion needs three items of the same rarity.',
+  17: 'You have not reached that location yet.',
+  18: 'That region is still locked - defeat the previous region’s boss first.',
 };
 
 export const COMMAND_RESULT_SUCCESS = 0;

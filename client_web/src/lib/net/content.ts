@@ -171,9 +171,74 @@ export interface MonsterLootEntry {
   IsEquipment: boolean;
 }
 
-/** Turns "cooked_mud_carp_t3_food" into "Cooked Mud Carp T3 Food". */
+// Modul: item names. NOT ONE of the 437 items in items.json carries a Name
+// field - monsters do, items never have - so every name a player reads is
+// derived from the BaseId here. That was fine while the BaseId was just words,
+// and stopped being fine once it also had to encode structure: a shield read
+// as "Eq Linen Buckler Helper Offhand Base", because "_helper_offhand_" is the
+// marker EquipmentSlotEngine.ResolveSlotIndex matches on and "eq_"/"_base" are
+// scaffolding. The name was always in there; it was wearing the plumbing.
+//
+// These are stripped as WHOLE SUFFIXES, longest first, and exactly one match
+// is removed. That precision is the entire difficulty, because the plumbing
+// words also occur in real names:
+//
+//   eq_obsidian_gloves_gloves_armor_slot_base   -> Obsidian Gloves
+//   runed_boots_boots_armor_slot_base           -> Runed Boots
+//   gilded_round_shield_shield_slot_base        -> Gilded Round Shield
+//
+// Anything that strips a trailing RUN of known words turns those three into
+// "Obsidian", "Runed" and "Gilded Round". Note the two shapes that produce the
+// doubling: armour names the slot separately (<name>_<slot>_armor_slot_base),
+// while a shield's family word IS its slot marker (<name>_shield_slot_base) -
+// so the same visible doubling needs different cuts, which is why these are
+// enumerated per family rather than generalised.
+//
+// Verified against all 437 BaseIds.
+//
+// "ranged" is listed beside "range" because the catalogue authored both, and
+// "structural" because one region-10 weapon uses it where every other weapon
+// names a damage class - it sits in the class position, so it is scaffolding
+// here even though it is scaffolding of one.
+const STRUCTURAL_SUFFIXES: readonly RegExp[] = [
+  /_(?:helmet|chest|gloves|boots|leggings)_armor_slot_base$/,
+  /_(?:melee|ranged|range|blunt|magic|structural)_weapon_slot_base$/,
+  /_unique_regional_boss_material$/,
+  /_ultimate_mythic_upgrade_material$/,
+  /_(?:offensive|defensive)_potion_consumable$/,
+  /_guaranteed_currency_payout$/,
+  /_rare_crafting_ingredient$/,
+  /_raw_cooking_ingredient$/,
+  /_raw_fishing_material$/,
+  /_helper_offhand_base$/,
+  /_alchemy_ingredient$/,
+  /_crafting_material$/,
+  /_ring_1\/2_slot_base$/,
+  /_alchemy_material$/,
+  /_amulet_slot_base$/,
+  /_shield_slot_base$/,
+  /_armor_slot_base$/,
+  /_weapon_slot_base$/,
+  /_t\d+_food$/,
+  /_material$/,
+  /_food$/,
+  /_tool$/,
+  /_base$/,
+];
+
+/** Turns "eq_linen_buckler_helper_offhand_base" into "Linen Buckler". */
 export function prettifyBaseId(baseId: string): string {
-  return baseId
+  let stem = baseId.replace(/^eq_/, '');
+
+  for (const suffix of STRUCTURAL_SUFFIXES) {
+    const stripped = stem.replace(suffix, '');
+    if (stripped !== stem) {
+      stem = stripped;
+      break;
+    }
+  }
+
+  return stem
     .split('_')
     .filter((part) => part.length > 0)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))

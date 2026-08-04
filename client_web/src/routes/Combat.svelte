@@ -20,6 +20,17 @@
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
   import SessionLoot from '../lib/ui/SessionLoot.svelte';
 
+  // Modul: region progression. The server refuses a target in a region whose
+  // predecessor's boss is still standing (CommandResultCode.RegionLocked), so
+  // the list has to say which those are. Offering a Fight button that is
+  // guaranteed to be rejected is how a rule reads as a bug.
+  //
+  // Falls back to region 1 rather than to "everything unlocked" when no state
+  // has arrived yet: showing a locked region as open and having the click fail
+  // is worse than showing an open one as locked for the moment before the
+  // first packet lands.
+  const unlockedRegion = $derived($playerState?.HighestUnlockedRegion || 1);
+
   let registry = $state<ContentRegistry | null>(null);
   let contentError = $state('');
   let selectedMonsterId = $state(0);
@@ -242,8 +253,13 @@
             : ''}
         >
           {locationName(index + 1)}
+          {#if index + 1 > unlockedRegion}
+            <span class="locked-tag"
+              >Locked — defeat the {locationName(index)} boss</span
+            >
+          {/if}
         </h3>
-        <ul class="monsters">
+        <ul class="monsters" class:locked={index + 1 > unlockedRegion}>
           {#each region as monster}
             <li class:selected={selectedMonsterId === monster.Id}>
               <button class="row" onclick={() => selectMonster(monster)}>
@@ -254,7 +270,7 @@
               </button>
               <button
                 class="fight"
-                disabled={$connectionStatus.phase !== 'live'}
+                disabled={$connectionStatus.phase !== 'live' || index + 1 > unlockedRegion}
                 onclick={() => fight(monster)}
               >
                 Fight
@@ -381,6 +397,21 @@
     padding: 0;
     display: grid;
     gap: 0.3rem;
+  }
+
+  /* Modul: a locked region stays READABLE. Dimmed, not hidden - knowing what
+     is behind the boss is the reason to go and fight it, and a region that
+     simply is not drawn reads as content that does not exist yet. */
+  .monsters.locked {
+    opacity: 0.45;
+  }
+
+  .locked-tag {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    opacity: 0.9;
   }
 
   .monsters li {

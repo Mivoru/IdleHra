@@ -121,7 +121,15 @@ namespace FolkIdle.Server.Network
         // Modul: a gathering node in a location the player has not reached.
         // Distinct from InvalidActivity, which means the id is not a thing at
         // all - this one means "not yet".
-        LocationLocked = 17
+        LocationLocked = 17,
+
+        // Modul: region progression. Gear from a region whose boss is still
+        // standing, or an attempt to fight in one. Separate from LocationLocked
+        // because the remedy is different and the client should be able to say
+        // which one it is: a locked location is somewhere you have not gone, a
+        // locked region is a boss you have not beaten. Replaces LevelTooLow on
+        // the equip path - see RegionUnlockGate.
+        RegionLocked = 18
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -232,6 +240,11 @@ namespace FolkIdle.Server.Network
         // Modul: the furthest location the player has reached, 1-5. Gates
         // gathering; see TickStatePayload for why CompletedAreaFlags could not.
         public byte HighestLocationReached;
+
+        // Modul: the highest region the player may enter, 1-5. On the wire
+        // because the client has to draw the closed ones as closed - a gate the
+        // player only discovers by being refused is a gate that reads as a bug.
+        public byte HighestUnlockedRegion;
         public int HumanMasteryLevel;
         public int VilaMasteryLevel;
         public int DraugrMasteryLevel;

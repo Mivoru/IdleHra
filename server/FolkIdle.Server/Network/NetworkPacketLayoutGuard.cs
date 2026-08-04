@@ -97,7 +97,13 @@ namespace FolkIdle.Server.Network
         //
         // Modul: tool affixes. 754 -> 760, three ushorts for the equipped
         // tools' summed gather-speed, yield and rare-find percentages.
-        public const int ExpectedStateUpdateSize = 760;
+        //
+        // Modul: region gating. 760 -> 761, one byte for
+        // HighestUnlockedRegion. Sits beside HighestLocationReached because
+        // they are the two halves of "where may I be" - one descriptive, one
+        // permissive - and splitting them would invite the next reader to use
+        // whichever they found first.
+        public const int ExpectedStateUpdateSize = 761;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

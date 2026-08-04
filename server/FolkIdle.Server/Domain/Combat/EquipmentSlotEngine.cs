@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Data;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
@@ -360,23 +362,23 @@ namespace FolkIdle.Server.Domain.Combat
                         return EquipAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.ItemEquipped);
                     }
 
-                    int playerLevel = await db.PlayerRecords.AsNoTracking()
-                        .Where(p => p.Id == playerId)
-                        .Select(p => p.CurrentLevel)
-                        .FirstOrDefaultAsync();
-
-                    // Modul: Advanced Economy Refactoring, Part 2.3. Level
-                    // gate at equip time - the second half of the anti-cheese
-                    // lock (MarketEscrowEngine.BuyItemAsync blocks the
-                    // purchase; this blocks equipping over-leveled gear
-                    // acquired through any other channel: mail, bank
-                    // withdrawal, pre-gate inventory).
-                    int requiredLevel = EquipmentLevelGate.DeriveRequiredLevel(item.BaseItemId, item.QualityTier);
-                    if (playerLevel < requiredLevel)
+                    // Modul: region gate at equip time, replacing the level
+                    // gate. Still the second half of the anti-cheese lock -
+                    // MarketEscrowEngine.BuyItemAsync blocks the purchase, this
+                    // blocks wearing gear acquired through any other channel
+                    // (mail, bank withdrawal, pre-gate inventory) - but the
+                    // question it asks changed. It used to be "are you high
+                    // enough level for something this rare", which refused a
+                    // region-1 Epic to the only characters who could farm it.
+                    // It is now "have you opened the region this came from",
+                    // and rarity is not part of it: inside an open region every
+                    // rarity is wearable.
+                    var defeatedBosses = await RegionUnlockGate.LoadDefeatedBossesAsync(db, playerId);
+                    if (!RegionUnlockGate.CanWearItem(item.BaseItemId, defeatedBosses))
                     {
                         await transaction.RollbackAsync();
-                        Console.WriteLine($"Equip rejected: player {playerId} level {playerLevel} below required {requiredLevel} for {item.BaseItemId} T{item.QualityTier}.");
-                        return EquipAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.LevelTooLow);
+                        Console.WriteLine($"Equip rejected: player {playerId} has not unlocked the region for {item.BaseItemId} (highest unlocked {RegionUnlockGate.HighestUnlockedRegion(defeatedBosses)}).");
+                        return EquipAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.RegionLocked);
                     }
 
                     WriteSlot(character, slotIndex, item.Id);

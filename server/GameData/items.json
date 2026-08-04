@@ -725,7 +725,7 @@
     "BaseValueGold": 1000,
     "FlatAttackPower": 443,
     "FlatDefenseRating": 0,
-    "BaseId": "peruns_stormcaller_structural_weapon_slot_base___adapts_to_matching_high_weapon_skill_archetype_upon_compilation"
+    "BaseId": "peruns_stormcaller_structural_weapon_slot_base"
   },
   {
     "Id": 92,
