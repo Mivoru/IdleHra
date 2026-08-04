@@ -28,7 +28,11 @@ page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e.message}`));
 // enough that a fixed wait passes locally and fails on a fresh boot - which is
 // a flaky test pretending to be a bug report.
 const go = async (label) => {
-  await page.getByRole('button', { name: label, exact: true }).first().click();
+  // Modul: scoped to the NAV. The hub map's plates are buttons named "Combat",
+  // "Market", "Guild" and so on too, and an unscoped lookup resolved to
+  // whichever came first in the DOM - which is the map, and only while the map
+  // is the screen being shown. Navigation has to mean the nav.
+  await page.locator('header').getByRole('button', { name: label, exact: true }).first().click();
   await page.waitForFunction(
     () => !/\bLoading\.\.\./.test(document.body.innerText),
     { timeout: 15000 },
@@ -63,11 +67,29 @@ record('sign in with the dev fixture', true);
 // The offline summary is a modal with a backdrop that swallows every click, so
 // it has to go before anything else can be driven. A real player dismisses it
 // the same way; this is not a workaround, it is the first interaction.
+// Modul: the modal ARRIVES LATE. It is built from the first state packet, so
+// a single count() the instant after sign-in can run before it exists - and
+// then its full-screen backdrop swallows every click that follows, which
+// surfaces thirty seconds later as an unrelated button "not receiving pointer
+// events". Polled for a few seconds instead of sampled once.
+async function dismissOfflineSummary(waitMs = 6000) {
+  const deadline = Date.now() + waitMs;
+  let dismissed = false;
+  while (Date.now() < deadline) {
+    const cont = page.getByRole('button', { name: 'Continue', exact: true });
+    if ((await cont.count()) > 0) {
+      await cont.first().click();
+      dismissed = true;
+      break;
+    }
+    await page.waitForTimeout(250);
+  }
+  await page.waitForTimeout(300);
+  return dismissed;
+}
+
 {
-  const cont = page.getByRole('button', { name: 'Continue', exact: true });
-  const shown = (await cont.count()) > 0;
-  if (shown) await cont.first().click();
-  await page.waitForTimeout(500);
+  const shown = await dismissOfflineSummary();
   const stillBlocked = await page.locator('.backdrop').count();
   record('offline summary can be dismissed', stillBlocked === 0, shown ? 'was shown' : 'not shown');
 }
@@ -86,7 +108,19 @@ record('sign in with the dev fixture', true);
 // Thorny Vine is 950 HP and measured at 2.1 seconds a kill, which is about
 // twenty ticks - enough intermediate values to prove the bar tracks them.
 await go('Combat');
-await page.getByRole('button', { name: 'Fight' }).nth(5).click();
+// The monster list is content-driven and arrives after the screen does, so
+// `go`'s "no Loading..." check can return while the list is still empty. Wait
+// for the twenty-five rows themselves before indexing into them.
+await page
+  .getByRole('button', { name: 'Fight', exact: true })
+  .nth(5)
+  .waitFor({ state: 'visible', timeout: 15000 });
+// Modul: EXACT. `name: 'Fight'` is a substring match, so "Stop fighting"
+// matched it too - and now that deploying actually persists, the fixture
+// arrives already in combat, which put that button in the list and shifted
+// every index by one. The click then resolved to a monster row's own button
+// and waited thirty seconds for something that was never going to move.
+await page.getByRole('button', { name: 'Fight', exact: true }).nth(5).click();
 await page.waitForTimeout(4000);
 {
   const text = await page.evaluate(() => document.body.innerText);
@@ -290,8 +324,16 @@ await go('Gathering');
     const lines = text.split('\n').map((l) => l.trim());
     const at = lines.indexOf(name);
     if (at < 0 || at + 1 >= lines.length) return null;
-    const hit = /level\s+(\d+)\s*\u00b7\s*([\d,]+)\s*xp/i.exec(lines[at + 1]);
-    return hit ? { level: Number(hit[1]), xp: Number(hit[2].replace(/,/g, '')) } : null;
+    // Thousands are grouped with a NON-BREAKING SPACE in this locale, so
+    // "2 415" is one number. A [\\d,]+ pattern stops at the space, fails to
+    // reach "xp", matches nothing, and reports the whole track as missing -
+    // intermittently, because it only bites once a number passes a thousand.
+    const hit = /level\s+(\d+)\s*\u00b7\s*([\d.,\s\u00a0\u202f]+?)\s*xp/i.exec(
+      lines[at + 1],
+    );
+    return hit
+      ? { level: Number(hit[1]), xp: Number(hit[2].replace(/[^0-9]/g, '')) }
+      : null;
   };
 
   const fishingBefore = await readMastery('Fishing');

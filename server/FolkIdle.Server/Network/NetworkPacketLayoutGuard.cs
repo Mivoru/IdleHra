@@ -91,7 +91,10 @@ namespace FolkIdle.Server.Network
         //
         // Modul: location gating. 750 -> 751, one byte for
         // HighestLocationReached.
-        public const int ExpectedStateUpdateSize = 751;
+        //
+        // Modul: per-profession tool tiers. 751 -> 754, one byte each for axe,
+        // pickaxe and rod.
+        public const int ExpectedStateUpdateSize = 754;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

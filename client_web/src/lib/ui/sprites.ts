@@ -38,6 +38,11 @@ export function backgroundUrl(name: string): string {
 
 /** The five locations, in canon order, keyed the way locations.ts names them. */
 export function locationBackground(locationIndex: number): string | null {
+  // Modul: the art is named for the OLD five. The scenes themselves are right
+  // for the places they now describe - the same painted valley, forest, waste,
+  // peaks and citadel in the same order - only their filenames predate the
+  // canon rename, and renaming eight megabytes of source art to fix a lookup
+  // would be the wrong end of the problem.
   const files = [
     'whispering_woods',
     'the_murky_swamps',

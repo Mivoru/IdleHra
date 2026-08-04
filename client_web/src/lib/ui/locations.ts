@@ -5,11 +5,11 @@
 // which matched the art or the monsters. ContentRegistry.LocationNames is the
 // server's copy; this is the client's, and the two must not drift.
 export const LOCATION_NAMES: readonly string[] = [
+  'Sunlit Plains',
   'Whispering Woods',
-  'The Murky Swamps',
-  'Craggy Highlands',
-  'Ancient Ruins',
-  'Abyssal Breach',
+  'Scorched Wasteland',
+  'Frozen Peaks',
+  'Shadow Citadel',
 ];
 
 export const LOCATION_COUNT = LOCATION_NAMES.length;

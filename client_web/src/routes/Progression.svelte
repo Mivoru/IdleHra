@@ -140,15 +140,30 @@
   <section class="panel">
     <h2>Daily login</h2>
     {#if loginBonus.data}
+      <!-- Modul: the week used to be seven identical tiles with today's
+           outlined. A player on day four saw days one to three looking exactly
+           like days five to seven and reasonably concluded their earlier
+           rewards were still waiting to be opened. Nothing is opened here -
+           signing in credits the day by itself - so each tile says which of
+           the three things it is. -->
       <p class="dim small">
-        Streak day {loginBonus.data.CurrentStreakDay}.
-        {loginBonus.data.CreditedToday ? "Today's reward is already credited." : 'Today is not credited yet.'}
+        Day {loginBonus.data.CurrentStreakDay} of 7.
+        {loginBonus.data.CreditedToday
+          ? "Today is credited - rewards arrive on sign-in, there is nothing to claim."
+          : 'Today is not credited yet.'}
       </p>
       <ol class="week">
         {#each loginBonus.data.WeeklyGoldSchedule as gold, index}
-          <li class:current={index + 1 === loginBonus.data.CurrentStreakDay}>
-            <span class="dim tiny">Day {index + 1}</span>
+          {@const day = index + 1}
+          {@const isToday = day === loginBonus.data.CurrentStreakDay}
+          {@const collected = day < loginBonus.data.CurrentStreakDay
+            || (isToday && loginBonus.data.CreditedToday)}
+          <li class:current={isToday} class:collected class:upcoming={!collected && !isToday}>
+            <span class="dim tiny">Day {day}</span>
             <strong><Money amount={gold} /></strong>
+            <span class="daystate tiny">
+              {collected ? 'collected' : isToday ? 'today' : 'upcoming'}
+            </span>
           </li>
         {/each}
       </ol>
@@ -272,6 +287,21 @@
 </div>
 
 <style>
+  .week li.collected {
+    opacity: 0.55;
+  }
+
+  .week li.upcoming {
+    opacity: 0.8;
+  }
+
+  .daystate {
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.7;
+  }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));

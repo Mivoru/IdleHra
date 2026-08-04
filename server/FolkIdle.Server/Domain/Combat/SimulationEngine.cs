@@ -3315,6 +3315,9 @@ namespace FolkIdle.Server.Domain.Combat
                                 CurrentPopulationCount = currentPayload.CurrentPopulationCount,
                                 CachedMaxPopulationCapacity = currentPayload.CachedMaxPopulationCapacity,
                                 CachedCurrentToolTier = currentPayload.CachedCurrentToolTier,
+                                AxeToolTier = currentPayload.AxeToolTier,
+                                PickaxeToolTier = currentPayload.PickaxeToolTier,
+                                RodToolTier = currentPayload.RodToolTier,
                                 CachedInnMaturationBonus = currentPayload.CachedInnMaturationBonus,
                                 CachedMentorCount = currentPayload.CachedMentorCount,
                                 ActiveChildMaturationMs = currentPayload.ActiveChildMaturationMs,
@@ -5123,7 +5126,17 @@ namespace FolkIdle.Server.Domain.Combat
                     1 => payload.MineLevel,
                     _ => 0
                 };
-                int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, payload.CachedCurrentToolTier, villageProductionLevel);
+                // Modul: the tool that matches the job. This passed
+                // CachedCurrentToolTier, which was the forge building's level -
+                // so an axe sped up fishing, a rod sped up mining, and owning
+                // no tool at all made no difference either way.
+                int toolTier = gatheringNode.ProfessionType switch
+                {
+                    0 => payload.AxeToolTier,
+                    1 => payload.PickaxeToolTier,
+                    _ => payload.RodToolTier
+                };
+                int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel);
                 payload.RequiredProgressTicks = requiredTicks;
                 payload.GatheringProgressTicks++;
 

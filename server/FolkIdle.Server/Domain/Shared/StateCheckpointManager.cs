@@ -479,6 +479,37 @@ namespace FolkIdle.Server.Domain.Shared
                 if (location > highestLocationReached) highestLocationReached = location;
             }
 
+            // Modul: the best tool the player actually owns, per profession.
+            //
+            // The tick used to read CachedCurrentToolTier, which
+            // VillageManagementEngine set from the FORGE BUILDING LEVEL - so
+            // every one of GatheringToolEngine's ten tool tiers was driven by a
+            // building, crafting a Void Bark Axe changed nothing, and the axe
+            // you were holding sped up your fishing.
+            //
+            // Read from both halves of the chest, because a tool is a material
+            // stack like anything else and the player may have moved it.
+            byte axeTier = 0, pickaxeTier = 0, rodTier = 0;
+            var ownedToolBaseIds = new List<string>();
+            ownedToolBaseIds.AddRange(await dbContext.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == playerId && c.Quantity > 0)
+                .Select(c => c.ItemId).ToListAsync());
+            ownedToolBaseIds.AddRange(await dbContext.VillageStashInstances.AsNoTracking()
+                .Where(v => v.PlayerId == playerId && v.Quantity > 0)
+                .Select(v => v.ItemId).ToListAsync());
+
+            for (int i = 0; i < ownedToolBaseIds.Count; i++)
+            {
+                string toolBaseId = ownedToolBaseIds[i];
+                int kind = ContentRegistry.GetToolKind(toolBaseId);
+                if (kind < 0) continue;
+
+                byte tier = (byte)ContentRegistry.GetToolTier(toolBaseId);
+                if (kind == ContentRegistry.ToolKindAxe && tier > axeTier) axeTier = tier;
+                else if (kind == ContentRegistry.ToolKindPickaxe && tier > pickaxeTier) pickaxeTier = tier;
+                else if (kind == ContentRegistry.ToolKindRod && tier > rodTier) rodTier = tier;
+            }
+
             int completedAreas = 0;
             for (int region = 1; region <= 10; region++)
             {
@@ -761,6 +792,9 @@ namespace FolkIdle.Server.Domain.Shared
                 ClaimedAchievementFlags = achievementFlags,
                 TotalAchievementsClaimedCount = (uint)totalAchievements,
                 CompletedAreaFlags = completedAreas,
+                AxeToolTier = axeTier,
+                PickaxeToolTier = pickaxeTier,
+                RodToolTier = rodTier,
                 HighestLocationReached = highestLocationReached,
                 HumanMasteryLevel = humanMastery,
                 VilaMasteryLevel = vilaMastery,

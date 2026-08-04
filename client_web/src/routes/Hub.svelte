@@ -83,13 +83,17 @@
        through it than as a solid disc. */
     opacity: 0.7;
     cursor: pointer;
-    transition: opacity 120ms ease, transform 120ms ease;
+    /* Modul: opacity only. Hover used to also scale the plate, and a hovered
+       element whose geometry is moving is never "stable" - every automated
+       click retried until it timed out, and a real cursor made the label slide
+       under itself. The brightness change is the whole affordance. */
+    transition: opacity 120ms ease, filter 120ms ease;
   }
 
   .place:hover,
   .place:focus-visible {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1.04);
+    filter: brightness(1.08);
   }
 
   .place span {
@@ -115,11 +119,6 @@
   @media (prefers-reduced-motion: reduce) {
     .place {
       transition: none;
-    }
-
-    .place:hover,
-    .place:focus-visible {
-      transform: translate(-50%, -50%);
     }
   }
 </style>

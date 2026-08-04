@@ -239,6 +239,13 @@ namespace FolkIdle.Server.Engine
 
         // Village Infrastructure
         public int CachedCurrentToolTier;
+
+        // Modul: one tier per profession. CachedCurrentToolTier was a single
+        // number taken from the forge building, so an axe accelerated fishing
+        // and a rod accelerated mining - and neither was ever actually owned.
+        public byte AxeToolTier;
+        public byte PickaxeToolTier;
+        public byte RodToolTier;
         public int CachedMaxPopulationCapacity;
         public int CachedInnMaturationBonus;
 

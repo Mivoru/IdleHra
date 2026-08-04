@@ -384,6 +384,11 @@ namespace FolkIdle.Server.Network
 
         // Village Infrastructure
         public int CachedCurrentToolTier;
+
+        // Modul: the tier of the best tool the player owns, per profession.
+        public byte AxeToolTier;
+        public byte PickaxeToolTier;
+        public byte RodToolTier;
         public int CachedMaxPopulationCapacity;
         public int CachedInnMaturationBonus;
 

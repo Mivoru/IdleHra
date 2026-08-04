@@ -308,12 +308,28 @@
     letter-spacing: 0.04em;
   }
 
+  /* Modul: THE PAGE JITTERED THROUGHOUT EVERY FIGHT.
+     `auto-fit` sizes the tracks from their content, and this screen's content
+     is gold and XP counting up ten times a second. Every digit that changed
+     width re-measured the whole grid and slid the monster list - and its Fight
+     buttons - sideways. It reads as a wobble, and it is why an automated click
+     on a Fight button could never land: the element genuinely never stopped
+     moving.
+     Fixed fractions, and tabular numerals so a digit is always the same
+     width. */
   .layout {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    grid-auto-columns: 1fr;
     gap: 1rem;
     padding: 1rem;
     align-items: start;
+  }
+
+  .layout strong,
+  .layout .price,
+  .layout dd {
+    font-variant-numeric: tabular-nums;
   }
 
   .panel {

@@ -851,6 +851,66 @@ namespace FolkIdle.Server.Engine
 
         public static System.Collections.Generic.IReadOnlyCollection<int> RawFishItemIds => _rawFishItemIds.Value;
 
+        // Modul: WHICH TOOL, AND HOW GOOD.
+        //
+        // CachedCurrentToolTier was set from the FORGE BUILDING LEVEL - so a
+        // player who crafted a Void Bark Axe gathered at exactly the speed of
+        // someone holding nothing, and the whole tool tier table in
+        // GatheringToolEngine was driven by a building instead of by tools.
+        //
+        // The ten tiers are the ten woods, in the order the design list gives
+        // them: birch, golden birch, willow, whisper willow, acacia, ironwood,
+        // frostpine, glacier pine, ebon, void bark. Resolved from the BaseId
+        // rather than from an id range so authoring a tool cannot silently
+        // land it at tier 0.
+        private static readonly string[] ToolWoodsByTier =
+        {
+            "birch_", "golden_birch_", "willow_", "whisper_willow_",
+            "acacia_", "ironwood_", "frostpine_", "glacier_pine_",
+            "ebon_", "voidbark_",
+        };
+
+        public const int ToolKindAxe = 0;
+        public const int ToolKindPickaxe = 1;
+        public const int ToolKindRod = 2;
+
+        /// <summary>Which profession a tool serves, or -1 if it is not a tool.</summary>
+        public static int GetToolKind(string baseItemId)
+        {
+            if (string.IsNullOrEmpty(baseItemId) || !baseItemId.EndsWith("_tool", StringComparison.Ordinal))
+            {
+                return -1;
+            }
+
+            if (baseItemId.Contains("_pickaxe_", StringComparison.Ordinal)) return ToolKindPickaxe;
+            if (baseItemId.Contains("_fishing_rod_", StringComparison.Ordinal)) return ToolKindRod;
+            if (baseItemId.Contains("_axe_", StringComparison.Ordinal)) return ToolKindAxe;
+            return -1;
+        }
+
+        /// <summary>1-10 by the tool's wood, or 0 for the starter and non-tools.</summary>
+        public static int GetToolTier(string baseItemId)
+        {
+            if (GetToolKind(baseItemId) < 0)
+            {
+                return 0;
+            }
+
+            // Longest prefix first: "golden_birch_" also starts with nothing
+            // else, but "birch_" is a prefix of nothing while "willow_" IS a
+            // suffix-match risk inside "whisper_willow_". Matching on the
+            // leading token avoids both.
+            for (int tier = ToolWoodsByTier.Length; tier >= 1; tier--)
+            {
+                if (baseItemId.StartsWith(ToolWoodsByTier[tier - 1], StringComparison.Ordinal))
+                {
+                    return tier;
+                }
+            }
+
+            return 0;
+        }
+
         public static bool IsRegionalBoss(int monsterId)
         {
             if (monsterId < FirstCanonicalMonsterId || monsterId > LastCanonicalMonsterId)

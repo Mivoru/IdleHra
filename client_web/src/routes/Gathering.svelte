@@ -107,7 +107,8 @@
   function effectiveTicks(node: GatheringNodeDefinition): number {
     if (!snap) return node.BaseTickThreshold;
     const mastery = masteryLevelOf(node.ProfessionType);
-    const reduced = node.BaseTickThreshold - mastery * 2 - snap.CachedCurrentToolTier;
+    const reduced =
+      node.BaseTickThreshold - mastery * 2 - toolTierFor(node.ProfessionType);
     return Math.max(MIN_GATHER_TICKS, reduced);
   }
 
@@ -119,7 +120,16 @@
     return effectiveTicks(node) === MIN_GATHER_TICKS;
   }
 
-  const toolTier = $derived(snap?.CachedCurrentToolTier ?? 0);
+  // Modul: one tool per profession, and it has to be one you OWN. This read
+  // CachedCurrentToolTier, which the server set from the forge building's
+  // level - so the number moved when you upgraded a building and never when
+  // you crafted an axe.
+  function toolTierFor(professionId: number): number {
+    if (!snap) return 0;
+    if (professionId === 0) return snap.AxeToolTier;
+    if (professionId === 1) return snap.PickaxeToolTier;
+    return snap.RodToolTier;
+  }
 
   // Modul: a node belongs to a PLACE, and you can only work places you have
   // been. Gathering used to be completely open, so a brand new character could
@@ -208,14 +218,16 @@
       <h3>Speed and yield</h3>
       <dl class="mastery">
         <div>
-          <dt>Tool tier</dt>
-          <dd class="bonus">-{toolTier} ticks per gather</dd>
+          <dt>Tools</dt>
+          <dd class="bonus">
+            axe {toolTierFor(0)} &middot; pickaxe {toolTierFor(1)} &middot; rod {toolTierFor(2)}
+          </dd>
         </div>
         <div>
           <dt>Mastery</dt>
           <dd class="bonus">
             -{masteryLevelOf(0) * 2} wood, -{masteryLevelOf(1) * 2} mining,
-            -{masteryLevelOf(2) * 2} fish, -{masteryLevelOf(3) * 2} herb
+            -{masteryLevelOf(2) * 2} fish
           </dd>
         </div>
         <div>
