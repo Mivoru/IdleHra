@@ -46,6 +46,107 @@ Traps that cost time and will cost it again:
   one "bug" this session was a stale client; ask for a hard reload before
   investigating anything the code says is already fixed.
 
+## M1. Migration plan: API from Render to the Oracle box
+
+**The database stays on Supabase.** Only the API server moves. The web
+client stays on Render's static site - it is free, on a CDN, and does not
+spin down, so there is nothing to gain by moving it and a working TLS setup
+to lose.
+
+### The machine
+
+    ssh folkidle-server          # already in ~/.ssh/config
+    HostName 92.5.0.94  User ubuntu  IdentityFile ~/.ssh/ssh-key-2026-08-04.key
+
+Ubuntu 24.04, **aarch64** (Oracle Ampere), **2 vCPU, 12 GB RAM**, 45 GB disk
+(41 free). Docker 29.1.3 and Compose 2.40 installed and usable by `ubuntu`
+without sudo. git present. No dotnet, node, nginx or certbot - and none are
+needed, because the server builds inside Docker.
+
+Why bother: Render's free instance is **0.15 vCPU and 512 MB and sleeps
+after 15 minutes**. This is ~13x the CPU and never sleeps, which is exactly
+the constraint that had the tick loop running at up to 89% of its cap.
+
+It does NOT fix H1 - progression is 87x too fast because of a logic defect,
+and a faster machine will simply reach level 127 sooner.
+
+### What must be solved, in order
+
+**1. Ports, in two places.** The instance's iptables currently accepts only
+22 and REJECTs the rest, AND Oracle has its own Security List at the cloud
+level. Opening one and not the other looks exactly like a dead server. Need
+80 and 443 inbound. On Ubuntu the iptables rule must be inserted BEFORE the
+existing REJECT line, and persisted (`netfilter-persistent save`) or it is
+gone on reboot.
+
+**2. A hostname.** The browser client is served over https, so the socket
+must be `wss://`, and no browser accepts an invalid certificate for one.
+Let's Encrypt will not issue for a bare IP, so **92.5.0.94 cannot work as
+the API address**. Needs a real DNS name - an owned domain, or DuckDNS.
+This is the item most likely to stall the migration; settle it first.
+
+**3. TLS and reverse proxy.** Prefer **Caddy** over nginx+certbot: it
+obtains and renews certificates by itself and proxies WebSocket upgrades
+without extra configuration, which is most of what nginx would need hand-
+written here. One container, one `Caddyfile`, proxying to the app on 8080.
+
+**4. Redis must move too.** `REDIS_CONNECTION` currently points at
+`red-d9orkqm7bikc73fu43o0:6379`, which is a **Render-internal hostname and
+will not resolve from Oracle**. Run a `redis` container beside the app
+instead - it is better there anyway, being on the same host rather than
+across a network. Data loss on restart is already accepted (the Render
+instance has persistence off).
+
+**5. A new compose file.** `docker-compose.yml` in the repo CANNOT be reused
+as-is: it stands up its own Postgres, a pgbouncer in front of it, and a
+one-shot migrate job. With the database on Supabase all three are wrong -
+Supabase's own pooler already does the pooling, and the app image migrates
+on its entrypoint. Write `ops/oracle/docker-compose.yml` with two services:
+the app (built from `server/`, `FolkIdle.Server/Dockerfile`) and redis, both
+`restart: unless-stopped` so a reboot brings them back.
+
+**6. Environment.** Same four the Render service needs, plus redis:
+
+    DOTNET_ENVIRONMENT=Production
+    FOLKIDLE_DB_CONN=Host=aws-0-<region>.pooler.supabase.com;Port=5432;...
+    JWT_SECRET_KEY=<see below>
+    FOLKIDLE_WEB_ORIGINS=https://folkidle.onrender.com
+    REDIS_CONNECTION=redis:6379
+    PORT=8080
+
+Port **5432**, session mode. Not 6543 - see the trap list above.
+
+**JWT_SECRET_KEY should be COPIED from the Render service**, not
+regenerated. Tokens are signed with it, so a new secret silently invalidates
+every logged-in player and they are bounced to the login screen with no
+explanation. If it is regenerated deliberately, say so in the release note.
+
+**7. Cutover.** Deploy and verify while Render is still serving, then move
+traffic:
+
+    a. bring the stack up on Oracle, confirm /healthz and a wss:// upgrade
+    b. confirm it reaches Supabase (a login against the new host)
+    c. set VITE_FOLKIDLE_SERVER=<new hostname> on the Render static site
+       and redeploy the client
+    d. remember index.html carries 5 minutes of CDN cache - verify by
+       fetching the bundle and grepping it, not by the deploy status
+    e. only then suspend the Render web service
+
+Rollback is step (c) in reverse: repoint the static site at
+`https://idlehra.onrender.com` and redeploy. Keep the Render service
+suspended rather than deleted until a few days have passed.
+
+**8. Afterwards.** Watch for things the free tier was hiding rather than
+fixing - the tick loop has real CPU now, so anything that was quietly being
+starved will start running at full speed, including whatever is behind H1.
+
+### Not in scope
+
+Moving the static client, moving the database off Supabase, and any
+autoscaling or multi-instance setup. Note the migrate-on-entrypoint in
+`server/Dockerfile` is only safe at one instance; a second replica would
+race it.
+
 ## Open items, most valuable first
 
 ### H1. Progression rate is wrong by roughly two orders of magnitude
