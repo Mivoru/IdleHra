@@ -391,12 +391,19 @@
     margin-bottom: 0.25rem;
   }
 
+  /* Modul: the week WRAPS. Seven fixed columns cannot be narrower than their
+     content ("10 000g" plus a state word), so in a panel sized by the page's
+     `minmax(20rem, 1fr)` grid the last tiles overflowed the panel and drew on
+     top of whatever sat to the right - Statistics, in the reported case, whose
+     numbers then read as a single garbled line of golds.
+     auto-fit lets the row break instead. A wrapped week is still a week; a
+     week painted over the neighbouring panel is not readable at all. */
   .week {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(4.25rem, 1fr));
     gap: 0.25rem;
     text-align: center;
   }

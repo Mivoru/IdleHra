@@ -6,6 +6,135 @@ chain unless stated. Remove an item when it ships; do not renumber the
 remaining items (a gap is fine and preserves historical references in
 commit messages/PRs).
 
+Most sections below predate the web client and describe Unity work. The
+dated handoff immediately following is the live one.
+
+---
+
+# HANDOFF - 2026-08-04, live deployment
+
+## Where it runs
+
+| | |
+|---|---|
+| Game (players) | https://folkidle.onrender.com - Render static site `srv-d9or28m7bikc73ft5250` |
+| API | https://idlehra.onrender.com - Render web service `srv-d9opsd5bedkc73dfi8h0` |
+| Database | Supabase project `copqoxrngbvnvnebybzc`, 41 migrations, 59 tables |
+| Cache | Render Key Value `red-d9orkqm7bikc73fu43o0` (free, 25 MB, no persistence) |
+
+`idlehra.onrender.com` serves NO page - a plain GET returns 400 by design
+(`NetworkBroadcastSystem.cs:1040`), because that path only accepts a
+WebSocket upgrade. Health is `/healthz`.
+
+Traps that cost time and will cost it again:
+
+- **Supabase pooler port.** Use **5432** (session mode). Port 6543
+  (transaction mode) passes ordinary queries but hangs EF migrations - the
+  first history query dies on a 30 s command timeout, reproducibly, while
+  the same connection string serves normal traffic fine.
+- **The client build cannot run `npm run build` on Render.** That chains
+  `generate:protocol`, which shells out to `dotnet`, and the static-site
+  image has Node only. The deploy build command is
+  `cd client_web && npm ci && npx vite build`; both generated files are
+  committed.
+- **Five minutes of CDN cache on `index.html`** (`s-maxage=300`). After a
+  push, Render says "live" well before the new bundle is served, and the
+  hashed assets are useless until the document pointing at them updates.
+  Verify a client change by fetching the bundle and grepping it, not by
+  trusting the deploy status.
+- **A player's browser holds the old bundle** across a deploy. More than
+  one "bug" this session was a stale client; ask for a hard reload before
+  investigating anything the code says is already fixed.
+
+## Open items, most valuable first
+
+### H1. Progression rate is wrong by roughly two orders of magnitude
+
+Observed on a fresh account after ~1 hour: **level 127, 2,091,564 gold,
+7,790 kills**. The content tables do not support that.
+
+    XP to reach level 127 (cumulative)   10,901,147
+    7,790 Field Mice at 16 XP base          124,640   -> 87x short
+    gold per kill observed                    268.5   (base reward: 4)
+
+`GlobalXpMultiplier` and `GlobalGoldDropMultiplier` are both 100 (i.e. 1x),
+so the global knobs are not it. Level curve is
+`400 * 1.06^level` (`ProgressionEngine.cs:47-52`). Something other than the
+kill reward is paying out; find it before touching any constant.
+
+Related and probably a separate defect: the Progress screen shows
+**`Gold 27 287g` in Statistics and `2 091 564g` in the header at the same
+time**. Two numbers for one quantity on one screen - resolve which is
+authoritative first, because it may be the thread that leads to the above.
+
+### H2. Combat freezes - live state stops arriving
+
+Reported repeatedly: HP does not tick down, kills do not appear, the screen
+looks frozen; F5 shows the correct state, so **the server is simulating and
+only delivery has stopped**. Not yet diagnosed.
+
+Ruled out so far:
+
+- The broadcast dirty check - `BroadcastKeepaliveTicks = 10`
+  (`SimulationEngine.cs:4681`) forces a resend every second even when
+  nothing changes.
+- Redis - the tick path guards every call with
+  `_redis != null && _redis.IsConnected` (`SimulationEngine.cs:1555`,
+  `:1573`), so an absent Redis cannot block it. (Redis is present now.)
+- Reconnect logic - `connection.ts:185-198` backs off 500 ms to 15 s and
+  re-sends the token, and reports `reconnecting` to the UI.
+
+Note this session redeployed the API several times, and every redeploy kills
+every socket; some reports fall inside those windows and some do not.
+
+Two ways to settle it: register a throwaway account and watch the socket
+frames directly, or have the player keep the browser console open and
+capture what appears at the moment it freezes.
+
+### H3. Sprite coverage and correctness
+
+`sprites.generated.ts` holds **234 entries against 437 items**, so more than
+half have no artwork and fall back to initials. Needs an audit of what
+exists, what is missing, and what is mapped to the wrong item. The alias
+table in `scripts/generate-sprites.mjs` is where a wrong mapping would live.
+
+### H4. Market rework - browse, filter, price history, sell flow
+
+Requested shape, explicitly modelled on the CS2 skin market:
+
+- **Browse**: every open offer as a card - image, name, item type, price.
+  Click to buy.
+- **Filter**: by slot (helmet / chest / leggings / melee weapon / pickaxe /
+  ring / axe / ...) and by rarity.
+- **Sort**: by price and by rarity, ascending and descending.
+- **Sell**: reached from a link in the Market to the village chest. Pick an
+  item, see what it currently sells for, a **price history graph**, and
+  percentage change over day / week / month like a stock. Enter an asking
+  price, see the guild's cut before confirming, then list it.
+
+**This is not a UI-only job.** There is no price history in the database:
+`MarketOrderRecord` carries `Price` and `Status` and nothing records a
+completed trade with a timestamp, so neither the graph nor any percentage
+change can be computed today. Needs a trade-ledger table written on every
+completed purchase, plus aggregation endpoints, before the screens.
+
+### H5. Two stale client tests
+
+`tests/slots.test.ts` expects `Herbalism`, which was deliberately removed
+(see `ActivityIdBands.cs`). `tests/sprites.test.ts` expects `Moosleute`,
+which `races.ts:28` deliberately displays as `Bes`. Both fail today and both
+predate the current work. Deciding which side is right is a content call,
+not a test fix.
+
+### H6. Affix reroll discoverability
+
+The reroll UI exists in **Forge** (`Forge.svelte:127-140`), not in the
+Chest, and a player looking for it did not find it. It reads
+`OwnedEquipment`, so tools should appear - unverified in the live client.
+
+---
+
+
 ## Client UI Hook Points
 
 ### 1. Region-Completion Codex UI - ALREADY SHIPPED, item was stale
