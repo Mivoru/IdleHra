@@ -4,7 +4,7 @@
 // The tables are generated (see scripts/generate-sprites.mjs); this file is
 // only the resolution rules, which are the part with judgement in them.
 
-import { HTTP_BASE } from '../net/config';
+import { SPRITE_BASE } from '../net/config';
 import {
   MONSTER_ICONS,
   ITEM_ICONS,
@@ -22,7 +22,7 @@ import {
  */
 function spriteUrl(relativePath: string): string {
   const encoded = relativePath.split('/').map(encodeURIComponent).join('/');
-  return `${HTTP_BASE}/sprites/${encoded}`;
+  return `${SPRITE_BASE}/sprites/${encoded}`;
 }
 
 /**

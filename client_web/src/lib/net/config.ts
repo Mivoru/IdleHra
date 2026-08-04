@@ -14,6 +14,23 @@ export const HTTP_BASE: string = import.meta.env?.VITE_FOLKIDLE_SERVER ?? DEFAUL
 export const WS_URL: string = HTTP_BASE.replace(/^http/, 'ws') + '/';
 
 /**
+ * Where the artwork is served from. DERIVED from HTTP_BASE, so the rule above
+ * still holds: with nothing set there is one address, and it is the server's.
+ *
+ * The override exists because the art does not have to travel with the API.
+ * 214 files and 18 MB of icons served by a single small instance is the worst
+ * possible use of it - a CDN does that better and does not go to sleep. So a
+ * hosted build points this at the static site, which carries its own copy (see
+ * vite.config.ts's sprite-copy plugin), while local development leaves it unset
+ * and keeps talking to the dev server, which already has the files linked in
+ * through FolkIdle.Server.csproj.
+ *
+ * Note this is only ever an ORIGIN. The paths underneath it come from
+ * sprites.generated.ts either way, so the two copies cannot address differently.
+ */
+export const SPRITE_BASE: string = import.meta.env?.VITE_FOLKIDLE_SPRITES ?? HTTP_BASE;
+
+/**
  * Whether this build can actually reach its server, and why not if it cannot.
  *
  * Two configuration mistakes are invisible until they are not:
