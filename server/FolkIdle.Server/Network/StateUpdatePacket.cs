@@ -389,6 +389,11 @@ namespace FolkIdle.Server.Network
         public byte AxeToolTier;
         public byte PickaxeToolTier;
         public byte RodToolTier;
+
+        // Modul: the equipped tools' summed affix percentages.
+        public ushort ToolGatherSpeedPct;
+        public ushort ToolGatherYieldPct;
+        public ushort ToolRareFindPct;
         public int CachedMaxPopulationCapacity;
         public int CachedInnMaturationBonus;
 

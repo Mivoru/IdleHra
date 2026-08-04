@@ -91,7 +91,7 @@ export interface ClientCommand {
   RerollStopAffixIndex: number;
 }
 
-/** StateUpdatePacket - 754 bytes on the binary wire. */
+/** StateUpdatePacket - 760 bytes on the binary wire. */
 export interface StateUpdate {
   readonly type: typeof PacketType.StateUpdate;
   PlayerId: number;
@@ -189,6 +189,9 @@ export interface StateUpdate {
   AxeToolTier: number;
   PickaxeToolTier: number;
   RodToolTier: number;
+  ToolGatherSpeedPct: number;
+  ToolGatherYieldPct: number;
+  ToolRareFindPct: number;
   CachedMaxPopulationCapacity: number;
   CachedInnMaturationBonus: number;
   ActiveChildMaturationMs: number;
@@ -384,7 +387,7 @@ export type CommandTypeName = keyof typeof CommandType;
 export const PACKET_BYTE_SIZE = {
   AuthHandshake: 530,
   ClientCommand: 359,
-  StateUpdate: 754,
+  StateUpdate: 760,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
   ResponseLootDrop: 22,

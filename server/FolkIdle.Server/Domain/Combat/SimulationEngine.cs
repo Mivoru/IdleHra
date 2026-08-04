@@ -856,6 +856,12 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.EquippedLeggingsId = equipUpdate.EquippedLeggingsId;
                         currentPayload.EquippedBootsId = equipUpdate.EquippedBootsId;
                         currentPayload.EquippedOffhandId = equipUpdate.EquippedOffhandId;
+                        currentPayload.AxeToolTier = equipUpdate.AxeToolTier;
+                        currentPayload.PickaxeToolTier = equipUpdate.PickaxeToolTier;
+                        currentPayload.RodToolTier = equipUpdate.RodToolTier;
+                        currentPayload.ToolGatherSpeedPct = equipUpdate.ToolGatherSpeedPct;
+                        currentPayload.ToolGatherYieldPct = equipUpdate.ToolGatherYieldPct;
+                        currentPayload.ToolRareFindPct = equipUpdate.ToolRareFindPct;
                         currentPayload.CachedAffixTotals = equipUpdate.AffixTotals;
                         currentPayload.CachedSetIds = equipUpdate.SetIds;
 
@@ -3318,6 +3324,9 @@ namespace FolkIdle.Server.Domain.Combat
                                 AxeToolTier = currentPayload.AxeToolTier,
                                 PickaxeToolTier = currentPayload.PickaxeToolTier,
                                 RodToolTier = currentPayload.RodToolTier,
+                                ToolGatherSpeedPct = currentPayload.ToolGatherSpeedPct,
+                                ToolGatherYieldPct = currentPayload.ToolGatherYieldPct,
+                                ToolRareFindPct = currentPayload.ToolRareFindPct,
                                 CachedInnMaturationBonus = currentPayload.CachedInnMaturationBonus,
                                 CachedMentorCount = currentPayload.CachedMentorCount,
                                 ActiveChildMaturationMs = currentPayload.ActiveChildMaturationMs,
@@ -3974,6 +3983,22 @@ namespace FolkIdle.Server.Domain.Combat
                     AdvanceMastery(ref payload.HerbalismMasteryXp, ref payload.HerbalismMasteryLevel, masteryXp);
                     break;
             }
+        }
+
+        // The rarest entry in a gathering table is the LAST one - every node is
+        // authored common-then-rare. Scaling by its own weight keeps the boost
+        // proportional: +100% doubles a 10-weight rare's share rather than
+        // handing every table the same flat number regardless of how rare its
+        // rare actually is.
+        private static int WeightOf(ReadOnlySpan<LootTableEntry> table, int index, int luckWeightBonus, int rareWeightBonus)
+        {
+            int weight = table[index].Weight + luckWeightBonus;
+            if (rareWeightBonus > 0 && index == table.Length - 1 && table.Length > 1)
+            {
+                weight += table[index].Weight * rareWeightBonus / 100;
+            }
+
+            return weight;
         }
 
         internal static int GetMasteryLevel(ref TickStatePayload payload, int professionType)

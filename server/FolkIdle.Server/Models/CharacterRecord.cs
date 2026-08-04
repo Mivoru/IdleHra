@@ -70,6 +70,13 @@ namespace FolkIdle.Server.Models
         //
         // Nullable: null means the slot is empty. Every value is an
         // EquipmentInstances.Id.
+        // Modul: the three tool slots. See EquipmentSlotEngine - a tool used to
+        // be a material stack, so it could not carry the rarity and affixes
+        // every other piece of gear has.
+        public long? EquippedAxeId { get; set; }
+        public long? EquippedPickaxeId { get; set; }
+        public long? EquippedRodId { get; set; }
+
         public long? EquippedWeaponId { get; set; }
         public long? EquippedHelmetId { get; set; }
         public long? EquippedChestId { get; set; }

@@ -326,9 +326,7 @@
     align-items: start;
   }
 
-  .layout strong,
-  .layout .price,
-  .layout dd {
+  .layout strong {
     font-variant-numeric: tabular-nums;
   }
 

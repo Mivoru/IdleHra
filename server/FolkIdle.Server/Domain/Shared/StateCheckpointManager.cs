@@ -479,35 +479,34 @@ namespace FolkIdle.Server.Domain.Shared
                 if (location > highestLocationReached) highestLocationReached = location;
             }
 
-            // Modul: the best tool the player actually owns, per profession.
+            // Modul: the tools the ACTIVE CHARACTER IS WEARING.
             //
-            // The tick used to read CachedCurrentToolTier, which
-            // VillageManagementEngine set from the FORGE BUILDING LEVEL - so
-            // every one of GatheringToolEngine's ten tool tiers was driven by a
-            // building, crafting a Void Bark Axe changed nothing, and the axe
-            // you were holding sped up your fishing.
-            //
-            // Read from both halves of the chest, because a tool is a material
-            // stack like anything else and the player may have moved it.
-            byte axeTier = 0, pickaxeTier = 0, rodTier = 0;
-            var ownedToolBaseIds = new List<string>();
-            ownedToolBaseIds.AddRange(await dbContext.CommodityRecords.AsNoTracking()
-                .Where(c => c.PlayerId == playerId && c.Quantity > 0)
-                .Select(c => c.ItemId).ToListAsync());
-            ownedToolBaseIds.AddRange(await dbContext.VillageStashInstances.AsNoTracking()
-                .Where(v => v.PlayerId == playerId && v.Quantity > 0)
-                .Select(v => v.ItemId).ToListAsync());
-
-            for (int i = 0; i < ownedToolBaseIds.Count; i++)
+            // This used to scan both halves of the chest for the best tool
+            // BaseId the player owned anywhere - which was the best that could
+            // be done while tools were stackable materials, and meant a tool
+            // worked from inside a crate and every axe of a given wood was
+            // worth exactly the same as every other one. Tools are equipment
+            // now, so the question is what is in the three tool slots, and the
+            // answer carries the item's rolled affixes with it.
+            ToolLoadout toolLoadout = ToolLoadout.Empty;
             {
-                string toolBaseId = ownedToolBaseIds[i];
-                int kind = ContentRegistry.GetToolKind(toolBaseId);
-                if (kind < 0) continue;
+                var mainCharacter = characters.Count > 0 ? characters[0] : null;
+                if (mainCharacter != null)
+                {
+                    var toolInstanceIds = new List<long>(3);
+                    if (mainCharacter.EquippedAxeId.HasValue) toolInstanceIds.Add(mainCharacter.EquippedAxeId.Value);
+                    if (mainCharacter.EquippedPickaxeId.HasValue) toolInstanceIds.Add(mainCharacter.EquippedPickaxeId.Value);
+                    if (mainCharacter.EquippedRodId.HasValue) toolInstanceIds.Add(mainCharacter.EquippedRodId.Value);
 
-                byte tier = (byte)ContentRegistry.GetToolTier(toolBaseId);
-                if (kind == ContentRegistry.ToolKindAxe && tier > axeTier) axeTier = tier;
-                else if (kind == ContentRegistry.ToolKindPickaxe && tier > pickaxeTier) pickaxeTier = tier;
-                else if (kind == ContentRegistry.ToolKindRod && tier > rodTier) rodTier = tier;
+                    if (toolInstanceIds.Count > 0)
+                    {
+                        var toolRows = await dbContext.EquipmentInstances
+                            .AsNoTracking()
+                            .Where(e => toolInstanceIds.Contains(e.Id))
+                            .ToDictionaryAsync(e => e.Id);
+                        toolLoadout = ToolLoadoutResolver.Resolve(mainCharacter, toolRows);
+                    }
+                }
             }
 
             int completedAreas = 0;
@@ -792,9 +791,12 @@ namespace FolkIdle.Server.Domain.Shared
                 ClaimedAchievementFlags = achievementFlags,
                 TotalAchievementsClaimedCount = (uint)totalAchievements,
                 CompletedAreaFlags = completedAreas,
-                AxeToolTier = axeTier,
-                PickaxeToolTier = pickaxeTier,
-                RodToolTier = rodTier,
+                AxeToolTier = toolLoadout.AxeTier,
+                PickaxeToolTier = toolLoadout.PickaxeTier,
+                RodToolTier = toolLoadout.RodTier,
+                ToolGatherSpeedPct = toolLoadout.GatherSpeedPct,
+                ToolGatherYieldPct = toolLoadout.GatherYieldPct,
+                ToolRareFindPct = toolLoadout.RareFindPct,
                 HighestLocationReached = highestLocationReached,
                 HumanMasteryLevel = humanMastery,
                 VilaMasteryLevel = vilaMastery,

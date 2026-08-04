@@ -94,7 +94,10 @@ namespace FolkIdle.Server.Network
         //
         // Modul: per-profession tool tiers. 751 -> 754, one byte each for axe,
         // pickaxe and rod.
-        public const int ExpectedStateUpdateSize = 754;
+        //
+        // Modul: tool affixes. 754 -> 760, three ushorts for the equipped
+        // tools' summed gather-speed, yield and rare-find percentages.
+        public const int ExpectedStateUpdateSize = 760;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

@@ -55,7 +55,19 @@ namespace FolkIdle.Server.Domain.Combat
         // eq_obsidian_aegis, eq_dread_bulwark) already rolled slot-correct
         // affixes - there was simply nowhere to put them on.
         public const int SlotOffhand = 6;
-        public const int SlotCount = 7;
+
+        // Modul: TOOLS ARE WORN. They were stackable materials sitting in the
+        // chest, which is why every axe in the game was identical to every
+        // other axe of the same wood - a stack has no room for a rarity or an
+        // affix. Three slots rather than one, because a character carries an
+        // axe, a pickaxe and a rod at the same time and each accelerates its
+        // own profession.
+        public const int SlotAxe = 7;
+        public const int SlotPickaxe = 8;
+        public const int SlotRod = 9;
+
+        // Modul: 7 -> 10 with the three tool slots.
+        public const int SlotCount = 10;
 
         // Which slot a BaseItemId belongs in, or -1 if it is not equippable.
         //
@@ -71,6 +83,17 @@ namespace FolkIdle.Server.Domain.Combat
         // marker rather than silently becoming unequippable.
         public static int ResolveSlotIndex(string baseItemId)
         {
+            // Tools first: a "_tool" id carries none of the armour or weapon
+            // markers below, so order is not load-bearing here - but keeping it
+            // at the top says plainly that a tool is its own thing rather than
+            // a weapon that happens to chop.
+            if (baseItemId != null && baseItemId.EndsWith("_tool", StringComparison.Ordinal))
+            {
+                if (baseItemId.Contains("_pickaxe_", StringComparison.Ordinal)) return SlotPickaxe;
+                if (baseItemId.Contains("_fishing_rod_", StringComparison.Ordinal)) return SlotRod;
+                if (baseItemId.Contains("_axe_", StringComparison.Ordinal)) return SlotAxe;
+            }
+
             if (string.IsNullOrEmpty(baseItemId)) return -1;
 
             if (baseItemId.Contains("_helmet_")) return SlotHelmet;
@@ -111,6 +134,9 @@ namespace FolkIdle.Server.Domain.Combat
                 case SlotLeggings: character.EquippedLeggingsId = itemInstanceId; break;
                 case SlotBoots: character.EquippedBootsId = itemInstanceId; break;
                 case SlotOffhand: character.EquippedOffhandId = itemInstanceId; break;
+                case SlotAxe: character.EquippedAxeId = itemInstanceId; break;
+                case SlotPickaxe: character.EquippedPickaxeId = itemInstanceId; break;
+                case SlotRod: character.EquippedRodId = itemInstanceId; break;
             }
         }
 

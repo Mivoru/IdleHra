@@ -221,6 +221,11 @@
   // hands and sit lowest on their side; the rest run head to foot.
   const LEFT_SLOTS = EQUIPMENT_SLOTS.filter((sl) => [1, 3, 0].includes(sl.index));
   const RIGHT_SLOTS = EQUIPMENT_SLOTS.filter((sl) => [2, 4, 5, 6].includes(sl.index));
+  // Modul: the three tool slots, in their own row under the figure. They are
+  // gear like any other piece - rolled rarity, rolled affixes - but they are
+  // what a character WORKS with rather than what they fight in, and mixing
+  // them into the armour columns loses that distinction.
+  const TOOL_SLOTS = EQUIPMENT_SLOTS.filter((sl) => [7, 8, 9].includes(sl.index));
 
   // Modul: BOTH COMMANDS NAME THE CHARACTER. EquipItem and UnequipItem have
   // carried a TargetGuid since per-character equipment landed, and Guid.Empty
@@ -409,6 +414,35 @@
           </div>
         </div>
 
+        <div class="tools">
+          {#each TOOL_SLOTS as slot (slot.index)}
+            {@const item = wornBy(selected.slot, slot.index)}
+            <button
+              class="gearslot"
+              class:filled={item !== null}
+              class:open={pickerSlot === slot.index}
+              onclick={() => (pickerSlot = pickerSlot === slot.index ? -1 : slot.index)}
+            >
+              <span class="slotname dim tiny">{slot.label}</span>
+              {#if item}
+                <ItemIcon
+                  baseItemId={item.BaseItemId}
+                  name={prettifyBaseId(item.BaseItemId)}
+                  qualityTier={item.QualityTier}
+                  size="md"
+                />
+                <span
+                  class="gearname"
+                  style="color: {rarityColor(item.QualityTier)}"
+                  class:rarity-glow={shouldGlow(item.QualityTier)}
+                >{prettifyBaseId(item.BaseItemId)}</span>
+              {:else}
+                <span class="dim tiny">empty</span>
+              {/if}
+            </button>
+          {/each}
+        </div>
+
         {#if pickerSlot >= 0}
           {@const slot = EQUIPMENT_SLOTS.find((sl) => sl.index === pickerSlot)}
           {@const worn = wornBy(selected.slot, pickerSlot)}
@@ -540,6 +574,13 @@
 {/if}
 
 <style>
+  .tools {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+  }
+
   .doll .who {
     display: flex;
     gap: 0.4rem;

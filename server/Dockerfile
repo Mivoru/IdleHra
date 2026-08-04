@@ -11,7 +11,7 @@ WORKDIR "/src/FolkIdle.Server"
 RUN dotnet publish "FolkIdle.Server.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 # Stage 2: Runtime Environment
-FROM mcr.microsoft.com/dotnet/runtime:8.0-chiseled AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 EXPOSE 8080
 

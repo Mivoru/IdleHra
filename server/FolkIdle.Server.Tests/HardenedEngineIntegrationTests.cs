@@ -9068,12 +9068,25 @@ namespace FolkIdle.Server.Tests
                     .Select(c => c.Quantity).SingleAsync();
                 Assert.Equal(100L - recipe.Mat1Count, remainingMat1);
 
-                // And now the output arrives too. Before the fix this row did
-                // not exist at all.
-                long produced = await verify.CommodityRecords.AsNoTracking()
-                    .Where(c => c.PlayerId == testPlayerId && c.ItemId == resultBaseId)
-                    .Select(c => c.Quantity).SingleAsync();
-                Assert.True(produced > 0, "Crafting consumed materials and produced nothing.");
+                // And now the output arrives too. Before the fix nothing was
+                // produced at all.
+                //
+                // Modul: an EQUIPMENT row, not a commodity stack. Tools became
+                // gear - worn in their own slots, with a rolled rarity and
+                // rolled affixes - and a stack has room for none of that. The
+                // craft therefore lands in EquipmentInstances now, and looking
+                // for a CommodityRecord threw "sequence contains no elements"
+                // rather than reporting a missing item.
+                var producedTools = await verify.EquipmentInstances.AsNoTracking()
+                    .Where(e => e.PlayerId == testPlayerId && e.BaseItemId == resultBaseId)
+                    .ToListAsync();
+                Assert.True(producedTools.Count > 0, "Crafting consumed materials and produced nothing.");
+
+                // And it is a real item: a rarity, and affixes that belong to a
+                // tool rather than to a sword.
+                var craftedTool = producedTools[0];
+                Assert.False(string.IsNullOrWhiteSpace(craftedTool.AffixPayload));
+                Assert.Contains("gather_", craftedTool.AffixPayload);
             }
         }
 

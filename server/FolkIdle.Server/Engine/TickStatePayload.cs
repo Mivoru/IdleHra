@@ -246,6 +246,13 @@ namespace FolkIdle.Server.Engine
         public byte AxeToolTier;
         public byte PickaxeToolTier;
         public byte RodToolTier;
+
+        // Modul: what the equipped tools add, summed. Percentages, because a
+        // tool's job is to multiply a rate and a weighted table - a flat bonus
+        // would mean nothing against either.
+        public ushort ToolGatherSpeedPct;
+        public ushort ToolGatherYieldPct;
+        public ushort ToolRareFindPct;
         public int CachedMaxPopulationCapacity;
         public int CachedInnMaturationBonus;
 

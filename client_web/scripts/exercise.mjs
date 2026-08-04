@@ -500,6 +500,12 @@ await go('Character');
   );
 
   // A gear slot is a button now; clicking one opens its picker.
+  // Modul: tools are gear now - three slots of their own, rolled with a rarity
+  // and gathering affixes, where they used to be stackable materials that
+  // could carry neither.
+  const toolSlots = await page.locator('.tools .gearslot').count();
+  record('the doll has the three tool slots', toolSlots === 3, `${toolSlots} tool slots`);
+
   const gearSlot = page.locator('.gearslot').first();
   const hasDoll = (await gearSlot.count()) > 0;
   record('the character has a paper doll with clickable slots', hasDoll);

@@ -27,11 +27,22 @@ export const SLOT_LEGGINGS = 4;
 export const SLOT_BOOTS = 5;
 export const SLOT_OFFHAND = 6;
 
+// Modul: tools are worn. They were stackable materials in the chest, which is
+// why every axe of a given wood was identical to every other one - a stack has
+// no room for a rarity or an affix. Three slots, because a character carries
+// an axe, a pickaxe and a rod at once and each accelerates its own profession.
+export const SLOT_AXE = 7;
+export const SLOT_PICKAXE = 8;
+export const SLOT_ROD = 9;
+
 export interface EquipmentSlot {
   index: number;
   label: string;
-  /** The StateUpdate field carrying this slot's EquipmentInstance id. */
-  field: keyof StateUpdate;
+  /** The StateUpdate field carrying this slot's EquipmentInstance id, where
+   *  the wire carries one. The three tool slots deliberately do not: gear
+   *  changes on a button press, not ten times a second, so the paper doll
+   *  reads them from the inventory snapshot with everyone else's. */
+  field?: keyof StateUpdate;
   /** Its affix-lock companion field, where one exists on the wire. */
   lockField?: keyof StateUpdate;
 }
@@ -47,6 +58,12 @@ export const EQUIPMENT_SLOTS: readonly EquipmentSlot[] = [
   { index: SLOT_GLOVES, label: 'Gloves', field: 'EquippedGlovesId' },
   { index: SLOT_LEGGINGS, label: 'Leggings', field: 'EquippedLeggingsId', lockField: 'EquippedLeggingsAffixLocked' },
   { index: SLOT_BOOTS, label: 'Boots', field: 'EquippedBootsId' },
+  // The wire does not carry tool instance ids - the paper doll reads them from
+  // /api/v1/player/inventory like it reads every other character's gear - so
+  // these three have no `field`.
+  { index: SLOT_AXE, label: 'Axe' },
+  { index: SLOT_PICKAXE, label: 'Pickaxe' },
+  { index: SLOT_ROD, label: 'Rod' },
 ];
 
 /**
@@ -68,6 +85,15 @@ export const EQUIPMENT_SLOTS: readonly EquipmentSlot[] = [
 export function resolveSlotIndex(baseItemId: string): number {
   if (!baseItemId) return -1;
 
+  // Tools first. A "_tool" id carries none of the armour or weapon markers
+  // below, so the order is not load-bearing - it just says plainly that a tool
+  // is its own thing rather than a weapon that happens to chop.
+  if (baseItemId.endsWith('_tool')) {
+    if (baseItemId.includes('_pickaxe_')) return SLOT_PICKAXE;
+    if (baseItemId.includes('_fishing_rod_')) return SLOT_ROD;
+    if (baseItemId.includes('_axe_')) return SLOT_AXE;
+  }
+
   if (baseItemId.includes('_helmet_')) return SLOT_HELMET;
   if (baseItemId.includes('_gloves_')) return SLOT_GLOVES;
   if (baseItemId.includes('_boots_')) return SLOT_BOOTS;
@@ -83,6 +109,8 @@ export function resolveSlotIndex(baseItemId: string): number {
 }
 
 export function equippedIdFor(snapshot: StateUpdate, slot: EquipmentSlot): number {
+  // A tool slot has no wire field - see EquipmentSlot.field.
+  if (!slot.field) return 0;
   const value = snapshot[slot.field];
   return typeof value === 'number' ? value : 0;
 }

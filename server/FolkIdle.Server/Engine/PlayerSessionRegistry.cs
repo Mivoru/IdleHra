@@ -64,6 +64,17 @@ namespace FolkIdle.Server.Engine
         public long EquippedLeggingsId;
         public long EquippedBootsId;
         public long EquippedOffhandId;
+
+        // Modul: the tool loadout, resolved with the rest of the gear.
+        // The tick needs a tier and three percentages, not three instance ids -
+        // and recomputing them from the database on a 10Hz path is exactly what
+        // this notification exists to avoid.
+        public byte AxeToolTier;
+        public byte PickaxeToolTier;
+        public byte RodToolTier;
+        public ushort ToolGatherSpeedPct;
+        public ushort ToolGatherYieldPct;
+        public ushort ToolRareFindPct;
         // Modul: Affix System Unification. Was four loose ints, which could
         // only carry four of the GDD's twelve affixes - the other eight had
         // nowhere to go and silently contributed nothing.

@@ -31,7 +31,17 @@ namespace FolkIdle.Server.Engine
         Leggings = 4,
         Boots = 5,
         Gloves = 6,
-        Shield = 7
+        Shield = 7,
+
+        // Modul: tools are worn, not carried.
+        //
+        // A tool was a stackable material in the chest, so it could not hold a
+        // rarity or an affix - every axe in the game was identical to every
+        // other axe of the same wood. One kind rather than three: a
+        // gathering affix reads the same on an axe, a pickaxe and a rod, and
+        // splitting them would mean three copies of every definition to say
+        // the same thing.
+        Tool = 8
     }
 
     [Flags]
@@ -44,7 +54,8 @@ namespace FolkIdle.Server.Engine
         Leggings = 1 << 4,
         Boots = 1 << 5,
         Gloves = 1 << 6,
-        Shield = 1 << 7
+        Shield = 1 << 7,
+        Tool = 1 << 8
     }
 
     // Which scaling law from GDD 1.1/1.2 produces this affix's magnitude.
@@ -122,6 +133,21 @@ namespace FolkIdle.Server.Engine
             new AffixDefinition("flat_armor",
                 EquipmentSlotMask.Helmet | EquipmentSlotMask.Chest | EquipmentSlotMask.Leggings | EquipmentSlotMask.Boots | EquipmentSlotMask.Shield,
                 AffixScalingLaw.FlatStat),
+
+            // Modul: what a tool can roll.
+            //
+            // Deliberately three, and deliberately percentages: a tool's job is
+            // to make gathering faster and richer, and a flat bonus would mean
+            // nothing against a node whose yield is a weighted table. Each
+            // rolls its own affix rarity like every other affix, so a Godly
+            // axe carries five of these at independently rolled magnitudes.
+            //
+            // Speed is the smallest because it compounds with the tool TIER,
+            // which is already a large multiplier; rare-find is the largest per
+            // point because it moves the least often.
+            new AffixDefinition("gather_speed_pct", EquipmentSlotMask.Tool, AffixScalingLaw.Percentage, 15, 10),
+            new AffixDefinition("gather_yield_pct", EquipmentSlotMask.Tool, AffixScalingLaw.Percentage, 25, 18),
+            new AffixDefinition("gather_rare_find_pct", EquipmentSlotMask.Tool, AffixScalingLaw.Percentage, 30, 22),
 
             new AffixDefinition("melee_dmg_pct", EquipmentSlotMask.Weapon, AffixScalingLaw.Percentage, 20, 15),
             new AffixDefinition("range_dmg_pct", EquipmentSlotMask.Weapon, AffixScalingLaw.Percentage, 20, 15),
@@ -320,6 +346,11 @@ namespace FolkIdle.Server.Engine
             if (baseItemId.Contains("_gloves_armor_slot_", StringComparison.Ordinal)) return EquipmentSlotKind.Gloves;
             if (baseItemId.Contains("_helper_offhand_", StringComparison.Ordinal)) return EquipmentSlotKind.Shield;
 
+            // Axes, pickaxes and fishing rods, all authored with a "_tool"
+            // suffix - see ContentRegistry.GetToolKind, which is the same
+            // convention read for the other half of the question.
+            if (baseItemId.EndsWith("_tool", StringComparison.Ordinal)) return EquipmentSlotKind.Tool;
+
             return EquipmentSlotKind.Unknown;
         }
 
@@ -334,6 +365,7 @@ namespace FolkIdle.Server.Engine
                 case EquipmentSlotKind.Boots: return EquipmentSlotMask.Boots;
                 case EquipmentSlotKind.Gloves: return EquipmentSlotMask.Gloves;
                 case EquipmentSlotKind.Shield: return EquipmentSlotMask.Shield;
+                case EquipmentSlotKind.Tool: return EquipmentSlotMask.Tool;
                 default: return EquipmentSlotMask.None;
             }
         }
