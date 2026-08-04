@@ -67,6 +67,18 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
+            // Modul: raw fish is food HERE TOO.
+            //
+            // GetHealMilliHp below learned this and IsFood did not, which is
+            // worse than neither knowing: the larder asks IsFood, so stocking a
+            // Sunlit Perch was refused outright while the eating code was
+            // perfectly ready to consume one. Two predicates for one question,
+            // and only one of them updated.
+            if (ContentRegistry.IsRawFish(itemId))
+            {
+                return true;
+            }
+
             return ContentRegistry.GetItemBaseId(itemId).Contains("_food");
         }
 

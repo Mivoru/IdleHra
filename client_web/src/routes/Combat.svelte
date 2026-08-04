@@ -1,16 +1,9 @@
 <script lang="ts">
   import { locationName } from '../lib/ui/locations';
+  import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import { locationBackground } from '../lib/ui/sprites';
   import { onMount } from 'svelte';
-  import {
-    playerState,
-    visualState,
-    connectionStatus,
-    observedMaxPlayerHp,
-    damageEvents,
-  } from '../lib/stores/game';
-  import { connection } from '../lib/net/connection';
-  import { CommandType } from '../lib/net/protocol.generated';
+  import { playerState, visualState, connectionStatus, observedMaxPlayerHp, damageEvents, pushLocalNotice } from '../lib/stores/game';
   import {
     loadContent,
     itemName,
@@ -124,13 +117,18 @@
     }
   }
 
+  const activeCharacterId = $derived(snap?.Slot1_CharacterId ?? EMPTY_GUID);
+
   function fight(monster: MonsterDefinition) {
     selectMonster(monster);
-    connection.send({ Command: CommandType.ChangeActivity, TargetId: monster.Id });
+    // See Gathering.svelte: a bare TargetId does not persist.
+    const outcome = assignCharacterActivity(activeCharacterId, monster.Id);
+    if (!outcome.ok) pushLocalNotice(outcome.reason);
   }
 
   function stop() {
-    connection.send({ Command: CommandType.ChangeActivity, TargetId: 0 });
+    const outcome = assignCharacterActivity(activeCharacterId, 0);
+    if (!outcome.ok) pushLocalNotice(outcome.reason);
   }
 
   // BaseItemId is the reliable identifier on a drop-preview row; ItemId is 0

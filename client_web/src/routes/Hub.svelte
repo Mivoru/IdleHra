@@ -66,8 +66,10 @@
   .place {
     position: absolute;
     transform: translate(-50%, -50%);
-    width: 12.5%;
-    aspect-ratio: 512 / 356;
+    width: 10.5%;
+    /* The plate's own proportions after the re-crop - very nearly square,
+       because it is a disc. */
+    aspect-ratio: 512 / 502;
     min-width: 4.5rem;
     display: grid;
     place-items: center;

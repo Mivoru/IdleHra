@@ -822,7 +822,15 @@ namespace FolkIdle.Server.Engine
         // list: the rule is "anything a fishing node drops", so a new fish is
         // edible the moment it is authored, and a list cannot go stale the way
         // AlchemyCompendium's seven legacy ids did.
-        private static readonly System.Collections.Generic.HashSet<int> _rawFishItemIds = BuildRawFishSet();
+        // Modul: LAZY, not a static field initializer.
+        //
+        // Static initializers run in textual order, and this sits above both
+        // _lootEntries and _lootSegments - so an eager version read empty
+        // tables and produced a set of garbage ids that then indexed past the
+        // end of ItemDefinitions. Deferring it means the first caller gets a
+        // fully-loaded registry no matter where this line lives in the file.
+        private static readonly System.Lazy<System.Collections.Generic.HashSet<int>> _rawFishItemIds =
+            new(BuildRawFishSet, System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
 
         private static System.Collections.Generic.HashSet<int> BuildRawFishSet()
         {
@@ -839,9 +847,9 @@ namespace FolkIdle.Server.Engine
             return fish;
         }
 
-        public static bool IsRawFish(int itemId) => _rawFishItemIds.Contains(itemId);
+        public static bool IsRawFish(int itemId) => _rawFishItemIds.Value.Contains(itemId);
 
-        public static System.Collections.Generic.IReadOnlyCollection<int> RawFishItemIds => _rawFishItemIds;
+        public static System.Collections.Generic.IReadOnlyCollection<int> RawFishItemIds => _rawFishItemIds.Value;
 
         public static bool IsRegionalBoss(int monsterId)
         {

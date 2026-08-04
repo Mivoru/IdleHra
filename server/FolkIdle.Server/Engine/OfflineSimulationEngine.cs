@@ -596,15 +596,25 @@ namespace FolkIdle.Server.Engine
             }
         }
 
+        // Modul: OFFLINE TIME IS NO LONGER BANKED.
+        //
+        // The chrono bank existed because offline catch-up was capped at twenty
+        // actions - everything past that was pushed in here as "overflow", and
+        // Time Warp was how a player got it back. Catch-up now runs in full for
+        // every character, so banking on top of that pays for the same hours
+        // twice: the player already has the gold, the XP and the drops.
+        //
+        // The bank itself stays - it is a real mechanic with a real screen, and
+        // it is the right shape for a reward. What fills it is login streaks
+        // and season pass tiers, not simply having been away.
+        //
+        // Kept as a no-op with its callers intact rather than deleted: the two
+        // call sites are the "this character could not use its time" branches,
+        // and they are exactly where a future reward hook belongs.
         private static void BankOverflowSeconds(ref TickStatePayload payload, long seconds)
         {
-            if (seconds <= 0) return;
-
-            double refund = Math.Min(seconds, 604800.0 - payload.BankedChronoSeconds);
-            if (refund > 0)
-            {
-                payload.BankedChronoSeconds += refund;
-            }
+            _ = payload;
+            _ = seconds;
         }
 
         // Isolated so it can be tested directly against a hand-built loot table,

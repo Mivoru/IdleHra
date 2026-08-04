@@ -172,16 +172,16 @@ export const RACE_ICONS: Readonly<Record<number, { male?: string; female?: strin
     "male": "Characters/Draugr_Male.webp"
   },
   "4": {
-    "female": "Characters/Bes_Female.webp",
-    "male": "Characters/Bes_Male.webp"
+    "female": "Characters/Leshy_Female.webp",
+    "male": "Characters/Leshy_Male.webp"
   },
   "5": {
     "female": "Characters/Vodnik_Female.webp",
     "male": "Characters/Vodnik_Male.webp"
   },
   "6": {
-    "female": "Characters/Leshy_Female.webp",
-    "male": "Characters/Leshy_Male.webp"
+    "female": "Characters/Bes_Female.webp",
+    "male": "Characters/Bes_Male.webp"
   }
 };
 

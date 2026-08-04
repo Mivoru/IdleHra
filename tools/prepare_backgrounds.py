@@ -63,10 +63,42 @@ def main() -> None:
             print(f'  MISSING {source}')
             continue
         image = Image.open(path).convert('RGBA')
-        box = image.getbbox()
-        if box:
-            image = image.crop(box)
+        image = crop_to_plate(image)
         write(image, name, width)
+
+
+def crop_to_plate(image: Image.Image) -> Image.Image:
+    """Crops to the wooden plate, ignoring stray marks elsewhere on the canvas.
+
+    Modul: getbbox() was cropping to EVERY non-transparent pixel, and the round
+    button's canvas carries a tiny speck near the far right edge. So the bbox
+    ran 1817px wide for a 1262px disc, the disc sat 276px left of the middle of
+    its own file, and every label - which is centred on the button box - drew
+    that far to the right of the wood. It looked like a CSS centring bug and
+    was not one.
+
+    Coverage per row and column instead: a speck a few pixels tall cannot reach
+    the threshold, and a disc spanning most of the image comfortably does.
+    """
+    import numpy as np
+
+    alpha = np.array(image)[:, :, 3] > 8
+    rows = alpha.sum(axis=1)
+    cols = alpha.sum(axis=0)
+
+    # A tenth of the opposite dimension - far above any speck, far below any
+    # real row of the plate.
+    row_floor = alpha.shape[1] * 0.10
+    col_floor = alpha.shape[0] * 0.10
+
+    row_hits = np.nonzero(rows > row_floor)[0]
+    col_hits = np.nonzero(cols > col_floor)[0]
+    if row_hits.size == 0 or col_hits.size == 0:
+        box = image.getbbox()
+        return image.crop(box) if box else image
+
+    return image.crop((int(col_hits[0]), int(row_hits[0]),
+                       int(col_hits[-1]) + 1, int(row_hits[-1]) + 1))
 
 
 if __name__ == '__main__':

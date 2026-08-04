@@ -39,18 +39,22 @@ const outFile = join(here, '..', 'src', 'lib', 'ui', 'sprites.generated.ts');
 
 /** Character sprite race name -> ContentRegistry.RaceIds.
  *
- * Four of the six match by name. Bes and Leshy are the art's Slavic-folklore
- * names for Kobold and Moosleute - Bes is a Slavic house-spirit analogous to a
- * kobold, Leshy a forest spirit analogous to "Moosleute" (German "moss folk").
- * No other pairing fits the remaining two races. Carried over verbatim from
- * the Unity builder, which reached the same conclusion. */
+ * Modul: Bes and Leshy were SWAPPED. The pairing was inferred from folklore -
+ * Bes as a house-spirit like a kobold, Leshy as a forest spirit like the
+ * German "Moosleute" - and the design list settles it instead: the six races
+ * are human, vila, draugr, LESHY, vodnik, BES, in that order. So 4 is Leshy
+ * and 6 is Bes, and every roster was showing the other one's picture.
+ *
+ * The server still calls those two slots Kobold and Moosleute internally.
+ * Renaming a C# identifier used in forty places is a separate change from
+ * fixing what players see, and only the second one is a bug. */
 const RACE_NAME_TO_ID = {
   Human: 1,
   Vila: 2,
   Draugr: 3,
-  Bes: 4,
+  Leshy: 4,
   Vodnik: 5,
-  Leshy: 6,
+  Bes: 6,
 };
 
 /** Sprite basename (exactly as on disk) -> item BaseId. */

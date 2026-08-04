@@ -1,11 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { playerState, visualState } from '../lib/stores/game';
-  import { connection } from '../lib/net/connection';
-  import { CommandType } from '../lib/net/protocol.generated';
+  import { playerState, visualState, pushLocalNotice } from '../lib/stores/game';
   import { loadContent, type ContentRegistry, type GatheringNodeDefinition } from '../lib/net/content';
   import { PROFESSIONS, isGatheringActivity, HALT_REASONS } from '../lib/ui/slots';
   import { locationName, nodeLocation } from '../lib/ui/locations';
+  import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import Bar from '../lib/ui/Bar.svelte';
   import SessionLoot from '../lib/ui/SessionLoot.svelte';
 
@@ -68,12 +67,26 @@
     return { name: track.name, level: masteryLevelOf(professionId), xp: masteryXpOf(professionId) };
   });
 
+  // Modul: THE COMMAND HAS TO NAME THE CHARACTER.
+  //
+  // Sending ChangeActivity with a bare TargetId takes SimulationEngine's
+  // legacy single-character branch, which mutates the live payload and never
+  // writes the characters row. So a deploy worked, looked right, survived for
+  // the rest of the session - and vanished on reload, because hydration reads
+  // the row, which still held whatever was persisted last. Assigning fishing
+  // and pressing F5 put the character back on mining.
+  //
+  // Naming the character takes the branch that persists AND applies live.
+  const activeCharacterId = $derived(snap?.Slot1_CharacterId ?? EMPTY_GUID);
+
   function deploy(node: GatheringNodeDefinition) {
-    connection.send({ Command: CommandType.ChangeActivity, TargetId: node.ActivityId });
+    const outcome = assignCharacterActivity(activeCharacterId, node.ActivityId);
+    if (!outcome.ok) pushLocalNotice(outcome.reason);
   }
 
   function stop() {
-    connection.send({ Command: CommandType.ChangeActivity, TargetId: 0 });
+    const outcome = assignCharacterActivity(activeCharacterId, 0);
+    if (!outcome.ok) pushLocalNotice(outcome.reason);
   }
 
   // Modul: BaseTickThreshold is NOT what a gather actually costs.
