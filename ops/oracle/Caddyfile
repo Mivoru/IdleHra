@@ -1,0 +1,30 @@
+# Caddy over nginx+certbot deliberately: it obtains and renews the certificate
+# itself and proxies a WebSocket upgrade without any extra configuration, which
+# is most of what nginx would have needed hand-written here.
+#
+# 92-5-0-94.sslip.io resolves to this machine's public IP by construction -
+# sslip.io answers any A-record-shaped name with the address in it. That is the
+# whole reason it is here: Let's Encrypt will not issue a certificate for a bare
+# IP, the browser client is served over https, and an https page cannot open a
+# ws:// socket. Swap this for a real domain by changing this line and
+# VITE_FOLKIDLE_SERVER on the static site; nothing else refers to it.
+#
+# Certificate issuance needs port 80 reachable from the internet for the HTTP-01
+# challenge - BOTH the instance iptables and the Oracle Security List. Opening
+# one and not the other looks exactly like a dead server.
+
+92-5-0-94.sslip.io {
+	encode gzip
+
+	# The API is a WebSocket endpoint first: a plain GET to / returns 400 by
+	# design (NetworkBroadcastSystem), so there is no site to serve here, only
+	# the upgrade and the REST paths under /api.
+	reverse_proxy app:8080 {
+		# Long-lived sockets. An idle game's connection is meant to stay open
+		# for hours, and the default read timeout would cut it.
+		transport http {
+			read_timeout 0
+			write_timeout 0
+		}
+	}
+}
