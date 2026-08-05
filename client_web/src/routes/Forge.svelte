@@ -8,6 +8,7 @@
   import { toDisplayAffixes, AFFIX_RARITY_NAMES, KNOWN_AFFIX_IDS } from '../lib/ui/affixes';
   import Affixes from '../lib/ui/Affixes.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import { takePendingFocusEquipment } from '../lib/stores/navigation';
 
   const client = useQueryClient();
   const forge = createQuery(() => ({ queryKey: queryKeys.forge, queryFn: fetchForge }));
@@ -132,6 +133,21 @@
   let autoAttempts = $state(10);
   let stopMinRarity = $state(4);
   let stopAffixIndex = $state(0);
+
+  // Modul: arriving from the Chest's "Reroll" button with the piece already
+  // chosen. Consumed once - a player who opens the Forge by hand later should
+  // get an empty selector, not whatever they last clicked in the Chest.
+  //
+  // Waits for `owned` to arrive: the inventory is fetched, so on a cold
+  // navigation this effect runs before there is a list to select from.
+  $effect(() => {
+    if (owned.length === 0) return;
+
+    const pending = takePendingFocusEquipment();
+    if (pending > 0 && owned.some((i) => i.Id === pending)) {
+      rerollItemId = pending;
+    }
+  });
 
   const rerollItem = $derived(owned.find((i) => i.Id === rerollItemId) ?? null);
   const rerollAffixRows = $derived(rerollItem ? toDisplayAffixes(rerollItem.Affixes) : []);

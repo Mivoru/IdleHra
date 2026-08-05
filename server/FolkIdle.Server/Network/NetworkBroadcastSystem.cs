@@ -77,13 +77,138 @@ namespace FolkIdle.Server.Network
             DiagnosticSendBuffer = new byte[Marshal.SizeOf<StateUpdatePacket>()];
         }
 
+        /// <summary>
+        /// How long one frame may take before the socket is considered wedged.
+        ///
+        /// Generous - a mobile client on a bad connection should not be evicted
+        /// for a slow second. What it stops is the unbounded case: a peer that
+        /// has stopped reading entirely, where the send never completes at all.
+        /// </summary>
+        private static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(20);
+
+        /// <summary>
+        /// True once a send has timed out. The broadcast loop reads it and
+        /// evicts the session, which is what lets the client's own reconnect
+        /// logic run - see SendAsync for why silence was worse than a
+        /// disconnect.
+        /// </summary>
+        public volatile bool IsWedged;
+
+        /// <summary>
+        /// Sends one frame, or drops it if this socket is already busy.
+        ///
+        /// THIS IS THE COMBAT FREEZE.
+        ///
+        /// The lock is necessary - .NET forbids two outstanding sends on one
+        /// WebSocket - but it was taken with `WaitAsync(cancellationToken)`
+        /// where every caller passes CancellationToken.None, and the sends are
+        /// fire-and-forget from a 10 Hz broadcast. So when a peer stopped
+        /// reading, TCP back-pressure left `Socket.SendAsync` pending
+        /// indefinitely, that send kept the semaphore, and every following
+        /// tick's send queued behind it forever.
+        ///
+        /// Nothing threw. Nothing closed. The socket stayed open with no frames
+        /// arriving, so the client - whose reconnect logic is fine - never had
+        /// anything to reconnect FROM: it was not disconnected, it was being
+        /// ignored. HP stopped ticking, kills stopped appearing, and F5 fixed
+        /// it because a new socket has an uncontended lock. It also grew the
+        /// queue without bound for as long as the player left the tab open.
+        ///
+        /// Two changes, and the first is the one that matters. A state update
+        /// is an ABSOLUTE SNAPSHOT, not a delta, so a frame that cannot be sent
+        /// right now is worth nothing - the next tick carries the same truth,
+        /// only fresher. Taking the lock with a zero timeout turns a stalled
+        /// socket into dropped frames instead of an infinite queue. The second
+        /// bounds the underlying send, so a socket that is truly gone is torn
+        /// down and the client is told, rather than left watching a frozen
+        /// screen.
+        /// </summary>
         public async Task SendAsync(ArraySegment<byte> segment, WebSocketMessageType messageType, bool endOfMessage, CancellationToken cancellationToken)
         {
-            await _sendLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            // Zero timeout: do not queue behind an in-flight send.
+            if (!await _sendLock.WaitAsync(0, cancellationToken).ConfigureAwait(false))
+            {
+                return;
+            }
+
             try
             {
                 if (Socket.State != WebSocketState.Open) return;
-                await Socket.SendAsync(segment, messageType, endOfMessage, cancellationToken).ConfigureAwait(false);
+
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeout.CancelAfter(SendTimeout);
+
+                try
+                {
+                    await Socket.SendAsync(segment, messageType, endOfMessage, timeout.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    // The peer is not reading. Mark it so the broadcast loop
+                    // evicts the session - a disconnect the client can act on
+                    // beats a socket that is open and silent.
+                    IsWedged = true;
+                    throw new WebSocketException($"send timed out after {SendTimeout.TotalSeconds:F0}s");
+                }
+            }
+            finally
+            {
+                _sendLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Sends one state frame on the binary protocol without allocating.
+        ///
+        /// The lock is taken BEFORE the copy, which is the whole point. The
+        /// caller used to write this session's reusable buffer and then hand it
+        /// to a fire-and-forget send - so the next tick's write could land in
+        /// the buffer the previous send was still reading, and the client would
+        /// receive a frame spliced out of two. Acquiring first means a frame is
+        /// either copied and sent, or dropped before anything is touched.
+        ///
+        /// Synchronous Wait(0) rather than WaitAsync: it never blocks (zero
+        /// timeout) and it keeps the copy off an await boundary, where a Span
+        /// cannot go.
+        /// </summary>
+        public Task SendStateFrameAsync(ref StateUpdatePacket packet)
+        {
+            if (!_sendLock.Wait(0))
+            {
+                return Task.CompletedTask;
+            }
+
+            try
+            {
+                if (Socket.State != WebSocketState.Open) return Task.CompletedTask;
+
+                ReadOnlySpan<StateUpdatePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
+                MemoryMarshal.AsBytes(span).CopyTo(DiagnosticSendBuffer);
+            }
+            catch
+            {
+                _sendLock.Release();
+                throw;
+            }
+
+            return SendHeldAsync(new ArraySegment<byte>(DiagnosticSendBuffer), WebSocketMessageType.Binary);
+        }
+
+        /// <summary>Sends with the lock ALREADY held, and releases it.</summary>
+        private async Task SendHeldAsync(ArraySegment<byte> segment, WebSocketMessageType messageType)
+        {
+            try
+            {
+                using var timeout = new CancellationTokenSource(SendTimeout);
+                try
+                {
+                    await Socket.SendAsync(segment, messageType, true, timeout.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+                {
+                    IsWedged = true;
+                    throw new WebSocketException($"send timed out after {SendTimeout.TotalSeconds:F0}s");
+                }
             }
             finally
             {
@@ -93,7 +218,13 @@ namespace FolkIdle.Server.Network
 
         public async Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken)
         {
-            await _sendLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            // Bounded, like SendAsync: a close must never be the thing that
+            // hangs the eviction path for a socket that is already gone.
+            if (!await _sendLock.WaitAsync(SendTimeout, cancellationToken).ConfigureAwait(false))
+            {
+                return;
+            }
+
             try
             {
                 if (Socket.State != WebSocketState.Open) return;
@@ -1026,6 +1157,12 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/market/history" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleMarketPriceHistory(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/support/tickets/create" && context.Request.HttpMethod == "POST")
                     {
                         await HandleSupportTicket(context);
@@ -1382,6 +1519,205 @@ namespace FolkIdle.Server.Network
         // WebSocket packet - a paginated result set has no natural fixed
         // size, so it does not fit StateUpdatePacket's binary layout the way
         // scalar per-tick fields do.
+        private sealed class MarketPricePointResponse
+        {
+            public long Epoch { get; set; }
+            public long Price { get; set; }
+        }
+
+        private sealed class MarketPriceHistoryResponse
+        {
+            public string BaseItemId { get; set; } = string.Empty;
+            public int QualityTier { get; set; }
+
+            /// <summary>Most recent execution, or 0 when nothing has ever traded.</summary>
+            public long LastPrice { get; set; }
+
+            public long TradeCount { get; set; }
+
+            /// <summary>Mean execution price over the whole window returned.</summary>
+            public long AveragePrice { get; set; }
+
+            public long LowPrice { get; set; }
+            public long HighPrice { get; set; }
+
+            /// <summary>
+            /// Percentage change against the last price BEFORE each window
+            /// opened. Null where nothing traded before that point - which is
+            /// the honest answer for a young market and is rendered as "-",
+            /// not as 0%.
+            /// </summary>
+            public double? ChangeDayPct { get; set; }
+            public double? ChangeWeekPct { get; set; }
+            public double? ChangeMonthPct { get; set; }
+
+            /// <summary>Oldest first, so a chart can plot it directly.</summary>
+            public System.Collections.Generic.List<MarketPricePointResponse> Points { get; set; } = new();
+
+            /// <summary>
+            /// What the seller keeps on a sale at LastPrice: the wealth-scaled
+            /// burn plus their own guild's cut. Quoted here rather than
+            /// recomputed in the client, because the client guessing at the
+            /// bracket is how two numbers for one fee start.
+            /// </summary>
+            public int FeePct { get; set; }
+            public int GuildTaxPct { get; set; }
+        }
+
+        /// <summary>
+        /// Price history for one item at one rarity.
+        ///
+        /// Reads historical_market_archives, which has recorded every completed
+        /// trade with BaseItemId, QualityTier, ExecutionPrice and a millisecond
+        /// timestamp since the market shipped - so this is retroactively
+        /// correct for trades that already happened, and needs no new table.
+        /// (The handoff said no completed trade was recorded anywhere; the
+        /// archive is written by both MarketEscrowEngine and
+        /// MarketOrderBookEngine.)
+        /// </summary>
+        private async Task HandleMarketPriceHistory(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                string baseItemId = query["baseItemId"] ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(baseItemId) || baseItemId.Length > 255)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (!int.TryParse(query["qualityTier"], out int qualityTier))
+                {
+                    qualityTier = -1; // every rarity
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                // Milliseconds - ExecutionTimestampEpoch is written with
+                // ToUnixTimeMilliseconds, and comparing it against seconds
+                // would silently place every trade in the future.
+                long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                const long DayMs = 86_400_000L;
+                long windowStartMs = nowMs - (DayMs * 30L);
+
+                var trades = await db.HistoricalMarketArchives
+                    .AsNoTracking()
+                    .Where(a => a.BaseItemId == baseItemId
+                        && (qualityTier < 0 || a.QualityTier == qualityTier)
+                        && a.ExecutionPrice > 0
+                        && a.ExecutionTimestampEpoch >= windowStartMs)
+                    .OrderBy(a => a.ExecutionTimestampEpoch)
+                    .Select(a => new MarketPricePointResponse { Epoch = a.ExecutionTimestampEpoch, Price = a.ExecutionPrice })
+                    .ToListAsync();
+
+                var response = new MarketPriceHistoryResponse
+                {
+                    BaseItemId = baseItemId,
+                    QualityTier = qualityTier,
+                    Points = trades,
+                    TradeCount = trades.Count
+                };
+
+                if (trades.Count > 0)
+                {
+                    long sum = 0L;
+                    long low = long.MaxValue;
+                    long high = long.MinValue;
+                    for (int i = 0; i < trades.Count; i++)
+                    {
+                        long price = trades[i].Price;
+                        sum += price;
+                        if (price < low) low = price;
+                        if (price > high) high = price;
+                    }
+
+                    response.LastPrice = trades[^1].Price;
+                    response.AveragePrice = sum / trades.Count;
+                    response.LowPrice = low;
+                    response.HighPrice = high;
+
+                    response.ChangeDayPct = await ComputeChangePctAsync(db, baseItemId, qualityTier, response.LastPrice, nowMs - DayMs);
+                    response.ChangeWeekPct = await ComputeChangePctAsync(db, baseItemId, qualityTier, response.LastPrice, nowMs - (DayMs * 7L));
+                    response.ChangeMonthPct = await ComputeChangePctAsync(db, baseItemId, qualityTier, response.LastPrice, nowMs - (DayMs * 30L));
+                }
+
+                // The seller's own numbers. Mirrors MarketEscrowEngine's
+                // brackets exactly - if those move, this must move with them.
+                long sellerWealth = await db.CommodityRecords
+                    .AsNoTracking()
+                    .Where(c => c.PlayerId == playerId && c.ItemId == "gold")
+                    .Select(c => c.Quantity)
+                    .FirstOrDefaultAsync();
+
+                response.FeePct = sellerWealth > 5_000_000 ? 15 : sellerWealth >= 500_000 ? 8 : 5;
+
+                long guildId = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => p.Id == playerId)
+                    .Select(p => p.GuildId)
+                    .FirstOrDefaultAsync();
+
+                if (guildId > 0)
+                {
+                    int taxRatePct = await db.GuildRecords
+                        .AsNoTracking()
+                        .Where(g => g.Id == guildId)
+                        .Select(g => g.TaxRatePct)
+                        .FirstOrDefaultAsync();
+
+                    response.GuildTaxPct = Math.Clamp(taxRatePct, GuildRecord.MinTaxRatePct, GuildRecord.MaxTaxRatePct);
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Market price history error: {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        /// <summary>
+        /// Change from the last trade before <paramref name="sinceMs"/> to now.
+        ///
+        /// Null rather than zero when nothing traded before the window opened.
+        /// A market with three days of history has no honest month-over-month
+        /// figure, and "0%" would claim it does - that is the difference
+        /// between "unchanged" and "unknown", and a price chart that confuses
+        /// them is worse than one that omits the number.
+        /// </summary>
+        private static async Task<double?> ComputeChangePctAsync(FolkIdleDbContext db, string baseItemId, int qualityTier, long lastPrice, long sinceMs)
+        {
+            long baseline = await db.HistoricalMarketArchives
+                .AsNoTracking()
+                .Where(a => a.BaseItemId == baseItemId
+                    && (qualityTier < 0 || a.QualityTier == qualityTier)
+                    && a.ExecutionPrice > 0
+                    && a.ExecutionTimestampEpoch < sinceMs)
+                .OrderByDescending(a => a.ExecutionTimestampEpoch)
+                .Select(a => a.ExecutionPrice)
+                .FirstOrDefaultAsync();
+
+            if (baseline <= 0L) return null;
+
+            return (lastPrice - baseline) * 100.0 / baseline;
+        }
+
         private async Task HandleMarketBrowserListings(HttpListenerContext context)
         {
             try
@@ -3802,41 +4138,43 @@ namespace FolkIdle.Server.Network
                 }
 
                 // Equipment does not come from the weighted table at all - it
-                // rolls on its own flat per-slot chances, so it has to be
-                // reported separately or the screen would claim a monster
-                // drops no gear.
-                rows.Add(new MonsterLootEntryResponse
+                // rolls on its own chance against this monster's drop table, so
+                // it has to be reported separately or the screen would claim a
+                // monster drops no gear.
+                //
+                // Modul: THE REAL ITEMS, not four "any_melee_weapon" placeholder
+                // rows. Those were honest when every monster in a region shared
+                // one pool and the answer genuinely was "some weapon" - now each
+                // monster has its own list, and the list is the whole point of
+                // the change, so the screen names what falls. It is also the only
+                // way a player can tell that the thing they are missing comes
+                // from the boar and not the mouse.
+                ReadOnlySpan<int> equipment = EquipmentDropTable.GetDrops(monsterId);
+                if (equipment.Length > 0)
                 {
-                    BaseItemId = "any_melee_weapon",
-                    ChancePct = CombatLootEngine.MeleeWeaponDropChance * 100.0,
-                    MinQuantity = 1,
-                    MaxQuantity = 1,
-                    IsEquipment = true
-                });
-                rows.Add(new MonsterLootEntryResponse
-                {
-                    BaseItemId = "any_ranged_weapon",
-                    ChancePct = CombatLootEngine.RangedWeaponDropChance * 100.0,
-                    MinQuantity = 1,
-                    MaxQuantity = 1,
-                    IsEquipment = true
-                });
-                rows.Add(new MonsterLootEntryResponse
-                {
-                    BaseItemId = "any_magic_weapon",
-                    ChancePct = CombatLootEngine.MagicWeaponDropChance * 100.0,
-                    MinQuantity = 1,
-                    MaxQuantity = 1,
-                    IsEquipment = true
-                });
-                rows.Add(new MonsterLootEntryResponse
-                {
-                    BaseItemId = "any_helper_offhand",
-                    ChancePct = CombatLootEngine.HelperDropChance * 100.0,
-                    MinQuantity = 1,
-                    MaxQuantity = 1,
-                    IsEquipment = true
-                });
+                    // Uniform within the table, so each entry's odds are the
+                    // equipment roll divided by the table size. A boss rolls a
+                    // second, guaranteed time, so its per-item chance is that
+                    // much higher - quote what actually happens rather than the
+                    // ordinary-monster number.
+                    double rolls = CombatLootEngine.EquipmentDropChance;
+                    if (ContentRegistry.IsRegionalBoss(monsterId)) rolls += 1.0;
+
+                    double perItem = rolls / equipment.Length * 100.0;
+
+                    for (int i = 0; i < equipment.Length; i++)
+                    {
+                        rows.Add(new MonsterLootEntryResponse
+                        {
+                            ItemId = equipment[i],
+                            BaseItemId = ContentRegistry.GetItemBaseId(equipment[i]),
+                            ChancePct = perItem,
+                            MinQuantity = 1,
+                            MaxQuantity = 1,
+                            IsEquipment = true
+                        });
+                    }
+                }
 
                 context.Response.ContentType = "application/json";
                 return JsonSerializer.SerializeAsync(context.Response.OutputStream, rows)
@@ -5992,21 +6330,20 @@ namespace FolkIdle.Server.Network
             // codebase (once per online player per 10Hz tick) and the JSON
             // branch must not cost the Unity client anything but one already-
             // loaded bool test.
-            ArraySegment<byte> segment;
-            WebSocketMessageType messageType;
-
-            if (session.UseJsonProtocol)
+            // Modul: a wedged socket is evicted, not written to forever.
+            //
+            // SendAsync sets IsWedged when a frame times out, which means the
+            // peer has stopped reading altogether. Left alone that connection
+            // stays open and silent - the state the freeze report describes,
+            // where the server simulates correctly and the screen does not
+            // move. Dropping it gives the client something to react to, and its
+            // reconnect logic (500 ms backing off to 15 s, token re-sent) then
+            // does the rest.
+            if (session.IsWedged)
             {
-                segment = new ArraySegment<byte>(PacketJsonCodec.SerializeToUtf8(ref packet));
-                messageType = WebSocketMessageType.Text;
-            }
-            else
-            {
-                ReadOnlySpan<StateUpdatePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
-                ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(span);
-                bytes.CopyTo(session.DiagnosticSendBuffer);
-                segment = new ArraySegment<byte>(session.DiagnosticSendBuffer);
-                messageType = WebSocketMessageType.Binary;
+                Console.WriteLine($"Evicting wedged socket for player {playerId}: sends stopped completing.");
+                ForceDisconnect(playerId);
+                return;
             }
 
             // Fire-and-forget is intentional here - SendToPlayer is called
@@ -6017,8 +6354,24 @@ namespace FolkIdle.Server.Network
             // this allocates zero Task/state-machine objects on the
             // per-tick, per-player hot path - see _logSendFault's own doc
             // comment.
-            session.SendAsync(segment, messageType, true, CancellationToken.None)
-                .ContinueWith(_logSendFault, playerId, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
+            //
+            // Both branches drop the frame rather than queue it when the socket
+            // is already busy - see WebSocketSession.SendAsync.
+            Task send;
+            if (session.UseJsonProtocol)
+            {
+                var segment = new ArraySegment<byte>(PacketJsonCodec.SerializeToUtf8(ref packet));
+                send = session.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            else
+            {
+                // Takes the lock before touching the reusable buffer - see
+                // SendStateFrameAsync for why the old order could splice two
+                // frames together.
+                send = session.SendStateFrameAsync(ref packet);
+            }
+
+            send.ContinueWith(_logSendFault, playerId, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
         }
 
         // Modul: Full-Stack Production Hardening Phase 3, Part 2. Static,

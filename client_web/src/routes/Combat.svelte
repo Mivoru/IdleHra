@@ -16,6 +16,7 @@
   import { authedGet } from '../lib/net/auth';
   import { HALT_REASONS } from '../lib/ui/slots';
   import Bar from '../lib/ui/Bar.svelte';
+  import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import FloatingDamage from '../lib/ui/FloatingDamage.svelte';
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
   import SessionLoot from '../lib/ui/SessionLoot.svelte';
@@ -142,12 +143,18 @@
     if (!outcome.ok) pushLocalNotice(outcome.reason);
   }
 
-  // BaseItemId is the reliable identifier on a drop-preview row; ItemId is 0
-  // for every equipment entry. Falls back to the registry only when the row
-  // carries no BaseItemId at all.
+  // BaseItemId is the reliable identifier on a drop-preview row. Falls back to
+  // the registry only when the row carries no BaseItemId at all.
   function dropEntryName(entry: MonsterLootEntry): string {
     return entry.BaseItemId ? prettifyBaseId(entry.BaseItemId) : itemName(registry, entry.ItemId);
   }
+
+  // Modul: two lists, because they are two different questions. Materials are
+  // "what am I farming here", equipment is "which monster has the helmet I am
+  // missing" - and the second only became a real question when each monster got
+  // its own gear table instead of every monster in a region sharing one pool.
+  const materialDrops = $derived(dropPreview.filter((entry) => !entry.IsEquipment));
+  const equipmentDrops = $derived(dropPreview.filter((entry) => entry.IsEquipment));
 </script>
 
 <div class="layout">
@@ -291,20 +298,37 @@
       {#if dropPreview.length === 0}
         <p class="dim">No drop data.</p>
       {:else}
-        <ul class="drops">
-          {#each dropPreview as entry}
-            <li>
-              <!-- Equipment rows come back with ItemId = 0 and are identified
-                   by BaseItemId alone, because equipment is generated per
-                   slot rather than being a numbered ContentRegistry item.
-                   Looking up 0 rendered four of five rows as "Item #0". -->
-              <span>{dropEntryName(entry)}</span>
-              <span class="dim">
-                {entry.ChancePct.toFixed(2)}% &middot; {entry.MinQuantity}-{entry.MaxQuantity}
-              </span>
-            </li>
-          {/each}
-        </ul>
+        {#if materialDrops.length > 0}
+          <h4>Materials</h4>
+          <ul class="drops">
+            {#each materialDrops as entry}
+              <li>
+                <span class="drop-name">
+                  <ItemIcon baseItemId={entry.BaseItemId} name={dropEntryName(entry)} size="sm" />
+                  {dropEntryName(entry)}
+                </span>
+                <span class="dim">
+                  {entry.ChancePct.toFixed(2)}% &middot; {entry.MinQuantity}-{entry.MaxQuantity}
+                </span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+
+        {#if equipmentDrops.length > 0}
+          <h4>Equipment</h4>
+          <ul class="drops">
+            {#each equipmentDrops as entry}
+              <li>
+                <span class="drop-name">
+                  <ItemIcon baseItemId={entry.BaseItemId} name={dropEntryName(entry)} size="sm" />
+                  {dropEntryName(entry)}
+                </span>
+                <span class="dim">{entry.ChancePct.toFixed(2)}%</span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
       {/if}
     {/if}
 
@@ -455,10 +479,18 @@
   .drops li {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     gap: 0.75rem;
     font-size: 0.85rem;
     border-bottom: 1px solid var(--border);
     padding-bottom: 0.25rem;
+  }
+
+  .drop-name {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
   }
 
   .halt {

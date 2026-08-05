@@ -78,8 +78,15 @@ describe('races', () => {
       expect(RACE_NAMES[id], `race ${id}`).toBeTruthy();
     }
     // The specific regression: a five-entry table showed "Race 6" to anyone
-    // who unlocked Moosleute.
-    expect(raceName(6)).toBe('Moosleute');
+    // who unlocked race 6 at all.
+    //
+    // Modul: the name is "Bes", not "Moosleute". The six races a player reads
+    // are the Slavic set, and the C# side deliberately still says Moosleute
+    // internally - renaming an identifier used in forty places is a separate
+    // change from fixing what a player reads, and only the second one was a
+    // bug (see races.ts). This assertion had been pinning the internal name to
+    // the display layer and failing ever since.
+    expect(raceName(6)).toBe('Bes');
   });
 
   it('reads the unlock bitmask from bit (raceId - 1)', () => {

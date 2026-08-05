@@ -3742,9 +3742,14 @@ namespace FolkIdle.Server.Domain.Combat
             }
 
             var monster = ContentRegistry.Monsters[monsterId - 1];
-            int attacksPerKill = EstimateAttacksPerKill(ref payload, monsterId);
-            long ticksPerAttack = 15L;
-            long ticksPerKill = System.Math.Max(1L, attacksPerKill * ticksPerAttack);
+            long ticksPerKill = EstimateTicksPerKill(ref payload, monsterId);
+            if (ticksPerKill == long.MaxValue)
+            {
+                // Cannot hurt it at all - warping past a monster the character
+                // cannot kill must bank nothing rather than divide by it.
+                return;
+            }
+
             long completedKills = totalTicks / ticksPerKill;
             payload.CombatTargetTickAccumulator = (int)(totalTicks % ticksPerKill);
 
@@ -3907,16 +3912,45 @@ namespace FolkIdle.Server.Domain.Combat
             return ((buffSeconds * boostedMultiplier) + baseSeconds) / warpSeconds;
         }
 
-        private static int EstimateAttacksPerKill(ref TickStatePayload payload, int monsterId)
+        /// <summary>
+        /// Expected TICKS to kill this monster, for the instant-warp path.
+        ///
+        /// This was a fourth-hand damage model:
+        /// `15000 + ln(STR + 1) * 1000 + level * 750`, with a fixed 15-tick
+        /// cadence. It read no equipment whatsoever - a warp with a Legendary
+        /// weapon killed at exactly the speed of a warp bare-handed - subtracted
+        /// no armour, applied no hit roll, and its log-decayed STR term matches
+        /// nothing else in the codebase, where STR is worth a flat `str * 2`
+        /// melee damage.
+        ///
+        /// Now it asks CombatDamageModel, like the live tick and the offline
+        /// projection do. Returning ticks rather than attacks also drops the
+        /// hardcoded 1.5 s cadence, so attack-speed bonuses finally apply to a
+        /// warp.
+        /// </summary>
+        private static long EstimateTicksPerKill(ref TickStatePayload payload, int monsterId)
         {
-            int decayedStrength = payload.STR <= 0 ? 0 : (int)System.Math.Floor(System.Math.Log(payload.STR + 1.0) * 1000.0);
-            long expectedDamage = 15000L + decayedStrength + (payload.CurrentLevel * 750L);
-            if (expectedDamage < 1000L) expectedDamage = 1000L;
-            long monsterHp = (long)ContentRegistry.GetScaledMonsterMaxHp(monsterId) * 1000L;
-            long attacks = (monsterHp + expectedDamage - 1L) / expectedDamage;
-            if (attacks <= 0L) return 1;
-            if (attacks > int.MaxValue) return int.MaxValue;
-            return (int)attacks;
+            if (monsterId < 1 || monsterId > ContentRegistry.Monsters.Length) return long.MaxValue;
+
+            var monster = ContentRegistry.Monsters[monsterId - 1];
+
+            int lineageId = payload.SelectedLineageId;
+            if (lineageId < 0 || lineageId >= ProgressionEngine.Lineages.Length) lineageId = 0;
+            var lineage = ProgressionEngine.Lineages[lineageId];
+
+            int activeAgePhase = payload.Slot1_CharacterId != System.Guid.Empty ? payload.Slot1_AgePhase : 1;
+            int activeRaceId = payload.Slot1_CharacterId != System.Guid.Empty ? (int)(payload.Slot1_GeneticVector & 0xFF) : 0;
+
+            var stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
+
+            long rawMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in stats, lineage.DamageScalePerLevelPct, payload.CurrentLevel);
+            double secondsPerKill = CombatDamageModel.ExpectedSecondsPerKill(in stats, in monster, rawMilliAttack, payload.CachedCodexDamageMultiplier);
+
+            if (double.IsInfinity(secondsPerKill) || secondsPerKill <= 0.0) return long.MaxValue;
+
+            double ticks = secondsPerKill * 10.0;
+            if (ticks >= long.MaxValue) return long.MaxValue;
+            return System.Math.Max(1L, (long)System.Math.Ceiling(ticks));
         }
 
         private static long CalculateExpectedWarpDrops(ref TickStatePayload payload, long completedCycles, int professionType, double integratedBuffMultiplier)
@@ -5097,7 +5131,13 @@ namespace FolkIdle.Server.Domain.Combat
             return false;
         }
 
-        private static void ProcessSubTick(ref TickStatePayload payload, int localXpMultiplier, int localDropMultiplier, System.Collections.Concurrent.ConcurrentQueue<GuildWarPointEvent> guildWarPointQueue, System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext> liveSessionContexts)
+        // internal, not private: the tick's whole reward path lives in here and
+        // there was no way to observe an hour of it without a Postgres
+        // container, a socket and twenty-six constructor dependencies. It takes
+        // its two collaborators as parameters already, so a test can drive it
+        // headlessly with empty ones - see ProgressionRateTests, which is how
+        // "levelling is too fast" stopped being a report and became a number.
+        internal static void ProcessSubTick(ref TickStatePayload payload, int localXpMultiplier, int localDropMultiplier, System.Collections.Concurrent.ConcurrentQueue<GuildWarPointEvent> guildWarPointQueue, System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext> liveSessionContexts)
         {
             // Modul: multi-slot simulation. Guard kept byte-for-byte identical
             // to the pre-multi-slot original. It deliberately does NOT also

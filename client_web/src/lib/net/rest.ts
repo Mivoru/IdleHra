@@ -256,6 +256,42 @@ export function fetchMarketListings(filters: MarketBrowseFilters = {}): Promise<
   return authedGet<MarketBrowsePage>(`/api/v1/market/listings?${query}`);
 }
 
+export interface MarketPricePoint {
+  Epoch: number;
+  Price: number;
+}
+
+export interface MarketPriceHistory {
+  BaseItemId: string;
+  QualityTier: number;
+  LastPrice: number;
+  TradeCount: number;
+  AveragePrice: number;
+  LowPrice: number;
+  HighPrice: number;
+  /** Null where nothing traded before that window opened - "unknown", not "unchanged". */
+  ChangeDayPct: number | null;
+  ChangeWeekPct: number | null;
+  ChangeMonthPct: number | null;
+  /** Oldest first, ready to plot. */
+  Points: MarketPricePoint[];
+  /** The seller's own wealth-scaled burn and their guild's cut, both percent. */
+  FeePct: number;
+  GuildTaxPct: number;
+}
+
+/**
+ * What this item has actually been selling for, over the last thirty days.
+ *
+ * Reads the trade archive, which has recorded every completed sale with a
+ * timestamp since the market shipped - so the history is real from the first
+ * request rather than starting to accumulate from today.
+ */
+export function fetchMarketPriceHistory(baseItemId: string, qualityTier: number): Promise<MarketPriceHistory> {
+  const query = new URLSearchParams({ baseItemId, qualityTier: String(qualityTier) });
+  return authedGet<MarketPriceHistory>(`/api/v1/market/history?${query}`);
+}
+
 // ---------------------------------------------------------------------------
 // Social
 // ---------------------------------------------------------------------------

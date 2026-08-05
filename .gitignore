@@ -39,3 +39,6 @@ server/FolkIdle.Server/server_dev.log
 # Test artefacts
 client_web/smoke-*.png
 client_web/screens-*.png
+
+# Oracle box runtime secrets - DB password and the JWT signing key.
+ops/oracle/.env

@@ -33,6 +33,7 @@
   import { resolveSlotIndex } from '../lib/ui/slots';
   import { play } from '../lib/ui/audio';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
+  import { requestScreen, setPendingFocusEquipment } from '../lib/stores/navigation';
   import Skeleton from '../lib/ui/Skeleton.svelte';
 
   const client = useQueryClient();
@@ -151,6 +152,11 @@
     setTimeout(refresh, 700);
   }
 
+  function openRerollInForge(instanceId: number) {
+    setPendingFocusEquipment(instanceId);
+    requestScreen('forge');
+  }
+
   // Binning is irreversible and sits next to a button that is not, so it asks
   // once. Selling does not - the gold is a receipt and the market still has
   // the item's value written down.
@@ -205,6 +211,20 @@
               {:else}
                 <button class="tiny-btn" onclick={() => equip(item.Id)}>Equip</button>
               {/if}
+
+              <!-- Modul: the reroll is in the Forge and players did not find
+                   it, because the thing being rerolled is an item and items
+                   are here. This does not move it - fusion needs the Forge
+                   building and the reroll sits beside it - it just puts the
+                   door where the player is standing, with the item already
+                   chosen when they arrive. -->
+              <button
+                class="tiny-btn"
+                title="Reroll this piece's affixes in the Forge"
+                onclick={() => openRerollInForge(item.Id)}
+              >
+                Reroll
+              </button>
 
               <button
                 class="tiny-btn"

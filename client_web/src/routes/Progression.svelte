@@ -226,8 +226,18 @@
       {@const st = statistics.data}
       <dl class="stats">
         <div><dt>Level</dt><dd>{st.Level}</dd></div>
-        <div><dt>Gold</dt><dd><Money amount={st.Gold} /></dd></div>
-        <div><dt>Diamonds</dt><dd><Money amount={st.PremiumDiamonds} kind="diamond" /></dd></div>
+        <!-- Modul: ONE gold figure per screen.
+             This read st.Gold, which is CommodityRecords - the durable balance,
+             refreshed when this query runs. The header beside it reads the live
+             state feed. The two are the same number at rest and different
+             numbers whenever the session has earned since the last checkpoint,
+             so the screen showed 27,287g and 2,091,564g at once and gave a
+             player no way to know which was theirs.
+             The live feed wins: it is what every other screen shows and it is
+             what the player just earned. It falls back to the persisted figure
+             only before the first packet arrives. -->
+        <div><dt>Gold</dt><dd><Money amount={snap ? snap.Gold : st.Gold} /></dd></div>
+        <div><dt>Diamonds</dt><dd><Money amount={snap ? snap.PremiumCurrencyBalance : st.PremiumDiamonds} kind="diamond" /></dd></div>
         <div><dt>Login streak</dt><dd>{st.LoginStreakDays}</dd></div>
         <div><dt>Kills</dt><dd>{st.TotalKills.toLocaleString()}</dd></div>
         <div><dt>Bosses</dt><dd>{st.BossesSlain.toLocaleString()}</dd></div>

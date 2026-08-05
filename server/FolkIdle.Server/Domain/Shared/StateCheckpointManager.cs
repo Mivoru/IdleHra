@@ -73,6 +73,36 @@ namespace FolkIdle.Server.Domain.Shared
                 }
             }
 
+            // Modul: GOLD HAD NO DURABLE PATH THAT DID NOT GO THROUGH REDIS.
+            //
+            // Every other earned thing is written by FlushState - level, XP,
+            // diamonds, attributes, chrono. Gold is not: the checkpoint never
+            // touched it. Its only route to the database was
+            // TickStatePayload.RedisPendingGoldDelta -> TryStoreFrame ->
+            // a Redis buffer -> RedisWriteBehindEngine's five-minute flush, and
+            // BOTH of those return early when Redis is not connected.
+            //
+            // So with Redis down a session's gold accumulated in memory, was
+            // shown correctly in the client header, was never persisted, and
+            // was discarded at logout - while the Progress screen's Statistics
+            // panel, which reads CommodityRecords directly, went on displaying
+            // the balance from login. That is the reported "two different gold
+            // figures on one screen", and the smaller one was the one that
+            // would survive.
+            //
+            // Forcing the checkpoint whenever Redis did not take the frame
+            // gives gold the same durability as everything else. It matters
+            // that this is the ref-owning path: FlushState applies the delta as
+            // an INCREMENT inside its transaction and this method zeroes it on
+            // the live payload only once that commits, so a market sale landing
+            // between two checkpoints is added to, never overwritten, and a
+            // failed flush retries instead of losing the coins.
+            bool redisUnavailable = _redisSessionCache == null || !_redisSessionCache.IsConnected;
+            if (redisUnavailable && state.RedisPendingGoldDelta != 0L)
+            {
+                reachedCheckpointBoundary = true;
+            }
+
             if (reachedCheckpointBoundary)
             {
                 bool committed = FlushStateAndAdvance(ref state);
@@ -104,12 +134,25 @@ namespace FolkIdle.Server.Domain.Shared
 
         public bool FlushStateAndAdvance(ref TickStatePayload state)
         {
+            // TryStoreFrame zeroes RedisPendingGoldDelta when it succeeds, so
+            // the copy handed to FlushState carries a non-zero delta only when
+            // Redis did NOT take it. That is what keeps the two durable paths
+            // from both applying the same coins.
             _redisSessionCache?.TryStoreFrame(ref state);
+            long pendingGold = state.RedisPendingGoldDelta;
+
             bool committed = FlushState(state).GetAwaiter().GetResult();
             if (committed)
             {
                 state.LogicEpochCounter++;
                 state.IsDirty = false;
+
+                // Only now. If the flush failed the coins are still owed, and
+                // the next TrackState re-attempts with the delta intact.
+                if (pendingGold != 0L && state.RedisPendingGoldDelta == pendingGold)
+                {
+                    state.RedisPendingGoldDelta = 0L;
+                }
             }
             return committed;
         }
@@ -266,6 +309,7 @@ namespace FolkIdle.Server.Domain.Shared
                         player.LarderSlot3ItemId = state.Food3_Count > 0 ? state.Food3_ItemId : 0;
                         player.LarderSlot3Count = state.Food3_Count;
                         player.AutoEatThresholdPct = state.AutoEatThreshold;
+                        await ApplyPendingGoldDeltaAsync(dbContext, state);
                         await UpsertAccountChronoRegistryAsync(dbContext, state);
                         await UpsertChroniclePassAsync(dbContext, state);
                         await UpsertLifetimeAchievementsAsync(dbContext, player, state);
@@ -1099,6 +1143,46 @@ namespace FolkIdle.Server.Domain.Shared
             BitConverter.GetBytes(playerId).CopyTo(bytes, 0);
             bytes[15] = 0x67;
             return new Guid(bytes);
+        }
+
+        /// <summary>
+        /// Writes the session's unbanked gold to the one authoritative balance,
+        /// CommodityRecords["gold"], when Redis was not there to buffer it.
+        ///
+        /// An INCREMENT under FOR UPDATE, never an assignment. The live payload
+        /// is not the authority on this number - a market sale, a mailbox claim
+        /// or an affix reroll can move the same row between two checkpoints, and
+        /// writing state.CurrentGold over the top would silently undo whichever
+        /// of them landed last. The delta is what this session earned; adding it
+        /// is the only statement that stays true alongside the other writers.
+        ///
+        /// The caller zeroes the delta on the live payload only after this
+        /// transaction commits - see FlushStateAndAdvance.
+        /// </summary>
+        private static async Task ApplyPendingGoldDeltaAsync(FolkIdleDbContext dbContext, TickStatePayload state)
+        {
+            if (state.RedisPendingGoldDelta == 0L)
+            {
+                return;
+            }
+
+            var gold = await dbContext.CommodityRecords
+                .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {state.PlayerId} AND \"ItemId\" = 'gold' FOR UPDATE")
+                .FirstOrDefaultAsync();
+
+            if (gold == null)
+            {
+                dbContext.CommodityRecords.Add(new CommodityRecord
+                {
+                    PlayerId = state.PlayerId,
+                    ItemId = "gold",
+                    Quantity = Math.Max(0L, state.RedisPendingGoldDelta)
+                });
+                return;
+            }
+
+            gold.Quantity += state.RedisPendingGoldDelta;
+            if (gold.Quantity < 0L) gold.Quantity = 0L;
         }
 
         private static async Task<AccountChronoRegistry> LoadOrUpdateAccountChronoRegistryAsync(FolkIdleDbContext dbContext, PlayerRecord player, long currentUnixTimestamp)

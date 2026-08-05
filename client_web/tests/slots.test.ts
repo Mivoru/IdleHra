@@ -107,7 +107,20 @@ describe('profession enums do not overlap in meaning', () => {
     expect(professionName(0)).toBe('Woodcutting');
     expect(professionName(1)).toBe('Mining');
     expect(professionName(2)).toBe('Fishing');
-    expect(professionName(3)).toBe('Herbalism');
+  });
+
+  // Modul: Herbalism is GONE, deliberately - the design list has no herb in
+  // it and no herbalism tool where axes, pickaxes and rods all exist in five
+  // tiers (see PROFESSIONS in slots.ts). This test asserted it was named, and
+  // had been failing since the removal.
+  //
+  // Kept as an assertion rather than deleted, because the band constant 4000
+  // still exists in ActivityIdBands and a future reader could reasonably
+  // conclude the profession does too. The fallback string is the answer:
+  // an id nothing authors resolves to a placeholder, not to a name that
+  // implies content behind it.
+  it('has no name for the removed herbalism profession', () => {
+    expect(professionName(3)).toBe('Profession 3');
   });
 
   it('names crafting professions from the OTHER enum', () => {

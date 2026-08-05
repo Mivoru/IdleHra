@@ -9,6 +9,7 @@
   import Crafting from './routes/Crafting.svelte';
   import Forge from './routes/Forge.svelte';
   import ChatDock from './lib/ui/ChatDock.svelte';
+  import { screenRequest } from './lib/stores/navigation';
   import Hub from './routes/Hub.svelte';
   import Social from './routes/Social.svelte';
   import GuildOps from './routes/GuildOps.svelte';
@@ -94,6 +95,19 @@
   // player straight onto Combat with a wall of nav words above it; the painted
   // valley is both prettier and a better answer to "where am I".
   let screen = $state<ScreenKey>('hub');
+
+  // Modul: cross-screen links. A screen that is not Hub has no way to change
+  // `screen` - it is local state and only Hub is handed a setter - so the
+  // Chest's "Reroll" button publishes a request instead. See
+  // stores/navigation.ts for why it carries a nonce.
+  const ALL_SCREEN_KEYS = new Set<string>(GROUPS.flatMap((group) => group.screens.map((s) => s.key)));
+
+  $effect(() => {
+    const request = $screenRequest;
+    if (request && ALL_SCREEN_KEYS.has(request.screen)) {
+      screen = request.screen as ScreenKey;
+    }
+  });
 
   $effect(() => {
     if (token) {

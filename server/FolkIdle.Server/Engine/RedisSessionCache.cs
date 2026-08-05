@@ -19,6 +19,14 @@ namespace FolkIdle.Server.Engine
             _redis = redis;
         }
 
+        /// <summary>
+        /// Whether Redis can currently take a frame. StateCheckpointManager
+        /// asks before deciding whether gold needs the database path instead -
+        /// see its note on why gold had no durable route that did not go
+        /// through here.
+        /// </summary>
+        public bool IsConnected => _redis.IsConnected;
+
         public static RedisKey SessionStateKey(long playerId) => $"player:{playerId}:session_state";
 
         public static RedisKey GoldBufferKey(long playerId) => $"player:{playerId}:gold_buffer";

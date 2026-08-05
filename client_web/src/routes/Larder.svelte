@@ -154,7 +154,21 @@
     </ul>
 
     <h3>Load from the village chest</h3>
-    {#if availableFood.length === 0}
+    <!-- Modul: "there is none" is a claim, and it needs the answer to have
+         arrived first. This read `availableFood.length === 0`, which is also
+         true while the inventory request is in flight and while the content
+         registry is still loading (the list needs numeric ids from it) - so a
+         player opening this screen was told flatly that their chest held no
+         food, a moment before their fish appeared. An empty state that lies
+         during loading is the reason someone goes and fishes for an hour they
+         did not need to.
+
+         Two conditions because there are two sources: the query, and the
+         registry the ids are resolved through. Either one missing means the
+         answer is not known yet. -->
+    {#if inventory.isPending || !registry}
+      <p class="dim">Checking the chest...</p>
+    {:else if availableFood.length === 0}
       <p class="dim">
         No food in the chest. Cook something, or fish it up.
       </p>

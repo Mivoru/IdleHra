@@ -1,0 +1,85 @@
+# FolkIdle on the Oracle Ampere box - the whole game, client and server.
+#
+# NOT the repository's own docker-compose.yml, which cannot be reused here:
+# that one stands up its own Postgres, a pgbouncer in front of it and a
+# one-shot migrate job. The database stays on Supabase, whose pooler already
+# does the pooling, and the app image migrates on its own entrypoint - so all
+# three of those services would be wrong rather than merely redundant.
+#
+# Three services: the app, a Redis beside it, and Caddy - which terminates TLS,
+# serves the built client, and proxies the API and the WebSocket to the app.
+# Client and server share one origin, so there is no CORS relationship between
+# the two halves and only one certificate to keep.
+#
+# Redis is local rather than Render's managed one, because REDIS_CONNECTION
+# pointed at a Render-INTERNAL hostname that does not resolve from here at all.
+# Losing its data on restart is already accepted (the Render instance had
+# persistence off) - and since the checkpoint learned to persist gold without
+# it, an outage is now a slower flush rather than lost coins.
+
+services:
+  app:
+    build:
+      context: ../../server
+      # server/Dockerfile, NOT FolkIdle.Server/Dockerfile. They are two
+      # different images: the inner one is compose's and starts the server
+      # bare, while this one migrates first and only then serves
+      # (`--migrate && exec ...`). With the schema on Supabase and no shell to
+      # run a pre-deploy hook from, migrate-on-entrypoint is the only thing
+      # applying migrations here. Safe at exactly one replica - see its comment.
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # The listener prefix is hardcoded http://+:8080/ in Program.cs.
+      PORT: "8080"
+      DOTNET_ENVIRONMENT: Production
+      REDIS_CONNECTION: "redis:6379"
+    depends_on:
+      redis:
+        condition: service_healthy
+    expose:
+      - "8080"
+    # The entrypoint migrates before serving. Safe at exactly one replica -
+    # see server/Dockerfile. Do not scale this service.
+    deploy:
+      replicas: 1
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Caddy with the built client baked in - see web.Dockerfile for why the
+  # build context is the repository root and not client_web.
+  caddy:
+    build:
+      context: ../..
+      dockerfile: ops/oracle/web.Dockerfile
+      args:
+        # Vite INLINES this, so it is a build argument and not an environment
+        # variable: a static bundle has no runtime configuration. Changing the
+        # hostname means rebuilding this image, not restarting it.
+        VITE_FOLKIDLE_SERVER: "https://92-5-0-94.sslip.io"
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Named, so the certificate survives a rebuild. Without this every
+      # `docker compose up --build` would re-issue from Let's Encrypt and walk
+      # straight into their rate limit.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+
+volumes:
+  caddy_data:
+  caddy_config:
