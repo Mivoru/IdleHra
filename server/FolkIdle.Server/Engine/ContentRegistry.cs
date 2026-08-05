@@ -699,7 +699,24 @@ namespace FolkIdle.Server.Engine
         public static ReadOnlySpan<MonsterDefinition> Monsters => _monsters;
         public static string GetMonsterName(int id) => _monsterNames[id - 1];
         public static string GetMonsterEnemyId(int id) => _monsterEnemyIds[id - 1];
-        public static string GetItemBaseId(int itemId) => _itemBaseIds[itemId - 1];
+        /// <summary>
+        /// This item's BaseId, or an empty string for an id that names nothing.
+        ///
+        /// Bounds-checked because the catalogue has HOLES now - see
+        /// Initialize. An id can point at a removed item (a legacy piece, an
+        /// invented offhand) and still be sitting in an old database row, an
+        /// old loot table or an old client packet. Returning "" lets every
+        /// caller's existing "is this a real item" string test answer
+        /// correctly, where an unchecked index threw.
+        /// </summary>
+        public static string GetItemBaseId(int itemId)
+        {
+            if (itemId < 1 || itemId > _itemBaseIds.Length) return string.Empty;
+            return _itemBaseIds[itemId - 1];
+        }
+
+        /// <summary>Whether this id names an item that still exists.</summary>
+        public static bool ItemExists(int itemId) => GetItemBaseId(itemId).Length > 0;
 
         // Modul: single source of truth for "which difficulty region does
         // this monster belong to" - replaces the ((Id - 1) % 30) / 6 + 1
@@ -1172,7 +1189,19 @@ namespace FolkIdle.Server.Engine
             }
 
             RequireContiguousIds(monsterJson.Count, monsterJson.Select(m => m.Id), "monsters.json", "Id");
-            RequireContiguousIds(itemJson.Count, itemJson.Select(i => i.Id), "items.json", "Id");
+            // Modul: items.json is deliberately NOT checked for contiguity.
+            //
+            // Monsters still are - their ids are the activity ids the client
+            // sends, and a hole there is a monster nobody can fight. Items are
+            // different: 111 of them were removed (106 legacy pieces and the
+            // five invented offhands) and every surviving id had to keep its
+            // meaning, because ids are referenced by loot tables, recipes and
+            // by every owned row in the live database. Renumbering to close the
+            // gaps would have repointed all of that at different objects.
+            //
+            // The duplicate check that this guard also performed is not lost -
+            // it moved into the item load below, where the highest id is
+            // computed anyway.
 
             var newMonsters = new MonsterDefinition[monsterJson.Count];
             var newMonsterNames = new string[monsterJson.Count];
@@ -1216,8 +1245,48 @@ namespace FolkIdle.Server.Engine
                 newMonsterEnemyIds[index] = m.EnemyId;
             }
 
-            var newItems = new ItemDefinition[itemJson.Count];
-            var newItemBaseIds = new string[itemJson.Count];
+            // Modul: THE CATALOGUE MAY HAVE HOLES IN IT.
+            //
+            // These arrays are indexed by `Id - 1`, so they used to be sized by
+            // the ENTRY COUNT - which silently required the ids to be a
+            // contiguous 1..N with nothing ever removed. Deleting one item from
+            // items.json would have thrown an IndexOutOfRange for the highest
+            // id, and deleting one and renumbering the rest would have
+            // repointed every loot table, recipe and owned row in the database
+            // at a different object.
+            //
+            // Sized by the HIGHEST id instead. Removing an item now leaves a
+            // hole, every surviving id keeps its meaning, and the holes are
+            // inert: their BaseId is empty, which every lookup below already
+            // treats as "not a thing". That is what made it possible to cut 111
+            // items - 106 legacy pieces and the five invented offhands - out of
+            // a live catalogue without touching a single reference to the 326
+            // that stayed.
+            int highestItemId = 0;
+            var seenItemIds = new HashSet<int>(itemJson.Count);
+            for (int i = 0; i < itemJson.Count; i++)
+            {
+                int id = itemJson[i].Id;
+                if (id < 1)
+                {
+                    throw new InvalidOperationException($"ContentRegistry.Initialize: items.json has an entry with a non-positive Id ({id}).");
+                }
+
+                if (!seenItemIds.Add(id))
+                {
+                    throw new InvalidOperationException($"ContentRegistry.Initialize: items.json has a duplicate Id ({id}). Ids are positional and a duplicate silently overwrites the other entry.");
+                }
+
+                if (id > highestItemId) highestItemId = id;
+            }
+
+            var newItems = new ItemDefinition[highestItemId];
+            var newItemBaseIds = new string[highestItemId];
+
+            // Holes read as an empty BaseId rather than null, so callers can
+            // test them with the same string checks they already use.
+            for (int i = 0; i < newItemBaseIds.Length; i++) newItemBaseIds[i] = string.Empty;
+
             for (int i = 0; i < itemJson.Count; i++)
             {
                 ItemJson it = itemJson[i];
