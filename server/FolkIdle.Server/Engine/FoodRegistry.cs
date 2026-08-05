@@ -94,6 +94,89 @@ namespace FolkIdle.Server.Engine
         // a fish is worth.
         private const int RawFishHealPercent = 60;
 
+        // Modul: FOOD WAS A FLAT NUMBER AGAINST A GROWING WOUND, and that made
+        // the larder a step function rather than a system.
+        //
+        // A tier's heal is authored above as an absolute figure - 40 HP at the
+        // bottom, 82,000 at the top, a factor of 2,050 across ten tiers. The
+        // damage it has to answer grows faster than that and, worse, it grows
+        // in JUMPS: incoming damage is (monster attack - your armour), so for
+        // as long as armour outpaces the region you take the 1 HP floor and
+        // food is nearly free, and the moment it does not, demand explodes.
+        // Measured against the season curve, fishing was 2% of a region's
+        // playtime through region 3 and 756% of it in region 5. Neither number
+        // describes a mechanic anyone designed.
+        //
+        // A share of MAX HP does not have that shape. Max HP is the same
+        // quantity the damage is measured against, so a bite is worth a
+        // constant fraction of the bar it refills no matter which region it is
+        // eaten in, and food demand tracks "how fast is my health bar dropping"
+        // instead of tracking the gap between two authored tables.
+        //
+        // The flat table stays as a FLOOR, which is what keeps the early game
+        // recognisable: at level 1 a tier-1 minnow is worth more than 5% of a
+        // 100 HP bar, so the authored number wins and nothing changes until the
+        // player is big enough for the percentage to mean more.
+        //
+        // Tier still matters, and matters more than it did: a better fish is a
+        // bigger share as well as a bigger number, so the reason to fish deeper
+        // water is that you spend less time fishing.
+        public const int HealPercentOfMaxHpPerTier = 5;
+
+        /// <summary>
+        /// What one unit of this food restores to a character with the given
+        /// effective max HP, in milli-HP. Pass 0 for the authored floor alone.
+        /// </summary>
+        public static int GetHealMilliHp(int itemId, long effectiveMaxMilliHp)
+        {
+            int flat = GetHealMilliHp(itemId);
+            if (flat <= 0 || effectiveMaxMilliHp <= 0)
+            {
+                return flat;
+            }
+
+            int tier = GetTier(itemId);
+            if (tier <= 0)
+            {
+                return flat;
+            }
+
+            long share = effectiveMaxMilliHp * tier * HealPercentOfMaxHpPerTier / 100L;
+            if (share > int.MaxValue) share = int.MaxValue;
+            return share > flat ? (int)share : flat;
+        }
+
+        /// <summary>
+        /// The food tier an item eats at, 1-10, or 0 if it is not food. Shared
+        /// by the payout lookup and the max-HP share above so a food cannot be
+        /// worth one tier in one and another tier in the other.
+        /// </summary>
+        public static int GetTier(int itemId)
+        {
+            if (itemId >= FirstCookedFoodItemId && itemId <= LastCookedFoodItemId)
+            {
+                return itemId - FirstCookedFoodItemId + 1;
+            }
+
+            if (itemId <= 0 || itemId > ContentRegistry.ItemDefinitions.Length)
+            {
+                return 0;
+            }
+
+            if (ContentRegistry.IsRawFish(itemId))
+            {
+                int fishTier = ContentRegistry.ItemDefinitions[itemId - 1].RegionTier;
+                return Math.Clamp(fishTier, 1, _healPayoutFlatHp.Length);
+            }
+
+            if (!ContentRegistry.GetItemBaseId(itemId).Contains("_food"))
+            {
+                return 0;
+            }
+
+            return Math.Clamp(ContentRegistry.ItemDefinitions[itemId - 1].RegionTier, 1, _healPayoutFlatHp.Length);
+        }
+
         public static int GetHealMilliHp(int itemId)
         {
             if (itemId >= FirstCookedFoodItemId && itemId <= LastCookedFoodItemId)

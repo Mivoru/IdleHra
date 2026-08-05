@@ -36,10 +36,41 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        // Modul: fixed heal-per-food-unit amount, matching the live tick's
-        // Auto-Eat block in SimulationEngine.cs (heal1/heal2/heal3 = 50000
-        // milli-HP regardless of which food slot is consumed).
-        private const int AutoEatHealPerFoodUnitMilliHp = 50000;
+        // Modul: THE LIVE TICK STOPPED HEALING A FLAT 50 HP AND THIS DID NOT.
+        //
+        // This constant was written when SimulationEngine's Auto-Eat block also
+        // healed 50000 milli-HP per unit regardless of the food. That block now
+        // asks FoodRegistry, which pays 40 HP for a tier-1 minnow and 82,000 for
+        // a tier-10 Astral Ambrosia Roast - a factor of two thousand.
+        //
+        // The constant stayed, so the offline projection sized a night's food
+        // demand as though every fish in the larder were worth 50 HP. At the
+        // bottom of the game that OVERPAYS by 25%, and at the top it underpays
+        // by 1,640x: a player who logged off with high-tier food banked was
+        // told their larder ran dry in minutes and lost the rest of the window.
+        //
+        // The heal now comes from the same registry the live tick reads, per
+        // stocked slot. Same class of defect as the three damage models, in the
+        // same file, found the same way - by measuring rather than by reading.
+        private static double AverageHealPerFoodUnitMilliHp(in TickStatePayload payload, long effectiveMaxMilliHp)
+        {
+            long units = payload.Food1_Count + payload.Food2_Count + payload.Food3_Count;
+            if (units <= 0)
+            {
+                return 0.0;
+            }
+
+            // Weighted by how much of each food is actually stocked, because
+            // auto-eat drains the highest-healing slot first but ends up
+            // consuming all of it - over a full offline window the average is
+            // what decides how long the larder lasts.
+            double total =
+                (double)payload.Food1_Count * FoodRegistry.GetHealMilliHp(payload.Food1_ItemId, effectiveMaxMilliHp) +
+                (double)payload.Food2_Count * FoodRegistry.GetHealMilliHp(payload.Food2_ItemId, effectiveMaxMilliHp) +
+                (double)payload.Food3_Count * FoodRegistry.GetHealMilliHp(payload.Food3_ItemId, effectiveMaxMilliHp);
+
+            return total / units;
+        }
 
         // Modul: THE BACKPACK CAPPED OFFLINE PROGRESS AT TWENTY.
         //
@@ -438,7 +469,8 @@ namespace FolkIdle.Server.Engine
             {
                 double totalIncomingMilliDamage = expectedIncomingMilliDps * elapsedSeconds;
                 long totalFoodUnits = payload.Food1_Count + payload.Food2_Count + payload.Food3_Count;
-                double totalHealCapacityMilliHp = effectiveMilliHp + ((double)totalFoodUnits * AutoEatHealPerFoodUnitMilliHp);
+                double healPerUnitMilliHp = AverageHealPerFoodUnitMilliHp(in payload, effectiveMilliHp);
+                double totalHealCapacityMilliHp = effectiveMilliHp + ((double)totalFoodUnits * healPerUnitMilliHp);
 
                 if (totalIncomingMilliDamage > totalHealCapacityMilliHp)
                 {
@@ -455,9 +487,9 @@ namespace FolkIdle.Server.Engine
 
                     ConsumeFoodStock(ref payload, totalFoodUnits);
                 }
-                else
+                else if (healPerUnitMilliHp > 0.0)
                 {
-                    long foodUnitsConsumed = (long)Math.Ceiling(totalIncomingMilliDamage / AutoEatHealPerFoodUnitMilliHp);
+                    long foodUnitsConsumed = (long)Math.Ceiling(totalIncomingMilliDamage / healPerUnitMilliHp);
                     ConsumeFoodStock(ref payload, foodUnitsConsumed);
                 }
             }

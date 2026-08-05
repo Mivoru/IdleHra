@@ -2107,24 +2107,16 @@ namespace FolkIdle.Server.Domain.Combat
                             await _craftingEngine.ExecuteCraftingAsync(pId, resultItemId);
                         });
                     }
+                    // Modul: CommandType.CraftItem is RETIRED, along with the
+                    // equipment recipes it carried. Equipment is monster loot
+                    // and tools are crafted - see CraftingEngine. A client
+                    // still sending it is an old bundle rather than an attack,
+                    // so it is ignored rather than treated as a protocol
+                    // violation: disconnecting a stale tab teaches nobody
+                    // anything and looks like the game is broken.
                     else if (cmd.Command == CommandType.CraftItem)
                     {
-                        if (!ClientCommandValidator.ValidateCraftingRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        uint recipeId = cmd.TargetRecipeId;
-                        uint slotIndex = cmd.CraftingSlotIndex;
-                        uint tickToken = (uint)currentPayload.LogicEpochCounter;
-                        
-                        SafeDispatchAsync("Crafting.Equipment", pId, async () => {
-                            await _craftingEngine.ExecuteEquipmentCraftingAsync(pId, recipeId, slotIndex, tickToken);
-                        });
+                        // Deliberately empty.
                     }
                     else if (cmd.Command == CommandType.UpgradeBuilding)
                     {
@@ -3740,7 +3732,35 @@ namespace FolkIdle.Server.Domain.Combat
         private static void ApplyGatheringWarp(ref TickStatePayload payload, GatheringNodeDefinition gatheringNode, long totalTicks, int warpSeconds, uint remainingBuffTicks, int potencyModifierPct)
         {
             int masteryLevel = GetMasteryLevel(ref payload, gatheringNode.ProfessionType);
-            int requiredTicks = gatheringNode.BaseTickThreshold - (masteryLevel * 2) - payload.CachedCurrentToolTier;
+
+            // Modul: THE WARP PATH IGNORED YOUR TOOLS.
+            //
+            // The live tick a few thousand lines down resolves the tool that
+            // matches the job - axe for woodcutting, pickaxe for mining, rod
+            // for fishing - and runs it through GatheringToolEngine, which is
+            // where the +10% to +200% speed ladder lives. This path subtracted
+            // CachedCurrentToolTier, the FORGE BUILDING'S LEVEL, and applied no
+            // speed bonus at all.
+            //
+            // So a player with a full set of Voidbark tools gathered at their
+            // forge level while offline or warping, and every hour away threw
+            // away the entire reason to craft tools. Same shape as the food
+            // heal above and the three damage models before it: the live tick
+            // learned something and the projection beside it did not.
+            int villageProductionLevel = gatheringNode.ProfessionType switch
+            {
+                0 => payload.LumberjackLevel,
+                1 => payload.MineLevel,
+                _ => 0
+            };
+            int toolTier = gatheringNode.ProfessionType switch
+            {
+                0 => payload.AxeToolTier,
+                1 => payload.PickaxeToolTier,
+                _ => payload.RodToolTier
+            };
+            int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(
+                gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel);
             // Modul: Logistics achievement family's stackable claim reward
             // (Phase: Full-Stack Production Polish, Part 2.3) - a flat
             // percent reduction in the tick threshold, i.e. a gathering
@@ -5730,9 +5750,14 @@ namespace FolkIdle.Server.Domain.Combat
                 // same 50 HP as a tier-1 minnow. FoodRegistry lookups on the
                 // cooked id block are integer arithmetic on a static array -
                 // no allocation on this per-tick path.
-                int heal1 = FoodRegistry.GetHealMilliHp(payload.Food1_ItemId);
-                int heal2 = FoodRegistry.GetHealMilliHp(payload.Food2_ItemId);
-                int heal3 = FoodRegistry.GetHealMilliHp(payload.Food3_ItemId);
+                // Modul: a share of the bar, not a fixed number of points. See
+                // FoodRegistry on why an authored heal against a growing wound
+                // made food nearly free for three regions and unaffordable in
+                // the fifth. effectiveMaxHp is already milli-HP here, which is
+                // the unit the registry expects.
+                int heal1 = FoodRegistry.GetHealMilliHp(payload.Food1_ItemId, (long)effectiveMaxHp);
+                int heal2 = FoodRegistry.GetHealMilliHp(payload.Food2_ItemId, (long)effectiveMaxHp);
+                int heal3 = FoodRegistry.GetHealMilliHp(payload.Food3_ItemId, (long)effectiveMaxHp);
 
                 if (payload.Food1_Count > 0 && heal1 > highestHeal) { bestFoodIndex = 1; highestHeal = heal1; }
                 if (payload.Food2_Count > 0 && heal2 > highestHeal) { bestFoodIndex = 2; highestHeal = heal2; }
