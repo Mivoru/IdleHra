@@ -308,10 +308,22 @@ namespace FolkIdle.Server.Engine
         // second source of truth about drop rates, and players would eventually
         // be shown chances the server does not honour.
         public const double MaterialDropChance = 0.35;
-        public const double MeleeWeaponDropChance = 0.0050;
-        public const double RangedWeaponDropChance = 0.0040;
-        public const double MagicWeaponDropChance = 0.0040;
-        public const double HelperDropChance = 0.0033;
+
+        // Modul: ONE equipment roll against the monster's own table, replacing
+        // four per-category rolls against a region-wide pool.
+        //
+        // The four constants this replaces were 0.50/0.40/0.40/0.33 percent -
+        // 1.63% of kills produced a piece of gear, and every one of those pieces
+        // was a weapon or an offhand, because armour was on a separate boss-only
+        // roll. See EquipmentDropTable for the rest of what that cost.
+        //
+        // 2% is deliberately a shade above the old total: the pool now includes
+        // the armour a character actually needs for five of its seven slots, so
+        // holding the rate flat would have made each individual slot rarer than
+        // it was. Per-slot rates are no longer a knob at all - a monster's table
+        // is rolled uniformly, and which slots that monster offers is the table's
+        // business.
+        public const double EquipmentDropChance = 0.020;
 
         // Modul: approximate backpack capacity used purely to decide
         // whether an equipment drop must be redirected to overflow
@@ -392,20 +404,19 @@ namespace FolkIdle.Server.Engine
                     }
                 }
 
-                // Rolls 2-5: Melee, Ranged, Magic, Helper - each fully
-                // independent of the others and of the materials roll
-                // above.
-                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, "_melee_weapon_slot_", MeleeWeaponDropChance);
-                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, "_ranged_weapon_slot_", RangedWeaponDropChance);
-                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, "_magic_weapon_slot_", MagicWeaponDropChance);
-                await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, "_helper_offhand_", HelperDropChance);
+                // Roll 2: equipment, from THIS monster's table. Independent of
+                // the materials roll above, so a kill can pay both, either or
+                // neither.
+                TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, EquipmentDropChance);
 
-                // Regional Bosses always guarantee at least one extra armor
-                // piece on top of whatever the independent rolls produced,
-                // preserving the previous "boss kills feel rewarding" floor.
+                // Regional bosses always drop one piece on top of that, which
+                // is the whole of what makes a boss kill worth walking to. It
+                // comes from the boss's own table, so - unlike the armour-only
+                // roll this replaces - what a boss guarantees is whatever that
+                // boss is authored to carry.
                 if (isRegionalBoss)
                 {
-                    await TryRollEquipmentCategoryAsync(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, "_armor_slot_", 1.0);
+                    TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, 1.0);
                 }
 
                 await dbContext.SaveChangesAsync();
@@ -505,18 +516,22 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        // Modul: Architecture Overhaul, Part 3. One independent
-        // category roll. On success, picks a random matching-category
-        // regional item, rolls its rarity tier, and either creates the
-        // EquipmentInstance directly (Backpack has room) or scraps it into
-        // the monster's own regional raw material deposited straight into
-        // the infinite Village Stash (Backpack is full) - the drop is
-        // never silently discarded during an offline catch-up burst.
-        private async Task TryRollEquipmentCategoryAsync(FolkIdleDbContext dbContext, long playerId, int monsterId, int monsterRegion, float lootLuckPct, string categorySubstring, double dropChance)
+        // Modul: one equipment roll against the monster's authored table.
+        // On success, picks uniformly from what THIS monster drops, rolls the
+        // rarity tier and creates the EquipmentInstance.
+        //
+        // No longer async: it never awaited anything. The DbSet.Add below is
+        // synchronous and the single SaveChangesAsync happens once for the whole
+        // kill in the caller, so the four awaits this replaces each cost a state
+        // machine to return an already-completed task.
+        private void TryRollEquipment(FolkIdleDbContext dbContext, long playerId, int monsterId, int monsterRegion, float lootLuckPct, double dropChance)
         {
             if (Random.Shared.NextDouble() >= dropChance) return;
 
-            int chosenItemId = SelectRegionalEquipmentItemId(monsterRegion, categorySubstring);
+            ReadOnlySpan<int> table = EquipmentDropTable.GetDrops(monsterId);
+            if (table.Length == 0) return;
+
+            int chosenItemId = table[Random.Shared.Next(table.Length)];
             if (chosenItemId == 0) return;
 
             int tier = RarityTier.RollTier(lootLuckPct);
@@ -644,35 +659,13 @@ namespace FolkIdle.Server.Engine
             });
         }
 
-        // Modul 10/11/12: there is no hand-authored per-monster equipment drop
-        // table anywhere in this codebase. This derives one deterministically
-        // from ContentRegistry.ItemDefinitions' existing RegionTier field
-        // (already used for potion tiering) - every weapon/armor item whose
-        // RegionTier matches the killed monster's region is a valid candidate.
-        // Reservoir sampling of 1 keeps this a single allocation-free pass
-        // over the bounded static item table.
-        private static int SelectRegionalEquipmentItemId(int monsterRegion, string categorySubstring)
-        {
-            ReadOnlySpan<ItemDefinition> items = ContentRegistry.ItemDefinitions;
-            int matchCount = 0;
-            int chosenId = 0;
-
-            for (int i = 0; i < items.Length; i++)
-            {
-                if (items[i].RegionTier != monsterRegion) continue;
-
-                string baseItemId = ContentRegistry.GetItemBaseId(items[i].Id);
-                if (!baseItemId.Contains(categorySubstring)) continue;
-
-                matchCount++;
-                if (Random.Shared.Next(matchCount) == 0)
-                {
-                    chosenId = items[i].Id;
-                }
-            }
-
-            return chosenId;
-        }
+        // Modul: SelectRegionalEquipmentItemId lived here. It scanned the whole
+        // item catalogue per roll for anything in the region whose BaseId
+        // contained a category substring, which is the region-wide pool that
+        // EquipmentDropTable replaces - and the substring match is where the
+        // "_ranged_" / "_range_" typo silently deleted every canonical bow from
+        // the game. The tables are built once at first use now, so the per-kill
+        // cost is an index into an int[] instead of a 437-entry scan.
 
         // Modul: Affix System Unification. Rolls from AffixRegistry (GDD
         // Module 14 section 1.3) rather than the previous hand-rolled

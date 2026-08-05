@@ -3802,41 +3802,43 @@ namespace FolkIdle.Server.Network
                 }
 
                 // Equipment does not come from the weighted table at all - it
-                // rolls on its own flat per-slot chances, so it has to be
-                // reported separately or the screen would claim a monster
-                // drops no gear.
-                rows.Add(new MonsterLootEntryResponse
+                // rolls on its own chance against this monster's drop table, so
+                // it has to be reported separately or the screen would claim a
+                // monster drops no gear.
+                //
+                // Modul: THE REAL ITEMS, not four "any_melee_weapon" placeholder
+                // rows. Those were honest when every monster in a region shared
+                // one pool and the answer genuinely was "some weapon" - now each
+                // monster has its own list, and the list is the whole point of
+                // the change, so the screen names what falls. It is also the only
+                // way a player can tell that the thing they are missing comes
+                // from the boar and not the mouse.
+                ReadOnlySpan<int> equipment = EquipmentDropTable.GetDrops(monsterId);
+                if (equipment.Length > 0)
                 {
-                    BaseItemId = "any_melee_weapon",
-                    ChancePct = CombatLootEngine.MeleeWeaponDropChance * 100.0,
-                    MinQuantity = 1,
-                    MaxQuantity = 1,
-                    IsEquipment = true
-                });
-                rows.Add(new MonsterLootEntryResponse
-                {
-                    BaseItemId = "any_ranged_weapon",
-                    ChancePct = CombatLootEngine.RangedWeaponDropChance * 100.0,
-                    MinQuantity = 1,
-                    MaxQuantity = 1,
-                    IsEquipment = true
-                });
-                rows.Add(new MonsterLootEntryResponse
-                {
-                    BaseItemId = "any_magic_weapon",
-                    ChancePct = CombatLootEngine.MagicWeaponDropChance * 100.0,
-                    MinQuantity = 1,
-                    MaxQuantity = 1,
-                    IsEquipment = true
-                });
-                rows.Add(new MonsterLootEntryResponse
-                {
-                    BaseItemId = "any_helper_offhand",
-                    ChancePct = CombatLootEngine.HelperDropChance * 100.0,
-                    MinQuantity = 1,
-                    MaxQuantity = 1,
-                    IsEquipment = true
-                });
+                    // Uniform within the table, so each entry's odds are the
+                    // equipment roll divided by the table size. A boss rolls a
+                    // second, guaranteed time, so its per-item chance is that
+                    // much higher - quote what actually happens rather than the
+                    // ordinary-monster number.
+                    double rolls = CombatLootEngine.EquipmentDropChance;
+                    if (ContentRegistry.IsRegionalBoss(monsterId)) rolls += 1.0;
+
+                    double perItem = rolls / equipment.Length * 100.0;
+
+                    for (int i = 0; i < equipment.Length; i++)
+                    {
+                        rows.Add(new MonsterLootEntryResponse
+                        {
+                            ItemId = equipment[i],
+                            BaseItemId = ContentRegistry.GetItemBaseId(equipment[i]),
+                            ChancePct = perItem,
+                            MinQuantity = 1,
+                            MaxQuantity = 1,
+                            IsEquipment = true
+                        });
+                    }
+                }
 
                 context.Response.ContentType = "application/json";
                 return JsonSerializer.SerializeAsync(context.Response.OutputStream, rows)
