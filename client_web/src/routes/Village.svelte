@@ -6,15 +6,11 @@
     BUILDINGS,
     upgradeBuilding,
     evictVillager,
-    unlockSkill,
-    castSkill,
     upgradeTool,
     assignMentor,
-    MAX_SKILL_ID,
     MAX_MENTOR_SLOTS,
   } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
-  import Bar from '../lib/ui/Bar.svelte';
   import { toolIcon } from '../lib/ui/sprites';
   import type { StateUpdate } from '../lib/net/protocol.generated';
 
@@ -57,33 +53,9 @@
     setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.statistics }), 800);
   }
 
-  // --- skills ---------------------------------------------------------------
-  // Exactly four exist (ActiveSkillEngine.MaxSkillId), and their unlock state
-  // is a bitmask on the hot path rather than a list.
-  const skills = $derived(
-    snap
-      ? Array.from({ length: MAX_SKILL_ID }, (_, index) => {
-          const id = index + 1;
-          const cooldownField = `Skill${id}CooldownRemainingMs` as keyof StateUpdate;
-          const cooldown = snap[cooldownField];
-          return {
-            id,
-            unlocked: (snap.UnlockedSkillsBitmask & (1 << index)) !== 0,
-            cooldownMs: typeof cooldown === 'number' ? cooldown : 0,
-          };
-        })
-      : [],
-  );
-
-  function unlock(skillId: number) {
-    const outcome = unlockSkill(skillId, snap?.AvailableSkillPoints ?? 0);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-  }
-
-  function cast(skillId: number) {
-    const outcome = castSkill(skillId);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-  }
+  // Modul: skills moved to the Character screen - they are combat abilities
+  // that spend mana and have cooldowns, and they lived here between the
+  // building queue and the mentor slots. See lib/ui/SkillsPanel.svelte.
 
   // --- gathering tool -------------------------------------------------------
   // Modul: CachedCurrentToolTier is subtracted DIRECTLY from a gathering node's
@@ -196,53 +168,6 @@
       {/if}
     </section>
 
-    <section class="panel">
-      <div class="head">
-        <h2>Skills</h2>
-        <span class="dim tiny">{snap.AvailableSkillPoints} points</span>
-      </div>
-
-      <div class="mana">
-        <span class="dim tiny">Mana</span>
-        <Bar
-          value={snap.CurrentMana}
-          max={Math.max(1, snap.MaxMana)}
-          color="var(--accent)"
-          label={`${snap.CurrentMana} / ${snap.MaxMana}`}
-        />
-      </div>
-
-      <ul class="skills">
-        {#each skills as skill}
-          <li>
-            <span class="name">Skill {skill.id}</span>
-            {#if !skill.unlocked}
-              <span class="dim tiny">locked</span>
-              <button
-                class="tiny-btn"
-                disabled={snap.AvailableSkillPoints <= 0}
-                onclick={() => unlock(skill.id)}
-              >
-                Unlock
-              </button>
-            {:else if skill.cooldownMs > 0}
-              <span class="dim tiny">{(skill.cooldownMs / 1000).toFixed(1)}s</span>
-              <button class="tiny-btn" disabled>Cooling</button>
-            {:else}
-              <span class="dim tiny">ready</span>
-              <button class="tiny-btn" onclick={() => cast(skill.id)}>Cast</button>
-            {/if}
-          </li>
-        {/each}
-      </ul>
-
-      {#if snap.LastSkillCastId > 0}
-        <p class="dim tiny">
-          Last cast: skill {snap.LastSkillCastId}
-          {snap.LastSkillCastSuccess ? 'succeeded' : 'failed'}.
-        </p>
-      {/if}
-    </section>
 
     <section class="panel">
       <h2>Gathering tool</h2>
@@ -391,7 +316,6 @@
 
   .buildings,
   .villagers,
-  .skills,
   .slots {
     list-style: none;
     margin: 0;
@@ -402,7 +326,6 @@
 
   .buildings li,
   .villagers li,
-  .skills li,
   .slots li {
     display: grid;
     grid-template-columns: 1fr auto auto;

@@ -265,8 +265,27 @@ namespace FolkIdle.Server.Engine
                 // to match against.
                 await db.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"MarketEquipmentInstances\" RESTART IDENTITY CASCADE", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("UPDATE characters SET \"Level\" = 1, \"AgeTicks\" = 0, \"AgePhase\" = 1", stoppingToken);
-                await db.Database.ExecuteSqlRawAsync("UPDATE player_race_masteries SET \"MasteryLevel\" = 1, \"CumulativeXp\" = 0", stoppingToken);
-                await db.Database.ExecuteSqlRawAsync("UPDATE \"VillageInfrastructures\" SET \"CurrentLevel\" = 1", stoppingToken);
+                // Modul: WHAT A SEASON LEAVES BEHIND.
+                //
+                // The village and race mastery used to be wiped with everything
+                // else, which made a rollover pure loss - three months of work
+                // and nothing to show a returning player that they had ever
+                // played. The design has always been that these carry: the
+                // season resets the RACE, not the account.
+                //
+                // Three things now survive a rollover, and the list is
+                // deliberately short so that what carries stays legible:
+                //
+                //   VillageInfrastructures   what you built
+                //   player_race_masteries    what you learned
+                //   player_inheritance_stats what you bought (diamonds)
+                //
+                // Everything else in this method still goes. Levels, gear,
+                // gold, materials, the market and the chronicle pass all reset,
+                // because the season is the ladder and the ladder is the game.
+                //
+                // player_race_unlocks was never in this method and stays out:
+                // a race you have earned is yours.
                 await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerChroniclePasses\" SET \"PassLevel\" = 0, \"AccumulatedXp\" = 0, \"ClaimedMilestonesBitmask\" = 0", stoppingToken);
 
                 await transaction.CommitAsync(stoppingToken);

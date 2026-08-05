@@ -61,6 +61,10 @@ namespace FolkIdle.Server.Network
         //
         // Modul: offhand slot. 686 -> 694: EquippedOffhandId (8 bytes, long).
         //
+        // Modul: inheritance stats, 769 -> 775. Six bytes, one per permanent
+        // bonus, so the Inheritance screen can price the next level and other
+        // screens can explain a number the gear does not account for.
+        //
         // Modul: jewellery, 761 -> 769. EquippedOffhandId LEFT (-8) and
         // EquippedAmuletId + EquippedRingId arrived (+16) - see
         // EquipmentSlotEngine on why an offhand slot was never in the design.
@@ -106,7 +110,7 @@ namespace FolkIdle.Server.Network
         // they are the two halves of "where may I be" - one descriptive, one
         // permissive - and splitting them would invite the next reader to use
         // whichever they found first.
-        public const int ExpectedStateUpdateSize = 769;
+        public const int ExpectedStateUpdateSize = 775;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

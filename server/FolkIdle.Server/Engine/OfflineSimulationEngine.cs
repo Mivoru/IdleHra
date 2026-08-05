@@ -397,7 +397,7 @@ namespace FolkIdle.Server.Engine
             // of live combat on region 1 and worse further in, where armour is
             // five times higher. See CombatDamageModel for the other two models
             // this replaces.
-            long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel);
+            long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel, InheritanceRegistry.GetBonusPct(payload.Inherit_Damage));
             double secondsPerKillEstimate = CombatDamageModel.ExpectedSecondsPerKill(in combatStats, in activeMonster, effectiveMilliAttack, payload.CachedCodexDamageMultiplier);
 
             if (double.IsInfinity(secondsPerKillEstimate) || secondsPerKillEstimate <= 0.0 || activeMonster.MaxHp <= 0)
@@ -431,6 +431,7 @@ namespace FolkIdle.Server.Engine
             // combat time at all, which is wrong.
             long baseMilliHp = 100000L;
             long effectiveMilliHp = baseMilliHp + (baseMilliHp * lineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.MaxHp * 1000L);
+            effectiveMilliHp += effectiveMilliHp * InheritanceRegistry.GetBonusPct(payload.Inherit_MaxHp) / 100L;
 
             double effectiveElapsedSeconds = elapsedSeconds;
             if (expectedIncomingMilliDps > 0.0)
@@ -465,6 +466,7 @@ namespace FolkIdle.Server.Engine
             long totalKills = (long)totalKillsDouble;
 
             long xpGained = totalKills * activeMonster.BaseXpReward;
+            xpGained += xpGained * InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain) / 100L;
             ApplyCombatXp(ref payload, xpGained);
 
             // Modul 13.4.3: Gold reward, matching the live tick's exact
@@ -472,6 +474,7 @@ namespace FolkIdle.Server.Engine
             // Human's innate +5% Gold acquisition passive) so offline combat
             // grants the same gold value per kill as live/warp combat.
             long goldPerKill = (activeMonster.BaseGoldReward * (long)GlobalEngineState.GlobalGoldDropMultiplier) / 100L;
+            goldPerKill += goldPerKill * InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100L;
             goldPerKill = (long)(goldPerKill * (1.0f + combatStats.GoldAcquisitionMultiplierPct / 100f));
             long totalGoldGained = totalKills * goldPerKill;
             if (totalGoldGained > 0)
@@ -492,7 +495,7 @@ namespace FolkIdle.Server.Engine
                 {
                     PlayerId = payload.PlayerId,
                     MonsterId = fallbackId,
-                    LootLuckPct = combatStats.LootLuckPct
+                    LootLuckPct = combatStats.LootLuckPct + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck)
                 });
             }
 

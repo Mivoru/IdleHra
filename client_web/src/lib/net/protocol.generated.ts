@@ -91,7 +91,7 @@ export interface ClientCommand {
   RerollStopAffixIndex: number;
 }
 
-/** StateUpdatePacket - 769 bytes on the binary wire. */
+/** StateUpdatePacket - 775 bytes on the binary wire. */
 export interface StateUpdate {
   readonly type: typeof PacketType.StateUpdate;
   PlayerId: number;
@@ -159,6 +159,12 @@ export interface StateUpdate {
   EquippedAmuletId: number;
   EquippedRingId: number;
   UnlockedRaceBitmask: number;
+  Inherit_Damage: number;
+  Inherit_MaxHp: number;
+  Inherit_XpGain: number;
+  Inherit_GoldGain: number;
+  Inherit_GatheringYield: number;
+  Inherit_LootLuck: number;
   Slot2ActivityId: number;
   Slot3ActivityId: number;
   Slot2ActivityHaltReason: number;
@@ -381,6 +387,7 @@ export const CommandType = {
   UnblockPlayer: 63,
   ContributeGuildTreasury: 64,
   StockFoodSlot: 65,
+  PurchaseInheritanceLevel: 66,
 } as const;
 
 export type CommandTypeName = keyof typeof CommandType;
@@ -389,7 +396,7 @@ export type CommandTypeName = keyof typeof CommandType;
 export const PACKET_BYTE_SIZE = {
   AuthHandshake: 530,
   ClientCommand: 359,
-  StateUpdate: 769,
+  StateUpdate: 775,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
   ResponseLootDrop: 22,

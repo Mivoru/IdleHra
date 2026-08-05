@@ -314,6 +314,17 @@ namespace FolkIdle.Server.Network
         // event.
         public byte UnlockedRaceBitmask;
 
+        // Modul: inheritance stats. The bought level of each permanent bonus,
+        // so the Inheritance screen can price the next level and every other
+        // screen can show why a number is larger than the item explains. Six
+        // bytes; the cap is 20.
+        public byte Inherit_Damage;
+        public byte Inherit_MaxHp;
+        public byte Inherit_XpGain;
+        public byte Inherit_GoldGain;
+        public byte Inherit_GatheringYield;
+        public byte Inherit_LootLuck;
+
         // Modul: roster registers. What characters 2 and 3 are doing, so the
         // roster screen can show three live characters rather than one.
         //

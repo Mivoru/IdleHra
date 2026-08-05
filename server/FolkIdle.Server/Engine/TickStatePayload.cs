@@ -263,6 +263,18 @@ namespace FolkIdle.Server.Engine
         // at session load (StateCheckpointManager) so combat/gathering math
         // can read them on the 10Hz hot path without a database round trip.
         public long CachedLegacyPerks;
+
+        // Modul: inheritance stats. Six bytes carrying the bought level of each
+        // permanent bonus, hydrated once at login and refreshed when one is
+        // purchased. Bytes rather than ints because the cap is 20, and a fixed
+        // set of fields rather than an array because this struct is blitted
+        // onto the wire - see StateUpdatePacket.
+        public byte Inherit_Damage;
+        public byte Inherit_MaxHp;
+        public byte Inherit_XpGain;
+        public byte Inherit_GoldGain;
+        public byte Inherit_GatheringYield;
+        public byte Inherit_LootLuck;
         public int CachedLogisticsGatheringSpeedBonusPct;
 
         // Modul: Phase - Full-Stack Production Polish Phase 2, Part 3.1

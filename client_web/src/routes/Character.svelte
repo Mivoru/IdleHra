@@ -14,6 +14,7 @@
   import Bar from '../lib/ui/Bar.svelte';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
+  import SkillsPanel from '../lib/ui/SkillsPanel.svelte';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import { locationName, nodeLocation } from '../lib/ui/locations';
   // EMPTY_GUID is the sentinel the roster filter below tests against.
@@ -327,6 +328,12 @@
         </div>
         <div><dt>Skill pts</dt><dd>{snap.AvailableSkillPoints}</dd></div>
       </dl>
+
+      <!-- Modul: skills sit with the character now. They spend mana, they have
+           cooldowns and they multiply the next hit - they were under Village,
+           between the building queue and the mentor slots, which is nowhere a
+           player looking for a combat ability would think to look. -->
+      <SkillsPanel />
     </section>
 
     <section class="panel doll">

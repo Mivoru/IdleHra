@@ -61,6 +61,7 @@ namespace FolkIdle.Server.Domain.Combat
         private const float SetDamageCapMaxHpFraction = 0.20f;
         private const double TickIntervalSeconds = TickIntervalMs / 1000.0;
         private readonly LootTableEngine _lootEngine;
+        private readonly InheritanceEngine? _inheritanceEngine;
         private readonly StateCheckpointManager _checkpointManager;
         private readonly NetworkBroadcastSystem _networkSystem;
         private readonly ForgeSplicingEngine _forgeEngine;
@@ -141,7 +142,7 @@ namespace FolkIdle.Server.Domain.Combat
 
         public static int ActiveGlobalEventId { get; private set; }
 
-        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, MentorshipEngine mentorshipEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null)
+        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, MentorshipEngine mentorshipEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null, InheritanceEngine? inheritanceEngine = null)
         {
             _lootEngine = lootEngine;
             _checkpointManager = checkpointManager;
@@ -158,6 +159,7 @@ namespace FolkIdle.Server.Domain.Combat
             _guildLogisticsEngine = guildLogisticsEngine;
             _craftingEngine = craftingEngine;
             _larderEngine = larderEngine;
+            _inheritanceEngine = inheritanceEngine;
             _worldBossEngine = worldBossEngine;
             _mentorshipEngine = mentorshipEngine;
             _guildWarEngine = guildWarEngine;
@@ -1402,6 +1404,16 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
+                while (_playerRegistry.InheritanceSyncQueue.TryDequeue(out var inheritNotif))
+                {
+                    ref var inheritPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, inheritNotif.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref inheritPayload))
+                    {
+                        SetInheritanceLevel(ref inheritPayload, inheritNotif.StatId, inheritNotif.NewLevel);
+                        inheritPayload.IsDirty = true;
+                    }
+                }
+
                 while (_playerRegistry.BillingSyncQueue.TryDequeue(out var billingSyncNotif))
                 {
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, billingSyncNotif.PlayerId);
@@ -2328,6 +2340,25 @@ namespace FolkIdle.Server.Domain.Combat
                             };
                             context.TryEnqueueBattlePassClaim(in req);
                         }
+                    }
+                    else if (cmd.Command == CommandType.PurchaseInheritanceLevel)
+                    {
+                        // Modul: inheritance stats. Dispatched off the tick like
+                        // every other DB-transactional command; the balance
+                        // check, the deduction and the level write all resolve
+                        // in one Serializable FOR UPDATE transaction.
+                        //
+                        // TargetId carries the stat id, the way the skill
+                        // commands carry a skill id on it. The engine validates
+                        // the range itself and refuses rather than
+                        // disconnecting - a stat id is a menu choice, not a
+                        // capability claim, so a stale client asking for stat 9
+                        // deserves a rejection and not a kick.
+                        long inheritPlayerId = currentPayload.PlayerId;
+                        int inheritStatId = (int)cmd.TargetId;
+                        SafeDispatchAsync("Inheritance.Purchase", inheritPlayerId, async () => {
+                            if (_inheritanceEngine != null) await _inheritanceEngine.PurchaseLevelAsync(inheritPlayerId, inheritStatId);
+                        });
                     }
                     else if (cmd.Command == CommandType.PurchaseBattlePass)
                     {
@@ -3299,6 +3330,20 @@ namespace FolkIdle.Server.Domain.Combat
                                 EquippedRingId = currentPayload.EquippedRingId,
                                 UnlockedRaceBitmask = currentPayload.UnlockedRaceBitmask,
 
+                                // Modul: inheritance stats. Caught missing by
+                                // StateUpdatePacketFieldCoverageTests, which
+                                // exists because a field added to the packet and
+                                // to the payload but never copied between them
+                                // reads as a permanent zero on the client - a
+                                // bonus the player paid diamonds for and cannot
+                                // see.
+                                Inherit_Damage = currentPayload.Inherit_Damage,
+                                Inherit_MaxHp = currentPayload.Inherit_MaxHp,
+                                Inherit_XpGain = currentPayload.Inherit_XpGain,
+                                Inherit_GoldGain = currentPayload.Inherit_GoldGain,
+                                Inherit_GatheringYield = currentPayload.Inherit_GatheringYield,
+                                Inherit_LootLuck = currentPayload.Inherit_LootLuck,
+
                                 // Modul: roster registers. Characters 2 and 3
                                 // read straight from their parked slot state -
                                 // the register holds slot 1 at broadcast time,
@@ -3833,6 +3878,7 @@ namespace FolkIdle.Server.Domain.Combat
 
             finalXpMultiplier += RaceMasteryResolver.GetHumanXpBonusPct(payload.HumanMasteryLevel);
             finalXpMultiplier += LegacyPerkResolver.GetXpBonusPct(payload.CachedLegacyPerks);
+            finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
 
             if (payload.ActiveMentorPlayerId > 0 && payload.MentorshipExpBonusMultiplier > 1.0)
             {
@@ -3851,6 +3897,8 @@ namespace FolkIdle.Server.Domain.Combat
             // for the offline warp path.
             goldReward = (long)(goldReward * (1.0f + warpCombatStats.GoldAcquisitionMultiplierPct / 100f));
             goldReward = (long)(goldReward * (1.0f + LegacyPerkResolver.GetGoldBonusPct(payload.CachedLegacyPerks) / 100f));
+                // Modul: inheritance. A permanent, season-crossing multiplier.
+                goldReward = (long)(goldReward * (1.0f + InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100f));
 
             if (goldReward > 0)
             {
@@ -3872,7 +3920,7 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     PlayerId = payload.PlayerId,
                     MonsterId = monsterId,
-                    LootLuckPct = warpCombatStats.LootLuckPct
+                    LootLuckPct = warpCombatStats.LootLuckPct + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck)
                 });
             }
 
@@ -3945,7 +3993,7 @@ namespace FolkIdle.Server.Domain.Combat
 
             var stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
 
-            long rawMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in stats, lineage.DamageScalePerLevelPct, payload.CurrentLevel);
+            long rawMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in stats, lineage.DamageScalePerLevelPct, payload.CurrentLevel, InheritanceRegistry.GetBonusPct(payload.Inherit_Damage));
             double secondsPerKill = CombatDamageModel.ExpectedSecondsPerKill(in stats, in monster, rawMilliAttack, payload.CachedCodexDamageMultiplier);
 
             if (double.IsInfinity(secondsPerKill) || secondsPerKill <= 0.0) return long.MaxValue;
@@ -5093,6 +5141,26 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
+        /// <summary>
+        /// Writes one inheritance level onto the live payload.
+        ///
+        /// A switch rather than an indexer because the payload is a blittable
+        /// struct on the wire - see TickStatePayload - so the six levels are six
+        /// fields, not an array.
+        /// </summary>
+        private static void SetInheritanceLevel(ref TickStatePayload payload, int statId, byte level)
+        {
+            switch (statId)
+            {
+                case InheritanceRegistry.StatDamage: payload.Inherit_Damage = level; break;
+                case InheritanceRegistry.StatMaxHp: payload.Inherit_MaxHp = level; break;
+                case InheritanceRegistry.StatXpGain: payload.Inherit_XpGain = level; break;
+                case InheritanceRegistry.StatGoldGain: payload.Inherit_GoldGain = level; break;
+                case InheritanceRegistry.StatGatheringYield: payload.Inherit_GatheringYield = level; break;
+                case InheritanceRegistry.StatLootLuck: payload.Inherit_LootLuck = level; break;
+            }
+        }
+
         private static bool SlotHoldsCharacter(ref TickStatePayload payload, int slotIndex)
         {
             return slotIndex switch
@@ -5395,6 +5463,10 @@ namespace FolkIdle.Server.Domain.Combat
             
             long baseMilliHp = 100000L;
             long effectiveMilliHp = baseMilliHp + (baseMilliHp * lineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.MaxHp * 1000L);
+            // Modul: inheritance, applied to the whole pool for the same reason
+            // the damage bonus is applied last - a flat addition would stop
+            // mattering.
+            effectiveMilliHp += effectiveMilliHp * InheritanceRegistry.GetBonusPct(payload.Inherit_MaxHp) / 100L;
             int effectiveMaxHp = (int)effectiveMilliHp;
 
             // Modul: Deferred Part 5 Implementation, Part 2. Active food
@@ -5464,7 +5536,7 @@ namespace FolkIdle.Server.Domain.Combat
                         critMult = StatsCalculator.ComputeCritMultiplier(combatStats);
                     }
 
-                    long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel);
+                    long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel, InheritanceRegistry.GetBonusPct(payload.Inherit_Damage));
 
                     // Modul: Prestige "combat speed" perk (LegacyPerkResolver) -
                     // applied as a flat percent boost to effective damage
@@ -5753,6 +5825,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                 finalXpMultiplier += RaceMasteryResolver.GetHumanXpBonusPct(payload.HumanMasteryLevel);
             finalXpMultiplier += LegacyPerkResolver.GetXpBonusPct(payload.CachedLegacyPerks);
+            finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
 
                 if (payload.ActiveMentorPlayerId > 0 && payload.MentorshipExpBonusMultiplier > 1.0)
                 {
@@ -5804,6 +5877,8 @@ namespace FolkIdle.Server.Domain.Combat
                 // Modul 13.4.3: Human's innate +5% Gold acquisition passive.
                 goldReward = (long)(goldReward * (1.0f + combatStats.GoldAcquisitionMultiplierPct / 100f));
                 goldReward = (long)(goldReward * (1.0f + LegacyPerkResolver.GetGoldBonusPct(payload.CachedLegacyPerks) / 100f));
+                // Modul: inheritance. A permanent, season-crossing multiplier.
+                goldReward = (long)(goldReward * (1.0f + InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100f));
                 if (goldReward > 0)
                 {
                     payload.AddGold(goldReward);
@@ -5871,7 +5946,7 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     PlayerId = payload.PlayerId,
                     MonsterId = payload.CurrentMonsterId,
-                    LootLuckPct = combatStats.LootLuckPct
+                    LootLuckPct = combatStats.LootLuckPct + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck)
                 });
 
                 var lootTable = ContentRegistry.GetLootTable(activeMonster.LootTableId);

@@ -18,6 +18,7 @@
   import Codex from './routes/Codex.svelte';
   import Breeding from './routes/Breeding.svelte';
   import Store from './routes/Store.svelte';
+  import Inheritance from './routes/Inheritance.svelte';
   import Settings from './routes/Settings.svelte';
   import Mailbox from './routes/Mailbox.svelte';
   import Chest from './routes/Chest.svelte';
@@ -82,6 +83,7 @@
       screens: [
         { key: 'village', label: 'Village' },
         { key: 'progression', label: 'Progress' },
+        { key: 'inheritance', label: 'Inheritance' },
         { key: 'codex', label: 'Codex' },
         { key: 'breeding', label: 'Breeding' },
         { key: 'store', label: 'Store' },
@@ -237,6 +239,8 @@
       <Codex />
     {:else if screen === 'breeding'}
       <Breeding />
+    {:else if screen === 'inheritance'}
+      <Inheritance />
     {:else if screen === 'store'}
       <Store />
     {:else if screen === 'settings'}

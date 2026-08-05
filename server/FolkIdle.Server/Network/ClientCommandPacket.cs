@@ -96,6 +96,19 @@ namespace FolkIdle.Server.Network
         // Split into its own command type.
         ContributeGuildTreasury = 64,
 
+        // Modul: inheritance stats. Buys one level of a permanent, season-
+        // crossing bonus with diamonds. TargetSkillId carries the stat id -
+        // reused rather than adding a wire field, exactly as the skill commands
+        // do, because it is already a small bounded identifier on this packet
+        // and a seventh id field would be a seventh thing to validate.
+        // 66, not 65: StockFoodSlot already holds 65. A collision here is not
+        // a compile error - the enum happily takes two names for one value, and
+        // the server would then have read every larder stocking as a diamond
+        // purchase. It surfaced only because the protocol generator emits one
+        // entry per NAME and produced a duplicate key in the client's opcode
+        // map. Check this list before adding to it.
+        PurchaseInheritanceLevel = 66,
+
         // Modul: larder. Loads food from the backpack into one of the three
         // auto-eat slots, or unloads a slot back into the backpack. Carries no
         // new wire fields: ConsumableItemId is the food, TargetSlotIndex the

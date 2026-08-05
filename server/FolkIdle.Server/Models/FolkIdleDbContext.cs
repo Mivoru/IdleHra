@@ -70,6 +70,9 @@ namespace FolkIdle.Server.Models
         public DbSet<PlayerSkillUnlock> PlayerSkillUnlocks { get; set; }
         public DbSet<PlayerRelationship> PlayerRelationships { get; set; }
 
+        // Modul: what a season leaves behind - see PlayerInheritanceStat.
+        public DbSet<PlayerInheritanceStat> PlayerInheritanceStats { get; set; }
+
         public FolkIdleDbContext(DbContextOptions<FolkIdleDbContext> options) : base(options)
         {
         }

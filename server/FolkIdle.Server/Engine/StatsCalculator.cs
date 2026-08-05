@@ -320,7 +320,13 @@ namespace FolkIdle.Server.Engine
         // member's own level-scaled attack into the aggregated
         // FlatMeleeDamage at snapshot-build time, so applying level scaling a
         // second time here would double-count it.
-        public static long ComputeEffectiveMilliAttack(in CombatStats stats, int damageScalePerLevelPct, int level)
+        /// <param name="inheritDamagePct">
+        /// The player's permanent inheritance bonus, in whole percent. Optional
+        /// and defaulted so the guild-war snapshot paths, which model a
+        /// defender rather than a live player, keep their existing calls - a
+        /// defender's inheritance is not part of what a raid reads.
+        /// </param>
+        public static long ComputeEffectiveMilliAttack(in CombatStats stats, int damageScalePerLevelPct, int level, int inheritDamagePct = 0)
         {
             long flatMilliAttack = BaseMilliAttack + (BaseMilliAttack * damageScalePerLevelPct * level / 100) + (stats.FlatMeleeDamage * 1000L);
 
@@ -328,12 +334,15 @@ namespace FolkIdle.Server.Engine
             // damage percentage affixes multiply total attack, applied here
             // rather than at each of the five combat call sites so weapon
             // affixes cannot be silently skipped by one of them.
-            if (stats.EquipmentDamagePct <= 0f)
-            {
-                return flatMilliAttack;
-            }
+            long withAffixes = stats.EquipmentDamagePct <= 0f
+                ? flatMilliAttack
+                : flatMilliAttack + (long)(flatMilliAttack * (stats.EquipmentDamagePct / 100f));
 
-            return flatMilliAttack + (long)(flatMilliAttack * (stats.EquipmentDamagePct / 100f));
+            // Modul: inheritance. Applied last and multiplicatively, so it
+            // scales everything the player has built this season rather than
+            // adding a flat amount that stops mattering by region 3.
+            if (inheritDamagePct <= 0) return withAffixes;
+            return withAffixes + (withAffixes * inheritDamagePct / 100L);
         }
 
         // Modul: Affix System Unification. The player's crit multiplier, 1.5

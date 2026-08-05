@@ -430,6 +430,9 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<CommandResultNotification> CommandResultQueue { get; } = new();
         public ConcurrentQueue<BillingSyncNotification> BillingSyncQueue { get; } = new();
 
+        // Modul: inheritance stats - a committed purchase reaching the live payload.
+        public ConcurrentQueue<InheritanceSyncNotification> InheritanceSyncQueue { get; } = new();
+
         // Modul: single shared enqueue point for the generic client
         // error-feedback channel, called from every engine that rejects a
         // market/forge/reroll/guild-contribution request (MarketEscrowEngine,

@@ -1013,6 +1013,45 @@ export function castSkill(skillId: number): CommandOutcome {
 }
 
 // ---------------------------------------------------------------------------
+// Inheritance
+// ---------------------------------------------------------------------------
+
+/**
+ * The permanent bonuses diamonds buy — see InheritanceRegistry, which this
+ * mirrors. Ids and the cost curve are the server's; this restates only the
+ * labels and the shape so the screen can price a level without a round trip.
+ */
+export const INHERITANCE_STATS: readonly { id: number; name: string; blurb: string }[] = [
+  { id: 0, name: 'Damage',          blurb: 'Every hit lands harder, in every region.' },
+  { id: 1, name: 'Max health',      blurb: 'A deeper pool before auto-eat has to reach for food.' },
+  { id: 2, name: 'Experience',      blurb: 'Levels arrive sooner, which is the slowest part of a season.' },
+  { id: 3, name: 'Gold',            blurb: 'More from every kill, online and away.' },
+  { id: 4, name: 'Gathering yield', blurb: 'More material from the same swing.' },
+  { id: 5, name: 'Loot luck',       blurb: 'Better rarity on what drops.' },
+];
+
+/** InheritanceRegistry.MaxLevel and PercentPerLevel. */
+export const INHERITANCE_MAX_LEVEL = 20;
+export const INHERITANCE_PCT_PER_LEVEL = 2;
+
+/** InheritanceRegistry.GetUpgradeCost — 40 diamonds, x1.28 per level. */
+export function inheritanceUpgradeCost(currentLevel: number): number {
+  if (currentLevel >= INHERITANCE_MAX_LEVEL) return 0;
+  return Math.floor(40 * Math.pow(1.28, Math.max(0, currentLevel)));
+}
+
+export function purchaseInheritanceLevel(statId: number, currentLevel: number, diamonds: number): CommandOutcome {
+  if (!INHERITANCE_STATS.some((s) => s.id === statId)) return refuse('Unknown inheritance stat.');
+  if (currentLevel >= INHERITANCE_MAX_LEVEL) return refuse('That bonus is already at its maximum.');
+
+  const cost = inheritanceUpgradeCost(currentLevel);
+  if (diamonds < cost) return refuse(`Needs ${cost.toLocaleString()} diamonds; you have ${diamonds.toLocaleString()}.`);
+
+  connection.send({ Command: CommandType.PurchaseInheritanceLevel, TargetId: statId });
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
 // Village
 // ---------------------------------------------------------------------------
 

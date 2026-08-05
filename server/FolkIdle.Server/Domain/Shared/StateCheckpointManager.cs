@@ -765,6 +765,8 @@ namespace FolkIdle.Server.Domain.Shared
             // one authoritative balance - a live Play Mode session confirmed
             // this by comparing a player's real CommodityRecords balance
             // against what every login/reconnect actually loaded.
+            byte[] inheritanceLevels = await InheritanceEngine.LoadLevelsAsync(dbContext, playerId);
+
             long loadedGold = await dbContext.CommodityRecords
                 .AsNoTracking()
                 .Where(c => c.PlayerId == playerId && c.ItemId == "gold")
@@ -956,6 +958,16 @@ namespace FolkIdle.Server.Domain.Shared
                 CachedIronOreStock = ironOreStock,
                 CachedCurrentToolTier = forgeLevel,
                 CachedLegacyPerks = player.LegacyPerks,
+
+                // Modul: inheritance stats. Read once at hydration - they only
+                // change on a purchase, which pushes the new level onto the
+                // live payload through InheritanceSyncQueue.
+                Inherit_Damage = inheritanceLevels[InheritanceRegistry.StatDamage],
+                Inherit_MaxHp = inheritanceLevels[InheritanceRegistry.StatMaxHp],
+                Inherit_XpGain = inheritanceLevels[InheritanceRegistry.StatXpGain],
+                Inherit_GoldGain = inheritanceLevels[InheritanceRegistry.StatGoldGain],
+                Inherit_GatheringYield = inheritanceLevels[InheritanceRegistry.StatGatheringYield],
+                Inherit_LootLuck = inheritanceLevels[InheritanceRegistry.StatLootLuck],
                 CachedLogisticsGatheringSpeedBonusPct = player.LogisticsGatheringSpeedBonusPct,
                 CachedMaxPopulationCapacity = VillageManagementEngine.CalculatePopulationCapacity(innLevel),
                 CachedInnMaturationBonus = innLevel,
