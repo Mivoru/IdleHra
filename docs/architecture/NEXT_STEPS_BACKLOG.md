@@ -11,7 +11,10 @@ dated handoff immediately following is the live one.
 
 ---
 
-# HANDOFF - 2026-08-04, live deployment
+# HANDOFF - 2026-08-05
+
+Supersedes the 2026-08-04 handoff. Everything below `## Client UI Hook Points`
+predates the web client and describes Unity work.
 
 ## Where it runs
 
@@ -19,222 +22,104 @@ dated handoff immediately following is the live one.
 |---|---|
 | Game (players) | https://folkidle.onrender.com - Render static site `srv-d9or28m7bikc73ft5250` |
 | API | https://idlehra.onrender.com - Render web service `srv-d9opsd5bedkc73dfi8h0` |
-| Database | Supabase project `copqoxrngbvnvnebybzc`, 41 migrations, 59 tables |
+| Database | Supabase project `copqoxrngbvnvnebybzc` |
 | Cache | Render Key Value `red-d9orkqm7bikc73fu43o0` (free, 25 MB, no persistence) |
 
-`idlehra.onrender.com` serves NO page - a plain GET returns 400 by design
-(`NetworkBroadcastSystem.cs:1040`), because that path only accepts a
-WebSocket upgrade. Health is `/healthz`.
+`idlehra.onrender.com` serves NO page - a plain GET returns 400 by design,
+because that path only accepts a WebSocket upgrade. Health is `/healthz`.
 
 Traps that cost time and will cost it again:
 
-- **Supabase pooler port.** Use **5432** (session mode). Port 6543
-  (transaction mode) passes ordinary queries but hangs EF migrations - the
-  first history query dies on a 30 s command timeout, reproducibly, while
-  the same connection string serves normal traffic fine.
-- **The client build cannot run `npm run build` on Render.** That chains
-  `generate:protocol`, which shells out to `dotnet`, and the static-site
-  image has Node only. The deploy build command is
-  `cd client_web && npm ci && npx vite build`; both generated files are
-  committed.
-- **Five minutes of CDN cache on `index.html`** (`s-maxage=300`). After a
-  push, Render says "live" well before the new bundle is served, and the
-  hashed assets are useless until the document pointing at them updates.
-  Verify a client change by fetching the bundle and grepping it, not by
-  trusting the deploy status.
-- **A player's browser holds the old bundle** across a deploy. More than
-  one "bug" this session was a stale client; ask for a hard reload before
-  investigating anything the code says is already fixed.
+- **Supabase pooler port.** Use **5432** (session mode). Port 6543 passes
+  ordinary queries but hangs EF migrations on the command timeout.
+- **The client build cannot run `npm run build` on Render** - that chains
+  `generate:protocol`, which shells out to `dotnet`. The deploy build command
+  is `cd client_web && npm ci && npx vite build`.
+- **Five minutes of CDN cache on `index.html`.** Verify a client change by
+  fetching the bundle and grepping it, not by the deploy status.
+- **A player's browser holds the old bundle** across a deploy. Ask for a hard
+  reload before investigating anything the code says is already fixed.
 
-## M1. Migration plan: API from Render to the Oracle box
+## M1. Migration to the Oracle box - BUILT, BLOCKED ON ONE CONSOLE CHANGE
 
-**The database stays on Supabase.** Only the API server moves. The web
-client stays on Render's static site - it is free, on a CDN, and does not
-spin down, so there is nothing to gain by moving it and a working TLS setup
-to lose.
+`ops/oracle/` holds the compose file, the Caddyfile, `.env.example` and a
+runbook. The image builds cleanly on the box's aarch64. The hostname is
+settled: **92-5-0-94.sslip.io**, which already resolves to 92.5.0.94 with no
+account and no cost - and it is not cosmetic, because Let's Encrypt will not
+issue for a bare IP and an https page cannot open a `ws://` socket.
 
-### The machine
+Instance iptables for 80/443 is open and persisted. **Oracle's cloud Security
+List is not**, and it cannot be changed from the box - there is no OCI CLI and
+no instance principal. Console steps are in `ops/oracle/README.md`. Until that
+is done there is no certificate, so no `wss://`, so no cutover. Verified
+closed: a listener on port 80 is unreachable from the internet with the
+instance firewall open.
 
-    ssh folkidle-server          # already in ~/.ssh/config
-    HostName 92.5.0.94  User ubuntu  IdentityFile ~/.ssh/ssh-key-2026-08-04.key
+Still needed at cutover, and NOT obtainable through the Render API (there is
+no read endpoint for environment variables): `JWT_SECRET_KEY` and the Supabase
+password, both from the Render dashboard. **Copy the JWT secret, do not
+regenerate it** - tokens are signed with it and a new one bounces every
+logged-in player to the login screen with no explanation.
 
-Ubuntu 24.04, **aarch64** (Oracle Ampere), **2 vCPU, 12 GB RAM**, 45 GB disk
-(41 free). Docker 29.1.3 and Compose 2.40 installed and usable by `ubuntu`
-without sudo. git present. No dotnet, node, nginx or certbot - and none are
-needed, because the server builds inside Docker.
+## What shipped 2026-08-05
 
-Why bother: Render's free instance is **0.15 vCPU and 512 MB and sleeps
-after 15 minutes**. This is ~13x the CPU and never sleeps, which is exactly
-the constraint that had the tick loop running at up to 89% of its cap.
+**Loot: each monster drops its own gear.** Equipment was picked by scanning
+the whole region for a BaseId containing a category substring, so every
+monster in a location dropped the same pool, ordinary monsters dropped only
+weapons and offhands (armour was on a boss-only roll), and the canonical bows
+could not drop anywhere because the code grepped `_ranged_weapon_slot_`
+against ids authored `_range_weapon_slot_`. `EquipmentDropTable` deals each
+location's equipment across its five monsters; the RegionTier 6-10 endgame
+ladder, which no reachable monster carried, goes to Malakor.
 
-It does NOT fix H1 - progression is 87x too fast because of a logic defect,
-and a faster machine will simply reach level 127 sooner.
+**H1 was misdiagnosed and is now measured.** A fresh character on region 1,
+driven through the real tick for a simulated hour, reaches **level 7** - the
+87x is not reachable on the live path, and the reward arithmetic was never
+wrong (XP is exactly 4x gold for every monster, and the report's own figures
+are consistent with that). Two real defects behind it: three disagreeing
+damage models, two of which ignored monster armour entirely, so offline and
+warp paid for combat that could not have happened; and gold having no durable
+path that did not go through Redis, which is the "two gold figures on one
+screen". Both fixed, both pinned by tests.
 
-### What must be solved, in order
+**H2 was the send lock.** Sends took a semaphore with no timeout from a
+fire-and-forget 10 Hz broadcast, so a peer that stopped reading left one send
+pending forever and every later frame queued behind it. Nothing threw, nothing
+closed - the socket stayed open and silent, which is why the client never
+reconnected and F5 fixed it. Frames are dropped rather than queued now.
 
-**1. Ports, in two places.** The instance's iptables currently accepts only
-22 and REJECTs the rest, AND Oracle has its own Security List at the cloud
-level. Opening one and not the other looks exactly like a dead server. Need
-80 and 443 inbound. On Ubuntu the iptables rule must be inserted BEFORE the
-existing REJECT line, and persisted (`netfilter-persistent save`) or it is
-gone on reboot.
+**H4** did not need a new table: `historical_market_archives` has recorded
+every completed trade with a timestamp since the market shipped. Price
+history, day/week/month change, and the fee-plus-guild-cut breakdown are in.
 
-**2. A hostname.** The browser client is served over https, so the socket
-must be `wss://`, and no browser accepts an invalid certificate for one.
-Let's Encrypt will not issue for a bare IP, so **92.5.0.94 cannot work as
-the API address**. Needs a real DNS name - an owned domain, or DuckDNS.
-This is the item most likely to stall the migration; settle it first.
+**H5/H6** done. Both stale tests asserted deliberately removed content; the
+reroll now has a door in the Chest, where the items are.
 
-**3. TLS and reverse proxy.** Prefer **Caddy** over nginx+certbot: it
-obtains and renews certificates by itself and proxies WebSocket upgrades
-without extra configuration, which is most of what nginx would need hand-
-written here. One container, one `Caddyfile`, proxying to the app on 8080.
+## Open
 
-**4. Redis must move too.** `REDIS_CONNECTION` currently points at
-`red-d9orkqm7bikc73fu43o0:6379`, which is a **Render-internal hostname and
-will not resolve from Oracle**. Run a `redis` container beside the app
-instead - it is better there anyway, being on the same host rather than
-across a network. Data loss on restart is already accepted (the Render
-instance has persistence off).
+**H3. Sprite coverage.** `sprites.generated.ts` holds 234 entries against 437
+items, so more than half fall back to initials. Needs an audit of what exists,
+what is missing, and what is mapped to the wrong item. The alias table in
+`scripts/generate-sprites.mjs` is where a wrong mapping would live.
 
-**5. A new compose file.** `docker-compose.yml` in the repo CANNOT be reused
-as-is: it stands up its own Postgres, a pgbouncer in front of it, and a
-one-shot migrate job. With the database on Supabase all three are wrong -
-Supabase's own pooler already does the pooling, and the app image migrates
-on its entrypoint. Write `ops/oracle/docker-compose.yml` with two services:
-the app (built from `server/`, `FolkIdle.Server/Dockerfile`) and redis, both
-`restart: unless-stopped` so a reboot brings them back.
+**Balance is now measurable and probably wants attention.** An hour of region
+1 reaching level 7 is the other end of the complaint that started H1 -
+`ProgressionRateTests.OneHourOfCombatIsMeasured` prints the number, and
+`AnHourDoesNotFinishTheGame` bounds it loosely at level 40 so it catches
+another 87x without freezing the balance. The design's own intent, in
+`ProgressionEngine`'s comment, is roughly 72 minutes for region 1.
 
-**6. Environment.** Same four the Render service needs, plus redis:
+**Gloves and offhands are thin.** Each location authors only two gloves and
+one offhand against five monsters, so some monsters offer neither. That is a
+content gap, not a code one - `EquipmentDropTableTests` deliberately does not
+require every location to cover those two slots.
 
-    DOTNET_ENVIRONMENT=Production
-    FOLKIDLE_DB_CONN=Host=aws-0-<region>.pooler.supabase.com;Port=5432;...
-    JWT_SECRET_KEY=<see below>
-    FOLKIDLE_WEB_ORIGINS=https://folkidle.onrender.com
-    REDIS_CONNECTION=redis:6379
-    PORT=8080
+## How to verify a gameplay change
 
-Port **5432**, session mode. Not 6543 - see the trap list above.
-
-**JWT_SECRET_KEY should be COPIED from the Render service**, not
-regenerated. Tokens are signed with it, so a new secret silently invalidates
-every logged-in player and they are bounced to the login screen with no
-explanation. If it is regenerated deliberately, say so in the release note.
-
-**7. Cutover.** Deploy and verify while Render is still serving, then move
-traffic:
-
-    a. bring the stack up on Oracle, confirm /healthz and a wss:// upgrade
-    b. confirm it reaches Supabase (a login against the new host)
-    c. set VITE_FOLKIDLE_SERVER=<new hostname> on the Render static site
-       and redeploy the client
-    d. remember index.html carries 5 minutes of CDN cache - verify by
-       fetching the bundle and grepping it, not by the deploy status
-    e. only then suspend the Render web service
-
-Rollback is step (c) in reverse: repoint the static site at
-`https://idlehra.onrender.com` and redeploy. Keep the Render service
-suspended rather than deleted until a few days have passed.
-
-**8. Afterwards.** Watch for things the free tier was hiding rather than
-fixing - the tick loop has real CPU now, so anything that was quietly being
-starved will start running at full speed, including whatever is behind H1.
-
-### Not in scope
-
-Moving the static client, moving the database off Supabase, and any
-autoscaling or multi-instance setup. Note the migrate-on-entrypoint in
-`server/Dockerfile` is only safe at one instance; a second replica would
-race it.
-
-## Open items, most valuable first
-
-### H1. Progression rate is wrong by roughly two orders of magnitude
-
-Observed on a fresh account after ~1 hour: **level 127, 2,091,564 gold,
-7,790 kills**. The content tables do not support that.
-
-    XP to reach level 127 (cumulative)   10,901,147
-    7,790 Field Mice at 16 XP base          124,640   -> 87x short
-    gold per kill observed                    268.5   (base reward: 4)
-
-`GlobalXpMultiplier` and `GlobalGoldDropMultiplier` are both 100 (i.e. 1x),
-so the global knobs are not it. Level curve is
-`400 * 1.06^level` (`ProgressionEngine.cs:47-52`). Something other than the
-kill reward is paying out; find it before touching any constant.
-
-Related and probably a separate defect: the Progress screen shows
-**`Gold 27 287g` in Statistics and `2 091 564g` in the header at the same
-time**. Two numbers for one quantity on one screen - resolve which is
-authoritative first, because it may be the thread that leads to the above.
-
-### H2. Combat freezes - live state stops arriving
-
-Reported repeatedly: HP does not tick down, kills do not appear, the screen
-looks frozen; F5 shows the correct state, so **the server is simulating and
-only delivery has stopped**. Not yet diagnosed.
-
-Ruled out so far:
-
-- The broadcast dirty check - `BroadcastKeepaliveTicks = 10`
-  (`SimulationEngine.cs:4681`) forces a resend every second even when
-  nothing changes.
-- Redis - the tick path guards every call with
-  `_redis != null && _redis.IsConnected` (`SimulationEngine.cs:1555`,
-  `:1573`), so an absent Redis cannot block it. (Redis is present now.)
-- Reconnect logic - `connection.ts:185-198` backs off 500 ms to 15 s and
-  re-sends the token, and reports `reconnecting` to the UI.
-
-Note this session redeployed the API several times, and every redeploy kills
-every socket; some reports fall inside those windows and some do not.
-
-Two ways to settle it: register a throwaway account and watch the socket
-frames directly, or have the player keep the browser console open and
-capture what appears at the moment it freezes.
-
-### H3. Sprite coverage and correctness
-
-`sprites.generated.ts` holds **234 entries against 437 items**, so more than
-half have no artwork and fall back to initials. Needs an audit of what
-exists, what is missing, and what is mapped to the wrong item. The alias
-table in `scripts/generate-sprites.mjs` is where a wrong mapping would live.
-
-### H4. Market rework - browse, filter, price history, sell flow
-
-Requested shape, explicitly modelled on the CS2 skin market:
-
-- **Browse**: every open offer as a card - image, name, item type, price.
-  Click to buy.
-- **Filter**: by slot (helmet / chest / leggings / melee weapon / pickaxe /
-  ring / axe / ...) and by rarity.
-- **Sort**: by price and by rarity, ascending and descending.
-- **Sell**: reached from a link in the Market to the village chest. Pick an
-  item, see what it currently sells for, a **price history graph**, and
-  percentage change over day / week / month like a stock. Enter an asking
-  price, see the guild's cut before confirming, then list it.
-
-**This is not a UI-only job.** There is no price history in the database:
-`MarketOrderRecord` carries `Price` and `Status` and nothing records a
-completed trade with a timestamp, so neither the graph nor any percentage
-change can be computed today. Needs a trade-ledger table written on every
-completed purchase, plus aggregation endpoints, before the screens.
-
-### H5. Two stale client tests
-
-`tests/slots.test.ts` expects `Herbalism`, which was deliberately removed
-(see `ActivityIdBands.cs`). `tests/sprites.test.ts` expects `Moosleute`,
-which `races.ts:28` deliberately displays as `Bes`. Both fail today and both
-predate the current work. Deciding which side is right is a content call,
-not a test fix.
-
-### H6. Affix reroll discoverability
-
-The reroll UI exists in **Forge** (`Forge.svelte:127-140`), not in the
-Chest, and a player looking for it did not find it. It reads
-`OwnedEquipment`, so tools should appear - unverified in the live client.
-
----
-
+`client_web/scripts/exercise.mjs` drives every interactive feature against a
+real server, database and browser and asserts the world CHANGED - unlike
+smoke-screens.mjs, which only proves a screen renders. 44/44 as of this
+handoff. It needs Postgres, the server with `--seed-dev`, and vite on 5173.
 
 ## Client UI Hook Points
 
