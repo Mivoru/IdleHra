@@ -58,18 +58,119 @@ Traps, in the order they will bite:
 - **Combat freeze fixed** (the send lock), **gold made durable without Redis**,
   **three damage models unified**.
 
-## The balance, measured
+## The balance, as of the season curve
 
-`ProgressionRateTests` drives the real tick with tier-appropriate gear and
-prints:
+**The 13-hour figure below is history.** The level curve became
+`250 * 1.13^level` (was `400 * 1.06^level`), which is a season-length game
+rather than a weekend one. Each region now costs roughly four times the one
+before it - 12.1x XP growth against 3x gear growth - and the base was lowered
+so the opening stays brisk:
 
-    region 1  109 min | 2  133 | 3  161 | 4  185 | 5  205   (~13 h to level 100)
-    gold/sec   0.6    |    1.5 |    3.9 |   10.9 |   31.6   (~564k across the run)
+    region 1  2.5 h | 2  10.9 | 3  47.6 | 4  197 | 5  784   (1042 h, no affixes)
+    with gear 0.8 h | 2   3.6 | 3  15.9 | 4   66 | 5  261   ( 347 h, ~3x gear)
 
-Against the stated intent of 72/123/163/190/209 minutes that is near exact for
-regions 2-5 and **1.5x slow for region 1**. Nothing is too fast; the "87x"
-report was never reproducible. Region 1's opening hour is the one number worth
-a design decision.
+At 200 active hours a season, region 4 falls in the first season and region 5
+in the second. Monsters and their rewards were not touched, so XP = HP/5 still
+holds and `ProgressionRateTests` still prints the real curve.
+
+**These are intent, not measurement of players.** Once a few people have played
+a month, compare where they actually are against what that test prints - the
+model is worth checking against reality rather than re-estimating.
+
+## What a season leaves behind
+
+Three things now survive a rollover: **the village you built, the race mastery
+you learned, and the inheritance levels you bought**. Everything else still
+goes - levels, gear, gold, materials, the market, the chronicle pass - because
+the season is the ladder and the ladder is the game.
+
+Inheritance is six permanent bonuses (damage, health, XP, gold, gathering
+yield, loot luck), 20 levels of 2%, 40 diamonds on a x1.28 curve. It exists as
+much to give diamonds a sink - they had nine producers and one real use - as to
+make a rollover a step rather than a loss.
+`Test_SeasonalRotation_KeepsTheVillageTheMasteryAndTheInheritance` pins both
+halves of the rule, which is otherwise observable only once every ninety days.
+
+## One store, one number
+
+`VillageStashInstances` folded into `CommodityRecords`. The split was never a
+feature - every spend already drew from the sum - and it produced the same bug
+three times, each found separately: the larder, the boosts panel and the guild
+deposit each filtered on one half. The API returns a single `Quantity`.
+
+`BankEquipmentInstances` is the third table and was NOT merged: it holds
+equipment with affixes, so it duplicates `EquipmentInstances` instead, and that
+merge needs the Bank's remaining callers looked at first.
+
+## The suite was red, and the red was not being read
+
+Ten of 337 server tests were failing when this session started, none of them
+noticed. The "155/155" in the last few commit messages is a FILTERED SUBSET,
+not the suite - run `dotnet test` on the test project with no filter.
+
+One of the ten was a live hole rather than a stale expectation:
+
+**The market's price corridor failed OPEN for an unpriceable item.** It ran
+only when a rolling average or a catalogue baseline could be computed, and
+skipped silently otherwise - which was harmless until the catalogue was cut
+from 437 entries to its 75 canonical pieces. Every instance of a removed item
+still sits in `EquipmentInstances`, has no baseline, has never traded, and
+could therefore be listed at ANY price: the exact gold-laundering route the
+corridor exists to close, opened by a content change. Both the direct SELL path
+(`MarketEscrowEngine`) and the BUY order path (`MarketOrderBookEngine`) now
+reject an item they cannot price.
+
+`RegionUnlockGate.CanWearItem` fails open on the same input and deliberately
+stays that way - wearing an obsolete item you already own is a small power
+gain, pricing one freely moves gold between accounts.
+
+The other nine, briefly: the level curve moved to 1.13 and two tests still
+asserted 1.06 and a 45-260 minute band per region; the packet ceiling was
+crossed twice without either pass noticing this assertion; the stash fold moved
+where deposits land; the catalogue cut invalidated three hard-coded item ids;
+the offline projection kept a private copy of a damage model that has since
+been unified; and `python3` on Windows is an App Execution Alias that exits
+zero while printing "Python was not found".
+
+Three of those are one lesson: **a test that re-derives what the engine
+computes will drift, and it drifts silently.** Every one of them is now asked
+of the authority - `CraftingReceptuary.TryGetRecipe`, `CombatDamageModel`,
+`ContentRegistry.GetMonsterRegionTier` - instead of spelling the answer out.
+
+**And behind the `python3` alias, a second real defect.** Once the test could
+actually run `ops/validate_content.py`, the script rejected the live catalogue
+on every one of the 111 ids above the entry count: it still required item ids
+to be a contiguous 1..N, a rule `ContentRegistry` dropped when it began sizing
+its arrays by the HIGHEST id so that removing an item leaves an inert hole
+rather than repointing every loot table and owned row. The pre-build validator
+CI depends on would have failed the build on correct content - invisible for as
+long as the interpreter probe was wrong. Item ids are positive and unique now;
+gaps are legal and documented as such in the script's own header.
+
+**Gathering is now a rounding error.** The season curve makes region 5 roughly
+750 hours of combat against an unchanged ~11 minutes of gathering. The band
+test's old "gathering is at least 2% of a region" floor could not survive that
+and is now a ceiling only. Whether the crafting tree should scale with the
+curve is an open design question.
+
+## Traps found the hard way, 2026-08-05 (late)
+
+- **A migration without a `.Designer.cs` never runs.** EF discovers migrations
+  by scanning for `[Migration]` and then filtering on `[DbContext]`; both are
+  generated into that file. `FoldStashIntoCommodities` was hand-written without
+  it, so it shipped, deployed, and moved nothing, while the server logged
+  "Database migrations applied successfully". Caught by reading the live
+  `__EFMigrationsHistory` and noticing the row was absent.
+  `Test_Migrations_EveryMigrationTypeIsDiscoverableByEf` now catches it.
+- **Two enum names on one value is silent in C#.** `PurchaseInheritanceLevel`
+  was given 65, which `StockFoodSlot` already held, so the server would have
+  read every larder stocking as a diamond purchase. It surfaced only because
+  the protocol generator emits one entry per NAME and produced a duplicate key
+  in the client's opcode map. Check the list before adding to it.
+- **A crashed check hides every check below it.** `exercise.mjs` called
+  `selectOption` on a market filter that had become a checkbox; it threw rather
+  than failed, so everything after the market stopped running - and nothing
+  said so, because the summary line never printed.
 
 ## Open
 
@@ -83,11 +184,27 @@ location against five monsters, so some monsters offer none. Content, not code.
 **`CraftingReceptuary` duplicates `ContentRegistry`'s 104-recipe tree** with
 three stub recipes, repointed onto canonical items rather than resolved.
 
+**`BankEquipmentInstances`** is the storage merge that was deliberately left
+out - see "One store, one number" above.
+
 ## How to verify a gameplay change
 
 `client_web/scripts/exercise.mjs` drives every interactive feature against a
-real server, database and browser and asserts the world CHANGED. Needs
-Postgres, the server with `--seed-dev`, and vite on 5173.
+real server, database and browser and asserts the world CHANGED. **50/50 as of
+2026-08-05 late**, including the inheritance purchase. Needs Postgres, the
+server with `--seed-dev`, and vite on 5173.
+
+Read the last line of its output, not the last check: a Playwright call that
+THROWS ends the process without a summary, and every check below the throw
+simply never runs. That is how the market's filter rework silently disabled a
+third of the suite.
+
+Two of its steps pick their subject rather than naming it, and both learned it
+the hard way: combat fights the strongest unlocked NON-boss monster (the
+weakest dies in one tick and shows a frozen bar; a boss can kill the fixture
+and turn the check into a coin toss), and the inheritance step reads the card
+that owns the Buy button it clicked (levels are permanent, so a well-exercised
+fixture caps its first stat).
 
 ## Client UI Hook Points`
 predates the web client and describes Unity work.

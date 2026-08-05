@@ -96,17 +96,18 @@ async function dismissOfflineSummary(waitMs = 6000) {
 
 // --- combat ------------------------------------------------------------------
 //
-// Modul: fights the SECOND region, not the first.
+// Modul: fights the STRONGEST monster the fixture has unlocked.
 //
-// The bar-animation check below asserts that the monster's health moves
-// between snapshots. Against Field Mouse - 80 HP, and the fixture is level 40 -
-// the character one-shots it, so every sample catches a brand new monster at
-// full health and the bar reads 100% forever. That failed for two sessions and
-// looked like an interpolation bug; it was the test picking a target that
-// cannot survive long enough to be observed.
+// The bar-animation check below asserts that the monster's health moves between
+// snapshots, which needs a target that survives more than one tick. Against
+// Field Mouse - 80 HP, and the fixture is level 40 - the character one-shots
+// it, so every sample catches a brand new monster at full health and the bar
+// reads 100% forever. That has twice looked like an interpolation bug and twice
+// been the test picking a target it cannot observe.
 //
-// Thorny Vine is 950 HP and measured at 2.1 seconds a kill, which is about
-// twenty ticks - enough intermediate values to prove the bar tracks them.
+// Naming a monster does not survive either: region unlocks decide which rows
+// are enabled, and the fixture's progress is not fixed. "The last enabled one"
+// is the same statement in a form that keeps holding.
 await go('Combat');
 // The monster list is content-driven and arrives after the screen does, so
 // `go`'s "no Loading..." check can return while the list is still empty. Wait
@@ -130,13 +131,31 @@ await page
 //
 // Asking for an enabled button says what the step actually needs, and keeps
 // saying it when the fixture's unlocked regions change.
+//
+// Modul: the strongest unlocked REGULAR monster - not the weakest, and not a
+// boss.
+//
+// The weakest is Field Mouse, 80 HP against a level 40 character: dead inside
+// one tick, so every sample of its health bar catches a brand new monster at
+// full width and the animation check reads "1 distinct width" on a bar that
+// works perfectly.
+//
+// The strongest is a region boss, and a boss can kill the fixture. Shadow Lynx
+// is 14,000 HP at roughly 2.5x its region's regular attack power; one run of
+// this script won the fight and the next one came back to "Died and respawned"
+// and no combat at all. A check that passes or fails on a coin toss is worse
+// than no check.
+//
+// Every region is four regulars and one boss - content canon, not an inference
+// from this screen - so the boss is every fifth row. The strongest regular is
+// the last enabled row that is not one.
 const fightButtons = page.getByRole('button', { name: 'Fight', exact: true });
 const fightCount = await fightButtons.count();
 let fightTarget = null;
 for (let i = 0; i < fightCount; i++) {
+  if (i % 5 === 4) continue; // a region boss
   if (await fightButtons.nth(i).isEnabled()) {
     fightTarget = fightButtons.nth(i);
-    break;
   }
 }
 if (!fightTarget) throw new Error('no unlocked monster to fight - every Fight button is disabled');
@@ -226,8 +245,16 @@ await go('Market');
   );
 
   // Narrowing to a slot must actually change the request, not just the UI.
-  const slotSelect = page.locator('.filters select').first();
-  await slotSelect.selectOption({ label: 'Helmet' });
+  //
+  // Modul: A CHECKBOX, NOT A DROPDOWN. The type filter became checkboxes when
+  // the market gained multi-select, and this step kept calling selectOption on
+  // `.filters select` - which now resolves to the RARITY dropdown, where no
+  // option is named "Helmet". It threw rather than failed, so the whole script
+  // died here and every check below the market - crafting, guild, the paper
+  // doll, the chest - silently stopped running for as long as that shipped.
+  // A crash in a test suite is worse than a red line: a red line is reported.
+  const helmet = page.locator('.filters label').filter({ hasText: 'Helmet' }).locator('input[type="checkbox"]').first();
+  await helmet.check();
   await page.waitForTimeout(1200);
   const narrowed = await page.evaluate(() => document.body.innerText);
   record(
@@ -599,6 +626,84 @@ await go('Chest');
     (await page.getByRole('button', { name: 'Reroll', exact: true }).count()) > 0,
     'every equipment row links to the Forge',
   );
+}
+
+// --- inheritance: the only thing a season leaves behind ----------------------
+//
+// Modul: this is the one purchase in the game whose whole point is that it
+// SURVIVES. A screen that renders six stats and buys none of them is
+// indistinguishable from a working one until a rollover three months later
+// proves otherwise, so the check spends real diamonds and reads the level back.
+//
+// The fixture carries 5,000 diamonds and the first level costs 40, so the
+// purchase is affordable by construction - if the button is disabled here, that
+// is the finding, not a reason to skip.
+await go('Inheritance');
+{
+  const text = await page.evaluate(() => document.body.innerText);
+  record(
+    'inheritance lists all six permanent bonuses',
+    /Damage/.test(text) && /Health/i.test(text) && /Experience/i.test(text) &&
+      /Gold/i.test(text) && /Gathering/i.test(text) && /Luck/i.test(text),
+  );
+
+  // The screen's own promise to the player. Worth asserting because it is the
+  // only place the carry-over rule is stated, and a season that quietly wiped
+  // one of these would still render this sentence.
+  record(
+    'inheritance states what a season does not touch',
+    /does not touch these, your village, or the race\s+mastery/i.test(text) ||
+      /does not touch/i.test(text),
+  );
+
+  const buyButtons = page.getByRole('button', { name: /^Buy \+/ });
+  const buyable = await buyButtons.count();
+  record('inheritance offers a purchase per uncapped stat', buyable > 0, `${buyable} buyable`);
+
+  if (buyable > 0) {
+    await dismissToasts();
+    // The card being BOUGHT is the one that has to move - its "0 / 20" bar
+    // label and its "+2%". Read that card rather than the whole screen: the
+    // diamond balance also appears in the header, so a body-text diff would
+    // pass on a purchase that charged the player and granted nothing.
+    //
+    // Modul: resolved from the button rather than as `.stats li` first. Levels
+    // are permanent, so a fixture that has been exercised often enough caps its
+    // first stat - and then the first Buy button belongs to the SECOND card
+    // while the check still read the first, which never changes. That is a
+    // failure that only appears after the twentieth run and blames the wrong
+    // thing when it does.
+    const targetCard = page.locator('.stats li').filter({ has: page.getByRole('button', { name: /^Buy \+/ }) }).first();
+    const cardText = async () => targetCard.innerText();
+
+    const before = await cardText();
+    const disabled = await buyButtons.first().isDisabled();
+    record(
+      'the fixture can afford the first inheritance level',
+      !disabled,
+      disabled ? 'button disabled with 5,000 diamonds - check the cost curve' : '40 diamonds',
+    );
+
+    await buyButtons.first().click();
+    await page.waitForTimeout(2500);
+    const after = await cardText();
+    const msgs = await toasts();
+
+    record(
+      'buying an inheritance level raises it',
+      after !== before,
+      after.replace(/\s+/g, ' ').slice(0, 80),
+    );
+    // A level bought is a level shown as a percentage. The bar alone moving
+    // could be the client optimistically painting; the "+2%" comes from the
+    // wire, so it is the server agreeing.
+    record(
+      'the purchased bonus reads back as a percentage',
+      /\+\d+%/.test(after),
+      msgs.join(' | '),
+    );
+    await dismissToasts();
+  }
 }
 
 // --- icons actually loaded ---------------------------------------------------
