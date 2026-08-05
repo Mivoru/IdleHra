@@ -386,20 +386,21 @@ namespace FolkIdle.Server.Engine
 
             CombatStats combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
 
-            int playerAttackSpeedMs = (int)(1500 * (1.0f - combatStats.AttackSpeedPct));
-            if (playerAttackSpeedMs < 200) playerAttackSpeedMs = 200;
-
-            // Analytical projection intentionally uses expected (average) damage per
-            // hit rather than replaying per-swing hit/crit RNG.
+            // Analytical projection intentionally uses expected (average) damage
+            // per hit rather than replaying per-swing hit/crit RNG - but the
+            // EXPECTATION is now CombatDamageModel's, the same one the live tick
+            // rolls against.
+            //
+            // This line used to read `Math.Max(1000, (int)effectiveMilliAttack)`:
+            // the monster's armour was never subtracted and the hit roll never
+            // applied, so an hour offline was credited with roughly three hours
+            // of live combat on region 1 and worse further in, where armour is
+            // five times higher. See CombatDamageModel for the other two models
+            // this replaces.
             long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel);
-            int netDamage = Math.Max(1000, (int)effectiveMilliAttack);
-            netDamage = (int)(netDamage * payload.CachedCodexDamageMultiplier);
+            double secondsPerKillEstimate = CombatDamageModel.ExpectedSecondsPerKill(in combatStats, in activeMonster, effectiveMilliAttack, payload.CachedCodexDamageMultiplier);
 
-            double damagePerHit = netDamage / 1000.0;
-            double attacksPerSecond = 1000.0 / playerAttackSpeedMs;
-            double dps = damagePerHit * attacksPerSecond;
-
-            if (dps <= 0.0 || activeMonster.MaxHp <= 0)
+            if (double.IsInfinity(secondsPerKillEstimate) || secondsPerKillEstimate <= 0.0 || activeMonster.MaxHp <= 0)
             {
                 return new LootProjection(false, 0, 0);
             }
@@ -460,8 +461,7 @@ namespace FolkIdle.Server.Engine
                 }
             }
 
-            double secondsPerKill = activeMonster.MaxHp / dps;
-            double totalKillsDouble = effectiveElapsedSeconds / secondsPerKill;
+            double totalKillsDouble = effectiveElapsedSeconds / secondsPerKillEstimate;
             long totalKills = (long)totalKillsDouble;
 
             long xpGained = totalKills * activeMonster.BaseXpReward;
