@@ -26,26 +26,54 @@ namespace FolkIdle.Server.Engine
         // "must stay in sync" comment and no mechanism to enforce it. It is
         // now defined once and called from all three.
         //
-        // The curve was 100 * 1.15^level. That is 15% growth PER LEVEL, i.e.
-        // 16.4x per 20-level region. Player power grows 3x per region (weapon
-        // FlatAttackPower is 12/36/108/324/972 across the five tiers), so the
-        // XP requirement outran the power curve by ~5x every region and
-        // compounded: reaching level 100 needed 718 million XP against an
-        // achievable ~658 DPS, which at the game's flat XP=MaxHp/5 reward rate
-        // is roughly 59 days of uninterrupted combat. Regions 3-5 were not
-        // slow, they were unreachable.
+        // The curve was 100 * 1.15^level - 16.4x per 20-level region against a
+        // 3x-per-region gear curve, so the requirement outran player power by
+        // ~5x every region and compounded. Level 100 needed 718 million XP,
+        // roughly 59 days of uninterrupted combat. Regions 3-5 were not slow,
+        // they were unreachable. That was corrected to 400 * 1.06^level, which
+        // tracked the gear curve so exactly that time-per-region went FLAT:
+        // about 72 / 123 / 163 / 190 / 209 minutes, or the whole game in
+        // thirteen hours.
         //
-        // 1.06 per level is 3.2x per region, which tracks the 3x gear curve, so
-        // time-per-region stays flat instead of exploding. The base is raised
-        // 100 -> 400 to keep the early game from being over in minutes now that
-        // the exponent no longer carries it. Modelled result, using weapon base
-        // power alone and ignoring affixes/STR/set bonuses (so a floor, not an
-        // estimate): roughly 72 / 123 / 163 / 190 / 209 minutes for regions 1-5.
+        // Modul: SEASONS, 2026-08-05. Thirteen hours is the wrong length for a
+        // game that wipes every three months.
         //
-        // Pure floating-point intrinsics, no managed allocation - safe on the
-        // ProcessMonsterDeath tick path this is called from.
-        public const double LevelCurveBase = 400.0;
-        public const double LevelCurveGrowth = 1.06;
+        // A season has to be worth entering, which means the top of the ladder
+        // must NOT be reachable in the first one. The intent is that a normal
+        // player clears four regions in season one and finishes the fifth in
+        // season two or three - helped by whatever the reset carries forward
+        // (the village, race bonuses, inheritance stats). Someone who rolls
+        // exceptional gear should get there sooner; nobody should get there in
+        // ninety days from a standing start.
+        //
+        // Flat pacing is exactly wrong for that. The curve has to be BACK-
+        // LOADED: quick enough at the start that a first evening shows real
+        // movement, steep enough at the top that the last region is a season's
+        // work. 1.13 per level is 12.1x per region against the 3x gear curve,
+        // so each region costs about four times the one before it.
+        //
+        // The base drops 400 -> 250 to keep the opening snappy while the
+        // exponent carries the back half. Modelled on weapon base power alone,
+        // ignoring affixes, sets, crit and attack speed - so a FLOOR, and a
+        // geared player runs perhaps three times faster:
+        //
+        //     region   1      2      3       4        5
+        //     floor    2.5h   10.9h  47.6h   197h     784h
+        //     geared   0.8h   3.6h   15.9h   66h      261h
+        //     cumulative geared: 0.8 / 4.5 / 20 / 86 / 347 hours
+        //
+        // At a dedicated 200 active hours a season that is region 4 cleared
+        // inside season one and region 5 finished in season two; a casual pace
+        // takes three or four. ProgressionRateTests prints these against the
+        // real tick - change either constant and read the new numbers there
+        // rather than re-deriving them here.
+        //
+        // Both levers deliberately live in this one pair. Monster HP and XP are
+        // untouched, so the XP = MaxHp/5 identity that makes this analytically
+        // solvable at all still holds.
+        //
+        public const double LevelCurveBase = 250.0;
+        public const double LevelCurveGrowth = 1.13;
 
         public static long GetRequiredXpForLevel(int currentLevel)
         {

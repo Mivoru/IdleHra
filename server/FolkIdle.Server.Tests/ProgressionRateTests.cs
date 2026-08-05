@@ -188,16 +188,14 @@ namespace FolkIdle.Server.Tests
         /// <summary>
         /// The regression guard, stated as the design's own claim.
         ///
-        /// ProgressionEngine's comment sets out the intended pacing explicitly:
-        /// "roughly 72 / 123 / 163 / 190 / 209 minutes for regions 1-5", which
-        /// puts level 20 at about an hour and a quarter and level 100 at about
-        /// twelve and a half hours. An hour reaching level 127 is not a
-        /// balance preference being missed, it is that model being wrong by two
-        /// orders of magnitude.
+        /// Modul: seasons. The game is meant to outlast a three-month season -
+        /// four regions in season one and the fifth in season two or three - so
+        /// an hour of combat should be a dent, not a chapter. Region 1 alone is
+        /// modelled at 2.5 hours bare.
         ///
-        /// The bound here is deliberately loose - four times the intended pace
-        /// still passes - because the point is to catch another 87x, not to
-        /// freeze the balance.
+        /// The bound is deliberately loose. It exists to catch another
+        /// order-of-magnitude break like the one that produced "level 127 in an
+        /// hour", not to freeze a balance number that is expected to move.
         /// </summary>
         [Fact]
         public void AnHourDoesNotFinishTheGame()
@@ -205,9 +203,9 @@ namespace FolkIdle.Server.Tests
             var result = Simulate(ContentRegistry.FirstCanonicalMonsterId, 3600, autoAdvance: true);
 
             Assert.True(
-                result.Level <= 40,
+                result.Level <= 25,
                 $"an hour of combat reached level {result.Level} with {result.Gold:N0} gold over {result.Kills:N0} kills; "
-                + "the level curve intends about 20 in that time");
+                + "a season-length curve should not clear a region in an hour");
         }
 
         /// <summary>
