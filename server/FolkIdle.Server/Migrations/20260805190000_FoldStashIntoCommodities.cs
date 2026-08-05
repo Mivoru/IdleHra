@@ -1,3 +1,5 @@
+using FolkIdle.Server.Models;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -23,6 +25,19 @@ namespace FolkIdle.Server.Migrations
     /// unmigrated code path writes later is spent rather than stranded, and
     /// dropping it is a separate decision once the logs are quiet.
     /// </summary>
+    /// <remarks>
+    /// THE TWO ATTRIBUTES ARE WHAT MAKE EF SEE THIS FILE AT ALL. Migrations are
+    /// discovered by scanning the assembly for MigrationAttribute and then kept
+    /// only if DbContextAttribute names this context; every other migration here
+    /// carries both in its generated .Designer.cs. This one was hand-written
+    /// without that file, so it was skipped in silence - the server logged
+    /// "Database migrations applied successfully" on a run that applied none of
+    /// it, and the live database still had the row missing from its history.
+    /// A data-only migration needs no target-model snapshot, so the attributes
+    /// are the whole fix; `dotnet ef migrations list` is the check.
+    /// </remarks>
+    [DbContext(typeof(FolkIdleDbContext))]
+    [Migration("20260805190000_FoldStashIntoCommodities")]
     public partial class FoldStashIntoCommodities : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
