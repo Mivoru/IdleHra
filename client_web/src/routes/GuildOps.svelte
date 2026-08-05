@@ -122,15 +122,24 @@
 
   const itemDefinitionCount = $derived(registry?.items.size ?? 0);
 
-  /** Stackable materials actually in the backpack, with their numeric ids. */
+  /**
+   * Stackable materials the player can actually contribute, with their numeric
+   * ids.
+   *
+   * Modul: BOTH HALVES, because the server spends both. The contribution path
+   * ends in InventoryAndStashSystem.TryConsumeUnifiedAsync, which draws from
+   * CommodityRecords and VillageStashInstances together and refuses only when
+   * the SUM is short - so filtering on the backpack alone hid material the
+   * guild deposit would have taken. Same defect the larder had.
+   */
   const depositable = $derived.by(() => {
     if (!registry) return [];
     return (inventory.data?.Stacks ?? [])
-      .filter((stack) => stack.BackpackQuantity > 0)
+      .filter((stack) => stack.BackpackQuantity + stack.StashQuantity > 0)
       .map((stack) => ({
         definition: registry!.itemsByBaseId.get(stack.ItemId),
         baseId: stack.ItemId,
-        quantity: stack.BackpackQuantity,
+        quantity: stack.BackpackQuantity + stack.StashQuantity,
       }))
       .filter((row) => row.definition !== undefined)
       .sort((a, b) => a.baseId.localeCompare(b.baseId));

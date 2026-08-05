@@ -50,7 +50,7 @@
     if (professionId === 0) return snap.WoodcuttingMasteryLevel;
     if (professionId === 1) return snap.MiningMasteryLevel;
     if (professionId === 2) return snap.FishingMasteryLevel;
-    return snap.HerbalismMasteryLevel;
+    return 0;
   }
 
   function masteryXpOf(professionId: number): number {
@@ -58,12 +58,19 @@
     if (professionId === 0) return snap.WoodcuttingMasteryXp;
     if (professionId === 1) return snap.MiningMasteryXp;
     if (professionId === 2) return snap.FishingMasteryXp;
-    return snap.HerbalismMasteryXp;
+    return 0;
   }
 
+  // Modul: `?? MASTERY_TRACKS[3]` was a crash waiting for a content change.
+  // The array holds three entries since Herbalism retired, so index 3 is
+  // undefined and `track.name` on the next line throws a TypeError that takes
+  // the whole screen down. Nothing reaches it today - no authored node carries
+  // profession 3 - which is exactly why it would have survived until the day
+  // one did. Returns null instead, which every caller already handles.
   const masteryFor = $derived((professionId: number) => {
     if (!snap) return null;
-    const track = MASTERY_TRACKS.find((t) => t.id === professionId) ?? MASTERY_TRACKS[3];
+    const track = MASTERY_TRACKS.find((t) => t.id === professionId);
+    if (!track) return null;
     return { name: track.name, level: masteryLevelOf(professionId), xp: masteryXpOf(professionId) };
   });
 

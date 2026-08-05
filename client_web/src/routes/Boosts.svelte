@@ -58,10 +58,18 @@
       const definition = registry.itemsByBaseId.get(stack.ItemId);
       if (!definition) continue;
 
-      // Only the backpack is reachable - a stash quantity is in the bank and
-      // cannot be consumed without withdrawing it first, so counting it here
-      // would offer a button that does nothing.
-      const quantity = stack.BackpackQuantity;
+      // Modul: BOTH HALVES. This counted only the backpack, on the reasoning
+      // that a stash quantity "is in the bank and cannot be consumed without
+      // withdrawing it first". That has not been true since storage became one
+      // unbounded village chest: every spend goes through
+      // InventoryAndStashSystem.TryConsumeUnifiedAsync, which draws from
+      // CommodityRecords AND VillageStashInstances and only refuses when the
+      // SUM is short.
+      //
+      // So the reasoning was inverted - hiding the stash did not avoid a button
+      // that does nothing, it hid a potion the server would have been happy to
+      // drink. Same defect the larder had, and the chest already reads both.
+      const quantity = stack.BackpackQuantity + stack.StashQuantity;
       if (quantity <= 0) continue;
 
       rows.push({
