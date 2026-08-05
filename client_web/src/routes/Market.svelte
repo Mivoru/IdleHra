@@ -4,6 +4,7 @@
     queryKeys,
     fetchInventory,
     fetchMarketListings,
+    fetchMarketPriceHistory,
     fetchStatistics,
     type InventoryEquipment,
   } from '../lib/net/rest';
@@ -13,7 +14,9 @@
   import { rarityColor, rarityName, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { EQUIPMENT_SLOTS } from '../lib/ui/slots';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
+  import PriceChart from '../lib/ui/PriceChart.svelte';
   import { pushLocalNotice } from '../lib/stores/game';
+  import { requestScreen } from '../lib/stores/navigation';
 
   const client = useQueryClient();
   const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
@@ -121,6 +124,23 @@
   // --- sell -----------------------------------------------------------------
   let sellInstanceId = $state(0);
   let sellPrice = $state(1000);
+
+  const sellItem = $derived(sellable.find((e: InventoryEquipment) => e.Id === sellInstanceId) ?? null);
+
+  // Modul: what this piece is actually worth. Keyed on the base id AND the
+  // rarity, because those are the two things the archive matches on - a
+  // Legendary and a Common of the same item are different goods and averaging
+  // them would quote a price neither has ever fetched.
+  //
+  // `enabled` rather than a guard inside the fetcher: with nothing selected
+  // there is no item to ask about, and firing a request for the empty string
+  // would 400 on every render.
+  const history = createQuery(() => ({
+    queryKey: ['market', 'history', sellItem?.BaseItemId ?? '', sellItem?.QualityTier ?? -1] as const,
+    queryFn: () => fetchMarketPriceHistory(sellItem!.BaseItemId, sellItem!.QualityTier),
+    enabled: sellItem !== null,
+    staleTime: 60_000,
+  }));
 
   function sell() {
     const outcome = listItemOnMarket(sellInstanceId, sellPrice);
@@ -307,7 +327,10 @@
       </p>
     {/if}
 
-    <p class="dim small">Only carried equipment can be listed. Take a piece off first to sell it.</p>
+    <p class="dim small">
+      Only carried equipment can be listed. Take a piece off first to sell it -
+      <button class="linkish" onclick={() => requestScreen('chest')}>open the chest</button>.
+    </p>
 
     <label>
       Item
@@ -321,6 +344,62 @@
       </select>
     </label>
 
+    <!-- Modul: WHAT IS IT WORTH. A price box with nothing beside it asks the
+         player to invent a number, and the market has been answering that
+         question in the trade archive since it shipped - every completed sale,
+         with its price and timestamp. This is that answer, for the exact piece
+         they picked. -->
+    {#if sellInstanceId > 0}
+      <div class="quote">
+        {#if history.isPending}
+          <p class="dim tiny">Checking what these go for...</p>
+        {:else if history.data && history.data.TradeCount > 0}
+          {@const h = history.data}
+          <div class="quote-head">
+            <div>
+              <span class="dim tiny">Last sold</span>
+              <strong>{h.LastPrice.toLocaleString()}g</strong>
+            </div>
+            <div>
+              <span class="dim tiny">Average</span>
+              <strong>{h.AveragePrice.toLocaleString()}g</strong>
+            </div>
+            <div>
+              <span class="dim tiny">Range</span>
+              <strong>{h.LowPrice.toLocaleString()} - {h.HighPrice.toLocaleString()}g</strong>
+            </div>
+          </div>
+
+          <PriceChart points={h.Points} />
+
+          <!-- "-" where nothing traded before that window opened. A three-day
+               market has no honest month-over-month figure and 0% would claim
+               it does. -->
+          <div class="changes">
+            {#each [['Day', h.ChangeDayPct], ['Week', h.ChangeWeekPct], ['Month', h.ChangeMonthPct]] as [label, pct]}
+              <span class="change" class:up={typeof pct === 'number' && pct > 0} class:down={typeof pct === 'number' && pct < 0}>
+                {label}
+                <strong>
+                  {typeof pct === 'number' ? `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%` : '-'}
+                </strong>
+              </span>
+            {/each}
+          </div>
+
+          <p class="dim tiny">{h.TradeCount.toLocaleString()} trades in the last 30 days.</p>
+
+          <button class="tiny-btn" onclick={() => (sellPrice = Math.max(1, h.LastPrice))}>
+            Use last price
+          </button>
+        {:else}
+          <p class="dim tiny">
+            Nothing like this has sold in the last 30 days - you are setting the
+            first price.
+          </p>
+        {/if}
+      </div>
+    {/if}
+
     <label>
       Price
       <!-- The server DISCONNECTS on a price of zero or less rather than
@@ -328,6 +407,29 @@
            the command layer. -->
       <input type="number" min="1" step="1" bind:value={sellPrice} />
     </label>
+
+    <!-- Modul: the cut, BEFORE confirming. Both figures come from the server
+         with the history - the burn bracket depends on the seller's own wealth
+         and the guild rate on their guild's setting, so a client that computed
+         either would be a second source of truth about what a player is paid. -->
+    {#if history.data && sellPrice > 0}
+      {@const fee = Math.floor((sellPrice * history.data.FeePct) / 100)}
+      {@const guildCut = Math.floor((sellPrice * history.data.GuildTaxPct) / 100)}
+      <dl class="payout">
+        <div><dt>Asking</dt><dd>{sellPrice.toLocaleString()}g</dd></div>
+        <div><dt>Market fee ({history.data.FeePct}%)</dt><dd class="minus">-{fee.toLocaleString()}g</dd></div>
+        {#if history.data.GuildTaxPct > 0}
+          <div>
+            <dt>Guild cut ({history.data.GuildTaxPct}%)</dt>
+            <dd class="minus">-{guildCut.toLocaleString()}g</dd>
+          </div>
+        {/if}
+        <div class="total">
+          <dt>You receive</dt>
+          <dd>{Math.max(0, sellPrice - fee - guildCut).toLocaleString()}g</dd>
+        </div>
+      </dl>
+    {/if}
 
     <!-- Disabled without a licence for the same reason the fusion dropdowns
          exclude each other: not offering a choice the server will refuse beats
@@ -590,5 +692,99 @@
   .tiny-btn {
     font-size: 0.72rem;
     padding: 0.2rem 0.45rem;
+  }
+
+  /* A button, because it navigates rather than addressing anything - the
+     screens are modal panels, not URLs, so there is no href to give it. Styled
+     as a link because that is what it does. */
+  .linkish {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--accent, #7dd3fc);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  /* --- what it is worth, and what you keep ------------------------------- */
+
+  .quote {
+    display: grid;
+    gap: 0.5rem;
+    padding: 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: rgba(127, 127, 127, 0.06);
+  }
+
+  .quote-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem;
+  }
+
+  .quote-head div {
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  .changes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .change {
+    display: flex;
+    gap: 0.3rem;
+    align-items: baseline;
+    opacity: 0.85;
+  }
+
+  .change.up strong {
+    color: var(--good, #4ade80);
+  }
+
+  .change.down strong {
+    color: var(--bad, #f87171);
+  }
+
+  /* The payout breakdown. Laid out as a definition list because that is what
+     it is - each line names a deduction and gives its amount - and the total
+     is separated by a rule so the number the player actually receives is not
+     just another row. */
+  .payout {
+    display: grid;
+    gap: 0.15rem;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  .payout div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .payout dt,
+  .payout dd {
+    margin: 0;
+  }
+
+  .payout .minus {
+    color: var(--bad, #f87171);
+  }
+
+  .payout .total {
+    margin-top: 0.25rem;
+    padding-top: 0.25rem;
+    border-top: 1px solid var(--border);
+    font-weight: 700;
+  }
+
+  .payout .total dd {
+    color: var(--gold);
   }
 </style>

@@ -1157,6 +1157,12 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/market/history" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleMarketPriceHistory(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/support/tickets/create" && context.Request.HttpMethod == "POST")
                     {
                         await HandleSupportTicket(context);
@@ -1513,6 +1519,205 @@ namespace FolkIdle.Server.Network
         // WebSocket packet - a paginated result set has no natural fixed
         // size, so it does not fit StateUpdatePacket's binary layout the way
         // scalar per-tick fields do.
+        private sealed class MarketPricePointResponse
+        {
+            public long Epoch { get; set; }
+            public long Price { get; set; }
+        }
+
+        private sealed class MarketPriceHistoryResponse
+        {
+            public string BaseItemId { get; set; } = string.Empty;
+            public int QualityTier { get; set; }
+
+            /// <summary>Most recent execution, or 0 when nothing has ever traded.</summary>
+            public long LastPrice { get; set; }
+
+            public long TradeCount { get; set; }
+
+            /// <summary>Mean execution price over the whole window returned.</summary>
+            public long AveragePrice { get; set; }
+
+            public long LowPrice { get; set; }
+            public long HighPrice { get; set; }
+
+            /// <summary>
+            /// Percentage change against the last price BEFORE each window
+            /// opened. Null where nothing traded before that point - which is
+            /// the honest answer for a young market and is rendered as "-",
+            /// not as 0%.
+            /// </summary>
+            public double? ChangeDayPct { get; set; }
+            public double? ChangeWeekPct { get; set; }
+            public double? ChangeMonthPct { get; set; }
+
+            /// <summary>Oldest first, so a chart can plot it directly.</summary>
+            public System.Collections.Generic.List<MarketPricePointResponse> Points { get; set; } = new();
+
+            /// <summary>
+            /// What the seller keeps on a sale at LastPrice: the wealth-scaled
+            /// burn plus their own guild's cut. Quoted here rather than
+            /// recomputed in the client, because the client guessing at the
+            /// bracket is how two numbers for one fee start.
+            /// </summary>
+            public int FeePct { get; set; }
+            public int GuildTaxPct { get; set; }
+        }
+
+        /// <summary>
+        /// Price history for one item at one rarity.
+        ///
+        /// Reads historical_market_archives, which has recorded every completed
+        /// trade with BaseItemId, QualityTier, ExecutionPrice and a millisecond
+        /// timestamp since the market shipped - so this is retroactively
+        /// correct for trades that already happened, and needs no new table.
+        /// (The handoff said no completed trade was recorded anywhere; the
+        /// archive is written by both MarketEscrowEngine and
+        /// MarketOrderBookEngine.)
+        /// </summary>
+        private async Task HandleMarketPriceHistory(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                string baseItemId = query["baseItemId"] ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(baseItemId) || baseItemId.Length > 255)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (!int.TryParse(query["qualityTier"], out int qualityTier))
+                {
+                    qualityTier = -1; // every rarity
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                // Milliseconds - ExecutionTimestampEpoch is written with
+                // ToUnixTimeMilliseconds, and comparing it against seconds
+                // would silently place every trade in the future.
+                long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                const long DayMs = 86_400_000L;
+                long windowStartMs = nowMs - (DayMs * 30L);
+
+                var trades = await db.HistoricalMarketArchives
+                    .AsNoTracking()
+                    .Where(a => a.BaseItemId == baseItemId
+                        && (qualityTier < 0 || a.QualityTier == qualityTier)
+                        && a.ExecutionPrice > 0
+                        && a.ExecutionTimestampEpoch >= windowStartMs)
+                    .OrderBy(a => a.ExecutionTimestampEpoch)
+                    .Select(a => new MarketPricePointResponse { Epoch = a.ExecutionTimestampEpoch, Price = a.ExecutionPrice })
+                    .ToListAsync();
+
+                var response = new MarketPriceHistoryResponse
+                {
+                    BaseItemId = baseItemId,
+                    QualityTier = qualityTier,
+                    Points = trades,
+                    TradeCount = trades.Count
+                };
+
+                if (trades.Count > 0)
+                {
+                    long sum = 0L;
+                    long low = long.MaxValue;
+                    long high = long.MinValue;
+                    for (int i = 0; i < trades.Count; i++)
+                    {
+                        long price = trades[i].Price;
+                        sum += price;
+                        if (price < low) low = price;
+                        if (price > high) high = price;
+                    }
+
+                    response.LastPrice = trades[^1].Price;
+                    response.AveragePrice = sum / trades.Count;
+                    response.LowPrice = low;
+                    response.HighPrice = high;
+
+                    response.ChangeDayPct = await ComputeChangePctAsync(db, baseItemId, qualityTier, response.LastPrice, nowMs - DayMs);
+                    response.ChangeWeekPct = await ComputeChangePctAsync(db, baseItemId, qualityTier, response.LastPrice, nowMs - (DayMs * 7L));
+                    response.ChangeMonthPct = await ComputeChangePctAsync(db, baseItemId, qualityTier, response.LastPrice, nowMs - (DayMs * 30L));
+                }
+
+                // The seller's own numbers. Mirrors MarketEscrowEngine's
+                // brackets exactly - if those move, this must move with them.
+                long sellerWealth = await db.CommodityRecords
+                    .AsNoTracking()
+                    .Where(c => c.PlayerId == playerId && c.ItemId == "gold")
+                    .Select(c => c.Quantity)
+                    .FirstOrDefaultAsync();
+
+                response.FeePct = sellerWealth > 5_000_000 ? 15 : sellerWealth >= 500_000 ? 8 : 5;
+
+                long guildId = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => p.Id == playerId)
+                    .Select(p => p.GuildId)
+                    .FirstOrDefaultAsync();
+
+                if (guildId > 0)
+                {
+                    int taxRatePct = await db.GuildRecords
+                        .AsNoTracking()
+                        .Where(g => g.Id == guildId)
+                        .Select(g => g.TaxRatePct)
+                        .FirstOrDefaultAsync();
+
+                    response.GuildTaxPct = Math.Clamp(taxRatePct, GuildRecord.MinTaxRatePct, GuildRecord.MaxTaxRatePct);
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Market price history error: {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        /// <summary>
+        /// Change from the last trade before <paramref name="sinceMs"/> to now.
+        ///
+        /// Null rather than zero when nothing traded before the window opened.
+        /// A market with three days of history has no honest month-over-month
+        /// figure, and "0%" would claim it does - that is the difference
+        /// between "unchanged" and "unknown", and a price chart that confuses
+        /// them is worse than one that omits the number.
+        /// </summary>
+        private static async Task<double?> ComputeChangePctAsync(FolkIdleDbContext db, string baseItemId, int qualityTier, long lastPrice, long sinceMs)
+        {
+            long baseline = await db.HistoricalMarketArchives
+                .AsNoTracking()
+                .Where(a => a.BaseItemId == baseItemId
+                    && (qualityTier < 0 || a.QualityTier == qualityTier)
+                    && a.ExecutionPrice > 0
+                    && a.ExecutionTimestampEpoch < sinceMs)
+                .OrderByDescending(a => a.ExecutionTimestampEpoch)
+                .Select(a => a.ExecutionPrice)
+                .FirstOrDefaultAsync();
+
+            if (baseline <= 0L) return null;
+
+            return (lastPrice - baseline) * 100.0 / baseline;
+        }
+
         private async Task HandleMarketBrowserListings(HttpListenerContext context)
         {
             try
