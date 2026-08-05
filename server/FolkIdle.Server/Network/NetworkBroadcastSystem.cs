@@ -77,13 +77,138 @@ namespace FolkIdle.Server.Network
             DiagnosticSendBuffer = new byte[Marshal.SizeOf<StateUpdatePacket>()];
         }
 
+        /// <summary>
+        /// How long one frame may take before the socket is considered wedged.
+        ///
+        /// Generous - a mobile client on a bad connection should not be evicted
+        /// for a slow second. What it stops is the unbounded case: a peer that
+        /// has stopped reading entirely, where the send never completes at all.
+        /// </summary>
+        private static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(20);
+
+        /// <summary>
+        /// True once a send has timed out. The broadcast loop reads it and
+        /// evicts the session, which is what lets the client's own reconnect
+        /// logic run - see SendAsync for why silence was worse than a
+        /// disconnect.
+        /// </summary>
+        public volatile bool IsWedged;
+
+        /// <summary>
+        /// Sends one frame, or drops it if this socket is already busy.
+        ///
+        /// THIS IS THE COMBAT FREEZE.
+        ///
+        /// The lock is necessary - .NET forbids two outstanding sends on one
+        /// WebSocket - but it was taken with `WaitAsync(cancellationToken)`
+        /// where every caller passes CancellationToken.None, and the sends are
+        /// fire-and-forget from a 10 Hz broadcast. So when a peer stopped
+        /// reading, TCP back-pressure left `Socket.SendAsync` pending
+        /// indefinitely, that send kept the semaphore, and every following
+        /// tick's send queued behind it forever.
+        ///
+        /// Nothing threw. Nothing closed. The socket stayed open with no frames
+        /// arriving, so the client - whose reconnect logic is fine - never had
+        /// anything to reconnect FROM: it was not disconnected, it was being
+        /// ignored. HP stopped ticking, kills stopped appearing, and F5 fixed
+        /// it because a new socket has an uncontended lock. It also grew the
+        /// queue without bound for as long as the player left the tab open.
+        ///
+        /// Two changes, and the first is the one that matters. A state update
+        /// is an ABSOLUTE SNAPSHOT, not a delta, so a frame that cannot be sent
+        /// right now is worth nothing - the next tick carries the same truth,
+        /// only fresher. Taking the lock with a zero timeout turns a stalled
+        /// socket into dropped frames instead of an infinite queue. The second
+        /// bounds the underlying send, so a socket that is truly gone is torn
+        /// down and the client is told, rather than left watching a frozen
+        /// screen.
+        /// </summary>
         public async Task SendAsync(ArraySegment<byte> segment, WebSocketMessageType messageType, bool endOfMessage, CancellationToken cancellationToken)
         {
-            await _sendLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            // Zero timeout: do not queue behind an in-flight send.
+            if (!await _sendLock.WaitAsync(0, cancellationToken).ConfigureAwait(false))
+            {
+                return;
+            }
+
             try
             {
                 if (Socket.State != WebSocketState.Open) return;
-                await Socket.SendAsync(segment, messageType, endOfMessage, cancellationToken).ConfigureAwait(false);
+
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeout.CancelAfter(SendTimeout);
+
+                try
+                {
+                    await Socket.SendAsync(segment, messageType, endOfMessage, timeout.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                {
+                    // The peer is not reading. Mark it so the broadcast loop
+                    // evicts the session - a disconnect the client can act on
+                    // beats a socket that is open and silent.
+                    IsWedged = true;
+                    throw new WebSocketException($"send timed out after {SendTimeout.TotalSeconds:F0}s");
+                }
+            }
+            finally
+            {
+                _sendLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Sends one state frame on the binary protocol without allocating.
+        ///
+        /// The lock is taken BEFORE the copy, which is the whole point. The
+        /// caller used to write this session's reusable buffer and then hand it
+        /// to a fire-and-forget send - so the next tick's write could land in
+        /// the buffer the previous send was still reading, and the client would
+        /// receive a frame spliced out of two. Acquiring first means a frame is
+        /// either copied and sent, or dropped before anything is touched.
+        ///
+        /// Synchronous Wait(0) rather than WaitAsync: it never blocks (zero
+        /// timeout) and it keeps the copy off an await boundary, where a Span
+        /// cannot go.
+        /// </summary>
+        public Task SendStateFrameAsync(ref StateUpdatePacket packet)
+        {
+            if (!_sendLock.Wait(0))
+            {
+                return Task.CompletedTask;
+            }
+
+            try
+            {
+                if (Socket.State != WebSocketState.Open) return Task.CompletedTask;
+
+                ReadOnlySpan<StateUpdatePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
+                MemoryMarshal.AsBytes(span).CopyTo(DiagnosticSendBuffer);
+            }
+            catch
+            {
+                _sendLock.Release();
+                throw;
+            }
+
+            return SendHeldAsync(new ArraySegment<byte>(DiagnosticSendBuffer), WebSocketMessageType.Binary);
+        }
+
+        /// <summary>Sends with the lock ALREADY held, and releases it.</summary>
+        private async Task SendHeldAsync(ArraySegment<byte> segment, WebSocketMessageType messageType)
+        {
+            try
+            {
+                using var timeout = new CancellationTokenSource(SendTimeout);
+                try
+                {
+                    await Socket.SendAsync(segment, messageType, true, timeout.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+                {
+                    IsWedged = true;
+                    throw new WebSocketException($"send timed out after {SendTimeout.TotalSeconds:F0}s");
+                }
             }
             finally
             {
@@ -93,7 +218,13 @@ namespace FolkIdle.Server.Network
 
         public async Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken)
         {
-            await _sendLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            // Bounded, like SendAsync: a close must never be the thing that
+            // hangs the eviction path for a socket that is already gone.
+            if (!await _sendLock.WaitAsync(SendTimeout, cancellationToken).ConfigureAwait(false))
+            {
+                return;
+            }
+
             try
             {
                 if (Socket.State != WebSocketState.Open) return;
@@ -5994,21 +6125,20 @@ namespace FolkIdle.Server.Network
             // codebase (once per online player per 10Hz tick) and the JSON
             // branch must not cost the Unity client anything but one already-
             // loaded bool test.
-            ArraySegment<byte> segment;
-            WebSocketMessageType messageType;
-
-            if (session.UseJsonProtocol)
+            // Modul: a wedged socket is evicted, not written to forever.
+            //
+            // SendAsync sets IsWedged when a frame times out, which means the
+            // peer has stopped reading altogether. Left alone that connection
+            // stays open and silent - the state the freeze report describes,
+            // where the server simulates correctly and the screen does not
+            // move. Dropping it gives the client something to react to, and its
+            // reconnect logic (500 ms backing off to 15 s, token re-sent) then
+            // does the rest.
+            if (session.IsWedged)
             {
-                segment = new ArraySegment<byte>(PacketJsonCodec.SerializeToUtf8(ref packet));
-                messageType = WebSocketMessageType.Text;
-            }
-            else
-            {
-                ReadOnlySpan<StateUpdatePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
-                ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(span);
-                bytes.CopyTo(session.DiagnosticSendBuffer);
-                segment = new ArraySegment<byte>(session.DiagnosticSendBuffer);
-                messageType = WebSocketMessageType.Binary;
+                Console.WriteLine($"Evicting wedged socket for player {playerId}: sends stopped completing.");
+                ForceDisconnect(playerId);
+                return;
             }
 
             // Fire-and-forget is intentional here - SendToPlayer is called
@@ -6019,8 +6149,24 @@ namespace FolkIdle.Server.Network
             // this allocates zero Task/state-machine objects on the
             // per-tick, per-player hot path - see _logSendFault's own doc
             // comment.
-            session.SendAsync(segment, messageType, true, CancellationToken.None)
-                .ContinueWith(_logSendFault, playerId, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
+            //
+            // Both branches drop the frame rather than queue it when the socket
+            // is already busy - see WebSocketSession.SendAsync.
+            Task send;
+            if (session.UseJsonProtocol)
+            {
+                var segment = new ArraySegment<byte>(PacketJsonCodec.SerializeToUtf8(ref packet));
+                send = session.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            else
+            {
+                // Takes the lock before touching the reusable buffer - see
+                // SendStateFrameAsync for why the old order could splice two
+                // frames together.
+                send = session.SendStateFrameAsync(ref packet);
+            }
+
+            send.ContinueWith(_logSendFault, playerId, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
         }
 
         // Modul: Full-Stack Production Hardening Phase 3, Part 2. Static,
