@@ -135,11 +135,11 @@
   const depositable = $derived.by(() => {
     if (!registry) return [];
     return (inventory.data?.Stacks ?? [])
-      .filter((stack) => stack.BackpackQuantity + stack.StashQuantity > 0)
+      .filter((stack) => stack.Quantity > 0)
       .map((stack) => ({
         definition: registry!.itemsByBaseId.get(stack.ItemId),
         baseId: stack.ItemId,
-        quantity: stack.BackpackQuantity + stack.StashQuantity,
+        quantity: stack.Quantity,
       }))
       .filter((row) => row.definition !== undefined)
       .sort((a, b) => a.baseId.localeCompare(b.baseId));

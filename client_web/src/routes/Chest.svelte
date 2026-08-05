@@ -59,7 +59,7 @@
   const equipment = $derived(((inventory.data?.Equipment ?? []) as InventoryEquipment[]));
   const materials = $derived(
     ((inventory.data?.Stacks ?? []) as InventoryStack[]).filter(
-      (s) => s.BackpackQuantity + s.StashQuantity > 0,
+      (s) => s.Quantity > 0,
     ),
   );
 
@@ -265,7 +265,7 @@
         <h3>Materials</h3>
         <ul class="rows">
           {#each visibleMaterials as stack (stack.ItemId)}
-            {@const total = stack.BackpackQuantity + stack.StashQuantity}
+            {@const total = stack.Quantity}
             <li>
               <ItemIcon baseItemId={stack.ItemId} name={prettifyBaseId(stack.ItemId)} size="sm" />
               <span class="name">{prettifyBaseId(stack.ItemId)}</span>

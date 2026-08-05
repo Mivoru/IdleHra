@@ -72,8 +72,8 @@ export interface InventoryEquipment {
 
 export interface InventoryStack {
   ItemId: string;
-  BackpackQuantity: number;
-  StashQuantity: number;
+  /** How many the player has. One store - see InventoryStackResponse. */
+  Quantity: number;
 }
 
 export interface InventorySnapshot {

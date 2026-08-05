@@ -69,7 +69,7 @@
       // So the reasoning was inverted - hiding the stash did not avoid a button
       // that does nothing, it hid a potion the server would have been happy to
       // drink. Same defect the larder had, and the chest already reads both.
-      const quantity = stack.BackpackQuantity + stack.StashQuantity;
+      const quantity = stack.Quantity;
       if (quantity <= 0) continue;
 
       rows.push({

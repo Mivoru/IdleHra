@@ -1333,8 +1333,22 @@ namespace FolkIdle.Server.Network
         private sealed class InventoryStackResponse
         {
             public string ItemId { get; set; } = string.Empty;
-            public long BackpackQuantity { get; set; }
-            public long StashQuantity { get; set; }
+            /// <summary>
+            /// How many the player has, full stop.
+            ///
+            /// Modul: ONE NUMBER. This used to be BackpackQuantity and
+            /// StashQuantity, mirroring two tables the server had already
+            /// stopped distinguishing - every spend goes through
+            /// TryConsumeUnifiedAsync, which draws from both and refuses only
+            /// when the SUM is short. Exposing the split made three screens
+            /// filter on one half and hide stock the server would have taken:
+            /// the larder, the boosts and the guild deposit, each found
+            /// separately, each the same bug.
+            ///
+            /// The old fields are gone rather than deprecated. A field that
+            /// still exists is a field someone will read.
+            /// </summary>
+            public long Quantity { get; set; }
         }
 
         private sealed class PlayerInventorySnapshotResponse
@@ -3543,10 +3557,9 @@ namespace FolkIdle.Server.Network
                     });
                 }
 
-                // Backpack and stash are merged by item id so the UI can show
-                // one row per material with both tiers side by side, which is
-                // how the player actually spends them (unified consumption,
-                // backpack first).
+                // Both tables are summed into one row per item. They are one
+                // store as far as every consumer is concerned - see
+                // InventoryStackResponse.Quantity.
                 var stacksByItemId = new System.Collections.Generic.Dictionary<string, InventoryStackResponse>(commodities.Count + stash.Count);
 
                 for (int i = 0; i < commodities.Count; i++)
@@ -3557,7 +3570,7 @@ namespace FolkIdle.Server.Network
                         stack = new InventoryStackResponse { ItemId = row.ItemId };
                         stacksByItemId[row.ItemId] = stack;
                     }
-                    stack.BackpackQuantity += row.Quantity;
+                    stack.Quantity += row.Quantity;
                 }
 
                 for (int i = 0; i < stash.Count; i++)
@@ -3568,7 +3581,7 @@ namespace FolkIdle.Server.Network
                         stack = new InventoryStackResponse { ItemId = row.ItemId };
                         stacksByItemId[row.ItemId] = stack;
                     }
-                    stack.StashQuantity += row.Quantity;
+                    stack.Quantity += row.Quantity;
                 }
 
                 response.Stacks.AddRange(stacksByItemId.Values);

@@ -135,19 +135,35 @@ namespace FolkIdle.Server.Domain.Economy
                 return 0L;
             }
 
-            var stashRows = await db.VillageStashInstances
-                .FromSqlInterpolated($"SELECT * FROM \"VillageStashInstances\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {itemId} FOR UPDATE")
+            // Modul: ONE STORE. This wrote VillageStashInstances, the second of
+            // two tables holding the same thing - a player id, an item id and a
+            // quantity. Nothing downstream distinguished them: every spend goes
+            // through TryConsumeUnifiedAsync, which draws from both and refuses
+            // only when the SUM is short, and the inventory endpoint added them
+            // together before answering.
+            //
+            // The split was never a feature, but it leaked into the client as
+            // two numbers and produced the same bug three times - the larder,
+            // the boosts and the guild deposit each filtered on one half and
+            // hid stock the server would have taken. Writing one table is what
+            // stops a fourth.
+            //
+            // VillageStashInstances is drained by a migration and kept empty;
+            // TryConsumeUnifiedAsync still reads it so a row that somehow
+            // survives is spent rather than stranded.
+            var rows = await db.CommodityRecords
+                .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {itemId} FOR UPDATE")
                 .ToListAsync();
-            var stash = stashRows.Count > 0 ? stashRows[0] : null;
+            var existing = rows.Count > 0 ? rows[0] : null;
 
-            if (stash == null)
+            if (existing == null)
             {
-                db.VillageStashInstances.Add(new VillageStashInstance { PlayerId = playerId, ItemId = itemId, Quantity = quantity });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = itemId, Quantity = quantity });
             }
             else
             {
-                stash.Quantity += quantity;
-                db.VillageStashInstances.Update(stash);
+                existing.Quantity += quantity;
+                db.CommodityRecords.Update(existing);
             }
 
             return 0L;

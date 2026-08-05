@@ -39,7 +39,7 @@
   // invisible and unloadable even though the server would have taken it.
   const availableFood = $derived(
     (inventory.data?.Stacks ?? [])
-      .map((s) => ({ ...s, total: s.BackpackQuantity + s.StashQuantity }))
+      .map((s) => ({ ...s, total: s.Quantity }))
       .filter((s) => isFood(s.ItemId) && s.total > 0)
       .map((s) => ({
         baseId: s.ItemId,
