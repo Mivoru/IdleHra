@@ -147,6 +147,54 @@ CI depends on would have failed the build on correct content - invisible for as
 long as the interpreter probe was wrong. Item ids are positive and unique now;
 gaps are legal and documented as such in the script's own header.
 
+## Monster attack outgrows armour after region 3 - OPEN, and it is the big one
+
+Found while sizing the gathering economy, and much more important than what it
+was found looking for. The strongest REGULAR monster of each region, against
+the best armour authored for that region:
+
+    region        1      2      3       4       5
+    attack       32     96    330    1200    4800
+    armour       40    120    360    1080    3240
+    net hit    floor  floor  floor     120    1560
+
+Through region 3 armour exceeds attack, every hit lands on the 1 HP floor, and
+the larder is almost decorative. From region 4 it does not, and incoming damage
+goes from nothing to more than a player's whole health pool in a handful of
+swings. This is not a curve with a steep end; it is a cliff with nothing before
+it.
+
+It surfaces as a food problem - fishing was 756% of region 5's playtime, and is
+89% after food was made a share of max HP - but food is the symptom. No larder
+can answer a hit that takes a large fraction of the bar, and a fish that could
+would make food decorative again from the other side.
+
+Closing it means changing one of three things, and it is a design decision:
+monster attack power, the authored armour curve, or how max HP scales.
+`Test_Gathering_ShareOfPlaytimeStaysInBand` prints the measured share every run
+and holds regions 4-5 at "no worse than today" - a ratchet, not an
+endorsement. It fails the moment someone improves it, which is when the comment
+in it should go.
+
+**Gathering itself is now sized.** Every tool recipe cost a flat 8 + 4 units
+regardless of tier, so the entire ten-tier ladder was 360 units for the whole
+game. Costs now ramp with the tier, sized from the pacing model, and wood and
+ore land at 11-15% of each region. Equipment is monster loot and tools are
+crafted: `CraftingReceptuary` and `ExecuteEquipmentCraftingAsync` - a second
+crafting system that turned ore into armour - are gone, and
+`Test_Crafting_ProducesToolsAndNothingWearable` keeps them gone.
+
+Two fidelity defects fell out of the same measurement, both the familiar shape
+of "the live tick learned something and the projection beside it did not":
+offline healed a flat 50 HP per food unit while the live tick had moved to
+FoodRegistry's 40-to-82,000 scale, and the warp path fed gathering the FORGE
+BUILDING'S LEVEL instead of the equipped tool - so every hour spent offline
+threw away the entire reason to craft tools. A larder stocked with
+gold_ore_crafting_material healed for years in three test fixtures, because a
+flat constant never asks what is in the slot.
+
+## The older measurement, kept for the reasoning
+
 **Gathering is now a rounding error.** Measured, per region:
 
     region        1      2       3        4         5

@@ -205,10 +205,17 @@ await page.waitForTimeout(4000);
 await go('Forge');
 {
   const text = await page.evaluate(() => document.body.innerText);
-  // Asserted on the panel headings rather than on item names: the Forge's
-  // stock list is CraftingReceptuary recipes, and which of those exist is
-  // content that legitimately changes.
-  record('forge shows fusion, reroll and stock', /Fusion/.test(text) && /Affix reroll/.test(text) && /Forge stock/.test(text));
+  // Modul: NO MORE "Forge stock". That panel listed the equipment recipes,
+  // and equipment is monster loot now - the Forge fuses and rerolls what you
+  // looted, and recipes live on the Crafting screen with the tool tree.
+  // Asserted on the panel headings rather than on item names, because which
+  // items exist is content that legitimately changes.
+  record('forge shows fusion and reroll', /Fusion/.test(text) && /Affix reroll/.test(text));
+  record(
+    'the forge no longer offers to craft equipment',
+    !/Forge stock/.test(text),
+    'equipment is a drop',
+  );
 
   // Reroll needs an item and an affix picked. The screen's selects are the
   // only way to know which affix index the command should carry.

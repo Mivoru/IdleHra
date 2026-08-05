@@ -141,6 +141,29 @@ namespace FolkIdle.Server.Tests
     {
         private const long SeedBossMaxHp = 50000000L;
 
+        // Modul: A LARDER FULL OF ORE HEALED FOR YEARS.
+        //
+        // Three offline fixtures stocked Food1_ItemId = 1, which is
+        // gold_ore_crafting_material - not food, not edible, and worth nothing
+        // to the live tick, which has always asked FoodRegistry what a slot is
+        // worth. The offline projection did not ask: it healed a flat 50 HP per
+        // unit no matter what the unit was, so an ore-filled larder sustained a
+        // four hour window and the tests passed on it.
+        //
+        // The moment offline started reading the same registry as the live tick
+        // all three went to zero kills, which is the correct answer to the
+        // question they were actually asking. Asked of the registry now, so a
+        // fixture cannot feed a character something it could never eat.
+        private static int FirstEdibleItemId()
+        {
+            foreach (int id in ContentRegistry.RawFishItemIds)
+            {
+                return id;
+            }
+
+            throw new InvalidOperationException("no food in the catalogue to stock a larder with");
+        }
+
         private readonly PostgresTestFixture _fixture;
 
         public HardenedEngineIntegrationTests(PostgresTestFixture fixture)
@@ -1502,7 +1525,7 @@ namespace FolkIdle.Server.Tests
                 // OfflineSimulationEngine.CalculateCombatProjection) - this test
                 // exercises the full-duration reward pipeline, not the
                 // early-halt path (covered separately).
-                Food1_ItemId = 1,
+                Food1_ItemId = FirstEdibleItemId(),
                 Food1_Count = 100000
             };
 
@@ -1555,7 +1578,13 @@ namespace FolkIdle.Server.Tests
             if (expectedIncomingMilliDps > 0.0)
             {
                 double totalIncomingMilliDamage = expectedIncomingMilliDps * elapsedOfflineSeconds;
-                double totalHealCapacityMilliHp = effectiveMilliHp + (100000.0 * 50000.0); // matches payload.Food1_Count above
+                // Modul: asked of FoodRegistry, not the old flat 50 HP per
+                // unit. The engine stopped healing a fixed number of points
+                // when food became a share of max HP; this line was the last
+                // copy of the constant it replaced, and it made the projection
+                // disagree with the engine by three orders of magnitude.
+                double healPerUnitMilliHp = FoodRegistry.GetHealMilliHp(FirstEdibleItemId(), effectiveMilliHp);
+                double totalHealCapacityMilliHp = effectiveMilliHp + (100000.0 * healPerUnitMilliHp); // matches payload.Food1_Count above
                 if (totalIncomingMilliDamage > totalHealCapacityMilliHp)
                 {
                     effectiveElapsedSeconds = totalHealCapacityMilliHp / expectedIncomingMilliDps;
@@ -1654,7 +1683,7 @@ namespace FolkIdle.Server.Tests
                 CurrentXp = 0,
                 SelectedLineageId = 0,
                 InventorySpaceRemaining = 1000,
-                Food1_ItemId = 1,
+                Food1_ItemId = FirstEdibleItemId(),
                 Food1_Count = 100000
             };
 
@@ -1741,12 +1770,22 @@ namespace FolkIdle.Server.Tests
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
         }
 
+        // Modul: A TOOL, NOT A SWORD. This drove
+        // ExecuteEquipmentCraftingAsync, which turned ore into armour - the
+        // second crafting system, removed when equipment became monster loot
+        // and crafting became tools only. The transaction it was actually
+        // testing (materials deducted exactly once, item written in the same
+        // commit) is the same one, so the test moved to the path that remains.
         [Fact]
-        public async Task Test_Forge_TransactionAndResourceDeduction()
+        public async Task Test_Crafting_TransactionAndResourceDeduction()
         {
             const long testPlayerId = 990000001L;
-            const int recipeId = 1;
-            const long initialMaterialQuantity = 50L;
+            const int birchAxeItemId = 408;
+            const long stocked = 500L;
+
+            Assert.True(ContentRegistry.TryGetRecipe(birchAxeItemId, out var recipe));
+            string mat1 = ContentRegistry.GetItemBaseId(recipe.Mat1Id);
+            string mat2 = ContentRegistry.GetItemBaseId(recipe.Mat2Id);
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
@@ -1756,31 +1795,28 @@ namespace FolkIdle.Server.Tests
                     PlayerGuid = Guid.NewGuid(),
                     AuthenticatorToken = Guid.NewGuid()
                 });
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = initialMaterialQuantity });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = mat1, Quantity = stocked });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = mat2, Quantity = stocked });
                 await db.SaveChangesAsync();
             }
 
             var craftingEngine = new CraftingEngine(_fixture.DbContextFactory, _fixture.PlayerRegistry, _fixture.RetryingOptions);
-            await craftingEngine.ExecuteEquipmentCraftingAsync(testPlayerId, recipeId, slotIndex: 0, tickToken: 12345);
+            await craftingEngine.ExecuteCraftingAsync(testPlayerId, birchAxeItemId);
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
 
-            var commodity = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
-            Assert.Equal(initialMaterialQuantity - 10, commodity.Quantity);
+            var firstMaterial = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == mat1);
+            Assert.Equal(stocked - recipe.Mat1Count, firstMaterial.Quantity);
 
-            // Asked of the recipe rather than spelled out - see the same change
-            // in Test_UnifiedMaterialPool_* for why a literal here went stale
-            // the moment the catalogue was cut to its 75 canonical pieces.
-            Assert.True(CraftingReceptuary.TryGetRecipe(recipeId, out var recipe));
-            var equipment = await verifyDb.EquipmentInstances.AsNoTracking()
-                .SingleAsync(e => e.PlayerId == testPlayerId);
-            Assert.Equal(recipe.ResultBaseItemId, equipment.BaseItemId);
-            // Full-Stack Expansion, Part 4: the recipe's TierIndex (1) is
-            // the guaranteed floor; the crafted rarity roll can upgrade
-            // the outcome up to the item's gear-band forge cap.
-            Assert.InRange(equipment.QualityTier, 1, ForgeSplicingEngine.MaxQualityTier);
-            Assert.False(equipment.IsAffixLocked);
+            var secondMaterial = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == mat2);
+            Assert.Equal(stocked - recipe.Mat2Count, secondMaterial.Quantity);
+
+            // The tool itself. Asked of the registry rather than spelled out,
+            // so a repointed recipe does not fail a transaction test.
+            string craftedBaseId = ContentRegistry.GetItemBaseId(birchAxeItemId);
+            Assert.True(ContentRegistry.GetToolKind(craftedBaseId) >= 0);
         }
 
         [Fact]
@@ -5590,7 +5626,7 @@ namespace FolkIdle.Server.Tests
                 // window (see OfflineSimulationEngine.CalculateCombatProjection's
                 // food-depletion model) - matches
                 // Test_OfflineProgression_AnalyticalCalculation's own setup.
-                Food1_ItemId = 1,
+                Food1_ItemId = FirstEdibleItemId(),
                 Food1_Count = 100000
             };
 
@@ -6699,34 +6735,33 @@ namespace FolkIdle.Server.Tests
         {
             const long testPlayerId = 970005001L;
             const long seededQuantity = 12000L;
+            const int birchAxeItemId = 408;
+
+            // Modul: the tool tree, not the equipment recipes. Those are gone -
+            // equipment is monster loot now - but the claim this test makes is
+            // about the POOL, not about what came out of it, so it moved rather
+            // than being deleted.
+            Assert.True(ContentRegistry.TryGetRecipe(birchAxeItemId, out var recipe));
+            string mat1 = ContentRegistry.GetItemBaseId(recipe.Mat1Id);
+            string mat2 = ContentRegistry.GetItemBaseId(recipe.Mat2Id);
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = seededQuantity });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = mat1, Quantity = seededQuantity });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = mat2, Quantity = seededQuantity });
                 await db.SaveChangesAsync();
             }
 
             var craftingEngine = new CraftingEngine(_fixture.DbContextFactory, _fixture.PlayerRegistry, _fixture.RetryingOptions);
-            await craftingEngine.ExecuteEquipmentCraftingAsync(testPlayerId, 1, slotIndex: 0, tickToken: 555);
+            await craftingEngine.ExecuteCraftingAsync(testPlayerId, birchAxeItemId);
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
             var commodity = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == mat1);
 
-            Assert.Equal(seededQuantity - 10L, commodity.Quantity);
+            Assert.Equal(seededQuantity - recipe.Mat1Count, commodity.Quantity);
             Assert.True(commodity.Quantity > 9999L, "A material quantity beyond the legacy stack cap must survive intact - no cap exists on the unified pool.");
-
-            // Modul: asked of the recipe, not spelled out. This asserted the
-            // literal "copper_greatsword_...", which the catalogue cut removed
-            // along with 110 other legacy pieces - so recipe 1 was repointed at
-            // a canonical item and this line started failing on content that had
-            // been correctly updated. What the test is actually about is that
-            // the craft produced the recipe's OWN output, which survives the
-            // next repointing too.
-            Assert.True(CraftingReceptuary.TryGetRecipe(1, out var recipeOne));
-            var crafted = await verifyDb.EquipmentInstances.AsNoTracking().SingleAsync(e => e.PlayerId == testPlayerId);
-            Assert.Equal(recipeOne.ResultBaseItemId, crafted.BaseItemId);
         }
 
         // Modul: Advanced Economy Refactoring, Part 2.1/4. Trade license -
@@ -7136,30 +7171,38 @@ namespace FolkIdle.Server.Tests
         public async Task Test_UnifiedStash_CraftingDrainsBackpackFirstThenStashAndStackCapHolds()
         {
             const long testPlayerId = 970006101L;
+            const int birchAxeItemId = 408;
+
+            // The tool tree, since equipment is no longer craftable. The claim
+            // is about consumption spanning both tables, so what is being made
+            // does not matter - only that its cost exceeds the backpack alone.
+            Assert.True(ContentRegistry.TryGetRecipe(birchAxeItemId, out var toolRecipe));
+            string oreId = ContentRegistry.GetItemBaseId(toolRecipe.Mat2Id);
+            string logId = ContentRegistry.GetItemBaseId(toolRecipe.Mat1Id);
+            long inBackpack = toolRecipe.Mat2Count - 6;
+            long inStash = 100L;
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = 4L });
-                db.VillageStashInstances.Add(new VillageStashInstance { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = 100L });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = oreId, Quantity = inBackpack });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = logId, Quantity = toolRecipe.Mat1Count });
+                db.VillageStashInstances.Add(new VillageStashInstance { PlayerId = testPlayerId, ItemId = oreId, Quantity = inStash });
                 await db.SaveChangesAsync();
             }
 
-            // Recipe 1 costs 10 copper_ore - backpack holds only 4, so the
-            // craft must pull 6 from the stash.
+            // The backpack is six short, so the craft must pull the remainder
+            // from the legacy stash rows.
             var craftingEngine = new CraftingEngine(_fixture.DbContextFactory, _fixture.PlayerRegistry, _fixture.RetryingOptions);
-            await craftingEngine.ExecuteEquipmentCraftingAsync(testPlayerId, 1, slotIndex: 0, tickToken: 777);
+            await craftingEngine.ExecuteCraftingAsync(testPlayerId, birchAxeItemId);
 
             await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                Assert.True(await verifyDb.EquipmentInstances.AsNoTracking().AnyAsync(e => e.PlayerId == testPlayerId),
-                    "The craft must succeed from the combined Backpack+Stash balance.");
-
-                var backpack = await verifyDb.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
+                var backpack = await verifyDb.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == oreId);
                 Assert.Equal(0L, backpack.Quantity);
 
-                var stash = await verifyDb.VillageStashInstances.AsNoTracking().SingleAsync(s => s.PlayerId == testPlayerId && s.ItemId == "copper_ore");
-                Assert.Equal(94L, stash.Quantity);
+                var stash = await verifyDb.VillageStashInstances.AsNoTracking().SingleAsync(s => s.PlayerId == testPlayerId && s.ItemId == oreId);
+                Assert.Equal(inStash - 6L, stash.Quantity);
             }
 
             // Modul: unlimited village chest. This block used to assert the
@@ -7172,7 +7215,7 @@ namespace FolkIdle.Server.Tests
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-                long overflow = await InventoryAndStashSystem.DepositToStashAsync(db, testPlayerId, "copper_ore", 20000L);
+                long overflow = await InventoryAndStashSystem.DepositToStashAsync(db, testPlayerId, oreId, 20000L);
                 await db.SaveChangesAsync();
                 await tx.CommitAsync();
                 Assert.Equal(0L, overflow);
@@ -7184,12 +7227,12 @@ namespace FolkIdle.Server.Tests
                 // left exactly as the craft left it - a deposit is not a
                 // migration and must not quietly rewrite rows it did not create.
                 var deposited = await verifyDb.CommodityRecords.AsNoTracking()
-                    .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
+                    .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == oreId);
                 Assert.Equal(20000L, deposited.Quantity);
 
                 var legacy = await verifyDb.VillageStashInstances.AsNoTracking()
-                    .SingleAsync(s => s.PlayerId == testPlayerId && s.ItemId == "copper_ore");
-                Assert.Equal(94L, legacy.Quantity);
+                    .SingleAsync(s => s.PlayerId == testPlayerId && s.ItemId == oreId);
+                Assert.Equal(inStash - 6L, legacy.Quantity);
             }
 
             // And a chest that big is still spendable without carrying anything
@@ -7198,7 +7241,7 @@ namespace FolkIdle.Server.Tests
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 await using var tx = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-                bool consumed = await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, testPlayerId, "copper_ore", 15000L);
+                bool consumed = await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, testPlayerId, oreId, 15000L);
                 Assert.True(consumed, "Materials sitting in the Village Chest must be spendable directly.");
                 await db.SaveChangesAsync();
                 await tx.CommitAsync();
@@ -7211,12 +7254,12 @@ namespace FolkIdle.Server.Tests
                 // the player has one number, and which row it came out of is an
                 // implementation detail the fold exists to stop mattering.
                 long commodity = await verifyDb.CommodityRecords.AsNoTracking()
-                    .Where(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore")
+                    .Where(c => c.PlayerId == testPlayerId && c.ItemId == oreId)
                     .SumAsync(c => c.Quantity);
                 long legacy = await verifyDb.VillageStashInstances.AsNoTracking()
-                    .Where(s => s.PlayerId == testPlayerId && s.ItemId == "copper_ore")
+                    .Where(s => s.PlayerId == testPlayerId && s.ItemId == oreId)
                     .SumAsync(s => s.Quantity);
-                Assert.Equal(94L + 20000L - 15000L, commodity + legacy);
+                Assert.Equal(inStash - 6L + 20000L - 15000L, commodity + legacy);
             }
         }
 
@@ -10147,17 +10190,27 @@ namespace FolkIdle.Server.Tests
 
             // Modul: was recipe 184 (copper_bar, 3 tin_ore + 1 coal_node).
             // Smelting went with the invented ores it was built on - see the
-            // recipe table's own note. 408 is the Birch Axe: 8 birch logs and
-            // 4 copper ore, both of which a Sunlit Plains node actually drops.
+            // recipe table's own note. 408 is the Birch Axe, whose materials
+            // are birch logs and copper ore, both of which a Sunlit Plains node
+            // actually drops.
+            //
+            // Modul: the stocked amount is DERIVED from the recipe now. It was
+            // a literal 10, which covered an 8 + 4 cost and stopped covering it
+            // the moment tool costs were scaled to the season curve - so a test
+            // about consuming materials by BaseId started failing on the price
+            // of an axe. Stock what the recipe asks for plus a margin, and the
+            // next repricing cannot reach this test at all.
             Assert.True(ContentRegistry.TryGetRecipe(408, out var recipe));
             string mat1BaseId = ContentRegistry.GetItemBaseId(recipe.Mat1Id);
             string mat2BaseId = ContentRegistry.GetItemBaseId(recipe.Mat2Id);
+            long stockedMat1 = recipe.Mat1Count + 10L;
+            long stockedMat2 = recipe.Mat2Count + 10L;
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = mat1BaseId, Quantity = 10L });
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = mat2BaseId, Quantity = 10L });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = mat1BaseId, Quantity = stockedMat1 });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = mat2BaseId, Quantity = stockedMat2 });
                 await db.SaveChangesAsync();
             }
 
@@ -10177,8 +10230,8 @@ namespace FolkIdle.Server.Tests
                 .Where(c => c.PlayerId == testPlayerId && c.ItemId == mat2BaseId)
                 .Select(c => (long?)c.Quantity).FirstOrDefaultAsync() ?? 0L;
 
-            Assert.Equal(10L - recipe.Mat1Count, remainingMat1);
-            Assert.Equal(10L - recipe.Mat2Count, remainingMat2);
+            Assert.Equal(stockedMat1 - recipe.Mat1Count, remainingMat1);
+            Assert.Equal(stockedMat2 - recipe.Mat2Count, remainingMat2);
 
             Assert.True(_fixture.PlayerRegistry.CraftingCompletionQueue.TryDequeue(out var completion),
                 "A successful craft must enqueue a completion notification.");
