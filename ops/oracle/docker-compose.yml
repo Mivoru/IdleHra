@@ -65,7 +65,13 @@ services:
         # Vite INLINES this, so it is a build argument and not an environment
         # variable: a static bundle has no runtime configuration. Changing the
         # hostname means rebuilding this image, not restarting it.
-        VITE_FOLKIDLE_SERVER: "https://92-5-0-94.sslip.io"
+        #
+        # Both hostnames serve the game (see the Caddyfile), but the bundle can
+        # only be built pointing at one. It points at the NAME rather than the
+        # sslip.io address so that a player who arrives by the old link still
+        # ends up talking to the address worth sharing - and so that the day
+        # this machine changes IP, only DNS has to move.
+        VITE_FOLKIDLE_SERVER: "https://folkidle.duckdns.org"
     restart: unless-stopped
     ports:
       - "80:80"

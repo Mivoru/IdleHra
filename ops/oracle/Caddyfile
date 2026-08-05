@@ -2,18 +2,25 @@
 # itself and proxies a WebSocket upgrade without any extra configuration, which
 # is most of what nginx would have needed hand-written here.
 #
-# 92-5-0-94.sslip.io resolves to this machine's public IP by construction -
-# sslip.io answers any A-record-shaped name with the address in it. That is the
-# whole reason it is here: Let's Encrypt will not issue a certificate for a bare
-# IP, the page is served over https, and an https page cannot open a ws://
-# socket. Swap this for a real domain by changing this line and rebuilding the
-# web image with VITE_FOLKIDLE_SERVER set to match; nothing else refers to it.
+# folkidle.duckdns.org is the address to give people. 92-5-0-94.sslip.io is
+# kept beside it and is not dead weight: it is how this machine was reachable
+# before the name existed, so every link already shared still works, and it
+# needs no DNS provider to keep answering. sslip.io resolves any
+# A-record-shaped name to the address inside it, which is why it could serve as
+# a hostname at all - Let's Encrypt will not issue for a bare IP, the page is
+# served over https, and an https page cannot open a ws:// socket.
+#
+# Caddy obtains a certificate for BOTH names from this one block. The client
+# talks to whichever origin served it, so a player on either address stays on
+# it; VITE_FOLKIDLE_SERVER in docker-compose.yml decides which one the built
+# bundle points its API and WebSocket at, and it is a BUILD ARG - Vite inlines
+# it, so changing the address is a rebuild of the web image, never a restart.
 #
 # Certificate issuance needs port 80 reachable from the internet for the HTTP-01
 # challenge - BOTH the instance iptables and the Oracle Security List. Opening
 # one and not the other looks exactly like a dead server.
 
-92-5-0-94.sslip.io {
+folkidle.duckdns.org, 92-5-0-94.sslip.io {
 	encode gzip
 
 	# THESE ARE `handle` BLOCKS, AND THAT IS LOAD-BEARING.
