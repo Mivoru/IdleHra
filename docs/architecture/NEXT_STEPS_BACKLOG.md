@@ -205,18 +205,52 @@ regions in SECONDS rather than in hit points, because a region-5 monster has
 fewer hit points than a region-1 one used to and is far harder - the player's
 weapon grew 80x in between.
 
-Fishing went from 756% of region 5's playtime to 41%. Two things are worth
-knowing before the next pass:
+## The health pool, finally measured - and the pair it decided
 
-- **The remaining gap depends on a number nobody has measured.** Food heals a
-  share of MAX HP, and the model stands in 100 + armour for a real player's
-  health pool because the real curve (CON growth plus flat_hp affixes) has
-  never been measured. Tuning further against that guess is guessing twice.
-- **Damage at depth is crit-driven.** With attack at roughly the armour it
-  faces, ordinary hits land on the 1 HP floor and the crits carry all of it.
-  That makes sustain lumpy rather than steady, which is a different feel from
-  the one the numbers suggest. Raising attack above armour fixes the feel and
-  costs food; it is a real trade, not an oversight.
+Every attempt to size the larder had stood in a guess for one number: what a
+player's health bar actually is. `HowLongARegionTakes` prints it now, because
+it already builds the tier-appropriate character the question is about.
+
+**The bar is 100 HP at level 1 and about 2,500 by region 5.** It grows through
+CON, which `RaceAttributeGrowth` adds at roughly two points a level and
+`StatsCalculator` pays at 15 HP each. Nothing else moves it except `flat_hp`
+affixes. Note the first reading of that print said 100 HP in EVERY region -
+that was the fixture setting `CurrentLevel` directly instead of levelling up,
+not the game. A number that surprising is worth re-deriving before acting on.
+
+With the pool known, the arithmetic stops being a matter of taste:
+
+    one fish restores (tier x 12%) of the bar
+    for gathering to stay near a fifth of playtime,
+    one fish must cover ~35 seconds of combat
+    => a normal hit may take about 1.6% of the bar
+
+So **attack and the heal move together or not at all.** Raising attack above
+armour - which is what stops damage being entirely crit-driven, and it was,
+because a hit equal to the armour it faces lands on the 1 HP floor unless it
+crits - spends food one for one. Both moved:
+
+- monster attack is `region armour + 1.6% of that region's health pool`, so an
+  ordinary swing lands for a real amount in every region rather than nothing
+  followed by everything
+- `FoodRegistry.HealPercentOfMaxHpPerTier` is 12, up from 5. Not 20, which
+  would let a tier-5 fish restore the whole bar and make every deeper tier
+  worthless - the wrong shape for a profession the player should keep
+  investing in.
+
+Measured result: gathering is **33-39% of playtime, flat across regions 2-5**.
+The cliff is gone; the share is at the top of the one-fifth-to-one-third band
+rather than the middle, and the honest reason to leave it there is that the
+health pool model still ignores `flat_hp` affixes, which can only make the bar
+bigger and the share smaller.
+
+**Still open, and now clearly stated: armour subtracts rather than reduces.**
+Net damage is `attack - armour`, so it swings wildly with how well geared a
+particular player is - the same monster is harmless to one player and lethal to
+another a few pieces behind. Every number above is therefore tuned for a player
+in best-in-slot gear for their region. A percentage-based mitigation would make
+all of this robust instead of finely balanced, and it is a change to
+`CombatDamageModel` rather than to data.
 
 **Known flake, do not chase it as a regression.**
 `Test_BreedingPair_GrantedRacePairCanBreedAndSameSexIsRefused` failed once in a

@@ -334,6 +334,36 @@ namespace FolkIdle.Server.Tests
             double avgXp = xpPerKill / 4.0;
             double avgGold = goldPerKill / 4.0;
 
+            // Modul: THE HEALTH POOL, measured rather than assumed.
+            //
+            // Every attempt to size the food economy so far has stood in a
+            // guess for this - "100 plus armour rating" - because nobody had
+            // ever computed what a player at a region actually has. It decides
+            // the whole larder: food heals a share of max HP, and incoming
+            // damage is only meaningful as a fraction of the bar it empties.
+            // Printed here because this test already builds the tier-
+            // appropriate character the question is about.
+            {
+                var poolPayload = FreshPayload(firstMonster);
+                poolPayload.CurrentLevel = startLevel;
+                poolPayload.CachedAffixTotals.FlatAttack = weaponAttack;
+                poolPayload.CachedAffixTotals.FlatDefense = armourDefence;
+                var poolStats = StatsCalculator.Calculate(poolPayload.STR, poolPayload.DEX, poolPayload.CON, poolPayload.LCK, 0, 0, 1, 0, 0, 0, 0, 0, poolPayload.CachedAffixTotals, false, 0, 0, poolPayload.CachedSetIds);
+                var poolLineage = ProgressionEngine.Lineages[poolPayload.SelectedLineageId];
+                long baseMilliHp = 100_000L;
+                long effectiveMilliHp = baseMilliHp
+                    + (baseMilliHp * poolLineage.HpScalePerLevelPct * poolPayload.CurrentLevel / 100)
+                    + (poolStats.MaxHp * 1000L);
+
+                var strongest = ContentRegistry.Monsters[firstMonster + 3 - 1];
+                long netMilliPerHit = Math.Max(1000L, (strongest.AttackPower * 1000L) - (poolStats.FlatPhysicalArmor * 1000L));
+                double incomingPerSecond = netMilliPerHit * (1000.0 / strongest.AttackIntervalMs);
+
+                _output.WriteLine(
+                    $" region {region}: health pool {effectiveMilliHp / 1000.0,10:N0} hp, armour {poolStats.FlatPhysicalArmor,6}, " +
+                    $"strongest regular hits {netMilliPerHit / 1000.0,8:N0} net = {incomingPerSecond / effectiveMilliHp:P2} of the bar per second");
+            }
+
             // XP the region's twenty levels demand, from the real curve.
             long xpNeeded = 0;
             for (int level = startLevel - 1; level < startLevel + 19; level++)

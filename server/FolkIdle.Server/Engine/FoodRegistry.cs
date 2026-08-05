@@ -121,7 +121,25 @@ namespace FolkIdle.Server.Engine
         // Tier still matters, and matters more than it did: a better fish is a
         // bigger share as well as a bigger number, so the reason to fish deeper
         // water is that you spend less time fishing.
-        public const int HealPercentOfMaxHpPerTier = 5;
+        // Modul: 10, was 5.
+        //
+        // Raised as one half of a pair. Monster attack now sits ABOVE the
+        // armour it faces, so ordinary hits land for a real amount instead of
+        // the 1 HP floor with the crits carrying everything - which reads as
+        // steady pressure rather than a lottery. That change spends food
+        // one-for-one, and the health pool it is spent against is now measured
+        // rather than guessed: CON grows about two points a level and pays 15
+        // HP each, so a character runs roughly 100 HP at the start of the game
+        // and 2,500 by region 5.
+        //
+        // For gathering to stay near a fifth of playtime, one fish has to cover
+        // something like thirty-five seconds of combat. At five percent a tier
+        // it covered ten. Twelve buys the attack change without handing the
+        // larder the whole game, and it keeps deeper water worth fishing: at
+        // twenty a tier-5 fish would already restore the whole bar and every
+        // tier above it would be wasted, which is the wrong shape for a
+        // profession the player is meant to keep investing in.
+        public const int HealPercentOfMaxHpPerTier = 12;
 
         /// <summary>
         /// What one unit of this food restores to a character with the given

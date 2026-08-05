@@ -1,0 +1,23 @@
+# FolkIdle
+#
+# There was no robots.txt at all, which is not the same as an empty one: the
+# SPA fallback answered /robots.txt with index.html, so a crawler asking what
+# it may read got a page of HTML and a 200. Everything here is public and
+# there is nothing to hide, so the answer is simply yes.
+#
+# A real file rather than a Caddy route on purpose - Vite copies public/ into
+# the build, and `try_files {path} /index.html` finds it before the fallback
+# runs. See ops/oracle/Caddyfile on why the ordering of those handle blocks is
+# load-bearing.
+#
+# Add a Sitemap line here once the game has a settled hostname. It is a single
+# page today, so a sitemap would list exactly one URL and tell a crawler
+# nothing it could not find by fetching that URL.
+
+User-agent: *
+Allow: /
+
+# The API and the game data are not pages. Crawling them costs the server real
+# work and produces nothing anyone would want in a search result.
+Disallow: /api/
+Disallow: /gamedata/
