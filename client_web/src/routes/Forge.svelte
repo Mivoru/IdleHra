@@ -264,8 +264,9 @@
   <section class="panel">
     <h2>Affix reroll</h2>
     <p class="dim small">
-      Rerolls one affix on one item. Value and stat rerolls cost gold; a rarity
-      upgrade is the only operation priced in Diamonds.
+      Rerolls one affix on one item, for gold. Its stat, its rarity and its
+      value are all rolled fresh together - so it can come out worse. The other
+      affixes on the item are untouched.
     </p>
 
     <label>

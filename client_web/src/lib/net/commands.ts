@@ -526,7 +526,7 @@ export function assignCharacterActivity(
 // Affix reroll
 // ---------------------------------------------------------------------------
 
-/** RerollOperation. UpgradeRarity is the only one priced in Diamonds. */
+/** RerollOperation. One member: the reroll, priced in gold. */
 // Modul: ONE REROLL, AND IT COSTS GOLD.
 //
 // There were three - value, stat and rarity - which split one decision across
