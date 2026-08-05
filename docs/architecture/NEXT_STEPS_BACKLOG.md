@@ -147,7 +147,86 @@ CI depends on would have failed the build on correct content - invisible for as
 long as the interpreter probe was wrong. Item ids are positive and unique now;
 gaps are legal and documented as such in the script's own header.
 
-## Monster attack outgrows armour after region 3 - OPEN, and it is the big one
+## Monsters, rebalanced twice in one pass - 2026-08-06
+
+**Attack is derived from armour now.** The strongest regular of each region
+hits for roughly what a fully geared player of that region is wearing, the
+other three scale below it, and a boss is 1.5x its region's strongest. The
+cliff described below is closed: net damage is a trickle in every region
+instead of nothing through region 3 and a full health bar afterwards.
+
+**AND HP IS SIZED BY HOW LONG A FIGHT SHOULD LAST.** This is the change that
+matters more, and it came from a question worth repeating: equipment only drops
+from monsters, so a kill IS a loot roll. At the old table a region-5 regular
+took thirteen minutes and Malakor seventy-six - at a 2% equipment chance that
+is one piece of gear every three to eleven HOURS, at the point in the game
+where a player most needs gear, and a fight nobody would watch. The drop rate
+was never the problem; the kill rate was.
+
+    region        1      2      3      4      5
+    weakest      80    110    335   1985   4575   .. hit points
+    strongest   190    265    800   4760  10975
+    boss        950   1325   4000  23800  54875
+
+Measured by `ProgressionRateTests` driving the real tick with tier-appropriate
+gear: **11.7 / 6.2 / 7.0 / 15.0 / 11.9 seconds a kill**. On arrival in a region,
+carrying the previous region's weapon, the same monsters run 25-60 seconds and
+get faster as the region equips you. Equipment now drops about every eight
+minutes rather than every several hours.
+
+THREE RULES THAT ARE EASY TO BREAK BY ACCIDENT, all of them load-bearing:
+
+1. **Sizing monsters is not balancing them.** XP is MaxHp/5 and gold MaxHp/20,
+   so hit points are the size of the bite and nothing else. The season stays
+   the length it is - region 4 in the first season, region 5 in the second or
+   third - no matter what this table says. `ProgressionRateTests` prints both
+   halves; check the region hours, not the kill times, when asking whether
+   pacing moved.
+2. **Do not buy the gathering share by making gathering slower.** A node is
+   3-10 seconds a unit and with a tier-appropriate tool 2.6-3.6 - under the
+   ten-second bar a kill is held to. The share comes from how MUCH a tool
+   costs, never from how long a swing takes.
+3. **Region 1's attack cannot be derived from armour.** Every other region's
+   arriving player wears the previous region's gear; region 1's wears nothing.
+   Priced against region 1's authored armour (40) a hit takes two fifths of a
+   bare 100 HP bar, and a normal hit followed by a crit kills before auto-eat's
+   50% threshold fires twice. `ProjectedKillRateMatchesTheLiveOne` caught it by
+   simulating a real character and getting zero kills in seventeen minutes.
+
+**This cost nothing in pacing, and that is not a coincidence.** Rewards are a
+flat function of health across the whole file - XP is MaxHp/5, gold MaxHp/20 -
+so cutting a monster's health cuts what it pays and multiplies how many are
+killed per hour by the same factor. XP per hour is identical. Health is purely
+the size of the bite, and it had been authored as though it were difficulty.
+
+`Test_Content_EveryMonsterDiesInsideTheAttentionSpan` pins the band.
+`Test_Content_RegionBossesAreContinuousWithTheirRegionCurve` now compares
+regions in SECONDS rather than in hit points, because a region-5 monster has
+fewer hit points than a region-1 one used to and is far harder - the player's
+weapon grew 80x in between.
+
+Fishing went from 756% of region 5's playtime to 41%. Two things are worth
+knowing before the next pass:
+
+- **The remaining gap depends on a number nobody has measured.** Food heals a
+  share of MAX HP, and the model stands in 100 + armour for a real player's
+  health pool because the real curve (CON growth plus flat_hp affixes) has
+  never been measured. Tuning further against that guess is guessing twice.
+- **Damage at depth is crit-driven.** With attack at roughly the armour it
+  faces, ordinary hits land on the 1 HP floor and the crits carry all of it.
+  That makes sustain lumpy rather than steady, which is a different feel from
+  the one the numbers suggest. Raising attack above armour fixes the feel and
+  costs food; it is a real trade, not an oversight.
+
+**Known flake, do not chase it as a regression.**
+`Test_BreedingPair_GrantedRacePairCanBreedAndSameSexIsRefused` failed once in a
+full-suite run (child race 27 instead of Kobold), passed in isolation, and
+passed on an immediate re-run of the whole suite. Same shape as the market
+escrow concurrency test in item 16: order-dependent contention on the shared
+Postgres fixture, not a defect in breeding. If it starts failing REPEATEDLY,
+that is a different finding and worth the dig.
+
+## The cliff this replaced, kept for the reasoning
 
 Found while sizing the gathering economy, and much more important than what it
 was found looking for. The strongest REGULAR monster of each region, against

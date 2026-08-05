@@ -7353,19 +7353,46 @@ namespace FolkIdle.Server.Tests
                 Assert.True(hpRatio >= 4.0 && hpRatio <= 6.5,
                     $"Region {region} boss HP is {hpRatio:F1}x its strongest regular; expected 4.0-6.5x.");
 
+                // Modul: 1.3-2.0x, was 2.0-3.5x.
+                //
+                // Monster attack is derived from the region's authored armour
+                // now, so the strongest regular hits for roughly what a fully
+                // geared player is wearing and the net damage is a trickle. At
+                // the old ratio a boss would hit for two to three and a half
+                // times the player's entire armour rating - well past a full
+                // health bar in one swing, which is not a capstone, it is a
+                // coin toss on whether the auto-eat tick lands first.
+                //
+                // At 1.5x the boss deals about half the armour rating per hit:
+                // frightening, survivable with a stocked larder, and still the
+                // hardest thing in its region by a wide margin.
                 double atkRatio = (double)boss.AttackPower / strongestRegular.AttackPower;
-                Assert.True(atkRatio >= 2.0 && atkRatio <= 3.5,
-                    $"Region {region} boss ATK is {atkRatio:F1}x its strongest regular; expected 2.0-3.5x.");
+                Assert.True(atkRatio >= 1.3 && atkRatio <= 2.0,
+                    $"Region {region} boss ATK is {atkRatio:F1}x its strongest regular; expected 1.3-2.0x.");
 
                 // Clearing a region must not drop the player into content that
                 // is easier than what they just beat.
+                //
+                // Modul: measured in TIME, not in hit points. This compared raw
+                // MaxHp across regions, which stopped meaning anything when
+                // monster HP became a function of how long a fight should last:
+                // a region-5 monster has fewer hit points than a region-1 one
+                // did under the old table, and is far harder, because the
+                // player's weapon grew 80x in between. A region is easier or
+                // harder than its neighbour by how long its monsters take to
+                // kill with that region's gear - so that is what is asserted.
                 if (region < 5)
                 {
                     var nextRegionOpener = ContentRegistry.Monsters[firstId + 5 - 1];
-                    Assert.True(boss.MaxHp > nextRegionOpener.MaxHp,
-                        $"Region {region} boss must be tougher than region {region + 1}'s opening monster.");
-                    Assert.True(nextRegionOpener.MaxHp > strongestRegular.MaxHp,
-                        $"Region {region + 1}'s opener must be tougher than region {region}'s strongest regular.");
+
+                    Assert.True(SecondsToKill(boss, region) > SecondsToKill(nextRegionOpener, region + 1),
+                        $"Region {region}'s boss must be a longer fight than region {region + 1}'s opener.");
+
+                    double openerSeconds = SecondsToKill(nextRegionOpener, region + 1);
+                    double previousStrongestSeconds = SecondsToKill(strongestRegular, region);
+                    Assert.True(openerSeconds >= previousStrongestSeconds * 0.35,
+                        $"Region {region + 1}'s opener is {openerSeconds:F0}s against region {region}'s " +
+                        $"strongest at {previousStrongestSeconds:F0}s - the step down is too steep.");
                 }
 
                 // Rewards are a flat function of HP across the whole file, so no
@@ -7697,19 +7724,119 @@ namespace FolkIdle.Server.Tests
         // populated loot table (the first populated MONSTER tables in the
         // codebase), and the gear-band forge caps derived from region
         // tiers hold their documented values.
+        // Modul: A KILL IS A LOOT ROLL, so how long one takes is a design
+        // target rather than a consequence.
+        //
+        // Monster HP used to be authored for its own sake, and the season curve
+        // made the result absurd without anyone noticing: at the floor model a
+        // region-5 regular took thirteen minutes and Malakor took seventy-six.
+        // Equipment only drops from monsters, so that is four drops an hour at
+        // the point in the game where a player most needs gear - and a fight
+        // nobody wants to watch, which matters just as much.
+        //
+        // HP IS FREE TO SET, and that is what makes this fixable rather than a
+        // trade. Rewards are a flat function of HP across the whole file (XP is
+        // MaxHp/5, gold MaxHp/20), so halving a monster's health halves what it
+        // pays and doubles how many of them a player kills per hour. The XP per
+        // hour, and therefore the pacing, is IDENTICAL. Health is purely the
+        // size of the bite.
+        //
+        // So every regular is sized to 20-45 seconds at the floor model - no
+        // affixes, no STR, no set bonuses - which is roughly 7-15 seconds with
+        // the gear a player at that region actually wears. Bosses are five
+        // times their region's strongest regular, so about seventy-five
+        // seconds: a real fight, not an errand.
+        [Fact]
+        public void Test_Content_EveryMonsterDiesInsideTheAttentionSpan()
+        {
+            // Measured first, asserted after, so one monster outside the band
+            // does not hide the other twenty-four. A table is the useful output
+            // of this test even when it passes.
+            var measured = new List<(int Region, int Index, int Id, double Seconds)>();
+            for (int region = 1; region <= 5; region++)
+            {
+                int firstId = 91 + (region - 1) * 5;
+                for (int i = 0; i < 5; i++)
+                {
+                    var monster = ContentRegistry.Monsters[firstId - 1 + i];
+                    measured.Add((region, i, monster.Id, SecondsToKill(monster, region)));
+                }
+            }
+
+            foreach (var row in measured)
+            {
+                Console.WriteLine($"region {row.Region} {(row.Index == 4 ? "BOSS  " : "reg " + row.Index)} " +
+                                  $"id {row.Id} {row.Seconds,8:F0}s on arrival");
+            }
+
+            foreach (var row in measured)
+            {
+                if (row.Index < 4)
+                {
+                    Assert.InRange(row.Seconds, 12.0, 90.0);
+                }
+                else
+                {
+                    Assert.InRange(row.Seconds, 60.0, 600.0);
+                }
+            }
+        }
+
+        // Modul: ASKED OF CombatDamageModel, not re-derived.
+        //
+        // This computed (15 + best weapon) / 1.5s and called it damage, which
+        // is the same private copy of a damage model that has now drifted three
+        // separate times in this codebase. It was wrong in two directions at
+        // once: it ignored MONSTER ARMOUR, which the live tick subtracts from
+        // every swing, and it assumed the player already owns the best weapon
+        // of the region they have only just walked into. Sized against it, the
+        // opening monster of the game came out at a hundred seconds for a
+        // character who owns nothing - the live-tick test next door said so
+        // while this one reported twenty.
+        //
+        // The gear argument is the honest half: a player entering a region
+        // carries the PREVIOUS region's weapon, because gear drops from the
+        // region you are in. So a fight is at its longest on arrival and gets
+        // shorter as the region equips you, and the band below is written for
+        // arrival.
+        private static double SecondsToKill(MonsterDefinition monster, int regionOfArrival)
+        {
+            int carriedWeapon = 0;
+            for (int earlier = 1; earlier < regionOfArrival; earlier++)
+            {
+                foreach (var item in ContentRegistry.ItemDefinitions)
+                {
+                    if (item.RegionTier == earlier && item.FlatAttackPower > carriedWeapon)
+                    {
+                        carriedWeapon = item.FlatAttackPower;
+                    }
+                }
+            }
+
+            var stats = StatsCalculator.Calculate(0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0);
+            long milliAttack = (15L + carriedWeapon) * 1000L;
+            return CombatDamageModel.ExpectedSecondsPerKill(in stats, in monster, milliAttack, 1.0f);
+        }
+
         [Fact]
         public void Test_Content_NewRegionalMonstersAndLootTablesResolve()
         {
             Assert.True(ContentRegistry.Monsters.Length >= 115, "The 25 new regional monsters must be loaded.");
 
+            // Modul: identity, not hit points. These pinned 3,500 and 3,000,000
+            // - authored figures that the kill-time pass replaced wholesale,
+            // because monster HP is now derived from how long a fight should
+            // last rather than authored for its own sake. What this test is
+            // about is that the ids resolve to the right monsters in the right
+            // regions, which no rebalance should ever change.
             var alphaWolf = ContentRegistry.Monsters[95 - 1];
             Assert.Equal(95, alphaWolf.Id);
-            Assert.Equal(3500, alphaWolf.MaxHp);
             Assert.Equal(1, alphaWolf.RegionTier);
+            Assert.True(alphaWolf.MaxHp > 0);
 
             var malakor = ContentRegistry.Monsters[115 - 1];
-            Assert.Equal(3000000, malakor.MaxHp);
             Assert.Equal(5, malakor.RegionTier);
+            Assert.True(malakor.MaxHp > 0);
 
             // Tables live at 501-525 (not the monster ids) - see the
             // ContentRegistry segment block's own comment on the shared
