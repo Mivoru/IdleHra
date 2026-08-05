@@ -218,8 +218,10 @@ export interface MarketListing {
 export interface MarketBrowseFilters {
   /** Substring, not an exact id. Empty means every item. */
   baseItemId?: string;
-  /** Equipment slot index, or -1 for any. */
-  slotIndex?: number;
+  /** Equipment slot indices to include. Empty or omitted means every slot. */
+  slotIndexes?: number[];
+  /** Region tiers 1-5 (the LOCATION the gear belongs to, not its rarity). */
+  tiers?: number[];
   minQualityTier?: number;
   maxQualityTier?: number;
   sortBy?: 'price' | 'rarity' | 'name';
@@ -245,7 +247,8 @@ export interface MarketBrowsePage {
 export function fetchMarketListings(filters: MarketBrowseFilters = {}): Promise<MarketBrowsePage> {
   const query = new URLSearchParams({
     baseItemId: filters.baseItemId ?? '',
-    slotIndex: String(filters.slotIndex ?? -1),
+    slotIndexes: (filters.slotIndexes ?? []).join(','),
+    tiers: (filters.tiers ?? []).join(','),
     minQualityTier: String(filters.minQualityTier ?? 0),
     maxQualityTier: String(filters.maxQualityTier ?? 13),
     sortBy: filters.sortBy ?? 'price',

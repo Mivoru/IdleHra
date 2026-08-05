@@ -103,8 +103,28 @@ namespace FolkIdle.Server.Engine
         {
             /// <summary>Substring match, not equality. Empty means everything.</summary>
             public string BaseItemId = string.Empty;
-            /// <summary>EquipmentSlotEngine slot index, or -1 for any.</summary>
-            public int SlotIndex = -1;
+            /// <summary>
+            /// EquipmentSlotEngine slot indices to include. Empty means every
+            /// slot.
+            ///
+            /// Modul: a SET, not a single index. "Show me helmets" is a rarer
+            /// question than "show me helmets, chests and leggings" - a player
+            /// shopping for armour wants several types at once, and a
+            /// single-value filter made them page through the book once per
+            /// type.
+            /// </summary>
+            public System.Collections.Generic.HashSet<int> SlotIndices = new();
+
+            /// <summary>
+            /// Region tiers (1-5) to include. Empty means every tier.
+            ///
+            /// Resolved from the item's own RegionTier, which is the LOCATION
+            /// its gear belongs to - not QualityTier, which is the 14-step
+            /// rarity of the individual roll. Two different axes that both get
+            /// called "tier" in conversation, and a player asking for "tier 3
+            /// gear" means the Scorched Wasteland set, not a Rare.
+            /// </summary>
+            public System.Collections.Generic.HashSet<int> RegionTiers = new();
             public int MinQualityTier;
             public int MaxQualityTier = 13;
             public bool IsQuarantined;
@@ -137,13 +157,15 @@ namespace FolkIdle.Server.Engine
                 rows = rows.Where(o => EF.Functions.ILike(o.BaseItemId, "%" + needle + "%"));
             }
 
-            // The slot filter is the "helmet / leggings / melee weapon" axis the
-            // browser is built around. It is resolved from the BaseItemId by the
-            // same rule the equip path uses, and it cannot be expressed in SQL:
-            // ResolveSlotIndex is an ordered sequence of substring tests whose
-            // ORDER is the contract. So it is applied in memory, over a bounded
-            // superset rather than the whole book.
-            if (query.SlotIndex >= 0)
+            // The slot and tier filters are the "helmet / leggings / melee
+            // weapon" and "which location's gear" axes the browser is built
+            // around. Neither can be expressed in SQL: ResolveSlotIndex is an
+            // ordered sequence of substring tests whose ORDER is the contract,
+            // and RegionTier lives in the content catalogue rather than on the
+            // order row. So both are applied in memory, over a bounded superset
+            // rather than the whole book.
+            bool filtersInMemory = query.SlotIndices.Count > 0 || query.RegionTiers.Count > 0;
+            if (filtersInMemory)
             {
                 var candidates = await rows
                     .OrderBy(o => o.Price)
@@ -154,10 +176,21 @@ namespace FolkIdle.Server.Engine
                 var matching = new System.Collections.Generic.List<MarketOrderRecord>(candidates.Count);
                 for (int i = 0; i < candidates.Count; i++)
                 {
-                    if (Domain.Combat.EquipmentSlotEngine.ResolveSlotIndex(candidates[i].BaseItemId) == query.SlotIndex)
+                    MarketOrderRecord candidate = candidates[i];
+
+                    if (query.SlotIndices.Count > 0
+                        && !query.SlotIndices.Contains(Domain.Combat.EquipmentSlotEngine.ResolveSlotIndex(candidate.BaseItemId)))
                     {
-                        matching.Add(candidates[i]);
+                        continue;
                     }
+
+                    if (query.RegionTiers.Count > 0
+                        && !query.RegionTiers.Contains(ContentRegistry.GetRegionTierForBaseId(candidate.BaseItemId)))
+                    {
+                        continue;
+                    }
+
+                    matching.Add(candidate);
                 }
 
                 SortInMemory(matching, query);

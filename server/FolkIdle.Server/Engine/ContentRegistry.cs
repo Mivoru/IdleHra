@@ -718,6 +718,35 @@ namespace FolkIdle.Server.Engine
         /// <summary>Whether this id names an item that still exists.</summary>
         public static bool ItemExists(int itemId) => GetItemBaseId(itemId).Length > 0;
 
+        /// <summary>
+        /// Which of the five locations this item's gear belongs to, or 0 when
+        /// the slug names nothing.
+        ///
+        /// The market's tier filter needs this and only has a BaseItemId to go
+        /// on - an order row carries the slug, not the numeric id. Note this is
+        /// RegionTier, the LOCATION, not QualityTier, the 14-step rarity of an
+        /// individual roll. Both get called "tier" in conversation and they are
+        /// different axes: a player asking for tier 3 gear means the Scorched
+        /// Wasteland set, not a Rare.
+        ///
+        /// Linear over a bounded static table, on a browse request rather than
+        /// a tick.
+        /// </summary>
+        public static int GetRegionTierForBaseId(string baseItemId)
+        {
+            if (string.IsNullOrEmpty(baseItemId)) return 0;
+
+            for (int i = 0; i < _itemBaseIds.Length; i++)
+            {
+                if (string.Equals(_itemBaseIds[i], baseItemId, StringComparison.Ordinal))
+                {
+                    return _itemDefinitions[i].RegionTier;
+                }
+            }
+
+            return 0;
+        }
+
         // Modul: single source of truth for "which difficulty region does
         // this monster belong to" - replaces the ((Id - 1) % 30) / 6 + 1
         // arithmetic convention duplicated across NetworkBroadcastSystem,

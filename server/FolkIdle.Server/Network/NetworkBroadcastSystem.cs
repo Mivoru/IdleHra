@@ -1519,6 +1519,28 @@ namespace FolkIdle.Server.Network
         // WebSocket packet - a paginated result set has no natural fixed
         // size, so it does not fit StateUpdatePacket's binary layout the way
         // scalar per-tick fields do.
+        /// <summary>
+        /// Parses "1,3,5" into a bounded set, ignoring anything out of range or
+        /// unparseable rather than rejecting the whole request - a stale client
+        /// sending a slot index that no longer exists (the offhand was 6) should
+        /// see an unfiltered market, not an error.
+        /// </summary>
+        private static System.Collections.Generic.HashSet<int> ParseIdSet(string? raw, int min, int max)
+        {
+            var parsed = new System.Collections.Generic.HashSet<int>();
+            if (string.IsNullOrWhiteSpace(raw)) return parsed;
+
+            foreach (string part in raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (int.TryParse(part, out int value) && value >= min && value <= max)
+                {
+                    parsed.Add(value);
+                }
+            }
+
+            return parsed;
+        }
+
         private sealed class MarketPricePointResponse
         {
             public long Epoch { get; set; }
@@ -1746,10 +1768,15 @@ namespace FolkIdle.Server.Network
                 // rarity for sale", which nobody can ask about a marketplace
                 // they have not seen. No filters at all is the default and it
                 // returns the whole book, paginated.
-                if (!int.TryParse(query["slotIndex"], out int slotIndex))
-                {
-                    slotIndex = -1;
-                }
+                // Modul: a comma-separated SET of slots and of region tiers,
+                // because the filter is a row of checkboxes rather than a
+                // dropdown - "helmets, chests and leggings" is one question, and
+                // a single-value parameter made it three round trips.
+                //
+                // `slotIndex` (singular) is still accepted so an older client
+                // keeps working; it simply becomes a set of one.
+                var slotIndices = ParseIdSet(query["slotIndexes"] ?? query["slotIndex"], 0, EquipmentSlotEngine.SlotCount - 1);
+                var regionTiers = ParseIdSet(query["tiers"], 1, ContentRegistry.LocationCount);
 
                 if (!int.TryParse(query["minQualityTier"], out int minQualityTier))
                 {
@@ -1788,7 +1815,8 @@ namespace FolkIdle.Server.Network
                 var page = await MarketOrderBookEngine.BrowseActiveListingsAsync(db, new MarketOrderBookEngine.MarketBrowseQuery
                 {
                     BaseItemId = baseItemId,
-                    SlotIndex = slotIndex,
+                    SlotIndices = slotIndices,
+                    RegionTiers = regionTiers,
                     MinQualityTier = minQualityTier,
                     MaxQualityTier = maxQualityTier,
                     IsQuarantined = isQuarantined,

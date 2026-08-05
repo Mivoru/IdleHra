@@ -12,7 +12,8 @@
   import { listItemOnMarket, buyMarketListing, placeLimitOrder } from '../lib/net/commands';
   import { loadContent, type ContentRegistry } from '../lib/net/content';
   import { rarityColor, rarityName, MAX_QUALITY_TIER } from '../lib/ui/rarity';
-  import { EQUIPMENT_SLOTS } from '../lib/ui/slots';
+  import { EQUIPMENT_SLOTS, resolveSlotIndex } from '../lib/ui/slots';
+  import { locationName } from '../lib/ui/locations';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import PriceChart from '../lib/ui/PriceChart.svelte';
   import { pushLocalNotice } from '../lib/stores/game';
@@ -43,10 +44,18 @@
   // tier for sale" - a question nobody can ask about a marketplace they have
   // never seen. This is a shop front: filter by what kind of thing it is and
   // how rare, sort it, and page through the rest.
-  const SLOT_FILTERS = [
-    { index: -1, label: 'Everything' },
-    ...EQUIPMENT_SLOTS.map((slot) => ({ index: slot.index, label: slot.label })),
-  ];
+  // Modul: CHECKBOXES, not a dropdown. "Show me helmets, chests and leggings"
+  // is one question a player shopping for armour asks once - a single-value
+  // filter made it three passes through the book. Weapons are split into the
+  // three archetypes here even though they share one equip slot, because
+  // "melee weapon" is what a player is shopping for; the split is presentation
+  // over the same slot index, resolved by the id marker.
+  const TYPE_FILTERS = EQUIPMENT_SLOTS.map((slot) => ({ index: slot.index, label: slot.label }));
+
+  // The five locations. This is RegionTier - which set the gear belongs to -
+  // and NOT the 14-step rarity below it. Both get called "tier" in
+  // conversation, so they are labelled apart in the UI.
+  const TIER_FILTERS = [1, 2, 3, 4, 5];
 
   const SORTS = [
     { key: 'price', label: 'Price' },
@@ -55,7 +64,8 @@
   ] as const;
 
   let filterText = $state('');
-  let filterSlot = $state(-1);
+  let filterSlots = $state<number[]>([]);
+  let filterTiers = $state<number[]>([]);
   let filterMinRarity = $state(0);
   let filterMaxRarity = $state(MAX_QUALITY_TIER);
   let sortBy = $state<'price' | 'rarity' | 'name'>('price');
@@ -81,7 +91,8 @@
     queryKey: [
       'market',
       debouncedText,
-      filterSlot,
+      filterSlots.join(','),
+      filterTiers.join(','),
       filterMinRarity,
       filterMaxRarity,
       sortBy,
@@ -91,7 +102,8 @@
     queryFn: () =>
       fetchMarketListings({
         baseItemId: debouncedText,
-        slotIndex: filterSlot,
+        slotIndexes: filterSlots,
+        tiers: filterTiers,
         minQualityTier: filterMinRarity,
         maxQualityTier: filterMaxRarity,
         sortBy,
@@ -107,7 +119,8 @@
 
   function resetFilters() {
     filterText = '';
-    filterSlot = -1;
+    filterSlots = [];
+    filterTiers = [];
     filterMinRarity = 0;
     filterMaxRarity = MAX_QUALITY_TIER;
     sortBy = 'price';
@@ -124,6 +137,14 @@
   // --- sell -----------------------------------------------------------------
   let sellInstanceId = $state(0);
   let sellPrice = $state(1000);
+
+  // What KIND of thing this is, for the card. Resolved from the id by the same
+  // rule the equip path uses, so a card can never claim a slot the item would
+  // not go into.
+  function slotLabel(baseItemId: string): string {
+    const index = resolveSlotIndex(baseItemId);
+    return EQUIPMENT_SLOTS.find((s) => s.index === index)?.label ?? 'Item';
+  }
 
   const sellItem = $derived(sellable.find((e: InventoryEquipment) => e.Id === sellInstanceId) ?? null);
 
@@ -228,11 +249,43 @@
     <div class="filters">
       <input placeholder="Search by name..." bind:value={filterText} />
 
-      <select bind:value={filterSlot} onchange={() => (pageIndex = 0)}>
-        {#each SLOT_FILTERS as option (option.index)}
-          <option value={option.index}>{option.label}</option>
+      <fieldset class="checks">
+        <legend>Type</legend>
+        {#each TYPE_FILTERS as option (option.index)}
+          <label>
+            <input
+              type="checkbox"
+              checked={filterSlots.includes(option.index)}
+              onchange={() => {
+                filterSlots = filterSlots.includes(option.index)
+                  ? filterSlots.filter((i) => i !== option.index)
+                  : [...filterSlots, option.index];
+                pageIndex = 0;
+              }}
+            />
+            {option.label}
+          </label>
         {/each}
-      </select>
+      </fieldset>
+
+      <fieldset class="checks">
+        <legend>Tier</legend>
+        {#each TIER_FILTERS as tier (tier)}
+          <label>
+            <input
+              type="checkbox"
+              checked={filterTiers.includes(tier)}
+              onchange={() => {
+                filterTiers = filterTiers.includes(tier)
+                  ? filterTiers.filter((t) => t !== tier)
+                  : [...filterTiers, tier];
+                pageIndex = 0;
+              }}
+            />
+            {locationName(tier)}
+          </label>
+        {/each}
+      </fieldset>
 
       <label class="range">
         Rarity
@@ -271,7 +324,7 @@
     {:else if rows.length === 0}
       <p class="dim">
         Nothing matches those filters.
-        {#if totalCount === 0 && !debouncedText && filterSlot === -1}
+        {#if totalCount === 0 && !debouncedText && filterSlots.length === 0 && filterTiers.length === 0}
           The market is empty - nobody has listed anything yet.
         {/if}
       </p>
@@ -289,7 +342,9 @@
               <span class="name" style="color: {rarityColor(listing.QualityTier)}">
                 {prettifyBaseId(listing.BaseItemId)}
               </span>
-              <span class="dim tiny">{rarityName(listing.QualityTier)}</span>
+              <span class="dim tiny">
+                {slotLabel(listing.BaseItemId)} &middot; {rarityName(listing.QualityTier)}
+              </span>
             </div>
             <span class="price">{listing.Price.toLocaleString()}g</span>
             <button class="tiny-btn" disabled={!hasGuildLicense} onclick={() => buy(listing.OrderId)}>
@@ -692,6 +747,42 @@
   .tiny-btn {
     font-size: 0.72rem;
     padding: 0.2rem 0.45rem;
+  }
+
+  /* Checkbox groups. A fieldset because that is what a set of related
+     checkboxes is - the legend names the axis, and a screen reader reads the
+     group rather than eleven loose boxes. */
+  .checks {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.1rem 0.7rem;
+    margin: 0;
+    padding: 0.35rem 0.6rem 0.45rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+
+  .checks legend {
+    padding: 0 0.3rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.7;
+  }
+
+  .checks label {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .checks input {
+    margin: 0;
+    cursor: pointer;
   }
 
   /* A button, because it navigates rather than addressing anything - the
