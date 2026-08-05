@@ -16,40 +16,60 @@
 92-5-0-94.sslip.io {
 	encode gzip
 
-	# THE ORDER OF THESE THREE IS THE CONTRACT.
+	# THESE ARE `handle` BLOCKS, AND THAT IS LOAD-BEARING.
 	#
-	# The game client and the game server share one origin now, and they
-	# collide at exactly one path: the WebSocket connects to "/", and "/" is
-	# also where index.html lives. So the upgrade has to be matched by its
-	# HEADERS, before any path routing gets a chance to serve a page to it.
+	# Caddy orders directives by its own built-in directive order, NOT by the
+	# order they appear in the file - and `try_files` sorts BEFORE
+	# `reverse_proxy`. Written as bare matchers plus directives, the SPA
+	# fallback therefore ran first on every request: `/api/v1/...` and
+	# `/gamedata/monsters.json` do not exist as files, so try_files rewrote
+	# them to `/index.html` and the proxy matchers - which test the path - then
+	# matched nothing. Every API call and the whole content registry came back
+	# as the client's own HTML, with status 200.
 	#
-	# Same-origin is worth the care - it means no CORS relationship to
-	# configure between the two halves, and no second hostname to certificate.
+	# `handle` blocks are mutually exclusive and evaluated in the order written,
+	# which is the construct that means what this file looks like it means.
+	# Caught by the dry run in ops/oracle/README.md; it is invisible to
+	# `caddy validate`, which called the broken version valid.
+	#
+	# The client and the server share one origin and collide at exactly one
+	# path: the WebSocket connects to "/", and "/" is also where index.html
+	# lives. So the upgrade is matched by its HEADERS, first, before any path
+	# routing gets a chance to serve a page to it.
+	#
+	# Same-origin is worth the care - no CORS relationship to configure between
+	# the two halves, and one certificate instead of two.
 	@websocket {
 		header Connection *Upgrade*
 		header Upgrade websocket
 	}
-	reverse_proxy @websocket app:8080 {
-		# Long-lived sockets. An idle game's connection is meant to stay open
-		# for hours, and the default read timeout would cut it.
-		transport http {
-			read_timeout 0
-			write_timeout 0
+	handle @websocket {
+		reverse_proxy app:8080 {
+			# Long-lived sockets. An idle game's connection is meant to stay
+			# open for hours, and the default read timeout would cut it.
+			transport http {
+				read_timeout 0
+				write_timeout 0
+			}
 		}
 	}
 
 	# Everything the server owns. /gamedata and /audio are here because the
 	# client fetches both from the API (see config.ts GAMEDATA_BASE and
-	# audio.ts) - they are NOT part of the static bundle, and routing them to
-	# the file server would 404 the whole content registry, which surfaces as
-	# a client that loads and then knows about no items or monsters at all.
+	# audio.ts) - they are NOT part of the static bundle, and letting them fall
+	# through to the file server gives a client that loads and then knows about
+	# no items or monsters at all.
 	@api path /api/* /healthz /health/* /metrics /gamedata /gamedata/* /audio /audio/*
-	reverse_proxy @api app:8080
+	handle @api {
+		reverse_proxy app:8080
+	}
 
 	# The client, and the artwork with it. /sprites lives in the static bundle
 	# (vite.config.ts copies the tree in) rather than being proxied to the app,
 	# so 214 icon requests never touch .NET.
-	root * /srv
-	try_files {path} /index.html
-	file_server
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
 }
