@@ -1,12 +1,10 @@
-# FolkIdle API on the Oracle Ampere box
+# FolkIdle on the Oracle Ampere box
 
-What moves: **the API only**. The database stays on Supabase and the web
-client stays on Render's static site — that one is free, on a CDN, does not
-spin down, and has a working TLS setup there is nothing to gain by moving.
+**The whole game runs here** — the API and the web client both. Nothing is
+left on Render. Only the database stays external, on Supabase.
 
 Why: Render's free instance is 0.15 vCPU / 512 MB and sleeps after 15 minutes,
-which for an idle game means the tick loop stops. This box is 2 vCPU / 12 GB
-and never sleeps.
+which for an idle game means the tick loop stops.
 
 ## The machine
 
@@ -15,7 +13,23 @@ and never sleeps.
     eu-frankfurt-1, display name "folkidle"
 
 Docker and Compose are installed and usable without sudo. Nothing else is
-needed — the server builds inside Docker.
+needed — both halves build inside Docker.
+
+## One origin
+
+Caddy serves the built client from `/srv` and proxies the API to the app
+container, on the same hostname. That is worth the small amount of routing
+care it costs: no CORS relationship between the two halves, and one
+certificate rather than two.
+
+The client and the server collide at exactly one path — the WebSocket connects
+to `/`, and `/` is also where `index.html` lives. The `Caddyfile` matches the
+upgrade by its **headers** before any path routing runs, so the order of those
+three blocks is a contract, not a style choice.
+
+`/gamedata` and `/audio` go to the app, not the file server: the client fetches
+its whole content registry from the former. Routing them to static files would
+give a client that loads and then knows about no items or monsters at all.
 
 ## Ports: TWO firewalls, and both must be open
 
@@ -32,15 +46,17 @@ iptables is done (rules inserted before the existing REJECT and persisted with
 The Security List is **console-only** — there is no OCI CLI or instance
 principal on this box, so it cannot be scripted from here:
 
-> Oracle Cloud console → Networking → Virtual Cloud Networks → the VCN in
-> eu-frankfurt-1 → Security Lists → Default Security List → Add Ingress Rules
+> Oracle Cloud console → Compute → Instances → `folkidle` → Primary VNIC →
+> click the **Subnet** link → Security Lists → the default one →
+> **Add Ingress Rules**
 >
-> | Source | IP Protocol | Destination Port |
-> |---|---|---|
-> | 0.0.0.0/0 | TCP | 80 |
-> | 0.0.0.0/0 | TCP | 443 |
+> | Source Type | Source CIDR | IP Protocol | Source Ports | Destination Port |
+> |---|---|---|---|---|
+> | CIDR | 0.0.0.0/0 | TCP | *(blank)* | 80 |
+> | CIDR | 0.0.0.0/0 | TCP | *(blank)* | 443 |
 >
-> Leave "Stateless" unchecked.
+> Leave "Stateless" unchecked. Leave Source Port Range **blank** — a client's
+> source port is random, and filling it in silently matches nothing.
 
 Verify from anywhere:
 
@@ -56,50 +72,51 @@ Encrypt HTTP-01 challenge and there will be no certificate.
 address spelled into it, so this already resolves to the box with no account,
 no registration and no cost.
 
-It is not cosmetic. Let's Encrypt will not issue for a bare IP, the client is
-served over https, and an https page cannot open a `ws://` socket — so
-`92.5.0.94` cannot be the API address. Swapping in a real domain later means
-changing one line in the `Caddyfile` and `VITE_FOLKIDLE_SERVER` on the static
-site; nothing else refers to it.
+It is not cosmetic. Let's Encrypt will not issue for a bare IP, the page is
+served over https, and an https page cannot open a `ws://` socket.
+
+Swapping in a real domain later means changing the `Caddyfile`'s site address,
+the `VITE_FOLKIDLE_SERVER` build arg in `docker-compose.yml`, and
+`FOLKIDLE_WEB_ORIGINS` in `.env` — then rebuilding, because **Vite inlines the
+server address into the bundle**. A static build has no runtime configuration;
+changing the hostname is a rebuild, not a restart.
 
 ## Bring it up
 
     ssh folkidle-server
-    git clone https://github.com/<owner>/IdleHra.git ~/folkidle   # or pull
-    cd ~/folkidle/ops/oracle
-    cp .env.example .env
-    $EDITOR .env            # DB password, and JWT_SECRET_KEY COPIED FROM RENDER
+    cd ~/folkidle && git pull
+    cd ops/oracle
+    cp .env.example .env        # if it does not exist yet
+    $EDITOR .env                # DB connection string, JWT_SECRET_KEY
     docker compose up -d --build
 
-The first build takes a while — it is a .NET restore and publish on 2 vCPU.
+The first build takes a while — a .NET publish and an npm install on 2 vCPU.
 
     docker compose logs -f app        # watch the migration, then "Listening"
+    docker compose logs -f caddy      # watch the certificate being obtained
     curl -s https://92-5-0-94.sslip.io/healthz
+    curl -sI https://92-5-0-94.sslip.io/     # should be the client, 200 text/html
 
 ## JWT_SECRET_KEY
 
-Copy it from the Render service. Do not regenerate: tokens are signed with it,
-so a new secret silently invalidates every logged-in player and bounces them to
-the login screen with no explanation. If it is rotated deliberately, say so in
-the release note.
+Copy it from the old Render service rather than generating a new one. Tokens
+are signed with it, so a fresh secret silently invalidates every logged-in
+player and bounces them to the login screen with no explanation. If it is
+rotated deliberately, say so in the release note.
 
-## Cutover
+## Cutover, and rollback
 
-Deploy and verify while Render is still serving, then move traffic.
-
-1. stack up here, `/healthz` answers, a `wss://` upgrade succeeds
-2. a real login against the new host (proves it reaches Supabase)
-3. set `VITE_FOLKIDLE_SERVER=wss://92-5-0-94.sslip.io` on the Render **static
-   site** and redeploy the client
-4. `index.html` carries five minutes of CDN cache — verify by fetching the
-   bundle and grepping it, not by trusting the deploy status
-5. only then suspend the Render **web service** (`srv-d9opsd5bedkc73dfi8h0`)
-
-Rollback is step 3 in reverse: repoint at `https://idlehra.onrender.com` and
-redeploy. Keep the Render service suspended rather than deleted for a few days.
+Bring this up and verify it **while Render is still serving**, then send
+players here. Rollback while the Render services still exist is just telling
+people the old address again; once they are suspended it is un-suspending
+them. Keep them suspended rather than deleted for a few days.
 
 ## Afterwards
 
 Watch for things the free tier was hiding rather than fixing. The tick loop has
 real CPU now, so anything that was quietly being starved will start running at
 full speed.
+
+Redis holds no persistence by design. That is survivable because the checkpoint
+persists gold directly when Redis is absent — it did not always, and a session's
+earnings used to be discarded at logout whenever Redis was down.

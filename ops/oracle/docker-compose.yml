@@ -1,4 +1,4 @@
-# FolkIdle on the Oracle Ampere box.
+# FolkIdle on the Oracle Ampere box - the whole game, client and server.
 #
 # NOT the repository's own docker-compose.yml, which cannot be reused here:
 # that one stands up its own Postgres, a pgbouncer in front of it and a
@@ -6,13 +6,16 @@
 # does the pooling, and the app image migrates on its own entrypoint - so all
 # three of those services would be wrong rather than merely redundant.
 #
-# Three services: the app, a Redis beside it, and Caddy terminating TLS.
+# Three services: the app, a Redis beside it, and Caddy - which terminates TLS,
+# serves the built client, and proxies the API and the WebSocket to the app.
+# Client and server share one origin, so there is no CORS relationship between
+# the two halves and only one certificate to keep.
 #
-# Redis is local now rather than Render's managed one, because
-# REDIS_CONNECTION pointed at a Render-INTERNAL hostname that does not resolve
-# from here at all. Losing its data on restart is already accepted (the Render
-# instance had persistence off) - and since the checkpoint learned to persist
-# gold without it, an outage is now a slower flush rather than lost coins.
+# Redis is local rather than Render's managed one, because REDIS_CONNECTION
+# pointed at a Render-INTERNAL hostname that does not resolve from here at all.
+# Losing its data on restart is already accepted (the Render instance had
+# persistence off) - and since the checkpoint learned to persist gold without
+# it, an outage is now a slower flush rather than lost coins.
 
 services:
   app:
@@ -52,14 +55,26 @@ services:
       timeout: 3s
       retries: 10
 
+  # Caddy with the built client baked in - see web.Dockerfile for why the
+  # build context is the repository root and not client_web.
   caddy:
-    image: caddy:2-alpine
+    build:
+      context: ../..
+      dockerfile: ops/oracle/web.Dockerfile
+      args:
+        # Vite INLINES this, so it is a build argument and not an environment
+        # variable: a static bundle has no runtime configuration. Changing the
+        # hostname means rebuilding this image, not restarting it.
+        VITE_FOLKIDLE_SERVER: "https://92-5-0-94.sslip.io"
     restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Named, so the certificate survives a rebuild. Without this every
+      # `docker compose up --build` would re-issue from Let's Encrypt and walk
+      # straight into their rate limit.
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
