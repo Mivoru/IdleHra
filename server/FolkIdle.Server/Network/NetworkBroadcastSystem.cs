@@ -2400,21 +2400,13 @@ namespace FolkIdle.Server.Network
                     });
                 }
 
-                foreach (var recipe in CraftingReceptuary.AllRecipes)
-                {
-                    string materialName = ContentRegistry.GetMaterialString(recipe.MaterialId);
-                    materialQuantities.TryGetValue(materialName, out long currentStock);
-
-                    response.Recipes.Add(new ForgeRecipeResponse
-                    {
-                        RecipeId = recipe.RecipeId,
-                        ResultBaseItemId = recipe.ResultBaseItemId,
-                        TierIndex = recipe.TierIndex,
-                        MaterialName = materialName,
-                        MaterialCost = recipe.MaterialCost,
-                        CurrentMaterialStock = currentStock
-                    });
-                }
+                // Modul: the Forge no longer serves recipes. It fuses and
+                // rerolls what the player looted; making equipment out of ore
+                // was the second crafting system, and it is gone. Recipes stay
+                // on /api/v1/crafting/recipes, which serves the tool tree.
+                // response.Recipes is left on the DTO and simply comes back
+                // empty - removing it would be a wire break for a client that
+                // has not reloaded yet, and it costs two bytes of JSON.
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";

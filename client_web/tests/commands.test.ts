@@ -20,7 +20,6 @@ const {
   depositToBank,
   withdrawFromBank,
   startTreeCraft,
-  craftForgeRecipe,
   executeForgeFusion,
   rerollAffix,
   addFriend,
@@ -92,13 +91,22 @@ describe('bank', () => {
   });
 });
 
-// Modul: TWO recipe tables, two commands, names pointing the opposite way from
-// what you would guess. The crafting TREE runs on InitializeCrafting;
-// CraftItem is the FORGE's. This was wired backwards first, and the
-// consequences are worse than "nothing happens": ValidateCraftingRequest
-// DISCONNECTS on a TargetRecipeId that is not a CraftingReceptuary recipe, and
-// where the two id spaces overlap the request silently crafts something else.
-describe('crafting tree vs forge crafting', () => {
+// Modul: THERE IS ONE RECIPE TABLE NOW.
+//
+// This block used to guard the boundary between two of them: the crafting TREE
+// on InitializeCrafting and the FORGE's equipment recipes on CraftItem, with
+// the names pointing the opposite way from what anyone would guess. It was
+// wired backwards once, and the consequence was worse than nothing happening -
+// where the two id spaces overlapped, a request silently crafted something
+// else.
+//
+// The boundary is gone because one side of it is: equipment is monster loot
+// and tools are crafted, so CraftingReceptuary and the CraftItem path went
+// with the recipes they served. What is left to assert is that the one
+// remaining path still carries the RESULT ITEM id on TargetId - the shape that
+// was wrong first - and that it refuses the ids the validator would have
+// disconnected for.
+describe('the crafting tree', () => {
   it('sends tree crafts as InitializeCrafting with the RESULT item on TargetId', () => {
     expect(startTreeCraft(184).ok).toBe(true);
     expect(sent[0]).toMatchObject({
@@ -108,32 +116,17 @@ describe('crafting tree vs forge crafting', () => {
     expect(sent[0].TargetRecipeId).toBeUndefined();
   });
 
-  it('sends forge crafts as CraftItem with the RECIPE id on TargetRecipeId', () => {
-    expect(craftForgeRecipe(17, 1).ok).toBe(true);
-    expect(sent[0]).toMatchObject({
-      Command: CommandType.CraftItem,
-      TargetRecipeId: 17,
-      CraftingSlotIndex: 1,
-    });
-    // The dispatcher never reads TargetId for this command.
-    expect(sent[0].TargetId).toBeUndefined();
-  });
-
-  it('never routes a tree recipe down the forge command', () => {
-    // The whole bug in one assertion.
+  it('never routes a tree recipe down the retired forge command', () => {
+    // The whole original bug in one assertion, and still worth keeping: the
+    // server ignores CraftItem now rather than acting on it, so a regression
+    // here would be silent instead of loud.
     startTreeCraft(184);
     expect(sent[0].Command).not.toBe(CommandType.CraftItem);
   });
 
-  it('refuses a crafting slot the validator would disconnect for', () => {
-    expect(craftForgeRecipe(17, 5).ok).toBe(false);
-    expect(craftForgeRecipe(17, -1).ok).toBe(false);
-    expect(sent).toHaveLength(0);
-  });
-
-  it('refuses non-positive recipe ids on both paths', () => {
+  it('refuses non-positive recipe ids', () => {
     expect(startTreeCraft(0).ok).toBe(false);
-    expect(craftForgeRecipe(0).ok).toBe(false);
+    expect(startTreeCraft(-1).ok).toBe(false);
     expect(sent).toHaveLength(0);
   });
 });

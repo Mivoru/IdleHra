@@ -173,7 +173,11 @@ namespace FolkIdle.Server.Domain.Economy
                     }
                 }
 
-                // Vodník passive has been moved to item metadata payload in ExecuteEquipmentCraftingAsync
+                // Modul: the Vodník passive used to be pointed at from here,
+                // "moved to the item metadata payload in
+                // ExecuteEquipmentCraftingAsync". That method is gone with the
+                // equipment recipes, so the pointer went with it - a comment
+                // naming a method nobody can find is worse than none.
 
                 // Modul: Full-Stack Expansion, Part 3. Check and deduct
                 // materials through the unified Backpack+Stash interface -
@@ -343,162 +347,19 @@ namespace FolkIdle.Server.Domain.Economy
             return authored > 0 ? authored : 1;
         }
 
-        public async Task ExecuteEquipmentCraftingAsync(long playerId, uint recipeId, uint slotIndex, uint tickToken)
-        {
-            if (!CraftingReceptuary.TryGetRecipe((int)recipeId, out var recipe))
-            {
-                return;
-            }
-
-            await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
-            var strategy = context.Database.CreateExecutionStrategy();
-
-            // Modul: same result-tuple pattern as ExecuteCraftingAsync - the
-            // delegate returns the outcome instead of throwing for the
-            // expected "insufficient materials" case, and no longer
-            // swallows exceptions itself, so a Serializable conflict
-            // propagates out for CreateExecutionStrategy to retry.
-            (bool success, long guildId, long guildWarMatchId, int guildWarPoints) = await strategy.ExecuteAsync(async () =>
-            {
-                context.ChangeTracker.Clear();
-                using var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-
-                // Modul: Full-Stack Expansion, Part 3. Unified
-                // Backpack+Stash availability check and Backpack-first
-                // consumption - see InventoryAndStashSystem.
-                string materialItemId = ContentRegistry.GetMaterialString(recipe.MaterialId);
-
-                // Lock crafting slot
-                var slotRows = await context.PlayerCraftingSlots.FromSqlInterpolated($"SELECT * FROM \"PlayerCraftingSlots\" WHERE \"PlayerId\" = {playerId} AND \"SlotIndex\" = {(int)slotIndex} FOR UPDATE").ToListAsync();
-
-                if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, materialItemId, recipe.MaterialCost))
-                {
-                    await transaction.RollbackAsync();
-                    return (false, 0L, 0L, 0);
-                }
-
-                var player = await context.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
-                long geneticVector = 0;
-                if (player != null)
-                {
-                    var charRecord = await context.CharacterRecords.FirstOrDefaultAsync(c => c.PlayerId == playerId && c.Id == player.PlayerGuid);
-                    if (charRecord != null)
-                    {
-                        var lineage = await context.CharacterLineages.FirstOrDefaultAsync(l => l.CharacterId == charRecord.Id);
-                        if (lineage != null) geneticVector = lineage.GeneticVector;
-                    }
-                }
-                var gv = new GeneticVector(geneticVector);
-                byte race = gv.LocusRace.Dominant;
-
-                // Generate item with AsNoTracking/batch write
-                var item = EquipmentGenerator.GenerateEquipment(playerId, tickToken, recipe, slotIndex);
-
-                // Modul: Full-Stack Expansion, Part 4. Crafted rarity roll -
-                // the recipe's TierIndex is the guaranteed floor, and the
-                // zero-allocation stackalloc roll can upgrade the outcome
-                // toward higher tiers, weighted by the crafter's workshop
-                // (Forge) level. The result is clamped to the item's
-                // structural gear-band forge cap, so a low-band recipe can
-                // never roll past the same ceiling ForgeSplicingEngine
-                // enforces on fusion.
-                // Modul: Deferred Part 5 Implementation, Part 3. The
-                // rarity-shifting workshop is the dedicated Crafting
-                // Workshop structural building (max level 5, +0.05
-                // probability weight per level inside RollCraftedRarity),
-                // no longer the Forge.
-                int workshopLevel = await context.VillageInfrastructures
-                    .AsNoTracking()
-                    .Where(v => v.PlayerId == playerId && v.BuildingId == VillageManagementEngine.CraftingWorkshopBuildingId)
-                    .Select(v => (int?)v.CurrentLevel)
-                    .SingleOrDefaultAsync() ?? 0;
-
-                int rarityBonus = RollCraftedRarity(0, workshopLevel, Random.Shared.NextDouble());
-                if (rarityBonus > 0)
-                {
-                    int bandCap = ForgeSplicingEngine.MaxQualityTier;
-                    if (ContentRegistry.TryGetItemDefinitionByBaseId(recipe.ResultBaseItemId, out var craftedDefinition))
-                    {
-                        bandCap = GetMaxForgeTierForRegion(craftedDefinition.RegionTier);
-                    }
-                    item.QualityTier = Math.Min(Math.Min(bandCap, ForgeSplicingEngine.MaxQualityTier), item.QualityTier + rarityBonus);
-                }
-
-                var affixes = System.Text.Json.JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, int>>(item.AffixPayload) ?? new System.Collections.Generic.Dictionary<string, int>();
-
-                // Vodník cooking passive (Prof 4)
-                if (recipe.ProfessionType == 4 && race == RaceIds.Vodnik)
-                {
-                    if (Random.Shared.Next(100) < 15)
-                    {
-                        affixes["HealingMultiplier"] = 150;
-                    }
-                }
-
-                // Moosleute alchemy passive (Prof 5)
-                if (recipe.ProfessionType == 5 && race == RaceIds.Moosleute)
-                {
-                    affixes["PotencyMultiplier"] = 110;
-                }
-
-                item.AffixPayload = System.Text.Json.JsonSerializer.Serialize(affixes);
-
-                context.EquipmentInstances.Add(item);
-
-                // Modul: lifetime statistics. The equipment-crafting path is a
-                // separate method from the material path above and always has
-                // been; counting in only one of them would silently under-report
-                // exactly the crafts a player is most likely to remember making.
-                if (player != null)
-                {
-                    player.TotalItemsCrafted += 1;
-                }
-
-                // Modul 06/26: Guild War Production Logistics front (WP = 50 *
-                // ItemRarityTier) for items scaling above Tier 5 (Epic), crafted
-                // by a member of a guild currently in an active war match.
-                GuildWarMatch? activeGuildWarMatch = null;
-                if (recipe.TierIndex > 5 && player != null && player.GuildId > 0 && _guildWarEngine != null)
-                {
-                    activeGuildWarMatch = await context.GuildWarMatches
-                        .AsNoTracking()
-                        .FirstOrDefaultAsync(m => m.IsActive && (m.GuildA_Id == player.GuildId || m.GuildB_Id == player.GuildId));
-                }
-
-                await context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                if (activeGuildWarMatch != null && player != null)
-                {
-                    return (true, player.GuildId, activeGuildWarMatch.MatchId, 50 * recipe.TierIndex);
-                }
-
-                return (true, 0L, 0L, 0);
-            });
-
-            if (!success)
-            {
-                return;
-            }
-
-            if (guildWarMatchId != 0L && _guildWarEngine != null)
-            {
-                _guildWarEngine.GuildWarPointQueue.Enqueue(new GuildWarPointEvent
-                {
-                    MatchId = guildWarMatchId,
-                    GuildId = guildId,
-                    Front = 1,
-                    Points = guildWarPoints
-                });
-            }
-
-            // Notification queue pattern to avoid state mutation race
-            _playerRegistry.CraftingCompletionQueue.Enqueue(new CraftingCompletionNotification
-            {
-                PlayerId = playerId,
-                CraftedItemId = recipe.RecipeId,
-                Quantity = 1
-            });
-        }
+        // Modul: ExecuteEquipmentCraftingAsync IS GONE, with CraftingReceptuary
+        // behind it.
+        //
+        // EQUIPMENT IS MONSTER LOOT AND TOOLS ARE CRAFTED. Nothing is both.
+        // This method was the one path that broke that rule: three recipes
+        // turning ore into armour, a second crafting system beside the real
+        // 31-recipe tool tree above, reachable from its own opcode and its own
+        // REST surface. It survived this long because it was written first and
+        // because the duplication was logged as a cleanup item rather than as
+        // the content decision it actually was.
+        //
+        // ExecuteCraftingAsync is the one that stays: ContentRegistry recipes,
+        // ten tiers of axe, pickaxe and rod, driven by a character assigned to
+        // the job on the Crafting screen.
     }
 }

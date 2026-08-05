@@ -873,25 +873,14 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
+        // Modul: RETIRED with CommandType.CraftItem and the equipment recipes
+        // behind it - equipment is monster loot, tools are crafted, and the
+        // recipe table this validated against no longer exists. Kept as a
+        // pass-through rather than deleted because the tick's command loop
+        // calls it by name and an opcode nobody sends is not worth a
+        // disconnect; see the CraftItem branch in SimulationEngine.
         public static bool ValidateCraftingRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
         {
-            if (packet.Command != FolkIdle.Server.Network.CommandType.CraftItem)
-            {
-                return true;
-            }
-
-            if (packet.TargetRecipeId == 0 || !CraftingReceptuary.TryGetRecipe((int)packet.TargetRecipeId, out _))
-            {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 42, Value2 = 1, Timestamp = Environment.TickCount64 });
-                return false;
-            }
-
-            if (packet.CraftingSlotIndex >= 5)
-            {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 42, Value2 = 2, Timestamp = Environment.TickCount64 });
-                return false;
-            }
-
             return true;
         }
 

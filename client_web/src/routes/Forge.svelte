@@ -2,7 +2,7 @@
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { queryKeys, fetchForge, type ForgeEquipment } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
-  import { executeForgeFusion, rerollAffix, craftForgeRecipe, REROLL_OPERATIONS } from '../lib/net/commands';
+  import { executeForgeFusion, rerollAffix, REROLL_OPERATIONS } from '../lib/net/commands';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { toDisplayAffixes, AFFIX_RARITY_NAMES, KNOWN_AFFIX_IDS } from '../lib/ui/affixes';
@@ -26,16 +26,6 @@
 
   function label(item: ForgeEquipment): string {
     return `${prettifyBaseId(item.BaseItemId)} [${rarityName(item.QualityTier)}] #${item.Id}`;
-  }
-
-  // --- forge crafting -------------------------------------------------------
-  // These ids come from /api/v1/forge/inventory, which returns real
-  // CraftingReceptuary ids - the only source this client has. An invented one
-  // disconnects the session rather than being rejected.
-  function craftRecipe(recipeId: number) {
-    const outcome = craftForgeRecipe(recipeId);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-    refresh();
   }
 
   // --- fusion ---------------------------------------------------------------
@@ -357,31 +347,11 @@
     {/if}
   </section>
 
-  <section class="panel">
-    <h2>Forge stock</h2>
-    {#if forge.isPending}
-      <Skeleton />
-    {:else if forge.isError}
-      <p class="err">{forge.error?.message}</p>
-    {:else}
-      <p class="dim small">{owned.length} items available to the Forge.</p>
-      <ul class="stock">
-        {#each (forge.data?.Recipes ?? []) as recipe (recipe.RecipeId)}
-          {@const affordable = recipe.CurrentMaterialStock >= recipe.MaterialCost}
-          <li>
-            <span>{prettifyBaseId(recipe.ResultBaseItemId)}</span>
-            <span class="dim tiny" class:short={!affordable}>
-              {recipe.MaterialName}
-              {recipe.CurrentMaterialStock.toLocaleString()}/{recipe.MaterialCost.toLocaleString()}
-            </span>
-            <button class="tiny-btn" disabled={!affordable} onclick={() => craftRecipe(recipe.RecipeId)}>
-              Forge
-            </button>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </section>
+  <!-- Modul: the "Forge stock" list is gone with the recipes behind it.
+       Equipment is monster loot and tools are crafted, and nothing is both -
+       so a panel that forged armour out of ore had no place left. The Forge
+       still does what its name says: it fuses and rerolls what you looted.
+       Tools live on the Crafting screen with the rest of the recipe tree. -->
 </div>
 
 <style>
@@ -516,27 +486,4 @@
     margin: 0 0 0.6rem;
   }
 
-  .stock {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 0.25rem;
-    max-height: 28rem;
-    overflow-y: auto;
-  }
-
-  .stock li {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    align-items: center;
-    gap: 0.6rem;
-    font-size: 0.82rem;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.22rem;
-  }
-
-  .stock .short {
-    color: var(--danger);
-  }
 </style>

@@ -402,28 +402,11 @@ export function startTreeCraft(resultItemId: number): CommandOutcome {
   return OK;
 }
 
-/**
- * Forge equipment crafting. `recipeId` MUST come from /api/v1/forge/inventory -
- * that endpoint returns CraftingReceptuary ids and is the only way this client
- * can know one is real. There is no client-side recipe table to check against,
- * and an unknown id disconnects rather than being rejected.
- */
-export function craftForgeRecipe(recipeId: number, craftingSlotIndex = 0): CommandOutcome {
-  if (!Number.isInteger(recipeId) || recipeId <= 0) {
-    return refuse('Pick a forge recipe.');
-  }
-  // ValidateCraftingRequest disconnects at >= 5.
-  if (!Number.isInteger(craftingSlotIndex) || craftingSlotIndex < 0 || craftingSlotIndex >= 5) {
-    return refuse('Crafting slot must be 0-4.');
-  }
-
-  connection.send({
-    Command: CommandType.CraftItem,
-    TargetRecipeId: recipeId,
-    CraftingSlotIndex: craftingSlotIndex,
-  });
-  return OK;
-}
+// Modul: craftForgeRecipe is gone, with the equipment recipes it sent.
+// EQUIPMENT IS MONSTER LOOT AND TOOLS ARE CRAFTED, and nothing is both - see
+// CraftingEngine on why a second crafting system that made armour out of ore
+// was removed rather than rebalanced. `initializeCrafting` above is the one
+// that remains: it drives the real 31-recipe tool tree.
 
 // ---------------------------------------------------------------------------
 // Forge fusion
