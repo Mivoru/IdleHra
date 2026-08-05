@@ -64,7 +64,8 @@ namespace FolkIdle.Server.Engine
         public long EquippedGlovesId;
         public long EquippedLeggingsId;
         public long EquippedBootsId;
-        public long EquippedOffhandId;
+        public long EquippedAmuletId;
+        public long EquippedRingId;
         public bool EquippedWeaponAffixLocked;
         public bool EquippedArmorAffixLocked;
         public bool EquippedLeggingsAffixLocked;

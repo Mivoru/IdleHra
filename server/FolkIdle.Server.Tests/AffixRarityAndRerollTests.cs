@@ -239,15 +239,17 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void StopCondition_RejectsATargetThatCanNeverBeRolled()
         {
-            // block_chance_pct is shield-only. Targeting it on a weapon would
+            // block_chance_pct is ring-only. Targeting it on a weapon would
             // otherwise burn the entire gold budget on an impossible goal.
-            var shieldOnlyOnASword = new AutoRerollStopCondition(AffixRarity.Common, "block_chance_pct");
+            // (It was shield-only until the offhand slot was removed - an affix
+            // whose one legal slot no longer exists can be rolled nowhere.)
+            var ringOnlyOnASword = new AutoRerollStopCondition(AffixRarity.Common, "block_chance_pct");
 
             Assert.False(AutoRerollPlanner.IsConditionReachable(
-                shieldOnlyOnASword, "eq_t3_melee_weapon_base", RerollOperation.StatType, "crit_dmg_pct"));
+                ringOnlyOnASword, "eq_t3_melee_weapon_base", RerollOperation.StatType, "crit_dmg_pct"));
 
             Assert.True(AutoRerollPlanner.IsConditionReachable(
-                shieldOnlyOnASword, "eq_t3_helper_offhand_base", RerollOperation.StatType, "block_chance_pct"));
+                ringOnlyOnASword, "eq_copper_band_ring_1/2_slot_base", RerollOperation.StatType, "block_chance_pct"));
         }
 
         [Fact]
@@ -320,17 +322,17 @@ namespace FolkIdle.Server.Tests
         public void RolledAffixes_RespectSlotLegalityAndCarryParseableRarities()
         {
             var rolled = new System.Collections.Generic.Dictionary<string, int>();
-            AffixRegistry.RollAffixes("eq_t3_helper_offhand_base", regionTier: 3, itemRarityTier: RarityTier.Transcendent,
+            AffixRegistry.RollAffixes("eq_linen_pendant_amulet_slot_base", regionTier: 3, itemRarityTier: RarityTier.Transcendent,
                 affixCount: RarityTier.GetAffixCount(RarityTier.Transcendent), destination: rolled);
 
             Assert.Equal(AffixRegistry.MaxAffixCount, rolled.Count);
 
-            var shieldMask = AffixRegistry.ToMask(AffixRegistry.ResolveSlot("eq_t3_helper_offhand_base"));
+            var amuletMask = AffixRegistry.ToMask(AffixRegistry.ResolveSlot("eq_linen_pendant_amulet_slot_base"));
             foreach (var kvp in rolled)
             {
                 string id = AffixRegistry.StripStackSuffix(kvp.Key);
                 Assert.True(AffixRegistry.TryGetDefinition(id, out var definition), $"{kvp.Key} did not resolve");
-                Assert.True((definition.AllowedSlots & shieldMask) != 0, $"{id} is not legal for the offhand slot");
+                Assert.True((definition.AllowedSlots & amuletMask) != 0, $"{id} is not legal for the amulet slot");
                 Assert.InRange((int)AffixRegistry.ParseRarity(kvp.Key), 1, 5);
                 Assert.True(kvp.Value > 0);
             }

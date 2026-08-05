@@ -886,7 +886,8 @@ namespace FolkIdle.Server.Domain.Shared
                 EquippedGlovesId = mainCharacterRecord?.EquippedGlovesId ?? 0L,
                 EquippedLeggingsId = mainCharacterRecord?.EquippedLeggingsId ?? 0L,
                 EquippedBootsId = mainCharacterRecord?.EquippedBootsId ?? 0L,
-                EquippedOffhandId = mainCharacterRecord?.EquippedOffhandId ?? 0L,
+                EquippedAmuletId = mainCharacterRecord?.EquippedAmuletId ?? 0L,
+                EquippedRingId = mainCharacterRecord?.EquippedRingId ?? 0L,
 
                 // Modul: lifetime statistics. Hydrated so the tick thread can
                 // keep an absolute running total - see TickStatePayload.
@@ -1103,7 +1104,8 @@ namespace FolkIdle.Server.Domain.Shared
             slot.EquippedGlovesId = character.EquippedGlovesId ?? 0L;
             slot.EquippedLeggingsId = character.EquippedLeggingsId ?? 0L;
             slot.EquippedBootsId = character.EquippedBootsId ?? 0L;
-            slot.EquippedOffhandId = character.EquippedOffhandId ?? 0L;
+            slot.EquippedAmuletId = character.EquippedAmuletId ?? 0L;
+            slot.EquippedRingId = character.EquippedRingId ?? 0L;
 
             (EquippedAffixTotals totals, EquippedSetIds setIds) =
                 await EquipmentSlotEngine.ComputeEquippedTotalsAsync(dbContext, character);

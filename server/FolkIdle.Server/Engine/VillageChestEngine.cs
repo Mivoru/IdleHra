@@ -107,7 +107,8 @@ namespace FolkIdle.Server.Engine
                      c.EquippedGlovesId == equipmentId ||
                      c.EquippedLeggingsId == equipmentId ||
                      c.EquippedBootsId == equipmentId ||
-                     c.EquippedOffhandId == equipmentId));
+                     c.EquippedAmuletId == equipmentId ||
+                     c.EquippedRingId == equipmentId));
 
                 if (worn)
                 {

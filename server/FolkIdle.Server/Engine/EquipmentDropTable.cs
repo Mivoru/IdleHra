@@ -61,7 +61,8 @@ namespace FolkIdle.Server.Engine
             EquipmentSlotEngine.SlotLeggings,
             EquipmentSlotEngine.SlotBoots,
             EquipmentSlotEngine.SlotWeapon,
-            EquipmentSlotEngine.SlotOffhand,
+            EquipmentSlotEngine.SlotAmulet,
+            EquipmentSlotEngine.SlotRing,
         };
 
         /// <summary>
@@ -108,7 +109,7 @@ namespace FolkIdle.Server.Engine
             if (ContentRegistry.GetToolKind(baseItemId) >= 0) return false;
 
             int slot = EquipmentSlotEngine.ResolveSlotIndex(baseItemId);
-            return slot >= EquipmentSlotEngine.SlotWeapon && slot <= EquipmentSlotEngine.SlotOffhand;
+            return slot >= EquipmentSlotEngine.SlotWeapon && slot <= EquipmentSlotEngine.LastGearSlot;
         }
 
         private static Dictionary<int, int[]> Build()

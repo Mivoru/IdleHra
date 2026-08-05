@@ -63,7 +63,8 @@ namespace FolkIdle.Server.Engine
         public long EquippedGlovesId;
         public long EquippedLeggingsId;
         public long EquippedBootsId;
-        public long EquippedOffhandId;
+        public long EquippedAmuletId;
+        public long EquippedRingId;
 
         // Modul: the tool loadout, resolved with the rest of the gear.
         // The tick needs a tier and three percentages, not three instance ids -

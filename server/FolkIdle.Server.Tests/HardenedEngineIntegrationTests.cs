@@ -8139,7 +8139,7 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(10, checkedNodes);
         }
 
-        // Modul: balance pass + offhand slot. Two defects in one path, both
+        // Modul: balance pass + jewellery slots. Two defects in one path, both
         // invisible without actually equipping something and reading the totals
         // back:
         //
@@ -8147,18 +8147,18 @@ namespace FolkIdle.Server.Tests
         //      an item's OWN FlatAttackPower never reached StatsCalculator. A
         //      tier-5 weapon (972) hit exactly as hard as a tier-1 one (12) and
         //      the whole gear progression was cosmetic.
-        //   2. Helper/offhand items resolved to slot -1, so the five authored
+        //   2. Amulets and rings resolved to slot -1, so the ten authored
         //      bucklers/quivers/aegises could not be worn at all.
         //
         // Asserting through EquipItemAsync rather than by calling the totals
         // helper directly is deliberate: the bug was in the seam between the
         // registry and the equip path, and only the full path crosses it.
         [Fact]
-        public async Task Test_Equipment_ItemBasePowerAndOffhandSlotReachCombatStats()
+        public async Task Test_Equipment_ItemBasePowerAndJewellerySlotsReachCombatStats()
         {
             const long testPlayerId = 970004702L;
             var characterId = Guid.NewGuid();
-            long tierOneWeaponId, tierFiveWeaponId, offhandId;
+            long tierOneWeaponId, tierFiveWeaponId, amuletId;
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
@@ -8169,13 +8169,13 @@ namespace FolkIdle.Server.Tests
                 // Real BaseIds out of items.json: tier 1 AP 12, tier 5 AP 972.
                 var tierOneWeapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "eq_steel_claymore_melee_weapon_slot_base", QualityTier = 0, AffixPayload = "{}" };
                 var tierFiveWeapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "eq_doom_edge_melee_weapon_slot_base", QualityTier = 0, AffixPayload = "{}" };
-                var offhand = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "eq_linen_buckler_helper_offhand_base", QualityTier = 0, AffixPayload = "{}" };
-                db.EquipmentInstances.AddRange(tierOneWeapon, tierFiveWeapon, offhand);
+                var amulet = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "eq_linen_pendant_amulet_slot_base", QualityTier = 0, AffixPayload = "{}" };
+                db.EquipmentInstances.AddRange(tierOneWeapon, tierFiveWeapon, amulet);
                 await db.SaveChangesAsync();
 
                 tierOneWeaponId = tierOneWeapon.Id;
                 tierFiveWeaponId = tierFiveWeapon.Id;
-                offhandId = offhand.Id;
+                amuletId = amulet.Id;
             }
 
             var slotEngine = new EquipmentSlotEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
@@ -8194,29 +8194,29 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(12, tierOneAttack);
 
             await slotEngine.EquipItemAsync(testPlayerId, tierFiveWeaponId, characterId);
-            await slotEngine.EquipItemAsync(testPlayerId, offhandId, characterId);
+            await slotEngine.EquipItemAsync(testPlayerId, amuletId, characterId);
 
             await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 var character = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == characterId);
 
-                // The offhand went into its own slot rather than displacing the
+                // The amulet went into its own slot rather than displacing the
                 // weapon or falling into the chest fallback.
-                Assert.Equal(offhandId, character.EquippedOffhandId);
+                Assert.Equal(amuletId, character.EquippedAmuletId);
                 Assert.Equal(tierFiveWeaponId, character.EquippedWeaponId);
                 Assert.Null(character.EquippedChestId);
 
                 (EquippedAffixTotals totals, _) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verify, character);
 
                 // Tier 5 must be dramatically stronger than tier 1, and the
-                // offhand's own base power must be counted too.
+                // amulet's own base power must be counted too.
                 Assert.Equal(972, totals.FlatAttack);
                 Assert.True(totals.FlatAttack > tierOneAttack * 50,
                     "Tier-5 weapon base power must dwarf tier-1; equal values mean item power is not reaching the totals.");
 
-                // The account-wide worn check has to see the offhand, or the
+                // The account-wide worn check has to see the amulet, or the
                 // market/forge/mail could consume an item the character wears.
-                Assert.True(await EquipmentSlotEngine.IsEquippedAnywhereAsync(verify, testPlayerId, offhandId));
+                Assert.True(await EquipmentSlotEngine.IsEquippedAnywhereAsync(verify, testPlayerId, amuletId));
             }
         }
 
@@ -8283,14 +8283,16 @@ namespace FolkIdle.Server.Tests
                 Assert.Equal(EquipmentSlotEngine.SlotGloves, EquipmentSlotEngine.ResolveSlotIndex("eq_iron_gauntlets_gloves_armor_slot_base"));
                 Assert.Equal(EquipmentSlotEngine.SlotChest, EquipmentSlotEngine.ResolveSlotIndex("iron_breastplate_chest_armor_slot_base"));
 
-                // Modul: offhand slot. The five authored helper items resolved
-                // to -1 (unequippable) until the seventh slot existed, despite
-                // AffixRegistry rolling Shield-slot affixes onto them all along.
-                Assert.Equal(EquipmentSlotEngine.SlotOffhand, EquipmentSlotEngine.ResolveSlotIndex("eq_linen_buckler_helper_offhand_base"));
-                Assert.Equal(EquipmentSlotEngine.SlotOffhand, EquipmentSlotEngine.ResolveSlotIndex("eq_hunter_quiver_helper_offhand_base"));
-                Assert.Equal(EquipmentSlotEngine.SlotOffhand, EquipmentSlotEngine.ResolveSlotIndex("eq_obsidian_aegis_helper_offhand_base"));
-                Assert.Equal(EquipmentSlotEngine.SlotOffhand, EquipmentSlotEngine.ResolveSlotIndex("eq_brawler_buckler_helper_offhand_base"));
-                Assert.Equal(EquipmentSlotEngine.SlotOffhand, EquipmentSlotEngine.ResolveSlotIndex("eq_dread_bulwark_helper_offhand_base"));
+                // Modul: jewellery. The ten authored amulets and rings resolved
+                // to -1 (unequippable) until these two slots existed, despite
+                // being one clean pair per tier all along. The helper/offhand
+                // ids they replace now resolve to -1 themselves, deliberately:
+                // that slot was invented and must not silently be filled.
+                Assert.Equal(EquipmentSlotEngine.SlotAmulet, EquipmentSlotEngine.ResolveSlotIndex("eq_linen_pendant_amulet_slot_base"));
+                Assert.Equal(EquipmentSlotEngine.SlotAmulet, EquipmentSlotEngine.ResolveSlotIndex("eq_doom_gorget_amulet_slot_base"));
+                Assert.Equal(EquipmentSlotEngine.SlotRing, EquipmentSlotEngine.ResolveSlotIndex("eq_copper_band_ring_1/2_slot_base"));
+                Assert.Equal(EquipmentSlotEngine.SlotRing, EquipmentSlotEngine.ResolveSlotIndex("eq_dread_signet_ring_1/2_slot_base"));
+                Assert.Equal(-1, EquipmentSlotEngine.ResolveSlotIndex("eq_linen_buckler_helper_offhand_base"));
 
                 // The account-wide lock sees BOTH characters' gear, which is
                 // what stops the market/forge/mail from consuming worn items.
@@ -9343,10 +9345,12 @@ namespace FolkIdle.Server.Tests
                     $"Affix '{affixId}' is not legal on a weapon but was rolled onto one.");
             }
 
-            // A shield is the only slot block_chance_pct may occupy, so it must
-            // be reachable there and nowhere else.
+            // The ring is the only slot block_chance_pct may occupy, so it must
+            // be reachable there and nowhere else. It was Shield-only until the
+            // offhand slot was removed - an affix whose one legal slot no longer
+            // exists rolls on nothing.
             Assert.True(AffixRegistry.TryGetDefinition("block_chance_pct", out var block));
-            Assert.Equal(EquipmentSlotMask.Shield, block.AllowedSlots);
+            Assert.Equal(EquipmentSlotMask.Ring, block.AllowedSlots);
 
             var chestAffixes = new Dictionary<string, int>();
             AffixRegistry.RollAffixes("eq_linen_shroud_chest_armor_slot_base", regionTier: 1, itemRarityTier: 1, affixCount: 1, chestAffixes);

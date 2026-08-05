@@ -340,7 +340,11 @@ namespace FolkIdle.Server.Models
             "eq_sentry_gauntlets_gloves_armor_slot_base",
             "eq_sentry_leggings_leggings_armor_slot_base",
             "eq_sentry_sabatons_boots_armor_slot_base",
-            "eq_hunter_quiver_helper_offhand_base"
+            // Modul: the offhand is gone (see EquipmentSlotEngine); the
+            // fixture dresses the jewellery slots instead, which is what the
+            // catalogue has actually authored all along.
+            "eq_hunter_amulet_amulet_slot_base",
+            "eq_iron_signet_ring_1/2_slot_base"
         };
 
         private static async Task EnsureEquipmentAsync(FolkIdleDbContext db, long playerId)
@@ -356,7 +360,7 @@ namespace FolkIdle.Server.Models
             // changes survive a re-seed.
             bool alreadyEquipped = mainCharacter.EquippedWeaponId.HasValue
                 || mainCharacter.EquippedChestId.HasValue
-                || mainCharacter.EquippedOffhandId.HasValue;
+                || mainCharacter.EquippedAmuletId.HasValue;
             if (alreadyEquipped) return;
 
             foreach (string baseItemId in FixtureLoadout)
@@ -407,7 +411,8 @@ namespace FolkIdle.Server.Models
                     case EquipmentSlotEngine.SlotGloves: mainCharacter.EquippedGlovesId = instance.Id; break;
                     case EquipmentSlotEngine.SlotLeggings: mainCharacter.EquippedLeggingsId = instance.Id; break;
                     case EquipmentSlotEngine.SlotBoots: mainCharacter.EquippedBootsId = instance.Id; break;
-                    case EquipmentSlotEngine.SlotOffhand: mainCharacter.EquippedOffhandId = instance.Id; break;
+                    case EquipmentSlotEngine.SlotAmulet: mainCharacter.EquippedAmuletId = instance.Id; break;
+                    case EquipmentSlotEngine.SlotRing: mainCharacter.EquippedRingId = instance.Id; break;
                     default:
                         Console.WriteLine($"Dev seed: '{baseItemId}' resolved to no equip slot.");
                         break;

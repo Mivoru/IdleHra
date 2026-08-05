@@ -84,13 +84,13 @@ namespace FolkIdle.Server.Models
         public long? EquippedLeggingsId { get; set; }
         public long? EquippedBootsId { get; set; }
 
-        // Modul: offhand slot. The seventh slot, added for exactly the reason
-        // the six-slot widening above describes: AffixRegistry.EquipmentSlotMask
-        // already included Shield and ResolveSlot already matched the
-        // "_helper_offhand_" marker, so the five authored helper items
-        // (buckler / quiver / aegis / bulwark, one per region tier) rolled
-        // slot-correct affixes with nowhere to be worn.
-        public long? EquippedOffhandId { get; set; }
+        // Modul: jewellery. EquippedOffhandId lived here and is gone - see
+        // EquipmentSlotEngine on why an offhand slot was never part of the
+        // design. These two are what was actually missing: one amulet and one
+        // ring per tier have been in the catalogue all along with nowhere to be
+        // worn, because ResolveSlotIndex returned -1 for both markers.
+        public long? EquippedAmuletId { get; set; }
+        public long? EquippedRingId { get; set; }
 
         // Modul 13.4.3: Breeding Grounds cooldown gate. Set on both parents by
         // BreedingEngine after a successful breed; ExecuteBreedingAsync rejects

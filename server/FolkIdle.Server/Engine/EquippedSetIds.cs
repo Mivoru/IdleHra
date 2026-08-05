@@ -33,11 +33,14 @@ namespace FolkIdle.Server.Engine
         public int Gloves;
         public int Leggings;
         public int Boots;
-        public int Offhand;
+        public int Amulet;
+        public int Ring;
 
-        public const int SlotCount = 7;
+        // Modul: 7 -> 8. Offhand left, Amulet and Ring arrived - see
+        // EquipmentSlotEngine on why an offhand slot was never in the design.
+        public const int SlotCount = 8;
 
-        // Writes the seven ids into a caller-provided span, which
+        // Writes the eight ids into a caller-provided span, which
         // StatsCalculator stackallocs. Zero allocation - this sits on the
         // 10Hz combat path.
         public void CopyTo(Span<int> destination)
@@ -50,10 +53,11 @@ namespace FolkIdle.Server.Engine
             destination[3] = Gloves;
             destination[4] = Leggings;
             destination[5] = Boots;
-            destination[6] = Offhand;
+            destination[6] = Amulet;
+            destination[7] = Ring;
         }
 
-        // Modul: seven-slot set bonuses. Assigns by the slot indices
+        // Modul: eight-slot set bonuses. Assigns by the slot indices
         // EquipmentSlotEngine already defines, so the mapping lives in one
         // place and a new slot cannot be silently dropped.
         public void SetBySlotIndex(int slotIndex, int setId)
@@ -66,7 +70,8 @@ namespace FolkIdle.Server.Engine
                 case 3: Gloves = setId; break;
                 case 4: Leggings = setId; break;
                 case 5: Boots = setId; break;
-                case 6: Offhand = setId; break;
+                case 6: Amulet = setId; break;
+                case 7: Ring = setId; break;
             }
         }
     }

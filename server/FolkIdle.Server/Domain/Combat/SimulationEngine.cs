@@ -855,7 +855,8 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.EquippedGlovesId = equipUpdate.EquippedGlovesId;
                         currentPayload.EquippedLeggingsId = equipUpdate.EquippedLeggingsId;
                         currentPayload.EquippedBootsId = equipUpdate.EquippedBootsId;
-                        currentPayload.EquippedOffhandId = equipUpdate.EquippedOffhandId;
+                        currentPayload.EquippedAmuletId = equipUpdate.EquippedAmuletId;
+                        currentPayload.EquippedRingId = equipUpdate.EquippedRingId;
                         currentPayload.AxeToolTier = equipUpdate.AxeToolTier;
                         currentPayload.PickaxeToolTier = equipUpdate.PickaxeToolTier;
                         currentPayload.RodToolTier = equipUpdate.RodToolTier;
@@ -3294,7 +3295,8 @@ namespace FolkIdle.Server.Domain.Combat
                                 EquippedHelmetId = currentPayload.EquippedHelmetId,
                                 EquippedGlovesId = currentPayload.EquippedGlovesId,
                                 EquippedBootsId = currentPayload.EquippedBootsId,
-                                EquippedOffhandId = currentPayload.EquippedOffhandId,
+                                EquippedAmuletId = currentPayload.EquippedAmuletId,
+                                EquippedRingId = currentPayload.EquippedRingId,
                                 UnlockedRaceBitmask = currentPayload.UnlockedRaceBitmask,
 
                                 // Modul: roster registers. Characters 2 and 3
@@ -5007,7 +5009,8 @@ namespace FolkIdle.Server.Domain.Combat
             Swap(ref payload.EquippedGlovesId, ref parked.EquippedGlovesId);
             Swap(ref payload.EquippedLeggingsId, ref parked.EquippedLeggingsId);
             Swap(ref payload.EquippedBootsId, ref parked.EquippedBootsId);
-            Swap(ref payload.EquippedOffhandId, ref parked.EquippedOffhandId);
+            Swap(ref payload.EquippedAmuletId, ref parked.EquippedAmuletId);
+            Swap(ref payload.EquippedRingId, ref parked.EquippedRingId);
             Swap(ref payload.EquippedWeaponAffixLocked, ref parked.EquippedWeaponAffixLocked);
             Swap(ref payload.EquippedArmorAffixLocked, ref parked.EquippedArmorAffixLocked);
             Swap(ref payload.EquippedLeggingsAffixLocked, ref parked.EquippedLeggingsAffixLocked);

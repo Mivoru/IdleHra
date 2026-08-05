@@ -7,7 +7,8 @@ import {
   SLOT_GLOVES,
   SLOT_LEGGINGS,
   SLOT_BOOTS,
-  SLOT_OFFHAND,
+  SLOT_AMULET,
+  SLOT_RING,
   isCombatActivity,
   isGatheringActivity,
   ACTIVITY_BANDS,
@@ -36,7 +37,8 @@ describe('resolveSlotIndex', () => {
     expect(resolveSlotIndex('gilded_chausses_leggings_armor_slot_base')).toBe(SLOT_LEGGINGS);
     expect(resolveSlotIndex('gilded_hauberk_chest_armor_slot_base')).toBe(SLOT_CHEST);
     expect(resolveSlotIndex('loch_crossbow_range_weapon_slot_base')).toBe(SLOT_WEAPON);
-    expect(resolveSlotIndex('eq_linen_buckler_helper_offhand_base')).toBe(SLOT_OFFHAND);
+    expect(resolveSlotIndex('eq_linen_pendant_amulet_slot_base')).toBe(SLOT_AMULET);
+    expect(resolveSlotIndex('eq_copper_band_ring_1/2_slot_base')).toBe(SLOT_RING);
   });
 
   it('falls back to chest for armour carrying only the generic marker', () => {
@@ -45,11 +47,16 @@ describe('resolveSlotIndex', () => {
     expect(resolveSlotIndex('plain_tunic_armor_slot_base')).toBe(SLOT_CHEST);
   });
 
-  it('resolves an offhand before the weapon and generic-armour tests', () => {
+  it('resolves jewellery before the weapon and generic-armour tests', () => {
     // Helper BaseIds carry neither "_weapon_slot_" nor "_armor_slot_", so
-    // before the offhand test existed they fell through to -1 and were
+    // before the jewellery tests existed they fell through to -1 and were
     // silently unequippable.
-    expect(resolveSlotIndex('eq_linen_buckler_helper_offhand_base')).not.toBe(-1);
+    expect(resolveSlotIndex('eq_doom_gorget_amulet_slot_base')).not.toBe(-1);
+    expect(resolveSlotIndex('eq_dread_signet_ring_1/2_slot_base')).not.toBe(-1);
+
+    // And the offhand marker resolves to NOTHING now - the slot was invented
+    // and any surviving helper item must be unequippable, not silently worn.
+    expect(resolveSlotIndex('eq_linen_buckler_helper_offhand_base')).toBe(-1);
   });
 
   it('returns -1 for anything not equippable', () => {

@@ -31,7 +31,11 @@ namespace FolkIdle.Server.Engine
         Leggings = 4,
         Boots = 5,
         Gloves = 6,
-        Shield = 7,
+        // Modul: Shield was this game's name for the offhand, and there is no
+        // offhand - see EquipmentSlotEngine. Amulet and Ring replace it, which
+        // is what the GDD named in the first place.
+        Amulet = 7,
+        Ring = 8,
 
         // Modul: tools are worn, not carried.
         //
@@ -41,7 +45,7 @@ namespace FolkIdle.Server.Engine
         // gathering affix reads the same on an axe, a pickaxe and a rod, and
         // splitting them would mean three copies of every definition to say
         // the same thing.
-        Tool = 8
+        Tool = 9
     }
 
     [Flags]
@@ -54,8 +58,9 @@ namespace FolkIdle.Server.Engine
         Leggings = 1 << 4,
         Boots = 1 << 5,
         Gloves = 1 << 6,
-        Shield = 1 << 7,
-        Tool = 1 << 8
+        Amulet = 1 << 7,
+        Ring = 1 << 8,
+        Tool = 1 << 9
     }
 
     // Which scaling law from GDD 1.1/1.2 produces this affix's magnitude.
@@ -116,22 +121,25 @@ namespace FolkIdle.Server.Engine
 
     public static class AffixRegistry
     {
-        // Modul: GDD 1.3 verbatim, with one documented deviation. The GDD's
-        // slot lists reference Amulet, Ring 1 and Ring 2, none of which exist
-        // as equippable slots in this game (the wire protocol has exactly
-        // Weapon, Armor/Chest and Leggings, and the item catalogue adds
-        // Helmet, Boots, Gloves and Helper/offhand). Those entries are
-        // therefore dropped rather than silently remapped onto a slot the GDD
-        // did not name. "Shield" maps onto the Helper/offhand slot, which is
-        // this game's shield equivalent (eq_*_helper_offhand_base).
+        // Modul: GDD 1.3, and the deviation is now GONE.
+        //
+        // This used to say the GDD's Amulet and Ring slots "do not exist as
+        // equippable slots in this game", drop their entries, and remap Shield
+        // onto a helper/offhand slot instead. That was backwards on both
+        // counts: the offhand was the invented slot, and Amulet and Ring are
+        // real - one of each per tier has been in the catalogue all along. The
+        // GDD named them correctly and the code disagreed.
+        //
+        // Ring 1 and Ring 2 collapse to one Ring, because the catalogue authors
+        // exactly one ring per tier.
         private static readonly AffixDefinition[] _definitions =
         {
             new AffixDefinition("flat_hp",
-                EquipmentSlotMask.Helmet | EquipmentSlotMask.Chest | EquipmentSlotMask.Leggings | EquipmentSlotMask.Boots | EquipmentSlotMask.Shield,
+                EquipmentSlotMask.Helmet | EquipmentSlotMask.Chest | EquipmentSlotMask.Leggings | EquipmentSlotMask.Boots | EquipmentSlotMask.Amulet,
                 AffixScalingLaw.FlatHp),
 
             new AffixDefinition("flat_armor",
-                EquipmentSlotMask.Helmet | EquipmentSlotMask.Chest | EquipmentSlotMask.Leggings | EquipmentSlotMask.Boots | EquipmentSlotMask.Shield,
+                EquipmentSlotMask.Helmet | EquipmentSlotMask.Chest | EquipmentSlotMask.Leggings | EquipmentSlotMask.Boots | EquipmentSlotMask.Amulet,
                 AffixScalingLaw.FlatStat),
 
             // Modul: what a tool can roll.
@@ -173,7 +181,11 @@ namespace FolkIdle.Server.Engine
                 EquipmentSlotMask.Boots | EquipmentSlotMask.Helmet | EquipmentSlotMask.Leggings,
                 AffixScalingLaw.Percentage, 5, 4),
 
-            new AffixDefinition("block_chance_pct", EquipmentSlotMask.Shield, AffixScalingLaw.Percentage, 10, 8)
+            // Modul: block_chance_pct was Shield-only, and the shield is gone. It
+            // moves to the Ring rather than being deleted: an affix pool of one
+            // legal slot that no longer exists rolls on nothing, and the GDD's
+            // twelve-affix pool is the part of this that was never wrong.
+            new AffixDefinition("block_chance_pct", EquipmentSlotMask.Ring, AffixScalingLaw.Percentage, 10, 8)
         };
 
         private static readonly Dictionary<string, int> _indexById = BuildIndex();
@@ -344,7 +356,8 @@ namespace FolkIdle.Server.Engine
             if (baseItemId.Contains("_leggings_armor_slot_", StringComparison.Ordinal)) return EquipmentSlotKind.Leggings;
             if (baseItemId.Contains("_boots_armor_slot_", StringComparison.Ordinal)) return EquipmentSlotKind.Boots;
             if (baseItemId.Contains("_gloves_armor_slot_", StringComparison.Ordinal)) return EquipmentSlotKind.Gloves;
-            if (baseItemId.Contains("_helper_offhand_", StringComparison.Ordinal)) return EquipmentSlotKind.Shield;
+            if (baseItemId.Contains("_amulet_", StringComparison.Ordinal)) return EquipmentSlotKind.Amulet;
+            if (baseItemId.Contains("_ring_", StringComparison.Ordinal)) return EquipmentSlotKind.Ring;
 
             // Axes, pickaxes and fishing rods, all authored with a "_tool"
             // suffix - see ContentRegistry.GetToolKind, which is the same
@@ -364,7 +377,8 @@ namespace FolkIdle.Server.Engine
                 case EquipmentSlotKind.Leggings: return EquipmentSlotMask.Leggings;
                 case EquipmentSlotKind.Boots: return EquipmentSlotMask.Boots;
                 case EquipmentSlotKind.Gloves: return EquipmentSlotMask.Gloves;
-                case EquipmentSlotKind.Shield: return EquipmentSlotMask.Shield;
+                case EquipmentSlotKind.Amulet: return EquipmentSlotMask.Amulet;
+                case EquipmentSlotKind.Ring: return EquipmentSlotMask.Ring;
                 case EquipmentSlotKind.Tool: return EquipmentSlotMask.Tool;
                 default: return EquipmentSlotMask.None;
             }

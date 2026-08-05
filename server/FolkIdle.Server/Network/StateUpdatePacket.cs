@@ -300,10 +300,13 @@ namespace FolkIdle.Server.Network
         public long EquippedGlovesId;
         public long EquippedBootsId;
 
-        // Modul: offhand slot. The seventh slot rides the same active-character
-        // path as the six above, for the same reason: the character HUD has to
-        // show what is worn right now, and it changes on a button press.
-        public long EquippedOffhandId;
+        // Modul: jewellery. EquippedOffhandId rode here and is gone - see
+        // EquipmentSlotEngine on why an offhand slot was never in the design.
+        // These two ride the same active-character path as the five above, for
+        // the same reason: the character HUD has to show what is worn right
+        // now, and it changes on a button press.
+        public long EquippedAmuletId;
+        public long EquippedRingId;
 
         // Modul: race unlock feedback. Bit (raceId - 1) per owned race. The
         // client diffs it against the last mask it saw to announce a new race -

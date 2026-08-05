@@ -5,7 +5,8 @@
   import { CommandType } from '../lib/net/protocol.generated';
   import { queryKeys, fetchInventory, type InventoryEquipment } from '../lib/net/rest';
   import { loadContent, prettifyBaseId, monsterName, type ContentRegistry } from '../lib/net/content';
-  import { EQUIPMENT_SLOTS, agePhaseName, HALT_REASON_SHORT, isGatheringActivity, professionName, resolveSlotIndex, isCraftingActivity, craftingActivityId } from '../lib/ui/slots';
+  import { EQUIPMENT_SLOTS, agePhaseName, HALT_REASON_SHORT, isGatheringActivity, professionName, resolveSlotIndex, isCraftingActivity, craftingActivityId,
+    SLOT_WEAPON, SLOT_HELMET, SLOT_CHEST, SLOT_GLOVES, SLOT_LEGGINGS, SLOT_BOOTS, SLOT_AMULET, SLOT_RING, SLOT_AXE, SLOT_PICKAXE, SLOT_ROD } from '../lib/ui/slots';
   import { craftingProfessionName } from '../lib/ui/slots';
   import { queryKeys as qk, fetchRecipes } from '../lib/net/rest';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
@@ -217,15 +218,21 @@
   // Which slot the picker is open on, or -1 for closed.
   let pickerSlot = $state(-1);
 
-  // Split so the figure stands between two even columns. Weapon/offhand are
-  // hands and sit lowest on their side; the rest run head to foot.
-  const LEFT_SLOTS = EQUIPMENT_SLOTS.filter((sl) => [1, 3, 0].includes(sl.index));
-  const RIGHT_SLOTS = EQUIPMENT_SLOTS.filter((sl) => [2, 4, 5, 6].includes(sl.index));
+  // Split so the figure stands between two even columns, four a side. Named by
+  // their constants rather than by bare numbers: the slot indices shifted when
+  // the offhand was removed and the jewellery added, and a literal [2, 4, 5, 6]
+  // silently pointed at different slots afterwards.
+  const LEFT_SLOTS = EQUIPMENT_SLOTS.filter((sl) =>
+    [SLOT_HELMET, SLOT_GLOVES, SLOT_WEAPON, SLOT_AMULET].includes(sl.index),
+  );
+  const RIGHT_SLOTS = EQUIPMENT_SLOTS.filter((sl) =>
+    [SLOT_CHEST, SLOT_LEGGINGS, SLOT_BOOTS, SLOT_RING].includes(sl.index),
+  );
   // Modul: the three tool slots, in their own row under the figure. They are
   // gear like any other piece - rolled rarity, rolled affixes - but they are
   // what a character WORKS with rather than what they fight in, and mixing
   // them into the armour columns loses that distinction.
-  const TOOL_SLOTS = EQUIPMENT_SLOTS.filter((sl) => [7, 8, 9].includes(sl.index));
+  const TOOL_SLOTS = EQUIPMENT_SLOTS.filter((sl) => [SLOT_AXE, SLOT_PICKAXE, SLOT_ROD].includes(sl.index));
 
   // Modul: BOTH COMMANDS NAME THE CHARACTER. EquipItem and UnequipItem have
   // carried a TargetGuid since per-character equipment landed, and Guid.Empty
@@ -244,7 +251,7 @@
   }
 
   // Modul: UnequipItem's TargetId is a SLOT INDEX (0 Weapon, 1 Helmet,
-  // 2 Chest, 3 Gloves, 4 Leggings, 5 Boots, 6 Offhand) - NOT an item instance
+  // 2 Chest, 3 Gloves, 4 Leggings, 5 Boots, 6 Amulet, 7 Ring) - NOT an item instance
   // id, which is what EquipItem takes. Sending the instance id addresses slot
   // 8, or 42, or whatever the id happened to be: out of range, silently
   // ignored, no error anywhere.

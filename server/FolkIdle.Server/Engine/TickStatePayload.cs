@@ -154,7 +154,8 @@ namespace FolkIdle.Server.Engine
         public long EquippedHelmetId;
         public long EquippedGlovesId;
         public long EquippedBootsId;
-        public long EquippedOffhandId;
+        public long EquippedAmuletId;
+        public long EquippedRingId;
 
         // Modul: lifetime statistics. Deliberately ABSOLUTE running totals
         // hydrated from PlayerRecords at login, not deltas accumulated since

@@ -49,14 +49,22 @@ namespace FolkIdle.Server.Domain.Combat
         public const int SlotGloves = 3;
         public const int SlotLeggings = 4;
         public const int SlotBoots = 5;
-        // Modul: offhand slot. The seventh slot, closing the same gap the
-        // six-slot pass closed for helmets/gloves/boots. AffixRegistry's
-        // EquipmentSlotMask has always included Shield and ResolveSlot has
-        // always matched the "_helper_offhand_" marker, so the five authored
-        // helper items (eq_linen_buckler, eq_brawler_buckler, eq_hunter_quiver,
-        // eq_obsidian_aegis, eq_dread_bulwark) already rolled slot-correct
-        // affixes - there was simply nowhere to put them on.
-        public const int SlotOffhand = 6;
+        // Modul: THERE IS NO OFFHAND, and adding one was the mistake.
+        //
+        // A previous pass introduced SlotOffhand as "the seventh slot, closing
+        // the same gap the six-slot pass closed" and authored five helper items
+        // to fill it. The design has no offhand: the slots are weapon, the five
+        // armour pieces, an amulet and a ring. The five helper items were
+        // invented to justify a slot that was itself invented, which is why
+        // none of them has artwork - they were never on the asset list.
+        //
+        // Amulet and Ring are the two that were actually missing. Their items
+        // have existed all along, correctly, one of each per tier
+        // (eq_linen_pendant / eq_copper_band up to eq_doom_gorget /
+        // eq_dread_signet), and ResolveSlotIndex returned -1 for every one of
+        // them - so a player could loot an amulet and never put it on.
+        public const int SlotAmulet = 6;
+        public const int SlotRing = 7;
 
         // Modul: TOOLS ARE WORN. They were stackable materials sitting in the
         // chest, which is why every axe in the game was identical to every
@@ -64,12 +72,15 @@ namespace FolkIdle.Server.Domain.Combat
         // affix. Three slots rather than one, because a character carries an
         // axe, a pickaxe and a rod at the same time and each accelerates its
         // own profession.
-        public const int SlotAxe = 7;
-        public const int SlotPickaxe = 8;
-        public const int SlotRod = 9;
+        public const int SlotAxe = 8;
+        public const int SlotPickaxe = 9;
+        public const int SlotRod = 10;
 
-        // Modul: 7 -> 10 with the three tool slots.
-        public const int SlotCount = 10;
+        // Eight worn slots plus the three tools.
+        public const int SlotCount = 11;
+
+        /// <summary>The worn slots, excluding the three tools. Ring is the last.</summary>
+        public const int LastGearSlot = SlotRing;
 
         // Which slot a BaseItemId belongs in, or -1 if it is not equippable.
         //
@@ -103,13 +114,20 @@ namespace FolkIdle.Server.Domain.Combat
             if (baseItemId.Contains("_boots_")) return SlotBoots;
             if (baseItemId.Contains("_leggings_")) return SlotLeggings;
             if (baseItemId.Contains("_chest_")) return SlotChest;
-            // Must precede the weapon and generic-armour checks: the helper
-            // BaseIds carry neither marker today, so they used to fall through
-            // to -1 and were silently unequippable.
-            if (baseItemId.Contains("_helper_offhand_")) return SlotOffhand;
+            // Jewellery, which used to fall through to -1. Ten authored items -
+            // one amulet and one ring per tier - that a player could loot and
+            // never wear. Both markers are tested before the weapon and
+            // generic-armour checks for the same reason every specific marker
+            // is: an id carrying two markers must match the specific one.
+            if (baseItemId.Contains("_amulet_")) return SlotAmulet;
+            if (baseItemId.Contains("_ring_")) return SlotRing;
             if (baseItemId.Contains("_weapon_slot_")) return SlotWeapon;
             if (baseItemId.Contains("_armor_slot_")) return SlotChest;
 
+            // Modul: "_helper_offhand_" used to resolve here, to a slot that
+            // should not exist. It returns -1 now, deliberately: any surviving
+            // helper item is unequippable rather than silently filling a slot
+            // the design does not have.
             return -1;
         }
 
@@ -121,7 +139,8 @@ namespace FolkIdle.Server.Domain.Combat
             SlotGloves => character.EquippedGlovesId,
             SlotLeggings => character.EquippedLeggingsId,
             SlotBoots => character.EquippedBootsId,
-            SlotOffhand => character.EquippedOffhandId,
+            SlotAmulet => character.EquippedAmuletId,
+            SlotRing => character.EquippedRingId,
             _ => null
         };
 
@@ -135,7 +154,8 @@ namespace FolkIdle.Server.Domain.Combat
                 case SlotGloves: character.EquippedGlovesId = itemInstanceId; break;
                 case SlotLeggings: character.EquippedLeggingsId = itemInstanceId; break;
                 case SlotBoots: character.EquippedBootsId = itemInstanceId; break;
-                case SlotOffhand: character.EquippedOffhandId = itemInstanceId; break;
+                case SlotAmulet: character.EquippedAmuletId = itemInstanceId; break;
+                case SlotRing: character.EquippedRingId = itemInstanceId; break;
                 case SlotAxe: character.EquippedAxeId = itemInstanceId; break;
                 case SlotPickaxe: character.EquippedPickaxeId = itemInstanceId; break;
                 case SlotRod: character.EquippedRodId = itemInstanceId; break;
@@ -167,7 +187,8 @@ namespace FolkIdle.Server.Domain.Combat
                     c.EquippedGlovesId == itemInstanceId ||
                     c.EquippedLeggingsId == itemInstanceId ||
                     c.EquippedBootsId == itemInstanceId ||
-                    c.EquippedOffhandId == itemInstanceId));
+                    c.EquippedAmuletId == itemInstanceId ||
+                    c.EquippedRingId == itemInstanceId));
         }
 
         // Three-item variant for ForgeSplicingEngine, which locks a target and
@@ -207,7 +228,8 @@ namespace FolkIdle.Server.Domain.Combat
                 Note(character.EquippedGlovesId);
                 Note(character.EquippedLeggingsId);
                 Note(character.EquippedBootsId);
-                Note(character.EquippedOffhandId);
+                Note(character.EquippedAmuletId);
+                Note(character.EquippedRingId);
             }
 
             if (referenced.Count == 0) return 0;
@@ -234,7 +256,8 @@ namespace FolkIdle.Server.Domain.Combat
                 character.EquippedGlovesId = Keep(character.EquippedGlovesId);
                 character.EquippedLeggingsId = Keep(character.EquippedLeggingsId);
                 character.EquippedBootsId = Keep(character.EquippedBootsId);
-                character.EquippedOffhandId = Keep(character.EquippedOffhandId);
+                character.EquippedAmuletId = Keep(character.EquippedAmuletId);
+                character.EquippedRingId = Keep(character.EquippedRingId);
             }
 
             if (cleared > 0) await db.SaveChangesAsync();
@@ -252,7 +275,8 @@ namespace FolkIdle.Server.Domain.Combat
                     (c.EquippedGlovesId != null && (c.EquippedGlovesId == firstItemId || c.EquippedGlovesId == secondItemId || c.EquippedGlovesId == thirdItemId)) ||
                     (c.EquippedLeggingsId != null && (c.EquippedLeggingsId == firstItemId || c.EquippedLeggingsId == secondItemId || c.EquippedLeggingsId == thirdItemId)) ||
                     (c.EquippedBootsId != null && (c.EquippedBootsId == firstItemId || c.EquippedBootsId == secondItemId || c.EquippedBootsId == thirdItemId)) ||
-                    (c.EquippedOffhandId != null && (c.EquippedOffhandId == firstItemId || c.EquippedOffhandId == secondItemId || c.EquippedOffhandId == thirdItemId))));
+                    (c.EquippedAmuletId != null && (c.EquippedAmuletId == firstItemId || c.EquippedAmuletId == secondItemId || c.EquippedAmuletId == thirdItemId)) ||
+                    (c.EquippedRingId != null && (c.EquippedRingId == firstItemId || c.EquippedRingId == secondItemId || c.EquippedRingId == thirdItemId))));
         }
 
         // Modul: per-character equipment. characterId names WHICH of the
@@ -510,7 +534,8 @@ namespace FolkIdle.Server.Domain.Combat
                 EquippedGlovesId = character.EquippedGlovesId ?? 0L,
                 EquippedLeggingsId = character.EquippedLeggingsId ?? 0L,
                 EquippedBootsId = character.EquippedBootsId ?? 0L,
-                EquippedOffhandId = character.EquippedOffhandId ?? 0L,
+                EquippedAmuletId = character.EquippedAmuletId ?? 0L,
+                EquippedRingId = character.EquippedRingId ?? 0L,
                 AffixTotals = totals,
                 SetIds = setIds
             };
@@ -536,16 +561,17 @@ namespace FolkIdle.Server.Domain.Combat
             long glovesId = character.EquippedGlovesId ?? 0L;
             long leggingsId = character.EquippedLeggingsId ?? 0L;
             long bootsId = character.EquippedBootsId ?? 0L;
-            long offhandId = character.EquippedOffhandId ?? 0L;
+            long amuletId = character.EquippedAmuletId ?? 0L;
+            long ringId = character.EquippedRingId ?? 0L;
 
-            if (weaponId == 0L && helmetId == 0L && chestId == 0L && glovesId == 0L && leggingsId == 0L && bootsId == 0L && offhandId == 0L)
+            if (weaponId == 0L && helmetId == 0L && chestId == 0L && glovesId == 0L && leggingsId == 0L && bootsId == 0L && amuletId == 0L && ringId == 0L)
             {
                 return (totals, setIds);
             }
 
             var worn = await db.EquipmentInstances
                 .AsNoTracking()
-                .Where(e => e.Id == weaponId || e.Id == helmetId || e.Id == chestId || e.Id == glovesId || e.Id == leggingsId || e.Id == bootsId || e.Id == offhandId)
+                .Where(e => e.Id == weaponId || e.Id == helmetId || e.Id == chestId || e.Id == glovesId || e.Id == leggingsId || e.Id == bootsId || e.Id == amuletId || e.Id == ringId)
                 .ToListAsync();
 
             for (int i = 0; i < worn.Count; i++)
@@ -591,7 +617,8 @@ namespace FolkIdle.Server.Domain.Combat
                     : piece.Id == glovesId ? SlotGloves
                     : piece.Id == leggingsId ? SlotLeggings
                     : piece.Id == bootsId ? SlotBoots
-                    : piece.Id == offhandId ? SlotOffhand
+                    : piece.Id == amuletId ? SlotAmulet
+                    : piece.Id == ringId ? SlotRing
                     : -1;
 
                 if (pieceSlotIndex >= 0)

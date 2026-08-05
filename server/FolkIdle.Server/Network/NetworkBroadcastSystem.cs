@@ -3460,7 +3460,8 @@ namespace FolkIdle.Server.Network
                     RecordWorn(rosterCharacter.EquippedGlovesId, EquipmentSlotEngine.SlotGloves);
                     RecordWorn(rosterCharacter.EquippedLeggingsId, EquipmentSlotEngine.SlotLeggings);
                     RecordWorn(rosterCharacter.EquippedBootsId, EquipmentSlotEngine.SlotBoots);
-                    RecordWorn(rosterCharacter.EquippedOffhandId, EquipmentSlotEngine.SlotOffhand);
+                    RecordWorn(rosterCharacter.EquippedAmuletId, EquipmentSlotEngine.SlotAmulet);
+                    RecordWorn(rosterCharacter.EquippedRingId, EquipmentSlotEngine.SlotRing);
                 }
 
                 var response = new PlayerInventorySnapshotResponse

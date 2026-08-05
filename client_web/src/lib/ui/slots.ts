@@ -25,15 +25,22 @@ export const SLOT_CHEST = 2;
 export const SLOT_GLOVES = 3;
 export const SLOT_LEGGINGS = 4;
 export const SLOT_BOOTS = 5;
-export const SLOT_OFFHAND = 6;
+// Modul: THERE IS NO OFFHAND. It was invented, along with five helper items to
+// fill it, and neither was ever on the asset list. The design's slots are the
+// weapon, the five armour pieces, an amulet and a ring - and the amulet and the
+// ring were the two genuinely missing: one of each per tier has been in the
+// catalogue all along, resolving to no slot, so a player could loot an amulet
+// and never put it on. Mirrors EquipmentSlotEngine.
+export const SLOT_AMULET = 6;
+export const SLOT_RING = 7;
 
 // Modul: tools are worn. They were stackable materials in the chest, which is
 // why every axe of a given wood was identical to every other one - a stack has
 // no room for a rarity or an affix. Three slots, because a character carries
 // an axe, a pickaxe and a rod at once and each accelerates its own profession.
-export const SLOT_AXE = 7;
-export const SLOT_PICKAXE = 8;
-export const SLOT_ROD = 9;
+export const SLOT_AXE = 8;
+export const SLOT_PICKAXE = 9;
+export const SLOT_ROD = 10;
 
 export interface EquipmentSlot {
   index: number;
@@ -49,7 +56,6 @@ export interface EquipmentSlot {
 
 export const EQUIPMENT_SLOTS: readonly EquipmentSlot[] = [
   { index: SLOT_WEAPON, label: 'Weapon', field: 'EquippedWeaponId', lockField: 'EquippedWeaponAffixLocked' },
-  { index: SLOT_OFFHAND, label: 'Offhand', field: 'EquippedOffhandId' },
   { index: SLOT_HELMET, label: 'Helmet', field: 'EquippedHelmetId' },
   // EquippedArmorId became EquippedChestId: the old single "Armor" slot held
   // all four pieces, and chest is where the generic "_armor_slot_" fallback
@@ -58,6 +64,8 @@ export const EQUIPMENT_SLOTS: readonly EquipmentSlot[] = [
   { index: SLOT_GLOVES, label: 'Gloves', field: 'EquippedGlovesId' },
   { index: SLOT_LEGGINGS, label: 'Leggings', field: 'EquippedLeggingsId', lockField: 'EquippedLeggingsAffixLocked' },
   { index: SLOT_BOOTS, label: 'Boots', field: 'EquippedBootsId' },
+  { index: SLOT_AMULET, label: 'Amulet', field: 'EquippedAmuletId' },
+  { index: SLOT_RING, label: 'Ring', field: 'EquippedRingId' },
   // The wire does not carry tool instance ids - the paper doll reads them from
   // /api/v1/player/inventory like it reads every other character's gear - so
   // these three have no `field`.
@@ -68,7 +76,9 @@ export const EQUIPMENT_SLOTS: readonly EquipmentSlot[] = [
 
 /**
  * A faithful port of EquipmentSlotEngine.ResolveSlotIndex. Returns -1 for
- * anything not equippable.
+ * anything not equippable - including "_helper_offhand_" ids, deliberately:
+ * any surviving helper item is unequippable rather than filling a slot the
+ * design does not have.
  *
  * THE ORDER OF THESE TESTS IS THE CONTRACT, not a style choice. Every armour
  * BaseId carries the generic "_armor_slot_" marker IN ADDITION to its specific
@@ -78,9 +88,8 @@ export const EQUIPMENT_SLOTS: readonly EquipmentSlot[] = [
  * "tidily", or trusting a first-match-wins regex alternation, silently files
  * every helmet, glove, boot and legging into the chest slot.
  *
- * The offhand test must also precede the weapon and generic-armour tests: the
- * helper BaseIds carry neither of those markers, and before it existed they
- * fell through to -1 and were silently unequippable.
+ * The jewellery tests must also precede the weapon and generic-armour tests,
+ * for the same reason.
  */
 export function resolveSlotIndex(baseItemId: string): number {
   if (!baseItemId) return -1;
@@ -99,7 +108,9 @@ export function resolveSlotIndex(baseItemId: string): number {
   if (baseItemId.includes('_boots_')) return SLOT_BOOTS;
   if (baseItemId.includes('_leggings_')) return SLOT_LEGGINGS;
   if (baseItemId.includes('_chest_')) return SLOT_CHEST;
-  if (baseItemId.includes('_helper_offhand_')) return SLOT_OFFHAND;
+  // Jewellery, which used to fall through to -1 for ten authored items.
+  if (baseItemId.includes('_amulet_')) return SLOT_AMULET;
+  if (baseItemId.includes('_ring_')) return SLOT_RING;
   if (baseItemId.includes('_weapon_slot_')) return SLOT_WEAPON;
   // Unrecognised armour falls back to chest rather than becoming
   // unequippable, matching the server exactly.
