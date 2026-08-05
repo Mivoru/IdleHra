@@ -303,14 +303,28 @@ namespace FolkIdle.Server.Tests
             return record?.Quantity ?? 0;
         }
 
+        // Modul: REAL catalogue items, one per bracket.
+        //
+        // Each case used to invent `integration_test_ore_{sellerId}` - a
+        // synthetic id that isolates the three brackets from each other's order
+        // book, which is the right idea, but that name is in no catalogue. The
+        // price corridor now refuses an item it cannot price (see
+        // MarketEscrowEngine on why an unpriceable item is not an unlimited
+        // one), so the buy order never landed and there was nothing to match.
+        //
+        // Three DISTINCT canonical ids keep the isolation - MatchOrdersAsync is
+        // keyed by (BaseItemId, QualityTier), so a shared id would let the three
+        // theory cases match against each other's orders. All three are 3,200
+        // base gold, which at quality tier 1 gives a corridor of [3840, 14400]
+        // and comfortably contains the 5,000 price these brackets are computed
+        // from.
         [Theory]
-        [InlineData(DbSeeder.PlayerLowId, 0.05)]
-        [InlineData(DbSeeder.PlayerMidId, 0.08)]
-        [InlineData(DbSeeder.PlayerHighId, 0.15)]
-        public async Task Test_MarketOrderBook_TaxBracketsAndArchiving(long sellerId, double expectedRate)
+        [InlineData(DbSeeder.PlayerLowId, 0.05, "eq_monolith_crown_helmet_armor_slot_base")]
+        [InlineData(DbSeeder.PlayerMidId, 0.08, "eq_brawler_coat_chest_armor_slot_base")]
+        [InlineData(DbSeeder.PlayerHighId, 0.15, "eq_monolith_body_chest_armor_slot_base")]
+        public async Task Test_MarketOrderBook_TaxBracketsAndArchiving(long sellerId, double expectedRate, string baseItemId)
         {
             var marketEngine = new MarketOrderBookEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
-            string baseItemId = $"integration_test_ore_{sellerId}";
             const long price = 5000L;
             long buyerId = 900000000L + sellerId;
 
@@ -1495,14 +1509,27 @@ namespace FolkIdle.Server.Tests
             // Independently replicate the engine's analytical combat projection to
             // compute the expected reward, rather than hand-computing a fragile
             // cascading level-up chain by hand.
+            // Modul: THE SHARED DAMAGE MODEL, not a private copy of it.
+            //
+            // These lines used to re-derive damage per hit inline - no monster
+            // armour, no hit roll - which is precisely the model the unified
+            // CombatDamageModel replaced when offline and warp were found to be
+            // paying for combat that could not have happened. The engine moved;
+            // this projection did not, so it computed a different number of
+            // kills and the test failed against a correct engine.
+            //
+            // Calling the same two authorities keeps the test about what it is
+            // for: that kills become XP, that the level-up cascade runs, and
+            // that the result is persisted. The damage model itself is pinned
+            // by its own tests, and a second hand-maintained copy here has now
+            // drifted twice.
             MonsterDefinition monster = ContentRegistry.Monsters[monsterId - 1];
             CombatStats combatStats = StatsCalculator.Calculate(0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0);
-            int attackSpeedMs = Math.Max(200, (int)(1500 * (1.0f - combatStats.AttackSpeedPct)));
-            long effectiveMilliAttack = 15000L + (combatStats.FlatMeleeDamage * 1000L);
-            int netDamage = Math.Max(1000, (int)effectiveMilliAttack);
-            netDamage = (int)(netDamage * multipliers.DamageMultiplier);
-            double dps = (netDamage / 1000.0) * (1000.0 / attackSpeedMs);
-            double secondsPerKill = monster.MaxHp / dps;
+            var projectionLineage = ProgressionEngine.Lineages[0];
+            long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(
+                in combatStats, projectionLineage.DamageScalePerLevelPct, 1, 0);
+            double secondsPerKill = CombatDamageModel.ExpectedSecondsPerKill(
+                in combatStats, in monster, effectiveMilliAttack, multipliers.DamageMultiplier);
 
             // Modul: replicate the engine's incoming-damage/food-depletion model
             // exactly (expected-value monster crit + Vodnik mitigation, a "free"
@@ -1511,7 +1538,10 @@ namespace FolkIdle.Server.Tests
             // test character can only sustain a fraction of the raw offline
             // window before combat halts, matching the live tick's Auto-Eat halt
             // behavior when food runs out.
-            int monsterRegionTier = ((monsterId - 1) % 30) / 6 + 1;
+            // Also asked of the registry rather than re-derived - the engine
+            // calls GetMonsterRegionTier, and the arithmetic that used to sit
+            // here was a third copy of a rule that has since changed shape.
+            int monsterRegionTier = ContentRegistry.GetMonsterRegionTier(monsterId);
             float monsterCritChance = 0.05f + (monsterRegionTier * 0.005f);
             float mitigatedCritMult = Math.Max(1.0f, 1.5f - (combatStats.CritMitigationPct / 100f));
             float expectedCritMultiplier = 1.0f + monsterCritChance * (mitigatedCritMult - 1.0f);
@@ -1739,9 +1769,13 @@ namespace FolkIdle.Server.Tests
                 .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
             Assert.Equal(initialMaterialQuantity - 10, commodity.Quantity);
 
+            // Asked of the recipe rather than spelled out - see the same change
+            // in Test_UnifiedMaterialPool_* for why a literal here went stale
+            // the moment the catalogue was cut to its 75 canonical pieces.
+            Assert.True(CraftingReceptuary.TryGetRecipe(recipeId, out var recipe));
             var equipment = await verifyDb.EquipmentInstances.AsNoTracking()
                 .SingleAsync(e => e.PlayerId == testPlayerId);
-            Assert.Equal("copper_greatsword_melee_weapon_slot_base", equipment.BaseItemId);
+            Assert.Equal(recipe.ResultBaseItemId, equipment.BaseItemId);
             // Full-Stack Expansion, Part 4: the recipe's TierIndex (1) is
             // the guaranteed floor; the crafted rarity roll can upgrade
             // the outcome up to the item's gear-band forge cap.
@@ -2772,6 +2806,123 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        // Modul: WHAT A SEASON LEAVES BEHIND.
+        //
+        // Three tables now survive a rollover - the village you built, the race
+        // mastery you learned, and the inheritance levels you bought with
+        // diamonds - and that carry-over is the entire reason a returning player
+        // has anything to return to. It is also the least observable rule in the
+        // game: it fires once every ninety days, on the server, with no screen
+        // to look at, and a refactor that quietly re-added one of these tables
+        // to the wipe would read as a completely normal cleanup commit.
+        //
+        // The negative half matters just as much. If the ladder ever stopped
+        // resetting, the season would stop meaning anything - so this asserts
+        // both directions in one place: level, gold and materials go, the three
+        // survivors stay, at the exact levels they were bought at.
+        //
+        // Own container, for the reason the test above documents: the rollover
+        // writes unconditionally across every row of several tables and would
+        // corrupt the shared fixture's seeded players.
+        [Fact]
+        public async Task Test_SeasonalRotation_KeepsTheVillageTheMasteryAndTheInheritance()
+        {
+            await using var container = new PostgreSqlBuilder("postgres:16")
+                .WithDatabase("folkidle_test_carryover")
+                .WithUsername("postgres")
+                .WithPassword("postgres")
+                .Build();
+            await container.StartAsync();
+
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<FolkIdleDbContext>(options => options.UseNpgsql(container.GetConnectionString()));
+            var serviceProvider = services.BuildServiceProvider();
+            var dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+
+            await using (var migrateDb = await dbContextFactory.CreateDbContextAsync())
+            {
+                await migrateDb.Database.MigrateAsync();
+            }
+
+            const long playerId = 1L;
+            int closedEraId;
+
+            await using (var db = await dbContextFactory.CreateDbContextAsync())
+            {
+                var era = new SeasonalEraRecord { EndTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), IsActive = true };
+                db.SeasonalEraRecords.Add(era);
+                await db.SaveChangesAsync();
+                closedEraId = era.EraId;
+
+                var mainCharacterId = Guid.NewGuid();
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = playerId,
+                    PlayerGuid = mainCharacterId,
+                    AuthenticatorToken = Guid.NewGuid(),
+                    CurrentLevel = 42,
+                    CurrentXp = 123_456
+                });
+                db.CharacterRecords.Add(new CharacterRecord
+                {
+                    Id = mainCharacterId,
+                    PlayerId = playerId,
+                    Level = 42,
+                    AgePhase = 1,
+                    SlotIndex = 0
+                });
+
+                // The ladder - all of this is supposed to go.
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 750_000L });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "iron_ore", Quantity = 900L });
+
+                // The three survivors.
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = playerId, BuildingId = 9, CurrentLevel = 7 });
+                db.PlayerRaceMasteries.Add(new PlayerRaceMastery { PlayerId = playerId, RaceId = 1, MasteryLevel = 5, CumulativeXp = 40_000L });
+                db.PlayerInheritanceStats.Add(new PlayerInheritanceStat { PlayerId = playerId, StatId = 0, Level = 6 });
+                db.PlayerInheritanceStats.Add(new PlayerInheritanceStat { PlayerId = playerId, StatId = 3, Level = 2 });
+
+                await db.SaveChangesAsync();
+            }
+
+            var seasonalEngine = new SeasonalRotationEngine(serviceProvider);
+            await seasonalEngine.ExecutePlayerRolloversAsync(closedEraId, CancellationToken.None);
+
+            await using (var verify = await dbContextFactory.CreateDbContextAsync())
+            {
+                // The season is the ladder, and the ladder resets.
+                var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == playerId);
+                Assert.Equal(1, player.CurrentLevel);
+                Assert.Equal(0L, player.CurrentXp);
+
+                var gold = await verify.CommodityRecords.AsNoTracking()
+                    .SingleAsync(c => c.PlayerId == playerId && c.ItemId == "gold");
+                Assert.Equal(0L, gold.Quantity);
+                Assert.False(await verify.CommodityRecords.AsNoTracking()
+                    .AnyAsync(c => c.PlayerId == playerId && c.ItemId == "iron_ore"));
+
+                // What you built.
+                var townHall = await verify.VillageInfrastructures.AsNoTracking()
+                    .SingleAsync(v => v.PlayerId == playerId && v.BuildingId == 9);
+                Assert.Equal(7, townHall.CurrentLevel);
+
+                // What you learned.
+                var mastery = await verify.PlayerRaceMasteries.AsNoTracking()
+                    .SingleAsync(m => m.PlayerId == playerId && m.RaceId == 1);
+                Assert.Equal(5, mastery.MasteryLevel);
+                Assert.Equal(40_000L, mastery.CumulativeXp);
+
+                // What you bought. Asserted per stat rather than as a count: a
+                // wipe that reset the levels to zero would leave both rows in
+                // place and satisfy a count.
+                var inherited = await verify.PlayerInheritanceStats.AsNoTracking()
+                    .Where(s => s.PlayerId == playerId)
+                    .ToDictionaryAsync(s => s.StatId, s => s.Level);
+                Assert.Equal(6, inherited[0]);
+                Assert.Equal(2, inherited[3]);
+            }
+        }
+
         [Fact]
         public void Test_SeasonalRotation_CalculateLegacyShards_MatchesExpectedFormula()
         {
@@ -3228,7 +3379,14 @@ namespace FolkIdle.Server.Tests
         public async Task Test_MarketEscrow_UntradedItem_ExtremePriceBlockedByFallbackCorridor()
         {
             const long testPlayerId = 970000004L;
-            const string baseItemId = "gilded_sabatons_boots_armor_slot_base"; // ItemDefinition Id 3, BaseValueGold 360
+            // Modul: a CANONICAL item. This named a legacy piece that the
+            // catalogue cut removed, so ContentRegistry could no longer price
+            // it - and the corridor, which only ran when a price existed, waved
+            // the listing straight through. The test failed for the right
+            // reason and the failure was a live hole rather than a stale
+            // literal: see the unknown-item case at the end of this method,
+            // which is the other half and did not exist before.
+            const string baseItemId = "eq_steel_sabatons_boots_armor_slot_base"; // ItemDefinition Id 255, BaseValueGold 50
             const int qualityTier = 0;
             long equipmentId;
 
@@ -3249,7 +3407,7 @@ namespace FolkIdle.Server.Tests
 
             // No HistoricalMarketArchives rows exist for this item, so the
             // corridor must fall back to the ContentRegistry baseline
-            // (360 * 1.0 = 360, corridor [288, 1080]) rather than allowing
+            // (50 * 1.0 = 50, corridor [40, 150]) rather than allowing
             // an arbitrary RMT-laundering price through.
             bool accepted = await escrowEngine.ListItemAsync(testPlayerId, equipmentId, 999999999L);
 
@@ -3261,6 +3419,35 @@ namespace FolkIdle.Server.Tests
 
             bool anyMarketMirror = await verifyDb.MarketEquipmentInstances.AsNoTracking().AnyAsync(e => e.PlayerId == testPlayerId);
             Assert.False(anyMarketMirror);
+
+            // And the item nobody can price at all. An instance whose BaseItemId
+            // is not in the catalogue has no rolling average and no baseline;
+            // the corridor used to skip on that and let ANY price through, which
+            // is the laundering route it exists to close. It fails closed now,
+            // and this asserts a sane price rather than an extreme one so that
+            // it can only pass by the item being refused outright.
+            long orphanEquipmentId;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var orphan = new EquipmentInstance
+                {
+                    PlayerId = testPlayerId,
+                    BaseItemId = "gilded_sabatons_boots_armor_slot_base", // removed by the catalogue cut
+                    QualityTier = qualityTier
+                };
+                db.EquipmentInstances.Add(orphan);
+                await db.SaveChangesAsync();
+                orphanEquipmentId = orphan.Id;
+            }
+
+            bool orphanAccepted = await escrowEngine.ListItemAsync(testPlayerId, orphanEquipmentId, 100L);
+            Assert.False(orphanAccepted);
+
+            await using (var orphanDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.NotNull(await orphanDb.EquipmentInstances.AsNoTracking()
+                    .SingleOrDefaultAsync(e => e.Id == orphanEquipmentId));
+            }
         }
 
         [Fact]
@@ -3318,7 +3505,12 @@ namespace FolkIdle.Server.Tests
         public async Task Test_MarketEscrow_ConcurrentListings_ExactReplicaNoSerializationDrift()
         {
             const long testPlayerId = 970000006L;
-            const string baseItemId = "gilded_sabatons_boots_armor_slot_base";
+            // A CANONICAL item, for the same reason as the corridor test above:
+            // the legacy id this used was removed by the catalogue cut, and an
+            // item the corridor cannot price is now refused rather than waved
+            // through. 200 base gold at quality tier 0 gives [160, 600], which
+            // contains the 500 these listings use.
+            const string baseItemId = "eq_hunter_boots_boots_armor_slot_base";
             const int itemCount = 6;
             var equipmentIds = new long[itemCount];
             var affixPayloads = new string[itemCount];
@@ -3364,7 +3556,7 @@ namespace FolkIdle.Server.Tests
 
             // Fire all six listings concurrently (highly concurrent
             // multi-threaded listing load) at a price inside the fallback
-            // corridor (288-1080); each must migrate exactly one item with
+            // corridor (160-600); each must migrate exactly one item with
             // zero cross-contamination between rows.
             var tasks = new Task<bool>[itemCount];
             for (int i = 0; i < itemCount; i++)
@@ -4506,9 +4698,23 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        // Modul: A NAME ON PATH IS NOT AN INTERPRETER.
+        //
+        // This accepted any candidate whose --version probe exited zero. On
+        // Windows, `python3` is normally Microsoft's App Execution Alias: it
+        // prints "Python was not found" and opens the Store, and it is happy to
+        // exit zero doing it. The probe therefore picked `python3`, the
+        // validator run with it never exited, WaitForExit(30000) gave up, and
+        // reading ExitCode threw "Process must exit before requested
+        // information can be determined" - which reads as a broken validator
+        // rather than as a missing interpreter.
+        //
+        // Checked by what it SAYS, not by what it returns. A real interpreter
+        // announces itself as Python 3 on one of the two streams; the alias
+        // cannot. The timeout kills rather than leaks, for the same reason.
         private static string? ResolvePythonExecutable()
         {
-            foreach (string candidate in new[] { "python3", "python" })
+            foreach (string candidate in new[] { "python3", "python", "py" })
             {
                 try
                 {
@@ -4520,10 +4726,21 @@ namespace FolkIdle.Server.Tests
                         RedirectStandardError = true,
                         UseShellExecute = false
                     });
-                    if (probe != null)
+                    if (probe == null)
                     {
-                        probe.WaitForExit(10000);
-                        if (probe.ExitCode == 0) return candidate;
+                        continue;
+                    }
+
+                    string announced = probe.StandardOutput.ReadToEnd() + probe.StandardError.ReadToEnd();
+                    if (!probe.WaitForExit(10000))
+                    {
+                        try { probe.Kill(entireProcessTree: true); } catch { }
+                        continue;
+                    }
+
+                    if (probe.ExitCode == 0 && announced.TrimStart().StartsWith("Python 3", StringComparison.Ordinal))
+                    {
+                        return candidate;
                     }
                 }
                 catch
@@ -4559,7 +4776,16 @@ namespace FolkIdle.Server.Tests
                 UseShellExecute = false
             });
             Assert.NotNull(process);
-            process!.WaitForExit(30000);
+
+            // Drained before the wait: a validator that fills its output pipe
+            // would block forever on a full buffer and look like a hang.
+            string output = process!.StandardOutput.ReadToEnd() + process.StandardError.ReadToEnd();
+            if (!process.WaitForExit(30000))
+            {
+                try { process.Kill(entireProcessTree: true); } catch { }
+                Assert.Fail($"validate_content.py did not exit within 30s. Output so far: {output}");
+            }
+
             return process.ExitCode;
         }
 
@@ -5683,17 +5909,25 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void Test_ProgressionEngine_LevelUpCost_ScalesExponentially()
         {
-            // The growth ratio is the balance-critical property: it must track
-            // the 3x-per-region gear power curve (3^(1/20) = 1.0565) rather
-            // than outrunning it. At the old 1.15 the XP requirement grew 16.4x
-            // per region against 3x more player power, which made regions 3-5
-            // arithmetically unreachable.
-            Assert.Equal(1.06, ProgressionEngine.LevelCurveGrowth, 3);
+            // The growth ratio is the balance-critical property, and it is a
+            // DESIGN CHOICE about season length rather than a number to be
+            // derived. At 1.06 it tracked the 3x-per-region gear curve so
+            // closely that every region took about as long as the last one -
+            // 72 to 209 minutes across the whole game, which is a weekend, not
+            // a season. At 1.13 the XP requirement grows 12.1x per region
+            // against 3x more player power, so each region costs roughly four
+            // times the one before it and a season has somewhere to go.
+            //
+            // Modul: this assertion was left behind by the season-curve change
+            // and asserted 1.06 against an engine that had moved to 1.13. It is
+            // the whole point of the test - a curve nobody can change by
+            // accident - so it is updated, not loosened.
+            Assert.Equal(1.13, ProgressionEngine.LevelCurveGrowth, 3);
             for (int level = 1; level <= 8; level++)
             {
                 double ratio = ProgressionEngine.GetRequiredXpForLevel(level)
                     / (double)ProgressionEngine.GetRequiredXpForLevel(level - 1);
-                Assert.InRange(ratio, 1.05, 1.07);
+                Assert.InRange(ratio, 1.12, 1.14);
             }
 
             for (int level = 1; level <= 8; level++)
@@ -5893,11 +6127,24 @@ namespace FolkIdle.Server.Tests
         // Modul: Fishing and Herbalism mastery moved this ceiling 700 -> 768.
         // See NetworkPacketLayoutGuard for why the four new ints were worth it
         // and why narrowing the existing level fields to byte was not.
+        //
+        // Modul: 768 -> 832. Jewellery took the packet to 769 and inheritance
+        // to 775, and BOTH passes moved NetworkPacketLayoutGuard's exact pin
+        // without noticing this ceiling sitting seven bytes below - so the
+        // build was green on the guard and red here, and the red went unread.
+        //
+        // The ceiling is a discipline marker rather than a transport limit -
+        // nothing fragments at any of these numbers, and size-based
+        // demultiplexing stays unambiguous because the neighbouring packets are
+        // 530 below and nothing above. It is moved by one 64-byte step rather
+        // than to a round large number on purpose: at 832 the next addition has
+        // 57 bytes of room and then has to argue for itself, which is the only
+        // thing this assertion has ever been for.
         [Fact]
-        public void Test_StateUpdatePacket_StructuralSizeIsStrictlyUnder768Bytes()
+        public void Test_StateUpdatePacket_StructuralSizeIsStrictlyUnder832Bytes()
         {
             int actualSize = System.Runtime.InteropServices.Marshal.SizeOf<StateUpdatePacket>();
-            Assert.True(actualSize < 768, $"StateUpdatePacket is {actualSize} bytes - expected strictly under 768.");
+            Assert.True(actualSize < 832, $"StateUpdatePacket is {actualSize} bytes - expected strictly under 832.");
         }
 
         // Modul: Production Release Hardening, Part 3. Exercises
@@ -6470,8 +6717,16 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(seededQuantity - 10L, commodity.Quantity);
             Assert.True(commodity.Quantity > 9999L, "A material quantity beyond the legacy stack cap must survive intact - no cap exists on the unified pool.");
 
+            // Modul: asked of the recipe, not spelled out. This asserted the
+            // literal "copper_greatsword_...", which the catalogue cut removed
+            // along with 110 other legacy pieces - so recipe 1 was repointed at
+            // a canonical item and this line started failing on content that had
+            // been correctly updated. What the test is actually about is that
+            // the craft produced the recipe's OWN output, which survives the
+            // next repointing too.
+            Assert.True(CraftingReceptuary.TryGetRecipe(1, out var recipeOne));
             var crafted = await verifyDb.EquipmentInstances.AsNoTracking().SingleAsync(e => e.PlayerId == testPlayerId);
-            Assert.Equal("copper_greatsword_melee_weapon_slot_base", crafted.BaseItemId);
+            Assert.Equal(recipeOne.ResultBaseItemId, crafted.BaseItemId);
         }
 
         // Modul: Advanced Economy Refactoring, Part 2.1/4. Trade license -
@@ -6564,7 +6819,20 @@ namespace FolkIdle.Server.Tests
             const long lowLevelBuyerId = 970005201L;
             const long sellerId = 970005202L;
             const long buyerGuildId = 970005250L;
-            const string highTierBaseId = "northern_greataxe_melee_weapon_slot_base";
+            // Modul: a CANONICAL region-5 weapon. This named a legacy piece the
+            // catalogue cut removed, and RegionUnlockGate.CanWearItem returns
+            // true for an item it cannot resolve - so the gate reported a
+            // region-5 weapon as wearable at level 1 and the test failed on
+            // content, not on the rule it is about.
+            //
+            // The fail-open there is deliberate and stays: an unresolvable id is
+            // not gated CONTENT, and refusing it would stop a player wearing
+            // gear they legitimately earned before the cut. That is the opposite
+            // call from the market corridor a few hundred lines up, which now
+            // fails closed - and the asymmetry is the point. Wearing an obsolete
+            // item you already own is a small power gain; pricing one freely
+            // moves gold between accounts, which is the whole exploit.
+            const string highTierBaseId = "eq_doom_edge_melee_weapon_slot_base";
 
             // The buyer below has beaten nothing, so both calls must refuse.
             var noBossesDown = new HashSet<int>();
@@ -6851,6 +7119,19 @@ namespace FolkIdle.Server.Tests
         // first and the remainder from the Village Stash, and the stash
         // deposit path enforces the 9999 per-stack cap by returning the
         // overflow instead of storing it.
+        //
+        // Modul: ONE STORE. VillageStashInstances folded into CommodityRecords -
+        // the split was never a feature, and it produced the same client bug
+        // three separate times. Two halves of this test still hold and one had
+        // to change:
+        //
+        //   - Consumption still spans both tables. That is not nostalgia: rows
+        //     stranded in the old table by an unmigrated database or a racing
+        //     writer must still be spendable, so TryConsumeUnifiedAsync keeps
+        //     reading it and this test keeps seeding it.
+        //   - Deposits now land in CommodityRecords, because one store means
+        //     one writer. The assertions below follow the deposit to where it
+        //     actually goes rather than to where it used to.
         [Fact]
         public async Task Test_UnifiedStash_CraftingDrainsBackpackFirstThenStashAndStackCapHolds()
         {
@@ -6899,8 +7180,16 @@ namespace FolkIdle.Server.Tests
 
             await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                var stash = await verifyDb.VillageStashInstances.AsNoTracking().SingleAsync(s => s.PlayerId == testPlayerId && s.ItemId == "copper_ore");
-                Assert.Equal(94L + 20000L, stash.Quantity);
+                // The deposit landed in the one store, and the legacy row was
+                // left exactly as the craft left it - a deposit is not a
+                // migration and must not quietly rewrite rows it did not create.
+                var deposited = await verifyDb.CommodityRecords.AsNoTracking()
+                    .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
+                Assert.Equal(20000L, deposited.Quantity);
+
+                var legacy = await verifyDb.VillageStashInstances.AsNoTracking()
+                    .SingleAsync(s => s.PlayerId == testPlayerId && s.ItemId == "copper_ore");
+                Assert.Equal(94L, legacy.Quantity);
             }
 
             // And a chest that big is still spendable without carrying anything
@@ -6917,8 +7206,17 @@ namespace FolkIdle.Server.Tests
 
             await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                var stash = await verifyDb.VillageStashInstances.AsNoTracking().SingleAsync(s => s.PlayerId == testPlayerId && s.ItemId == "copper_ore");
-                Assert.Equal(94L + 20000L - 15000L, stash.Quantity);
+                // 20,094 held across the two tables, 15,000 spent, 5,094 left -
+                // wherever it physically sits. Asserting the SUM is the point:
+                // the player has one number, and which row it came out of is an
+                // implementation detail the fold exists to stop mattering.
+                long commodity = await verifyDb.CommodityRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore")
+                    .SumAsync(c => c.Quantity);
+                long legacy = await verifyDb.VillageStashInstances.AsNoTracking()
+                    .Where(s => s.PlayerId == testPlayerId && s.ItemId == "copper_ore")
+                    .SumAsync(s => s.Quantity);
+                Assert.Equal(94L + 20000L - 15000L, commodity + legacy);
             }
         }
 
@@ -7245,6 +7543,7 @@ namespace FolkIdle.Server.Tests
             const double XpPerDamagePoint = 1.0 / 5.0;
 
             double previousCumulativeXp = 0.0;
+            var regionMinutes = new double[6];
 
             for (int regionTier = 1; regionTier <= 5; regionTier++)
             {
@@ -7303,18 +7602,50 @@ namespace FolkIdle.Server.Tests
 
                 double gatheringMinutes = (gatheringUnits * nodeThreshold / 10.0) / 60.0;
                 double totalMinutes = combatMinutes + gatheringMinutes;
+                regionMinutes[regionTier] = totalMinutes;
 
-                // The playable band. The floor stops a region from being over
-                // before it is introduced; the ceiling is what actually
-                // regressed - at the old curve region 5 modelled at roughly
-                // 85,000 minutes.
-                Assert.InRange(totalMinutes, 45.0, 260.0);
-
-                // Gathering must be a real cost but never the dominant one, or
-                // the crafting tree turns into the progression bottleneck.
+                // Gathering must never be the dominant cost, or the crafting
+                // tree becomes the progression bottleneck.
+                //
+                // Modul: a CEILING only. This also required gathering to be at
+                // least 2% of a region, which held while every region was about
+                // two hours. The season curve makes region 5 roughly 750 hours
+                // of combat against an unchanged ~11 minutes of gathering, so
+                // the floor now fails on arithmetic rather than on anything
+                // being wrong. Worth saying plainly rather than only deleting:
+                // gathering is now a rounding error after region 2, and whether
+                // the crafting tree should scale with the curve is an open
+                // design question, not something this test can answer.
                 double gatheringShare = gatheringMinutes / totalMinutes;
-                Assert.InRange(gatheringShare, 0.02, 0.40);
+                Assert.True(gatheringShare < 0.40,
+                    $"Region {regionTier}: gathering is {gatheringShare:P0} of the region - it must not become the bottleneck.");
             }
+
+            // THE SHAPE OF THE SEASON, asserted as a shape.
+            //
+            // This used to pin every region inside one absolute band, 45 to 260
+            // minutes, which said "every region takes about the same time" -
+            // true of the old curve and the precise thing the season curve was
+            // changed to stop doing. A back-loaded game cannot be described by
+            // one band, so what is pinned now is the intent itself: a brisk
+            // opening, each region a multiple of the one before it, and a total
+            // that is a season rather than a weekend.
+            Assert.InRange(regionMinutes[1], 45.0, 240.0);
+
+            for (int regionTier = 2; regionTier <= 5; regionTier++)
+            {
+                double ratio = regionMinutes[regionTier] / regionMinutes[regionTier - 1];
+                Assert.InRange(ratio, 3.0, 6.5);
+            }
+
+            double totalHours = (regionMinutes[1] + regionMinutes[2] + regionMinutes[3]
+                + regionMinutes[4] + regionMinutes[5]) / 60.0;
+
+            // The floor matters as much as the ceiling: a season that can be
+            // finished in a fortnight has no ladder left to climb, and this
+            // model is a FLOOR estimate (no affixes, no STR, no set bonuses),
+            // so real play lands well below its own number.
+            Assert.InRange(totalHours, 500.0, 1600.0);
         }
 
         // Modul: Full-Stack Expansion, Part 2/7. The 25 new regional

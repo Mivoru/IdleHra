@@ -13,8 +13,9 @@ any dotnet build, and its rules must be kept in sync with the C# side:
   monsters.json:        Ids exactly 1..N contiguous, no duplicates;
                         MaxHp > 0; AttackIntervalMs > 0;
                         Name and EnemyId non-empty.
-  items.json:           Ids exactly 1..N contiguous, no duplicates;
-                        BaseId non-empty.
+  items.json:           Ids positive and unique - GAPS ARE LEGAL, because
+                        item ids are positional and the catalogue has had
+                        entries removed without renumbering; BaseId non-empty.
   gathering_nodes.json: no duplicate ActivityId.
   skills.json:          exactly MAX_SKILL_ID entries, SkillId exactly
                         1..MAX_SKILL_ID, no duplicates; ManaCost,
@@ -88,8 +89,31 @@ def validate_monsters(entries, errors):
             errors.append(f"monsters.json: entry Id={entry_id} is missing Name or EnemyId.")
 
 
+def require_unique_positive_ids(entries, file_name, id_field, errors):
+    """Mirrors ContentRegistry's items rule: ids are POSITIONAL and may have
+    HOLES. The arrays are sized by the highest id rather than by the entry
+    count, so removing an item leaves an inert gap and every surviving id keeps
+    its meaning. Renumbering to close a gap would repoint every loot table,
+    recipe and owned database row at a different object - which is exactly why
+    the contiguity rule was dropped on the C# side."""
+    seen = set()
+    for entry in entries:
+        entry_id = entry.get(id_field)
+        if not isinstance(entry_id, int) or entry_id < 1:
+            errors.append(f"{file_name}: {id_field} ({entry_id}) must be a positive integer.")
+            continue
+        if entry_id in seen:
+            errors.append(f"{file_name}: duplicate {id_field} ({entry_id}).")
+        seen.add(entry_id)
+
+
 def validate_items(entries, errors):
-    require_contiguous_ids(entries, "items.json", "Id", errors)
+    # Modul: NOT contiguous. This required ids 1..N and therefore called the
+    # real catalogue invalid for every one of the 111 entries above the new
+    # count - a validator that fails on correct content, and one that had gone
+    # unnoticed because the test driving it resolved `python3` to Windows'
+    # Store alias and never actually ran the script.
+    require_unique_positive_ids(entries, "items.json", "Id", errors)
     for entry in entries:
         if not entry.get("BaseId"):
             errors.append(f"items.json: entry Id={entry.get('Id')} is missing BaseId.")
