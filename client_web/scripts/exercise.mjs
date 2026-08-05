@@ -113,14 +113,34 @@ await go('Combat');
 // for the twenty-five rows themselves before indexing into them.
 await page
   .getByRole('button', { name: 'Fight', exact: true })
-  .nth(5)
+  .nth(0)
   .waitFor({ state: 'visible', timeout: 15000 });
 // Modul: EXACT. `name: 'Fight'` is a substring match, so "Stop fighting"
 // matched it too - and now that deploying actually persists, the fixture
 // arrives already in combat, which put that button in the list and shifted
 // every index by one. The click then resolved to a monster row's own button
 // and waited thirty seconds for something that was never going to move.
-await page.getByRole('button', { name: 'Fight', exact: true }).nth(5).click();
+//
+// Modul: ENABLED, not nth(5). Region progression gates a region behind the
+// previous region's boss, so a fresh fixture can only fight the five monsters
+// of region 1 - and index 5 is the first monster of region 2, whose button is
+// correctly disabled. The script sat clicking it for thirty seconds and failed
+// on a rule working exactly as designed, which is the worst kind of red: it
+// says "combat is broken" about a locked door.
+//
+// Asking for an enabled button says what the step actually needs, and keeps
+// saying it when the fixture's unlocked regions change.
+const fightButtons = page.getByRole('button', { name: 'Fight', exact: true });
+const fightCount = await fightButtons.count();
+let fightTarget = null;
+for (let i = 0; i < fightCount; i++) {
+  if (await fightButtons.nth(i).isEnabled()) {
+    fightTarget = fightButtons.nth(i);
+    break;
+  }
+}
+if (!fightTarget) throw new Error('no unlocked monster to fight - every Fight button is disabled');
+await fightTarget.click();
 await page.waitForTimeout(4000);
 {
   const text = await page.evaluate(() => document.body.innerText);
@@ -540,20 +560,45 @@ await go('Character');
 // --- inventory / equip -------------------------------------------------------
 await go('Chest');
 {
+  // Modul: EQUIP OR UNEQUIP. This looked only for "Equip" and called its
+  // absence a failure - but the dev fixture arrives wearing all seven pieces,
+  // so every row correctly offers "Unequip" and the check reported a fully
+  // dressed character as an empty chest. What the step is actually asserting is
+  // that the chest lists gear with a working action on it; which direction that
+  // action goes is the fixture's business.
   const equipBtn = page.getByRole('button', { name: 'Equip', exact: true });
-  if ((await equipBtn.count()) > 0) {
+  const unequipBtn = page.getByRole('button', { name: 'Unequip', exact: true });
+  const toggle = (await equipBtn.count()) > 0 ? equipBtn : unequipBtn;
+  const wasEquipping = (await equipBtn.count()) > 0;
+
+  if ((await toggle.count()) > 0) {
     await dismissToasts();
-    await equipBtn.first().click();
+    const before = await page.evaluate(() => document.body.innerText);
+    await toggle.first().click();
     await page.waitForTimeout(2200);
     const text = await page.evaluate(() => document.body.innerText);
     const msgs = await toasts();
-    // Either the item became equipped, or the server said why not. Both are
-    // real answers; nothing happening at all is not.
-    record('equipping reports an outcome', text.includes('Unequip') || msgs.length > 0, msgs.join(' | '));
+    // Either the item changed hands, or the server said why not. Both are real
+    // answers; nothing happening at all is not.
+    record(
+      wasEquipping ? 'equipping reports an outcome' : 'unequipping reports an outcome',
+      text !== before || msgs.length > 0,
+      msgs.join(' | '),
+    );
     await dismissToasts();
   } else {
-    record('chest lists something to act on', false, 'no Equip button found');
+    record('chest lists something to act on', false, 'no Equip or Unequip button found');
   }
+
+  // Modul: the reroll entry point. It lives in the Forge, and a player looking
+  // for it did not find it because the thing being rerolled is an item and
+  // items are here. Asserted because a link nobody can see is the bug that was
+  // being fixed.
+  record(
+    'the chest offers a route to the reroll',
+    (await page.getByRole('button', { name: 'Reroll', exact: true }).count()) > 0,
+    'every equipment row links to the Forge',
+  );
 }
 
 // --- icons actually loaded ---------------------------------------------------
