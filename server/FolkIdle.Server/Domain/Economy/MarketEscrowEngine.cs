@@ -158,8 +158,30 @@ namespace FolkIdle.Server.Domain.Economy
                 // ContentRegistry baseline for untraded items so this direct
                 // listing path cannot be used to launder gold via an
                 // arbitrarily priced never-before-traded item.
+                //
+                // Modul: AN ITEM WITH NO PRICE IS NOT AN ITEM WITH NO LIMIT.
+                // This ran the corridor only when a price could be computed and
+                // let everything else straight through - which was harmless
+                // while every item in the database was in the catalogue, and
+                // stopped being harmless the moment the catalogue was cut from
+                // 437 entries to its 75 canonical pieces. Every instance of a
+                // removed item still sits in EquipmentInstances, has no
+                // baseline, has never traded, and could therefore be listed at
+                // any price at all: exactly the laundering route the corridor
+                // exists to close, handed out by a content change.
+                //
+                // Fails closed. An item nobody can price is an item nobody can
+                // sell, which costs a player nothing they can name - the pieces
+                // this rejects cannot be equipped or valued either.
                 double? rollingAveragePrice = await MarketOrderBookEngine.CalculateRollingAveragePriceAsync(db, equip.BaseItemId, equip.QualityTier);
-                if (rollingAveragePrice.HasValue)
+                if (!rollingAveragePrice.HasValue)
+                {
+                    await transaction.RollbackAsync();
+                    return ListAttemptOutcome.Rejected(
+                        $"MarketListItem rejected: no price baseline for {equip.BaseItemId} - not in the catalogue and never traded.",
+                        (byte)FolkIdle.Server.Network.CommandResultCode.InvalidPrice);
+                }
+
                 {
                     double minPrice = rollingAveragePrice.Value * 0.80;
                     double maxPrice = rollingAveragePrice.Value * 3.00;

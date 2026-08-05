@@ -272,10 +272,22 @@ namespace FolkIdle.Server.Engine
                     // (P_min = P_avg * 0.80, P_max = P_avg * 3.00), computed
                     // from real completed-order history. baseItemId is already
                     // the real item identity for a BUY order at this point.
-                    // Skipped when no recent completed-order history exists yet
-                    // for this item (nothing to compute an average against).
+                    //
+                    // Modul: fails closed on an unpriceable item, the same way
+                    // the direct SELL path in MarketEscrowEngine now does and
+                    // for the same reason - a BUY order at an arbitrary price
+                    // moves gold between two players just as effectively as a
+                    // SELL does. There is no baseline only when the item is
+                    // absent from the catalogue AND has never traded, which
+                    // after the catalogue cut describes every legacy piece.
                     double? buyRollingAveragePrice = await CalculateRollingAveragePriceAsync(db, baseItemId, qualityTier);
-                    if (buyRollingAveragePrice.HasValue)
+                    if (!buyRollingAveragePrice.HasValue)
+                    {
+                        await transaction.RollbackAsync();
+                        Console.WriteLine($"BUY Order rejected: no price baseline for {baseItemId} - not in the catalogue and never traded.");
+                        return;
+                    }
+
                     {
                         double buyMinPrice = buyRollingAveragePrice.Value * 0.80;
                         double buyMaxPrice = buyRollingAveragePrice.Value * 3.00;
