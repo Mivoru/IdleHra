@@ -17,9 +17,18 @@ Everything below `## Client UI Hook Points` predates the web client.
 
 ## Where it runs
 
-**https://92-5-0-94.sslip.io** — the whole game, client and API, on the Oracle
-Ampere box. **Render is no longer used for anything** and both its services can
-be suspended. The database is still Supabase.
+**https://folkidle.duckdns.org** — the address to give people, with
+**https://92-5-0-94.sslip.io** still answering beside it so older links keep
+working. Both come out of one Caddy block and share one certificate. The built
+bundle points at the duckdns name, because `VITE_FOLKIDLE_SERVER` is a build
+ARG and pointing it at a name rather than at an address means the day this box
+changes IP, only DNS moves. `FOLKIDLE_WEB_ORIGINS` in `.env` must list BOTH,
+comma separated - getting it wrong presents as a login screen that simply
+refuses, with nothing in the console naming the origin list.
+
+Both names reach the same machine: the whole game, client and API, on the
+Oracle Ampere box. **Render is no longer used for anything** and both its
+services can be suspended. The database is still Supabase.
 
     ssh folkidle-server
     cd ~/folkidle/ops/oracle && docker compose up -d --build
