@@ -246,29 +246,49 @@ namespace FolkIdle.Server.Tests
             var ringOnlyOnASword = new AutoRerollStopCondition(AffixRarity.Common, "block_chance_pct");
 
             Assert.False(AutoRerollPlanner.IsConditionReachable(
-                ringOnlyOnASword, "eq_t3_melee_weapon_base", RerollOperation.StatType, "crit_dmg_pct"));
+                ringOnlyOnASword, "eq_t3_melee_weapon_base", RerollOperation.Full, "crit_dmg_pct"));
 
             Assert.True(AutoRerollPlanner.IsConditionReachable(
-                ringOnlyOnASword, "eq_copper_band_ring_1/2_slot_base", RerollOperation.StatType, "block_chance_pct"));
+                ringOnlyOnASword, "eq_copper_band_ring_1/2_slot_base", RerollOperation.Full, "block_chance_pct"));
         }
 
+        /// <summary>
+        /// THE AUTO-REROLL THAT WOULD NOT START.
+        ///
+        /// This test used to assert the opposite, and the behaviour it pinned
+        /// is why auto-reroll was reported as not working: with the old three
+        /// operations, the one the client sent by default (Value) could change
+        /// neither the stat nor the rarity, so the planner refused any run that
+        /// asked for either - before spending a coin. "Keep rerolling until it
+        /// is at least Epic" on a Rare affix was rejected as impossible.
+        ///
+        /// One reroll rolls all three axes, so a goal is reachable when the
+        /// affix is legal on the slot and the rarity is on the scale. Nothing
+        /// else is a reason to refuse.
+        /// </summary>
         [Fact]
-        public void StopCondition_KnowsWhichOperationsCanMoveWhichAxis()
+        public void EveryGoalOnALegalSlotIsReachable()
         {
             var wantsDifferentStat = new AutoRerollStopCondition(AffixRarity.Common, "flat_armor");
 
-            // A Value reroll never changes the stat, so this can never be met.
-            Assert.False(AutoRerollPlanner.IsConditionReachable(
-                wantsDifferentStat, "eq_t2_chest_armor_base", RerollOperation.Value, "flat_hp"));
-
-            // ...but it is already met if the stat matches.
+            // A different stat than the one currently rolled is reachable,
+            // because the reroll changes the stat.
             Assert.True(AutoRerollPlanner.IsConditionReachable(
-                wantsDifferentStat, "eq_t2_chest_armor_base", RerollOperation.Value, "flat_armor"));
+                wantsDifferentStat, "eq_steel_harness_chest_armor_slot_base", RerollOperation.Full, "flat_hp"));
 
-            // A Value reroll never raises rarity either.
+            // And so is the one already rolled.
+            Assert.True(AutoRerollPlanner.IsConditionReachable(
+                wantsDifferentStat, "eq_steel_harness_chest_armor_slot_base", RerollOperation.Full, "flat_armor"));
+
+            // Climbing rarity is the whole point of an auto-reroll run and must
+            // never be refused up front.
             var wantsEpic = new AutoRerollStopCondition(AffixRarity.Epic);
-            Assert.False(AutoRerollPlanner.IsRarityTargetReachable(wantsEpic, RerollOperation.Value, AffixRarity.Rare));
-            Assert.True(AutoRerollPlanner.IsRarityTargetReachable(wantsEpic, RerollOperation.UpgradeRarity, AffixRarity.Rare));
+            Assert.True(AutoRerollPlanner.IsRarityTargetReachable(wantsEpic, RerollOperation.Full, AffixRarity.Rare));
+            Assert.True(AutoRerollPlanner.IsRarityTargetReachable(wantsEpic, RerollOperation.Full, AffixRarity.Common));
+
+            // Only a target off the top of the scale is genuinely impossible.
+            var wantsBeyondLegendary = new AutoRerollStopCondition((AffixRarity)99);
+            Assert.False(AutoRerollPlanner.IsRarityTargetReachable(wantsBeyondLegendary, RerollOperation.Full, AffixRarity.Common));
         }
 
         [Fact]

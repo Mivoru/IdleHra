@@ -14,15 +14,31 @@ using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Engine
 {
+    /// <summary>
+    /// THERE IS ONE REROLL NOW, AND IT COSTS GOLD.
+    ///
+    /// There used to be three - Value, StatType and UpgradeRarity - and they
+    /// split one decision across three purchases with two currencies: two were
+    /// gold, the rarity step was Diamonds, and the player had to understand
+    /// which axis they wanted before they could ask for anything. Rerolling the
+    /// stat also deliberately PRESERVED the rarity, and rerolling the value
+    /// preserved both, so improving an affix in the way you actually wanted
+    /// usually meant paying for two or three of them in sequence.
+    ///
+    /// One operation replaces all of it: pick an affix, pay gold, and its type,
+    /// its rarity and its magnitude are all rolled fresh together. It is a
+    /// gamble rather than a purchase of a specific improvement, which is what
+    /// makes a single price honest - and the other affixes on the item are
+    /// untouched, so the choice of WHICH affix to reroll is the decision the
+    /// player is actually making.
+    ///
+    /// The enum survives with one member because the wire carries it: a client
+    /// that still sends 1 or 2 gets the same reroll rather than an error.
+    /// </summary>
     public enum RerollOperation
     {
-        // Same stat, same rarity, new magnitude inside the rarity's band.
-        Value = 0,
-        // New stat, rarity preserved. Costs 2.5x - it can convert a dead
-        // affix into the one a build actually wants.
-        StatType = 1,
-        // One rarity step up. The only operation priced in Diamonds.
-        UpgradeRarity = 2
+        /// New stat, new rarity, new magnitude, all at once. Gold.
+        Full = 0
     }
 
     public class AffixRerollEngine
@@ -200,7 +216,7 @@ namespace FolkIdle.Server.Engine
             return (string.Empty, AffixRarity.Common, string.Empty, false);
         }
 
-        public async Task ExecuteRerollAsync(long playerId, long targetItemGuid, int affixIndex, RerollOperation operation = RerollOperation.Value, int consecutiveAttempts = 0)
+        public async Task ExecuteRerollAsync(long playerId, long targetItemGuid, int affixIndex, RerollOperation operation = RerollOperation.Full, int consecutiveAttempts = 0)
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -262,16 +278,13 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
-                // A Legendary affix has nowhere to go. Rejected rather than
-                // charged for a no-op - the engine this replaced had a bug of
-                // exactly that shape, where the player paid to make an item worse.
-                if (operation == RerollOperation.UpgradeRarity && currentRarity >= AffixRarity.Legendary)
-                {
-                    Console.WriteLine("Reroll failed: affix is already Legendary.");
-                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
-                    await transaction.RollbackAsync();
-                    return;
-                }
+                // Modul: a Legendary affix used to be REFUSED here, because the
+                // only operation that touched rarity could climb and a Legendary
+                // one had nowhere to climb to. There is nothing to refuse now:
+                // the reroll rolls a fresh rarity from the whole table, so a
+                // Legendary affix can be rerolled like any other - it is simply
+                // a bet the player is very likely to lose, which is their call
+                // to make and is visible in the price before they make it.
 
                 // An item whose BaseItemId carries no recognisable slot suffix
                 // has no legal affix pool. Refuse before charging anything.
@@ -297,101 +310,58 @@ namespace FolkIdle.Server.Engine
 
                 int regionTier = ResolveRegionTier(targetItem.BaseItemId);
 
-                bool payWithDiamonds = operation == RerollOperation.UpgradeRarity;
-                long cost = payWithDiamonds
-                    ? AffixRegistry.CalculateRarityUpgradeDiamondCost(currentRarity)
-                    : AffixRegistry.CalculateRerollGoldCost(
-                        targetItem.QualityTier,
-                        consecutiveAttempts,
-                        operation == RerollOperation.StatType);
-
-                // Modul: diamond store correction, 2026-08-01.
+                // Modul: GOLD ONLY. The rarity step used to be priced in
+                // Diamonds, which made the one operation a player most wanted
+                // the one they had to buy currency for - and it was broken
+                // besides: it spent from a "premium_diamond" CommodityRecords
+                // row that nothing in the server has ever created, so every
+                // diamond-priced reroll was rejected as unaffordable however
+                // many diamonds the player held. The integration tests seeded
+                // that row explicitly, which made a store the game never
+                // populates look real.
                 //
-                // Diamonds and gold live in DIFFERENT places, and this method
-                // used to spend both from CommodityRecords. Gold genuinely does
-                // live there - AuthenticationEngine seeds ItemId="gold" at
-                // registration and every gold path reads that row. Diamonds do
-                // NOT: PlayerRecords."PremiumDiamonds" is the only store, it is
-                // what every producer credits (achievements, daily login,
-                // chronicle pass, billing verification), and it is what the wire
-                // and the UI show via TickStatePayload.PremiumCurrency.
+                // Deleting the currency split deletes the bug with it. Diamonds
+                // are not spent anywhere on this path now.
                 //
-                // Nothing in the server has ever created a "premium_diamond"
-                // CommodityRecords row, so the lookup always returned null and
-                // every diamond-priced reroll was rejected as unaffordable no
-                // matter how many diamonds the player held. The integration
-                // tests missed it because they seed that row explicitly, which
-                // made a store the game never populates look real.
-                if (payWithDiamonds)
+                // No stat-type surcharge either: there is one operation, so
+                // there is nothing for a multiplier to distinguish.
+                long cost = AffixRegistry.CalculateRerollGoldCost(
+                    targetItem.QualityTier,
+                    consecutiveAttempts,
+                    rerollStatType: false);
+
+                var currencyQuery = $"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = 'gold' FOR UPDATE";
+                var currencyRecord = await db.CommodityRecords.FromSqlRaw(currencyQuery).SingleOrDefaultAsync();
+
+                if (currencyRecord == null || currencyRecord.Quantity < cost)
                 {
-                    var diamondOwner = await db.PlayerRecords
-                        .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
-                        .SingleOrDefaultAsync();
-
-                    if (diamondOwner == null || diamondOwner.PremiumDiamonds < cost)
-                    {
-                        Console.WriteLine($"Reroll failed: insufficient diamonds (need {cost}).");
-                        _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
-                        await transaction.RollbackAsync();
-                        return;
-                    }
-
-                    diamondOwner.PremiumDiamonds -= (int)cost;
-
-                    // The live payload owns PremiumCurrency, and the checkpoint
-                    // writes it back with plain assignment - so deducting only
-                    // in the database would be silently refunded by the next
-                    // flush. BillingSyncNotification exists for exactly this
-                    // hand-off: it carries the DB-authoritative balance onto the
-                    // tick-owned payload, which is the only thread allowed to
-                    // touch it.
-                    _pendingDiamondBalance = diamondOwner.PremiumDiamonds;
-                }
-                else
-                {
-                    var currencyQuery = $"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = 'gold' FOR UPDATE";
-                    var currencyRecord = await db.CommodityRecords.FromSqlRaw(currencyQuery).SingleOrDefaultAsync();
-
-                    if (currencyRecord == null || currencyRecord.Quantity < cost)
-                    {
-                        Console.WriteLine($"Reroll failed: insufficient gold (need {cost}).");
-                        _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
-                        await transaction.RollbackAsync();
-                        return;
-                    }
-
-                    currencyRecord.Quantity -= cost;
+                    Console.WriteLine($"Reroll failed: insufficient gold (need {cost}).");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
+                    await transaction.RollbackAsync();
+                    return;
                 }
 
-                AffixDefinition resultDefinition = currentDefinition;
-                AffixRarity resultRarity = currentRarity;
+                currencyRecord.Quantity -= cost;
 
-                switch (operation)
+                // Modul: ONE ROLL, ALL THREE AXES. Type, rarity and magnitude
+                // together - see RerollOperation on why the three separate
+                // operations went. `operation` is accepted and ignored so an
+                // older client sending StatType or UpgradeRarity gets the same
+                // reroll rather than an error.
+                if (!AffixRegistry.TryRollReplacement(targetItem.BaseItemId, affixIdToReroll, out AffixDefinition resultDefinition))
                 {
-                    case RerollOperation.UpgradeRarity:
-                        AffixRegistry.TryGetNextRarity(currentRarity, out resultRarity);
-                        break;
-
-                    case RerollOperation.StatType:
-                        // Stat type changes; RARITY IS PRESERVED. Rerolling the
-                        // type is already the more expensive operation, and
-                        // dropping it back to Common would make it a downgrade
-                        // the player paid extra for.
-                        if (!AffixRegistry.TryRollReplacement(targetItem.BaseItemId, affixIdToReroll, out resultDefinition))
-                        {
-                            Console.WriteLine("Reroll failed: no affix is legal for this item's slot.");
-                            _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
-                            await transaction.RollbackAsync();
-                            return;
-                        }
-                        break;
-
-                    case RerollOperation.Value:
-                    default:
-                        // Same stat, same rarity - only the magnitude moves,
-                        // inside AffixRegistry's +/-20% band.
-                        break;
+                    // No OTHER affix is legal for this slot, so the pool is a
+                    // single entry and the type cannot move. Roll that one
+                    // again rather than failing: the rarity and the magnitude
+                    // are still live, so the reroll is still worth what it cost.
+                    resultDefinition = currentDefinition;
                 }
+
+                // The same weighted table the drop path rolls, so a reroll and
+                // a fresh drop agree about what a rarity is worth. It can come
+                // out LOWER than it went in - that is the gamble, and it is why
+                // one price is honest.
+                AffixRarity resultRarity = AffixRegistry.RollAffixRarity();
 
                 int resultMagnitude = AffixRegistry.RollMagnitude(resultDefinition, regionTier, resultRarity);
 

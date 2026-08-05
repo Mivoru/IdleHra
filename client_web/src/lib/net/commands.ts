@@ -527,10 +527,23 @@ export function assignCharacterActivity(
 // ---------------------------------------------------------------------------
 
 /** RerollOperation. UpgradeRarity is the only one priced in Diamonds. */
+// Modul: ONE REROLL, AND IT COSTS GOLD.
+//
+// There were three - value, stat and rarity - which split one decision across
+// three purchases with two currencies, and made the player pick an axis before
+// they could ask for anything. The rarity step was the one most people wanted
+// and it was the one priced in Diamonds.
+//
+// Kept as a list of one rather than collapsed into a bare number so the UI
+// keeps its label and hint in the same place it always read them, and so
+// bringing a second operation back later is a data change.
 export const REROLL_OPERATIONS = [
-  { kind: 0, label: 'Reroll value', currency: 'gold', hint: 'Same stat and rarity, new magnitude inside its band.' },
-  { kind: 1, label: 'Reroll stat', currency: 'gold', hint: 'New stat, rarity preserved. Costs 2.5x - it can turn a dead affix into the one a build wants.' },
-  { kind: 2, label: 'Upgrade rarity', currency: 'diamonds', hint: 'One rarity step up. The only operation priced in Diamonds.' },
+  {
+    kind: 0,
+    label: 'Reroll affix',
+    currency: 'gold',
+    hint: 'Rolls a new stat, a new rarity and a new value, all at once. It can come out worse - that is the gamble. The other affixes on the item are untouched.',
+  },
 ] as const;
 
 export interface AutoRerollOptions {

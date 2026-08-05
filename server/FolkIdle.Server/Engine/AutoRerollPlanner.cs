@@ -92,12 +92,17 @@ namespace FolkIdle.Server.Engine
                 return true;
             }
 
-            if (operation == RerollOperation.Value || operation == RerollOperation.UpgradeRarity)
-            {
-                // Neither operation can change which stat the affix is.
-                return string.Equals(condition.RequiredAffixId, currentAffixId, StringComparison.Ordinal);
-            }
-
+            // Modul: THIS IS WHY AUTO-REROLL DID NOT WORK.
+            //
+            // The old Value and UpgradeRarity operations could not change which
+            // stat an affix was, so this returned "unreachable" unless the affix
+            // was ALREADY the one being asked for - and Value was the operation
+            // the client sent by default. Asking to auto-reroll toward crit
+            // damage on anything that was not already crit damage was refused
+            // before a single attempt, which reads exactly like a dead button.
+            //
+            // One operation rolls the type too, so the only question left is the
+            // honest one: is that affix legal on this slot at all.
             if (!AffixRegistry.TryGetDefinition(condition.RequiredAffixId!, out var required))
             {
                 return false;
@@ -108,30 +113,23 @@ namespace FolkIdle.Server.Engine
             return (required.AllowedSlots & mask) != 0;
         }
 
-        // An UpgradeRarity run can only ever climb, and stops dead at
-        // Legendary. Asking it to reach a rarity below the affix's current one
-        // is already satisfied; asking it to exceed Legendary never completes.
+        /// <summary>
+        /// Whether a rarity target can ever be reached.
+        ///
+        /// Modul: THE OTHER HALF OF THE DEAD AUTO-REROLL. Value and StatType
+        /// both preserved the affix's rarity, so this required
+        /// `currentRarity >= condition.MinimumRarity` for them - which refuses
+        /// every run whose whole point is to RAISE the rarity. On a Common
+        /// affix, "keep going until it is at least Epic" was rejected as
+        /// impossible before spending anything.
+        ///
+        /// One reroll rolls the rarity fresh from the same weighted table the
+        /// drop path uses, so any rarity is reachable from any other. The only
+        /// unreachable target left is one above the top of the scale.
+        /// </summary>
         public static bool IsRarityTargetReachable(in AutoRerollStopCondition condition, RerollOperation operation, AffixRarity currentRarity)
         {
-            if (condition.MinimumRarity > AffixRarity.Legendary)
-            {
-                return false;
-            }
-
-            if (operation == RerollOperation.UpgradeRarity)
-            {
-                return true;
-            }
-
-            // Value rerolls never move rarity, so a target above the current
-            // rarity can never be met by them.
-            if (operation == RerollOperation.Value)
-            {
-                return currentRarity >= condition.MinimumRarity;
-            }
-
-            // StatType preserves rarity as well - see AffixRerollEngine.
-            return currentRarity >= condition.MinimumRarity;
+            return condition.MinimumRarity <= AffixRarity.Legendary;
         }
 
         public static int ClampAttempts(int requestedAttempts)

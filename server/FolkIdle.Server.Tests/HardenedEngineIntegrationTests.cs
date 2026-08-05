@@ -1790,11 +1790,10 @@ namespace FolkIdle.Server.Tests
             }
 
             var rerollEngine = new AffixRerollEngine(_fixture.ServiceProvider);
-            // Modul: reroll rework, 2026-08-01. This test is about REPLACING the
-            // stat, which is now an explicit operation - the default (Value)
-            // deliberately keeps the stat and only moves its magnitude, so
-            // asserting flat_hp becomes flat_armor requires StatType.
-            await rerollEngine.ExecuteRerollAsync(testPlayerId, equipmentId, affixIndex: 0, RerollOperation.StatType);
+            // Modul: one reroll. It replaces the stat, the rarity and the
+            // magnitude together, so this needs no operation argument at all -
+            // there is only the one, and it is what the default resolves to.
+            await rerollEngine.ExecuteRerollAsync(testPlayerId, equipmentId, affixIndex: 0);
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
 

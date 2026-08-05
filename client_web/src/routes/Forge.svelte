@@ -304,14 +304,11 @@
         </label>
       {/if}
 
-      <label>
-        Operation
-        <select bind:value={rerollOperation}>
-          {#each REROLL_OPERATIONS as op}
-            <option value={op.kind}>{op.label} ({op.currency})</option>
-          {/each}
-        </select>
-      </label>
+      <!-- Modul: the operation picker is gone. There is one reroll and it
+           costs gold, so a dropdown with a single entry would be asking the
+           player to choose between one thing - see REROLL_OPERATIONS. The hint
+           stays, because what the reroll actually does to the affix is the part
+           worth saying. -->
       <p class="dim tiny hint">{selectedOperation.hint}</p>
 
       <label class="check">
