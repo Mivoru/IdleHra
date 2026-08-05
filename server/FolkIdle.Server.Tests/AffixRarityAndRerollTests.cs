@@ -104,24 +104,35 @@ namespace FolkIdle.Server.Tests
         // ---------- economy ----------
 
         [Fact]
-        public void RerollGoldCost_EscalatesWithStreakAndItemTier_AndSaturates()
+        public void RerollGoldCost_ScalesWithItemTier_IsFlatPerAttempt_AndSaturates()
         {
-            long first = AffixRegistry.CalculateRerollGoldCost(1, 0, rerollStatType: false);
-            long second = AffixRegistry.CalculateRerollGoldCost(1, 1, rerollStatType: false);
-            Assert.True(second > first, "consecutive attempts must escalate");
-
             long tierOne = AffixRegistry.CalculateRerollGoldCost(1, 0, false);
             long tierTen = AffixRegistry.CalculateRerollGoldCost(10, 0, false);
             Assert.True(tierTen > tierOne, "higher item tiers must cost more");
 
-            long value = AffixRegistry.CalculateRerollGoldCost(5, 0, rerollStatType: false);
-            long statType = AffixRegistry.CalculateRerollGoldCost(5, 0, rerollStatType: true);
-            Assert.True(statType > value, "stat-type reroll must cost more than value reroll");
+            // Modul: THIS ASSERTED THE OPPOSITE, and the behaviour it pinned is
+            // what made the reroll unusable. The cost escalated 1.35x per
+            // consecutive attempt, which was defensible when a rarity upgrade
+            // was DETERMINISTIC - one guaranteed step per purchase. Rarity is a
+            // weighted roll now where Legendary is 1 in 100, so repeated
+            // attempts are not a failure state, they are the mechanic, and
+            // charging exponentially for them priced the headline outcome out
+            // of the game: ten attempts at item tier 7 cost 642,000 gold and
+            // twenty cost 13.5 million, against roughly 564,000 earned across
+            // an entire levels 1-100 playthrough.
+            long first = AffixRegistry.CalculateRerollGoldCost(7, 0, false);
+            Assert.Equal(first, AffixRegistry.CalculateRerollGoldCost(7, 5, false));
+            Assert.Equal(first, AffixRegistry.CalculateRerollGoldCost(7, 50, false));
 
-            // Must never overflow or exceed the documented ceiling, however
-            // absurd the inputs.
-            long saturated = AffixRegistry.CalculateRerollGoldCost(14, 500, true);
-            Assert.Equal(AffixRegistry.RerollGoldMaxCost, saturated);
+            // No stat-type surcharge either - there is one operation now, so
+            // there is nothing for a multiplier to distinguish.
+            Assert.Equal(
+                AffixRegistry.CalculateRerollGoldCost(5, 0, rerollStatType: false),
+                AffixRegistry.CalculateRerollGoldCost(5, 0, rerollStatType: true));
+
+            // Must never overflow however absurd the inputs.
+            long extreme = AffixRegistry.CalculateRerollGoldCost(14, 500, true);
+            Assert.InRange(extreme, 1L, AffixRegistry.RerollGoldMaxCost);
         }
 
         [Fact]

@@ -484,22 +484,44 @@ namespace FolkIdle.Server.Engine
         // minute with nothing at the top of the curve to spend it on.
         //
         // Base cost scales on the ITEM's rarity tier, so rerolling a
-        // Transcendent is meaningfully expensive, and multiplies by 1.35 per
-        // consecutive attempt on the same item so a run of failures escalates
-        // rather than grinding flat. The streak resets on success or when the
-        // player switches items - tracked by the caller, not here.
+        // Transcendent is meaningfully expensive.
         public const long RerollGoldBase = 250L;
         private const double RerollGoldItemTierGrowth = 1.9;
-        private const double RerollGoldStreakGrowth = 1.35;
 
-        // Rerolling the stat TYPE is strictly more powerful than rerolling its
-        // value - it can convert a dead affix into the one the build wants - so
-        // it is priced at 2.5x.
-        private const double RerollStatTypeMultiplier = 2.5;
+        // Modul: THE STREAK MULTIPLIER IS GONE, and it had to go the moment the
+        // reroll started rolling rarity at random.
+        //
+        // It was 1.35 per consecutive attempt, which was defensible when a
+        // rarity upgrade was DETERMINISTIC - one guaranteed step per purchase,
+        // so a "run of failures" meant the player was chasing a value or a stat
+        // and escalation kept that from being free. It is not defensible now:
+        // rarity is a weighted roll where Legendary is 1 in 100, so repeated
+        // attempts are not a failure state, they are how the system works, and
+        // an exponential charge on them prices its own headline outcome out of
+        // the game.
+        //
+        // Measured, at item tier 7: ten attempts cost 642,000 gold and twenty
+        // cost 13.5 MILLION, against roughly 564,000 earned across an entire
+        // levels 1-100 playthrough. The average chase for a Legendary is a
+        // hundred attempts. The multiplier did not make the chase expensive, it
+        // made it arithmetically impossible.
+        //
+        // Flat per reroll now. At tier 7 that is 11,761 a roll, so a Legendary
+        // averages about 1.2M - roughly ten hours at region 5's income, which
+        // is an endgame chase rather than a wall. See ProgressionRateTests,
+        // which prints both curves against the measured gold rate.
+        private const double RerollGoldStreakGrowth = 1.0;
 
-        // Hard ceiling so the streak curve cannot overflow or price a reroll
-        // beyond what any player could hold. Reached after ~28 consecutive
-        // attempts at item tier 14.
+        // Modul: no stat-type surcharge. There is one reroll operation now, so
+        // there is nothing for a multiplier to distinguish - see
+        // RerollOperation. Retained as 1.0 rather than deleted because
+        // CalculateRerollGoldCost's signature is public and its third argument
+        // is passed by name at every call site.
+        private const double RerollStatTypeMultiplier = 1.0;
+
+        // Hard ceiling so the curve cannot overflow or price a reroll beyond
+        // what any player could hold. With the streak flat this is only
+        // reachable by item tier alone, which tops out around 1.05M at tier 14.
         public const long RerollGoldMaxCost = 100_000_000L;
 
         public static long CalculateRerollGoldCost(int itemRarityTier, int consecutiveAttempts, bool rerollStatType)

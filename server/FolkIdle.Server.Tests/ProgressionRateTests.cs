@@ -281,6 +281,105 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
+        /// THE BALANCE AUDIT: how long each region actually takes.
+        ///
+        /// Not a pass/fail - a measurement, printed, for a conversation that
+        /// has so far been had entirely with estimates. Every previous number
+        /// about this game's pacing (the "87x too fast" report, the "59 days to
+        /// level 100" that drove the last curve rework) was derived on paper.
+        /// This drives the real tick.
+        ///
+        /// Gear is the part a naked simulation gets wrong. A character with no
+        /// weapon cannot kill a region-3 monster at all - armour alone stops
+        /// them - so measuring an undressed run measures a wall no player hits.
+        /// Each region is therefore run with ITS OWN tier's weapon and armour
+        /// base power (12/36/108/324/972 attack, 8/24/72/216/648 defence),
+        /// which is the gear a player arriving there would be wearing, and no
+        /// affixes at all - so this is a FLOOR on player power and a CEILING on
+        /// the time. A real character rolls affixes and set bonuses on top.
+        /// </summary>
+        [Theory]
+        [InlineData(1, 12, 8)]
+        [InlineData(2, 36, 24)]
+        [InlineData(3, 108, 72)]
+        [InlineData(4, 324, 216)]
+        [InlineData(5, 972, 648)]
+        public void HowLongARegionTakes(int region, int weaponAttack, int armourDefence)
+        {
+            int firstMonster = ContentRegistry.FirstCanonicalMonsterId + (region - 1) * ContentRegistry.MonstersPerRegion;
+            int startLevel = ((region - 1) * 20) + 1;
+
+            // The four regulars, not the boss - a boss is a gate you pass once,
+            // not the thing you grind.
+            double totalSecondsPerKill = 0.0;
+            long xpPerKill = 0;
+            long goldPerKill = 0;
+
+            for (int i = 0; i < 4; i++)
+            {
+                var monster = ContentRegistry.Monsters[firstMonster + i - 1];
+                var payload = FreshPayload(firstMonster + i);
+                payload.CurrentLevel = startLevel;
+                payload.CachedAffixTotals.FlatAttack = weaponAttack;
+                payload.CachedAffixTotals.FlatDefense = armourDefence;
+
+                var stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, 0, 0, 1, 0, 0, 0, 0, 0, payload.CachedAffixTotals, false, 0, 0, payload.CachedSetIds);
+                var lineage = ProgressionEngine.Lineages[payload.SelectedLineageId];
+                long raw = StatsCalculator.ComputeEffectiveMilliAttack(in stats, lineage.DamageScalePerLevelPct, payload.CurrentLevel);
+
+                totalSecondsPerKill += CombatDamageModel.ExpectedSecondsPerKill(in stats, in monster, raw, 1f);
+                xpPerKill += monster.BaseXpReward;
+                goldPerKill += monster.BaseGoldReward;
+            }
+
+            double avgSecondsPerKill = totalSecondsPerKill / 4.0;
+            double avgXp = xpPerKill / 4.0;
+            double avgGold = goldPerKill / 4.0;
+
+            // XP the region's twenty levels demand, from the real curve.
+            long xpNeeded = 0;
+            for (int level = startLevel - 1; level < startLevel + 19; level++)
+            {
+                xpNeeded += ProgressionEngine.GetRequiredXpForLevel(level);
+            }
+
+            double kills = xpNeeded / avgXp;
+            double minutes = kills * avgSecondsPerKill / 60.0;
+            double goldEarned = kills * avgGold;
+
+            _output.WriteLine(
+                $"region {region}: {avgSecondsPerKill,6:F1} s/kill, {kills,8:F0} kills, "
+                + $"{minutes,7:F0} min ({minutes / 60.0:F1} h), {goldEarned,12:N0} gold, "
+                + $"{goldEarned / Math.Max(1.0, minutes * 60.0),8:F1} gold/sec");
+
+            Assert.True(minutes > 0, "a region that takes no time is not a region");
+        }
+
+        /// <summary>
+        /// Gold per second, against what gold BUYS.
+        ///
+        /// A rate is meaningless on its own - the question is whether an hour of
+        /// killing pays for a reroll, ten rerolls, or none. Printed beside the
+        /// reroll cost curve so the two can be compared at a glance.
+        /// </summary>
+        [Fact]
+        public void WhatAnHourOfGoldBuys()
+        {
+            _output.WriteLine("reroll gold cost by ITEM rarity tier, first attempt:");
+            foreach (int tier in new[] { 1, 4, 7, 10, 14 })
+            {
+                _output.WriteLine($"  tier {tier,2}: {AffixRegistry.CalculateRerollGoldCost(tier, 0, false),12:N0}");
+            }
+
+            _output.WriteLine("");
+            _output.WriteLine("the same reroll after N consecutive attempts (item tier 7):");
+            foreach (int attempt in new[] { 0, 5, 10, 20 })
+            {
+                _output.WriteLine($"  attempt {attempt,2}: {AffixRegistry.CalculateRerollGoldCost(7, attempt, false),12:N0}");
+            }
+        }
+
+        /// <summary>
         /// Armour is subtracted, at every region.
         ///
         /// The theory above can only cover region 1, because a level-1
