@@ -11,9 +11,85 @@ dated handoff immediately following is the live one.
 
 ---
 
-# HANDOFF - 2026-08-05
+# HANDOFF - 2026-08-05 (late)
 
-Supersedes the 2026-08-04 handoff. Everything below `## Client UI Hook Points`
+Everything below `## Client UI Hook Points` predates the web client.
+
+## Where it runs
+
+**https://92-5-0-94.sslip.io** — the whole game, client and API, on the Oracle
+Ampere box. **Render is no longer used for anything** and both its services can
+be suspended. The database is still Supabase.
+
+    ssh folkidle-server
+    cd ~/folkidle/ops/oracle && docker compose up -d --build
+
+See `ops/oracle/README.md`. Secrets live in `.env` there, mode 600, gitignored.
+
+Traps, in the order they will bite:
+
+- **Caddy orders directives by its own rules, not by the file.** `try_files`
+  sorts before `reverse_proxy`, so bare matchers made the SPA fallback run
+  first and every API call returned 200 with the client's own HTML - a game
+  that loads, looks alive, and knows about no items or monsters, with a green
+  health check. Use `handle` blocks. `caddy validate` called the broken version
+  valid; only a dry run against a throwaway database caught it.
+- **`VITE_FOLKIDLE_SERVER` is a build ARG.** Vite inlines it, so changing the
+  hostname is a rebuild, not a restart.
+- **Supabase MCP is read-only.** Run writes with psql from the box.
+- **Supabase pooler port 5432**, never 6543 - the latter hangs EF migrations.
+- **The item catalogue has HOLES.** Ids are positional (`_itemBaseIds[id - 1]`)
+  and 111 entries were removed, so never renumber and never assume 1..N.
+
+## What shipped
+
+- **Self-hosting**, one origin for client and API. The WebSocket connects to
+  `/` where `index.html` also lives, so the upgrade is matched by its headers
+  before any path routing.
+- **Per-monster drop tables.** Each location's gear is dealt across its five
+  monsters; nothing is orphaned and no monster drops only weapons.
+- **There is no offhand slot.** It was invented, along with five items to fill
+  it. Amulet and Ring were the genuinely missing pair - one of each per tier
+  had been in the catalogue all along resolving to no slot.
+- **Catalogue cut 437 -> 326**, leaving exactly the 75 canonical pieces.
+- **One gold reroll** rolling type, rarity and magnitude together. The diamond
+  path was broken anyway and auto-reroll could not start.
+- **Market**: type checkboxes, tier filter, price history, payout breakdown.
+- **Combat freeze fixed** (the send lock), **gold made durable without Redis**,
+  **three damage models unified**.
+
+## The balance, measured
+
+`ProgressionRateTests` drives the real tick with tier-appropriate gear and
+prints:
+
+    region 1  109 min | 2  133 | 3  161 | 4  185 | 5  205   (~13 h to level 100)
+    gold/sec   0.6    |    1.5 |    3.9 |   10.9 |   31.6   (~564k across the run)
+
+Against the stated intent of 72/123/163/190/209 minutes that is near exact for
+regions 2-5 and **1.5x slow for region 1**. Nothing is too fast; the "87x"
+report was never reproducible. Region 1's opening hour is the one number worth
+a design decision.
+
+## Open
+
+**H3. Sprite coverage.** Now measurable against a clean catalogue: 326 items,
+and the asset list names what should exist. `scripts/generate-sprites.mjs`
+holds the alias table where a wrong mapping would live.
+
+**Gloves, amulets and rings are thin in the drop tables** - one or two per
+location against five monsters, so some monsters offer none. Content, not code.
+
+**`CraftingReceptuary` duplicates `ContentRegistry`'s 104-recipe tree** with
+three stub recipes, repointed onto canonical items rather than resolved.
+
+## How to verify a gameplay change
+
+`client_web/scripts/exercise.mjs` drives every interactive feature against a
+real server, database and browser and asserts the world CHANGED. Needs
+Postgres, the server with `--seed-dev`, and vite on 5173.
+
+## Client UI Hook Points`
 predates the web client and describes Unity work.
 
 ## Where it runs
