@@ -147,11 +147,40 @@ CI depends on would have failed the build on correct content - invisible for as
 long as the interpreter probe was wrong. Item ids are positive and unique now;
 gaps are legal and documented as such in the script's own header.
 
-**Gathering is now a rounding error.** The season curve makes region 5 roughly
-750 hours of combat against an unchanged ~11 minutes of gathering. The band
-test's old "gathering is at least 2% of a region" floor could not survive that
-and is now a ceiling only. Whether the crafting tree should scale with the
-curve is an open design question.
+**Gathering is now a rounding error.** Measured, per region:
+
+    region        1      2       3        4         5
+    gathering   7.6   11.4    15.2     20.3      25.3   minutes
+    combat       94    572    2036    11417     45186   minutes
+    share      7.5%   2.0%   0.74%    0.18%     0.06%
+
+Gathering does scale - 3.3x across the five regions - but combat scales 480x.
+Nothing about gathering changed; the thing beside it got much larger, because
+the season curve multiplies XP per region ~12x while a full loadout stays a
+flat 38 bars and the node threshold only moves 30 -> 100 ticks.
+
+In region 1 that is one minute in thirteen. In region 5 it is one minute in
+eighteen hundred: gather for twenty minutes, craft the tier, then fight for a
+month. The 104-recipe tree stops being a system a player meets and becomes a
+formality at the start of a region.
+
+The band test's old "gathering is at least 2% of a region" floor could not
+survive that and is a ceiling only now - a test can say "gathering must not
+become the bottleneck", but it cannot decide whether the right share is 7% or
+0.06%. Three ways out, in the order they are worth considering:
+
+1. Leave it. Gear also drops per-monster and the market exists, so crafting is
+   an onboarding system and the late game runs on drops and trade.
+2. Scale recipe costs with the region (~4x each, to hold the share). Holds the
+   ratio and turns region 5 into ~27 hours of gathering - one grind traded for
+   two.
+3. Point gathering somewhere else late: materials into rerolls, the forge and
+   consumables rather than into base gear, so the tree stays alive without
+   gating progression.
+
+Not yet, though. The curve itself is a model rather than a measurement (see
+above), and tuning recipe costs to fit an unvalidated model stacks one guess
+on another.
 
 ## Traps found the hard way, 2026-08-05 (late)
 
