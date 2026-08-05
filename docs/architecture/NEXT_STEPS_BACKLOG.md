@@ -11,9 +11,25 @@ dated handoff immediately following is the live one.
 
 ---
 
-# HANDOFF - 2026-08-05 (late)
+# HANDOFF - 2026-08-06
 
 Everything below `## Client UI Hook Points` predates the web client.
+
+**Where things stand.** The game is live at https://folkidle.duckdns.org, open
+to anyone with the link, and the server suite is green at 341/341 - which it
+was NOT at the start of this session, and nobody had noticed. Combat, gathering
+and the larder were rebalanced against each other in one pass and every number
+in that pass is measured by a test that prints it, not authored by hand.
+
+**Read these three first if you are picking this up cold:**
+
+- `## The suite was red, and the red was not being read` - the "155/155" in
+  older commit messages is a FILTERED SUBSET. Run `dotnet test` with no filter.
+- `## The health pool, finally measured` - the one number the whole food
+  economy turns on, and the fixture artefact that made it look like 100 HP
+  everywhere.
+- `## Open` - what is left, including the one structural thing that would make
+  the balance robust rather than finely tuned.
 
 ## Where it runs
 
@@ -143,8 +159,10 @@ zero while printing "Python was not found".
 
 Three of those are one lesson: **a test that re-derives what the engine
 computes will drift, and it drifts silently.** Every one of them is now asked
-of the authority - `CraftingReceptuary.TryGetRecipe`, `CombatDamageModel`,
+of the authority - `ContentRegistry.TryGetRecipe`, `CombatDamageModel`,
 `ContentRegistry.GetMonsterRegionTier` - instead of spelling the answer out.
+(One of them pointed at `CraftingReceptuary` for a few hours; that whole system
+was removed later the same session, which rather makes the point.)
 
 **And behind the `python3` alias, a second real defect.** Once the test could
 actually run `ops/validate_content.py`, the script rejected the live catalogue
@@ -373,25 +391,51 @@ on another.
 
 ## Open
 
+**Armour subtracts, it does not reduce.** The one worth doing next. Net damage
+is `attack - armour`, so the same monster is harmless to a player in
+best-in-slot gear and lethal to one three pieces behind, and every balance
+number in this handoff is therefore tuned for the geared case. A percentage
+mitigation would make the whole thing robust instead of finely balanced. It is
+a change to `CombatDamageModel`, not to data, and it would let monster attack
+stop being derived from an armour table.
+
+**The health pool ignores `flat_hp` affixes.** CON growth is measured; gear HP
+is not in the model. It can only make the bar bigger and the gathering share
+smaller, so the 33-39% figure is a ceiling rather than a reading.
+
+**Nothing is measured against real players.** Every figure here comes from a
+model driving the real tick, which is a much better thing than an estimate and
+still not the same as a person playing for a month. `ProgressionRateTests` and
+`GatheringShareTests` both print their tables; compare them to reality once
+there is reality to compare to.
+
 **H3. Sprite coverage.** Now measurable against a clean catalogue: 326 items,
 and the asset list names what should exist. `scripts/generate-sprites.mjs`
 holds the alias table where a wrong mapping would live.
 
 **Gloves, amulets and rings are thin in the drop tables** - one or two per
 location against five monsters, so some monsters offer none. Content, not code.
-
-**`CraftingReceptuary` duplicates `ContentRegistry`'s 104-recipe tree** with
-three stub recipes, repointed onto canonical items rather than resolved.
+Worth revisiting now that kills are seconds rather than minutes and a player
+sees far more drops.
 
 **`BankEquipmentInstances`** is the storage merge that was deliberately left
 out - see "One store, one number" above.
 
+**`ExecuteUpgradeToolAsync` is an empty stub** returning `Task.CompletedTask`,
+and the Village screen has a button wired to it. It is a leftover of the
+account-wide tool tier that crafted tools replaced; either delete the button or
+give the method a body. Found while tracing the gathering loop, not fixed -
+the real tool system works and this is a dead door beside it.
+
 ## How to verify a gameplay change
 
 `client_web/scripts/exercise.mjs` drives every interactive feature against a
-real server, database and browser and asserts the world CHANGED. **50/50 as of
-2026-08-05 late**, including the inheritance purchase. Needs Postgres, the
-server with `--seed-dev`, and vite on 5173.
+real server, database and browser and asserts the world CHANGED. **51/51 as of
+2026-08-06**, including the inheritance purchase. Needs Postgres, the server
+with `--seed-dev`, and vite on 5173.
+
+Server suite: **341/341**. Client: **192/192**. Run the server suite with NO
+filter - see the section on the red suite for why that sentence is here.
 
 Read the last line of its output, not the last check: a Playwright call that
 THROWS ends the process without a summary, and every check below the throw
