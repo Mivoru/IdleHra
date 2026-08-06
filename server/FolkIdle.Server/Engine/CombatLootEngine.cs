@@ -325,7 +325,30 @@ namespace FolkIdle.Server.Engine
         // it was. Per-slot rates are no longer a knob at all - a monster's table
         // is rolled uniformly, and which slots that monster offers is the table's
         // business.
-        public const double EquipmentDropChance = 0.020;
+        //
+        // Modul: 2% -> 5%, from a live playtest and then from the arithmetic.
+        //
+        // Per HOUR the old rate was already even - three and a half to five
+        // pieces in every region, because kill times are tuned to be flat. Per
+        // REGION it was not, because regions are not the same length, and
+        // region 1 is two and a bit hours: EIGHT drops for SEVEN slots. A new
+        // player was dressed once, exactly, with nothing spare.
+        //
+        // Fusion is what settles it. It takes THREE IDENTICAL pieces at the
+        // same rarity, and region 1 produced 2.5 of each item type spread
+        // across fourteen rarity tiers - so the system did not merely feel slow
+        // to a new player, it was unreachable, and nothing on screen said so.
+        //
+        // Pacing is safe: the model already assumes the player holds the best
+        // weapon their region authors, so more drops move real play TOWARD that
+        // assumption rather than past it. This is the opposite of the attack
+        // speed defect, which multiplied a number the model never saw.
+        //
+        // One rate for regulars and bosses alike. A boss is killed once per
+        // region, so a separate rate would be a knob with nothing on the end
+        // of it. Test_Drops_HowLongUntilAPlayerIsDressed prints what this
+        // buys, and is the thing to re-read before touching it again.
+        public const double EquipmentDropChance = 0.050;
 
         // Modul: approximate backpack capacity used purely to decide
         // whether an equipment drop must be redirected to overflow
