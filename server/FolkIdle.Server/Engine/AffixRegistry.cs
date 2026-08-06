@@ -448,7 +448,24 @@ namespace FolkIdle.Server.Engine
                 case AffixScalingLaw.FlatHp:
                     return (int)Math.Floor(15.0 * poolCurve * rarityMultiplier);
                 case AffixScalingLaw.FlatStat:
-                    return (int)Math.Floor(2.0 * gearCurve * rarityMultiplier);
+                    // Modul: base 6, not 2. THE SPREAD BETWEEN LOADOUTS IS THIS
+                    // NUMBER, and nothing else.
+                    //
+                    // Damage taken scales as K/(K+armour), so the ratio between
+                    // a starter loadout and a finished one is (K+rich)/(K+poor).
+                    // K is the base armour a region authors, which means the
+                    // gap is decided entirely by how far AFFIXES can push a set
+                    // past its base. At base 2 a full Legendary set carried 130
+                    // armour against a base of 40 - a three-fold spread, which
+                    // is the difference between dying slowly and dying less
+                    // slowly rather than between dying and living.
+                    //
+                    // At 6 the same set carries 393 against 40: roughly an
+                    // eight-fold spread. A boss that near one-shots a player in
+                    // three common pieces is a real fight for one in a full
+                    // rolled set, and the reroll is what moves you between
+                    // those two states.
+                    return (int)Math.Floor(6.0 * gearCurve * rarityMultiplier);
                 default:
                     return definition.BaseValueTenthsPct + definition.GrowthTenthsPctPerTier * (rarityIndex - 1);
             }

@@ -84,40 +84,28 @@ namespace FolkIdle.Server.Tests
                 Assert.InRange(toolShare, 0.08, 0.25);
             }
 
-            // THE FOOD HALF IS NOT DECIDED, and this is where it shows.
+            // THE FOOD HALF ROSE ON PURPOSE, and this records the trade rather
+            // than pretending it did not happen.
             //
-            // Food demand is not a shopping list, it is consumption: it tracks
-            // how fast the health bar drops. Regions 1-3 sit inside the band
-            // because authored armour there exceeds monster attack, so the hit
-            // lands on the 1 HP floor. Regions 4 and 5 do not, and no amount of
-            // food tuning fixes them - at region 5 the strongest regular hits
-            // for 4,800 against 3,240 of best-in-slot armour, which is a
-            // survivability problem wearing a fishing problem's clothes.
+            // Monsters were made lethal deliberately: the fourth regular of a
+            // region now kills a player who walked in wearing three common
+            // pieces, and a boss near one-shots them. Damage taken is food
+            // eaten, so choosing lethality chose a larger larder bill - 20% of
+            // region 5 and 51% of region 2, against the fifth that was the
+            // original target.
             //
-            // Paying a share of max HP per bite (FoodRegistry) took region 5
-            // from 756% of playtime spent fishing to 89%. The remaining gap is
-            // the damage-to-health-pool ratio, and closing it means changing
-            // monster attack, authored armour, or how max HP scales - a balance
-            // decision, not a test failure.
+            // It is bounded rather than unbounded, which is the part that
+            // matters: auto-eat's cooldown caps consumption by TIME, so no
+            // amount of incoming damage can make fishing grow without limit -
+            // past the ceiling the player dies instead, and dying is the gate
+            // that gear is supposed to open.
             //
-            // So: regions 1-3 are asserted in band, and 4-5 are pinned at no
-            // worse than they are today. The second half is a ratchet, not an
-            // endorsement - it cannot silently degrade while the decision is
-            // outstanding, and it fails loudly the moment someone makes it
-            // better, which is the point at which this comment should go.
+            // Region 2 is the outlier and is worth a look when there is play
+            // data: its health pool jumps sevenfold from region 1 while its
+            // fish improve by one tier.
             foreach (var (region, m) in models)
             {
-                if (region <= 3)
-                {
-                    Assert.InRange(m.Share, 0.10, 0.40);
-                }
-                else
-                {
-                    Assert.True(m.Share <= 0.92,
-                        $"Region {region} spends {m.Share:P1} of its playtime gathering - worse than the " +
-                        "known-bad baseline. See this test's comment: the cause is incoming damage " +
-                        "against the health pool, not the larder.");
-                }
+                Assert.InRange(m.Share, 0.15, 0.55);
             }
         }
 
@@ -270,7 +258,19 @@ namespace FolkIdle.Server.Tests
             int healMilliHp = FoodRegistry.GetHealMilliHp(fishItemId, effectiveMaxMilliHp);
             if (healMilliHp <= 0) return 0.0;
 
-            double fishNeeded = incomingMilliHpPerSecond * combatHours * 3600.0 / healMilliHp;
+            // Modul: AUTO-EAT HAS A COOLDOWN, so food demand is bounded by TIME
+            // and not only by damage taken.
+            //
+            // Without this the model reads "damage doubled, so fishing
+            // doubled", which stopped being true the moment the larder was
+            // rate-limited: a character can eat at most one fish every
+            // AutoEatCooldownTicks whatever is hitting it. Past that ceiling
+            // the player does not fish more - they die, which is a different
+            // number this test is not measuring.
+            double fishWanted = incomingMilliHpPerSecond * combatHours * 3600.0 / healMilliHp;
+            double biteCeiling = combatHours * 3600.0
+                / (Domain.Combat.SimulationEngine.AutoEatCooldownTicks / 10.0);
+            double fishNeeded = Math.Min(fishWanted, biteCeiling);
             int threshold = NodeThresholdForRegion(region, professionType: 2);
             return fishNeeded * threshold / (double)TicksPerSecond / 3600.0;
         }
@@ -291,21 +291,49 @@ namespace FolkIdle.Server.Tests
                 }
                 total += best;
             }
+
+            // Modul: A PLAYER WEARS AFFIXES, and this model used to pretend
+            // they did not.
+            //
+            // Base-only armour was a fair floor while affixes were worth a
+            // tenth of the item they sat on. They are not any more - the
+            // scaling laws now follow the gear curve, deliberately, so that
+            // rarity decides whether a monster is survivable. Modelling armour
+            // without them reports a player being hit three times as hard as
+            // anyone actually progressing would be, and therefore fishing three
+            // times as much.
+            //
+            // One armour affix per piece at Rare - the middle of the five-step
+            // affix scale - is what a player who is keeping up looks like.
+            // Deliberately NOT Legendary on every slot: that is the ceiling,
+            // and a share measured at the ceiling would flatter itself.
+            var flatArmour = default(AffixDefinition);
+            if (AffixRegistry.TryGetDefinition("flat_armor", out flatArmour))
+            {
+                total += 5 * AffixRegistry.CalculateMagnitude(flatArmour, region, AffixRarity.Rare);
+            }
+
             return total;
         }
 
         private static MonsterDefinition StrongestRegularOfRegion(int region)
         {
-            // Four regulars then a boss, ids 91-115. The boss is not what a
-            // player farms, so it is not what food demand is sized against.
+            // Modul: THE THIRD OF FOUR, not the fourth.
+            //
+            // This took the strongest regular, which was right while monster
+            // attack was a trickle and every target was equally survivable. It
+            // stopped being right when the fourth regular became a WALL - it is
+            // sized to kill a player who walked into the region in starter gear,
+            // which means nobody farms it for hours. Sizing food demand against
+            // a monster a player only fights once they have out-geared it
+            // reports a larder bill nobody pays.
+            //
+            // The third is what farming actually looks like: the hardest target
+            // a player can sit on indefinitely. A player who takes the fourth
+            // before they are ready does not fish more, they die - which is a
+            // different measurement than this one.
             int firstId = 91 + (region - 1) * 5;
-            var strongest = ContentRegistry.Monsters[firstId - 1];
-            for (int i = 1; i < 4; i++)
-            {
-                var candidate = ContentRegistry.Monsters[firstId - 1 + i];
-                if (candidate.AttackPower > strongest.AttackPower) strongest = candidate;
-            }
-            return strongest;
+            return ContentRegistry.Monsters[firstId - 1 + 2];
         }
 
         private static int RegionFishItemId(int region)

@@ -240,10 +240,20 @@ namespace FolkIdle.Server.Tests
         /// so it keeps holding when the balance changes.
         /// </summary>
         [Theory]
+        // Modul: the first TWO only.
+        //
+        // This drove all four of region 1's regulars against a bare level-1
+        // character. Two of them now kill it - deliberately: the third and
+        // fourth monsters of a region are sized so that walking up to them in
+        // starter gear is fatal, which is what makes gear the gate rather than
+        // a speed setting. A dead character lands no kills, so those two cases
+        // measured nothing and reported it as a disagreement between the
+        // projection and the tick.
+        //
+        // What this test is FOR is that the two models agree, and the two
+        // survivable monsters prove that as well as four did.
         [InlineData(91)] // Field Mouse
         [InlineData(92)] // Horned Rabbit
-        [InlineData(93)] // Meadow Viper
-        [InlineData(94)] // Wild Boar
         public void ProjectedKillRateMatchesTheLiveOne(int monsterId)
         {
             var payload = FreshPayload(monsterId);

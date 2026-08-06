@@ -9709,8 +9709,12 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(475, AffixRegistry.CalculateMagnitude(flatHp, 3, AffixRarity.Legendary));
 
             Assert.True(AffixRegistry.TryGetDefinition("flat_armor", out var flatArmor));
-            // floor(2 * R * 1.6^(A-1)); R=1, Common -> 2.
-            Assert.Equal(2, AffixRegistry.CalculateMagnitude(flatArmor, 1, AffixRarity.Common));
+            // Modul: base 6, not 2 - see AffixRegistry. The spread between a
+            // starter loadout and a finished one IS this number, and at 2 it
+            // was threefold, which is not the difference between dying and
+            // living.
+            // floor(6 * 3^(R-1) * 1.6^(A-1)); R=1, Common -> 6.
+            Assert.Equal(6, AffixRegistry.CalculateMagnitude(flatArmor, 1, AffixRarity.Common));
 
             // Percentage law in tenths, still linear in the rarity index:
             // crit_dmg_pct is 5.0% base, +2.5% per step, so Common is 50 tenths
