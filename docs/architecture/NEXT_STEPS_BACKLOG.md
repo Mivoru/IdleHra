@@ -423,7 +423,51 @@ from a table measured BEFORE the live tick was corrected, and overshot
 fourfold. Measure, change, measure again - never measure, change, then apply
 the first measurement.
 
+## Security, audited 2026-08-06
+
+Triggered by Chrome warning on the registration page. **That warning was about
+password REUSE** - Chrome recognised a password saved for another site being
+typed here - not a Safe Browsing flag on the domain. A deceptive-site flag
+shows a full red interstitial before the page loads, not a dialog after typing.
+`duckdns.org` is a shared suffix popular with phishers, so the reputation is
+inherited and there is nothing to fix in the code for it.
+
+Measured, not assumed. What was actually wrong:
+
+- **No rate limit on authentication.** Eight wrong passwords in a row returned
+  eight plain 401s. Unlimited guessing, and - since every attempt runs PBKDF2
+  at 210,000 iterations - about a tenth of a second of server CPU per guess,
+  which is a denial of service from a laptop. `AuthThrottle` now gives each
+  address fifteen requests a minute across the four auth endpoints. It counts
+  REQUESTS not failures (failures leave a valid-looking flood unbounded) and
+  reads X-Forwarded-For, because behind Caddy every request arrives from the
+  Docker gateway and keying on that would let one attacker lock out everyone.
+- **A default admin password in a public repository.** `ADMIN_SECRET_KEY ??
+  "supersecretadmin123"`, with the variable unset on the box. Unreachable by
+  luck: the Caddyfile's api matcher does not list `/admin/*`, so the static
+  file server answers it. That is an accident of a path list, not a decision.
+  Unset means closed now, and the compare is constant-time.
+- **No security headers at all.** HSTS, nosniff, frame-ancestors,
+  Referrer-Policy, Permissions-Policy, and the `Server` banner removed.
+
+What is sound, checked rather than assumed: PBKDF2-HMAC-SHA256 at 210k with a
+random salt and a constant-time compare; a hand-rolled JWT that verifies the
+signature BEFORE parsing the payload and always computes HMAC with the server
+key, so the `alg` header is never trusted; parameterised SQL everywhere with no
+string-built queries; no `@html` anywhere in the client; `.env` gitignored and
+never committed; CORS restricted to the two real origins.
+
+**No Content-Security-Policy beyond frame-ancestors, deliberately.** A CSP
+written without the built bundle in front of you breaks the page in ways that
+look like random bugs. It wants its own pass.
+
 ## Open
+
+**Two auth decisions left, because they are product calls rather than fixes.**
+The password minimum is six characters, which is short. And
+`/api/v1/auth/check-email` answers whether an address has an account, which is
+convenient at the registration form and is also an account enumeration oracle.
+Both are defensible; neither should be changed by accident.
 
 **The health pool ignores `flat_hp` affixes.** CON growth is measured - 100 HP
 at level 1, 2,500 by region 5 - but gear HP is not in the model. It can only
