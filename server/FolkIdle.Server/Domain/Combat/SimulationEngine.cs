@@ -5627,11 +5627,33 @@ namespace FolkIdle.Server.Domain.Combat
                         }
                     }
 
-                    // Sprint 38: Lifesteal
+                    // Modul: LIFESTEAL HEALED SEVEN HUNDRED PERCENT OF THE HIT.
+                    //
+                    // `netDamage * LifestealPct` with no divide by 100, and the
+                    // stat arrives as a percentage - so a 7% lifesteal affix
+                    // healed seven TIMES the damage the swing dealt. One hit
+                    // refilled the bar from anywhere, always, and the auto-eat
+                    // larder never fired because health never fell.
+                    //
+                    // Reported from a live playtest as "weird regeneration": a
+                    // player in three low-rarity pieces from the first monster
+                    // in the game killed the region 1, 2 and 3 bosses without
+                    // dropping below half health. It is the third stat in this
+                    // codebase found being written as a percent and read as a
+                    // fraction; attack speed was the last one, four hours ago.
+                    //
+                    // The cap is the second half and it is not paranoia. Damage
+                    // grows faster than the health pool does, so even a correct
+                    // percentage of a large hit is a full heal at depth -
+                    // lifesteal has to be sustain, not immunity, or it makes
+                    // every fight after the first one unloseable.
                     if (combatStats.LifestealPct > 0)
                     {
-                        int lifestealAmount = (int)(netDamage * combatStats.LifestealPct);
-                        payload.PlayerHp += lifestealAmount;
+                        long lifestealAmount = (long)(netDamage * (combatStats.LifestealPct / 100f));
+                        long lifestealCeiling = effectiveMaxHp / 20; // 5% of the bar per hit
+                        if (lifestealAmount > lifestealCeiling) lifestealAmount = lifestealCeiling;
+
+                        payload.PlayerHp += (int)lifestealAmount;
                         if (payload.PlayerHp > effectiveMaxHp) payload.PlayerHp = effectiveMaxHp;
                     }
 

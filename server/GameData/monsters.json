@@ -1318,7 +1318,7 @@
     {
         "Id":  95,
         "MaxHp":  1950,
-        "AttackPower":  8,
+        "AttackPower":  25,
         "BaseGoldReward":  98,
         "BaseXpReward":  390,
         "AttackIntervalMs":  2000,
@@ -1388,7 +1388,7 @@
     {
         "Id":  100,
         "MaxHp":  3500,
-        "AttackPower":  34,
+        "AttackPower":  175,
         "BaseGoldReward":  175,
         "BaseXpReward":  700,
         "AttackIntervalMs":  2000,
@@ -1458,7 +1458,7 @@
     {
         "Id":  105,
         "MaxHp":  6625,
-        "AttackPower":  62,
+        "AttackPower":  325,
         "BaseGoldReward":  331,
         "BaseXpReward":  1325,
         "AttackIntervalMs":  2000,
@@ -1528,7 +1528,7 @@
     {
         "Id":  110,
         "MaxHp":  21200,
-        "AttackPower":  91,
+        "AttackPower":  475,
         "BaseGoldReward":  1060,
         "BaseXpReward":  4240,
         "AttackIntervalMs":  2000,
@@ -1598,7 +1598,7 @@
     {
         "Id":  115,
         "MaxHp":  43800,
-        "AttackPower":  120,
+        "AttackPower":  625,
         "BaseGoldReward":  2190,
         "BaseXpReward":  8760,
         "AttackIntervalMs":  2000,

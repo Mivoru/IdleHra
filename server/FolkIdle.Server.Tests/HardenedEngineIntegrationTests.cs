@@ -7128,22 +7128,29 @@ namespace FolkIdle.Server.Tests
                 Assert.True(hpRatio >= 4.0 && hpRatio <= 6.5,
                     $"Region {region} boss HP is {hpRatio:F1}x its strongest regular; expected 4.0-6.5x.");
 
-                // Modul: 1.3-2.0x, was 2.0-3.5x.
+                // Modul: 3.0-8.0x, and the reason is a design decision rather
+                // than a tuning drift.
                 //
-                // Monster attack is derived from the region's authored armour
-                // now, so the strongest regular hits for roughly what a fully
-                // geared player is wearing and the net damage is a trickle. At
-                // the old ratio a boss would hit for two to three and a half
-                // times the player's entire armour rating - well past a full
-                // health bar in one swing, which is not a capstone, it is a
-                // coin toss on whether the auto-eat tick lands first.
+                // A BOSS IS A GEAR CHECK. Regular monsters stay a trickle -
+                // that is what holds the larder's cost, and therefore
+                // gathering's share of playtime, where it was tuned. A boss is
+                // fought once per region, so its food cost barely moves that
+                // share and it can afford to be genuinely dangerous.
                 //
-                // At 1.5x the boss deals about half the armour rating per hit:
-                // frightening, survivable with a stocked larder, and still the
-                // hardest thing in its region by a wide margin.
+                // Reported from a live playtest: three low-rarity pieces from
+                // the FIRST monster in the game beat the bosses of regions 1,
+                // 2 and 3 without the player dropping below half health. Some
+                // of that was lifesteal healing 700% of the hit, and the rest
+                // was this ratio - at 1.5x a boss was a slightly longer
+                // regular.
+                //
+                // Boss attack is now a quarter of the region's expected health
+                // pool: half the bar in four swings for a player wearing
+                // nothing, an eighth of it per swing for one in best-in-slot,
+                // because mitigation spreads exactly 2x between those two.
                 double atkRatio = (double)boss.AttackPower / strongestRegular.AttackPower;
-                Assert.True(atkRatio >= 1.3 && atkRatio <= 2.0,
-                    $"Region {region} boss ATK is {atkRatio:F1}x its strongest regular; expected 1.3-2.0x.");
+                Assert.True(atkRatio >= 3.0 && atkRatio <= 8.0,
+                    $"Region {region} boss ATK is {atkRatio:F1}x its strongest regular; expected 3.0-8.0x.");
 
                 // Clearing a region must not drop the player into content that
                 // is easier than what they just beat.
