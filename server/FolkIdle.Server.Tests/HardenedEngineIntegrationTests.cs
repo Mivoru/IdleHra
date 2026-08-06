@@ -1284,48 +1284,6 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task Test_Mentorship_AssignMentorDoesNotThrowOnUnquotedTableRegression()
-        {
-            const long testPlayerId = 950000010L;
-            Guid characterId = Guid.NewGuid();
-
-            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                db.PlayerRecords.Add(new PlayerRecord
-                {
-                    Id = testPlayerId,
-                    PlayerGuid = Guid.NewGuid(),
-                    AuthenticatorToken = Guid.NewGuid()
-                });
-                db.VillageInfrastructures.Add(new VillageInfrastructure
-                {
-                    PlayerId = testPlayerId,
-                    BuildingId = VillageManagementEngine.MentorshipAcademyBuildingId,
-                    CurrentLevel = 3
-                });
-                db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, Level = 1, AgePhase = 1, IsLockedInEscrow = false });
-                await db.SaveChangesAsync();
-            }
-
-            var mentorshipEngine = new MentorshipEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
-
-            // Regression test: MentorshipEngine.cs previously issued this query
-            // with unquoted PascalCase identifiers (FromSqlRaw("SELECT * FROM
-            // MentorshipAcademyAssignments WHERE PlayerId = ... AND SlotIndex =
-            // ...")), which Postgres folds to lowercase and throws "relation
-            // does not exist" against every call. This test would have thrown
-            // before the fix.
-            await mentorshipEngine.ExecuteAssignMentorAsync(testPlayerId, characterId, 0);
-
-            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
-            var assignment = await verifyDb.MentorshipAcademyAssignments.AsNoTracking()
-                .SingleOrDefaultAsync(a => a.PlayerId == testPlayerId && a.SlotIndex == 0);
-
-            Assert.NotNull(assignment);
-            Assert.Equal(characterId, assignment!.CharacterId);
-        }
-
-        [Fact]
         public async Task Test_ForgeSplicing_RejectsFusionOfEquippedItem()
         {
             const long testPlayerId = 950000011L;
@@ -1422,69 +1380,6 @@ namespace FolkIdle.Server.Tests
             // relative selection odds while total roll count stays identical
             // (400 for both) - proving luck shifts distribution, not volume.
             Assert.True(highLuckRareQuantity > lowLuckRareQuantity);
-        }
-
-        [Fact]
-        public async Task Test_Mentorship_XpBoostAndTickApplication()
-        {
-            const long mentorPlayerId = 960000001L;
-            const long menteePlayerId = 960000002L;
-
-            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                db.PlayerRecords.Add(new PlayerRecord
-                {
-                    Id = mentorPlayerId,
-                    CurrentLevel = 40,
-                    PlayerGuid = Guid.NewGuid(),
-                    AuthenticatorToken = Guid.NewGuid()
-                });
-                db.PlayerRecords.Add(new PlayerRecord
-                {
-                    Id = menteePlayerId,
-                    CurrentLevel = 10,
-                    PlayerGuid = Guid.NewGuid(),
-                    AuthenticatorToken = Guid.NewGuid()
-                });
-                db.VillageInfrastructures.Add(new VillageInfrastructure
-                {
-                    PlayerId = menteePlayerId,
-                    BuildingId = VillageManagementEngine.MentorshipAcademyBuildingId,
-                    CurrentLevel = 1
-                });
-                await db.SaveChangesAsync();
-            }
-
-            var mentorshipEngine = new MentorshipEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
-            var result = await mentorshipEngine.EstablishMentorshipContractAsync(menteePlayerId, mentorPlayerId);
-
-            Assert.Equal(MentorshipContractResult.Established, result);
-
-            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                var contract = await verifyDb.MentorshipContracts.AsNoTracking()
-                    .SingleAsync(c => c.MenteePlayerId == menteePlayerId);
-                Assert.Equal(1.20, contract.ExpBonusMultiplier);
-            }
-
-            var checkpointManager = new StateCheckpointManager(_fixture.ServiceProvider);
-            TickStatePayload menteePayload = await checkpointManager.LoadPlayerState(menteePlayerId);
-            Assert.Equal(1.20, menteePayload.MentorshipExpBonusMultiplier);
-
-            // Replicate the exact SimulationEngine combat-kill XP calculation path.
-            // Kept below the level-1 XP requirement (100) so neither run triggers a
-            // level-up, which would make the final CurrentXp non-linear.
-            const int baseXpReward = 50;
-            int baselineMultiplier = GlobalEngineState.GlobalXpMultiplier;
-            int mentoredMultiplier = (int)(baselineMultiplier * menteePayload.MentorshipExpBonusMultiplier);
-
-            var baselinePayload = new TickStatePayload { PlayerId = menteePlayerId, CurrentLevel = 1 };
-            ProgressionEngine.ProcessMonsterDeath(ref baselinePayload, baseXpReward, baselineMultiplier, 0);
-
-            var mentoredPayload = new TickStatePayload { PlayerId = menteePlayerId, CurrentLevel = 1 };
-            ProgressionEngine.ProcessMonsterDeath(ref mentoredPayload, baseXpReward, mentoredMultiplier, 0);
-
-            Assert.Equal(baselinePayload.CurrentXp * 1.20, mentoredPayload.CurrentXp, 3);
         }
 
         [Fact]
@@ -1756,7 +1651,6 @@ namespace FolkIdle.Server.Tests
             var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
             var villageBuildingEngine = new VillageBuildingEngine(serviceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
-            var mentorshipEngine = new MentorshipEngine(serviceProvider, playerRegistry);
             var guildWarEngine = new GuildWarEngine(serviceProvider);
             var chronoCoreEngine = new ChronoCoreEngine(serviceProvider, playerRegistry);
             var legacyStoreEngine = new LegacyStoreEngine(serviceProvider, playerRegistry);
@@ -1766,7 +1660,7 @@ namespace FolkIdle.Server.Tests
             return new SimulationEngine(
                 lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageBuildingEngine, villageManagementEngine, mentorshipEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                villageBuildingEngine, villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
         }
 
@@ -2461,7 +2355,6 @@ namespace FolkIdle.Server.Tests
             var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
             var villageBuildingEngine = new VillageBuildingEngine(serviceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
-            var mentorshipEngine = new MentorshipEngine(serviceProvider, playerRegistry);
             var guildWarEngine = new GuildWarEngine(serviceProvider);
             var chronoCoreEngine = new ChronoCoreEngine(serviceProvider, playerRegistry);
             var legacyStoreEngine = new LegacyStoreEngine(serviceProvider, playerRegistry);
@@ -2474,7 +2367,7 @@ namespace FolkIdle.Server.Tests
             var simulationEngine = new SimulationEngine(
                 lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageBuildingEngine, villageManagementEngine, mentorshipEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                villageBuildingEngine, villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, antiCheatTelemetryEngine, null!, null!, null!, null!, contextFactory);
 
             return (simulationEngine, networkSystem);
@@ -4429,7 +4322,6 @@ namespace FolkIdle.Server.Tests
             var worldBossEngine = new WorldBossEngine(_fixture.ServiceProvider, playerRegistry);
             var villageBuildingEngine = new VillageBuildingEngine(_fixture.ServiceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, playerRegistry);
-            var mentorshipEngine = new MentorshipEngine(_fixture.ServiceProvider, playerRegistry);
             var guildWarEngine = new GuildWarEngine(_fixture.ServiceProvider);
             var chronoCoreEngine = new ChronoCoreEngine(_fixture.ServiceProvider, playerRegistry);
             var legacyStoreEngine = new LegacyStoreEngine(_fixture.ServiceProvider, playerRegistry);
@@ -4439,7 +4331,7 @@ namespace FolkIdle.Server.Tests
             var simulationEngine = new SimulationEngine(
                 lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageBuildingEngine, villageManagementEngine, mentorshipEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                villageBuildingEngine, villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
 
             var managementEngine = new GuildManagementEngine(retryingDbOptions, playerRegistry);
@@ -8235,7 +8127,6 @@ namespace FolkIdle.Server.Tests
             var worldBossEngine = new WorldBossEngine(_fixture.ServiceProvider, playerRegistry);
             var villageBuildingEngine = new VillageBuildingEngine(_fixture.ServiceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, playerRegistry);
-            var mentorshipEngine = new MentorshipEngine(_fixture.ServiceProvider, playerRegistry);
             var guildWarEngine = new GuildWarEngine(_fixture.ServiceProvider);
             var chronoCoreEngine = new ChronoCoreEngine(_fixture.ServiceProvider, playerRegistry);
             var legacyStoreEngine = new LegacyStoreEngine(_fixture.ServiceProvider, playerRegistry);
@@ -8245,7 +8136,7 @@ namespace FolkIdle.Server.Tests
             return new SimulationEngine(
                 lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageBuildingEngine, villageManagementEngine, mentorshipEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                villageBuildingEngine, villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
         }
 

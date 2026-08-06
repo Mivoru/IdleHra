@@ -4,7 +4,6 @@
   import { queryKeys, fetchStoreCatalog, fetchStorefront } from '../lib/net/rest';
   import Money from '../lib/ui/Money.svelte';
   import {
-    purchaseLegacyUnlock,
     consumeChronoCore,
     toggleChronoAcceleration,
   } from '../lib/net/commands';
@@ -62,22 +61,8 @@
   // 0/8/16 (LegacyPerkResolver) - XP multiplier, gold drop rate, combat speed.
   // They gate real combat maths, so the ranks are read off the wire rather
   // than tracked client-side.
-  const PERKS = [
-    { id: 1, name: 'XP multiplier', shift: 0 },
-    { id: 2, name: 'Gold drop rate', shift: 8 },
-    { id: 3, name: 'Combat speed', shift: 16 },
-  ];
 
-  function perkRank(shift: number): number {
-    if (!snap) return 0;
-    // The mask is a long; ranks are one byte each.
-    return Number((BigInt(snap.LegacyPerksBitmask) >> BigInt(shift)) & 0xffn);
-  }
 
-  function buyPerk(unlockId: number) {
-    const outcome = purchaseLegacyUnlock(unlockId);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
-  }
 
   // --- chrono bank ----------------------------------------------------------
   let coreItemId = $state(0);
@@ -180,28 +165,16 @@
       {/if}
     </section>
 
-    <section class="panel">
-      <h2>Legacy shop</h2>
-      <p class="dim small">
-        {snap.LegacyShardBalance.toLocaleString()} shards
-        &middot; {snap.CitizenMultiSlotsUnlocked} citizen slots unlocked
-      </p>
+    <!-- Modul: THE LEGACY SHOP IS GONE.
+         It sold three permanent bonuses - XP, gold rate, combat speed - for
+         prestige shards, which is the same job the Inheritance screen does for
+         diamonds across six stats. Two prestige systems, one of them buried in
+         the Store behind a currency most players never saw, and neither one
+         explaining itself in terms of the other.
 
-      <ul class="rows">
-        {#each PERKS as perk}
-          <li>
-            <span class="name">{perk.name}</span>
-            <span class="dim tiny">rank {perkRank(perk.shift)}</span>
-            <button class="tiny-btn" onclick={() => buyPerk(perk.id)}>Buy rank</button>
-          </li>
-        {/each}
-      </ul>
-      <p class="dim tiny">
-        Perks are bought with prestige shards and raise combat maths directly -
-        the server prices and applies each rank.
-      </p>
-    </section>
-
+         The guild war used to pay victory TOKENS into a guild depot whose only
+         destination was this shop. It pays diamonds and shards to the members
+         directly now - see GuildWarEngine.DistributeVictoryTokensAsync. -->
     <section class="panel">
       <h2>Chrono bank</h2>
 

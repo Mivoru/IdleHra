@@ -20,6 +20,7 @@ export const SCREEN_KEYS = [
   'social',
   'guildops',
   'village',
+  'skills',
   'progression',
   'codex',
   'breeding',

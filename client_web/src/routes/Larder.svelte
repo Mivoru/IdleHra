@@ -57,7 +57,9 @@
   // LarderLimits.SlotCapacity. A slot cannot hold more, and a request over it
   // is clamped server-side - showing the real ceiling avoids the player
   // wondering why 5000 became 999.
-  const SLOT_CAPACITY = 999;
+  // Mirrors Network.LarderLimits.SlotCapacity. Raised from 999 with it: a
+  // thousand fish is about forty minutes of the larder bill in a late region.
+  const SLOT_CAPACITY = 9999;
 
   function foodName(itemId: number): string {
     if (itemId === 0) return '';
@@ -69,8 +71,17 @@
     setTimeout(() => inventory.refetch(), 400);
   }
 
-  function stock(slotIndex: number) {
-    const food = availableFood.find((f) => f.baseId === selectedFood);
+
+  // Modul: ADD to a slot rather than only filling an empty one.
+  //
+  // The server has always summed into an occupied slot when the food matches -
+  // `newCount = existingCount + toMove` - and this screen never offered it, so
+  // the only route from 100 fish to 200 was Unload, then Load 200. Sending the
+  // slot's OWN food id is what makes it an addition rather than a swap.
+  function add(slotIndex: number, itemId: number) {
+    const food = itemId > 0
+      ? availableFood.find((f) => f.numericId === itemId)
+      : availableFood.find((f) => f.baseId === selectedFood);
     if (!food) return;
 
     connection.send({
@@ -78,6 +89,20 @@
       ConsumableItemId: food.numericId,
       TargetSlotIndex: slotIndex,
       DepositQuantity: Math.min(amount, food.quantity, SLOT_CAPACITY),
+    });
+    refetchSoon();
+  }
+
+  // Modul: take SOME back out, which had no expression at all.
+  //
+  // Food id 0 with a positive quantity - an impossible combination before, so
+  // it needed no new wire field. Id 0 with quantity 0 remains "empty the slot".
+  function remove(slotIndex: number) {
+    connection.send({
+      Command: CommandType.StockFoodSlot,
+      ConsumableItemId: 0,
+      TargetSlotIndex: slotIndex,
+      DepositQuantity: Math.max(1, Math.min(amount, SLOT_CAPACITY)),
     });
     refetchSoon();
   }
@@ -137,23 +162,43 @@
           {#if slot.itemId > 0}
             <span class="name">{foodName(slot.itemId)}</span>
             <span class="count">{slot.count.toLocaleString()}</span>
-            <button class="tiny-btn" onclick={() => unload(slot.index)}>Unload</button>
+            <span class="pm">
+              <button
+                class="tiny-btn"
+                title="Add {amount} more"
+                onclick={() => add(slot.index, slot.itemId)}
+              >+</button>
+              <button
+                class="tiny-btn"
+                title="Take {amount} back to the chest"
+                onclick={() => remove(slot.index)}
+              >&minus;</button>
+              <button
+                class="tiny-btn ghost"
+                title="Empty the slot"
+                onclick={() => unload(slot.index)}
+              >all</button>
+            </span>
           {:else}
             <span class="name dim empty">empty</span>
             <span class="count dim">0</span>
-            <button
-              class="tiny-btn"
-              disabled={!selectedFood}
-              onclick={() => stock(slot.index)}
-            >
-              Load
-            </button>
+            <span class="pm">
+              <button
+                class="tiny-btn"
+                disabled={!selectedFood}
+                onclick={() => add(slot.index, 0)}
+              >+</button>
+            </span>
           {/if}
         </li>
       {/each}
     </ul>
 
-    <h3>Load from the village chest</h3>
+    <h3>From the village chest</h3>
+    <p class="dim tiny">
+      Choose a food and an amount, then use + on a slot. &minus; takes that
+      same amount back out; "all" empties the slot.
+    </p>
     <!-- Modul: "there is none" is a claim, and it needs the answer to have
          arrived first. This read `availableFood.length === 0`, which is also
          true while the inventory request is in flight and while the content
@@ -184,7 +229,7 @@
         </select>
         <input type="number" min="1" max={SLOT_CAPACITY} bind:value={amount} />
       </div>
-      <p class="dim tiny">Slots hold at most {SLOT_CAPACITY}; larger requests are clamped.</p>
+      <p class="dim tiny">Slots hold at most {SLOT_CAPACITY.toLocaleString()}; larger requests are clamped.</p>
     {/if}
   </section>
 
@@ -292,6 +337,15 @@
   .tiny-btn {
     font-size: 0.72rem;
     padding: 0.2rem 0.45rem;
+  }
+
+  .pm {
+    display: inline-flex;
+    gap: 0.25rem;
+  }
+
+  .pm .ghost {
+    opacity: 0.7;
   }
 
   .loader {

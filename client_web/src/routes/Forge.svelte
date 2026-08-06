@@ -4,6 +4,7 @@
   import { prettifyBaseId } from '../lib/net/content';
   import { executeForgeFusion, rerollAffix, REROLL_OPERATIONS } from '../lib/net/commands';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
+  import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
   import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { toDisplayAffixes, AFFIX_RARITY_NAMES, KNOWN_AFFIX_IDS } from '../lib/ui/affixes';
   import Affixes from '../lib/ui/Affixes.svelte';
@@ -105,6 +106,8 @@
             sameRarity:
               one.QualityTier === fusionTargetItem.QualityTier &&
               two.QualityTier === fusionTargetItem.QualityTier,
+            // What the fusion would PRODUCE - the Forge's level has to reach it.
+            resultTier: fusionTargetItem.QualityTier + 1,
           }
         : undefined;
 
@@ -114,6 +117,41 @@
     fusionSacTwo = 0;
     refresh();
   }
+
+  // Modul: WHAT YOU ARE WEARING, first.
+  //
+  // Reported from play: "I would rather it showed only the items the
+  // characters have equipped, and let me click them, than a Choose dropdown."
+  // That is right - rerolling is something you do to the gear you are
+  // fighting in, and the dropdown made you find it by name among everything
+  // you own.
+  //
+  // Tools are the exception and the reason "everything" is still reachable:
+  // the wire carries a tool's TIER but not its instance id, so an equipped
+  // axe cannot be identified here. Hiding the full list would make tools
+  // unrerollable, which is a worse answer than one extra toggle.
+  const equippedIds = $derived.by(() => {
+    if (!snap) return new Set<number>();
+    return new Set<number>(
+      [
+        snap.EquippedWeaponId,
+        snap.EquippedHelmetId,
+        snap.EquippedChestId,
+        snap.EquippedGlovesId,
+        snap.EquippedLeggingsId,
+        snap.EquippedBootsId,
+        snap.EquippedAmuletId,
+        snap.EquippedRingId,
+      ]
+        .map(Number)
+        .filter((id) => id > 0),
+    );
+  });
+
+  let showAllForReroll = $state(false);
+  const rerollChoices = $derived(
+    showAllForReroll ? owned : owned.filter((i: { Id: number }) => equippedIds.has(Number(i.Id))),
+  );
 
   // --- reroll ---------------------------------------------------------------
   let rerollItemId = $state(0);
@@ -259,13 +297,24 @@
       affixes on the item are untouched.
     </p>
 
-    <label>
-      Item
-      <select bind:value={rerollItemId} onchange={() => (rerollAffixIndex = 0)}>
-        <option value={0}>Choose...</option>
-        {#each owned as item (item.Id)}<option value={item.Id}>{label(item)}</option>{/each}
-      </select>
-    </label>
+    <div class="pickhead">
+      <h3>{showAllForReroll ? 'Everything you own' : 'What you are wearing'}</h3>
+      <button class="tiny-btn" onclick={() => (showAllForReroll = !showAllForReroll)}>
+        {showAllForReroll ? 'Only equipped' : 'Show all (tools too)'}
+      </button>
+    </div>
+    <ItemBrowser
+      items={rerollChoices}
+      selectedId={rerollItemId}
+      compact
+      emptyText={showAllForReroll
+        ? 'Nothing to reroll.'
+        : 'Nothing equipped. Dress a character on the Character screen, or show all.'}
+      onselect={(item) => {
+        rerollItemId = item.Id;
+        rerollAffixIndex = 0;
+      }}
+    />
 
     {#if rerollItem}
       {#if rerollItem.IsAffixLocked}
@@ -355,6 +404,17 @@
 </div>
 
 <style>
+  .pickhead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .pickhead h3 {
+    margin: 0;
+  }
+
   .sets {
     display: flex;
     flex-wrap: wrap;

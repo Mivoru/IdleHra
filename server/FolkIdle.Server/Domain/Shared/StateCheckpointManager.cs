@@ -509,7 +509,11 @@ namespace FolkIdle.Server.Domain.Shared
 
             var characters = await dbContext.CharacterRecords
                 .Include(c => c.Lineage)
-                .Where(c => c.PlayerId == playerId && !c.IsLockedInEscrow && !dbContext.MentorshipAcademyAssignments.Any(m => m.CharacterId == c.Id))
+                // Modul: the Academy exclusion is gone with the Academy. A
+                // character lent out as a mentor used to be filtered out here,
+                // which is half of why a player could own characters and have
+                // none eligible to deploy.
+                .Where(c => c.PlayerId == playerId && !c.IsLockedInEscrow)
                 .OrderBy(c => c.SlotIndex)
                 .ThenBy(c => c.Id)
                 .Take(3)
@@ -633,13 +637,9 @@ namespace FolkIdle.Server.Domain.Shared
                     await EquipmentSlotEngine.ComputeEquippedTotalsAsync(dbContext, mainCharacterRecord);
             }
 
-            var mentorCount = await dbContext.MentorshipAcademyAssignments
-                .CountAsync(m => m.PlayerId == playerId);
-
-            var mentorshipContract = await dbContext.MentorshipContracts
-                .AsNoTracking()
-                .Where(m => m.MenteePlayerId == playerId)
-                .FirstOrDefaultAsync();
+            // Modul: mentorship removed - two queries per hydration deleted
+            // with it. The payload fields they filled stay at their neutral
+            // values below.
 
             // Modul 16: resolve any upgrade that matured while this player was
             // offline before hydrating the login payload, so a returning
@@ -713,10 +713,6 @@ namespace FolkIdle.Server.Domain.Shared
             int activeResidentCount = await dbContext.CharacterRecords
                 .AsNoTracking()
                 .CountAsync(c => c.PlayerId == playerId && !c.IsLockedInEscrow);
-
-            int activeMentorshipContracts = await dbContext.MentorshipContracts
-                .AsNoTracking()
-                .CountAsync(m => m.MenteePlayerId == playerId || m.MentorPlayerId == playerId);
 
             var legacyRows = await dbContext.PlayerLegacyLedgers
                 .AsNoTracking()
@@ -859,7 +855,7 @@ namespace FolkIdle.Server.Domain.Shared
                 GlobalNodeRemainingHp = globalNodeRemainingHp,
                 CachedMiningMonolithLevel = miningMonolith,
                 CachedWoodcuttingMonolithLevel = woodMonolith,
-                CachedMentorCount = mentorCount,
+                CachedMentorCount = 0,
                 ClaimedAchievementFlags = achievementFlags,
                 TotalAchievementsClaimedCount = (uint)totalAchievements,
                 CompletedAreaFlags = completedAreas,
@@ -937,14 +933,14 @@ namespace FolkIdle.Server.Domain.Shared
                 CombatSimulationMatchId = combatMatchId,
                 CombatSimulationTurnCounter = combatTurnCounter,
                 CombatSimulationDamageDelta = 0,
-                ActiveMentorPlayerId = mentorshipContract?.MentorPlayerId ?? 0L,
-                MentorshipExpBonusMultiplier = mentorshipContract?.ExpBonusMultiplier ?? 1.0,
+                ActiveMentorPlayerId = 0L,
+                MentorshipExpBonusMultiplier = 1.0,
                 ForgeLevel = ClampByte(forgeLevel),
                 InnLevel = ClampByte(innLevel),
                 BreedingLevel = ClampByte(breedingLevel),
                 AcademyLevel = ClampByte(academyLevel),
                 CurrentPopulationCount = ClampByte(activeResidentCount),
-                ActiveMentorshipContractCount = ClampByte(activeMentorshipContracts),
+                ActiveMentorshipContractCount = 0,
                 LumberjackLevel = ClampByte(lumberjackLevel),
                 QuarryLevel = ClampByte(quarryLevel),
                 MineLevel = ClampByte(mineLevel),

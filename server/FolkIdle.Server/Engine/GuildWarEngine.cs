@@ -41,6 +41,12 @@ namespace FolkIdle.Server.Engine
         private const int GuildWarVictoryTokenItemId = 9001;
         private const int VictoryTokenReward = 50;
 
+        // Modul: what a war win is worth to a member now. Sized against the
+        // Store's own prices rather than invented - a win is meaningful, not a
+        // shortcut past paying for anything.
+        private const int VictoryDiamondReward = 100;
+        private const int VictoryShardReward = 25;
+
         private readonly IServiceProvider _serviceProvider;
         public readonly ConcurrentQueue<GuildWarPointEvent> GuildWarPointQueue = new();
         public readonly ConcurrentQueue<GuildWarSupplyContribution> SupplyChainQueue = new();
@@ -632,13 +638,31 @@ namespace FolkIdle.Server.Engine
             else if (totalWpB > totalWpA) winningGuildId = match.GuildB_Id;
             else return;
 
-            var upsertDepotQuery = @"
-                INSERT INTO ""GuildDepotBalances"" (""GuildId"", ""ItemDefinitionId"", ""Quantity"")
-                VALUES ({0}, {1}, {2})
-                ON CONFLICT (""GuildId"", ""ItemDefinitionId"")
-                DO UPDATE SET ""Quantity"" = ""GuildDepotBalances"".""Quantity"" + {2};
-            ";
-            await dbContext.Database.ExecuteSqlRawAsync(upsertDepotQuery, winningGuildId, GuildWarVictoryTokenItemId, VictoryTokenReward);
+            // Modul: DIAMONDS AND SHARDS TO THE MEMBERS, not tokens to a depot.
+            //
+            // A victory token was a guild-scoped item whose only destination
+            // was the Legacy shop, and the Legacy shop is gone. That left a war
+            // paying out a currency with nowhere to spend it, into a shared
+            // balance no individual member could feel.
+            //
+            // Both new rewards land on the PLAYER: diamonds, which every screen
+            // in the game already knows how to spend, and legacy shards, which
+            // are the prestige currency. One UPDATE across the winning roster
+            // rather than a row per member.
+            await dbContext.Database.ExecuteSqlRawAsync(
+                @"UPDATE ""PlayerRecords"" SET ""PremiumDiamonds"" = ""PremiumDiamonds"" + {1}
+                  WHERE ""Id"" IN (SELECT ""PlayerId"" FROM ""GuildMembers"" WHERE ""GuildId"" = {0})",
+                winningGuildId, VictoryDiamondReward);
+
+            // Shards live on the legacy LEDGER, one row per player per era -
+            // not on PlayerRecords next to the diamonds. Only rows that already
+            // exist are credited: a player with no ledger row has not started a
+            // season, and inventing one here would be this engine guessing at
+            // another engine's bookkeeping.
+            await dbContext.Database.ExecuteSqlRawAsync(
+                @"UPDATE ""PlayerLegacyLedgers"" SET ""LegacyShardBalance"" = ""LegacyShardBalance"" + {1}
+                  WHERE ""PlayerId"" IN (SELECT ""PlayerId"" FROM ""GuildMembers"" WHERE ""GuildId"" = {0})",
+                winningGuildId, VictoryShardReward);
         }
     }
 }

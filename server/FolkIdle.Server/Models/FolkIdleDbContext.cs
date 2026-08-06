@@ -30,8 +30,6 @@ namespace FolkIdle.Server.Models
         public DbSet<CharacterLineageRegistry> CharacterLineages { get; set; }
         public DbSet<VillageInfrastructure> VillageInfrastructures { get; set; }
         public DbSet<VillageResident> VillageResidents { get; set; }
-        public DbSet<MentorshipAcademyAssignment> MentorshipAcademyAssignments { get; set; }
-        public DbSet<MentorshipContract> MentorshipContracts { get; set; }
         public DbSet<MonsterCodexEntry> MonsterCodexEntries { get; set; }
         public DbSet<PlayerRegionCompletion> PlayerRegionCompletions { get; set; }
         public DbSet<PlayerRaceMastery> PlayerRaceMasteries { get; set; }
@@ -199,19 +197,12 @@ namespace FolkIdle.Server.Models
                 .HasIndex(q => new { q.AccountId, q.IsPermanentlyBlacklisted })
                 .HasDatabaseName("IX_AccountSecurityQuotas_SecurityIndex");
 
-            modelBuilder.Entity<MentorshipAcademyAssignment>()
-                .HasKey(m => new { m.PlayerId, m.CharacterId });
-
             modelBuilder.Entity<VillageInfrastructure>()
                 .HasKey(v => new { v.PlayerId, v.BuildingId });
 
             modelBuilder.Entity<VillageResident>()
                 .HasKey(v => new { v.PlayerId, v.SlotIndex });
 
-            modelBuilder.Entity<MentorshipContract>()
-                .HasIndex(m => m.MenteePlayerId)
-                .IsUnique();
-            
             modelBuilder.Entity<GuildDepotBalance>()
                 .HasKey(gdb => new { gdb.GuildId, gdb.ItemDefinitionId });
 

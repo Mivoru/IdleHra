@@ -83,7 +83,6 @@ namespace FolkIdle.Server.Domain.Combat
         // construct this engine directly keep compiling.
         private readonly LarderEngine? _larderEngine;
         private readonly WorldBossEngine _worldBossEngine;
-        private readonly MentorshipEngine _mentorshipEngine;
         private readonly GuildWarEngine _guildWarEngine;
         private readonly ChronoCoreEngine _chronoCoreEngine;
         private readonly LegacyStoreEngine _legacyStoreEngine;
@@ -143,7 +142,7 @@ namespace FolkIdle.Server.Domain.Combat
 
         public static int ActiveGlobalEventId { get; private set; }
 
-        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, MentorshipEngine mentorshipEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null, InheritanceEngine? inheritanceEngine = null, SkillTreeEngine? skillTreeEngine = null)
+        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null, InheritanceEngine? inheritanceEngine = null, SkillTreeEngine? skillTreeEngine = null)
         {
             _lootEngine = lootEngine;
             _checkpointManager = checkpointManager;
@@ -163,7 +162,6 @@ namespace FolkIdle.Server.Domain.Combat
             _inheritanceEngine = inheritanceEngine;
             _skillTreeEngine = skillTreeEngine;
             _worldBossEngine = worldBossEngine;
-            _mentorshipEngine = mentorshipEngine;
             _guildWarEngine = guildWarEngine;
             _chronoCoreEngine = chronoCoreEngine;
             _legacyStoreEngine = legacyStoreEngine;
@@ -1510,6 +1508,8 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
+                // Nothing enqueues these any more; drained so a stale entry
+                // from a pre-removal process cannot sit in the queue forever.
                 while (_playerRegistry.MentorshipContractUpdateQueue.TryDequeue(out var mentorshipNotif))
                 {
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, mentorshipNotif.PlayerId);
@@ -2012,11 +2012,26 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                     else if (cmd.Command == CommandType.ExecuteForgeFusion)
                     {
+                        // Modul: REPORTS, does not disconnect.
+                        //
+                        // Reported from play as "I press fuse, I get an error,
+                        // and nothing happens" - and nothing happening was the
+                        // session being torn down. Every input here is chosen
+                        // by the player from a list on screen: three item ids
+                        // they own, against a Forge level that gates the rarity
+                        // they are reaching for. Picking three items your Forge
+                        // is too small to combine is a mistake to be told
+                        // about, not evidence of tampering.
+                        //
+                        // This is the same defect the larder had, and the
+                        // comment there says so: force-disconnecting on a
+                        // mis-click is how eating food used to throw players off
+                        // the server.
                         if (!ClientCommandValidator.ValidateFusionCommand(ref currentPayload, cmd.TargetId, cmd.SecondaryId, cmd.TertiaryId))
                         {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
+                            _playerRegistry.EnqueueCommandResult(
+                                currentPayload.PlayerId,
+                                (byte)Network.CommandResultCode.GenericValidationFailure);
                             continue;
                         }
 
@@ -2183,64 +2198,23 @@ namespace FolkIdle.Server.Domain.Combat
                             await _villageBuildingEngine.ExecuteUpgradeToolAsync(pId);
                         });
                     }
-                    else if (cmd.Command == CommandType.AssignMentor)
+                    else if (cmd.Command == CommandType.AssignMentor
+                             || cmd.Command == CommandType.EstablishMentorship
+                             || cmd.Command == CommandType.TerminateMentorship)
                     {
-                        if (!ClientCommandValidator.ValidateMentorshipAssignment(ref currentPayload, cmd.TargetGuid, (int)cmd.LimitPrice))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        Guid charId = cmd.TargetGuid;
-                        int slotIndex = cmd.LimitPrice;
-                        
-                        SafeDispatchAsync("Mentorship.AssignMentor", pId, async () => {
-                            await _mentorshipEngine.ExecuteAssignMentorAsync(pId, charId, slotIndex);
-                            // Trigger full reload so mentor count reflects accurately from DB
-                            _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
-                        });
-                    }
-                    else if (cmd.Command == CommandType.EstablishMentorship)
-                    {
-                        if (!ClientCommandValidator.ValidateMentorshipRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long menteePlayerId = currentPayload.PlayerId;
-                        long mentorPlayerId = cmd.TargetPlayerId;
-
-                        SafeDispatchAsync("Mentorship.Establish", menteePlayerId, async () => {
-                            var result = await _mentorshipEngine.EstablishMentorshipContractAsync(menteePlayerId, mentorPlayerId);
-                            if (result == MentorshipContractResult.InvalidRequest)
-                            {
-                                _networkSystem.PurgeTokensForPlayer(menteePlayerId);
-                                _networkSystem.ForceDisconnect(menteePlayerId);
-                            }
-                        });
-                    }
-                    else if (cmd.Command == CommandType.TerminateMentorship)
-                    {
-                        if (!ClientCommandValidator.ValidateMentorshipRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long requestingPlayerId = currentPayload.PlayerId;
-                        long counterpartyPlayerId = cmd.TargetPlayerId;
-
-                        SafeDispatchAsync("Mentorship.Terminate", requestingPlayerId, async () => {
-                            await _mentorshipEngine.ExecuteTerminateMentorshipAsync(requestingPlayerId, counterpartyPlayerId);
-                        });
+                        // Modul: MENTORSHIP IS GONE - ignored, not rejected.
+                        //
+                        // The Academy, the mentor slots and the contracts were
+                        // removed as a feature: three screens and an XP penalty
+                        // that existed to make one number slightly larger, in a
+                        // game whose social half is guilds.
+                        //
+                        // Ignoring rather than disconnecting is deliberate and
+                        // is the same rule the removed active skills follow. A
+                        // client built before the removal still has the buttons,
+                        // and a player pressing one deserves nothing happening -
+                        // not to be thrown off the server for sending a command
+                        // that was valid when their tab was opened.
                     }
                     else if (cmd.Command == CommandType.ContributeToWarSupply)
                     {
@@ -3224,6 +3198,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 CompletedAreaFlags = currentPayload.CompletedAreaFlags,
                                 HighestLocationReached = (byte)currentPayload.HighestLocationReached,
                                 HighestUnlockedRegion = (byte)currentPayload.HighestUnlockedRegion,
+                                DefeatedRegionBossMask = currentPayload.DefeatedRegionBossMask,
                                 HumanMasteryLevel = currentPayload.HumanMasteryLevel,
                                 VilaMasteryLevel = currentPayload.VilaMasteryLevel,
                                 DraugrMasteryLevel = currentPayload.DraugrMasteryLevel,
@@ -3871,10 +3846,9 @@ namespace FolkIdle.Server.Domain.Combat
             finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
             finalXpMultiplier += (int)SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchXpGain, payload.Skill_XpGain);
 
-            if (payload.ActiveMentorPlayerId > 0 && payload.MentorshipExpBonusMultiplier > 1.0)
-            {
-                finalXpMultiplier = (int)(finalXpMultiplier * payload.MentorshipExpBonusMultiplier);
-            }
+            // Modul: the mentorship XP bonus was multiplied in here. Nothing
+            // raises it any more - the feature is gone - so the branch went
+            // with it rather than sitting as a permanently false condition.
 
             double integratedBuffMultiplier = CalculateIntegratedBuffMultiplier(warpSeconds, remainingBuffTicks, potencyModifierPct);
             long xpGain = (long)Math.Floor(completedKills * monster.BaseXpReward * finalXpMultiplier * integratedBuffMultiplier / 100.0);
@@ -5917,10 +5891,9 @@ namespace FolkIdle.Server.Domain.Combat
             finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
             finalXpMultiplier += (int)SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchXpGain, payload.Skill_XpGain);
 
-                if (payload.ActiveMentorPlayerId > 0 && payload.MentorshipExpBonusMultiplier > 1.0)
-                {
-                    finalXpMultiplier = (int)(finalXpMultiplier * payload.MentorshipExpBonusMultiplier);
-                }
+                // Modul: and the same removal on the live-kill path. Two copies
+                // of one bonus, which is why it is worth saying twice that the
+                // payload fields behind it are fossils.
 
                 int seasonalCombatXp = activeMonster.BaseXpReward * finalXpMultiplier / 100;
                 ProgressionEngine.ProcessMonsterDeath(ref payload, activeMonster.BaseXpReward, finalXpMultiplier, ActiveGlobalEventId, activeRaceId);

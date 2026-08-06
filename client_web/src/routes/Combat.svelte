@@ -22,6 +22,37 @@
   import SessionLoot from '../lib/ui/SessionLoot.svelte';
 
   // Modul: region progression. The server refuses a target in a region whose
+  // Modul: A BOSS YOU HAVE NEVER BEATEN IS FIVE TIMES THE MONSTER THE CONTENT
+  // TABLES DESCRIBE.
+  //
+  // BossFirstClearRules gives an unbeaten region boss 5x health and 2x attack,
+  // and reverts it once it falls - so a first clear is a milestone and farming
+  // it afterwards is not a wall. The list here read the authored figure and
+  // showed 5,850 HP for a fight that arrives with 29,250. Reported from play
+  // as "the numbers written next to the boosted boss do not match what it
+  // actually has".
+  //
+  // The mask says which bosses are already down; every fifth monster of a
+  // region is its boss, which is content canon rather than an inference from
+  // this screen.
+  const FIRST_CLEAR_HP = 5;
+  const defeatedMask = $derived(snap?.DefeatedRegionBossMask ?? 0);
+
+  function bossRegionOf(monsterId: number): number {
+    const offset = monsterId - 91;
+    if (offset < 0 || offset >= 25) return 0;
+    return offset % 5 === 4 ? Math.floor(offset / 5) + 1 : 0;
+  }
+
+  function isFirstClearPending(monsterId: number): boolean {
+    const region = bossRegionOf(monsterId);
+    return region > 0 && (defeatedMask & (1 << (region - 1))) === 0;
+  }
+
+  function shownMaxHp(monster: { Id: number; MaxHp: number }): number {
+    return isFirstClearPending(monster.Id) ? monster.MaxHp * FIRST_CLEAR_HP : monster.MaxHp;
+  }
+
   // predecessor's boss is still standing (CommandResultCode.RegionLocked), so
   // the list has to say which those are. Offering a Fight button that is
   // guaranteed to be rejected is how a rule reads as a bug.
@@ -217,9 +248,9 @@
             <span class="dim">Fighting {activeMonster.Name}</span>
             <Bar
               value={visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp}
-              max={activeMonster.MaxHp}
+              max={shownMaxHp(activeMonster)}
               color="var(--danger)"
-              label={`${Math.round(visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp).toLocaleString()} / ${activeMonster.MaxHp.toLocaleString()}`}
+              label={`${Math.round(visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp).toLocaleString()} / ${shownMaxHp(activeMonster).toLocaleString()}`}
             />
           </div>
         </div>
@@ -272,8 +303,16 @@
               <button class="row" onclick={() => selectMonster(monster)}>
                 <MonsterPortrait monsterId={monster.Id} name={monster.Name} size="sm" />
                 <span class="name">{monster.Name}</span>
-                <span class="dim">{monster.MaxHp.toLocaleString()} HP</span>
+                <span class="dim" class:firstclear={isFirstClearPending(monster.Id)}>
+                  {shownMaxHp(monster).toLocaleString()} HP
+                </span>
                 <span class="dim">{monster.BaseXpReward.toLocaleString()} XP</span>
+                {#if isFirstClearPending(monster.Id)}
+                  <span
+                    class="firstclear tiny"
+                    title="Never beaten: {FIRST_CLEAR_HP}x health and double damage until it falls once. It drops to its normal stats afterwards."
+                  >first clear</span>
+                {/if}
               </button>
               <button
                 class="fight"
@@ -338,6 +377,14 @@
 </div>
 
 <style>
+  .firstclear {
+    color: var(--warn, #e0a030);
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 0 0.35rem;
+    white-space: nowrap;
+  }
+
   h3.place {
     background-size: cover;
     background-position: center;

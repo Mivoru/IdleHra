@@ -44,7 +44,14 @@ namespace FolkIdle.Server.Network
     // in one click.
     public static class LarderLimits
     {
-        public const int SlotCapacity = 999;
+        // Modul: 9,999, up from 999.
+        //
+        // Reported as "I want to load a slot and then keep adding to it" - and
+        // a thousand fish is about forty minutes of the larder bill in a late
+        // region, so a player was topping up constantly. Still comfortably
+        // inside the ushort the wire carries this in (65,535), so the count
+        // fields did not change size.
+        public const int SlotCapacity = 9_999;
         public const int SlotCount = 3;
     }
     // Modul: generic client error-feedback channel. Previously every
@@ -245,6 +252,22 @@ namespace FolkIdle.Server.Network
         // because the client has to draw the closed ones as closed - a gate the
         // player only discovers by being refused is a gate that reads as a bug.
         public byte HighestUnlockedRegion;
+
+        // Modul: which region bosses this player has already put down, one bit
+        // per region.
+        //
+        // On the wire because the client cannot derive it and needs it to tell
+        // the truth. A boss carries five times its health and twice its attack
+        // until it falls once (BossFirstClearRules), and the monster list was
+        // reading the authored figure straight out of the content tables - so
+        // a player was shown 5,850 HP and met 29,250. A number a screen states
+        // confidently and wrongly is worse than no number.
+        //
+        // HighestUnlockedRegion above cannot stand in for it: clearing region
+        // 5's boss opens no sixth region, so that byte reads 5 before and
+        // after, and the last boss in the game would be drawn at farm stats
+        // forever.
+        public byte DefeatedRegionBossMask;
         public int HumanMasteryLevel;
         public int VilaMasteryLevel;
         public int DraugrMasteryLevel;

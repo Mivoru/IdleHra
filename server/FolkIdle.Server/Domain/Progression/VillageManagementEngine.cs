@@ -228,13 +228,35 @@ namespace FolkIdle.Server.Domain.Progression
                 }
                 else
                 {
+                    // Modul: THE SERVICE BUILDINGS COST MATERIALS NOW, not gold
+                    // alone.
+                    //
+                    // Reported from play as "I click upgrade and the Forge is
+                    // built without consuming any material at all" - gold is
+                    // material to a player only in the sense that it is a
+                    // number, and it arrives from combat whether or not anyone
+                    // ever swings an axe. Wood and ore are what woodcutting and
+                    // mining are FOR, and a village raised out of them is the
+                    // reason those professions exist.
+                    //
+                    // Gold is still charged alongside, because a raise that
+                    // stopped costing gold would remove the only sink the
+                    // currency has at this scale.
+                    cost = CalculateUpgradeCost(infrastructure.CurrentLevel);
+                    long materialCost = CalculateProductionUpgradeCost(infrastructure.CurrentLevel);
+
                     var goldRecord = await db.CommodityRecords
                         .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
                         .SingleOrDefaultAsync();
 
-                    cost = CalculateUpgradeCost(infrastructure.CurrentLevel);
-
                     if (goldRecord == null || goldRecord.Quantity < cost)
+                    {
+                        await transaction.RollbackAsync();
+                        return;
+                    }
+
+                    if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, "raw_log", materialCost) ||
+                        !await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, "copper_ore", materialCost))
                     {
                         await transaction.RollbackAsync();
                         return;
@@ -342,7 +364,11 @@ namespace FolkIdle.Server.Domain.Progression
 
         public static bool IsValidBuildingId(uint buildingId)
         {
-            return (buildingId >= ForgeBuildingId && buildingId <= MentorshipAcademyBuildingId)
+            // Modul: the Mentorship Academy is NOT in this range any more. The
+            // feature it served was removed, and a building whose only purpose
+            // was to raise a contract cap is a gold sink with nothing on the
+            // end of it.
+            return (buildingId >= ForgeBuildingId && buildingId <= BreedingGroundsBuildingId)
                 || (buildingId >= LumberjackBuildingId && buildingId <= WarehouseBuildingId)
                 || buildingId == TownHallBuildingId
                 || buildingId == CraftingWorkshopBuildingId;

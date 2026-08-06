@@ -117,7 +117,11 @@ namespace FolkIdle.Server.Network
         // cast-result fields - 30 bytes running a mechanic measured at +90%
         // damage for clicking every three seconds. In: five branch levels, one
         // byte each. See SkillTreeRegistry.
-        public const int ExpectedStateUpdateSize = 746;
+        //
+        // Modul: first-clear bosses, 746 -> 747. DefeatedRegionBossMask (1
+        // byte) - the client draws a boss's health from the content tables and
+        // had no way to know a boss it has never beaten is five times that.
+        public const int ExpectedStateUpdateSize = 747;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

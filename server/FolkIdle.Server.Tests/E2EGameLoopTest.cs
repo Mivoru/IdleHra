@@ -175,7 +175,6 @@ namespace FolkIdle.Server.Tests
             var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
             var villageBuildingEngine = new VillageBuildingEngine(serviceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
-            var mentorshipEngine = new MentorshipEngine(serviceProvider, playerRegistry);
             var guildWarEngine = new GuildWarEngine(serviceProvider);
             var chronoCoreEngine = new ChronoCoreEngine(serviceProvider, playerRegistry);
             var legacyStoreEngine = new LegacyStoreEngine(serviceProvider, playerRegistry);
@@ -196,7 +195,7 @@ namespace FolkIdle.Server.Tests
             var simulationEngine = new SimulationEngine(
                 lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageBuildingEngine, villageManagementEngine, mentorshipEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                villageBuildingEngine, villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, antiCheatTelemetryEngine, null!, null!, null!, null!, contextFactory);
 
             // Spin up headless loop. This test drives the network gateway
@@ -494,7 +493,6 @@ namespace FolkIdle.Server.Tests
             var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
             var villageBuildingEngine = new VillageBuildingEngine(serviceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
-            var mentorshipEngine = new MentorshipEngine(serviceProvider, playerRegistry);
             var guildWarEngine = new GuildWarEngine(serviceProvider);
             var chronoCoreEngine = new ChronoCoreEngine(serviceProvider, playerRegistry);
             var legacyStoreEngine = new LegacyStoreEngine(serviceProvider, playerRegistry);
@@ -504,7 +502,7 @@ namespace FolkIdle.Server.Tests
             var simulationEngine = new SimulationEngine(
                 lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageBuildingEngine, villageManagementEngine, mentorshipEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                villageBuildingEngine, villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
 
             networkSystem.Start();

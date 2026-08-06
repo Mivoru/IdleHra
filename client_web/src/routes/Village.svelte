@@ -2,15 +2,8 @@
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { queryKeys, fetchStatistics } from '../lib/net/rest';
-  import {
-    BUILDINGS,
-    upgradeBuilding,
-    upgradeTool,
-    assignMentor,
-    MAX_MENTOR_SLOTS,
-  } from '../lib/net/commands';
+  import { BUILDINGS, upgradeBuilding, villageCostLabel } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
-  import { toolIcon } from '../lib/ui/sprites';
   import type { StateUpdate } from '../lib/net/protocol.generated';
 
 
@@ -55,49 +48,8 @@
   // that spend mana and have cooldowns, and they lived here between the
   // building queue and the mentor slots. See lib/ui/SkillsPanel.svelte.
 
-  // --- gathering tool -------------------------------------------------------
-  // Modul: CachedCurrentToolTier is subtracted DIRECTLY from a gathering node's
-  // required tick count, so each tier is one tick off every gather forever -
-  // the most straightforwardly valuable upgrade in the game and the one with
-  // no screen until now.
-  const toolTier = $derived(snap?.CachedCurrentToolTier ?? 0);
-  const TOOL_KINDS = ['axe', 'pickaxe', 'rod'] as const;
-
-  function upgradeGatheringTool() {
-    const outcome = upgradeTool();
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-    // The command carries nothing and the engine reports nothing, so there is
-    // no result to await. The tier below is the only evidence it worked.
-    pushLocalNotice('Tool upgrade requested.', 'info');
-  }
-
-  // --- mentor slots ---------------------------------------------------------
-  // Modul: THE ACADEMY'S LEVEL IS ITS SLOT COUNT. A level 2 Academy has slots
-  // 0 and 1, and asking for slot 2 does not fail - it disconnects. So the
-  // slots rendered here are bounded by the level, not by MAX_MENTOR_SLOTS.
-  const academyLevel = $derived(snap?.AcademyLevel ?? 0);
-  const mentorSlots = $derived(Math.min(academyLevel, MAX_MENTOR_SLOTS));
-
-  const ownCharacters = $derived(
-    snap
-      ? [
-          { slot: 1, id: snap.Slot1_CharacterId, phase: snap.Slot1_AgePhase },
-          { slot: 2, id: snap.Slot2_CharacterId, phase: snap.Slot2_AgePhase },
-          { slot: 3, id: snap.Slot3_CharacterId, phase: snap.Slot3_AgePhase },
-        ].filter((c) => c.id && c.id !== '00000000-0000-0000-0000-000000000000')
-      : [],
-  );
-
-  let mentorPicks = $state<Record<number, string>>({});
-
-  function seat(slotIndex: number) {
-    const characterId = mentorPicks[slotIndex] ?? '';
-    const outcome = assignMentor(characterId, slotIndex, academyLevel);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-    // AssignMentor queues a ReloadState server-side so the mentor count comes
-    // back from the database rather than being guessed at here.
-    pushLocalNotice(`Seated in slot ${slotIndex}.`, 'info');
-  }
+  // Modul: the gathering-tool and mentor-slot state went with their panels.
+  // What is left on this screen is the village itself.
 </script>
 
 {#if !snap}
@@ -127,13 +79,25 @@
 
       <ul class="buildings">
         {#each BUILDINGS as building}
+          {@const level = levelOf(snap, building.stateField)}
           <li>
-            <span class="name">{building.name}</span>
-            <span class="lvl">{levelOf(snap, building.stateField)}</span>
+            <span class="name">
+              {building.name}
+              <!-- Modul: WHAT IT DOES AND WHAT IT COSTS.
+                   The village listed a name, a level and an Upgrade button, so
+                   raising anything was a gamble with an invisible price against
+                   an unexplained benefit - and the most valuable one, the
+                   Forge, gates fusion rarity without ever saying so. -->
+              <span class="what dim tiny">{building.what}</span>
+            </span>
+            <span class="lvl">{level}</span>
+            <span class="cost dim tiny">{villageCostLabel(building.costKind, level)}</span>
             <button
               class="tiny-btn"
               disabled={pendingId !== 0}
-              title={pendingId !== 0 ? 'Another upgrade is already in progress' : ''}
+              title={pendingId !== 0
+                ? 'Another upgrade is already in progress'
+                : `Next level costs ${villageCostLabel(building.costKind, level)}`}
               onclick={() => upgrade(building.id)}
             >
               Upgrade
@@ -173,82 +137,33 @@
     </section>
 
 
-    <section class="panel">
-      <h2>Gathering tool</h2>
+    <!-- Modul: TWO PANELS REMOVED HERE - "Gathering tool" and "Mentor slots".
+         The tool panel was a survival from when tools were a stackable
+         material with one shared tier and an "Upgrade tool" button. They are
+         ordinary equipment now: crafted, carried, rolled for affixes, and
+         raised in rarity at the Forge like anything else, one per profession
+         rather than one tier for all three. A second, parallel upgrade path
+         for them was a way to be wrong in two places at once.
 
-      <!-- The three tools share one tier, so all three are shown: the ladder
-           is a wood type, not a per-profession upgrade, and seeing an axe, a
-           pickaxe and a rod change together is what makes that legible. -->
-      <div class="tools">
-        {#each TOOL_KINDS as kind}
-          {@const url = toolIcon(kind, toolTier)}
-          <span class="tool" title="{kind} tier {toolTier}">
-            {#if url}
-              <img src={url} alt="" loading="lazy" decoding="async" />
-            {:else}
-              <span class="dim tiny">{kind}</span>
-            {/if}
-          </span>
-        {/each}
-      </div>
+         Mentor slots went with the Mentorship feature - see
+         BossFirstClearRules' neighbours in Domain/Combat for the pattern:
+         removed features get their commands IGNORED server-side, so an old
+         tab pressing an old button does nothing rather than being kicked. -->
 
-      <dl class="stocks">
-        <div><dt>Tier</dt><dd class="tier">{toolTier}</dd></div>
-        <div><dt>Ticks saved</dt><dd class="tier">-{toolTier}</dd></div>
-      </dl>
-
-      <p class="dim small">
-        Each tier removes one tick from every gathering action, permanently and
-        on every node. There is no cap shown on the wire and no cost preview -
-        a request you cannot afford simply does nothing, so the tier above is
-        the only way to see whether it worked.
-      </p>
-
-      <button onclick={upgradeGatheringTool}>Upgrade tool</button>
-    </section>
-
-    <section class="panel">
-      <h2>Mentor slots</h2>
-
-      {#if academyLevel === 0}
-        <p class="dim">
-          Build a Mentorship Academy above to seat characters as mentors.
-        </p>
-      {:else}
-        <p class="dim small">
-          Your Academy is level {academyLevel}, which is exactly how many slots
-          it has. Seating a character lends its experience to the others.
-        </p>
-
-        <ul class="slots">
-          {#each Array(mentorSlots) as _, slotIndex}
-            <li>
-              <span class="name">Slot {slotIndex}</span>
-              <select bind:value={mentorPicks[slotIndex]}>
-                <option value="">Choose a character...</option>
-                {#each ownCharacters as character (character.id)}
-                  <option value={character.id}>
-                    Character {character.slot} (phase {character.phase})
-                  </option>
-                {/each}
-              </select>
-              <button class="tiny-btn" onclick={() => seat(slotIndex)}>Seat</button>
-            </li>
-          {/each}
-        </ul>
-
-        <p class="dim tiny">
-          Mentors held: {snap.CachedMentorCount}.
-          {#if academyLevel < MAX_MENTOR_SLOTS}
-            Upgrading the Academy adds one more slot, up to {MAX_MENTOR_SLOTS}.
-          {/if}
-        </p>
-      {/if}
-    </section>
   </div>
 {/if}
 
 <style>
+  .what {
+    display: block;
+    max-width: 34ch;
+    line-height: 1.25;
+  }
+
+  .cost {
+    white-space: nowrap;
+  }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));

@@ -26,7 +26,7 @@
     type InventoryStack,
   } from '../lib/net/rest';
   import { prettifyBaseId, isFood, consumableKind } from '../lib/net/content';
-  import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
+  import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { pushLocalNotice } from '../lib/stores/game';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
@@ -63,13 +63,28 @@
     ),
   );
 
+  // Modul: SEARCH AND RARITY, alongside the category tabs.
+  //
+  // The tabs answer "what kind of thing", which stops helping the moment a
+  // player owns ninety pieces of equipment - the reason the market grew a
+  // search box and a rarity floor, and the reason the chest needed the same
+  // two. Deliberately additive: the tabs stay, and these narrow whatever the
+  // tab already selected.
+  let search = $state('');
+  let minRarity = $state(0);
+
+  const matchesSearch = (label: string) =>
+    search.trim() === '' || label.toLowerCase().includes(search.trim().toLowerCase());
+
   const visibleEquipment = $derived(
     filter === 'materials' || filter === 'food'
       ? []
       : equipment.filter(
           (e) =>
-            filter === 'all' ||
-            (filter === 'weapons' ? isWeapon(e.BaseItemId) : !isWeapon(e.BaseItemId)),
+            (filter === 'all' ||
+              (filter === 'weapons' ? isWeapon(e.BaseItemId) : !isWeapon(e.BaseItemId))) &&
+            e.QualityTier >= minRarity &&
+            matchesSearch(`${prettifyBaseId(e.BaseItemId)} ${rarityName(e.QualityTier)}`),
         ),
   );
 
@@ -77,6 +92,11 @@
     filter === 'equipment' || filter === 'weapons'
       ? []
       : materials.filter((m) => {
+          // Modul: a rarity floor above Normal hides materials entirely rather
+          // than showing every stack unfiltered - they have no rarity, so
+          // "Rare and up" cannot honestly include them.
+          if (minRarity > 0) return false;
+          if (!matchesSearch(prettifyBaseId(m.ItemId))) return false;
           const food = isFood(m.ItemId) || consumableKind(m.ItemId) !== null;
           if (filter === 'food') return food;
           if (filter === 'materials') return !food;
@@ -179,6 +199,21 @@
           <span class="count">{count}</span>
         </button>
       {/each}
+    </div>
+
+    <div class="finders">
+      <input
+        type="search"
+        placeholder="Search the chest..."
+        bind:value={search}
+        aria-label="Search the chest"
+      />
+      <select bind:value={minRarity} aria-label="Minimum rarity">
+        <option value={0}>Any rarity</option>
+        {#each Array(MAX_QUALITY_TIER) as _, i}
+          <option value={i + 1}>{rarityName(i + 1)}+</option>
+        {/each}
+      </select>
     </div>
 
     {#if inventory.isPending}
@@ -312,6 +347,25 @@
 </div>
 
 <style>
+  .finders {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 0.35rem;
+    margin: 0.4rem 0;
+  }
+
+  .finders input,
+  .finders select {
+    min-width: 0;
+    width: 100%;
+  }
+
+  @media (max-width: 560px) {
+    .finders {
+      grid-template-columns: 1fr;
+    }
+  }
+
   .wrap {
     padding: 1rem;
     max-width: 56rem;

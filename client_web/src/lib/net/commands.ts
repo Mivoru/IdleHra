@@ -426,10 +426,20 @@ export function executeForgeFusion(
   sacrificeOneId: number,
   sacrificeTwoId: number,
   forgeLevel: number,
-  match?: { sameBase: boolean; sameRarity: boolean },
+  match?: { sameBase: boolean; sameRarity: boolean; resultTier: number },
 ): CommandOutcome {
   if (forgeLevel <= 0) {
     return refuse('Build a Forge in your village first.');
+  }
+  // Modul: THE FORGE'S LEVEL IS THE RARITY CEILING, and the screen never said
+  // so. ClientCommandValidator refuses a fusion whose RESULT would exceed
+  // ForgeLevel - so a level-2 Forge can produce rarity 2 and no higher - and
+  // that refusal used to tear down the session, which a player reads as "fuse
+  // is broken". Caught here, in words, before it is sent.
+  if (match && match.resultTier > forgeLevel) {
+    return refuse(
+      `Your Forge is level ${forgeLevel} and this fusion produces rarity ${match.resultTier}. Upgrade the Forge in your village first.`,
+    );
   }
   if (targetId <= 0 || sacrificeOneId <= 0 || sacrificeTwoId <= 0) {
     return refuse('Choose a target item and two different items to sacrifice.');
@@ -1077,18 +1087,116 @@ export function purchaseInheritanceLevel(statId: number, currentLevel: number, d
 // Modul: VillageManagementEngine's building ids. Not contiguous by theme -
 // 1-4 are the specialist buildings, 5-8 the resource producers, 9-10 the two
 // added later - so the list is authored rather than generated from a range.
-export const BUILDINGS: readonly { id: number; name: string; stateField: string }[] = [
-  { id: 9, name: 'Town Hall', stateField: 'TownHallLevel' },
-  { id: 10, name: 'Crafting Workshop', stateField: 'CraftingWorkshopLevel' },
-  { id: 1, name: 'Forge', stateField: 'ForgeLevel' },
-  { id: 2, name: 'Inn', stateField: 'InnLevel' },
-  { id: 3, name: 'Breeding Grounds', stateField: 'BreedingLevel' },
-  { id: 4, name: 'Mentorship Academy', stateField: 'AcademyLevel' },
-  { id: 5, name: 'Lumberjack', stateField: 'LumberjackLevel' },
-  { id: 6, name: 'Quarry', stateField: 'QuarryLevel' },
-  { id: 7, name: 'Mine', stateField: 'MineLevel' },
-  { id: 8, name: 'Warehouse', stateField: 'WarehouseLevel' },
+/**
+ * Modul: WHAT EACH BUILDING DOES AND WHAT IT COSTS, in the table the screen
+ * already reads.
+ *
+ * Reported from play: "the village does not say what any upgrade costs, or
+ * what the building does" - and it did not, so raising something was a
+ * gamble with an invisible price. Both are server rules, mirrored here
+ * because the wire carries levels and not explanations:
+ *
+ *   - service buildings (Forge/Inn/Breeding) cost GOLD on 100 * 1.5^level,
+ *     plus logs and ore on 100 * 1.5^level - VillageManagementEngine
+ *   - production buildings (Lumberjack/Quarry/Mine/Warehouse) cost wood and
+ *     stone on the same curve
+ *   - structural buildings (Town Hall / Crafting Workshop) cost logs and ore,
+ *     and the Workshop additionally a rare log
+ *
+ * The Mentorship Academy is NOT in this list any more: the feature was
+ * removed and the server refuses the building id.
+ */
+export type CostKind = 'service' | 'production' | 'structural';
+
+export const BUILDINGS: readonly {
+  id: number;
+  name: string;
+  stateField: string;
+  costKind: CostKind;
+  what: string;
+}[] = [
+  {
+    id: 9,
+    name: 'Town Hall',
+    stateField: 'TownHallLevel',
+    costKind: 'structural',
+    what: 'Raises the level ceiling every other building is allowed to reach, and unlocks character slots.',
+  },
+  {
+    id: 10,
+    name: 'Crafting Workshop',
+    stateField: 'CraftingWorkshopLevel',
+    costKind: 'structural',
+    what: 'Unlocks higher crafting recipe tiers.',
+  },
+  {
+    id: 1,
+    name: 'Forge',
+    stateField: 'ForgeLevel',
+    costKind: 'service',
+    what: 'Its level is the rarity ceiling for fusion: a level 5 Forge can fuse up to rarity 5 and no further.',
+  },
+  {
+    id: 2,
+    name: 'Inn',
+    stateField: 'InnLevel',
+    costKind: 'service',
+    what: 'Houses villagers, who work the production buildings.',
+  },
+  {
+    id: 3,
+    name: 'Breeding Grounds',
+    stateField: 'BreedingLevel',
+    costKind: 'service',
+    what: 'Lets you breed characters for better attributes and rarer races.',
+  },
+  {
+    id: 5,
+    name: 'Lumberjack',
+    stateField: 'LumberjackLevel',
+    costKind: 'production',
+    what: 'Produces wood on its own, and speeds up your own woodcutting by 5% a level.',
+  },
+  {
+    id: 6,
+    name: 'Quarry',
+    stateField: 'QuarryLevel',
+    costKind: 'production',
+    what: 'Produces stone on its own.',
+  },
+  {
+    id: 7,
+    name: 'Mine',
+    stateField: 'MineLevel',
+    costKind: 'production',
+    what: 'Produces iron on its own, and speeds up your own mining by 5% a level.',
+  },
+  {
+    id: 8,
+    name: 'Warehouse',
+    stateField: 'WarehouseLevel',
+    costKind: 'production',
+    what: 'Caps how much the production buildings can stockpile: 1,000 per level.',
+  },
 ];
+
+/** Mirrors VillageManagementEngine.CalculateUpgradeCost - gold. */
+export function villageGoldCost(currentLevel: number): number {
+  return Math.ceil(1000 * Math.pow(1.5, Math.max(0, currentLevel)));
+}
+
+/** Mirrors VillageManagementEngine.CalculateProductionUpgradeCost - materials. */
+export function villageMaterialCost(currentLevel: number): number {
+  return Math.ceil(100 * Math.pow(1.5, Math.max(0, currentLevel)));
+}
+
+/** What the next level of this building will take, in words. */
+export function villageCostLabel(costKind: CostKind, currentLevel: number): string {
+  const materials = villageMaterialCost(currentLevel).toLocaleString();
+  if (costKind === 'production') return `${materials} wood + ${materials} stone`;
+  if (costKind === 'structural') return `${materials} logs + ${materials} ore`;
+  return `${villageGoldCost(currentLevel).toLocaleString()}g + ${materials} logs + ${materials} ore`;
+}
 
 /**
  * Modul: ValidateVillageManagementRequest is the strictest validator on this

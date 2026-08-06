@@ -18,6 +18,7 @@
   import Codex from './routes/Codex.svelte';
   import Breeding from './routes/Breeding.svelte';
   import Store from './routes/Store.svelte';
+  import SkillsPanel from './lib/ui/SkillsPanel.svelte';
   import Inheritance from './routes/Inheritance.svelte';
   import Settings from './routes/Settings.svelte';
   import Mailbox from './routes/Mailbox.svelte';
@@ -82,6 +83,7 @@
       name: 'You',
       screens: [
         { key: 'village', label: 'Village' },
+        { key: 'skills', label: 'Skill Tree' },
         { key: 'progression', label: 'Progress' },
         { key: 'inheritance', label: 'Inheritance' },
         { key: 'codex', label: 'Codex' },
@@ -233,6 +235,12 @@
       <GuildOps />
     {:else if screen === 'village'}
       <Village />
+    {:else if screen === 'skills'}
+      <!-- Modul: the skill tree has its own screen now. It lived inside the
+           character sheet, wedged between the paper doll and the stat block,
+           where it was both cramped and in the way of the thing that screen is
+           actually for. -->
+      <SkillsPanel />
     {:else if screen === 'progression'}
       <Progression />
     {:else if screen === 'codex'}

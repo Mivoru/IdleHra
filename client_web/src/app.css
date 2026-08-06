@@ -231,3 +231,62 @@ input {
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Phones.
+
+   Modul: every screen lays its panels out with
+   `repeat(auto-fit, minmax(21rem, 1fr))`, which reads as "collapse to one
+   column when it must" and is not what it does on a phone. 21rem is 336px, and
+   the 1rem padding either side takes the row to 368px - wider than a 360px
+   handset - so the page scrolled SIDEWAYS on the most common screen size there
+   is, on every screen at once.
+
+   These rules are !important on purpose. Svelte scopes component styles by
+   appending a hash class, which raises their specificity above anything a
+   plain global selector can reach; the alternative is editing the same
+   breakpoint into fifty-four separate <style> blocks and keeping them in step
+   forever. One place that can be read and changed is worth the shout.
+   --------------------------------------------------------------------------- */
+@media (max-width: 40rem) {
+  .grid,
+  .wrap {
+    grid-template-columns: 1fr !important;
+    padding: 0.6rem !important;
+    gap: 0.6rem !important;
+  }
+
+  .panel {
+    padding: 0.7rem !important;
+  }
+
+  /* A wide table is the one thing that cannot be made narrow. Let it scroll
+     inside its own box rather than dragging the whole page with it. */
+  table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  /* Touch targets. 0.3rem of padding is a comfortable mouse target and a
+     frustrating thumb one. */
+  nav button,
+  .tiny-btn {
+    min-height: 2rem;
+  }
+}
+
+/* Nothing may push the page wider than the viewport, on any screen. This is a
+   backstop rather than a layout: if it ever fires, something above it is wrong,
+   but a player should not meet that as a sideways-scrolling game. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img,
+canvas,
+svg {
+  max-width: 100%;
+}

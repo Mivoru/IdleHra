@@ -14,7 +14,6 @@
   import Bar from '../lib/ui/Bar.svelte';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
-  import SkillsPanel from '../lib/ui/SkillsPanel.svelte';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import { locationName, nodeLocation } from '../lib/ui/locations';
   // EMPTY_GUID is the sentinel the roster filter below tests against.
@@ -326,7 +325,10 @@
            cooldowns and they multiply the next hit - they were under Village,
            between the building queue and the mentor slots, which is nowhere a
            player looking for a combat ability would think to look. -->
-      <SkillsPanel />
+      <!-- Modul: the skill tree MOVED OUT of this screen, to its own entry
+           under "You". It sat here between the paper doll and the stat block
+           and was in the way of both - a tree wants room to be a tree, and the
+           character sheet wants to be about the character. -->
     </section>
 
     <section class="panel doll">

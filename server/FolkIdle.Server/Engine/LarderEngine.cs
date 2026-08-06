@@ -48,7 +48,18 @@ namespace FolkIdle.Server.Engine
             }
 
             bool isUnload = quantity <= 0;
-            if (!isUnload && !FoodRegistry.IsFood(foodItemId))
+
+            // Modul: A THIRD MEANING - "take N units back out of this slot".
+            //
+            // The screen offered Load and Unload and nothing between them, so a
+            // player who had put 900 fish in a slot could only take all 900
+            // out. Encoded as food id 0 with a POSITIVE quantity, which was
+            // previously an impossible combination (id 0 with quantity 0 is the
+            // unload, and any real request names a food), so it costs no wire
+            // field and no packet resize.
+            bool isPartialWithdrawal = !isUnload && foodItemId == 0;
+
+            if (!isUnload && !isPartialWithdrawal && !FoodRegistry.IsFood(foodItemId))
             {
                 _playerRegistry.EnqueueCommandResult(playerId, (byte)Network.CommandResultCode.GenericValidationFailure);
                 return;
@@ -82,6 +93,28 @@ namespace FolkIdle.Server.Engine
                 // is being emptied or repurposed. Deposited rather than
                 // discarded - the player paid materials and cooking time for
                 // every one of these.
+                if (isPartialWithdrawal)
+                {
+                    if (existingCount <= 0 || existingItemId == 0)
+                    {
+                        await transaction.RollbackAsync();
+                        return (Network.CommandResultCode.GenericValidationFailure, existingItemId, existingCount);
+                    }
+
+                    int toReturn = Math.Min(quantity, existingCount);
+                    string withdrawnBaseId = ContentRegistry.GetItemBaseId(existingItemId);
+                    if (!string.IsNullOrEmpty(withdrawnBaseId))
+                    {
+                        await ReturnToBackpackAsync(context, playerId, withdrawnBaseId, toReturn);
+                    }
+
+                    int remaining = existingCount - toReturn;
+                    WriteSlot(player, slotIndex, remaining > 0 ? existingItemId : 0, remaining);
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return (Network.CommandResultCode.Success, remaining > 0 ? existingItemId : 0, remaining);
+                }
+
                 bool replacingContents = existingCount > 0 && (isUnload || existingItemId != foodItemId);
                 if (replacingContents)
                 {

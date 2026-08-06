@@ -56,7 +56,11 @@ namespace FolkIdle.Server.Engine
 
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"VillageResidents\" WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"VillageInfrastructures\" WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
-                await db.Database.ExecuteSqlRawAsync("DELETE FROM \"MentorshipContracts\" WHERE \"MentorPlayerId\" = {0} OR \"MenteePlayerId\" = {0}", new object[] { playerId }, timeout.Token);
+                // Modul: the mentorship tables are dropped, so a purge no
+                // longer has rows to delete there. Kept as raw SQL against a
+                // table that may still exist in an old database would fail the
+                // purge outright, and a purge that throws is worse than one
+                // that has nothing to do.
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"MarketOrderRecords\" WHERE \"SellerId\" = {0}", new object[] { playerId }, timeout.Token);
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"PlayerDeviceRegistrations\" WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"PlayerRecords\" WHERE \"Id\" = {0}", new object[] { playerId }, timeout.Token);

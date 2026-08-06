@@ -11,6 +11,7 @@
   import { prettifyBaseId } from '../lib/net/content';
   import { listItemOnMarket, buyMarketListing, placeLimitOrder } from '../lib/net/commands';
   import { loadContent, type ContentRegistry } from '../lib/net/content';
+  import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
   import { rarityColor, rarityName, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { EQUIPMENT_SLOTS, resolveSlotIndex } from '../lib/ui/slots';
   import { locationName } from '../lib/ui/locations';
@@ -387,17 +388,19 @@
       <button class="linkish" onclick={() => requestScreen('chest')}>open the chest</button>.
     </p>
 
-    <label>
-      Item
-      <select bind:value={sellInstanceId}>
-        <option value={0}>Choose an item...</option>
-        {#each sellable as item (item.Id)}
-          <option value={item.Id}>
-            {prettifyBaseId(item.BaseItemId)} [{rarityName(item.QualityTier)}]
-          </option>
-        {/each}
-      </select>
-    </label>
+    <!-- Modul: A BROWSER, NOT A DROPDOWN.
+         This was a <select> - one line of text per item, no picture, no kind,
+         no search - which is a fine control for three options and the wrong
+         one for the two hundred pieces a played account carries. The buy side
+         of this same screen has had search and filters since it shipped; the
+         sell side now uses the same component, so they cannot drift apart. -->
+    <ItemBrowser
+      items={sellable}
+      selectedId={sellInstanceId}
+      compact
+      emptyText="Nothing carried. Take a piece off in the chest to sell it."
+      onselect={(item) => (sellInstanceId = item.Id)}
+    />
 
     <!-- Modul: WHAT IS IT WORTH. A price box with nothing beside it asks the
          player to invent a number, and the market has been answering that
