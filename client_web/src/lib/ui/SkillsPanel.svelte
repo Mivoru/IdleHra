@@ -1,129 +1,197 @@
 <script lang="ts">
-  // Modul: SKILLS BELONG TO THE CHARACTER, not to the village.
+  // Modul: THE SKILL TREE. Five passive branches, bought with the points an
+  // account earns one per level.
   //
-  // These are combat abilities - they spend mana, they have cooldowns, they
-  // multiply the next hit - and they lived under Village, between the building
-  // queue and the mentor slots. Same class of problem as the affix reroll being
-  // in the Forge: the feature worked, and a player looking for it had no reason
-  // to look where it was.
+  // This panel used to drive four ACTIVE skills - buttons with cooldowns and a
+  // mana bar. They were removed after being measured: mana refilled faster than
+  // the cooldowns cleared, so at a 1.5 second swing nearly every hit could be
+  // buffed, which came to +90% damage and +136% with the status synergy. All of
+  // it available only to a player willing to click every three seconds, in a
+  // game whose premise is that you do not have to.
   //
-  // Extracted rather than copied so there is one implementation of unlocking
-  // and casting, whichever screen renders it.
+  // What a branch is worth is stated on its card, because a passive bonus the
+  // player cannot see is indistinguishable from one that does not work - a
+  // mistake this project has made more than once.
   import { playerState, pushLocalNotice } from '../stores/game';
-  import { unlockSkill, castSkill, MAX_SKILL_ID } from '../net/commands';
-  import type { StateUpdate } from '../net/protocol.generated';
+  import {
+    SKILL_TREE_BRANCHES,
+    SKILL_TREE_MAX_LEVEL,
+    skillTreeUpgradeCost,
+    purchaseSkillTreeLevel,
+  } from '../net/commands';
   import Bar from './Bar.svelte';
 
   const snap = $derived($playerState);
+  const points = $derived(snap?.AvailableSkillPoints ?? 0);
 
-  const skills = $derived(
-    snap
-      ? Array.from({ length: MAX_SKILL_ID }, (_, index) => {
-          const id = index + 1;
-          // The four cooldowns are separate wire fields, so the name is
-          // computed rather than indexed - see StateUpdatePacket.
-          const cooldownField = `Skill${id}CooldownRemainingMs` as keyof StateUpdate;
-          const cooldown = snap[cooldownField];
-          return {
-            id,
-            unlocked: (snap.UnlockedSkillsBitmask & (1 << index)) !== 0,
-            cooldownMs: typeof cooldown === 'number' ? cooldown : 0,
-          };
-        })
-      : [],
-  );
-
-  function unlock(skillId: number) {
-    const outcome = unlockSkill(skillId, snap?.AvailableSkillPoints ?? 0);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+  // The wire carries one byte per branch, indexed by the same ids the server's
+  // SkillTreeRegistry uses, so the two cannot drift on ordering.
+  function levelOf(branchId: number): number {
+    if (!snap) return 0;
+    switch (branchId) {
+      case 0: return snap.SkillTree_LootRarity;
+      case 1: return snap.SkillTree_WorldBossDamage;
+      case 2: return snap.SkillTree_CritChance;
+      case 3: return snap.SkillTree_CritDamage;
+      case 4: return snap.SkillTree_XpGain;
+      default: return 0;
+    }
   }
 
-  function cast(skillId: number) {
-    const outcome = castSkill(skillId);
+  const rows = $derived(
+    SKILL_TREE_BRANCHES.map((branch) => {
+      const level = levelOf(branch.id);
+      const cost = skillTreeUpgradeCost(level);
+      const total = level * branch.perLevel;
+      return {
+        ...branch,
+        level,
+        cost,
+        capped: level >= SKILL_TREE_MAX_LEVEL,
+        affordable: cost > 0 && points >= cost,
+        // Crit chance is percentage POINTS; the others are percentages of
+        // their own quantity. Writing "+8%" for both would be wrong for one.
+        label: branch.unit === 'points' ? `+${total.toFixed(1)} pts` : `+${total.toFixed(1)}%`,
+      };
+    }),
+  );
+
+  const spent = $derived(
+    rows.reduce((sum, row) => {
+      let total = 0;
+      for (let i = 0; i < row.level; i++) total += skillTreeUpgradeCost(i);
+      return sum + total;
+    }, 0),
+  );
+
+  function buy(branchId: number, level: number) {
+    const outcome = purchaseSkillTreeLevel(branchId, level, points);
     if (!outcome.ok) pushLocalNotice(outcome.reason);
   }
 </script>
 
-{#if snap}
-  <div class="head">
-    <h3>Skills</h3>
-    <span class="dim tiny">{snap.AvailableSkillPoints} points</span>
-  </div>
+<section class="panel">
+  <header>
+    <h3>Skill tree</h3>
+    <span class="dim tiny">{points} point{points === 1 ? '' : 's'} unspent</span>
+  </header>
 
-  <div class="mana">
-    <span class="dim tiny">Mana</span>
-    <Bar
-      value={snap.CurrentMana}
-      max={Math.max(1, snap.MaxMana)}
-      color="var(--accent)"
-      label={`${snap.CurrentMana} / ${snap.MaxMana}`}
-    />
-  </div>
+  <p class="dim small">
+    One point per level. Five branches, twenty levels each, and the price rises
+    every fifth level - so a season buys two branches deep or five shallow.
+    These reset when the season does.
+  </p>
 
-  <ul class="skills">
-    {#each skills as skill (skill.id)}
-      <li>
-        <span class="name">Skill {skill.id}</span>
-        {#if !skill.unlocked}
-          <span class="dim tiny">locked</span>
-          <button
-            class="tiny-btn"
-            disabled={snap.AvailableSkillPoints <= 0}
-            title={snap.AvailableSkillPoints <= 0 ? 'Skill points come from levelling' : ''}
-            onclick={() => unlock(skill.id)}
-          >
-            Unlock
-          </button>
-        {:else if skill.cooldownMs > 0}
-          <span class="dim tiny">{(skill.cooldownMs / 1000).toFixed(1)}s</span>
-          <button class="tiny-btn" disabled>Cooling</button>
-        {:else}
-          <span class="dim tiny">ready</span>
-          <button class="tiny-btn" onclick={() => cast(skill.id)}>Cast</button>
-        {/if}
-      </li>
-    {/each}
-  </ul>
-{/if}
+  {#if !snap}
+    <p class="dim">Waiting for your state to arrive...</p>
+  {:else}
+    <ul class="branches">
+      {#each rows as row (row.id)}
+        <li class:capped={row.capped}>
+          <div class="head">
+            <span class="name">{row.name}</span>
+            <span class="value">
+              {#if row.level > 0}{row.label}{:else}<span class="dim">not taken</span>{/if}
+            </span>
+          </div>
+
+          <p class="blurb dim tiny">{row.blurb}</p>
+
+          <Bar
+            value={row.level}
+            max={SKILL_TREE_MAX_LEVEL}
+            color="var(--accent)"
+            label={`${row.level} / ${SKILL_TREE_MAX_LEVEL}`}
+          />
+
+          <div class="buy">
+            {#if row.capped}
+              <span class="dim tiny">At maximum.</span>
+            {:else}
+              <button
+                disabled={!row.affordable}
+                title={row.affordable ? '' : `Needs ${row.cost} point${row.cost === 1 ? '' : 's'}`}
+                onclick={() => buy(row.id, row.level)}
+              >
+                +{row.perLevel}{row.unit === 'points' ? ' pts' : '%'} for {row.cost}
+                point{row.cost === 1 ? '' : 's'}
+              </button>
+            {/if}
+          </div>
+        </li>
+      {/each}
+    </ul>
+
+    {#if spent > 0}
+      <p class="dim tiny footer">{spent} points spent this season.</p>
+    {/if}
+  {/if}
+</section>
 
 <style>
+  .panel {
+    background: var(--panel, rgba(127, 127, 127, 0.05));
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.15rem 1.25rem;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.4rem;
+  }
+  header h3 { margin: 0; }
+  header .dim { margin-left: auto; }
+
+  .small { font-size: 0.9rem; max-width: 46rem; }
+  .tiny  { font-size: 0.8rem; }
+  .dim   { opacity: 0.75; }
+
+  .branches {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 0.9rem;
+  }
+
+  .branches li {
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.85rem 0.95rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: rgba(127, 127, 127, 0.04);
+  }
+
+  /* A maxed branch stays fully legible - it is an achievement, not a disabled
+     control, and dimming it would read as "broken". */
+  .branches li.capped { border-color: var(--accent); }
+
   .head {
     display: flex;
     align-items: baseline;
     gap: 0.6rem;
-    margin-bottom: 0.4rem;
   }
-  .head h3 { margin: 0; }
-  .head .dim { margin-left: auto; }
-
-  .mana { display: grid; gap: 0.2rem; margin-bottom: 0.6rem; }
-
-  .skills {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 0.35rem;
+  .name { font-weight: 650; }
+  .value {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    font-weight: 650;
   }
 
-  .skills li {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    font-size: 0.88rem;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.3rem;
+  .blurb { margin: 0; }
+
+  .buy { margin-top: 0.15rem; }
+  .buy button {
+    width: 100%;
+    font-size: 0.85rem;
+    padding: 0.4rem 0.6rem;
   }
-  .skills li:last-child { border-bottom: none; }
 
-  .name { font-weight: 600; }
-  .skills li .dim { margin-left: auto; }
-
-  .dim { opacity: 0.75; }
-  .tiny { font-size: 0.8rem; }
-
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.5rem;
-  }
+  .footer { margin: 1rem 0 0; }
 </style>

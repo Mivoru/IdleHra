@@ -408,9 +408,7 @@ namespace FolkIdle.Server.Domain.Shared
                     ActiveLanguageState = 1,
                     ActiveChroniclePassLevel = 0,
                     AccumulatedSeasonalXp = 0,
-                    CurrentMana = ActiveSkillEngine.ComputeMaxMana(1),
-                    AvailableSkillPoints = 0,
-                    UnlockedSkillsBitmask = 0
+                    AvailableSkillPoints = 0
                 };
                 defaultPayload.InitializeObfuscation(GenerateSessionXorKey(playerId, 0));
                 return defaultPayload;
@@ -691,18 +689,10 @@ namespace FolkIdle.Server.Domain.Shared
             long stoneStock = villageCommodityRows.FirstOrDefault(c => c.ItemId == VillageManagementEngine.StoneCommodityId)?.Quantity ?? 0L;
             long ironOreStock = villageCommodityRows.FirstOrDefault(c => c.ItemId == VillageManagementEngine.IronOreCommodityId)?.Quantity ?? 0L;
 
-            // Active Skill Tree: hydrate the persisted unlock set into a
-            // bitmask once at login (see ActiveSkillEngine) - never queried
-            // from the 10 Hz hot loop again this session.
-            var unlockedSkillRows = await dbContext.PlayerSkillUnlocks
-                .AsNoTracking()
-                .Where(s => s.PlayerId == playerId)
-                .ToListAsync();
-            uint unlockedSkillsBitmask = 0;
-            for (int i = 0; i < unlockedSkillRows.Count; i++)
-            {
-                unlockedSkillsBitmask = ActiveSkillEngine.WithSkillUnlocked(unlockedSkillsBitmask, unlockedSkillRows[i].SkillId);
-            }
+            // Modul: the unlocked-skills bitmask is gone with the four active
+            // skills. PlayerSkillUnlocks is left in the schema rather than
+            // dropped in the same pass - see the handoff; a table nothing reads
+            // is a smaller problem than a migration written in a hurry.
 
             // Modul: THE VILLAGE COUNTED A TABLE NOTHING EVER WROTE TO.
             //
@@ -766,6 +756,10 @@ namespace FolkIdle.Server.Domain.Shared
             // this by comparing a player's real CommodityRecords balance
             // against what every login/reconnect actually loaded.
             byte[] inheritanceLevels = await InheritanceEngine.LoadLevelsAsync(dbContext, playerId);
+
+            // Modul: skill tree. Hydrated the same way and refreshed the same
+            // way - SkillTreeSyncQueue carries a purchase back to the tick.
+            byte[] skillTreeLevels = await SkillTreeEngine.LoadLevelsAsync(dbContext, playerId);
 
             long loadedGold = await dbContext.CommodityRecords
                 .AsNoTracking()
@@ -968,6 +962,11 @@ namespace FolkIdle.Server.Domain.Shared
                 Inherit_GoldGain = inheritanceLevels[InheritanceRegistry.StatGoldGain],
                 Inherit_GatheringYield = inheritanceLevels[InheritanceRegistry.StatGatheringYield],
                 Inherit_LootLuck = inheritanceLevels[InheritanceRegistry.StatLootLuck],
+                Skill_LootRarity = skillTreeLevels[SkillTreeRegistry.BranchLootRarity],
+                Skill_WorldBossDamage = skillTreeLevels[SkillTreeRegistry.BranchWorldBossDamage],
+                Skill_CritChance = skillTreeLevels[SkillTreeRegistry.BranchCritChance],
+                Skill_CritDamage = skillTreeLevels[SkillTreeRegistry.BranchCritDamage],
+                Skill_XpGain = skillTreeLevels[SkillTreeRegistry.BranchXpGain],
                 CachedLogisticsGatheringSpeedBonusPct = player.LogisticsGatheringSpeedBonusPct,
                 CachedMaxPopulationCapacity = VillageManagementEngine.CalculatePopulationCapacity(innLevel),
                 CachedInnMaturationBonus = innLevel,
@@ -977,9 +976,7 @@ namespace FolkIdle.Server.Domain.Shared
                 ActiveChroniclePassLevel = (uint)Math.Max(0, chroniclePass?.PassLevel ?? 0),
                 AccumulatedSeasonalXp = (uint)Math.Max(0, chroniclePass?.AccumulatedXp ?? 0),
                 CachedClaimedMilestonesBitmask = chroniclePass?.ClaimedMilestonesBitmask ?? 0UL,
-                CurrentMana = ActiveSkillEngine.ComputeMaxMana(player.CurrentLevel),
-                AvailableSkillPoints = player.AvailableSkillPoints,
-                UnlockedSkillsBitmask = unlockedSkillsBitmask
+                AvailableSkillPoints = player.AvailableSkillPoints
             };
 
             payload.InitializeObfuscation(GenerateSessionXorKey(playerId, player.LogicEpochCounter));

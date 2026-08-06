@@ -110,7 +110,14 @@ namespace FolkIdle.Server.Network
         // they are the two halves of "where may I be" - one descriptive, one
         // permissive - and splitting them would invite the next reader to use
         // whichever they found first.
-        public const int ExpectedStateUpdateSize = 775;
+        // Modul: SKILL TREE, 775 -> 746. The packet got SMALLER, which is not
+        // a thing that has happened here before.
+        //
+        // Out: an unlock bitmask, a mana pair, four cooldowns and three
+        // cast-result fields - 30 bytes running a mechanic measured at +90%
+        // damage for clicking every three seconds. In: five branch levels, one
+        // byte each. See SkillTreeRegistry.
+        public const int ExpectedStateUpdateSize = 746;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

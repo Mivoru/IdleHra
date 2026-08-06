@@ -275,6 +275,19 @@ namespace FolkIdle.Server.Engine
         public byte Inherit_GoldGain;
         public byte Inherit_GatheringYield;
         public byte Inherit_LootLuck;
+
+        // Modul: SKILL TREE. Five bytes, one per branch, same shape and same
+        // reasons as the inheritance bytes above: the cap is 20, and this
+        // struct is blitted onto the wire so an array is not an option.
+        //
+        // These reset with the season. Skill points come from account levels
+        // and the season takes those back, so a tree that survived would be
+        // paid for twice.
+        public byte Skill_LootRarity;
+        public byte Skill_WorldBossDamage;
+        public byte Skill_CritChance;
+        public byte Skill_CritDamage;
+        public byte Skill_XpGain;
         public int CachedLogisticsGatheringSpeedBonusPct;
 
         // Modul: Phase - Full-Stack Production Polish Phase 2, Part 3.1
@@ -547,30 +560,22 @@ namespace FolkIdle.Server.Engine
         public uint ActiveChroniclePassLevel;
         public uint AccumulatedSeasonalXp;
 
-        // Active Skill Tree (see ActiveSkillEngine). CurrentMana is a live
-        // combat-session resource, not persisted to PlayerRecord - it resets
-        // to full at login, the same convention PlayerHp already uses.
-        // AvailableSkillPoints and UnlockedSkillsBitmask ARE persisted (see
-        // PlayerRecord.AvailableSkillPoints and the PlayerSkillUnlocks table,
-        // hydrated once at login into this bitmask so the hot loop never hits
-        // the DB to check unlock state). Cooldown expiry timestamps are
-        // Environment.TickCount64 milliseconds, not wall-clock epoch.
-        public int CurrentMana;
+        // Modul: the four active skills are gone; the POINTS stayed.
+        //
+        // What was here - mana, an unlock bitmask, four cooldown timestamps and
+        // three cast-result fields - served a rotation that measured at +90%
+        // damage for clicking every three seconds. See SkillTreeRegistry.
+        //
+        // AvailableSkillPoints is persisted on PlayerRecord and is still earned
+        // one per account level; the branch levels beside the inheritance bytes
+        // above are what it buys now.
         public int AvailableSkillPoints;
-        public uint UnlockedSkillsBitmask;
-        public long Skill1CooldownExpiresAtMs;
-        public long Skill2CooldownExpiresAtMs;
-        public long Skill3CooldownExpiresAtMs;
-        public long Skill4CooldownExpiresAtMs;
 
-        // Set by a successful RequestCastSkill and consumed by the very next
-        // attack resolution in ProcessSubTick (then reset to 0) - "injected
-        // into the next tick's StatsCalculator combat resolution" per the
-        // task. 0 means no active skill bonus.
+        // Set by a skill cast and consumed by the next attack. Nothing sets it
+        // any more, and it is kept at zero rather than removed because the
+        // damage step multiplies by it only when positive - a future active
+        // ability would land here rather than inventing a second channel.
         public float PendingSkillDamageMultiplier;
-        public byte LastSkillCastId;
-        public byte LastSkillCastSuccess;
-        public uint LastSkillCastResultTick;
 
         // Modul: status synergy bits applied to the player's currently
         // fought monster by active skills (Chilled/Vulnerable). PvE combat

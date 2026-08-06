@@ -2487,204 +2487,11 @@ namespace FolkIdle.Server.Tests
             await socket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Binary, true, CancellationToken.None);
         }
 
-        [Fact]
-        public async Task Test_ActiveSkillTree_CastDeductsManaAppliesDamageMultiplier_CooldownRejectsRecast_InvalidSkillDisconnects()
-        {
-            const long testPlayerId = 970000020L;
-            const int forestRatActivityId = 55; // 69 HP, 15 dmg/hit baseline - see Test_Handshake_* precedent / E2EGameLoopTest.
-            // Skill 2, not skill 1: ManaCost (20) must exceed
-            // ActiveSkillEngine.ManaRegenPerTick(1) * the ~10 sub-ticks in one
-            // NetworkBroadcastSystem broadcast cycle (~1s), or passive regen
-            // can fully mask the deduction by the time the first observable
-            // StateUpdatePacket after the cast arrives - skill 1's ManaCost
-            // (10) exactly equals that worst-case regen and was observed to
-            // do exactly this in practice. ManaCost 20, CooldownMs 6000,
-            // DamageMultiplierPct 200.
-            const int skillId = 2;
-            Guid accountId = Guid.NewGuid();
-
-            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                db.PlayerRecords.Add(new PlayerRecord
-                {
-                    Id = testPlayerId,
-                    PlayerGuid = accountId,
-                    AuthenticatorToken = Guid.NewGuid(),
-                    AvailableSkillPoints = 1
-                });
-                await db.SaveChangesAsync();
-            }
-
-            GlobalEngineState.IsColdBootRecoveryComplete = true;
-            var (simulationEngine, networkSystem) = CreateLiveSimulationEngine("http://localhost:8093/");
-            networkSystem.Start();
-            simulationEngine.Start();
-
-            try
-            {
-                using var clientSocket = new ClientWebSocket();
-                try
-                {
-                    await clientSocket.ConnectAsync(new Uri("ws://localhost:8093/"), CancellationToken.None);
-                }
-                catch (WebSocketException ex)
-                {
-                    Console.WriteLine($"WARNING: Skipping active skill tree verification because the local WebSocket listener is unavailable: {ex.Message}");
-                    return;
-                }
-
-                byte[] authBuffer = BuildAuthHandshakeBuffer(MintTestJwt(accountId));
-                await clientSocket.SendAsync(new ArraySegment<byte>(authBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
-
-                var receivedPackets = new System.Collections.Concurrent.ConcurrentQueue<StateUpdatePacket>();
-                var loginConfirmed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                var castConfirmed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                var cts = new CancellationTokenSource(TimeSpan.FromSeconds(25));
-
-                var receiveTask = Task.Run(async () =>
-                {
-                    var recvBuffer = new byte[1024];
-                    while (!cts.Token.IsCancellationRequested)
-                    {
-                        WebSocketReceiveResult result;
-                        try
-                        {
-                            result = await clientSocket.ReceiveAsync(new ArraySegment<byte>(recvBuffer), cts.Token);
-                        }
-                        catch
-                        {
-                            break;
-                        }
-
-                        if (result.MessageType == WebSocketMessageType.Close) break;
-                        if (result.Count < Marshal.SizeOf<StateUpdatePacket>()) continue;
-
-                        var state = MemoryMarshal.Read<StateUpdatePacket>(new ReadOnlySpan<byte>(recvBuffer, 0, result.Count));
-                        receivedPackets.Enqueue(state);
-                        loginConfirmed.TrySetResult();
-
-                        if (state.LastSkillCastResultTick != 0)
-                        {
-                            castConfirmed.TrySetResult();
-                        }
-
-                        // Same anti-cheat challenge auto-response requirement as
-                        // every other live-loop test in this file/E2EGameLoopTest -
-                        // an unanswered challenge quarantines the player and
-                        // silently freezes combat for the rest of the session.
-                        if (state.ActiveChallengeSeed != 0)
-                        {
-                            uint hash = AntiCheatTelemetryEngine.ComputeChallengeHash(state.ActiveChallengeSeed, state.PlayerId, 0L);
-                            await SendCommandAsync(clientSocket, new ClientCommandPacket
-                            {
-                                Command = CommandType.AntiCheatChallengeResponse,
-                                ChallengeId = state.ActiveChallengeSeed,
-                                ChallengeVerificationHash = hash
-                            });
-                        }
-                    }
-                });
-
-                await Task.WhenAny(loginConfirmed.Task, Task.Delay(TimeSpan.FromSeconds(5)));
-                Assert.True(loginConfirmed.Task.IsCompletedSuccessfully, "Did not observe the player enter the active tick loop before the skill test began.");
-
-                // Unlock skill 1, enter combat, then cast immediately - all
-                // three land within the same or next engine tick, well before
-                // the 1500ms first-attack timer, so the damage multiplier is
-                // guaranteed to be pending before any hit lands.
-                await SendCommandAsync(clientSocket, new ClientCommandPacket { Command = CommandType.RequestUnlockSkill, TargetId = skillId });
-                await SendCommandAsync(clientSocket, new ClientCommandPacket { Command = CommandType.ChangeActivity, TargetId = forestRatActivityId });
-                await SendCommandAsync(clientSocket, new ClientCommandPacket { Command = CommandType.RequestCastSkill, TargetId = skillId });
-
-                await Task.WhenAny(castConfirmed.Task, Task.Delay(TimeSpan.FromSeconds(5)));
-                Assert.True(castConfirmed.Task.IsCompletedSuccessfully, "Server never broadcast a skill cast result.");
-
-                // FirstOrDefault, not Last - LastSkillCastResultTick stays
-                // nonzero on every subsequent broadcast too (it is only ever
-                // incremented, never reset), so the first packet where it
-                // flips from 0 is the one closest to the actual cast moment,
-                // before passive mana regen has had many ticks to run.
-                var castResultPacket = receivedPackets.FirstOrDefault(p => p.LastSkillCastResultTick != 0);
-                Assert.Equal((byte)skillId, castResultPacket.LastSkillCastId);
-                Assert.Equal((byte)1, castResultPacket.LastSkillCastSuccess);
-                // ComputeMaxMana(level 0) = 100 + 0*2 = 100, minus skill 2's 20
-                // mana cost = 80. Upper bound allows for up to a full ~1s
-                // broadcast cycle's worth of ManaRegenPerTick (1 per ~100ms,
-                // ~10 ticks) having already run by the time this packet was
-                // broadcast, without that regen being able to fully mask a
-                // 20-point deduction the way it could for a 10-point one.
-                Assert.True(castResultPacket.CurrentMana >= 80 && castResultPacket.CurrentMana < 100,
-                    $"Expected mana to have dropped from 100 by skill 2's 20-point cost (allowing regen drift up to one broadcast cycle), got {castResultPacket.CurrentMana}.");
-
-                // Wait for the boosted hit to land (attack cadence is 1500ms
-                // with 0 AttackSpeedPct, matching the well-established Forest
-                // Rat baseline this codebase's other live-loop tests already
-                // rely on: 15 raw dmg/hit with no stats set).
-                await Task.Delay(TimeSpan.FromSeconds(3));
-
-                var hpSnapshots = receivedPackets.ToArray();
-                int maxSingleHitDamage = 0;
-                for (int i = 1; i < hpSnapshots.Length; i++)
-                {
-                    if (hpSnapshots[i].CurrentMonsterId == hpSnapshots[i - 1].CurrentMonsterId && hpSnapshots[i].CurrentMonsterId != 0)
-                    {
-                        int delta = hpSnapshots[i - 1].CurrentMonsterHp - hpSnapshots[i].CurrentMonsterHp;
-                        if (delta > maxSingleHitDamage) maxSingleHitDamage = delta;
-                    }
-                }
-
-                // Baseline (unboosted) hit is 15; skill 2's 200% multiplier
-                // produces 30 (15000 milli * 2.0 = 30000 -> 30 whole HP).
-                // Assert the largest observed single-hit delta is measurably
-                // above the unboosted baseline, proving the multiplier was
-                // consumed by a real attack rather than silently dropped.
-                Assert.True(maxSingleHitDamage > 20, $"Expected a skill-boosted hit (~30 dmg) to exceed the unboosted baseline (15 dmg) by a clear margin, but the largest observed single-hit delta was {maxSingleHitDamage}.");
-
-                // Cooldown rejection: skill 2 has a 6000ms cooldown and only
-                // ~3s have elapsed, so immediately recast to land solidly
-                // inside the cooldown window regardless of jitter.
-                int manaBeforeRecast = (int)receivedPackets.Last().CurrentMana;
-                await SendCommandAsync(clientSocket, new ClientCommandPacket { Command = CommandType.RequestCastSkill, TargetId = skillId });
-                await Task.Delay(TimeSpan.FromSeconds(2));
-
-                var rejectedPacket = receivedPackets.Last();
-                Assert.Equal((byte)0, rejectedPacket.LastSkillCastSuccess);
-
-                // A rejected cast deducts nothing, so mana can only have
-                // stayed the same or grown (passive regen) since
-                // manaBeforeRecast - never dropped, which is what a second
-                // successful 10-point deduction would cause. This is the
-                // opposite direction from "did mana decrease" precisely
-                // because regen is the only thing moving it at this point.
-                Assert.True(rejectedPacket.CurrentMana >= manaBeforeRecast, $"A cooldown-rejected cast must not deduct mana a second time - mana went from {manaBeforeRecast} to {rejectedPacket.CurrentMana}.");
-                Assert.Equal(WebSocketState.Open, clientSocket.State);
-
-                // A structurally invalid skill ID is a cheat signal (the real
-                // UI could never send one), unlike the soft cooldown/mana
-                // rejection above - ClientCommandValidator.ValidateSkillCommand
-                // must terminate the connection outright. Do not start a second
-                // ReceiveAsync loop here - the original receiveTask above is
-                // still the sole reader of this socket (ClientWebSocket does
-                // not support concurrent ReceiveAsync calls), and it already
-                // breaks out as soon as it observes a Close message or the
-                // connection faults, so waiting on ITS completion is the
-                // correct signal.
-                await SendCommandAsync(clientSocket, new ClientCommandPacket { Command = CommandType.RequestCastSkill, TargetId = 99 });
-
-                var receiveCompleted = await Task.WhenAny(receiveTask, Task.Delay(TimeSpan.FromSeconds(5)));
-                Assert.True(receiveCompleted == receiveTask, "Expected the connection to be terminated after a structurally invalid RequestCastSkill.");
-                Assert.NotEqual(WebSocketState.Open, clientSocket.State);
-
-                cts.Cancel();
-                try { await receiveTask; } catch { }
-            }
-            finally
-            {
-                GlobalEngineState.IsColdBootRecoveryComplete = false;
-                simulationEngine.Stop();
-                networkSystem.Stop();
-            }
-        }
+        // Modul: removed with the four active skills it exercised - mana
+        // deduction, cooldown rejection and the cast damage multiplier. See
+        // SkillTreeRegistry: measured, that rotation was +90% damage for
+        // clicking every three seconds, so it was replaced by a passive tree
+        // rather than rebalanced. SkillTreeTests prices what took its place.
 
         [Fact]
         public async Task Test_ChronoCore_ConcurrentConsumption_SerializesViaForUpdateLock()
@@ -3740,7 +3547,14 @@ namespace FolkIdle.Server.Tests
                 // Case 1: directory exists but is entirely empty - every
                 // required file is missing.
                 Assert.Throws<InvalidOperationException>(() => ContentRegistry.Initialize(tempDir));
-                Assert.Throws<InvalidOperationException>(() => ActiveSkillEngine.Initialize(tempDir));
+
+                // Modul: ActiveSkillEngine.Initialize no longer parses
+                // anything, so it no longer has anything to fail fast ABOUT.
+                // It is called here to prove it stays harmless on a directory
+                // with nothing in it - a boot step that throws on empty input
+                // after being emptied itself would be a strange way to lose a
+                // server.
+                ActiveSkillEngine.Initialize(tempDir);
 
                 // Case 2: files exist but contain malformed or structurally
                 // invalid JSON (unterminated object, plain non-JSON text, and
@@ -3753,7 +3567,6 @@ namespace FolkIdle.Server.Tests
                 System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "skills.json"), "not json at all");
 
                 Assert.Throws<InvalidOperationException>(() => ContentRegistry.Initialize(tempDir));
-                Assert.Throws<InvalidOperationException>(() => ActiveSkillEngine.Initialize(tempDir));
 
                 // Case 3: a monster with a non-contiguous Id (a gap) - the
                 // rest of the engine indexes ContentRegistry.Monsters[id - 1]
@@ -3769,7 +3582,10 @@ namespace FolkIdle.Server.Tests
                 Assert.True(ContentRegistry.Monsters.Length > 0);
                 Assert.True(ContentRegistry.ItemDefinitions.Length > 0);
                 Assert.True(ContentRegistry.GatheringNodes.Length > 0);
-                Assert.True(ActiveSkillEngine.Skills.Length > 0);
+                // ActiveSkillEngine no longer parses anything - the four
+                // active skills went, and with them skills.json's only
+                // reader. The three registries above are what the content
+                // pipeline still has to survive a bad file for.
             }
             finally
             {
@@ -6253,55 +6069,14 @@ namespace FolkIdle.Server.Tests
             Assert.Equal("Osiagnieto maksymalny poziom", maxTierPl);
         }
 
-        // Modul: Final Production Polish, Part 4/5. ActiveSkillEngine.
-        // ApplyStatusSynergy is the sole logic implementing the Chilled/
-        // Vulnerable synergy (called from RequestCastSkill's success
-        // branch in SimulationEngine.cs) - a pure struct-in/float-out
-        // function, exercised directly here without any DB/network
-        // fixture, exactly like the existing StatsCalculator_* tests in
-        // this class. Skill 1 (Ice Bolt) applies Chilled with no bonus to
-        // itself; skill 2 (Heavy Strike) consumes it for the 1.5x
-        // synergy multiplier and clears the bit, so a second Heavy Strike
-        // with no Chilled active gets no bonus.
-        [Fact]
-        public void Test_ActiveSkillEngine_StatusSynergy_ChilledConsumedByHeavyStrikeForBonusMultiplier()
-        {
-            var payload = new TickStatePayload();
+        // Modul: removed with ApplyStatusSynergy. Chilled and Vulnerable no
+        // longer have anything that applies them - the bits survive only
+        // because Burning shares the same byte and removing two of three would
+        // renumber the third.
 
-            float iceBoltMultiplier = ActiveSkillEngine.ApplyStatusSynergy(ref payload, 1);
-            Assert.Equal(1f, iceBoltMultiplier);
-            Assert.Equal(ActiveSkillEngine.StatusFlagChilled, (byte)(payload.TargetStatusEffectBitmask & ActiveSkillEngine.StatusFlagChilled));
-
-            float heavyStrikeMultiplier = ActiveSkillEngine.ApplyStatusSynergy(ref payload, 2);
-            Assert.Equal(ActiveSkillEngine.StatusSynergyDamageMultiplier, heavyStrikeMultiplier);
-            Assert.Equal(0, payload.TargetStatusEffectBitmask & ActiveSkillEngine.StatusFlagChilled);
-
-            float heavyStrikeMultiplierAgain = ActiveSkillEngine.ApplyStatusSynergy(ref payload, 2);
-            Assert.Equal(1f, heavyStrikeMultiplierAgain);
-        }
-
-        // Modul: Final Production Polish, Part 4/5. Mirrors the Chilled/
-        // Heavy Strike test above for the Vulnerable/Swift Slash pairing,
-        // then proves the two status bits are independent - consuming
-        // Vulnerable (skill 4) must not clear a still-active Chilled bit
-        // applied earlier by skill 1, since both live in the same byte
-        // bitmask.
-        [Fact]
-        public void Test_ActiveSkillEngine_StatusSynergy_VulnerableAndChilledBitsAreIndependent()
-        {
-            var payload = new TickStatePayload();
-
-            ActiveSkillEngine.ApplyStatusSynergy(ref payload, 1);
-            float sunderingBlowMultiplier = ActiveSkillEngine.ApplyStatusSynergy(ref payload, 3);
-            Assert.Equal(1f, sunderingBlowMultiplier);
-            Assert.Equal(
-                (byte)(ActiveSkillEngine.StatusFlagChilled | ActiveSkillEngine.StatusFlagVulnerable),
-                payload.TargetStatusEffectBitmask);
-
-            float swiftSlashMultiplier = ActiveSkillEngine.ApplyStatusSynergy(ref payload, 4);
-            Assert.Equal(ActiveSkillEngine.StatusSynergyDamageMultiplier, swiftSlashMultiplier);
-            Assert.Equal(ActiveSkillEngine.StatusFlagChilled, payload.TargetStatusEffectBitmask);
-        }
+        // Modul: removed with ApplyStatusSynergy. The bits are still declared -
+        // Burning shares the byte and is still set by the Chiming Steel
+        // four-piece - but nothing applies Chilled or Vulnerable any more.
 
         // Modul: Full-Stack Production Hardening Phase 3, Part 1/7. Proves
         // RemoveActivePlayer is now the single authoritative cleanup choke
@@ -9551,7 +9326,7 @@ namespace FolkIdle.Server.Tests
             // Identical account-level wear despite three times the characters.
             Assert.Equal(singleSlot.OffensivePotionDurationMs, threeSlots.OffensivePotionDurationMs);
             Assert.Equal(singleSlot.Slot1_AgeTicks, threeSlots.Slot1_AgeTicks);
-            Assert.Equal(singleSlot.CurrentMana, threeSlots.CurrentMana);
+            Assert.Equal(singleSlot.AvailableSkillPoints, threeSlots.AvailableSkillPoints);
             Assert.Equal(singleSlot.TicksSinceLastFlush, threeSlots.TicksSinceLastFlush);
         }
 

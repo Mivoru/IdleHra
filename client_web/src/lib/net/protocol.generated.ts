@@ -91,7 +91,7 @@ export interface ClientCommand {
   RerollStopAffixIndex: number;
 }
 
-/** StateUpdatePacket - 775 bytes on the binary wire. */
+/** StateUpdatePacket - 746 bytes on the binary wire. */
 export interface StateUpdate {
   readonly type: typeof PacketType.StateUpdate;
   PlayerId: number;
@@ -258,17 +258,12 @@ export interface StateUpdate {
   LegacyPerksBitmask: number;
   PendingUpgradeBuildingId: number;
   PendingUpgradeCompletesAtEpoch: number;
-  UnlockedSkillsBitmask: number;
-  CurrentMana: number;
-  MaxMana: number;
   AvailableSkillPoints: number;
-  Skill1CooldownRemainingMs: number;
-  Skill2CooldownRemainingMs: number;
-  Skill3CooldownRemainingMs: number;
-  Skill4CooldownRemainingMs: number;
-  LastSkillCastId: number;
-  LastSkillCastSuccess: number;
-  LastSkillCastResultTick: number;
+  SkillTree_LootRarity: number;
+  SkillTree_WorldBossDamage: number;
+  SkillTree_CritChance: number;
+  SkillTree_CritDamage: number;
+  SkillTree_XpGain: number;
   OfflineElapsedSeconds: number;
   OfflineGoldEarned: number;
   OfflineSlot1Gold: number;
@@ -388,6 +383,7 @@ export const CommandType = {
   ContributeGuildTreasury: 64,
   StockFoodSlot: 65,
   PurchaseInheritanceLevel: 66,
+  PurchaseSkillTreeLevel: 67,
 } as const;
 
 export type CommandTypeName = keyof typeof CommandType;
@@ -396,7 +392,7 @@ export type CommandTypeName = keyof typeof CommandType;
 export const PACKET_BYTE_SIZE = {
   AuthHandshake: 530,
   ClientCommand: 359,
-  StateUpdate: 775,
+  StateUpdate: 746,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
   ResponseLootDrop: 22,

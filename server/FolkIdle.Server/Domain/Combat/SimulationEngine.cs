@@ -62,6 +62,7 @@ namespace FolkIdle.Server.Domain.Combat
         private const double TickIntervalSeconds = TickIntervalMs / 1000.0;
         private readonly LootTableEngine _lootEngine;
         private readonly InheritanceEngine? _inheritanceEngine;
+        private readonly SkillTreeEngine? _skillTreeEngine;
         private readonly StateCheckpointManager _checkpointManager;
         private readonly NetworkBroadcastSystem _networkSystem;
         private readonly ForgeSplicingEngine _forgeEngine;
@@ -142,7 +143,7 @@ namespace FolkIdle.Server.Domain.Combat
 
         public static int ActiveGlobalEventId { get; private set; }
 
-        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, MentorshipEngine mentorshipEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null, InheritanceEngine? inheritanceEngine = null)
+        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, MentorshipEngine mentorshipEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null, InheritanceEngine? inheritanceEngine = null, SkillTreeEngine? skillTreeEngine = null)
         {
             _lootEngine = lootEngine;
             _checkpointManager = checkpointManager;
@@ -160,6 +161,7 @@ namespace FolkIdle.Server.Domain.Combat
             _craftingEngine = craftingEngine;
             _larderEngine = larderEngine;
             _inheritanceEngine = inheritanceEngine;
+            _skillTreeEngine = skillTreeEngine;
             _worldBossEngine = worldBossEngine;
             _mentorshipEngine = mentorshipEngine;
             _guildWarEngine = guildWarEngine;
@@ -615,12 +617,10 @@ namespace FolkIdle.Server.Domain.Combat
             return value > uint.MaxValue ? uint.MaxValue : (uint)value;
         }
 
-        private static uint ComputeSkillCooldownRemainingMs(in TickStatePayload payload, int skillId)
-        {
-            long remaining = ActiveSkillEngine.GetSkillCooldownExpiresAtMs(in payload, skillId) - Environment.TickCount64;
-            if (remaining <= 0) return 0;
-            return remaining > uint.MaxValue ? uint.MaxValue : (uint)remaining;
-        }
+        // Modul: ComputeSkillCooldownRemainingMs is gone with the four active
+        // skills it reported on. See SkillTreeRegistry - they were replaced by a
+        // passive tree because, measured, they were +90% damage for clicking
+        // every three seconds in a game whose premise is not clicking.
 
         private static uint ResolveChronoEngineStatus(ref TickStatePayload payload)
         {
@@ -1411,6 +1411,22 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         SetInheritanceLevel(ref inheritPayload, inheritNotif.StatId, inheritNotif.NewLevel);
                         inheritPayload.IsDirty = true;
+                    }
+                }
+
+                while (_playerRegistry.SkillTreeSyncQueue.TryDequeue(out var treeNotif))
+                {
+                    ref var treePayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, treeNotif.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref treePayload))
+                    {
+                        SetSkillTreeLevel(ref treePayload, treeNotif.BranchId, treeNotif.NewLevel);
+                        // The points were spent inside the same transaction the
+                        // level was written in, so the payload must take the
+                        // balance the engine reports rather than decrementing
+                        // its own copy - two subtractions of one purchase is
+                        // exactly how a counter drifts.
+                        treePayload.AvailableSkillPoints = treeNotif.RemainingSkillPoints;
+                        treePayload.IsDirty = true;
                     }
                 }
 
@@ -2352,6 +2368,20 @@ namespace FolkIdle.Server.Domain.Combat
                             if (_inheritanceEngine != null) await _inheritanceEngine.PurchaseLevelAsync(inheritPlayerId, inheritStatId);
                         });
                     }
+                    else if (cmd.Command == CommandType.PurchaseSkillTreeLevel)
+                    {
+                        // Modul: skill tree. Same shape as the inheritance
+                        // purchase above and for the same reasons - dispatched
+                        // off the tick, the point balance and the level written
+                        // in one Serializable FOR UPDATE transaction, and a
+                        // branch id out of range REFUSED rather than treated as
+                        // a protocol violation. A branch id is a menu choice.
+                        long treePlayerId = currentPayload.PlayerId;
+                        int treeBranchId = (int)cmd.TargetId;
+                        SafeDispatchAsync("SkillTree.Purchase", treePlayerId, async () => {
+                            if (_skillTreeEngine != null) await _skillTreeEngine.PurchaseLevelAsync(treePlayerId, treeBranchId);
+                        });
+                    }
                     else if (cmd.Command == CommandType.PurchaseBattlePass)
                     {
                         // Modul: Comprehensive Game System Audit, Part 4.3.
@@ -2772,7 +2802,23 @@ namespace FolkIdle.Server.Domain.Combat
                         // player's World Boss battle session, alongside the
                         // 300-second cap enforced inside WorldBossEngine itself.
                         bool attackAutoEatDepleted = currentPayload.Food1_Count <= 0 && currentPayload.Food2_Count <= 0 && currentPayload.Food3_Count <= 0;
-                        _worldBossEngine.QueueAttack(currentPayload.PlayerId, cmd.TargetedBossId, cmd.ClientPredictedDamage, attackAutoEatDepleted);
+
+                        // Modul: skill tree, Giantslayer. The most generous
+                        // branch in the tree - 40% at cap - because the world
+                        // boss is its own activity on its own timer and cannot
+                        // reach a region's pacing however large it grows.
+                        //
+                        // Applied HERE rather than inside WorldBossEngine: the
+                        // engine takes a damage figure and has no player state
+                        // to read a tree level from, and passing the payload in
+                        // would hand it far more than it needs.
+                        float giantslayerPct = SkillTreeRegistry.GetBonusPercent(
+                            SkillTreeRegistry.BranchWorldBossDamage, currentPayload.Skill_WorldBossDamage);
+                        uint bossDamage = (uint)Math.Min(
+                            uint.MaxValue,
+                            (double)cmd.ClientPredictedDamage * (1.0 + (giantslayerPct / 100.0)));
+
+                        _worldBossEngine.QueueAttack(currentPayload.PlayerId, cmd.TargetedBossId, bossDamage, attackAutoEatDepleted);
                     }
                     else if (cmd.Command == CommandType.RegisterPushToken)
                     {
@@ -2925,95 +2971,21 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.ActiveUiContextBitmask = cmd.ActiveUiContextBitmask;
                         currentPayload.IsDirty = true;
                     }
-                    else if (cmd.Command == CommandType.RequestUnlockSkill)
+                    // Modul: RequestUnlockSkill and RequestCastSkill are RETIRED,
+                    // with the four active skills they drove. Measured, that
+                    // rotation was +90% damage - +136% with the status synergy -
+                    // available only to a player clicking every three seconds,
+                    // in a game whose whole premise is not clicking. See
+                    // SkillTreeRegistry for what the points buy now.
+                    //
+                    // Ignored rather than rejected, like CommandType.CraftItem:
+                    // a client still sending them is a stale bundle, not an
+                    // attack, and disconnecting a tab that has not reloaded
+                    // teaches nobody anything.
+                    else if (cmd.Command == CommandType.RequestUnlockSkill
+                             || cmd.Command == CommandType.RequestCastSkill)
                     {
-                        if (!ClientCommandValidator.ValidateSkillCommand(ref currentPayload, cmd.TargetId, (byte)cmd.Command))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        int unlockSkillId = (int)cmd.TargetId;
-                        uint unlockSkillBit = 1u << (unlockSkillId - 1);
-                        bool alreadyUnlocked = (currentPayload.UnlockedSkillsBitmask & unlockSkillBit) != 0;
-
-                        if (!alreadyUnlocked && ActiveSkillEngine.TryGetSkill(unlockSkillId, out var unlockDef) &&
-                            currentPayload.AvailableSkillPoints >= unlockDef.RequiredSkillPointCost)
-                        {
-                            currentPayload.AvailableSkillPoints -= unlockDef.RequiredSkillPointCost;
-                            currentPayload.UnlockedSkillsBitmask |= unlockSkillBit;
-                            currentPayload.IsDirty = true;
-
-                            long unlockPlayerId = currentPayload.PlayerId;
-                            long unlockEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                            SafeDispatchAsync("Skill.PersistUnlock", unlockPlayerId, async () =>
-                            {
-                                try
-                                {
-                                    await using var context = await _contextFactory.CreateDbContextAsync();
-                                    context.PlayerSkillUnlocks.Add(new PlayerSkillUnlock
-                                    {
-                                        PlayerId = unlockPlayerId,
-                                        SkillId = unlockSkillId,
-                                        UnlockedAtEpoch = unlockEpoch
-                                    });
-                                    await context.SaveChangesAsync();
-                                }
-                                catch (Exception ex)
-                                {
-                                    Console.WriteLine($"Failed to persist skill unlock for player {unlockPlayerId}, skill {unlockSkillId}: {ex.Message}");
-                                }
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.RequestCastSkill)
-                    {
-                        if (!ClientCommandValidator.ValidateSkillCommand(ref currentPayload, cmd.TargetId, (byte)cmd.Command))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        int castSkillId = (int)cmd.TargetId;
-                        currentPayload.LastSkillCastResultTick++;
-                        currentPayload.LastSkillCastId = (byte)castSkillId;
-                        currentPayload.LastSkillCastSuccess = 0;
-
-                        if (ActiveSkillEngine.TryGetSkill(castSkillId, out var castDef))
-                        {
-                            uint castSkillBit = 1u << (castSkillId - 1);
-                            bool isUnlocked = (currentPayload.UnlockedSkillsBitmask & castSkillBit) != 0;
-                            long nowMs = Environment.TickCount64;
-                            long cooldownExpiresAt = ActiveSkillEngine.GetSkillCooldownExpiresAtMs(in currentPayload, castSkillId);
-                            bool offCooldown = nowMs >= cooldownExpiresAt;
-                            bool hasMana = currentPayload.CurrentMana >= castDef.ManaCost;
-
-                            if (isUnlocked && offCooldown && hasMana)
-                            {
-                                currentPayload.CurrentMana -= castDef.ManaCost;
-
-                                // Modul: set bonuses made real. The Eternal
-                                // Dreadnought 4-piece shortens the cooldown it
-                                // stamps here. Derived from the payload's
-                                // cached set ids rather than a duplicate flag,
-                                // so CachedSetIds stays the single source of
-                                // truth for what the character is wearing.
-                                int effectiveCooldownMs = castDef.CooldownMs;
-                                if (SetBonusEngine.Evaluate(in currentPayload.CachedSetIds).CooldownReductionActive)
-                                {
-                                    effectiveCooldownMs = (int)(effectiveCooldownMs * (1f - SetCooldownReductionFraction));
-                                }
-
-                                ActiveSkillEngine.SetSkillCooldownExpiresAtMs(ref currentPayload, castSkillId, nowMs + effectiveCooldownMs);
-                                float statusSynergyMultiplier = ActiveSkillEngine.ApplyStatusSynergy(ref currentPayload, castSkillId);
-                                currentPayload.PendingSkillDamageMultiplier = (castDef.DamageMultiplierPct / 100f) * statusSynergyMultiplier;
-                                currentPayload.LastSkillCastSuccess = 1;
-                            }
-                        }
-
-                        currentPayload.IsDirty = true;
+                        // Deliberately empty.
                     }
                 }
 
@@ -3435,17 +3407,12 @@ namespace FolkIdle.Server.Domain.Combat
                                 CachedIronOreStock = currentPayload.CachedIronOreStock,
                                 PendingUpgradeBuildingId = currentPayload.PendingUpgradeBuildingId,
                                 PendingUpgradeCompletesAtEpoch = currentPayload.PendingUpgradeCompletesAtEpoch,
-                                UnlockedSkillsBitmask = currentPayload.UnlockedSkillsBitmask,
-                                CurrentMana = currentPayload.CurrentMana,
-                                MaxMana = ActiveSkillEngine.ComputeMaxMana(currentPayload.CurrentLevel),
                                 AvailableSkillPoints = currentPayload.AvailableSkillPoints,
-                                Skill1CooldownRemainingMs = ComputeSkillCooldownRemainingMs(in currentPayload, 1),
-                                Skill2CooldownRemainingMs = ComputeSkillCooldownRemainingMs(in currentPayload, 2),
-                                Skill3CooldownRemainingMs = ComputeSkillCooldownRemainingMs(in currentPayload, 3),
-                                Skill4CooldownRemainingMs = ComputeSkillCooldownRemainingMs(in currentPayload, 4),
-                                LastSkillCastId = currentPayload.LastSkillCastId,
-                                LastSkillCastSuccess = currentPayload.LastSkillCastSuccess,
-                                LastSkillCastResultTick = currentPayload.LastSkillCastResultTick,
+                                SkillTree_LootRarity = currentPayload.Skill_LootRarity,
+                                SkillTree_WorldBossDamage = currentPayload.Skill_WorldBossDamage,
+                                SkillTree_CritChance = currentPayload.Skill_CritChance,
+                                SkillTree_CritDamage = currentPayload.Skill_CritDamage,
+                                SkillTree_XpGain = currentPayload.Skill_XpGain,
                                 OfflineElapsedSeconds = currentPayload.OfflineElapsedSeconds,
                                 OfflineGoldEarned = currentPayload.OfflineGoldEarned,
                                 OfflineSlot1Gold = currentPayload.OfflineSlot1Gold,
@@ -3902,6 +3869,7 @@ namespace FolkIdle.Server.Domain.Combat
             finalXpMultiplier += RaceMasteryResolver.GetHumanXpBonusPct(payload.HumanMasteryLevel);
             finalXpMultiplier += LegacyPerkResolver.GetXpBonusPct(payload.CachedLegacyPerks);
             finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
+            finalXpMultiplier += (int)SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchXpGain, payload.Skill_XpGain);
 
             if (payload.ActiveMentorPlayerId > 0 && payload.MentorshipExpBonusMultiplier > 1.0)
             {
@@ -4917,12 +4885,10 @@ namespace FolkIdle.Server.Domain.Combat
             // Active Skill Tree: passive mana regen, unconditional like potion
             // duration below - runs regardless of gathering/combat activity
             // type so mana is topped up between casts.
-            int maxMana = ActiveSkillEngine.ComputeMaxMana(payload.CurrentLevel);
-            if (payload.CurrentMana < maxMana)
-            {
-                payload.CurrentMana += ActiveSkillEngine.ManaRegenPerTick;
-                if (payload.CurrentMana > maxMana) payload.CurrentMana = maxMana;
-            }
+            // Modul: mana regen removed with the skills that spent it. It was
+            // never a constraint anyway - 10 a second against a rotation that
+            // wanted 12 - which is part of why those skills were as strong as
+            // they were.
 
             // Modul: Constitution made real. StatsCalculator has always
             // documented CON as granting "+0.1 Out-of-Combat HP Regen/sec" and
@@ -5171,6 +5137,18 @@ namespace FolkIdle.Server.Domain.Combat
         /// struct on the wire - see TickStatePayload - so the six levels are six
         /// fields, not an array.
         /// </summary>
+        private static void SetSkillTreeLevel(ref TickStatePayload payload, int branchId, byte level)
+        {
+            switch (branchId)
+            {
+                case SkillTreeRegistry.BranchLootRarity: payload.Skill_LootRarity = level; break;
+                case SkillTreeRegistry.BranchWorldBossDamage: payload.Skill_WorldBossDamage = level; break;
+                case SkillTreeRegistry.BranchCritChance: payload.Skill_CritChance = level; break;
+                case SkillTreeRegistry.BranchCritDamage: payload.Skill_CritDamage = level; break;
+                case SkillTreeRegistry.BranchXpGain: payload.Skill_XpGain = level; break;
+            }
+        }
+
         private static void SetInheritanceLevel(ref TickStatePayload payload, int statId, byte level)
         {
             switch (statId)
@@ -5559,9 +5537,18 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     // Step 2 (Crit Check)
                     float critMult = 1.0f;
-                    if (Random.Shared.NextDouble() <= (combatStats.CritChancePct / 100.0f))
+                    // Modul: skill tree. Precision adds percentage POINTS of
+                    // crit chance and Cruelty adds to the multiplier - both are
+                    // applied here rather than inside StatsCalculator because
+                    // the tree is a player-account bonus, not a property of the
+                    // gear the stats are computed from.
+                    float treeCritChance = combatStats.CritChancePct
+                        + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritChance, payload.Skill_CritChance);
+
+                    if (Random.Shared.NextDouble() <= (treeCritChance / 100.0f))
                     {
-                        critMult = StatsCalculator.ComputeCritMultiplier(combatStats);
+                        critMult = StatsCalculator.ComputeCritMultiplier(combatStats)
+                            + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritDamage, payload.Skill_CritDamage) / 100f);
                     }
 
                     long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel, InheritanceRegistry.GetBonusPct(payload.Inherit_Damage));
@@ -5877,6 +5864,7 @@ namespace FolkIdle.Server.Domain.Combat
                 finalXpMultiplier += RaceMasteryResolver.GetHumanXpBonusPct(payload.HumanMasteryLevel);
             finalXpMultiplier += LegacyPerkResolver.GetXpBonusPct(payload.CachedLegacyPerks);
             finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
+            finalXpMultiplier += (int)SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchXpGain, payload.Skill_XpGain);
 
                 if (payload.ActiveMentorPlayerId > 0 && payload.MentorshipExpBonusMultiplier > 1.0)
                 {
@@ -5998,6 +5986,7 @@ namespace FolkIdle.Server.Domain.Combat
                     PlayerId = payload.PlayerId,
                     MonsterId = payload.CurrentMonsterId,
                     LootLuckPct = combatStats.LootLuckPct + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck)
+                        + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity)
                 });
 
                 var lootTable = ContentRegistry.GetLootTable(activeMonster.LootTableId);

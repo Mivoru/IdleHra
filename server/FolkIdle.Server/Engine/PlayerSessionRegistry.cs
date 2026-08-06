@@ -433,6 +433,11 @@ namespace FolkIdle.Server.Engine
         // Modul: inheritance stats - a committed purchase reaching the live payload.
         public ConcurrentQueue<InheritanceSyncNotification> InheritanceSyncQueue { get; } = new();
 
+        // Modul: skill tree. Same pattern and the same reason - the tick thread
+        // owns the payload, so a level bought over HTTP arrives here rather
+        // than being written across threads.
+        public ConcurrentQueue<SkillTreeSyncNotification> SkillTreeSyncQueue { get; } = new();
+
         // Modul: single shared enqueue point for the generic client
         // error-feedback channel, called from every engine that rejects a
         // market/forge/reroll/guild-contribution request (MarketEscrowEngine,

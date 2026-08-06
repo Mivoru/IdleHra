@@ -515,29 +515,23 @@ namespace FolkIdle.Server.Network
         public byte PendingUpgradeBuildingId;
         public long PendingUpgradeCompletesAtEpoch;
 
-        // Active Skill Tree (see ActiveSkillEngine). "ResponseSkillCastPacket"
-        // semantics are carried as fields on this recurring broadcast rather
-        // than as a separate wire message type - this is the only channel
-        // the client's receive loop ever parses (see UnsafePacketParser/
-        // WebSocketClient.ParseAndEnqueuePacket), and every prior feature in
-        // this codebase followed the same "add fields to the existing
-        // packet" convention rather than inventing a new one (e.g. breeding
-        // confirmation has no dedicated packet either). LastSkillCastResultTick
-        // increments on every RequestCastSkill the server processes so the
-        // client can edge-detect "a new cast just resolved" versus "the same
-        // result repeated," mirroring the existing ActiveChallengeSeed
-        // edge-detection pattern.
-        public uint UnlockedSkillsBitmask;
-        public int CurrentMana;
-        public int MaxMana;
+        // Modul: THE SKILL TREE TOOK THE ACTIVE SKILLS' PLACE ON THE WIRE, and
+        // the packet got smaller doing it.
+        //
+        // What was here: an unlock bitmask, a mana pair, four cooldowns and
+        // three cast-result fields - 30 bytes to run a mechanic that turned out
+        // to be +90% damage for clicking every three seconds, measured, in a
+        // game whose premise is not clicking. See SkillTreeRegistry.
+        //
+        // What is here now: the points, which were the good part, and five
+        // branch levels. Bytes because the cap is 20. Nine bytes for a thing
+        // the player reads on a screen and never has to press.
         public int AvailableSkillPoints;
-        public uint Skill1CooldownRemainingMs;
-        public uint Skill2CooldownRemainingMs;
-        public uint Skill3CooldownRemainingMs;
-        public uint Skill4CooldownRemainingMs;
-        public byte LastSkillCastId;
-        public byte LastSkillCastSuccess;
-        public uint LastSkillCastResultTick;
+        public byte SkillTree_LootRarity;
+        public byte SkillTree_WorldBossDamage;
+        public byte SkillTree_CritChance;
+        public byte SkillTree_CritDamage;
+        public byte SkillTree_XpGain;
 
         // Modul: Phase - Full-Stack Production Polish, Part 1.1 (Offline
         // "Welcome Back" flow). Set once by OfflineSimulationEngine.

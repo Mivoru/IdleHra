@@ -109,6 +109,15 @@ namespace FolkIdle.Server.Network
         // map. Check this list before adding to it.
         PurchaseInheritanceLevel = 66,
 
+        // Modul: skill tree. Spends skill points - earned one per account
+        // level - on one of five passive branches. TargetSkillId carries the
+        // branch id, for the same reason the line above reuses it.
+        //
+        // 67 because 66 is taken and 65 before it; the comment above explains
+        // what happens when that is not checked. Every id in this enum is used
+        // exactly once as of this writing: 1..67 with no gaps worth reusing.
+        PurchaseSkillTreeLevel = 67,
+
         // Modul: larder. Loads food from the backpack into one of the three
         // auto-eat slots, or unloads a slot back into the backpack. Carries no
         // new wire fields: ConsumableItemId is the food, TargetSlotIndex the

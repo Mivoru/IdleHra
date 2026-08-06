@@ -73,6 +73,11 @@ namespace FolkIdle.Server.Models
         // Modul: what a season leaves behind - see PlayerInheritanceStat.
         public DbSet<PlayerInheritanceStat> PlayerInheritanceStats { get; set; }
 
+        // Modul: the skill tree - what a level is worth, spent by the player.
+        // Replaces the four active skills; see SkillTreeRegistry for why they
+        // were removed by measurement rather than taste.
+        public DbSet<PlayerSkillTreeNode> PlayerSkillTreeNodes { get; set; }
+
         public FolkIdleDbContext(DbContextOptions<FolkIdleDbContext> options) : base(options)
         {
         }

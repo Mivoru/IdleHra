@@ -289,17 +289,10 @@
             label={`${Math.round(visual?.PlayerHp ?? snap.PlayerHp).toLocaleString()} / ${$observedMaxPlayerHp.toLocaleString()}`}
           />
         </div>
-        {#if snap.MaxMana > 0}
-          <div class="hpblock">
-            <span class="dim">Mana</span>
-            <Bar
-              value={visual?.CurrentMana ?? snap.CurrentMana}
-              max={snap.MaxMana}
-              color="var(--accent)"
-              label={`${Math.round(visual?.CurrentMana ?? snap.CurrentMana)} / ${snap.MaxMana}`}
-            />
-          </div>
-        {/if}
+        <!-- Modul: the mana bar went with the four active skills. It measured
+             a resource that only they spent, and they were removed after being
+             measured at +90% damage for clicking every three seconds - see
+             lib/ui/SkillsPanel.svelte, which is the skill tree now. -->
       </div>
 
       <h3>Attributes</h3>

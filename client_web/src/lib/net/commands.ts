@@ -971,28 +971,64 @@ export function claimBattlePassMilestone(milestoneIndex: number, quarantined: bo
 }
 
 // ---------------------------------------------------------------------------
-// Skills
+// Skill tree
 // ---------------------------------------------------------------------------
 
-/** ActiveSkillEngine.MaxSkillId. Exactly four skills exist, ids 1-4. */
-export const MAX_SKILL_ID = 4;
+/**
+ * SkillTreeRegistry. Five passive branches, twenty levels each, bought with the
+ * skill points a player earns one per account level.
+ *
+ * This replaced four ACTIVE skills that had to be clicked. Measured, that
+ * rotation was +90% damage - +136% with its status synergy - because mana
+ * refilled faster than the cooldowns cleared, so nearly every swing could be
+ * buffed. In an idle game that made an attentive player twice as fast as an
+ * idle one, and the pacing model knew about neither.
+ *
+ * Mirrors the server table rather than restating it: the magnitudes below are
+ * SkillTreeRegistry's, and the cost curve is its GetUpgradeCost.
+ */
+export const SKILL_TREE_MAX_LEVEL = 20;
 
-function skillCommand(command: number, skillId: number): CommandOutcome {
-  // ValidateSkillCommand disconnects outside 1..MaxSkillId.
-  if (!Number.isInteger(skillId) || skillId < 1 || skillId > MAX_SKILL_ID) {
-    return refuse(`Skill id must be 1-${MAX_SKILL_ID}.`);
+export const SKILL_TREE_BRANCHES: readonly {
+  id: number;
+  name: string;
+  blurb: string;
+  /** Percent added per level. Crit chance is percentage POINTS. */
+  perLevel: number;
+  unit: 'pct' | 'points';
+}[] = [
+  { id: 0, name: 'Fortune', blurb: 'Better rarity on what drops. Not more loot - better loot.', perLevel: 1.0, unit: 'pct' },
+  { id: 1, name: 'Giantslayer', blurb: 'Every blow against a world boss lands harder.', perLevel: 2.0, unit: 'pct' },
+  { id: 2, name: 'Precision', blurb: 'More of your hits are critical ones.', perLevel: 0.4, unit: 'points' },
+  { id: 3, name: 'Cruelty', blurb: 'Your critical hits take a larger bite.', perLevel: 3.0, unit: 'pct' },
+  { id: 4, name: 'Insight', blurb: 'Levels arrive sooner, which is the slowest part of a season.', perLevel: 0.4, unit: 'pct' },
+];
+
+/** SkillTreeRegistry.GetUpgradeCost - five levels at each price. */
+export function skillTreeUpgradeCost(currentLevel: number): number {
+  if (currentLevel < 0 || currentLevel >= SKILL_TREE_MAX_LEVEL) return 0;
+  return Math.floor(currentLevel / 5) + 1;
+}
+
+export function purchaseSkillTreeLevel(
+  branchId: number,
+  currentLevel: number,
+  availablePoints: number,
+): CommandOutcome {
+  if (!SKILL_TREE_BRANCHES.some((b) => b.id === branchId)) {
+    return refuse('Unknown branch.');
   }
-  connection.send({ Command: command, TargetId: skillId });
+  if (currentLevel >= SKILL_TREE_MAX_LEVEL) {
+    return refuse('That branch is already at its maximum.');
+  }
+
+  const cost = skillTreeUpgradeCost(currentLevel);
+  if (availablePoints < cost) {
+    return refuse(`Needs ${cost} skill point${cost === 1 ? '' : 's'}; you have ${availablePoints}.`);
+  }
+
+  connection.send({ Command: CommandType.PurchaseSkillTreeLevel, TargetId: branchId });
   return OK;
-}
-
-export function unlockSkill(skillId: number, availablePoints: number): CommandOutcome {
-  if (availablePoints <= 0) return refuse('No skill points available.');
-  return skillCommand(CommandType.RequestUnlockSkill, skillId);
-}
-
-export function castSkill(skillId: number): CommandOutcome {
-  return skillCommand(CommandType.RequestCastSkill, skillId);
 }
 
 // ---------------------------------------------------------------------------
