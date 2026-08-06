@@ -1,11 +1,10 @@
 <script lang="ts">
-  import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import { createQuery } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { queryKeys, fetchStatistics } from '../lib/net/rest';
   import {
     BUILDINGS,
     upgradeBuilding,
-    evictVillager,
     upgradeTool,
     assignMentor,
     MAX_MENTOR_SLOTS,
@@ -14,7 +13,7 @@
   import { toolIcon } from '../lib/ui/sprites';
   import type { StateUpdate } from '../lib/net/protocol.generated';
 
-  const client = useQueryClient();
+
   const statistics = createQuery(() => ({ queryKey: queryKeys.statistics, queryFn: fetchStatistics }));
 
   const snap = $derived($playerState);
@@ -47,11 +46,10 @@
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
   }
 
-  function evict(slotIndex: number) {
-    const outcome = evictVillager(slotIndex);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-    setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.statistics }), 800);
-  }
+  // Modul: evict() is gone with the button that called it - see the Villagers
+  // panel. evictVillager still exists in commands.ts and still has a live
+  // server handler; what it does not have is a target, because the table it
+  // names has no rows and never did.
 
   // Modul: skills moved to the Character screen - they are combat abilities
   // that spend mana and have cooldowns, and they lived here between the
@@ -148,6 +146,16 @@
       <p class="dim tiny">Town Hall level caps every other building.</p>
     </section>
 
+    <!-- Modul: your villagers ARE your characters. This panel used to read a
+         table nothing in the server ever writes, so it said "No villagers yet"
+         to a player the Character screen was telling they had two. Same
+         question, two tables, two honest answers.
+
+         The Evict button is gone with it. It sent a slot index at that dead
+         table, so it never did anything - and now that the roster is real,
+         wiring it up would mean deleting a character, which is a different and
+         permanent thing that deserves its own decision rather than inheriting
+         a button that happened to be here. -->
     <section class="panel">
       <h2>Villagers</h2>
       {#if (statistics.data?.Villagers ?? []).length === 0}
@@ -156,12 +164,8 @@
         <ul class="villagers">
           {#each statistics.data?.Villagers ?? [] as villager (villager.SlotIndex)}
             <li>
-              <span class="name">Slot {villager.SlotIndex}</span>
-              <span class="dim tiny">
-                {villager.IsActive ? 'active' : 'idle'} &middot;
-                {(villager.EfficiencyModifier * 100).toFixed(0)}% efficiency
-              </span>
-              <button class="tiny-btn" onclick={() => evict(villager.SlotIndex)}>Evict</button>
+              <span class="name">Slot {villager.SlotIndex + 1}</span>
+              <span class="dim tiny">{villager.IsActive ? 'working' : 'idle'}</span>
             </li>
           {/each}
         </ul>

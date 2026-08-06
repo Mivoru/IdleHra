@@ -7,7 +7,7 @@
   import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { toDisplayAffixes, AFFIX_RARITY_NAMES, KNOWN_AFFIX_IDS } from '../lib/ui/affixes';
   import Affixes from '../lib/ui/Affixes.svelte';
-  import Skeleton from '../lib/ui/Skeleton.svelte';
+
   import { takePendingFocusEquipment } from '../lib/stores/navigation';
 
   const client = useQueryClient();

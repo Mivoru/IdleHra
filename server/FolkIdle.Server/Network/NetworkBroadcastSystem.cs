@@ -4568,17 +4568,31 @@ namespace FolkIdle.Server.Network
                     .Where(e => e.PlayerId == playerId && CanonicalBossMonsterIds.Contains(e.MonsterId))
                     .SumAsync(e => (long)e.KillCount);
 
-                // Modul: villager roster. Ordered by slot so the client can
-                // render a stable list that does not reshuffle between polls.
-                var villagerRows = await db.VillageResidents
+                // Modul: THE ROSTER READ A TABLE NOTHING WRITES.
+                //
+                // This listed VillageResidents, and VillageResidents has no
+                // INSERT anywhere in the codebase - two other comments in this
+                // repository already say so, in StateCheckpointManager and
+                // AchievementEngine. So the Village screen said "No villagers
+                // yet" forever while the Character screen said 2/10, and both
+                // were reporting honestly from different tables.
+                //
+                // The count moved to CharacterRecords when someone decided the
+                // people who live in your village ARE your characters. The list
+                // did not move with it. It does now, so one question has one
+                // answer.
+                //
+                // SlotIndex carries through because that is what the roster
+                // shows and what an eviction would have to name.
+                var villagerRows = await db.CharacterRecords
                     .AsNoTracking()
-                    .Where(v => v.PlayerId == playerId)
-                    .OrderBy(v => v.SlotIndex)
-                    .Select(v => new VillagerSlotResponse
+                    .Where(c => c.PlayerId == playerId && !c.IsLockedInEscrow)
+                    .OrderBy(c => c.SlotIndex)
+                    .Select(c => new VillagerSlotResponse
                     {
-                        SlotIndex = v.SlotIndex,
-                        IsActive = v.IsActive,
-                        EfficiencyModifier = v.EfficiencyModifier
+                        SlotIndex = c.SlotIndex,
+                        IsActive = c.ActiveActivityId > 0,
+                        EfficiencyModifier = 1.0
                     })
                     .ToListAsync();
 

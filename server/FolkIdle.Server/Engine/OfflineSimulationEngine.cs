@@ -359,7 +359,11 @@ namespace FolkIdle.Server.Engine
 
         private static LootProjection CalculateGatheringProjection(ref TickStatePayload payload, GatheringNodeDefinition node, long elapsedSeconds)
         {
-            int masteryLevel = node.ProfessionType == 0 ? payload.WoodcuttingMasteryLevel : payload.MiningMasteryLevel;
+            // Modul: the same two-branch bug, one line up from the XP one -
+            // this decides the SPEED a fishing node gathers at, and it read the
+            // player's mining level to do it. Asked of SimulationEngine, which
+            // owns the mapping.
+            int masteryLevel = Domain.Combat.SimulationEngine.GetMasteryLevel(ref payload, node.ProfessionType);
             int requiredTicks = node.BaseTickThreshold - (masteryLevel * 2) - payload.CachedCurrentToolTier;
             if (requiredTicks < 2) requiredTicks = 2;
 
@@ -592,46 +596,25 @@ namespace FolkIdle.Server.Engine
             }
         }
 
+        // Modul: THIS WAS THE COPY THAT WAS MISSED.
+        //
+        // `professionType == 0 ? Woodcutting : Mining` - two branches for four
+        // professions, so Fishing (2) and Herbalism (3) both levelled MINING.
+        // The realtime and warp paths were fixed and given a comment saying the
+        // mapping "now exists exactly once"; it did not. It existed twice, and
+        // the second one is the one that runs while the player is away.
+        //
+        // Reported from the live game: fishing, connection lost during a
+        // deployment, and the time away came back as mining experience. That is
+        // this method.
+        //
+        // It delegates to SimulationEngine's own switch now, rather than
+        // restating it, because a copy that agrees today is exactly what this
+        // was.
         private static void ApplyGatheringMasteryXp(ref TickStatePayload payload, int professionType, long xpGained)
         {
             if (xpGained <= 0) return;
-
-            int gainedXp = (int)Math.Min(xpGained, int.MaxValue);
-
-            if (professionType == 0)
-            {
-                payload.WoodcuttingMasteryXp += gainedXp;
-                while (true)
-                {
-                    int requiredMasteryXp = 50 * (payload.WoodcuttingMasteryLevel + 1) * (payload.WoodcuttingMasteryLevel + 1);
-                    if (payload.WoodcuttingMasteryXp >= requiredMasteryXp)
-                    {
-                        payload.WoodcuttingMasteryXp -= requiredMasteryXp;
-                        payload.WoodcuttingMasteryLevel++;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-            }
-            else
-            {
-                payload.MiningMasteryXp += gainedXp;
-                while (true)
-                {
-                    int requiredMasteryXp = 50 * (payload.MiningMasteryLevel + 1) * (payload.MiningMasteryLevel + 1);
-                    if (payload.MiningMasteryXp >= requiredMasteryXp)
-                    {
-                        payload.MiningMasteryXp -= requiredMasteryXp;
-                        payload.MiningMasteryLevel++;
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-            }
+            Domain.Combat.SimulationEngine.ApplyBulkMasteryXp(ref payload, professionType, xpGained);
         }
 
         // Modul: OFFLINE TIME IS NO LONGER BANKED.
