@@ -271,7 +271,25 @@ namespace FolkIdle.Server.Engine
                     CharacterGrantEngine.SeedStarterHumanPair(db, player.Id, characterId);
 
                     db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = "gold", Quantity = 1000L });
-                    db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = ContentRegistry.GetMaterialString(1), Quantity = 25L });
+
+                    // Modul: A NEW ACCOUNT NOW OWNS THE THREE BASIC TOOLS, and
+                    // 25 copper ore no longer appears from nowhere.
+                    //
+                    // Gathering needs a tool that matches the job - an axe for
+                    // wood, a pickaxe for ore, a rod for fish - and an account
+                    // was created owning none of them, so the three professions
+                    // the game asks a new player to use were all gated behind
+                    // crafting something they had no materials for. The
+                    // catalogue has carried normal_axe_tool, normal_pickaxe_tool
+                    // and normal_fishing_rod_tool all along; nothing granted
+                    // them.
+                    //
+                    // The ore went with it. It was seeded so that SOMETHING
+                    // could be crafted on day one, which is the same problem
+                    // solved by the wrong end - it read as a glitch to the
+                    // player, because a pile of ore appearing in an empty
+                    // account is one.
+                    StarterEquipmentGrant.Seed(db, player.Id);
 
                     await db.SaveChangesAsync();
                     await transaction.CommitAsync();
@@ -501,7 +519,10 @@ namespace FolkIdle.Server.Engine
                     CharacterGrantEngine.SeedStarterHumanPair(db, player.Id, characterId);
 
                     db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = "gold", Quantity = 1000L });
-                    db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = ContentRegistry.GetMaterialString(1), Quantity = 25L });
+                    // The same three tools the device path grants - see
+                    // StarterEquipmentGrant. Seeding one registration route and
+                    // not the other is exactly how accounts came to differ.
+                    StarterEquipmentGrant.Seed(db, player.Id);
 
                     await db.SaveChangesAsync();
                     await transaction.CommitAsync();

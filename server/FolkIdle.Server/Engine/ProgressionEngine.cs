@@ -152,6 +152,20 @@ namespace FolkIdle.Server.Engine
             if (leveledUp)
             {
                 RaceAttributeGrowth.ApplyLevelUpGrowth(ref payload, activeRaceId, levelsGained);
+
+                // Modul: ONE SKILL POINT PER LEVEL, granted HERE.
+                //
+                // Reported as "I am level 20 and have no points to spend", and
+                // that was exact. The game grows levels in three places - this
+                // one, the warp/bulk catch-up in SimulationEngine, and the
+                // offline projection - and only the warp path paid the point.
+                // This is the path an ordinary kill takes, so a player who
+                // simply played the game earned nothing, forever.
+                //
+                // The other two grant it as well now. Putting it in the
+                // authority that owns the level-up loop is what stops the next
+                // copy of that loop from forgetting again.
+                payload.AvailableSkillPoints += levelsGained;
                 payload.IsDirty = true;
             }
         }

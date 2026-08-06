@@ -96,15 +96,34 @@ namespace FolkIdle.Server.Domain.Shared
         /// the five "output side never wired" ones found before it: the input
         /// half is complete, convincing, and connected to nothing.
         /// </param>
+        // Mastery accelerates gathering the same way everything else does - as a
+        // percentage.
+        //
+        // Modul: it used to SUBTRACT two ticks per level, flat, before any
+        // multiplier applied. On region 1's 30-tick node that goes negative at
+        // mastery 15 and clamps to the two-tick minimum, which is what put
+        // "0.2s / unit (floor)" on the gathering screen: the first two regions
+        // gathered instantly, and no tool, village building or affix could
+        // change a number that was already pinned to the bottom.
+        //
+        // A subtraction cannot be balanced against a threshold it does not
+        // know. Ten percent a level compounds with the tool curve instead of
+        // racing it to the floor.
+        public const int MasterySpeedPctPerLevel = 10;
+
         public static int ComputeRequiredTicks(int baseTickThreshold, int masteryLevel, int toolTier, int villageProductionLevel, int toolAffixSpeedPct)
         {
-            int ticks = baseTickThreshold - (masteryLevel * 2) - toolTier;
+            int ticks = baseTickThreshold;
             if (ticks < MinRequiredTicks)
             {
                 return MinRequiredTicks;
             }
 
             int totalSpeedBonusPct = GetToolSpeedBonusPct(toolTier);
+            if (masteryLevel > 0)
+            {
+                totalSpeedBonusPct += masteryLevel * MasterySpeedPctPerLevel;
+            }
             if (villageProductionLevel > 0)
             {
                 totalSpeedBonusPct += villageProductionLevel * VillageYieldBonusPctPerLevel;

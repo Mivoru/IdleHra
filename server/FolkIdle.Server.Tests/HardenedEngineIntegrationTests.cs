@@ -3127,8 +3127,20 @@ namespace FolkIdle.Server.Tests
 
             foreach (var (playerId, _) in results)
             {
+                // Modul: gold, and gold alone. This expected two commodities -
+                // the second being 25 copper ore seeded from nowhere so that
+                // SOMETHING could be crafted on day one, which read to players
+                // as a glitch because a pile of ore appearing in an empty
+                // account is one.
                 int commodityCount = await verifyDb.CommodityRecords.AsNoTracking().CountAsync(c => c.PlayerId == playerId);
-                Assert.Equal(2, commodityCount);
+                Assert.Equal(1, commodityCount);
+
+                // What replaced it: the three tools gathering actually needs.
+                // An account owning none of them could not usefully work any of
+                // the three professions the game opens on.
+                int toolCount = await verifyDb.EquipmentInstances.AsNoTracking()
+                    .CountAsync(e => e.PlayerId == playerId);
+                Assert.Equal(StarterEquipmentGrant.StarterToolBaseIds.Length, toolCount);
             }
         }
 

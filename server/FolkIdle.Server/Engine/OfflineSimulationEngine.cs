@@ -627,6 +627,11 @@ namespace FolkIdle.Server.Engine
                 {
                     payload.CurrentXp -= requiredXp;
                     payload.CurrentLevel++;
+                    // Modul: and the skill point that comes with the level.
+                    // Identical to the live tick was already the stated rule
+                    // here, and it held for the XP formula while quietly
+                    // failing for the reward the level pays out.
+                    payload.AvailableSkillPoints++;
                 }
                 else
                 {
