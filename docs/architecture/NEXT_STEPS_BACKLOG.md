@@ -21,6 +21,78 @@ was NOT at the start of this session, and nobody had noticed. Combat, gathering
 and the larder were rebalanced against each other in one pass and every number
 in that pass is measured by a test that prints it, not authored by hand.
 
+## The monster ladder used to go DOWNHILL at every region border
+
+Reported from play as "monsters at the start of a tier have too little HP and
+attack - the player does not start from zero there", and it was worse than it
+looked. Measured, the old ladder read:
+
+```
+104  Sandstone Golem   1325 HP    520 atk
+105  Magma Wyrm        6625 HP   1690 atk  (BOSS)
+106  Ice Bat           1690 HP    152 atk  <-- 0.09x the attack before it
+...
+114  Death Knight      8760 HP   1000 atk
+111  Grave Ghoul       3440 HP    200 atk  <-- a fifth of it, one region LATER
+```
+
+**The cause was structural, not a typo.** Monsters were sized as a percentage
+of the health pool expected in THEIR region - 8% of it for the first, 40% for
+the fourth. Inside a region that is a clean fivefold ramp. Across a border the
+percentage resets to 8% while the pool grows only about twice, so the product
+is 2 x 0.2 = 0.4: the first monster of a region hit for less than half of what
+the last one did. Every border in the game was a step down, and no retuning of
+the percentages fixes a shape that multiplies a reset by a smaller growth.
+
+**Difficulty is now one continuous curve across all twenty regulars.** Region 1
+is authored by hand and unchanged - a starting character's own power multiplies
+several times inside it, which no later region repeats, and that is why its
+8-to-40 interior is fair and why nothing else copies it. Regions 2-5 step +15%
+HP and +30% attack per monster, so every monster is a gear check rather than
+the fourth one alone, and each border steps 1.6x HP and 1.9x attack. Bosses
+stay 5x HP and 3.25x attack over their own region's fourth monster.
+
+`MonsterLadderTests` pins the SHAPE, not the numbers: every regular beats the
+one before it, every border out-steps any step inside a region, every boss tops
+its own region and the boss before it, and rewards still track HP exactly
+(XP = HP/5, gold = HP/20). Retune the steps freely; the ladder may not descend.
+
+**A boss is deliberately above the next region's first monster.** The first
+version of the check compared them and reported the design as a break. Bosses
+are a separate ladder, checked against their own region and the previous boss.
+
+## The player model in two tests wore armour affixes and no weapon affixes
+
+Both balance models dressed the player inconsistently: armour was modelled with
+affixes (correctly - they carry the spread between loadouts now), damage was
+modelled as `15 + weapon` with none. So a player who rolls their armour was
+compared against one who never touches their weapon, kills came out slow, and
+the slow kills were then read as time spent fishing.
+
+Two further errors in the same model, both fixed:
+
+- **Affix rarity was pinned at Rare for all five regions.** Rising rarity is
+  not optimism, it is the design - every monster is a gear check and clearing
+  one pays for the next. A frozen-gear model reports the late game as
+  impossible and blames the larder. `RarityForRegion` runs Common to Legendary.
+- **The armour rating was used as the size of the health bar.** Two different
+  stats off two different affix curves, and the chosen one does not feed the
+  bar at all. It matters because a bite heals a PERCENTAGE of max HP.
+
+## OPEN: gathering is now about 57% of playtime, and the lever is fishing speed
+
+Recorded rather than hidden - `GatheringShareTests` prints it every run. The
+intent was a fifth, maybe a third.
+
+What pushed it past half is the ladder above: each region border nearly doubles
+incoming damage, and damage taken is fish eaten. **Nothing about fishing itself
+changed.** The two are separable - the knob is fishing THROUGHPUT (how long one
+fish takes to catch), which is independent of how hard anything hits.
+
+Softening monsters would fix the share by undoing the gear gating this pass
+exists to deliver, so it is deliberately NOT the answer. The decision to make
+is how much faster a fish should come in.
+
 **Read these three first if you are picking this up cold:**
 
 - `## The suite was red, and the red was not being read` - the "155/155" in

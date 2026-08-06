@@ -7607,7 +7607,26 @@ namespace FolkIdle.Server.Tests
             }
 
             var stats = StatsCalculator.Calculate(0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0);
-            long milliAttack = (15L + carriedWeapon) * 1000L;
+            // Modul: THE CARRIED WEAPON HAS ROLLS ON IT.
+            //
+            // This modelled arrival as the previous region's weapon and nothing
+            // else - no affixes at all - which is not a player who just beat a
+            // region boss, it is a player who never touched the forge. Since
+            // the monster ladder became continuous, that understatement is what
+            // pushed the first monster of a region past ninety seconds.
+            // Arriving at region 1 means arriving with nothing - no weapon, no
+            // rolls, no forge. Handing that character affixes made it kill the
+            // first monster in ten seconds and reported the opening of the game
+            // as too fast.
+            double affixMultiplier = 1.0;
+            int carriedRegion = regionOfArrival - 1;
+            if (carriedRegion >= 1 && AffixRegistry.TryGetDefinition("melee_dmg_pct", out var meleeDamage))
+            {
+                int pct = 3 * AffixRegistry.CalculateMagnitude(
+                    meleeDamage, carriedRegion, AffixRarity.Rare);
+                affixMultiplier += pct / 100.0;
+            }
+            long milliAttack = (long)((15L + carriedWeapon) * 1000L * affixMultiplier);
             return CombatDamageModel.ExpectedSecondsPerKill(in stats, in monster, milliAttack, 1.0f);
         }
 

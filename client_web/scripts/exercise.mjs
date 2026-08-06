@@ -50,7 +50,13 @@ const dismissToasts = async () => {
   }
 };
 
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+// Modul: the dev server by default, but the deployment when asked. The
+// point of this script is to assert what CHANGED, and once the game is live
+// the thing worth asserting against is the box actually serving players -
+// a balance pass that makes a monster lethal can break the combat step in
+// production while every local test still passes.
+const BASE = process.env.FOLKIDLE_E2E_BASE ?? 'http://localhost:5173/';
+await page.goto(BASE, { waitUntil: 'networkidle' });
 
 // --- sign in as the stocked fixture -----------------------------------------
 await page.getByRole('button', { name: 'Sign in' }).click();
@@ -147,18 +153,39 @@ await page
 // than no check.
 //
 // Every region is four regulars and one boss - content canon, not an inference
-// from this screen - so the boss is every fifth row. The strongest regular is
-// the last enabled row that is not one.
+// from this screen - so the boss is every fifth row.
+//
+// Modul: the FOURTH regular is now excluded too, for the reason the boss
+// always was. A region's regulars scale 8/15/25/40% of its health pool, and
+// that last one is deliberately a wall - the monster a player cannot simply
+// walk up to without the gear the three before it drop. It kills this fixture
+// the same way Shadow Lynx did, and a fight that ends in "Died and respawned"
+// inside four seconds reads here as "combat is broken".
+//
+// So: the strongest regular a geared character reliably SURVIVES, which is the
+// third of the four - the last enabled row that is neither the wall nor the
+// boss.
 const fightButtons = page.getByRole('button', { name: 'Fight', exact: true });
 const fightCount = await fightButtons.count();
-let fightTarget = null;
+let strongestUnlocked = -1;
 for (let i = 0; i < fightCount; i++) {
-  if (i % 5 === 4) continue; // a region boss
-  if (await fightButtons.nth(i).isEnabled()) {
-    fightTarget = fightButtons.nth(i);
-  }
+  if (await fightButtons.nth(i).isEnabled()) strongestUnlocked = i;
 }
-if (!fightTarget) throw new Error('no unlocked monster to fight - every Fight button is disabled');
+if (strongestUnlocked < 0) throw new Error('no unlocked monster to fight - every Fight button is disabled');
+// Modul: the FIRST regular of the strongest unlocked region.
+//
+// "Strongest regular" was a coin toss and had to stop being one. A region's
+// four regulars scale 8/15/25/40% of its health pool, and the top of that
+// range now kills an unfed character - which the fixture becomes, because
+// every run of this script eats the larder it was seeded with. The same code
+// scored 49/51 and then 51/51 with nothing changed between them.
+//
+// The first monster of a region is the one sized for a player ARRIVING there,
+// so it cannot kill the fixture whether or not it has food. It is also not the
+// global weakest - Field Mouse dies inside a tick and freezes the health bar
+// at full width - so the bar stays observable, which is the other thing this
+// step exists to check.
+const fightTarget = fightButtons.nth(strongestUnlocked - (strongestUnlocked % 5));
 await fightTarget.click();
 await page.waitForTimeout(4000);
 {
