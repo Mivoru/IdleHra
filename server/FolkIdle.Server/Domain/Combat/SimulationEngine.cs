@@ -5137,6 +5137,18 @@ namespace FolkIdle.Server.Domain.Combat
         /// struct on the wire - see TickStatePayload - so the six levels are six
         /// fields, not an array.
         /// </summary>
+        /// <summary>
+        /// Ticks between auto-eat bites, at 10 Hz - so one bite every two and a
+        /// half seconds.
+        ///
+        /// Chosen against the monster cadence rather than picked round: a
+        /// monster swings every two seconds, so a player recovers roughly one
+        /// bite for every hit taken. Sustain, and a pace at which armour and
+        /// health decide whether the bar holds - which was the whole point of
+        /// bounding it.
+        /// </summary>
+        internal const int AutoEatCooldownTicks = 25;
+
         private static void SetSkillTreeLevel(ref TickStatePayload payload, int branchId, byte level)
         {
             switch (branchId)
@@ -5772,7 +5784,22 @@ namespace FolkIdle.Server.Domain.Combat
             }
 
             // Step 5 (Auto-Eat)
-            if (payload.PlayerHp > 0 && payload.PlayerHp <= (payload.AutoEatThreshold / 100.0f) * effectiveMaxHp)
+            //
+            // Modul: A BITE HAS A COOLDOWN. This used to fire on every tick, so
+            // a stocked larder healed ten times a second - up to two hundred
+            // percent of the health bar per second at the low end. Nothing
+            // could kill a player who owned fish, so a boss was a check on
+            // inventory rather than on equipment, and every attempt to make
+            // gear the gate failed against it.
+            //
+            // At one bite every AutoEatCooldownTicks, healing has a ceiling and
+            // the question becomes whether the player survives BETWEEN bites -
+            // which is what armour and health are for.
+            if (payload.AutoEatCooldownTicks > 0)
+            {
+                payload.AutoEatCooldownTicks--;
+            }
+            else if (payload.PlayerHp > 0 && payload.PlayerHp <= (payload.AutoEatThreshold / 100.0f) * effectiveMaxHp)
             {
                 int bestFoodIndex = 0;
                 int highestHeal = 0;
@@ -5804,6 +5831,8 @@ namespace FolkIdle.Server.Domain.Combat
 
                 if (bestFoodIndex > 0)
                 {
+                    payload.AutoEatCooldownTicks = AutoEatCooldownTicks;
+
                     if (payload.ActivityHaltReason == Network.ActivityHaltReason.OutOfFood)
                     {
                         payload.ActivityHaltReason = Network.ActivityHaltReason.None;

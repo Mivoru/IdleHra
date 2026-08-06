@@ -73,7 +73,25 @@ namespace FolkIdle.Server.Engine
         // solvable at all still holds.
         //
         public const double LevelCurveBase = 250.0;
-        public const double LevelCurveGrowth = 1.13;
+        // Modul: 1.13 -> 1.16, and it is the offline cap that forced it.
+        //
+        // The season was sized against "200 active hours" - an assumption about
+        // how long someone sits at the screen, which is the wrong quantity for
+        // a game that runs while they do not. Offline catch-up banks up to
+        // twelve hours per absence, so a player returning twice a day collects
+        // twenty-four hours of progress every real day: 2,160 hours in a
+        // ninety-day season. At 1.13 the whole game was 988 hours, finished in
+        // about three weeks.
+        //
+        // At 1.16 each region costs about 6.5x the one before it rather than
+        // 4x, so regions 1-4 still fall inside the first season and region 5
+        // alone outlasts one. Finishing lands in the second or third season,
+        // which is where it was always meant to.
+        //
+        // It also puts the weight where the content is: region 5 is 86% of the
+        // game now rather than 76%, and that is the stretch where races,
+        // character slots and the deeper tools unlock.
+        public const double LevelCurveGrowth = 1.16;
 
         public static long GetRequiredXpForLevel(int currentLevel)
         {

@@ -5774,12 +5774,12 @@ namespace FolkIdle.Server.Tests
             // and asserted 1.06 against an engine that had moved to 1.13. It is
             // the whole point of the test - a curve nobody can change by
             // accident - so it is updated, not loosened.
-            Assert.Equal(1.13, ProgressionEngine.LevelCurveGrowth, 3);
+            Assert.Equal(1.16, ProgressionEngine.LevelCurveGrowth, 3);
             for (int level = 1; level <= 8; level++)
             {
                 double ratio = ProgressionEngine.GetRequiredXpForLevel(level)
                     / (double)ProgressionEngine.GetRequiredXpForLevel(level - 1);
-                Assert.InRange(ratio, 1.12, 1.14);
+                Assert.InRange(ratio, 1.15, 1.17);
             }
 
             for (int level = 1; level <= 8; level++)
@@ -7486,18 +7486,29 @@ namespace FolkIdle.Server.Tests
 
             for (int regionTier = 2; regionTier <= 5; regionTier++)
             {
+                // Modul: 5.0-12.0, was 3.0-6.5. The curve went from 1.13 to
+                // 1.16 when the offline cap made the old one a three-week game,
+                // so each region costs about six and a half times the one
+                // before rather than four. The band is the intent - a
+                // back-loaded season where the last region is most of it - and
+                // the intent got steeper on purpose.
                 double ratio = regionMinutes[regionTier] / regionMinutes[regionTier - 1];
-                Assert.InRange(ratio, 3.0, 6.5);
+                Assert.InRange(ratio, 5.0, 12.0);
             }
 
             double totalHours = (regionMinutes[1] + regionMinutes[2] + regionMinutes[3]
                 + regionMinutes[4] + regionMinutes[5]) / 60.0;
 
-            // The floor matters as much as the ceiling: a season that can be
-            // finished in a fortnight has no ladder left to climb, and this
-            // model is a FLOOR estimate (no affixes, no STR, no set bonuses),
-            // so real play lands well below its own number.
-            Assert.InRange(totalHours, 500.0, 1600.0);
+            // THE FLOOR IS THE POINT NOW, and it is sized against the offline
+            // cap rather than against a guess about screen time.
+            //
+            // Catch-up banks twelve hours an absence, so a player returning
+            // twice a day collects 2,160 hours in a ninety-day season. A total
+            // that fits inside that is a game finished in season one; the
+            // stated intent is that it should not be. At three times gear speed
+            // this floor still has to outlast one season, which puts the bottom
+            // of the band near 6,500 hours.
+            Assert.InRange(totalHours, 6500.0, 20000.0);
         }
 
         // Modul: Full-Stack Expansion, Part 2/7. The 25 new regional
@@ -9685,8 +9696,17 @@ namespace FolkIdle.Server.Tests
             // old law at its base point, which is deliberate: existing gear
             // rolled at the bottom of the curve keeps the value it had.
             Assert.Equal(15, AffixRegistry.CalculateMagnitude(flatHp, 1, AffixRarity.Common));
-            // R=3, Legendary -> floor(45 * 6.5536) = 294.
-            Assert.Equal(294, AffixRegistry.CalculateMagnitude(flatHp, 3, AffixRarity.Legendary));
+            // Modul: the region term is a CURVE now, not a multiplier.
+            //
+            // These laws were linear in the region while the items they sit on
+            // triple every region, so a Legendary affix was worth more than its
+            // base item in region 1 and a tenth of it in region 5 - rerolling
+            // at depth changed nothing a player could feel. Health follows the
+            // health pool at 2.2x a region, flat stats follow the gear curve at
+            // 3x.
+            //
+            // R=3, Legendary -> floor(15 * 2.2^2 * 6.5536) = 475.
+            Assert.Equal(475, AffixRegistry.CalculateMagnitude(flatHp, 3, AffixRarity.Legendary));
 
             Assert.True(AffixRegistry.TryGetDefinition("flat_armor", out var flatArmor));
             // floor(2 * R * 1.6^(A-1)); R=1, Common -> 2.

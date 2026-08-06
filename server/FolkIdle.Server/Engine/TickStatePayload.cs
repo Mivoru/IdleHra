@@ -107,6 +107,20 @@ namespace FolkIdle.Server.Engine
         public long XpPenaltyExpiresEpoch;
 
         public int AutoEatThreshold;
+
+        // Modul: AUTO-EAT HAS A COOLDOWN NOW, and it is the difference between
+        // gear mattering and food substituting for it.
+        //
+        // The larder fed once per TICK - ten bites a second - so healing was
+        // bounded only by how many fish a player owned. No fight could be lost
+        // while stock remained, whatever the monster hit for and whatever the
+        // player wore, which made every boss a check on inventory rather than
+        // on equipment.
+        //
+        // Ticks remaining before the next bite. Not a timestamp: the payload is
+        // blitted onto the wire and a counter that ticks down survives a
+        // process restart the way an Environment.TickCount64 deadline does not.
+        public int AutoEatCooldownTicks;
         public int Food1_ItemId;
         public int Food1_Count;
         public int Food2_ItemId;

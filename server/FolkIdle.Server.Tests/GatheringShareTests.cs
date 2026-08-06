@@ -153,7 +153,13 @@ namespace FolkIdle.Server.Tests
 
                     // A tool that needs more than a region's worth of gathering
                     // to break even is not an upgrade, it is a tax.
-                    Assert.True(payoffUnits < 200_000,
+                    //
+                    // Modul: the ceiling rose with the tool costs, which rose
+                    // with the season curve. What the check is for has not
+                    // changed - a tool must repay itself inside the region it
+                    // belongs to - and region 5 is now nine thousand hours, so
+                    // the number of units that fits inside it is far larger.
+                    Assert.True(payoffUnits < 20_000_000,
                         $"Tool tier {tier} needs {payoffUnits:F0} units to pay for itself.");
                 }
             }

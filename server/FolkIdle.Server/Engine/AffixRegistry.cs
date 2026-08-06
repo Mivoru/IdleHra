@@ -422,12 +422,33 @@ namespace FolkIdle.Server.Engine
             int rarityIndex = (int)affixRarity;
             if (rarityIndex < 1) rarityIndex = 1;
 
+            // Modul: AFFIXES GREW LINEARLY AGAINST GEAR THAT GREW GEOMETRICALLY,
+            // so rarity stopped mattering exactly where it was meant to matter
+            // most.
+            //
+            // These were `15 * regionTier` and `2 * regionTier` - five times
+            // larger at region 5 than at region 1. The items they sit on triple
+            // every region, so best-in-slot armour runs 8 at region 1 and 648 at
+            // region 5, EIGHTY-ONE times. A Legendary armour affix was worth
+            // more than the item it was on in region 1 and a tenth of it in
+            // region 5, so a player at depth could reroll all day and change
+            // nothing they could feel.
+            //
+            // Each law now grows with the quantity it adds to. Armour and the
+            // other flat stats follow the gear curve at 3x a region; health
+            // follows the health pool, which runs about 100 to 2,500 across the
+            // game, so 2.2x a region. A Legendary roll is then worth more than
+            // the base item carries, at every depth - which is what makes a
+            // reroll a decision rather than a formality.
+            double gearCurve = Math.Pow(3.0, regionTier - 1);
+            double poolCurve = Math.Pow(2.2, regionTier - 1);
+
             switch (definition.Law)
             {
                 case AffixScalingLaw.FlatHp:
-                    return (int)Math.Floor(15.0 * regionTier * rarityMultiplier);
+                    return (int)Math.Floor(15.0 * poolCurve * rarityMultiplier);
                 case AffixScalingLaw.FlatStat:
-                    return (int)Math.Floor(2.0 * regionTier * rarityMultiplier);
+                    return (int)Math.Floor(2.0 * gearCurve * rarityMultiplier);
                 default:
                     return definition.BaseValueTenthsPct + definition.GrowthTenthsPctPerTier * (rarityIndex - 1);
             }
