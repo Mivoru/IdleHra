@@ -3843,7 +3843,10 @@ namespace FolkIdle.Server.Domain.Combat
                 float warpExpectedCritMultiplier = 1.0f + warpMonsterCritChance * (warpMitigatedCritMult - 1.0f);
 
                 long warpRawIncomingMilliDamage = (long)(ContentRegistry.GetScaledMonsterAttackPower(monsterId) * 1000 * warpExpectedCritMultiplier);
-                long warpNetIncomingMilliDamage = Math.Max(1000L, warpRawIncomingMilliDamage - (warpCombatStats.FlatPhysicalArmor * 1000L));
+                long warpNetIncomingMilliDamage = CombatDamageModel.Mitigate(
+                    warpRawIncomingMilliDamage,
+                    warpCombatStats.FlatPhysicalArmor,
+                    CombatDamageModel.PlayerArmourHalvingConstant(warpMonsterRegionTier));
 
                 double warpMonsterAttacksPerSecond = monster.AttackIntervalMs > 0 ? 1000.0 / monster.AttackIntervalMs : 0.0;
                 double warpExpectedIncomingMilliDps = warpNetIncomingMilliDamage * warpMonsterAttacksPerSecond;
@@ -5583,11 +5586,22 @@ namespace FolkIdle.Server.Domain.Combat
                     }
 
                     // Step 3 (Mitigation). Monsters carry no block stat (no
-                    // shields modeled on the PvE monster side), so this stays
-                    // a pure armor subtraction - activeMonster.Armor is now
-                    // sourced from content data instead of a hardcoded 0.
+                    // shields modeled on the PvE monster side), so armour is the
+                    // whole of it - activeMonster.Armor is sourced from content
+                    // data rather than a hardcoded 0.
+                    //
+                    // Modul: it REDUCES. This was `max(1 hp, raw - armour*1000)`
+                    // and it was the fifth copy of that rule - the one inside
+                    // the live tick, which is the one that decides what actually
+                    // happens. It went on subtracting for a few minutes after
+                    // CombatDamageModel stopped, and the two disagreed by nearly
+                    // a factor of two: every projection in the game said a kill
+                    // took half as long as it did.
                     int defenderArmor = activeMonster.Armor;
-                    int netDamage = Math.Max(1000, rawDamage - (defenderArmor * 1000));
+                    int netDamage = (int)CombatDamageModel.Mitigate(
+                        rawDamage,
+                        defenderArmor,
+                        CombatDamageModel.MonsterArmourHalvingConstant(activeMonster.RegionTier));
                     netDamage = (int)(netDamage * payload.CachedCodexDamageMultiplier);
 
                     // Modul: set bonuses made real. The Chiming Steel 4-piece
@@ -5686,7 +5700,14 @@ namespace FolkIdle.Server.Domain.Combat
                     // Clamped below 100% so a high-CON build can reduce a hit
                     // close to the floor but never to true zero damage.
                     float blockStrengthFraction = Math.Clamp(combatStats.BlockStrengthPct / 100f, 0f, 0.75f);
-                    int armorMitigatedDamage = rawDamage - (combatStats.FlatPhysicalArmor * 1000);
+                    // Modul: armour REDUCES. See CombatDamageModel.Mitigate -
+                    // this was `raw - armour * 1000`, which meant a player one
+                    // tier behind took the full hit and a player in best-in-slot
+                    // took the 1 HP floor, with nothing in between.
+                    long armorMitigatedDamage = CombatDamageModel.Mitigate(
+                        rawDamage,
+                        combatStats.FlatPhysicalArmor,
+                        CombatDamageModel.PlayerArmourHalvingConstant(monsterRegionTier));
                     int finalDamage = Math.Max(1000, (int)(armorMitigatedDamage * (1f - blockStrengthFraction)));
 
                     // Modul: set effect rework. The Eternal Dreadnought 4-piece

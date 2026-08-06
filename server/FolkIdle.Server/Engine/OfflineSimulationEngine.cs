@@ -448,7 +448,10 @@ namespace FolkIdle.Server.Engine
             float expectedCritMultiplier = 1.0f + monsterCritChance * (mitigatedCritMult - 1.0f);
 
             long rawIncomingMilliDamage = (long)(activeMonster.AttackPower * 1000 * expectedCritMultiplier);
-            long netIncomingMilliDamage = Math.Max(1000L, rawIncomingMilliDamage - (combatStats.FlatPhysicalArmor * 1000L));
+            long netIncomingMilliDamage = CombatDamageModel.Mitigate(
+                rawIncomingMilliDamage,
+                combatStats.FlatPhysicalArmor,
+                CombatDamageModel.PlayerArmourHalvingConstant(monsterRegionTier));
 
             double monsterAttacksPerSecond = activeMonster.AttackIntervalMs > 0 ? 1000.0 / activeMonster.AttackIntervalMs : 0.0;
             double expectedIncomingMilliDps = (netIncomingMilliDamage) * monsterAttacksPerSecond;

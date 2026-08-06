@@ -348,6 +348,18 @@ namespace FolkIdle.Server.Tests
                 poolPayload.CurrentLevel = startLevel;
                 poolPayload.CachedAffixTotals.FlatAttack = weaponAttack;
                 poolPayload.CachedAffixTotals.FlatDefense = armourDefence;
+
+                // Modul: LEVEL THE CHARACTER, do not just set the number.
+                //
+                // Setting CurrentLevel directly leaves STR, DEX, CON and LCK at
+                // zero, so this printed a 100 HP health pool for every region -
+                // the same figure at level 1 and level 81 - and that reading was
+                // briefly taken for a finding about the game. It is a finding
+                // about the fixture. The bar grows through CON, which
+                // RaceAttributeGrowth adds per level gained and StatsCalculator
+                // pays at 15 HP a point, so a character has to be walked up to
+                // its level for the number to mean anything.
+                RaceAttributeGrowth.ApplyLevelUpGrowth(ref poolPayload, activeRaceId: 1, levelsGained: startLevel - 1);
                 var poolStats = StatsCalculator.Calculate(poolPayload.STR, poolPayload.DEX, poolPayload.CON, poolPayload.LCK, 0, 0, 1, 0, 0, 0, 0, 0, poolPayload.CachedAffixTotals, false, 0, 0, poolPayload.CachedSetIds);
                 var poolLineage = ProgressionEngine.Lineages[poolPayload.SelectedLineageId];
                 long baseMilliHp = 100_000L;
@@ -356,7 +368,13 @@ namespace FolkIdle.Server.Tests
                     + (poolStats.MaxHp * 1000L);
 
                 var strongest = ContentRegistry.Monsters[firstMonster + 3 - 1];
-                long netMilliPerHit = Math.Max(1000L, (strongest.AttackPower * 1000L) - (poolStats.FlatPhysicalArmor * 1000L));
+                // Asked of the model, not re-derived - this was the fourth copy
+                // of `raw - armour`, and it would have gone on printing that
+                // after the engine stopped doing it.
+                long netMilliPerHit = CombatDamageModel.Mitigate(
+                    strongest.AttackPower * 1000L,
+                    poolStats.FlatPhysicalArmor,
+                    CombatDamageModel.PlayerArmourHalvingConstant(region));
                 double incomingPerSecond = netMilliPerHit * (1000.0 / strongest.AttackIntervalMs);
 
                 _output.WriteLine(

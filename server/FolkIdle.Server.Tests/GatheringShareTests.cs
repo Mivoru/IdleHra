@@ -247,7 +247,15 @@ namespace FolkIdle.Server.Tests
             double monsterCritChance = 0.05 + (region * 0.005);
             double expectedCritMultiplier = 1.0 + monsterCritChance * 0.5;
             double rawIncomingMilliDamage = monster.AttackPower * 1000.0 * expectedCritMultiplier;
-            double netIncomingMilliDamage = Math.Max(1000.0, rawIncomingMilliDamage - (armourRating * 1000.0));
+            // Modul: armour reduces. This was the fifth private copy of
+            // `raw - armour` and it survived the engine dropping the rule by a
+            // few minutes: with a monster attack rewritten for the percentage
+            // model, subtraction returned the 1 HP floor for everything and
+            // this test cheerfully reported that food had become free.
+            double netIncomingMilliDamage = CombatDamageModel.Mitigate(
+                (long)rawIncomingMilliDamage,
+                armourRating,
+                CombatDamageModel.PlayerArmourHalvingConstant(region));
             double attacksPerSecond = monster.AttackIntervalMs > 0 ? 1000.0 / monster.AttackIntervalMs : 0.0;
             double incomingMilliHpPerSecond = netIncomingMilliDamage * attacksPerSecond;
 
