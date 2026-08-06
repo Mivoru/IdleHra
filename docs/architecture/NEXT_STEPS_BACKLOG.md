@@ -21,6 +21,69 @@ was NOT at the start of this session, and nobody had noticed. Combat, gathering
 and the larder were rebalanced against each other in one pass and every number
 in that pass is measured by a test that prints it, not authored by hand.
 
+## A region boss is an EVENT the first time and a chore afterwards
+
+Reported from play: "I killed the first boss almost without fish, wearing only
+Field Mouse and Horned Rabbit drops at about rarity 2."
+
+Simply enlarging the boss does not answer that. A boss sized to demand a full
+set of high-rarity gear is then a wall every time a player wants the thing it
+drops, and farming a wall is a tax, not a fight. So the two cases were split:
+
+**Until a player puts a boss down once it carries 5x the health and 2x the
+attack.** After that it reverts to its authored stats and can be farmed.
+`BossFirstClearRules` owns the rule; the four fight-start sites and the two
+incoming-damage sites all route through it, live AND offline.
+
+| region | boss | farmed | first clear |
+|---|---|---|---|
+| 1 | Alpha Wolf | 5,850 HP / 130 atk | 29,250 / 260 |
+| 2 | Shadow Lynx | 14,200 / 1,625 | 71,000 / 3,250 |
+| 3 | Magma Wyrm | 34,600 / 6,800 | 173,000 / 13,600 |
+| 4 | Frost Titan | 84,300 / 28,400 | 421,500 / 56,800 |
+| 5 | Malakor | 205,100 / 118,400 | 1,025,500 / 236,800 |
+
+**The state is the state that already unlocks regions** - a boss is beaten or
+it is not, per the monster codex - cached onto the payload as a five-bit mask.
+`TickStatePayload` is NOT the wire packet, so this cost nothing on the network
+and needed no protocol regeneration.
+
+**`HighestUnlockedRegion` cannot stand in for the mask.** Clearing region 5's
+boss opens no sixth region, so that number stays at 5 before and after: the
+last boss in the game would read as never beaten and stay at first-clear stats
+forever, unfarmable by the only players who can reach it. The mask is also set
+OUTSIDE the `< LastRegion` guard that raises the unlock, for the same reason.
+
+## The whole ladder was raised threefold, and region 1's ATTACK was not
+
+Asked for directly: "3x HP and damage on everything, bosses especially". HP is
+tripled everywhere. Attack is tripled from region 2 onward.
+
+**Region 1's attack exemption is a hard constraint, not a preference.** The
+first fight of a new account happens with nothing equipped. At 3x, Field Mouse
+takes 25 off a 100-point bar every 1.5 seconds while one bite of food every 2.5
+seconds returns 12 - so a new player dies before landing a single kill.
+`TheFirstMonsterTakesAboutSeventyFiveSeconds` measured it as 300 seconds a
+kill, which was the simulation reporting that the game had no entrance.
+
+The step out of region 1 therefore reads 5.75x on attack against 1.9x at the
+later borders. That is the right direction - by then the player is wearing what
+region 1 dropped.
+
+**Boss base multipliers went BACK to 5x/3.25x** from the 8x/5x tried first: the
+boss-specific steepening now lives in the first clear, and stacking both made a
+capstone a fifteen-minute slog rather than a hard fight.
+
+**`EquipmentDropChance` 5% -> 15%, and this is a change nobody asked for on its
+own.** A drop is rolled PER KILL and kills now take three times as long, so
+leaving it would have quietly undone the drop-rate decision made two changes
+earlier. Drops per HOUR are held where they were. If a slower drip is wanted,
+that is the one line to change - the difficulty raise does not depend on it.
+
+Opening kill: ~20s -> ~75s. Worst regular on arrival: 166s (Wild Boar, fought
+naked - those four monsters ARE the gearing-up). Gathering share rose again
+with the damage, to 67-78%; see the open item below.
+
 ## The monster ladder used to go DOWNHILL at every region border
 
 Reported from play as "monsters at the start of a tier have too little HP and

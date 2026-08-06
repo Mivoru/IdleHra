@@ -548,6 +548,11 @@ namespace FolkIdle.Server.Domain.Shared
             // than persisting as a permanently wrong permission.
             int highestUnlockedRegion = RegionUnlockGate.HighestUnlockedRegion(defeatedBosses);
 
+            // The same codex rows, kept as a bitmask so the tick loop can ask
+            // "has this player beaten THIS boss" without a query - which
+            // HighestUnlockedRegion cannot answer for region 5.
+            byte defeatedRegionBossMask = BossFirstClearRules.MaskFrom(defeatedBosses);
+
             // Modul: the tools the ACTIVE CHARACTER IS WEARING.
             //
             // This used to scan both halves of the chest for the best tool
@@ -866,6 +871,7 @@ namespace FolkIdle.Server.Domain.Shared
                 ToolRareFindPct = toolLoadout.RareFindPct,
                 HighestLocationReached = highestLocationReached,
                 HighestUnlockedRegion = highestUnlockedRegion,
+                DefeatedRegionBossMask = defeatedRegionBossMask,
                 HumanMasteryLevel = humanMastery,
                 VilaMasteryLevel = vilaMastery,
                 DraugrMasteryLevel = draugrMastery,

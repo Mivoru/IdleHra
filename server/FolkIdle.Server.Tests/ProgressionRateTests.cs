@@ -209,20 +209,32 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
-        /// The first monster in the game, in isolation. A Field Mouse has 80 HP
-        /// and carries 10 armour against a level-1 character's 15.75, so each
-        /// connecting swing takes off 5.75 and a kill runs about twenty seconds.
-        /// That single number is what the whole pacing model rests on.
+        /// The first monster in the game, in isolation. That single number is
+        /// what the whole pacing model rests on.
+        ///
+        /// It was about twenty seconds and is now about seventy-five, because
+        /// monster health was tripled across the whole ladder deliberately.
+        /// Field Mouse's ATTACK was left alone in the same pass, and that
+        /// exemption is load-bearing rather than an oversight: the first fight
+        /// of a new account happens with nothing equipped, and at 25 damage a
+        /// swing against a 100-point bar - with one bite of food every 2.5
+        /// seconds returning 12 - a new player dies before landing a single
+        /// kill. The measurement said 300 seconds a kill, which was the
+        /// simulation reporting that the game had no entrance.
+        ///
+        /// Drops are rolled PER KILL, so tripling kill time cut drops per hour
+        /// to a third until EquipmentDropChance was tripled to match. The two
+        /// numbers move together; changing one alone silently retunes the other.
         /// </summary>
         [Fact]
-        public void TheFirstMonsterTakesAboutTwentySeconds()
+        public void TheFirstMonsterTakesAboutSeventyFiveSeconds()
         {
             var result = Simulate(ContentRegistry.FirstCanonicalMonsterId, 300, autoAdvance: false);
             double secondsPerKill = 300.0 / Math.Max(1, result.Kills);
 
             _output.WriteLine($"{result.Kills} Field Mice in 300 s = {secondsPerKill:F1} s each, ending at level {result.Level}");
 
-            Assert.InRange(secondsPerKill, 10.0, 40.0);
+            Assert.InRange(secondsPerKill, 40.0, 110.0);
         }
 
         /// <summary>

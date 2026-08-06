@@ -407,6 +407,23 @@ namespace FolkIdle.Server.Engine
 
             MonsterDefinition activeMonster = ContentRegistry.Monsters[fallbackId - 1];
 
+            // Modul: a first-clear boss is bigger here too.
+            //
+            // This path reads the authored definition straight out of the
+            // registry, so without this an offline stretch would fight the
+            // farmable version of a boss the live tick treats as a first clear
+            // - and credit kills the player has not earned. Offline diverging
+            // from live in exactly this way is a mistake this codebase has
+            // already made three times (food healing, warp tool tier, mastery
+            // routing).
+            if (BossFirstClearRules.IsFirstClearPending(payload.DefeatedRegionBossMask, fallbackId))
+            {
+                activeMonster.MaxHp = (int)Math.Min(
+                    int.MaxValue, (long)activeMonster.MaxHp * BossFirstClearRules.FirstClearHpMultiplier);
+                activeMonster.AttackPower = (int)Math.Min(
+                    int.MaxValue, (long)activeMonster.AttackPower * BossFirstClearRules.FirstClearAttackMultiplier);
+            }
+
             int lineageId = payload.SelectedLineageId;
             if (lineageId < 0 || lineageId >= ProgressionEngine.Lineages.Length) lineageId = 0;
             LineageDefinition lineage = ProgressionEngine.Lineages[lineageId];

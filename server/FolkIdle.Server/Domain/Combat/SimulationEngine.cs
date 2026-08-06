@@ -3809,7 +3809,7 @@ namespace FolkIdle.Server.Domain.Combat
                 float warpMitigatedCritMult = Math.Max(1.0f, 1.5f - (warpCombatStats.CritMitigationPct / 100f));
                 float warpExpectedCritMultiplier = 1.0f + warpMonsterCritChance * (warpMitigatedCritMult - 1.0f);
 
-                long warpRawIncomingMilliDamage = (long)(ContentRegistry.GetScaledMonsterAttackPower(monsterId) * 1000 * warpExpectedCritMultiplier);
+                long warpRawIncomingMilliDamage = (long)(BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, monsterId) * 1000 * warpExpectedCritMultiplier);
                 long warpNetIncomingMilliDamage = CombatDamageModel.Mitigate(
                     warpRawIncomingMilliDamage,
                     warpCombatStats.FlatPhysicalArmor,
@@ -3856,7 +3856,7 @@ namespace FolkIdle.Server.Domain.Combat
             if (completedKills <= 0)
             {
                 payload.CurrentMonsterId = monsterId;
-                payload.CurrentMonsterHp = (long)ContentRegistry.GetScaledMonsterMaxHp(monsterId) * 1000L;
+                payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, monsterId) * 1000L;
                 return;
             }
 
@@ -3916,7 +3916,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
 
             payload.CurrentMonsterId = monsterId;
-            payload.CurrentMonsterHp = (long)ContentRegistry.GetScaledMonsterMaxHp(monsterId) * 1000L;
+            payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, monsterId) * 1000L;
         }
 
         // Modul: drains Food1-3 in a fixed order, mirroring
@@ -5503,7 +5503,7 @@ namespace FolkIdle.Server.Domain.Combat
             if (payload.CurrentMonsterId <= 0)
             {
                 payload.CurrentMonsterId = fallbackId;
-                payload.CurrentMonsterHp = (long)ContentRegistry.GetScaledMonsterMaxHp(payload.CurrentMonsterId) * 1000L;
+                payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId) * 1000L;
                 payload.CombatTargetTickAccumulator = 0;
             }
 
@@ -5714,7 +5714,7 @@ namespace FolkIdle.Server.Domain.Combat
                     // floor below caught it, and the deadliest monster in the
                     // game dealt exactly 1 HP per hit - the inverse of the
                     // spawn-already-dead bug on the HP side.
-                    long rawDamageLong = (long)(ContentRegistry.GetScaledMonsterAttackPower(payload.CurrentMonsterId) * 1000L * monsterCritMult);
+                    long rawDamageLong = (long)(BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId) * 1000L * monsterCritMult);
                     int rawDamage = rawDamageLong >= int.MaxValue ? int.MaxValue : (int)rawDamageLong;
 
                     // Step 3+4 (Armor then Block, combined): armor subtracts
@@ -5954,6 +5954,16 @@ namespace FolkIdle.Server.Domain.Combat
                     payload.HighestUnlockedRegion = clearedBossRegion + 1;
                 }
 
+                // Modul: and the boss stops being a first clear.
+                //
+                // Set separately from the door above, and deliberately NOT
+                // behind its `< LastRegion` guard: clearing region 5's boss
+                // opens no sixth region, so a mask folded into that condition
+                // would leave the last boss in the game permanently at
+                // first-clear stats.
+                payload.DefeatedRegionBossMask =
+                    BossFirstClearRules.MarkDefeated(payload.DefeatedRegionBossMask, activeMonster.Id);
+
                 AddSeasonalXp(ref payload, seasonalCombatXp);
                 
                 if (liveSessionContexts.TryGetValue(payload.PlayerId, out var sessionCtx))
@@ -6094,7 +6104,7 @@ namespace FolkIdle.Server.Domain.Combat
                 }
 
                 payload.CurrentMonsterId = fallbackId;
-                payload.CurrentMonsterHp = (long)ContentRegistry.GetScaledMonsterMaxHp(payload.CurrentMonsterId) * 1000L;
+                payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId) * 1000L;
                 payload.CombatTargetTickAccumulator = 0;
             }
         }

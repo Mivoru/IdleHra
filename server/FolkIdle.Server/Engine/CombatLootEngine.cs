@@ -348,7 +348,17 @@ namespace FolkIdle.Server.Engine
         // region, so a separate rate would be a knob with nothing on the end
         // of it. Test_Drops_HowLongUntilAPlayerIsDressed prints what this
         // buys, and is the thing to re-read before touching it again.
-        public const double EquipmentDropChance = 0.050;
+        //
+        // Modul: 15%, not 5% - and this is a THIRD change nobody asked for on
+        // its own. Monster HP was tripled to make the ladder bite, which
+        // triples how long a kill takes, and a drop is rolled PER KILL. Left at
+        // 5% the raise would have quietly undone the drop-rate decision made
+        // two changes earlier, so drops per HOUR are held where they were
+        // rather than being cut to a third by a side effect.
+        //
+        // If a slower drip is wanted, this is the one line to change - the
+        // difficulty raise does not depend on it.
+        public const double EquipmentDropChance = 0.150;
 
         // Modul: approximate backpack capacity used purely to decide
         // whether an equipment drop must be redirected to overflow

@@ -7564,13 +7564,27 @@ namespace FolkIdle.Server.Tests
 
             foreach (var row in measured)
             {
+                // Modul: 180s and 900s, up from 90 and 600, because monster HP
+                // was tripled on purpose.
+                //
+                // ON ARRIVAL is the pessimistic end of the range - the gear a
+                // player walks in with, before farming a single thing in the
+                // region. Region 1's "arrival" is a character wearing nothing
+                // at all, which is why its numbers are the worst in the table
+                // and why they are not a problem: those four monsters ARE the
+                // gearing-up.
+                //
+                // The boss figures here are the FARMED stats. A boss carries
+                // five times that health until it falls once (see
+                // BossFirstClearRules), and a first clear is explicitly not
+                // something arrival gear is meant to manage.
                 if (row.Index < 4)
                 {
-                    Assert.InRange(row.Seconds, 12.0, 90.0);
+                    Assert.InRange(row.Seconds, 12.0, 180.0);
                 }
                 else
                 {
-                    Assert.InRange(row.Seconds, 60.0, 600.0);
+                    Assert.InRange(row.Seconds, 300.0, 900.0);
                 }
             }
         }

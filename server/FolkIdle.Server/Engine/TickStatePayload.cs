@@ -401,6 +401,24 @@ namespace FolkIdle.Server.Engine
         // One kill anywhere in a location is what counts as having reached it.
         public int HighestLocationReached;
 
+        // Modul: which region bosses this player has already put down, one bit
+        // per region.
+        //
+        // A boss is five times its health and twice its attack until it falls
+        // once - see BossFirstClearRules - so the tick loop has to know, and
+        // the tick loop has no database in reach. The authority is still the
+        // monster codex; this is a cache filled on load and updated when a boss
+        // dies, exactly like HighestUnlockedRegion below.
+        //
+        // HighestUnlockedRegion cannot stand in for it: clearing region 5's
+        // boss leaves that number at 5, because there is no sixth region to
+        // open, so the last boss in the game would read as never beaten and
+        // stay at first-clear stats forever.
+        //
+        // Server-side only. TickStatePayload is not the wire packet, so this
+        // costs nothing on the network and needs no protocol regeneration.
+        public byte DefeatedRegionBossMask;
+
         // Modul: region progression. The highest region this player may ENTER,
         // which is also the highest RegionTier of gear they may wear - see
         // RegionUnlockGate. 1 for a new account, rising by one each time a
