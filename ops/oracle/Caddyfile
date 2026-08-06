@@ -46,6 +46,35 @@ folkidle.duckdns.org, 92-5-0-94.sslip.io {
 	#
 	# Same-origin is worth the care - no CORS relationship to configure between
 	# the two halves, and one certificate instead of two.
+	# The response carried NO security headers at all - checked against the
+	# live site, not assumed. Each of these closes something specific:
+	#
+	#   HSTS            the first visit can still be intercepted over http://,
+	#                   and a redirect does not prevent that - this makes the
+	#                   browser refuse http for this host afterwards. One year,
+	#                   which is what preload lists ask for, and safe here
+	#                   because there is nothing on this host that is not https.
+	#   nosniff         stops a browser deciding a .json or a user upload is
+	#                   really HTML and running it.
+	#   frame-ancestors an idle game is exactly the kind of page someone frames
+	#                   invisibly to steal clicks on. Nothing needs to embed it.
+	#   Referrer-Policy account pages should not leak their path to whatever a
+	#                   player clicks through to.
+	#   Permissions     the game asks for no camera, microphone or location, so
+	#                   saying so removes the question.
+	#
+	# No Content-Security-Policy yet, deliberately: the bundle inlines what Vite
+	# inlines and a CSP written blind breaks the page in ways that look like
+	# random bugs. It wants a pass with the built output in front of us.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Content-Security-Policy "frame-ancestors 'none'"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+		-Server
+	}
+
 	@websocket {
 		header Connection *Upgrade*
 		header Upgrade websocket

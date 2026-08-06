@@ -753,6 +753,29 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: THE AUTHENTICATION ENDPOINTS HAVE A BUDGET NOW.
+                    //
+                    // Eight wrong passwords in a row used to return eight plain
+                    // 401s with nothing in between. Unlimited guessing against
+                    // any known email, and - because every attempt runs PBKDF2
+                    // at 210,000 iterations - a way to spend the box's CPU from
+                    // a laptop. See AuthThrottle on why the budget counts
+                    // requests rather than failures, and why it reads
+                    // X-Forwarded-For rather than the socket's address.
+                    if (requestPath == "/api/v1/auth/login"
+                        || requestPath == "/api/v1/auth/register"
+                        || requestPath == "/api/v1/auth/check-email"
+                        || requestPath == "/api/v1/auth/oauth-link")
+                    {
+                        if (!AuthThrottle.TryConsume(AuthThrottle.ResolveClientAddress(context.Request)))
+                        {
+                            context.Response.StatusCode = 429;
+                            context.Response.Headers["Retry-After"] = "60";
+                            context.Response.Close();
+                            continue;
+                        }
+                    }
+
                     if (requestPath == "/api/v1/auth/login" && context.Request.HttpMethod == "POST")
                     {
                         // Modul: dispatched fire-and-forget, not awaited
@@ -794,9 +817,32 @@ namespace FolkIdle.Server.Network
 
                     if (requestPath == "/admin/liveops" && context.Request.HttpMethod == "POST")
                     {
+                        // Modul: NO DEFAULT PASSWORD. This read
+                        // `?? "supersecretadmin123"`, and this repository is
+                        // public - so on any deployment that had not set the
+                        // variable, the admin credential was a string anybody
+                        // could read on GitHub. It happened to be unreachable
+                        // from the internet, because ops/oracle/Caddyfile's api
+                        // matcher does not list /admin/* and the static file
+                        // server answers it instead. That is an accident of a
+                        // path list, not a decision, and it would have ended the
+                        // first time someone added a proxy rule.
+                        //
+                        // Unset now means CLOSED. An operator who wants the
+                        // endpoint sets a key; nobody inherits one.
                         string secretKey = context.Request.Headers["X-Admin-Secret-Key"] ?? string.Empty;
-                        string expectedKey = Environment.GetEnvironmentVariable("ADMIN_SECRET_KEY") ?? "supersecretadmin123";
-                        if (secretKey != expectedKey)
+                        string expectedKey = Environment.GetEnvironmentVariable("ADMIN_SECRET_KEY") ?? string.Empty;
+
+                        // Constant-time, like every other secret comparison in
+                        // this codebase - `!=` on strings returns as soon as two
+                        // bytes differ, which leaks the prefix a byte at a time.
+                        bool keyMatches = expectedKey.Length > 0
+                            && secretKey.Length == expectedKey.Length
+                            && System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+                                System.Text.Encoding.UTF8.GetBytes(secretKey),
+                                System.Text.Encoding.UTF8.GetBytes(expectedKey));
+
+                        if (!keyMatches)
                         {
                             context.Response.StatusCode = 401;
                             context.Response.Close();
