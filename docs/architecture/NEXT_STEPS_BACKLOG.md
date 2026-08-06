@@ -142,29 +142,46 @@ Two further errors in the same model, both fixed:
   stats off two different affix curves, and the chosen one does not feed the
   bar at all. It matters because a bite heals a PERCENTAGE of max HP.
 
-## OPEN: gathering is now about 57% of playtime, and the lever is fishing speed
+## CLOSED: gathering was most of the playtime, and the tool curve was why
 
-Recorded rather than hidden - `GatheringShareTests` prints it every run. The
-intent was a fifth, maybe a third.
+Gathering reached 78% of region 4 against an intent of a fifth. It is back to
+36%, 44%, 35%, 27%, 17% across regions 1-5 - and it FALLS as the game goes on,
+which is the right shape, because that is where the gathering is heaviest.
 
-What pushed it past half is the ladder above: each region border nearly doubles
-incoming damage, and damage taken is fish eaten. **Nothing about fishing itself
-changed.** The two are separable - the knob is fishing THROUGHPUT (how long one
-fish takes to catch), which is independent of how hard anything hits.
+**Nothing about the monsters was softened.** The fix was the tool curve, which
+ran +10% to +200% speed across the ENTIRE game: the best tool in existence was
+three times a bare hand and only 2.7 times the first tool a player ever crafts.
+Fishing therefore barely improved across five regions while the reason to fish
+grew steeply, and the gap became the game.
 
-Softening monsters would fix the share by undoing the gear gating this pass
-exists to deliver, so it is deliberately NOT the answer. The decision to make
-is how much faster a fish should come in.
+**The curve is geometric now, 1.35x a tier** - Void Bark is +1912%, twenty
+times a bare hand. Every gear band is two tiers, so the within-region upgrade
+is worth about 1.35x whichever band a player is in: a steady reason to go back
+to the forge rather than a payoff that only exists at the end of the game.
 
-**Read these three first if you are picking this up cold:**
+### Two defects found while wiring it
 
-- `## The suite was red, and the red was not being read` - the "155/155" in
-  older commit messages is a FILTERED SUBSET. Run `dotnet test` with no filter.
-- `## The health pool, finally measured` - the one number the whole food
-  economy turns on, and the fixture artefact that made it look like 100 HP
-  everywhere.
-- `## Open` - what is left, including the one structural thing that would make
-  the balance robust rather than finely tuned.
+- **`gather_speed_pct` affixes did nothing at all.** `StateCheckpointManager`
+  computed the figure off the equipped tools, stored it on the payload as
+  `ToolGatherSpeedPct` and shipped it to the client - and no code read it back.
+  Same shape as the five "output side never wired" defects found before it: the
+  input half complete, convincing, and connected to nothing.
+- **Offline gathering kept a private copy of the speed formula**, and the copy
+  predated the fix to the live one: it read `CachedCurrentToolTier`, which is
+  the FORGE BUILDING'S level rather than any tool. No matching tool, no
+  percentage curve, no village bonus, no affixes. A player who logged out
+  mid-fishing came back to a different game than the one they left. Both paths
+  call `GatheringToolEngine.ComputeRequiredTicks` now.
+
+### The flip side, recorded
+
+Tools are cheap in TIME now - 12% of region 1 down to 2.6% of region 5 - because
+a tool makes gathering its own materials fast. The `toolShare` floor moved from
+8% to 2% to record that. What a tool costs in MATERIALS did not change, and
+whether it is a real investment is what `Test_Gathering_EveryToolTierPaysBackIts
+OwnCost` checks. **If tools should feel like a bigger commitment the dial is the
+recipe material cost, not the speed curve** - roughly threefold puts region 3
+back near 17% and leaves the overall share inside its band.
 
 ## Where it runs
 

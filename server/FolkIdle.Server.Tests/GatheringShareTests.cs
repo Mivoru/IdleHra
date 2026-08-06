@@ -100,8 +100,23 @@ namespace FolkIdle.Server.Tests
             // the recipe cost ramp was sized for and what it delivers.
             foreach (var (region, m) in models)
             {
+                // Modul: the floor dropped from 8% to 2%, and the reason is the
+                // change itself rather than a slipped target.
+                //
+                // A tool now multiplies gathering speed by up to twenty, so the
+                // wood and ore behind one costs far less TIME than it used to -
+                // measured at 12% of region 1 falling to 2.6% of region 5. What
+                // the tool costs in MATERIALS did not change, and whether it is
+                // a real investment is what Test_Gathering_EveryToolTierPaysBack
+                // OwnCost checks; this band only ever guarded against the two
+                // extremes.
+                //
+                // If tools should feel like a bigger commitment, the dial is
+                // the recipe material cost, not the speed curve - raising costs
+                // threefold puts region 3 back near 17% and still leaves the
+                // overall gathering share inside its band.
                 double toolShare = m.ToolHours / (m.ToolHours + m.CombatHours);
-                Assert.InRange(toolShare, 0.08, 0.26);
+                Assert.InRange(toolShare, 0.02, 0.26);
             }
 
             // THE FOOD HALF ROSE ON PURPOSE, and this records the trade rather
@@ -123,17 +138,21 @@ namespace FolkIdle.Server.Tests
             // Region 2 is the outlier and is worth a look when there is play
             // data: its health pool jumps sevenfold from region 1 while its
             // fish improve by one tier.
-            // MEASURED AT ABOUT 67-78%, AND THAT IS A FINDING RATHER THAN A
-            // TARGET. Recorded here so the number is visible instead of being
+            // BACK INSIDE THE TARGET, AND FALLING ACROSS THE GAME: 36%, 44%,
+            // 35%, 27%, 17% from region 1 to 5. Recorded here so the number is visible instead of being
             // hidden behind a band wide enough to swallow it.
             //
-            // The intent was a fifth, maybe a third. What pushed it past half
-            // is the monster ladder: every monster in a region is a gear check
-            // now, each region border nearly doubles incoming damage, and the
-            // whole ladder was then raised threefold on top of that. Damage
-            // taken is fish eaten. Nothing about fishing itself changed, and
-            // that is exactly why the number moved so far without anyone
-            // touching a fishing number.
+            // It reached 78% when the monster ladder was raised - every monster
+            // a gear check, each border nearly doubling incoming damage, then
+            // the whole thing tripled. Damage taken is fish eaten.
+            //
+            // What brought it back was not softening any of that. It was the
+            // TOOL CURVE: tools ran +10% to +200% speed across the entire game,
+            // so fishing barely improved across five regions while the reason
+            // to fish grew steeply. At 1.35x a tier the best rod is twenty
+            // times a bare hand, and the share now FALLS as the game goes on -
+            // which is the right shape, because that is where the gathering is
+            // heaviest.
             //
             // The lever that separates the two is fishing THROUGHPUT, not
             // monster damage - how long one fish takes to catch, which is
@@ -276,8 +295,12 @@ namespace FolkIdle.Server.Tests
                 units += ToolSetCostForTier(tier);
             }
 
-            int threshold = NodeThresholdForRegion(region, professionType: 0);
-            return units * threshold / (double)TicksPerSecond / 3600.0;
+            // Modul: the PREVIOUS tier's axe. You gather the wood for a tier-N
+            // tool holding tier N-1 - that is the whole shape of the loop, and
+            // modelling it with the tool it is about to produce prices the
+            // investment at what it costs after you have already made it.
+            return units * TicksPerUnit(region, professionType: 0, tier: Math.Max(0, region * 2 - 2))
+                / (double)TicksPerSecond / 3600.0;
         }
 
         // Fish, for the larder. Consumption rather than a shopping list: the
@@ -332,8 +355,31 @@ namespace FolkIdle.Server.Tests
             double biteCeiling = combatHours * 3600.0
                 / (Domain.Combat.SimulationEngine.AutoEatCooldownTicks / 10.0);
             double fishNeeded = Math.Min(fishWanted, biteCeiling);
-            int threshold = NodeThresholdForRegion(region, professionType: 2);
-            return fishNeeded * threshold / (double)TicksPerSecond / 3600.0;
+            // Fishing happens with the region's own rod - the lower of its two
+            // bands, which is what a player has on arrival rather than what
+            // they leave with.
+            return fishNeeded * TicksPerUnit(region, professionType: 2, tier: region * 2 - 1)
+                / (double)TicksPerSecond / 3600.0;
+        }
+
+        /// <summary>
+        /// Ticks per unit gathered, WITH the tools a player in this region owns.
+        ///
+        /// Modul: this model used to gather bare-handed - the raw node
+        /// threshold, no tool, no mastery, no village building. That was
+        /// tolerable while the best tool in the game was worth +200% and every
+        /// region looked much alike; it stopped being tolerable the moment the
+        /// tool curve became the lever that decides how much of the game is
+        /// spent gathering. A model blind to tools cannot measure a change to
+        /// tools.
+        ///
+        /// The tier taken is the LOWER of the region's two bands - what a
+        /// player has on arrival, not what they leave with.
+        /// </summary>
+        private static int TicksPerUnit(int region, int professionType, int tier)
+        {
+            int threshold = NodeThresholdForRegion(region, professionType);
+            return GatheringToolEngine.ComputeRequiredTicks(threshold, 0, tier, 0);
         }
 
         private static int BestArmourForRegion(int region)

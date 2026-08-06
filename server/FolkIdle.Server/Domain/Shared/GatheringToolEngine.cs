@@ -21,16 +21,31 @@ namespace FolkIdle.Server.Domain.Shared
     // (TickStatePayload.CachedCurrentToolTier) - no string ids anywhere
     // near the tick path, per the zero-allocation constraint. The ten
     // named tool families map onto tiers 1-10:
-    //   1: Birch Tools            +10 percent speed  (Tier 1 gear band)
-    //   2: Golden Birch Tools     +20 percent speed
-    //   3: Willow Tools           +25 percent speed  (Tier 2 gear band)
-    //   4: Whispering Willow Tools +40 percent speed
-    //   5: Acacia Tools           +50 percent speed  (Tier 3 gear band)
-    //   6: Ironwood Tools         +75 percent speed
-    //   7: Frostpine Tools        +85 percent speed  (Tier 4 gear band)
-    //   8: Glacier Pine Tools     +120 percent speed
-    //   9: Ebon Tools             +150 percent speed (Tier 5 gear band)
-    //  10: Void Bark Tools        +200 percent speed
+    //   1: Birch Tools             +35 percent speed  (Tier 1 gear band)
+    //   2: Golden Birch Tools      +82 percent
+    //   3: Willow Tools           +146 percent        (Tier 2 gear band)
+    //   4: Whispering Willow Tools +232 percent
+    //   5: Acacia Tools           +348 percent        (Tier 3 gear band)
+    //   6: Ironwood Tools         +505 percent
+    //   7: Frostpine Tools        +717 percent        (Tier 4 gear band)
+    //   8: Glacier Pine Tools    +1003 percent
+    //   9: Ebon Tools            +1390 percent        (Tier 5 gear band)
+    //  10: Void Bark Tools       +1912 percent
+    //
+    // Modul: THE CURVE IS GEOMETRIC NOW, 1.35x a tier, where it used to run
+    // +10% to +200% - a top-tier tool being three times a bare hand, and only
+    // 2.7 times the very first tool a player crafts.
+    //
+    // That flatness is why gathering grew into most of the playtime. Food
+    // demand scales with how hard monsters hit, and monsters were raised
+    // steeply on purpose; fishing speed improved by almost nothing across the
+    // same five regions, so the gap became the game. A tool has to be worth
+    // gathering the wood and ore to build it, and at +10 percent it was not.
+    //
+    // The within-region upgrade is what a player actually feels: every band is
+    // two tiers, and the second is about 1.35x the first whichever band they
+    // are in - a steady reason to go back to the forge rather than a payoff
+    // that only exists at the end of the game.
     // The same table covers Axes, Pickaxes, and Fishing Rods - the tool
     // tier accelerates whichever gathering profession the active node
     // belongs to.
@@ -40,20 +55,22 @@ namespace FolkIdle.Server.Domain.Shared
         public const int VillageYieldBonusPctPerLevel = 5;
 
         // Pure integer switch - zero allocation, safe on the 10Hz tick.
+        // Tabulated rather than computed so the tick does no floating-point
+        // work; the values are 100 * (1.35^tier - 1), rounded.
         public static int GetToolSpeedBonusPct(int toolTier)
         {
             return toolTier switch
             {
-                1 => 10,
-                2 => 20,
-                3 => 25,
-                4 => 40,
-                5 => 50,
-                6 => 75,
-                7 => 85,
-                8 => 120,
-                9 => 150,
-                10 => 200,
+                1 => 35,
+                2 => 82,
+                3 => 146,
+                4 => 232,
+                5 => 348,
+                6 => 505,
+                7 => 717,
+                8 => 1003,
+                9 => 1390,
+                10 => 1912,
                 _ => 0
             };
         }
@@ -66,6 +83,20 @@ namespace FolkIdle.Server.Domain.Shared
         // arithmetic; a +X percent speed bonus divides the tick
         // requirement by (100 + X)/100, floored at MinRequiredTicks.
         public static int ComputeRequiredTicks(int baseTickThreshold, int masteryLevel, int toolTier, int villageProductionLevel)
+            => ComputeRequiredTicks(baseTickThreshold, masteryLevel, toolTier, villageProductionLevel, 0);
+
+        /// <param name="toolAffixSpeedPct">
+        /// The gather_speed_pct rolled on the tools the character is WEARING.
+        ///
+        /// Modul: this parameter is new, and its absence was a dead end.
+        /// StateCheckpointManager computed the figure off the equipped tools,
+        /// stored it on the payload as ToolGatherSpeedPct and shipped it to the
+        /// client - and no code anywhere read it back. Every gather-speed affix
+        /// ever rolled did nothing at all, which is the same shape of defect as
+        /// the five "output side never wired" ones found before it: the input
+        /// half is complete, convincing, and connected to nothing.
+        /// </param>
+        public static int ComputeRequiredTicks(int baseTickThreshold, int masteryLevel, int toolTier, int villageProductionLevel, int toolAffixSpeedPct)
         {
             int ticks = baseTickThreshold - (masteryLevel * 2) - toolTier;
             if (ticks < MinRequiredTicks)
@@ -77,6 +108,10 @@ namespace FolkIdle.Server.Domain.Shared
             if (villageProductionLevel > 0)
             {
                 totalSpeedBonusPct += villageProductionLevel * VillageYieldBonusPctPerLevel;
+            }
+            if (toolAffixSpeedPct > 0)
+            {
+                totalSpeedBonusPct += toolAffixSpeedPct;
             }
 
             if (totalSpeedBonusPct > 0)

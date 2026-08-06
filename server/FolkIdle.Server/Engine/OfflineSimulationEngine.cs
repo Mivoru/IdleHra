@@ -364,8 +364,30 @@ namespace FolkIdle.Server.Engine
             // player's mining level to do it. Asked of SimulationEngine, which
             // owns the mapping.
             int masteryLevel = Domain.Combat.SimulationEngine.GetMasteryLevel(ref payload, node.ProfessionType);
-            int requiredTicks = node.BaseTickThreshold - (masteryLevel * 2) - payload.CachedCurrentToolTier;
-            if (requiredTicks < 2) requiredTicks = 2;
+
+            // Modul: THE SAME FUNCTION THE LIVE TICK CALLS, at last.
+            //
+            // This kept its own private copy of the formula, and the copy was
+            // the version from before the live one was fixed: it read
+            // CachedCurrentToolTier, which is the FORGE BUILDING'S level rather
+            // than any tool, so an hour offline gathered at a speed set by a
+            // building - no matching tool, no percentage curve, no village
+            // production bonus, no affixes. A player logging out mid-fishing
+            // came back to a different game than the one they left.
+            int toolTier = node.ProfessionType switch
+            {
+                0 => payload.AxeToolTier,
+                1 => payload.PickaxeToolTier,
+                _ => payload.RodToolTier
+            };
+            int villageProductionLevel = node.ProfessionType switch
+            {
+                0 => payload.LumberjackLevel,
+                1 => payload.MineLevel,
+                _ => 0
+            };
+            int requiredTicks = Domain.Shared.GatheringToolEngine.ComputeRequiredTicks(
+                node.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel, payload.ToolGatherSpeedPct);
 
             double actionIntervalSeconds = requiredTicks / 10.0;
             double totalActionsDouble = elapsedSeconds / actionIntervalSeconds;

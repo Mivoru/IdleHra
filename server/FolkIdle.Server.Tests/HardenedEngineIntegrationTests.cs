@@ -7750,9 +7750,20 @@ namespace FolkIdle.Server.Tests
             }
             Assert.True(previous < noTool, "The best tool family must strictly accelerate gathering.");
 
-            // Void Bark (+200 percent) roughly triples throughput:
-            // (200 - 10) * 100 / 300 = 63.
-            Assert.Equal(63, GatheringToolEngine.ComputeRequiredTicks(baseThreshold, 0, 10, 0));
+            // Void Bark is +1912 percent now, not +200: (200 - 10) * 100 / 2012
+            // = 9 ticks against a bare-handed 200. The old curve made the best
+            // tool in the game three times a bare hand and only 2.7 times the
+            // very first tool a player crafts, which is why gathering grew into
+            // most of the playtime - see GatheringToolEngine.
+            Assert.Equal(9, GatheringToolEngine.ComputeRequiredTicks(baseThreshold, 0, 10, 0));
+
+            // Modul: and the affixes rolled on a tool now count. They were
+            // computed, stored on the payload and read by nobody - every
+            // gather_speed_pct ever rolled did nothing at all.
+            int withoutAffixes = GatheringToolEngine.ComputeRequiredTicks(baseThreshold, 0, 5, 0, 0);
+            int withAffixes = GatheringToolEngine.ComputeRequiredTicks(baseThreshold, 0, 5, 0, 200);
+            Assert.True(withAffixes < withoutAffixes,
+                "a gather-speed affix must actually reduce the tick requirement");
 
             // Village production building stacks its +5 percent per level.
             int withoutMill = GatheringToolEngine.ComputeRequiredTicks(baseThreshold, 0, 1, 0);

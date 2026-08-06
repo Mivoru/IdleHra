@@ -5312,7 +5312,7 @@ namespace FolkIdle.Server.Domain.Combat
                     1 => payload.PickaxeToolTier,
                     _ => payload.RodToolTier
                 };
-                int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel);
+                int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel, payload.ToolGatherSpeedPct);
                 payload.RequiredProgressTicks = requiredTicks;
                 payload.GatheringProgressTicks++;
 
