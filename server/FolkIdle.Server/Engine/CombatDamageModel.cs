@@ -157,9 +157,47 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>The live tick's attack cadence, so nothing re-derives it.</summary>
+        /// <summary>
+        /// ATTACK SPEED WAS READ AS A FRACTION AND WRITTEN AS A PERCENT.
+        ///
+        /// Every other percentage stat on CombatStats is consumed by dividing
+        /// by 100 - crit chance, block strength, lifesteal. This one was not:
+        /// it was `1500 * (1 - AttackSpeedPct)` directly, so a value shaped like
+        /// "11 percent" meant eleven HUNDRED percent.
+        ///
+        /// StatsCalculator feeds it from two places and both are percent-
+        /// shaped. DEX contributes `dex * 0.05` against a documented "+0.05%
+        /// Attack Speed per point", and affix totals arrive in tenths of a
+        /// percent divided by ten. So a character passed DEX 20 - which is
+        /// level ten or so - and the interval went negative and slammed into
+        /// the 200 ms floor.
+        ///
+        /// EVERY PLAYER PAST ABOUT LEVEL TEN WAS ATTACKING AT 200 ms INSTEAD OF
+        /// 1500. Seven and a half times the intended rate, for the whole game.
+        /// It is the answer to a live report of reaching level 49 in an hour
+        /// with 86,000 gold, of bosses in every region dying "like butter" to
+        /// starting gear, and of monsters whose health bar never appeared to
+        /// move - they were dying inside a single swing.
+        ///
+        /// It also silently invalidated every pacing figure ever measured here,
+        /// because the model computes with DEX 0 and therefore never left
+        /// 1500 ms while real characters never stayed there.
+        ///
+        /// Read as a percentage now, like its siblings, and CAPPED: attack
+        /// speed is multiplicative with everything else a player stacks, so
+        /// without a ceiling the affixes alone reach the floor again. Sixty
+        /// percent is a real, large investment - it nearly triples damage over
+        /// time - and it cannot become an eighth of a second.
+        /// </summary>
+        public const float MaxAttackSpeedReduction = 0.60f;
+
         public static int AttackIntervalMs(in CombatStats stats)
         {
-            int intervalMs = (int)(1500 * (1.0f - stats.AttackSpeedPct));
+            float reduction = Math.Clamp(stats.AttackSpeedPct / 100f, 0f, MaxAttackSpeedReduction);
+            // Rounded rather than truncated: 1500 * (1 - 0.6) lands a hair
+            // under 600 in float, and a cap that reports 599 invites someone to
+            // "fix" the constant.
+            int intervalMs = (int)Math.Round(1500.0 * (1.0 - reduction));
             return intervalMs < 200 ? 200 : intervalMs;
         }
 

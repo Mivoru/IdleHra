@@ -5522,8 +5522,13 @@ namespace FolkIdle.Server.Domain.Combat
             var activeMonster = ContentRegistry.Monsters[payload.CurrentMonsterId - 1];
 
             // Player attacks monster
-            int playerAttackSpeedMs = (int)(1500 * (1.0f - combatStats.AttackSpeedPct));
-            if (playerAttackSpeedMs < 200) playerAttackSpeedMs = 200; // Hard cap attack speed
+            // Modul: the second copy of the interval formula, and the one that
+            // decides what actually happens. See CombatDamageModel - attack
+            // speed is a PERCENT like every other *Pct on CombatStats, and this
+            // read it as a fraction, so every character past about DEX 20 sat
+            // on the 200 ms floor at seven and a half times the intended swing
+            // rate.
+            int playerAttackSpeedMs = CombatDamageModel.AttackIntervalMs(in combatStats);
 
             // Modul: attack cadence fix, 2026-08-02.
             //
