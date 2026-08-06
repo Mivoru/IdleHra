@@ -271,13 +271,11 @@ rather than the middle, and the honest reason to leave it there is that the
 health pool model still ignores `flat_hp` affixes, which can only make the bar
 bigger and the share smaller.
 
-**Still open, and now clearly stated: armour subtracts rather than reduces.**
-Net damage is `attack - armour`, so it swings wildly with how well geared a
-particular player is - the same monster is harmless to one player and lethal to
-another a few pieces behind. Every number above is therefore tuned for a player
-in best-in-slot gear for their region. A percentage-based mitigation would make
-all of this robust instead of finely balanced, and it is a change to
-`CombatDamageModel` rather than to data.
+**Armour subtracted rather than reduced - SINCE FIXED, see "Armour reduces
+now" above.** Kept because the numbers in this section were all tuned under
+subtraction and only make sense against it: monster attack had to out-scale the
+armour table, so region 5's strongest hit for 3,290 where it now hits for 80.
+If a figure here disagrees with one above, the one above is current.
 
 **Known flake, do not chase it as a regression.**
 `Test_BreedingPair_GrantedRacePairCanBreedAndSameSexIsRefused` failed once in a
@@ -389,19 +387,48 @@ on another.
   than failed, so everything after the market stopped running - and nothing
   said so, because the summary line never printed.
 
+## Armour reduces now - SHIPPED, and it moved everything
+
+`raw * K / (K + armour)` in `CombatDamageModel.Mitigate`, with K the armour
+that halves damage, taken from the monster's REGION rather than from the
+defender - an armour term derived from the defender's own armour cancels out
+and stops being a stat. Best-in-slot takes half, half-geared takes two thirds,
+over-geared takes a third.
+
+**Monster attack became a statement about the player.** It had to out-scale the
+armour table before, because a hit below the armour it faced did nothing:
+region 5's strongest regular hit for 3,290. It is 80 now - 3.2% of the region's
+health pool, landing as 1.6% after mitigation - and one rule writes every
+region. Incoming damage measures 1.0-1.3% of the bar per second everywhere.
+
+**There were FIVE copies of the subtraction, not four.** The fifth sat in the
+live tick's own outgoing damage - the copy that decides what actually happens -
+and it kept subtracting after the model stopped. Every projection then claimed
+a kill took half as long as it did. `ProjectedKillRateMatchesTheLiveOne` caught
+it inside one run, which is the whole argument for that test existing.
+
+**The first swing at a new monster costs a full interval.** The tick zeroes the
+swing accumulator on respawn, so the timer restarts and the player waits before
+landing anything. The projection modelled continuous swinging and ran fast by
+one interval per kill - invisible at minute-long fights, a sixth of a
+ten-second one. Now in `ExpectedSecondsPerKill`.
+
+Current shape: 22-55 seconds a kill on arrival, 13-22 with the region's own
+gear, gathering 17-32%, regions 2.3 / 11.2 / 57.3 / 258 / 1120 hours. Longer
+than the subtraction model gave, because 25% mitigation on the monster side is
+more than the 5% flat subtraction was worth at region 5.
+
+**Method note worth more than the numbers:** the first hit-point pass scaled
+from a table measured BEFORE the live tick was corrected, and overshot
+fourfold. Measure, change, measure again - never measure, change, then apply
+the first measurement.
+
 ## Open
 
-**Armour subtracts, it does not reduce.** The one worth doing next. Net damage
-is `attack - armour`, so the same monster is harmless to a player in
-best-in-slot gear and lethal to one three pieces behind, and every balance
-number in this handoff is therefore tuned for the geared case. A percentage
-mitigation would make the whole thing robust instead of finely balanced. It is
-a change to `CombatDamageModel`, not to data, and it would let monster attack
-stop being derived from an armour table.
-
-**The health pool ignores `flat_hp` affixes.** CON growth is measured; gear HP
-is not in the model. It can only make the bar bigger and the gathering share
-smaller, so the 33-39% figure is a ceiling rather than a reading.
+**The health pool ignores `flat_hp` affixes.** CON growth is measured - 100 HP
+at level 1, 2,500 by region 5 - but gear HP is not in the model. It can only
+make the bar bigger and the gathering share smaller, so 17-32% is a ceiling
+rather than a reading.
 
 **Nothing is measured against real players.** Every figure here comes from a
 model driving the real tick, which is a much better thing than an estimate and
