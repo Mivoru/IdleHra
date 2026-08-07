@@ -383,7 +383,22 @@ namespace FolkIdle.Server.Models
                 // Rolled through AffixRegistry exactly as a drop would, so the
                 // fixture exercises the same code path players do, including
                 // slot legality and the per-affix rarity roll.
-                const int fixtureRarityTier = 3;
+                // Modul: rarity 9, up from 3, AND a guaranteed health roll
+                // below.
+                //
+                // The fixture is a level-41 character and rarity 3 left it with
+                // 156 max HP, because a Warrior gains NO health from levels -
+                // the entire pool is affixes. Region 2's first monster hits for
+                // 230, so the fixture was two-shot by the weakest thing it is
+                // allowed to fight, and exercise.mjs's combat check became a
+                // coin toss that failed as "combat is broken" whenever the
+                // larder happened to be empty.
+                //
+                // A fixture is supposed to stand in for a player who has been
+                // playing. This one stood in for a level-41 character wearing
+                // starter drops, which is not a player, it is a bug report
+                // waiting to be misread - and it was misread, twice.
+                const int fixtureRarityTier = 9;
                 var seededAffixes = new Dictionary<string, int>();
                 AffixRegistry.RollAffixes(
                     baseItemId,
@@ -391,6 +406,24 @@ namespace FolkIdle.Server.Models
                     itemRarityTier: fixtureRarityTier,
                     affixCount: RarityTier.GetAffixCount(fixtureRarityTier),
                     destination: seededAffixes);
+
+                // Modul: and one health roll per armour piece, guaranteed.
+                //
+                // Rolling affixes the way a drop does is right - it exercises
+                // the real path - but it means the fixture's HEALTH is left to
+                // chance, and health is the one stat with no other source. A
+                // run where flat_hp happened not to roll produced a character
+                // that dies to everything, which reads as a combat defect.
+                if (AffixRegistry.TryGetDefinition("flat_hp", out var fixtureHealth)
+                    && EquipmentSlotEngine.ResolveSlotIndex(baseItemId) > 0)
+                {
+                    string healthKey = AffixRegistry.BuildPayloadKey("flat_hp", 1, AffixRarity.Epic);
+                    if (!seededAffixes.ContainsKey(healthKey))
+                    {
+                        seededAffixes[healthKey] =
+                            AffixRegistry.CalculateMagnitude(fixtureHealth, 3, AffixRarity.Epic);
+                    }
+                }
 
                 var instance = new EquipmentInstance
                 {

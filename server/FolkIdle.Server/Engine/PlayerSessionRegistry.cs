@@ -411,6 +411,16 @@ namespace FolkIdle.Server.Engine
         // lock-free queue, so the tick-thread drain allocates nothing.
         public ConcurrentQueue<ActivityChangeNotification> ActivityChangeQueue { get; } = new();
 
+        // Modul: a payload re-read from the database, waiting to be applied by
+        // the thread that owns _activePlayers.
+        //
+        // ReloadState has to go to the database, which the 10Hz tick must not
+        // wait on - so the read happens on a task and the RESULT comes back
+        // here. Writing the dictionary from that task instead was a data race
+        // against the tick iterating it, and it cost a player their fight: the
+        // symptom was "deployed to Wild Boar, but nothing is happening".
+        public ConcurrentQueue<TickStatePayload> StateReloadQueue { get; } = new();
+
         // Modul: larder - see LarderSlotUpdateNotification.
         public ConcurrentQueue<LarderSlotUpdateNotification> LarderSlotUpdateQueue { get; } = new();
 

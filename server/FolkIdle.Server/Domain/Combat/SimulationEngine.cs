@@ -920,6 +920,18 @@ namespace FolkIdle.Server.Domain.Combat
                 // the queue entry was dropped here, and nothing ever ran. Now
                 // that every unlocked slot is simulated, the change is routed
                 // to whichever slot owns the character.
+                // Modul: reloaded payloads, applied on the thread that owns
+                // the dictionary. Drained before the activity queue so a
+                // reload cannot land on top of an activity change made in the
+                // same frame and undo it.
+                while (_playerRegistry.StateReloadQueue.TryDequeue(out var reloadedPayload))
+                {
+                    if (_activePlayers.ContainsKey(reloadedPayload.PlayerId))
+                    {
+                        AddActivePlayer(reloadedPayload);
+                    }
+                }
+
                 while (_playerRegistry.ActivityChangeQueue.TryDequeue(out var activityChange))
                 {
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, activityChange.PlayerId);
@@ -2594,11 +2606,26 @@ namespace FolkIdle.Server.Domain.Combat
                         // no-op, because the delta has been zeroed.
                         _checkpointManager.FlushStateAndAdvance(ref currentPayload);
 
+                        // Modul: THE RESULT COMES BACK THROUGH A QUEUE, because
+                        // the tick thread owns _activePlayers.
+                        //
+                        // It is a plain Dictionary, and the first version of
+                        // this wrote the reloaded payload into it directly from
+                        // the reload task - a data race against the tick
+                        // iterating that same dictionary. Every other
+                        // cross-thread hand-off in this file goes through a
+                        // queue for exactly this reason; see ActivityChangeQueue
+                        // and the comment on the Deploy path, which fixed this
+                        // same class of bug and produced this same symptom.
+                        //
+                        // The player stays suspended until the reload lands,
+                        // which is correct - their state is in flight - and the
+                        // drain clears it.
                         long reloadPlayerId = currentPayload.PlayerId;
                         SafeDispatchAsync("ReloadState", reloadPlayerId, async () => {
                             var reloaded = await _checkpointManager.LoadPlayerState(reloadPlayerId);
                             reloaded.IsSuspended = false;
-                            AddActivePlayer(reloaded);
+                            _playerRegistry.StateReloadQueue.Enqueue(reloaded);
                         });
                     }
                     else if (cmd.Command == CommandType.ConsumeChronoCore)

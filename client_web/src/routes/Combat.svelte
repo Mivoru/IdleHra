@@ -258,10 +258,23 @@
       {:else if stalled}
         <!-- Deployed, but the simulation is not running. Saying "not in
              combat" here is what made the Fight button look broken. -->
+        <!-- Modul: DO NOT PROMISE A REASON THAT IS NOT THERE.
+             This said "See below for why" unconditionally, and the reason below
+             only renders when the server sent one. When it did not - which is
+             every case where the tick is not running this player at all - the
+             screen pointed at an empty space, which is worse than saying
+             nothing: it tells the player the answer exists and they have
+             missed it. -->
         <p class="stalled">
           Deployed to {deployedTo?.Name ?? `activity ${snap.ActiveActivityId}`}, but nothing is
-          happening. See below for why.
+          happening.{haltMessage ? ' See below for why.' : ''}
         </p>
+        {#if !haltMessage}
+          <p class="dim small">
+            The server has not said why. Standing down and deploying again
+            usually clears it; if it keeps happening, a reload will.
+          </p>
+        {/if}
         <button onclick={stop}>Stand down</button>
       {:else}
         <p class="dim">Not in combat.</p>
