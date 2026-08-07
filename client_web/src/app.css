@@ -61,6 +61,24 @@
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
   --weave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Cpath d='M0 6L6 0' stroke='%23ffffff' stroke-opacity='0.02' stroke-width='1'/%3E%3C/svg%3E");
 
+  /* Cobblestone. A 120px tile of staggered rounded stones with mortar between
+     them - drawn rather than photographed, so it tiles seamlessly and weighs
+     under a kilobyte. Rows are offset by half a stone, which is what stops a
+     hand-made pattern reading as a grid. */
+  --cobble: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='72'%3E%3Cg fill='%23ffffff' fill-opacity='0.035'%3E%3Crect x='2' y='2' width='34' height='20' rx='8'/%3E%3Crect x='42' y='2' width='30' height='20' rx='8'/%3E%3Crect x='78' y='2' width='38' height='20' rx='9'/%3E%3Crect x='-14' y='26' width='32' height='20' rx='8'/%3E%3Crect x='24' y='26' width='38' height='20' rx='9'/%3E%3Crect x='68' y='26' width='28' height='20' rx='7'/%3E%3Crect x='102' y='26' width='32' height='20' rx='8'/%3E%3Crect x='4' y='50' width='30' height='20' rx='8'/%3E%3Crect x='40' y='50' width='36' height='20' rx='9'/%3E%3Crect x='82' y='50' width='32' height='20' rx='8'/%3E%3C/g%3E%3C/svg%3E");
+
+  /* Sawn planks: a board edge every 44px with a darker seam, plus long grain
+     streaks. Horizontal, because that is how a beam sits over a doorway. */
+  --planks: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='44'%3E%3Cg stroke='%23000000' stroke-opacity='0.30'%3E%3Cpath d='M0 0.5H200M0 43.5H200' stroke-width='1'/%3E%3C/g%3E%3Cg stroke='%23000000' stroke-opacity='0.10' fill='none'%3E%3Cpath d='M0 11c40 3 80-4 120 1s60 5 80 2'/%3E%3Cpath d='M0 24c50-4 90 5 130 1s50-3 70-1'/%3E%3Cpath d='M0 35c30 4 70-2 110 2s70 1 90-1'/%3E%3C/g%3E%3Cg stroke='%23ffffff' stroke-opacity='0.05'%3E%3Cpath d='M0 1.5H200M0 44.5H200'/%3E%3C/g%3E%3C/svg%3E");
+
+  /* Forged corner brackets, one per corner. Applied as four positioned
+     background layers rather than pseudo-elements, so they cannot collide with
+     a ::before or ::after a component already uses. */
+  --corner-tl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Cpath d='M1 17V5a4 4 0 014-4h12' fill='none' stroke='%238a6a34' stroke-opacity='0.75' stroke-width='2'/%3E%3Ccircle cx='6' cy='6' r='1.6' fill='%23d8b45a' fill-opacity='0.65'/%3E%3C/svg%3E");
+  --corner-tr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Cpath d='M17 17V5a4 4 0 00-4-4H1' fill='none' stroke='%238a6a34' stroke-opacity='0.75' stroke-width='2'/%3E%3Ccircle cx='12' cy='6' r='1.6' fill='%23d8b45a' fill-opacity='0.65'/%3E%3C/svg%3E");
+  --corner-bl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Cpath d='M1 1v12a4 4 0 004 4h12' fill='none' stroke='%238a6a34' stroke-opacity='0.75' stroke-width='2'/%3E%3Ccircle cx='6' cy='12' r='1.6' fill='%23d8b45a' fill-opacity='0.65'/%3E%3C/svg%3E");
+  --corner-br: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18'%3E%3Cpath d='M17 1v12a4 4 0 01-4 4H1' fill='none' stroke='%238a6a34' stroke-opacity='0.75' stroke-width='2'/%3E%3Ccircle cx='12' cy='12' r='1.6' fill='%23d8b45a' fill-opacity='0.65'/%3E%3C/svg%3E");
+
   /* Modul: the two currencies get names of their own rather than borrowing a
      rarity tier. They appear on nine screens and a player scanning for "can I
      afford this" should find the same colour every time - gold reading as
@@ -395,8 +413,11 @@ body {
   background-color: var(--bg);
   background-image:
     var(--grain),
+    var(--cobble),
     radial-gradient(120% 80% at 50% -10%, rgba(201, 162, 39, 0.09), transparent 60%),
     radial-gradient(100% 100% at 50% 120%, rgba(0, 0, 0, 0.55), transparent 55%);
+  /* The stones tile; the light does not. */
+  background-repeat: repeat, repeat, no-repeat, no-repeat;
   background-attachment: fixed;
 }
 
@@ -495,7 +516,9 @@ button:focus-visible {
 /* --- the header ---------------------------------------------------------- */
 
 header {
-  background-image: var(--grain), linear-gradient(180deg, #241c14, #171209) !important;
+  /* A beam over a doorway: sawn planks, grain, and the light falling down it. */
+  background-image:
+    var(--planks), var(--grain), linear-gradient(180deg, #2b2118, #150f08) !important;
   border-bottom: 1px solid var(--brass) !important;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
 }
@@ -577,8 +600,18 @@ header strong {
 
 .panel {
   /* The component sets `background:` (a shorthand, so it clears the image);
-     only the image is taken back, so each panel keeps its own colour. */
-  background-image: var(--grain), var(--weave) !important;
+     only the image is taken back, so each panel keeps its own colour.
+
+     Four forged brackets, one per corner, then the surface underneath. Corners
+     as BACKGROUND LAYERS rather than ::before/::after: a pseudo-element would
+     collide with whatever a component already uses one for, and several do. */
+  background-image:
+    var(--corner-tl), var(--corner-tr), var(--corner-bl), var(--corner-br),
+    var(--grain), var(--weave) !important;
+  background-repeat:
+    no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat !important;
+  background-position:
+    4px 4px, right 4px top 4px, left 4px bottom 4px, right 4px bottom 4px, 0 0, 0 0 !important;
   border-color: var(--border) !important;
   /* A carved edge: dark line out, brass highlight in. */
   box-shadow:
@@ -605,8 +638,18 @@ header strong {
       0 2px 8px rgba(90, 68, 34, 0.14);
   }
 
+  /* On parchment the cobbles read as dirt rather than as stone, so the page
+     keeps its paper and only the beam stays timber. */
+  body {
+    background-image:
+      var(--grain),
+      radial-gradient(120% 80% at 50% -10%, rgba(255, 255, 255, 0.5), transparent 55%),
+      radial-gradient(100% 100% at 50% 120%, rgba(120, 92, 46, 0.16), transparent 60%);
+  }
+
   header {
-    background-image: var(--grain), linear-gradient(180deg, #efe2c6, #e2d2ae) !important;
+    background-image:
+      var(--planks), var(--grain), linear-gradient(180deg, #efe2c6, #ddc9a0) !important;
   }
 
   header strong {
