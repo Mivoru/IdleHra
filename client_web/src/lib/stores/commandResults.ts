@@ -30,7 +30,10 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   7: 'Guild not found.',
   8: 'The server rejected that.',
   9: 'A bank transaction is already in flight - try again in a moment.',
-  10: 'Already at maximum tier.',
+  // Modul: "maximum" is per GEAR BAND, and saying it flatly was misleading -
+  // a player looking at a rarity 5 of 14 was told it was already maximum. The
+  // cap is 5 for region 1-2 gear, 10 for region 3-4, 13 for region 5.
+  10: 'That piece has reached the highest rarity its gear band allows.',
   // The server no longer returns this - storage is unlimited. Mapped so a
   // stale code cannot render as a bare number.
   11: 'That could not be stored.',
@@ -47,6 +50,13 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   16: 'Fusion needs three items of the same rarity.',
   17: 'You have not reached that location yet.',
   18: 'That region is still locked - defeat the previous region’s boss first.',
+
+  // Modul: the two fusion refusals a player can act on. Several of the forge's
+  // failure paths used to write a line to the SERVER'S console and return
+  // nothing, so a refusal for a fixable reason was indistinguishable from a
+  // broken button - which is how it was reported.
+  19: 'Your Forge is too low a level to produce that rarity. Upgrade it in your village.',
+  20: 'Fusion needs three copies of the SAME item - same piece, same rarity.',
 };
 
 export const COMMAND_RESULT_SUCCESS = 0;

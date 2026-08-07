@@ -5,6 +5,16 @@
   import { executeForgeFusion, rerollAffix, REROLL_OPERATIONS } from '../lib/net/commands';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
+  import { loadContent, type ContentRegistry } from '../lib/net/content';
+
+  // Needed for an item's RegionTier, which decides the fusion ceiling for its
+  // gear band - see bandCapFor below.
+  let registry = $state<ContentRegistry | null>(null);
+  $effect(() => {
+    loadContent()
+      .then((loaded) => (registry = loaded))
+      .catch(() => (registry = null));
+  });
   import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { toDisplayAffixes, AFFIX_RARITY_NAMES, KNOWN_AFFIX_IDS } from '../lib/ui/affixes';
   import Affixes from '../lib/ui/Affixes.svelte';
@@ -35,7 +45,28 @@
   let fusionSacTwo = $state(0);
 
   const fusionTargetItem = $derived(owned.find((i) => i.Id === fusionTarget) ?? null);
-  const atMaxTier = $derived((fusionTargetItem?.QualityTier ?? 0) >= MAX_QUALITY_TIER);
+  // Modul: THE CEILING IS PER GEAR BAND, not a single global 14.
+  //
+  // Mirrors CraftingEngine.GetMaxForgeTierForRegion: region 1-2 gear stops at
+  // rarity 5, region 3-4 at 10, region 5 at the global 13. This screen checked
+  // only the global maximum, so it offered fusion on a rarity-5 piece of
+  // region-1 gear that the server then refused - and the refusal came back as
+  // "Already at maximum tier", which is nonsense next to a 5 out of 14.
+  //
+  // That mismatch, not the Forge level, is the likeliest thing behind "I press
+  // fuse and get an error": it fires on ordinary starter gear, at a rarity a
+  // new player reaches quickly.
+  const SERVER_MAX_QUALITY_TIER = 13;
+
+  function bandCapFor(baseItemId: string | undefined): number {
+    const region = baseItemId ? (registry?.itemsByBaseId.get(baseItemId)?.RegionTier ?? 1) : 1;
+    if (region <= 2) return 5;
+    if (region <= 4) return 10;
+    return SERVER_MAX_QUALITY_TIER;
+  }
+
+  const fusionCap = $derived(bandCapFor(fusionTargetItem?.BaseItemId));
+  const atMaxTier = $derived((fusionTargetItem?.QualityTier ?? 0) >= fusionCap);
 
   // Modul: fusion now takes THREE IDENTICAL items of the SAME RARITY. Once a
   // target is picked, the only legal partners are its exact twins, so the two
@@ -299,8 +330,12 @@
          broken - which is exactly what happened. -->
     <p class="explainer dim small">
       Fusion takes <strong>three identical pieces at the same rarity</strong>
-      and returns one at the next rarity up. Your Forge's level is the ceiling:
-      a level {forgeLevel} Forge cannot produce anything above rarity {forgeLevel}.
+      and returns one at the next rarity up. Two ceilings apply: your Forge's
+      level (currently {forgeLevel}), and the gear band - region 1-2 gear stops
+      at rarity 5, region 3-4 at 10, region 5 at 13.
+      {#if fusionTargetItem}
+        This piece can reach <strong>rarity {fusionCap}</strong>.
+      {/if}
     </p>
     <p class="dim small">
       Rerolls one affix on one item, for gold. Its stat, its rarity and its

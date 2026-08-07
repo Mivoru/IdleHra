@@ -70,6 +70,7 @@ namespace FolkIdle.Server.Domain.Economy
             if (targetItemGuid == sacrificialItem1Guid || targetItemGuid == sacrificialItem2Guid || sacrificialItem1Guid == sacrificialItem2Guid)
             {
                 Console.WriteLine("Fusion failed: Identical items selected.");
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                 return ForgeSplicingResult.InvalidRequest;
             }
 
@@ -129,7 +130,30 @@ namespace FolkIdle.Server.Domain.Economy
                 if (!ClientCommandValidator.ValidateForgeSplicingRequest(ref validationPayload, targetItemGuid, sacrificialItem1Guid, sacrificialItem2Guid, lockedItems))
                 {
                     await transaction.RollbackAsync();
-                    Console.WriteLine("Fusion failed: Integrity gate rejected request.");
+
+                    // Modul: SAY WHICH GATE, because this one covers the two
+                    // refusals a player can actually act on - a Forge too low
+                    // for the rarity being reached for, and an item whose
+                    // affixes are locked. It reported neither: it wrote to the
+                    // server's console and returned, so the screen showed a
+                    // failure with no reason and the player concluded fusion was
+                    // broken. It is the likeliest cause of that report.
+                    int wouldBeTier = 0;
+                    bool anyLocked = false;
+                    for (int i = 0; i < lockedItems.Count; i++)
+                    {
+                        if (lockedItems[i].Id == targetItemGuid) wouldBeTier = lockedItems[i].QualityTier + 1;
+                        if (lockedItems[i].IsAffixLocked) anyLocked = true;
+                    }
+
+                    var gateReason = wouldBeTier > 0 && forgeLevel < wouldBeTier
+                        ? FolkIdle.Server.Network.CommandResultCode.ForgeLevelTooLow
+                        : anyLocked
+                            ? FolkIdle.Server.Network.CommandResultCode.ItemEquipped
+                            : FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure;
+
+                    Console.WriteLine($"Fusion failed: integrity gate rejected request (forge {forgeLevel}, wanted tier {wouldBeTier}, locked {anyLocked}).");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)gateReason);
                     return ForgeSplicingResult.InvalidRequest;
                 }
 
@@ -146,6 +170,9 @@ namespace FolkIdle.Server.Domain.Economy
                 if (targetItem == null || sac1 == null || sac2 == null)
                 {
                     await transaction.RollbackAsync();
+                    // One of the three is no longer yours - sold, fused into
+                    // something else in another tab, or listed on the market.
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                     return ForgeSplicingResult.InvalidRequest;
                 }
 
@@ -153,6 +180,7 @@ namespace FolkIdle.Server.Domain.Economy
                 {
                     await transaction.RollbackAsync();
                     Console.WriteLine("Fusion failed: Items must have identical Base Item IDs.");
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.ItemsNotIdentical);
                     return ForgeSplicingResult.InvalidRequest;
                 }
 

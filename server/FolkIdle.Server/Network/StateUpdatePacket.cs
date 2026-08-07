@@ -136,7 +136,18 @@ namespace FolkIdle.Server.Network
         // which one it is: a locked location is somewhere you have not gone, a
         // locked region is a boss you have not beaten. Replaces LevelTooLow on
         // the equip path - see RegionUnlockGate.
-        RegionLocked = 18
+        RegionLocked = 18,
+
+        // Modul: the two reasons a fusion is refused that a player can DO
+        // something about, and that the forge used to swallow.
+        //
+        // Reported as "I press fuse, I get an error, and nothing happens".
+        // Several of that engine's failure paths wrote a line to the SERVER'S
+        // console and returned - the player was told nothing at all, so a
+        // refusal for a fixable reason was indistinguishable from a broken
+        // button.
+        ForgeLevelTooLow = 19,
+        ItemsNotIdentical = 20
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
