@@ -105,6 +105,32 @@ folkidle.duckdns.org, 92-5-0-94.sslip.io {
 	# so 214 icon requests never touch .NET.
 	handle {
 		root * /srv
+
+		# Modul: EVERY DEPLOY WAS INVISIBLE TO A RETURNING PLAYER.
+		#
+		# Nothing here set Cache-Control, so browsers fell back to HEURISTIC
+		# caching: with a Last-Modified and no explicit policy they may hold a
+		# document for roughly a tenth of its age without asking. index.html is
+		# the one file that names the hashed bundles, so a stale copy of it
+		# pins the whole app to the previous build - new CSS deployed, new JS
+		# deployed, and the player still served last week's filenames.
+		#
+		# Reported as "the graphics look exactly the same": they were, because
+		# the theme was live on the server and the phone was reading an
+		# index.html from before it.
+		#
+		# The two rules are opposites on purpose, which is the standard shape
+		# for a hashed bundle:
+		#   - index.html: never trusted without asking. It is 2 kB.
+		#   - /assets/*: trusted forever. The filename CONTAINS the content
+		#     hash, so a changed file is a different URL and a cached one can
+		#     never be wrong.
+		@immutable path /assets/* /sprites/*
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+
+		@html path / /index.html
+		header @html Cache-Control "no-cache"
+
 		try_files {path} /index.html
 		file_server
 	}
