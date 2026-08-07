@@ -30,10 +30,7 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   7: 'Guild not found.',
   8: 'The server rejected that.',
   9: 'A bank transaction is already in flight - try again in a moment.',
-  // Modul: "maximum" is per GEAR BAND, and saying it flatly was misleading -
-  // a player looking at a rarity 5 of 14 was told it was already maximum. The
-  // cap is 5 for region 1-2 gear, 10 for region 3-4, 13 for region 5.
-  10: 'That piece has reached the highest rarity its gear band allows.',
+  10: 'That piece is already at the highest rarity there is.',
   // The server no longer returns this - storage is unlimited. Mapped so a
   // stale code cannot render as a bare number.
   11: 'That could not be stored.',

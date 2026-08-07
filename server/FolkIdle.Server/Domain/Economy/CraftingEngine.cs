@@ -115,12 +115,27 @@ namespace FolkIdle.Server.Domain.Economy
         // costume of a level check. Same bands, same numbers, said directly:
         // reading it the old way invited someone to "unify" it with a
         // progression gate it never belonged to.
+        /// <summary>
+        /// Modul: THERE IS NO PER-BAND FUSION CEILING ANY MORE.
+        ///
+        /// This capped region 1-2 gear at rarity 5 and region 3-4 at 10, and it
+        /// was the likeliest thing behind "I press fuse and get an error": the
+        /// forge screen checked only the global maximum, so it offered a fusion
+        /// on ordinary starter gear that the server refused, and the refusal
+        /// came back as "already at maximum tier" next to a 5 out of 14.
+        ///
+        /// The rule was also hard to defend on its own terms. Fusion consumes
+        /// three identical pieces at the same rarity - the cost IS the rule -
+        /// and a player who has assembled three of something has earned the
+        /// result whatever region it came from. A second, invisible ceiling on
+        /// top of that only stops people from using the gear they have.
+        ///
+        /// Kept as a function returning the global cap rather than deleted, so
+        /// the callers that ask "what is the ceiling for this region" keep
+        /// asking one place and get one answer.
+        /// </summary>
         public static int GetMaxForgeTierForRegion(int regionTier)
-        {
-            if (regionTier <= 2) return 5;
-            if (regionTier <= 4) return 10;
-            return ForgeSplicingEngine.MaxQualityTier;
-        }
+            => ForgeSplicingEngine.MaxQualityTier;
 
         public async Task ExecuteCraftingAsync(long playerId, int recipeResultItemId)
         {

@@ -45,28 +45,18 @@
   let fusionSacTwo = $state(0);
 
   const fusionTargetItem = $derived(owned.find((i) => i.Id === fusionTarget) ?? null);
-  // Modul: THE CEILING IS PER GEAR BAND, not a single global 14.
+  // Modul: ONE CEILING, and it is the top of the rarity ladder.
   //
-  // Mirrors CraftingEngine.GetMaxForgeTierForRegion: region 1-2 gear stops at
-  // rarity 5, region 3-4 at 10, region 5 at the global 13. This screen checked
-  // only the global maximum, so it offered fusion on a rarity-5 piece of
-  // region-1 gear that the server then refused - and the refusal came back as
-  // "Already at maximum tier", which is nonsense next to a 5 out of 14.
+  // This mirrored a per-gear-band cap - region 1-2 gear stopping at rarity 5 -
+  // which was the likeliest cause of fusion appearing broken on ordinary
+  // starter gear. That rule is gone server-side: fusion already costs three
+  // identical pieces at the same rarity, and a second invisible ceiling on top
+  // of that only stopped people using the gear they had.
   //
-  // That mismatch, not the Forge level, is the likeliest thing behind "I press
-  // fuse and get an error": it fires on ordinary starter gear, at a rarity a
-  // new player reaches quickly.
-  const SERVER_MAX_QUALITY_TIER = 13;
-
-  function bandCapFor(baseItemId: string | undefined): number {
-    const region = baseItemId ? (registry?.itemsByBaseId.get(baseItemId)?.RegionTier ?? 1) : 1;
-    if (region <= 2) return 5;
-    if (region <= 4) return 10;
-    return SERVER_MAX_QUALITY_TIER;
-  }
-
-  const fusionCap = $derived(bandCapFor(fusionTargetItem?.BaseItemId));
-  const atMaxTier = $derived((fusionTargetItem?.QualityTier ?? 0) >= fusionCap);
+  // 14, not 13. The server's old constant read the fourteen tiers as "0-13"
+  // while every item in the game is 1-based, which quietly made Transcendent
+  // the one rarity that exists and cannot be reached.
+  const atMaxTier = $derived((fusionTargetItem?.QualityTier ?? 0) >= MAX_QUALITY_TIER);
 
   // Modul: fusion now takes THREE IDENTICAL items of the SAME RARITY. Once a
   // target is picked, the only legal partners are its exact twins, so the two
@@ -331,11 +321,8 @@
     <p class="explainer dim small">
       Fusion takes <strong>three identical pieces at the same rarity</strong>
       and returns one at the next rarity up. Two ceilings apply: your Forge's
-      level (currently {forgeLevel}), and the gear band - region 1-2 gear stops
-      at rarity 5, region 3-4 at 10, region 5 at 13.
-      {#if fusionTargetItem}
-        This piece can reach <strong>rarity {fusionCap}</strong>.
-      {/if}
+      level (currently {forgeLevel}) is the highest rarity it can produce, and
+      rarity {MAX_QUALITY_TIER} is the top of the ladder.
     </p>
     <p class="dim small">
       Rerolls one affix on one item, for gold. Its stat, its rarity and its

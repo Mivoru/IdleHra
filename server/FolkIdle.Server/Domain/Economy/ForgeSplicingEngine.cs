@@ -50,14 +50,15 @@ namespace FolkIdle.Server.Domain.Economy
         // in before "Luck made real" fixed it the first time.
         private const double MaxForgeFeeDiscount = 0.25;
 
-        // Modul: GAME_DESIGN_SPEC.md/GDD's 14-tier geometric forge formula
-        // requires exactly 3^13 = 1,594,323 Normal item bases to synthesize
-        // one clean Transcendent-tier item, implying a hard ceiling at
-        // tier 13 (tiers 0-13 inclusive, 14 total states) - previously
-        // unenforced anywhere in this method, so QualityTier climbed
-        // unbounded on every successful fusion past the intended endgame
-        // cap.
-        public const int MaxQualityTier = 13;
+        // Modul: 14, THE TOP OF THE RARITY LADDER - was 13.
+        //
+        // The old figure came from reading the GDD's fourteen tiers as
+        // "tiers 0-13 inclusive". Drops do not agree: RarityTier.Normal is 1
+        // and Transcendent is 14, so every item in the game is 1-based, and a
+        // ceiling of 13 quietly made Transcendent the one rarity that exists
+        // and cannot be reached. An off-by-one in a constant nobody re-derived
+        // against the thing it caps.
+        public const int MaxQualityTier = 14;
 
         public ForgeSplicingEngine(IServiceProvider serviceProvider, PlayerSessionRegistry? playerRegistry = null)
         {
@@ -146,6 +147,20 @@ namespace FolkIdle.Server.Domain.Economy
                         if (lockedItems[i].IsAffixLocked) anyLocked = true;
                     }
 
+                    // Modul: THE CEILING IS CHECKED BEFORE THE FORGE LEVEL.
+                    //
+                    // An item already at the top wants a tier above the maximum,
+                    // which is also above any possible Forge level - so the
+                    // level branch fired first and told the player to upgrade
+                    // their Forge, which would not have helped and cannot be
+                    // done. "This is as high as it goes" is the true reason.
+                    if (wouldBeTier > MaxQualityTier)
+                    {
+                        Console.WriteLine("Fusion failed: target item is already at the maximum rarity.");
+                        _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.MaxTierReached);
+                        return ForgeSplicingResult.MaxTierReached;
+                    }
+
                     var gateReason = wouldBeTier > 0 && forgeLevel < wouldBeTier
                         ? FolkIdle.Server.Network.CommandResultCode.ForgeLevelTooLow
                         : anyLocked
@@ -213,6 +228,9 @@ namespace FolkIdle.Server.Domain.Economy
                 // CraftingEngine.GetMaxForgeTierForRegion) caps below the
                 // Transcendent maximum, blocking affix-upgrading past the
                 // band limit server-side.
+                // Modul: ONE CEILING, the global one. The per-gear-band cap
+                // that used to narrow this is gone - see
+                // CraftingEngine.GetMaxForgeTierForRegion for why.
                 int effectiveTierCap = MaxQualityTier;
                 // Modul: forge region tier. Resolved ONCE here and reused by the
                 // affix roll further down, which used to do its own broken
@@ -224,7 +242,8 @@ namespace FolkIdle.Server.Domain.Economy
                 if (ContentRegistry.TryGetItemDefinitionByBaseId(targetItem.BaseItemId, out var targetDefinition))
                 {
                     targetRegionTier = targetDefinition.RegionTier;
-                    effectiveTierCap = Math.Min(MaxQualityTier, CraftingEngine.GetMaxForgeTierForRegion(targetRegionTier));
+                    // RegionTier is still resolved - the affix roll further
+                    // down needs it - but it no longer narrows the ceiling.
                 }
                 if (currentTier >= effectiveTierCap)
                 {

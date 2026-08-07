@@ -257,21 +257,86 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        /// <summary>
+        /// REAL CATALOGUE GEAR, at the rarity the old per-band ceiling stopped.
+        ///
+        /// This is the test that would have caught the bug behind "I press fuse
+        /// and get an error, and nothing happens", and the reason no existing
+        /// test did: every fusion fixture here uses an invented base id like
+        /// "integration_test_forge_certain_0", which resolves to no
+        /// ItemDefinition at all - so the region lookup fell through to 1, and
+        /// with a starting tier of 3 the old cap of 5 was never reached. The
+        /// fixtures dodged the rule rather than exercising it.
+        ///
+        /// A real region-1 item at rarity 5 was refused outright, and the
+        /// refusal reached the player as "already at maximum tier" next to a 5
+        /// out of 14. There is one ceiling now, the top of the rarity ladder.
+        /// </summary>
+        [Fact]
+        public async Task Test_ForgeSplicing_RealStarterGearFusesPastTheOldBandCeiling()
+        {
+            ContentRegistry.Initialize();
+
+            // Something a new player actually owns: the first region's gear.
+            string starterBaseId = string.Empty;
+            for (int itemId = 1; itemId <= ContentRegistry.ItemDefinitions.Length; itemId++)
+            {
+                if (ContentRegistry.ItemDefinitions[itemId - 1].RegionTier != 1) continue;
+                string candidate = ContentRegistry.GetItemBaseId(itemId);
+                if (candidate.Contains("_helmet_") || candidate.Contains("_chest_"))
+                {
+                    starterBaseId = candidate;
+                    break;
+                }
+            }
+            Assert.False(string.IsNullOrEmpty(starterBaseId), "the catalogue must contain region-1 armour");
+
+            var forgeEngine = new ForgeSplicingEngine(_fixture.ServiceProvider);
+
+            // Rarity 5 is exactly where region 1-2 gear used to stop.
+            var result = await RunFusionAndReturnResultAsync(starterBaseId, startingTier: 5, forgeEngine);
+            Assert.Equal(ForgeSplicingResult.Success, result);
+
+            // And the whole way up: 13 -> 14 was unreachable too, because the
+            // global ceiling was read as "tiers 0-13" while every item in the
+            // game is 1-based and Transcendent is 14.
+            var toTheTop = await RunFusionAndReturnResultAsync(starterBaseId, startingTier: 13, forgeEngine);
+            Assert.Equal(ForgeSplicingResult.Success, toTheTop);
+
+            // 14 is the top and stays the top.
+            var pastTheTop = await RunFusionAndReturnResultAsync(starterBaseId, startingTier: 14, forgeEngine);
+            Assert.Equal(ForgeSplicingResult.MaxTierReached, pastTheTop);
+        }
+
         private async Task<ForgeSplicingResult> RunFusionAndReturnResultAsync(string baseItemId, int startingTier, ForgeSplicingEngine forgeEngine)
         {
             long targetId, sac1Id, sac2Id;
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                bool hasForge = await db.VillageInfrastructures.AnyAsync(
+                // Modul: RAISE an existing Forge, do not only insert a missing
+                // one.
+                //
+                // This inserted a level-10 Forge when none existed and left
+                // whatever was already there alone - and the Forge's level is
+                // the rarity ceiling for fusion, so a Forge seeded lower by
+                // another test in this collection silently capped every fusion
+                // here. It went unnoticed because every fixture fused at tier
+                // 3; the first test to try tier 5 failed with InvalidRequest
+                // and looked like a bug in the rule being tested.
+                var forge = await db.VillageInfrastructures.SingleOrDefaultAsync(
                     v => v.PlayerId == DbSeeder.PlayerHighId && v.BuildingId == VillageManagementEngine.ForgeBuildingId);
-                if (!hasForge)
+                if (forge is null)
                 {
                     db.VillageInfrastructures.Add(new VillageInfrastructure
                     {
                         PlayerId = DbSeeder.PlayerHighId,
                         BuildingId = VillageManagementEngine.ForgeBuildingId,
-                        CurrentLevel = 10
+                        CurrentLevel = ForgeSplicingEngine.MaxQualityTier
                     });
+                }
+                else if (forge.CurrentLevel < ForgeSplicingEngine.MaxQualityTier)
+                {
+                    forge.CurrentLevel = ForgeSplicingEngine.MaxQualityTier;
                 }
 
                 var target = new EquipmentInstance { PlayerId = DbSeeder.PlayerHighId, BaseItemId = baseItemId, QualityTier = startingTier };
@@ -7623,9 +7688,13 @@ namespace FolkIdle.Server.Tests
                 }
             }
 
-            Assert.Equal(5, CraftingEngine.GetMaxForgeTierForRegion(1));
-            Assert.Equal(5, CraftingEngine.GetMaxForgeTierForRegion(2));
-            Assert.Equal(10, CraftingEngine.GetMaxForgeTierForRegion(3));
+            // Modul: THE PER-BAND CEILING IS GONE. It capped region 1-2 gear
+            // at rarity 5 and was the likeliest cause of fusion appearing
+            // broken on ordinary starter gear. Every region now answers with
+            // the one global ceiling.
+            Assert.Equal(ForgeSplicingEngine.MaxQualityTier, CraftingEngine.GetMaxForgeTierForRegion(1));
+            Assert.Equal(ForgeSplicingEngine.MaxQualityTier, CraftingEngine.GetMaxForgeTierForRegion(2));
+            Assert.Equal(ForgeSplicingEngine.MaxQualityTier, CraftingEngine.GetMaxForgeTierForRegion(3));
             Assert.Equal(ForgeSplicingEngine.MaxQualityTier, CraftingEngine.GetMaxForgeTierForRegion(9));
         }
 
