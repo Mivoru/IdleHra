@@ -523,8 +523,24 @@ namespace FolkIdle.Server.Engine
         //
         // Base cost scales on the ITEM's rarity tier, so rerolling a
         // Transcendent is meaningfully expensive.
-        public const long RerollGoldBase = 250L;
-        private const double RerollGoldItemTierGrowth = 1.9;
+        // Modul: 100 AND 1.35, down from 250 and 1.9. MEASURED against income
+        // rather than argued about.
+        //
+        // Reported from play: "I earned 100,000 gold overnight and about five
+        // rerolls took all of it." That is exact. At 1.9 growth a tier-8 item
+        // cost 22,346 a roll, and region 2 pays roughly 25,500 gold an hour -
+        // so one reroll was fifty-three minutes of play, on a system whose
+        // headline outcome (a Legendary affix) is a 1-in-100 roll. The chase
+        // was not expensive, it was arithmetically out of reach, which is the
+        // same mistake the streak multiplier made and the comment above
+        // describes at length. The base was fixed and the growth was not.
+        //
+        // 100 * 1.35^(tier-1): 100 at tier 1, 336 at tier 5, 1,163 at tier 8,
+        // 7,050 at tier 14. A tier-8 roll is under three minutes of region-2
+        // income and a hundred-attempt chase is about four hours - an endgame
+        // pursuit rather than a wall.
+        public const long RerollGoldBase = 100L;
+        private const double RerollGoldItemTierGrowth = 1.35;
 
         // Modul: THE STREAK MULTIPLIER IS GONE, and it had to go the moment the
         // reroll started rolling rarity at random.

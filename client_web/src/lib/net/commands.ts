@@ -1182,7 +1182,10 @@ export const BUILDINGS: readonly {
 
 /** Mirrors VillageManagementEngine.CalculateUpgradeCost - gold. */
 export function villageGoldCost(currentLevel: number): number {
-  return Math.ceil(1000 * Math.pow(1.5, Math.max(0, currentLevel)));
+  // Modul: 500 and 1.4, softened with the server. A level-10 building was
+  // 57,665 gold on the old curve - over two hours of region-2 income for one
+  // level, on top of the logs and ore it also costs now.
+  return Math.ceil(500 * Math.pow(1.4, Math.max(0, currentLevel)));
 }
 
 /** Mirrors VillageManagementEngine.CalculateProductionUpgradeCost - materials. */

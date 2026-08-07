@@ -84,7 +84,11 @@ namespace FolkIdle.Server.Domain.Progression
             return warehouseLevel <= 0 ? 0L : (long)warehouseLevel * WarehouseCapacityPerLevel;
         }
 
-        private const long BaseUpgradeCost = 1000L;
+        // Modul: 500 and a 1.4 curve, from 1,000 and 1.5 - see
+        // CalculateUpgradeCost. A level-10 service building was 57,665 gold on
+        // the old curve, which is over two hours of region-2 income for one
+        // level of one building, on top of the logs and ore it now also costs.
+        private const long BaseUpgradeCost = 500L;
 
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry _playerRegistry;
@@ -377,7 +381,7 @@ namespace FolkIdle.Server.Domain.Progression
         public static long CalculateUpgradeCost(int currentLevel)
         {
             if (currentLevel < 0) currentLevel = 0;
-            double scaled = BaseUpgradeCost * Math.Pow(1.5, currentLevel);
+            double scaled = BaseUpgradeCost * Math.Pow(1.4, currentLevel);
             if (scaled > long.MaxValue) return long.MaxValue;
             return (long)Math.Ceiling(scaled);
         }

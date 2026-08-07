@@ -101,11 +101,26 @@
   // the Diamond Star event take up to 25% off server-side, so this is the
   // ceiling rather than the exact charge - stated in the UI as such rather
   // than quietly presented as final.
-  const FORGE_BASE_FEE = 1000;
+  const FORGE_BASE_FEE = 200;
+  const FORGE_FEE_GROWTH = 1.35;
   const fusionFee = $derived(
-    fusionTargetItem ? Math.ceil(FORGE_BASE_FEE * Math.pow(1.5, fusionTargetItem.QualityTier)) : 0,
+    fusionTargetItem ? Math.ceil(FORGE_BASE_FEE * Math.pow(FORGE_FEE_GROWTH, fusionTargetItem.QualityTier)) : 0,
   );
   const gold = $derived(Number($playerState?.Gold ?? 0));
+
+  // Modul: THE REROLL PRICE, SHOWN. Mirrors
+  // AffixRegistry.CalculateRerollGoldCost - 100 * 1.35^(itemTier-1).
+  //
+  // Reported from play alongside the price itself being too high: "it does not
+  // even say what it costs". It did not. A player pressed a button, gold left,
+  // and the only way to learn the rate was to watch the balance - which is how
+  // someone spends a night's income on five rolls without noticing until it is
+  // gone. A charge you cannot see before you agree to it is not a price.
+  const REROLL_BASE_FEE = 100;
+  const REROLL_FEE_GROWTH = 1.35;
+  const rerollFee = $derived(
+    rerollItem ? Math.floor(REROLL_BASE_FEE * Math.pow(REROLL_FEE_GROWTH, Math.max(0, rerollItem.QualityTier - 1))) : 0,
+  );
 
   function pickSet(base: string, tier: number) {
     const trio = owned.filter((i) => i.BaseItemId === base && i.QualityTier === tier).slice(0, 3);
@@ -330,6 +345,18 @@
       affixes on the item are untouched.
     </p>
 
+    {#if rerollItem}
+      <p class="price">
+        This reroll costs
+        <b class:blocked={gold < rerollFee}>{rerollFee.toLocaleString()}g</b>.
+        You have {gold.toLocaleString()}g.
+        <span class="dim tiny">
+          The price follows the item's rarity, not how many times you have
+          tried - a run of poor rolls does not get more expensive.
+        </span>
+      </p>
+    {/if}
+
     <div class="pickhead">
       <h3>{showAllForReroll ? 'Everything you own' : 'What you are wearing'}</h3>
       <button class="tiny-btn" onclick={() => (showAllForReroll = !showAllForReroll)}>
@@ -437,6 +464,14 @@
 </div>
 
 <style>
+  .price {
+    margin: 0.3rem 0;
+  }
+
+  .price .blocked {
+    color: var(--danger);
+  }
+
   .explainer {
     border-left: 2px solid var(--border);
     padding-left: 0.6rem;

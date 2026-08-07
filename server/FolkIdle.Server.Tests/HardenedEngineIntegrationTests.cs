@@ -226,8 +226,8 @@ namespace FolkIdle.Server.Tests
                 forgeEngine);
 
             // Target starts at QualityTier 1, so the fee is
-            // ceil(1000 * 1.5^1) = 1500 - flat, with no fodder modifier.
-            Assert.Equal(1500L, matchedCost);
+            // ceil(200 * 1.35^1) = 270 - flat, with no fodder modifier.
+            Assert.Equal(270L, matchedCost);
 
             // Tier-4 sacrifices against a tier-1 target are refused before any
             // gold moves. Not "more expensive" - rejected.
@@ -5813,11 +5813,18 @@ namespace FolkIdle.Server.Tests
             long costAtTier2 = await MeasureForgeCostAtTierAsync(testPlayerId, "integration_test_forge_exp_tier2", startingTier: 2, forgeEngine);
             long costAtTier3 = await MeasureForgeCostAtTierAsync(testPlayerId, "integration_test_forge_exp_tier3", startingTier: 3, forgeEngine);
 
-            Assert.Equal((long)Math.Ceiling(1000.0 * Math.Pow(1.5, 2)), costAtTier2);
-            Assert.Equal((long)Math.Ceiling(1000.0 * Math.Pow(1.5, 3)), costAtTier3);
+            // Modul: 200 and 1.35, from 1,000 and 1.5. The THREE ITEMS are the
+            // cost of a fusion - assembling three identical pieces at the same
+            // rarity is the work - and the gold was meant to be a fee on top,
+            // not a second gate. At the old curve raising a tier-8 piece cost
+            // 25,628, about an hour of region-2 income for one step.
+            Assert.Equal((long)Math.Ceiling(200.0 * Math.Pow(1.35, 2)), costAtTier2);
+            Assert.Equal((long)Math.Ceiling(200.0 * Math.Pow(1.35, 3)), costAtTier3);
 
+            // The SHAPE is what this test is for - still exponential in the
+            // current tier, just at a rate a player can pay.
             double ratio = costAtTier3 / (double)costAtTier2;
-            Assert.InRange(ratio, 1.49, 1.51);
+            Assert.InRange(ratio, 1.34, 1.36);
         }
 
         private async Task<long> MeasureForgeCostAtTierAsync(long playerId, string baseItemId, int startingTier, ForgeSplicingEngine forgeEngine)

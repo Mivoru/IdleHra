@@ -30,7 +30,15 @@ namespace FolkIdle.Server.Domain.Economy
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry? _playerRegistry;
-        private const long BaseGoldCost = 1000;
+        // Modul: 200, down from 1,000, and the curve below softened with it.
+        //
+        // THE THREE ITEMS ARE THE COST. Fusion consumes three identical pieces
+        // at the same rarity - assembling those is the work, and the gold was
+        // supposed to be a fee on top rather than a second gate. At 1,000 and
+        // 1.5^tier it was 25,628 to raise a tier-8 piece, about an hour of
+        // region-2 income for one step, which is more than the items themselves
+        // are worth to most players.
+        private const long BaseGoldCost = 200;
 
         // Modul: fusion is no longer a gamble. Three IDENTICAL items of the
         // SAME rarity produce one of the next rarity, for a gold fee. The
@@ -264,7 +272,7 @@ namespace FolkIdle.Server.Domain.Economy
                 // because the two sacrifices could be any rarity. All three
                 // now share a rarity by rule, so the modifier had exactly one
                 // possible value and is gone; the curve itself is unchanged.
-                long cost = (long)Math.Ceiling(BaseGoldCost * Math.Pow(1.5, currentTier));
+                long cost = (long)Math.Ceiling(BaseGoldCost * Math.Pow(1.35, currentTier));
 
                 // Modul: Luck made real. StatsCalculator has always documented
                 // Luck as granting "+0.05% Forge Success" and has always
