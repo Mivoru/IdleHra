@@ -80,7 +80,23 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Modul: THE DIRECTORY, NOT THE FILE.
+      #
+      # Bind-mounting a single file binds its INODE. `git pull` does not edit a
+      # file in place - it writes a new one and renames it over the old - so
+      # the container went on serving the original inode forever. Every
+      # Caddyfile change since this box was set up was invisible until the
+      # container happened to be recreated, and `caddy reload` cheerfully
+      # reported success each time because it was reloading the stale copy it
+      # could see.
+      #
+      # Found because a cache header refused to appear: the config on the host
+      # was right, `caddy validate` said valid, the reload said adapted - and
+      # `grep -c Cache-Control` INSIDE the container answered 0.
+      #
+      # A directory mount follows renames, because the directory entry is what
+      # changes.
+      - ./caddy:/etc/caddy:ro
       # Named, so the certificate survives a rebuild. Without this every
       # `docker compose up --build` would re-issue from Let's Encrypt and walk
       # straight into their rate limit.
