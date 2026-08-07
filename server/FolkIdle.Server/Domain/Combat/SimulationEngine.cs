@@ -4602,7 +4602,14 @@ namespace FolkIdle.Server.Domain.Combat
                 payload.ActivityHaltReason = Network.ActivityHaltReason.None;
             }
 
-            if (payload.Quarantine_Active) return;
+            if (payload.Quarantine_Active)
+            {
+                // Say so. See ActivityHaltReason.Quarantined - this returned
+                // silently, which is how an account could sit deployed and
+                // motionless with the screen unable to explain why.
+                payload.ActivityHaltReason = Network.ActivityHaltReason.Quarantined;
+                return;
+            }
 
             ProcessPassiveVillageTick(ref payload, TickIntervalSeconds, now);
             ProcessAllSlotSubTicks(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);

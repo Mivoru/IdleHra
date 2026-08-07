@@ -255,6 +255,9 @@ export const HALT_REASONS: Record<number, string> = {
   // an old queued packet cannot render "undefined".
   3: '',
   4: 'No eligible character - the only one may be lent out as an Academy mentor.',
+  // Modul: the server returned from the tick silently on a quarantined
+  // account, so the screen said "nothing is happening" and had nothing to add.
+  5: 'This account is quarantined by the anti-cheat, so nothing will run. Contact support if you believe this is a mistake.',
 };
 
 export const HALT_REASON_SHORT: Record<number, string> = {
@@ -263,6 +266,7 @@ export const HALT_REASON_SHORT: Record<number, string> = {
   2: 'Died',
   3: '',
   4: 'No character',
+  5: 'Quarantined',
 };
 
 // ---------------------------------------------------------------------------

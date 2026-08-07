@@ -133,6 +133,16 @@ namespace FolkIdle.Server.Engine
                 Timestamp = Environment.TickCount64
             });
 
+            // Modul: ON THE SERVER'S CONSOLE, not only in a telemetry stream
+            // nobody persists.
+            //
+            // A live quarantine had to be diagnosed by reading two boolean
+            // columns and guessing which of four detectors set them, because
+            // the reason code went to TelemetryStreamer and TelemetryStreamer
+            // does not write to the database. An irreversible penalty whose
+            // cause cannot be reconstructed is one nobody can defend or appeal.
+            Console.WriteLine($"QUARANTINE applied to player {playerId} (reason {reasonCode}, detail {detailCode}).");
+
             _playerRegistry.QuarantineNotificationQueue.Enqueue(new QuarantineNotification { PlayerId = playerId });
 
             _ = Task.Run(async () =>

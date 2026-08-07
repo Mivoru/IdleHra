@@ -36,6 +36,19 @@ namespace FolkIdle.Server.Network
         // No character is eligible to run an activity - typically the only
         // character is lent out as an Academy mentor.
         public const byte NoEligibleCharacter = 4;
+
+        // Modul: THE ACCOUNT IS QUARANTINED, and until now that was silent.
+        //
+        // A quarantined account returns from the tick before anything runs -
+        // no combat, no gathering, no XP - and set no reason, so the screen
+        // said "deployed to Wild Boar, but nothing is happening" and could
+        // offer no explanation because it had not been given one. The player
+        // pressed Stand down and Deploy forever.
+        //
+        // A punishment the punished cannot see is not a deterrent, it is a
+        // bug report. This codebase has already learned that once, from an
+        // anti-cheat that banned fast clickers permanently.
+        public const byte Quarantined = 5;
     }
 
     // Modul: larder. Per-slot cap on stocked food. Chosen so a slot count
