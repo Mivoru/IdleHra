@@ -279,6 +279,18 @@
   <section class="panel">
     <h2>Monsters</h2>
     {#if registry}
+    <!-- Modul: THE RULES OF THIS SCREEN, once, at the top.
+         A new player meets a list of twenty-five monsters, five of them
+         locked, some of them lethal, and nothing anywhere says which is which
+         or why. Every fact here is already enforced by the server; none of it
+         was ever written down where someone could read it. -->
+    <p class="dim small ruleset">
+      Each region has four monsters and a boss, and they get harder left to
+      right. A region opens when you beat the previous region's boss. A boss you
+      have never beaten is <strong>five times its listed health and twice its
+      damage</strong> for that first kill only - after it falls once it can be
+      farmed at its normal stats. Dying stops combat but never gathering.
+    </p>
       {#each registry.regions as region, index}
         <!-- Modul: each location gets its painted scene as a banner. The art
              existed and nothing referenced it; a list of five identical
@@ -377,6 +389,11 @@
 </div>
 
 <style>
+  .ruleset {
+    margin: 0 0 0.6rem;
+    max-width: 60ch;
+  }
+
   .firstclear {
     color: var(--warn, #e0a030);
     border: 1px solid currentColor;

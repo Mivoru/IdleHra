@@ -1561,6 +1561,12 @@ namespace FolkIdle.Server.Network
             public string DisplayName { get; set; } = string.Empty;
             public int Level { get; set; }
             public long Xp { get; set; }
+
+            // How far they have actually got - the second and third ranking
+            // keys, so the board can show what it sorted by.
+            public int HardestMonsterId { get; set; }
+            public string HardestMonsterName { get; set; } = string.Empty;
+            public int KillsOfHardest { get; set; }
         }
 
         private sealed class MarketListingResponse
@@ -1972,6 +1978,25 @@ namespace FolkIdle.Server.Network
                         .Where(p => playerIds.Contains(p.Id))
                         .ToDictionaryAsync(p => p.Id);
 
+                    // Modul: THE BOARD RANKS BY PROGRESS, so it has to SHOW
+                    // progress. The rank order is level, then the hardest
+                    // monster ever put down, then kills of it - and a board
+                    // that sorts by something it does not display is a board
+                    // whose order looks arbitrary.
+                    //
+                    // Read back out of the composite score rather than
+                    // re-queried: the score IS the ranking inputs packed
+                    // together (LeaderboardCronEngine.CompositeScore), so
+                    // unpacking it cannot disagree with the order.
+                    var progressByPlayer = new System.Collections.Generic.Dictionary<long, (int Hardest, int Kills)>();
+                    foreach (var entry in redisEntries)
+                    {
+                        long packed = (long)entry.Score;
+                        progressByPlayer[(long)entry.Element] = (
+                            (int)((packed / 1_000_000L) % 10_000L),
+                            (int)(packed % 1_000_000L));
+                    }
+
                     for (int i = 0; i < redisEntries.Length; i++)
                     {
                         long pId = (long)redisEntries[i].Element;
@@ -1995,7 +2020,12 @@ namespace FolkIdle.Server.Network
                                 // than rendering an empty row.
                                 DisplayName = string.IsNullOrWhiteSpace(p.Username) ? $"Player #{p.Id}" : p.Username!,
                                 Level = p.CurrentLevel,
-                                Xp = p.CurrentXp
+                                Xp = p.CurrentXp,
+                                HardestMonsterId = progressByPlayer.TryGetValue(p.Id, out var progress) ? progress.Hardest : 0,
+                                HardestMonsterName = progressByPlayer.TryGetValue(p.Id, out var named) && named.Hardest > 0
+                                    ? ContentRegistry.GetMonsterName(named.Hardest)
+                                    : string.Empty,
+                                KillsOfHardest = progressByPlayer.TryGetValue(p.Id, out var killed) ? killed.Kills : 0
                             });
                         }
                     }

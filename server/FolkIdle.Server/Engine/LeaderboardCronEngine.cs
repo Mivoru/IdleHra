@@ -54,6 +54,42 @@ namespace FolkIdle.Server.Engine
             }
         }
 
+        /// <summary>One player's ranking inputs, straight off the query.</summary>
+        public sealed class LeaderboardRow
+        {
+            public long PlayerId { get; set; }
+            public int Level { get; set; }
+            public int HardestMonsterId { get; set; }
+            public int KillsOfHardest { get; set; }
+        }
+
+        /// <summary>
+        /// Three ordered keys packed into the one double a Redis sorted set
+        /// gives us: level, then hardest monster, then kills of it.
+        ///
+        /// A double carries 53 bits of exact integer precision - about 9e15 -
+        /// and every field has to fit inside that TOGETHER, not merely look
+        /// small on its own.
+        ///
+        /// Modul: the first version of this multiplied level by 1e12 and
+        /// clamped it at 9,999, which is 1e16 - past the exact range, where two
+        /// genuinely different players collapse onto one number and the order
+        /// between them becomes whatever Redis feels like. The comment above it
+        /// even said "so level is clamped", which was true and did not help.
+        /// LeaderboardRankingTests pins the widest possible score.
+        ///
+        /// Four digits for the monster id is generous - the canonical ladder
+        /// ends at 115 - and six for kills, which nobody will exceed on one
+        /// monster. The widest score is about 1e14.
+        /// </summary>
+        internal static double CompositeScore(LeaderboardRow row)
+        {
+            long level = Math.Clamp(row.Level, 0, 9_999);
+            long hardest = Math.Clamp(row.HardestMonsterId, 0, 9_999);
+            long kills = Math.Clamp(row.KillsOfHardest, 0, 999_999);
+            return (level * 10_000_000_000L) + (hardest * 1_000_000L) + kills;
+        }
+
         private async Task SyncLeaderboardsAsync()
         {
             var dbRedis = _redis.GetDatabase();
@@ -80,13 +116,44 @@ namespace FolkIdle.Server.Engine
                 await using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
                 await dbContext.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
 
-                var topPlayers = await dbContext.PlayerRecords
-                    .AsNoTracking()
-                    .Where(p => !p.IsQuarantined && !p.Quarantine_Active)
-                    .OrderByDescending(p => p.CurrentXp)
-                    .ThenByDescending(p => p.CurrentLevel)
-                    .Take(10000) // limit to top 10000 to prevent OOM
-                    .Select(p => new { p.Id, p.CurrentXp })
+                // Modul: RANKED BY LEVEL, THEN BY HOW FAR THEY HAVE GOT.
+                //
+                // This ordered by raw XP, which is nearly the same thing as
+                // level and is worse at saying it - two players on level 60
+                // were separated by whichever happened to be further into the
+                // bar, which is minutes of play and reads as noise.
+                //
+                // Level first, because that is the number everyone already
+                // compares. Then the HARDEST MONSTER they have ever put down,
+                // which is the actual measure of progress in a game gated by
+                // gear rather than by level - the monster ladder is one
+                // continuous curve, so a higher id is strictly a harder fight.
+                // Then, between two players stuck on the same wall, how many
+                // times they have beaten it.
+                //
+                // Raw SQL and a LATERAL join: "the highest monster id this
+                // player has a kill for, and its kill count" is one index seek
+                // per player, and the LINQ shape for it is a group-by followed
+                // by a self-join that reads worse and plans worse.
+                var topPlayers = await dbContext.Database
+                    .SqlQueryRaw<LeaderboardRow>(@"
+                        SELECT p.""Id"" AS ""PlayerId"",
+                               p.""CurrentLevel"" AS ""Level"",
+                               COALESCE(m.""MonsterId"", 0) AS ""HardestMonsterId"",
+                               COALESCE(m.""KillCount"", 0) AS ""KillsOfHardest""
+                        FROM ""PlayerRecords"" p
+                        LEFT JOIN LATERAL (
+                            SELECT c.""MonsterId"", c.""KillCount""
+                            FROM ""monster_codex_entries"" c
+                            WHERE c.""PlayerId"" = p.""Id"" AND c.""KillCount"" >= 1
+                            ORDER BY c.""MonsterId"" DESC
+                            LIMIT 1
+                        ) m ON TRUE
+                        WHERE NOT p.""IsQuarantined"" AND NOT p.""Quarantine_Active""
+                        ORDER BY p.""CurrentLevel"" DESC,
+                                 COALESCE(m.""MonsterId"", 0) DESC,
+                                 COALESCE(m.""KillCount"", 0) DESC
+                        LIMIT 10000")
                     .ToListAsync();
 
                 await transaction.CommitAsync();
@@ -100,7 +167,7 @@ namespace FolkIdle.Server.Engine
                 var entries = new SortedSetEntry[topPlayers.Count];
                 for (int i = 0; i < topPlayers.Count; i++)
                 {
-                    entries[i] = new SortedSetEntry(topPlayers[i].Id, topPlayers[i].CurrentXp);
+                    entries[i] = new SortedSetEntry(topPlayers[i].PlayerId, CompositeScore(topPlayers[i]));
                 }
 
                 if (entries.Length > 0)

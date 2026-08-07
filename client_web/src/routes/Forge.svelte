@@ -291,6 +291,17 @@
 
   <section class="panel">
     <h2>Affix reroll</h2>
+    <!-- Modul: SAY WHAT THE MACHINE DOES.
+         Both halves of this screen were controls with no explanation, in a
+         game where the two of them are the entire gear progression. A player
+         who does not know that fusion needs three IDENTICAL pieces at the same
+         rarity will try it with three different ones and conclude it is
+         broken - which is exactly what happened. -->
+    <p class="explainer dim small">
+      Fusion takes <strong>three identical pieces at the same rarity</strong>
+      and returns one at the next rarity up. Your Forge's level is the ceiling:
+      a level {forgeLevel} Forge cannot produce anything above rarity {forgeLevel}.
+    </p>
     <p class="dim small">
       Rerolls one affix on one item, for gold. Its stat, its rarity and its
       value are all rolled fresh together - so it can come out worse. The other
@@ -404,6 +415,12 @@
 </div>
 
 <style>
+  .explainer {
+    border-left: 2px solid var(--border);
+    padding-left: 0.6rem;
+    margin: 0.4rem 0;
+  }
+
   .pickhead {
     display: flex;
     align-items: center;

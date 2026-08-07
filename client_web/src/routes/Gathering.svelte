@@ -111,12 +111,43 @@
   // rather than quietly presented as exact.
   const MIN_GATHER_TICKS = 2;
 
+  // Modul: EVERYTHING IS A PERCENTAGE NOW - mirrors
+  // GatheringToolEngine.ComputeRequiredTicks.
+  //
+  // Mastery used to SUBTRACT two ticks a level before any multiplier applied,
+  // which on region 1's 30-tick node goes negative at mastery 15 and clamps to
+  // the two-tick minimum. That is what put "0.2s / unit (floor)" on this
+  // screen: the first two regions gathered instantly, and no tool, building or
+  // affix could move a number already pinned to the bottom. A subtraction
+  // cannot be balanced against a threshold it does not know about.
+  //
+  // The tool curve is geometric, 1.35x a tier, so the ladder from Birch to
+  // Void Bark is worth about twenty times rather than the old threefold.
+  const TOOL_SPEED_PCT = [0, 35, 82, 146, 232, 348, 505, 717, 1003, 1390, 1912];
+  const MASTERY_SPEED_PCT_PER_LEVEL = 10;
+  const VILLAGE_SPEED_PCT_PER_LEVEL = 5;
+
+  function villageLevelFor(professionId: number): number {
+    if (!snap) return 0;
+    // Only woodcutting and mining have a production building; fishing gets no
+    // acceleration rather than silently borrowing the Mine's.
+    if (professionId === 0) return Number(snap.LumberjackLevel ?? 0);
+    if (professionId === 1) return Number(snap.MineLevel ?? 0);
+    return 0;
+  }
+
   function effectiveTicks(node: GatheringNodeDefinition): number {
     if (!snap) return node.BaseTickThreshold;
-    const mastery = masteryLevelOf(node.ProfessionType);
-    const reduced =
-      node.BaseTickThreshold - mastery * 2 - toolTierFor(node.ProfessionType);
-    return Math.max(MIN_GATHER_TICKS, reduced);
+
+    const tier = toolTierFor(node.ProfessionType);
+    const speedPct =
+      (TOOL_SPEED_PCT[Math.max(0, Math.min(tier, TOOL_SPEED_PCT.length - 1))] ?? 0) +
+      masteryLevelOf(node.ProfessionType) * MASTERY_SPEED_PCT_PER_LEVEL +
+      villageLevelFor(node.ProfessionType) * VILLAGE_SPEED_PCT_PER_LEVEL +
+      Number(snap.ToolGatherSpeedPct ?? 0);
+
+    const ticks = Math.floor((node.BaseTickThreshold * 100) / (100 + speedPct));
+    return Math.max(MIN_GATHER_TICKS, ticks);
   }
 
   function secondsPerUnit(node: GatheringNodeDefinition): string {
@@ -288,7 +319,14 @@
             <li class:current={activeActivity === node.ActivityId} class:locked>
               <span class="place">{locationName(nodeLocation(node.ActivityId))}</span>
               <span class="dim tiny" title={`Base ${(node.BaseTickThreshold / 10).toFixed(1)}s, reduced by mastery and tool tier`}>
-                {secondsPerUnit(node)}s / unit{#if isFloored(node)}<span class="floored"> (floor)</span>{/if}
+                <span
+                  title="How long one unit takes at your mastery, tool and village bonuses. The server also applies a logistics bonus this screen cannot see, so the real speed is this or better."
+                >{secondsPerUnit(node)}s / unit</span
+                >{#if isFloored(node)}<span
+                    class="floored"
+                    title="This node cannot go any faster - 0.2s is the hard minimum for any gathering action. More mastery or a better tool will not help here; a higher-tier node will."
+                  > (as fast as it goes)</span
+                >{/if}
               </span>
               <span class="dim tiny">{node.BaseMasteryXpReward} xp</span>
               {#if locked}

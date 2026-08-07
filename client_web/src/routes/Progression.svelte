@@ -258,6 +258,16 @@
 
   <section class="panel">
     <h2>Leaderboard</h2>
+    <!-- Modul: SAY WHAT IT IS SORTED BY.
+         It ranked on raw XP and displayed level and XP, so two players on the
+         same level were separated by minutes of play and the order read as
+         noise. It ranks by level, then by the hardest monster ever put down,
+         then by kills of it - and a board that sorts by something it does not
+         show is a board whose order looks arbitrary. -->
+    <p class="dim tiny">
+      Ranked by level, then by the hardest monster you have ever beaten, then
+      by how many times you have beaten it.
+    </p>
     {#if leaderboard.isPending}
       <Skeleton />
     {:else if (leaderboard.data ?? []).length === 0}
@@ -269,7 +279,14 @@
             <span class="rank dim">#{row.Rank}</span>
             <span class="who">{row.DisplayName}</span>
             <span class="dim tiny">lv {row.Level}</span>
-            <span class="xp">{row.Xp.toLocaleString()}</span>
+            <span class="progress dim tiny">
+              {#if row.HardestMonsterName}
+                {row.HardestMonsterName}
+                {#if row.KillsOfHardest > 0}&times;{row.KillsOfHardest.toLocaleString()}{/if}
+              {:else}
+                no kills yet
+              {/if}
+            </span>
           </li>
         {/each}
       </ol>
@@ -297,6 +314,13 @@
 </div>
 
 <style>
+  .progress {
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .week li.collected {
     opacity: 0.55;
   }

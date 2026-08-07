@@ -550,6 +550,13 @@ export interface LeaderboardEntry {
   DisplayName: string;
   Level: number;
   Xp: number;
+
+  // The second and third ranking keys. The board sorts by level, then by the
+  // hardest monster a player has ever put down, then by kills of it - so it has
+  // to be able to show them.
+  HardestMonsterId: number;
+  HardestMonsterName: string;
+  KillsOfHardest: number;
 }
 
 export function fetchLeaderboard(): Promise<LeaderboardEntry[]> {

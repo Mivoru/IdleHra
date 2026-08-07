@@ -446,6 +446,10 @@ achSvc.StartCron();
 ecoTelemetrySvc.StartCron();
 seasonEraSvc.StartCron();
 redisWriteBehindEngine.StartCron();
+// The world-first claim is settled in Redis, off the simulation tick - see
+// BossFirstClearAnnouncer for why the tick cannot ask the question itself.
+FolkIdle.Server.Domain.Combat.BossFirstClearAnnouncer.Redis = redisMultiplexer;
+
 leaderboardCronEngine.StartCron();
 
 AppDomain.CurrentDomain.ProcessExit += (s, e) => 

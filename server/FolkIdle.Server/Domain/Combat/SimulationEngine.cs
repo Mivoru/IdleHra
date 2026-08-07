@@ -5934,8 +5934,28 @@ namespace FolkIdle.Server.Domain.Combat
                 // opens no sixth region, so a mask folded into that condition
                 // would leave the last boss in the game permanently at
                 // first-clear stats.
+                bool wasFirstClearForThisPlayer =
+                    BossFirstClearRules.IsFirstClearPending(payload.DefeatedRegionBossMask, activeMonster.Id);
+
                 payload.DefeatedRegionBossMask =
                     BossFirstClearRules.MarkDefeated(payload.DefeatedRegionBossMask, activeMonster.Id);
+
+                // Modul: FIRST BLOOD ON A REGION BOSS GOES TO THE WHOLE WORLD.
+                //
+                // Asked for directly: "when someone is the first player to beat
+                // a boss, congratulate them in chat". Two claims, and only the
+                // weaker one can be made from inside a tick: this player's own
+                // first clear is on the payload, and whether they are the first
+                // in the WORLD needs a durable, contended check that a 10Hz
+                // loop has no business doing - so the announcement says what is
+                // true rather than what would be nicer to say.
+                //
+                // BossFirstClearAnnouncer keeps the world-first claim honest by
+                // holding it in Redis, where every pod can see the same answer.
+                if (wasFirstClearForThisPlayer && clearedBossRegion > 0)
+                {
+                    BossFirstClearAnnouncer.Announce(payload.PlayerId, activeMonster.Id);
+                }
 
                 AddSeasonalXp(ref payload, seasonalCombatXp);
                 

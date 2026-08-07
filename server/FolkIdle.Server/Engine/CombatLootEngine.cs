@@ -37,6 +37,19 @@ namespace FolkIdle.Server.Engine
         public const int Godly = 13;
         public const int Transcendent = 14;
 
+        // Modul: the names, server-side. The client has had this list since it
+        // shipped and the server had only the constants, so anything the server
+        // wanted to SAY about a rarity had to ship a number and hope.
+        private static readonly string[] _tierNames =
+        {
+            "", "Normal", "Common", "Uncommon", "Rare", "Ultra Rare", "Epic",
+            "Legendary", "Mythic", "Relic", "Ancient", "Divine", "Demonic",
+            "Godly", "Transcendent",
+        };
+
+        public static string GetName(int tier)
+            => tier >= 1 && tier < _tierNames.Length ? _tierNames[tier] : $"tier {tier}";
+
         // Index 0 unused (tiers are 1-based); index 1 (Normal) is never read
         // directly - RollTier computes it as the remainder of the other 13.
         private static readonly double[] _explicitWeights = new double[]
@@ -608,7 +621,51 @@ namespace FolkIdle.Server.Engine
             });
 
             PublishLootDrop(playerId, monsterId, chosenItemId, 1, (byte)tier, Network.ResponseLootDropPacket.DropKindEquipment);
+
+            // Modul: A RARE DROP IS WORTH SAYING OUT LOUD.
+            //
+            // Asked for directly: "when someone gets a tier 8 or better, write
+            // them a congratulation in chat". The reroll path has announced its
+            // Epic-and-above results since it shipped and drops - the far more
+            // common way a player meets a rare item - said nothing at all.
+            //
+            // Eight of fourteen, so it fires for roughly the top half of the
+            // rarity ladder and stays rare enough to mean something. Enqueued
+            // rather than sent: the queue is bounded and drained by the chat
+            // dispatch worker, so an unlucky flood drops announcements instead
+            // of stalling the loot path.
+            if (tier >= AnnounceableRarityTier)
+            {
+                Domain.Social.ChatEngine.EnqueueSystemAnnouncement(
+                    $"Player #{playerId} found a {RarityTier.GetName(tier)} {Readable(baseItemId)} " +
+                    $"from {ContentRegistry.GetMonsterName(monsterId)}. Congratulations!");
+            }
         }
+
+        /// <summary>
+        /// "golden_birch_axe_tool" -> "Golden Birch Axe". The catalogue speaks
+        /// in slugs and an announcement has to speak in words.
+        /// </summary>
+        private static string Readable(string baseItemId)
+        {
+            if (string.IsNullOrEmpty(baseItemId)) return "item";
+
+            var builder = new System.Text.StringBuilder(baseItemId.Length);
+            foreach (string part in baseItemId.Split('_'))
+            {
+                if (part.Length == 0 || part == "tool" || part == "slot") continue;
+                if (builder.Length > 0) builder.Append(' ');
+                builder.Append(char.ToUpperInvariant(part[0]));
+                if (part.Length > 1) builder.Append(part, 1, part.Length - 1);
+            }
+            return builder.Length > 0 ? builder.ToString() : baseItemId;
+        }
+
+        /// <summary>
+        /// Rarity 8 of 14 - the top half of the ladder. High enough that a line
+        /// in global chat is an event rather than noise.
+        /// </summary>
+        public const int AnnounceableRarityTier = 8;
 
         // Modul: Loot Event Feed. Enqueue only - the actual socket write is
         // NetworkBroadcastSystem's job (it owns the connections; this engine

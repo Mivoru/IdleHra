@@ -64,10 +64,17 @@ namespace FolkIdle.Server.Engine
         // name column, and inventing one here would put a second, wrong answer
         // next to whatever the social layer eventually uses. The client
         // resolves the id against its own roster cache.
+        // Modul: WORDS, not a pipe-delimited payload.
+        //
+        // This produced "123|4|flat_hp|56" on the assumption that the client
+        // would parse and render it. The client does not - Chat.svelte prints
+        // an announcement's text verbatim - so every high-rarity reroll in the
+        // game has been announced to the world as a row of numbers and pipes.
         private static string FormatRarityAnnouncement(long playerId, AffixRarity rarity, string affixId, int magnitude)
         {
+            string affixName = affixId.Replace('_', ' ');
             return string.Create(System.Globalization.CultureInfo.InvariantCulture,
-                $"{playerId}|{(int)rarity}|{affixId}|{magnitude}");
+                $"Player #{playerId} rerolled a {rarity} {affixName} (+{magnitude}). Congratulations!");
         }
 
         private readonly IServiceProvider _serviceProvider;
