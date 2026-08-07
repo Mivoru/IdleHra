@@ -75,6 +75,14 @@ folkidle.duckdns.org, 92-5-0-94.sslip.io {
 		-Server
 	}
 
+	# Modul: DEFINED HERE, at the site level, and used inside the static handle
+	# below. Named matchers cannot be declared inside a handle block - Caddy
+	# accepts the file and `caddy validate` calls it valid, and the header
+	# simply never appears on a response. Diagnosed by curl -I after a reload
+	# that reported success.
+	@immutable path /assets/* /sprites/*
+	@html path / /index.html
+
 	@websocket {
 		header Connection *Upgrade*
 		header Upgrade websocket
@@ -125,10 +133,7 @@ folkidle.duckdns.org, 92-5-0-94.sslip.io {
 		#   - /assets/*: trusted forever. The filename CONTAINS the content
 		#     hash, so a changed file is a different URL and a cached one can
 		#     never be wrong.
-		@immutable path /assets/* /sprites/*
 		header @immutable Cache-Control "public, max-age=31536000, immutable"
-
-		@html path / /index.html
 		header @html Cache-Control "no-cache"
 
 		try_files {path} /index.html
