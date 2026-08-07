@@ -637,7 +637,7 @@ namespace FolkIdle.Server.Engine
             if (tier >= AnnounceableRarityTier)
             {
                 Domain.Social.ChatEngine.EnqueueSystemAnnouncement(
-                    $"Player #{playerId} found a {RarityTier.GetName(tier)} {Readable(baseItemId)} " +
+                    $"{PlayerNameResolver.GetCachedOrFallback(playerId)} found a {RarityTier.GetName(tier)} {Readable(baseItemId)} " +
                     $"from {ContentRegistry.GetMonsterName(monsterId)}. Congratulations!");
             }
         }

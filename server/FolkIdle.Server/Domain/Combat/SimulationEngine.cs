@@ -2570,10 +2570,30 @@ namespace FolkIdle.Server.Domain.Combat
                         // update, and a reroll does not deduct straight away".
                         // Exactly right, and it was never only gold.
                         //
-                        // Suspended and flushed by the command that scheduled
-                        // the work, so the database already holds this player's
-                        // tick state - re-reading it here cannot lose anything
-                        // the tick had and not yet written.
+                        // Modul: FLUSH FIRST, THEN RELOAD - and the first
+                        // version of this did not, which broke combat.
+                        //
+                        // The reasoning was "the command that scheduled the work
+                        // already suspended and flushed, so the database holds
+                        // this player's tick state". True of reroll, fusion and
+                        // the market; NOT true of every site that enqueues a
+                        // ReloadState. Where it was not true the reload replaced
+                        // the live payload with an older one and threw away
+                        // whatever the tick held - which a player meets as
+                        // "deployed to Wild Boar, and nothing is happening",
+                        // because the activity they had just chosen was in
+                        // memory and nowhere else.
+                        //
+                        // Flushing first is safe precisely BECAUSE gold is
+                        // persisted as a delta rather than an absolute (see
+                        // StateCheckpointManager's own comment on
+                        // RedisPendingGoldDelta): writing this payload out
+                        // cannot overwrite the deduction an engine just made,
+                        // it only banks the coins earned since the last flush.
+                        // A second flush after an already-flushed command is a
+                        // no-op, because the delta has been zeroed.
+                        _checkpointManager.FlushStateAndAdvance(ref currentPayload);
+
                         long reloadPlayerId = currentPayload.PlayerId;
                         SafeDispatchAsync("ReloadState", reloadPlayerId, async () => {
                             var reloaded = await _checkpointManager.LoadPlayerState(reloadPlayerId);

@@ -68,10 +68,16 @@ namespace FolkIdle.Server.Domain.Combat
                     string bossName = ContentRegistry.GetMonsterName(item.MonsterId);
                     bool worldFirst = await TryClaimWorldFirstAsync(item.MonsterId);
 
+                    // This drain is already off the tick and already awaiting
+                    // Redis, so it can afford to ask the database for a name -
+                    // unlike the drop and reroll announcements, which are built
+                    // inside the simulation loop and read the cache only.
+                    string who = await PlayerNameResolver.GetAsync(item.PlayerId);
+
                     Social.ChatEngine.EnqueueSystemAnnouncement(
                         worldFirst
-                            ? $"Player #{item.PlayerId} is the FIRST in the world to defeat {bossName}. Congratulations!"
-                            : $"Player #{item.PlayerId} defeated {bossName} for the first time. Congratulations!");
+                            ? $"{who} is the FIRST in the world to defeat {bossName}. Congratulations!"
+                            : $"{who} defeated {bossName} for the first time. Congratulations!");
                 }
             }
             catch (Exception ex)

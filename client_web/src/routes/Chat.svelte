@@ -56,6 +56,14 @@
   const nameById = $derived(new Map((names.data ?? []).map((n) => [n.PlayerId, n.Username])));
 
   function displayName(playerId: number): string {
+    // Modul: SENDER 0 IS THE SERVER, not a player.
+    //
+    // Announcements are authored by the system and carry SenderPlayerId 0 -
+    // no real player has id 0, which is exactly how the client is meant to
+    // tell them apart. This asked the name map anyway, missed, and fell back
+    // to the id, so every announcement in the game was attributed to
+    // "Player #0".
+    if (playerId === 0) return 'World';
     if (playerId === connection.currentPlayerId) return 'You';
     return nameById.get(playerId) ?? `Player #${playerId}`;
   }

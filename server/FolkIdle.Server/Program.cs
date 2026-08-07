@@ -450,6 +450,11 @@ redisWriteBehindEngine.StartCron();
 // BossFirstClearAnnouncer for why the tick cannot ask the question itself.
 FolkIdle.Server.Domain.Combat.BossFirstClearAnnouncer.Redis = redisMultiplexer;
 
+// Announcements name the player rather than their database id - see
+// PlayerNameResolver for why the tick-side callers read a cache instead.
+FolkIdle.Server.Engine.PlayerNameResolver.ContextFactory =
+    serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+
 leaderboardCronEngine.StartCron();
 
 AppDomain.CurrentDomain.ProcessExit += (s, e) => 

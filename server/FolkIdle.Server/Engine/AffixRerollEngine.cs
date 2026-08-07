@@ -74,7 +74,7 @@ namespace FolkIdle.Server.Engine
         {
             string affixName = affixId.Replace('_', ' ');
             return string.Create(System.Globalization.CultureInfo.InvariantCulture,
-                $"Player #{playerId} rerolled a {rarity} {affixName} (+{magnitude}). Congratulations!");
+                $"{PlayerNameResolver.GetCachedOrFallback(playerId)} rerolled a {rarity} {affixName} (+{magnitude}). Congratulations!");
         }
 
         private readonly IServiceProvider _serviceProvider;

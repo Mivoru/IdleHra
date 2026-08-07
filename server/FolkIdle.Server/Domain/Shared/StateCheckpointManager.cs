@@ -360,6 +360,16 @@ namespace FolkIdle.Server.Domain.Shared
             await using var dbContext = new FolkIdleDbContext(retryingOptions.Options);
 
             var player = await dbContext.PlayerRecords.FindAsync(playerId);
+
+            // Modul: seed the name cache on the way past.
+            //
+            // The drop and reroll announcements are built INSIDE the simulation
+            // tick, which cannot wait on a query - so they read a cache, and a
+            // cache nobody fills answers "Player #123" forever. Hydration
+            // already has the row in hand, and every player who can trigger an
+            // announcement has been hydrated to get there.
+            Engine.PlayerNameResolver.Remember(playerId, player?.Username);
+
             if (player == null)
             {
                 var defaultPayload = new TickStatePayload
