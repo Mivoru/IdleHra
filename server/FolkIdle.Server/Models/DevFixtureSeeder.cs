@@ -347,6 +347,21 @@ namespace FolkIdle.Server.Models
             "eq_iron_signet_ring_1/2_slot_base"
         };
 
+        /// <summary>
+        /// Owned but NOT worn: something to swap to.
+        ///
+        /// Modul: the fixture wore one of everything and owned nothing spare,
+        /// so the paper doll's item picker could only ever offer the piece
+        /// already in that slot - and "wear the thing you are wearing" is a
+        /// no-op with no outcome to observe. exercise.mjs read that as the
+        /// equip path being broken. A fixture that cannot exercise a swap
+        /// cannot test one.
+        /// </summary>
+        private static readonly string[] FixtureSpares =
+        {
+            "eq_moss_staff_magic_weapon_slot_base",
+        };
+
         private static async Task EnsureEquipmentAsync(FolkIdleDbContext db, long playerId)
         {
             var mainCharacter = await db.CharacterRecords
@@ -363,7 +378,7 @@ namespace FolkIdle.Server.Models
                 || mainCharacter.EquippedAmuletId.HasValue;
             if (alreadyEquipped) return;
 
-            foreach (string baseItemId in FixtureLoadout)
+            foreach (string baseItemId in FixtureLoadout.Concat(FixtureSpares))
             {
                 // Skip anything not in items.json rather than creating an
                 // instance the registry cannot resolve - that would be an item
@@ -434,6 +449,10 @@ namespace FolkIdle.Server.Models
                 };
                 db.EquipmentInstances.Add(instance);
                 await db.SaveChangesAsync();
+
+                // A spare is granted and left in the chest - equipping it would
+                // put it in the very slot it exists to be swapped INTO.
+                if (FixtureSpares.Contains(baseItemId)) continue;
 
                 int slotIndex = EquipmentSlotEngine.ResolveSlotIndex(baseItemId);
                 switch (slotIndex)

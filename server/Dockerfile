@@ -1,14 +1,34 @@
+# Modul: THE BUILD CONTEXT IS THE REPOSITORY ROOT, not server/.
+#
+# It was server/, and the csproj pulls two things from OUTSIDE that directory:
+#
+#   <None Include="../../client/Assets/Resources/Audio/*.wav">
+#   <None Include="../../client/Assets/Images/SpritesWeb/**/*.webp">
+#
+# Outside the context those paths do not exist, so the globs matched nothing,
+# `dotnet publish` emitted no Audio folder, and every request to /audio/*.wav
+# answered 404. The game has never made a sound in production - ten clips, a
+# Web Audio mixer, a volume slider in Settings and a Caddy route, all correct,
+# all wired to an empty directory. Nothing failed loudly because an MSBuild
+# glob that matches nothing is not an error.
+#
+# The sprites glob has the same problem and was survivable only because the WEB
+# image builds from the repository root and ships its own copy.
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy csproj and restore as distinct layers
-COPY ["FolkIdle.Server/FolkIdle.Server.csproj", "FolkIdle.Server/"]
-RUN dotnet restore "FolkIdle.Server/FolkIdle.Server.csproj"
+COPY ["server/FolkIdle.Server/FolkIdle.Server.csproj", "server/FolkIdle.Server/"]
+RUN dotnet restore "server/FolkIdle.Server/FolkIdle.Server.csproj"
 
 # Copy everything else and build
 COPY . .
-WORKDIR "/src/FolkIdle.Server"
+WORKDIR "/src/server/FolkIdle.Server"
 RUN dotnet publish "FolkIdle.Server.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+# The clips have to be IN the image, and a glob that silently matches nothing
+# is what hid this for months. Fail the build instead.
+RUN ls /app/publish/Audio/*.wav > /dev/null 2>&1 || (echo 'BUILD FAILED: no audio clips in the publish output.' && exit 1)
 
 # Stage 2: Runtime Environment
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final

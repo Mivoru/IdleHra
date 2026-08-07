@@ -35,6 +35,40 @@
   // The mask says which bosses are already down; every fifth monster of a
   // region is its boss, which is content canon rather than an inference from
   // this screen.
+  // Modul: A HIT HAS TO LAND SOMEWHERE.
+  //
+  // The bar simply got shorter, which is information without impact - the
+  // difference between a progress meter and a fight. The portrait now flinches
+  // when the monster loses health.
+  //
+  // Driven off the SERVER's HP field, not the interpolated one: the smoothed
+  // value changes every animation frame, so keying on it would restart the
+  // flash sixty times a second. This codebase has already paid for an effect
+  // keyed to a per-frame signal - it starved the main thread.
+  //
+  // Rate-limited to one flash per 140ms. At ten ticks a second an unthrottled
+  // class toggle is a strobe, and a strobing screen is a health problem rather
+  // than a flourish.
+  let struck = $state(false);
+  let lastServerMonsterHp = 0;
+  let lastFlashAtMs = 0;
+
+  $effect(() => {
+    const hp = Number(snap?.CurrentMonsterHp ?? 0);
+    const previous = lastServerMonsterHp;
+    lastServerMonsterHp = hp;
+
+    if (previous <= 0 || hp >= previous) return;
+
+    const now = Date.now();
+    if (now - lastFlashAtMs < 140) return;
+    lastFlashAtMs = now;
+
+    struck = true;
+    const handle = setTimeout(() => (struck = false), 120);
+    return () => clearTimeout(handle);
+  });
+
   const FIRST_CLEAR_HP = 5;
   const defeatedMask = $derived(snap?.DefeatedRegionBossMask ?? 0);
 
@@ -241,7 +275,9 @@
                only ever plays once. -->
           {#key hitPulse}
             <span class="hit-shake">
-              <MonsterPortrait monsterId={activeMonster.Id} name={activeMonster.Name} size="lg" />
+              <span class="struckwrap" class:struck>
+                <MonsterPortrait monsterId={activeMonster.Id} name={activeMonster.Name} size="lg" />
+              </span>
             </span>
           {/key}
           <div class="hpblock grow">
@@ -402,6 +438,38 @@
 </div>
 
 <style>
+  .struckwrap {
+    display: inline-block;
+    will-change: transform, filter;
+  }
+
+  .struckwrap.struck {
+    animation: folk-struck 120ms ease-out;
+  }
+
+  @keyframes folk-struck {
+    0% {
+      transform: translateX(0);
+      filter: brightness(2.1) saturate(0.4);
+    }
+    35% {
+      transform: translateX(-3px) rotate(-1.5deg);
+    }
+    70% {
+      transform: translateX(2px) rotate(1deg);
+    }
+    100% {
+      transform: none;
+      filter: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .struckwrap.struck {
+      animation: none;
+    }
+  }
+
   .ruleset {
     margin: 0 0 0.6rem;
     max-width: 60ch;

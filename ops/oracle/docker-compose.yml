@@ -20,14 +20,17 @@
 services:
   app:
     build:
-      context: ../../server
-      # server/Dockerfile, NOT FolkIdle.Server/Dockerfile. They are two
+      # Modul: the REPOSITORY ROOT. It was ../../server, which put the audio
+      # clips and the sprite tree outside the build context - see
+      # server/Dockerfile. Sound has never worked in production because of it.
+      context: ../..
+      # server/Dockerfile, NOT server/FolkIdle.Server/Dockerfile. They are two
       # different images: the inner one is compose's and starts the server
       # bare, while this one migrates first and only then serves
       # (`--migrate && exec ...`). With the schema on Supabase and no shell to
       # run a pre-deploy hook from, migrate-on-entrypoint is the only thing
       # applying migrations here. Safe at exactly one replica - see its comment.
-      dockerfile: Dockerfile
+      dockerfile: server/Dockerfile
     restart: unless-stopped
     env_file: .env
     environment:

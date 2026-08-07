@@ -27,16 +27,39 @@
   --rarity-13: #6fe8d8;
   --rarity-14: #ff5edb;
 
-  --bg: #12141a;
-  --bg-panel: #1a1e27;
-  --bg-raised: #232833;
-  --border: #2f3542;
-  --text: #e6e9ef;
-  --text-dim: #949cad;
-  --accent: #4aa3df;
-  --danger: #e0553f;
-  --good: #7bc96f;
-  --warn: #e8a33a;
+  /* Modul: THE PALETTE IS THE THEME.
+     It was slate blue - a competent dashboard, and a dashboard is what the
+     game looked like. Every panel in every screen reads its colour from these
+     six tokens, so a Slavic-folklore game set in a medieval forest can be one
+     edit away from looking like one: charred oak and old leather for the
+     surfaces, candle-lit parchment for the text, brass for anything that wants
+     your attention.
+
+     The rarity ramp below is deliberately NOT warmed with them. Rarity is the
+     one colour in this UI carrying information no word repeats, and hue-
+     shifting it to match a theme would trade meaning for mood. */
+  --bg: #100d0a;
+  --bg-panel: #1c1712;
+  --bg-raised: #2a221a;
+  --border: #4a3a26;
+  --text: #ece0cc;
+  --text-dim: #a4937c;
+  --accent: #c9a227;
+  --danger: #d1503c;
+  --good: #86b556;
+  --warn: #d9a134;
+
+  /* Brass, for rules, frames and the edge of anything raised. */
+  --brass: #8a6a34;
+  --brass-lit: #d8b45a;
+
+  /* Modul: textures as inline SVG, not files.
+     A parchment or a woodgrain PNG is 40-200 kB and one more thing to serve;
+     fractal noise is a few hundred bytes, scales to any panel, and cannot
+     404. Opacity is deliberately near the floor - the point is to break the
+     flatness of a solid fill, not to be noticed. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  --weave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='6'%3E%3Cpath d='M0 6L6 0' stroke='%23ffffff' stroke-opacity='0.02' stroke-width='1'/%3E%3C/svg%3E");
 
   /* Modul: the two currencies get names of their own rather than borrowing a
      rarity tier. They appear on nine screens and a player scanning for "can I
@@ -62,12 +85,19 @@
 @media (prefers-color-scheme: light) {
   :root {
     color-scheme: light;
-    --bg: #f4f6fa;
-    --bg-panel: #ffffff;
-    --bg-raised: #eef1f6;
-    --border: #d5dae3;
-    --text: #1b1f27;
-    --text-dim: #5b6474;
+    /* Modul: PARCHMENT, not paper.
+       The light theme was a white dashboard - correct contrast, no character,
+       and it is what most browsers hand a player by default. Aged paper and
+       brown ink is the same document in the same game as the dark theme's
+       charred oak, rather than a second product wearing the first one's
+       layout. Contrast is unchanged where it matters: ink on parchment is
+       darker against its background than the old near-black on white. */
+    --bg: #e8dcc0;
+    --bg-panel: #f6edd8;
+    --bg-raised: #eee1c6;
+    --border: #c4ab7f;
+    --text: #2e2317;
+    --text-dim: #6b5a44;
 
     --rarity-1: #737980;
     --rarity-2: #5c6670;
@@ -84,10 +114,13 @@
     --rarity-13: #17897c;
     --rarity-14: #c22d9c;
 
-    --accent: #1f6ea3;
-    --danger: #c0392b;
-    --good: #3d8b32;
-    --warn: #a06612;
+    --accent: #8a6a1f;
+    --danger: #a5361f;
+    --good: #4a7a24;
+    --warn: #8a6212;
+
+    --brass: #8a6a34;
+    --brass-lit: #6d5322;
 
     --gold: #8a6d0e;
     --diamond: #1a6a99;
@@ -340,4 +373,257 @@ img,
 canvas,
 svg {
   max-width: 100%;
+}
+
+/* ===========================================================================
+   THE LOOK: charred oak, candle-lit parchment, brass.
+
+   Modul: this is one appended block rather than edits spread through fifty
+   components, and it uses `!important` where it must. Svelte scopes every
+   component's styles with an extra class, which outranks any plain global
+   selector - so a global restyle either shouts or does not happen. The
+   alternative is the same rule copied into fifty <style> blocks and kept in
+   step by hand, which is how a theme rots.
+
+   Everything here is CSS and inline SVG. No new files, nothing to serve,
+   nothing to 404.
+   =========================================================================== */
+
+body {
+  /* Candle-light from above, dark at the edges - the oldest trick for making
+     a flat page feel like a lit room. */
+  background-color: var(--bg);
+  background-image:
+    var(--grain),
+    radial-gradient(120% 80% at 50% -10%, rgba(201, 162, 39, 0.09), transparent 60%),
+    radial-gradient(100% 100% at 50% 120%, rgba(0, 0, 0, 0.55), transparent 55%);
+  background-attachment: fixed;
+}
+
+
+/* --- headings ------------------------------------------------------------ */
+
+h1,
+h2,
+h3 {
+  /* A serif, from the stack every machine already has - a webfont for four
+     headings is 30-80 kB and a request that can fail. Georgia and its
+     relatives carry the period well enough at these sizes. */
+  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+/* A brass rule under a panel's title, with the line fading out at both ends so
+   it reads as an inlay rather than a border. */
+.panel > h2 {
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid transparent;
+  border-image: linear-gradient(
+      90deg,
+      transparent,
+      var(--brass) 18%,
+      var(--brass-lit) 50%,
+      var(--brass) 82%,
+      transparent
+    )
+    1;
+}
+
+/* --- controls ------------------------------------------------------------ */
+
+button {
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(0, 0, 0, 0.22));
+  border-color: var(--brass);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 234, 190, 0.14),
+    0 1px 2px rgba(0, 0, 0, 0.5);
+  transition:
+    border-color 120ms ease,
+    background 120ms ease,
+    translate 60ms ease,
+    box-shadow 120ms ease;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--brass-lit);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 234, 190, 0.2),
+    0 0 10px rgba(201, 162, 39, 0.22);
+}
+
+/* Pressed, not just hovered. A control that does not move under a finger
+   reads as a picture of a button.
+
+   Modul: `translate`, NOT `transform` - and this is not a style preference.
+   `transform` is one property holding a whole list, so setting it here
+   REPLACES whatever the element was already using it for. The hub's map plates
+   position themselves with `transform: translate(-50%, -50%)`, so pressing one
+   threw it half its own width off the landmark, the pointer landed on nothing,
+   and the click retried forever. exercise.mjs hung on it.
+
+   The independent `translate` property composes with `transform` instead of
+   overwriting it, which is exactly what it exists for. */
+button:active:not(:disabled) {
+  translate: 0 1px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+button.active,
+nav button.active {
+  border-color: var(--brass-lit);
+  background-image: linear-gradient(180deg, rgba(201, 162, 39, 0.22), rgba(201, 162, 39, 0.06));
+  color: #fff3d6;
+}
+
+input,
+select,
+textarea {
+  background-color: rgba(0, 0, 0, 0.28);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--brass-lit);
+  outline-offset: 1px;
+}
+
+/* --- the header ---------------------------------------------------------- */
+
+header {
+  background-image: var(--grain), linear-gradient(180deg, #241c14, #171209) !important;
+  border-bottom: 1px solid var(--brass) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+}
+
+header strong {
+  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+  font-size: 1.15rem;
+  color: var(--brass-lit);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.7);
+}
+
+/* --- motion -------------------------------------------------------------- */
+
+/* Panels arrive rather than appear. Short and small: a screen change should
+   feel like a page turning, not like an animation you wait for.
+
+   Modul: OPACITY ONLY - it used to translate as well, and that moved every
+   panel's bounding box for 180ms. Anything inside a panel that re-renders is
+   therefore never at rest, which is not merely a test problem: exercise.mjs
+   waited forever for a hub plate to become "stable", and what it was
+   describing is a map whose buttons drift under the cursor every time state
+   arrives, ten times a second. A fade does the same job and moves nothing. */
+@keyframes folk-rise {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.panel {
+  animation: folk-rise 180ms ease-out both;
+}
+
+/* A slow brass sheen, for the one control on a screen that matters most.
+   Opt-in via a class rather than applied to every button, because a page where
+   everything shimmers has nothing to point at. */
+@keyframes folk-sheen {
+  0% {
+    background-position: -140% 0;
+  }
+  100% {
+    background-position: 240% 0;
+  }
+}
+
+.gilded {
+  position: relative;
+  overflow: hidden;
+}
+
+.gilded::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 40%,
+    rgba(255, 234, 190, 0.28) 50%,
+    transparent 60%
+  );
+  background-size: 220% 100%;
+  animation: folk-sheen 4.5s linear infinite;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+  .gilded::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* --- surfaces ------------------------------------------------------------ */
+
+.panel {
+  /* The component sets `background:` (a shorthand, so it clears the image);
+     only the image is taken back, so each panel keeps its own colour. */
+  background-image: var(--grain), var(--weave) !important;
+  border-color: var(--border) !important;
+  /* A carved edge: dark line out, brass highlight in. */
+  box-shadow:
+    inset 0 1px 0 rgba(216, 180, 90, 0.13),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 2px 10px rgba(0, 0, 0, 0.45);
+  position: relative;
+}
+
+/* On parchment the same vignette reads as a stain rather than as candlelight,
+   and it has to be far weaker or the page looks scorched. */
+@media (prefers-color-scheme: light) {
+  body {
+    background-image:
+      var(--grain),
+      radial-gradient(120% 80% at 50% -10%, rgba(255, 255, 255, 0.5), transparent 55%),
+      radial-gradient(100% 100% at 50% 120%, rgba(120, 92, 46, 0.16), transparent 60%);
+  }
+
+  .panel {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      inset 0 0 0 1px rgba(120, 92, 46, 0.12),
+      0 2px 8px rgba(90, 68, 34, 0.14);
+  }
+
+  header {
+    background-image: var(--grain), linear-gradient(180deg, #efe2c6, #e2d2ae) !important;
+  }
+
+  header strong {
+    color: #5a4118;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+
+  button {
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(160, 130, 80, 0.12));
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      0 1px 2px rgba(90, 68, 34, 0.2);
+  }
+
+  input,
+  select,
+  textarea {
+    background-color: rgba(255, 255, 255, 0.6);
+  }
 }
