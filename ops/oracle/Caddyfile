@@ -83,6 +83,13 @@ folkidle.duckdns.org, 92-5-0-94.sslip.io {
 	@immutable path /assets/* /sprites/*
 	@html path / /index.html
 
+	# Modul: AT THE SITE LEVEL, beside the security headers that demonstrably
+	# work - not inside the static `handle`. Placed there they were accepted,
+	# validated and reloaded without complaint, and never appeared on a single
+	# response. The site-level form is the one this file already proves out.
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+	header @html Cache-Control "no-cache"
+
 	@websocket {
 		header Connection *Upgrade*
 		header Upgrade websocket
@@ -133,9 +140,6 @@ folkidle.duckdns.org, 92-5-0-94.sslip.io {
 		#   - /assets/*: trusted forever. The filename CONTAINS the content
 		#     hash, so a changed file is a different URL and a cached one can
 		#     never be wrong.
-		header @immutable Cache-Control "public, max-age=31536000, immutable"
-		header @html Cache-Control "no-cache"
-
 		try_files {path} /index.html
 		file_server
 	}
