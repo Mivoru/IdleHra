@@ -111,3 +111,52 @@ describe('toDisplayAffixes', () => {
     expect(rows[1].label).toBe('Hp (2)');
   });
 });
+
+// Modul: THE DISPLAYED LIST IS THE REROLL COMMAND'S ARGUMENT.
+//
+// The reroll addresses an affix by INDEX - the packet carries a position, not
+// an affix id - and AffixRerollEngine builds the list it indexes into while
+// SKIPPING "is_affix_locked". toDisplayAffixes kept every key, so on any item
+// carrying that flag the two lists were off by one and a player selecting the
+// first affix rerolled the second.
+//
+// Reported twice, both times as an affix "jumping in" that the player had not
+// chosen. Two independent bugs produced that one symptom; fixing the server's
+// ordering left this.
+describe('toDisplayAffixes membership matches the server', () => {
+  it('skips is_affix_locked so the indices line up', () => {
+    const rows = toDisplayAffixes({
+      is_affix_locked: 1,
+      'lifesteal_pct@3': 25,
+      'crit_chance_pct@2': 40,
+    } as unknown as Record<string, number>);
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0].key).toBe('lifesteal_pct@3');
+    expect(rows[1].key).toBe('crit_chance_pct@2');
+  });
+
+  it('keeps payload order, because index 0 must mean the same thing on both sides', () => {
+    const rows = toDisplayAffixes({
+      'flat_armor@1': 6,
+      'lifesteal_pct@3': 25,
+      'crit_dmg_pct@2': 40,
+    });
+
+    expect(rows.map((r) => r.key)).toEqual([
+      'flat_armor@1',
+      'lifesteal_pct@3',
+      'crit_dmg_pct@2',
+    ]);
+  });
+
+  it('ignores anything that is not a numeric magnitude', () => {
+    const rows = toDisplayAffixes({
+      'flat_armor@1': 6,
+      some_flag: true,
+    } as unknown as Record<string, number>);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].key).toBe('flat_armor@1');
+  });
+});

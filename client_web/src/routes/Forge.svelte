@@ -216,6 +216,44 @@
   // --- reroll ---------------------------------------------------------------
   let rerollItemId = $state(0);
   let rerollAffixIndex = $state(0);
+
+  // Modul: A REROLL IS IRREVERSIBLE, so a good affix deserves a question.
+  //
+  // Asked for after an auto-reroll ate an Epic: "it should ask whether you
+  // really want to reroll a Legendary, and let me set the same for Epic so it
+  // does not run one over."
+  //
+  // It matters most for AUTO-reroll, which is the one that destroys a good
+  // affix without a second press - it keeps rolling the same slot until a stop
+  // condition is met, and the affix sitting there when it starts is gone on
+  // the first attempt.
+  //
+  // Threshold rather than a fixed rule, stored locally: this is a safety rail
+  // for one person's habits, not a game rule the server has any business
+  // knowing about.
+  const GUARD_OFF = 99;
+  const GUARD_STORAGE_KEY = 'folkidle.rerollGuardRarity';
+
+  let guardRarity = $state(readGuard());
+
+  function readGuard(): number {
+    try {
+      const stored = Number(localStorage.getItem(GUARD_STORAGE_KEY));
+      // 4 = Epic, 5 = Legendary, 99 = never ask. Legendary by default: the
+      // rarity a player is least likely to want to gamble away by accident.
+      return stored === 4 || stored === 5 || stored === GUARD_OFF ? stored : 5;
+    } catch {
+      return 5;
+    }
+  }
+
+  $effect(() => {
+    try {
+      localStorage.setItem(GUARD_STORAGE_KEY, String(guardRarity));
+    } catch {
+      // A browser refusing storage is not a reason to break the forge.
+    }
+  });
   let rerollOperation = $state(0);
   let autoReroll = $state(false);
   let autoAttempts = $state(10);
@@ -242,6 +280,18 @@
   const selectedOperation = $derived(REROLL_OPERATIONS[rerollOperation] ?? REROLL_OPERATIONS[0]);
 
   function doReroll() {
+    // The affix ABOUT TO BE DESTROYED, not the one that will replace it.
+    const current = rerollAffixRows[rerollAffixIndex];
+    if (current && current.rarity >= guardRarity) {
+      const what = `${current.rarityName} ${current.label} ${current.value}`;
+      const scope = autoReroll
+        ? `Auto-reroll will keep rolling this slot up to ${autoAttempts} times, so it is gone on the first attempt.`
+        : 'A reroll replaces it outright - it can come out worse.';
+      if (!confirm(`Reroll ${what}?
+
+${scope}`)) return;
+    }
+
     const outcome = rerollAffix(rerollItemId, rerollAffixIndex, rerollOperation, {
       maxAttempts: autoReroll ? autoAttempts : 0,
       stopMinRarity,
@@ -418,14 +468,32 @@
       {#if rerollAffixRows.length === 0}
         <p class="dim">This item has no affixes to reroll.</p>
       {:else}
-        <label>
-          Affix
-          <select bind:value={rerollAffixIndex}>
-            {#each rerollAffixRows as row, index}
-              <option value={index}>{row.label} {row.value} ({row.rarityName})</option>
-            {/each}
-          </select>
-        </label>
+        <!-- Modul: A LIST OF SLOTS, not a dropdown of affixes.
+             Reported twice as affixes "jumping". Two real bugs caused it - the
+             server appended the rerolled affix to the end of the item instead
+             of substituting it in place, and this screen counted a payload key
+             the server skips, so the index the player picked and the index the
+             server rerolled were off by one.
+             Both are fixed, but a dropdown hides the thing that makes the
+             remaining behaviour legible: the SLOT stays and its contents
+             change. Shown as numbered slots so a reroll visibly rewrites the
+             one that is highlighted and touches nothing else. -->
+        <p class="dim small">Pick the slot to reroll. It stays where it is - only what is in it changes.</p>
+        <ul class="slots">
+          {#each rerollAffixRows as row, index}
+            <li>
+              <button
+                class="slot"
+                class:selected={rerollAffixIndex === index}
+                onclick={() => (rerollAffixIndex = index)}
+              >
+                <span class="dim tiny">slot {index + 1}</span>
+                <span class="label">{row.label} {row.value}</span>
+                <span class="dim tiny">{row.rarityName}</span>
+              </button>
+            </li>
+          {/each}
+        </ul>
       {/if}
 
       <!-- Modul: the operation picker is gone. There is one reroll and it
@@ -434,6 +502,15 @@
            stays, because what the reroll actually does to the affix is the part
            worth saying. -->
       <p class="dim tiny hint">{selectedOperation.hint}</p>
+
+      <label class="guard">
+        Ask before rerolling
+        <select bind:value={guardRarity}>
+          <option value={5}>Legendary affixes</option>
+          <option value={4}>Epic and Legendary</option>
+          <option value={GUARD_OFF}>Never ask</option>
+        </select>
+      </label>
 
       <label class="check">
         <input type="checkbox" bind:checked={autoReroll} />
@@ -502,6 +579,46 @@
 </div>
 
 <style>
+  .guard {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0.4rem 0;
+  }
+
+  .slots {
+    list-style: none;
+    margin: 0.3rem 0;
+    padding: 0;
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .slot {
+    display: grid;
+    grid-template-columns: 4rem 1fr auto;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.3rem 0.45rem;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 0.35rem;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .slot:hover {
+    border-color: currentColor;
+  }
+
+  .slot.selected {
+    border-color: currentColor;
+    background: rgba(127, 127, 127, 0.18);
+  }
+
   .price {
     margin: 0.3rem 0;
   }

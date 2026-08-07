@@ -119,9 +119,35 @@ export interface DisplayAffix {
   rarityName: string;
 }
 
-/** Turns a raw payload affix map into rows ready to render. */
+/**
+ * Keys the payload carries that are NOT affixes.
+ *
+ * Modul: this list has to match AffixRerollEngine's, and that is the whole
+ * point of it existing.
+ *
+ * The reroll command addresses an affix by INDEX. The server builds the list
+ * it indexes into while SKIPPING "is_affix_locked"; this function built the
+ * displayed list while keeping every key. On any item carrying that flag the
+ * two lists were off by one, so a player selecting the first affix rerolled
+ * the second - which reads exactly like "an affix I did not choose jumped in
+ * and got rerolled".
+ *
+ * Two independent bugs produced that same symptom. The other one was the
+ * server appending the rerolled affix to the end of the object instead of
+ * substituting it in place; fixing that alone left this.
+ */
+const NON_AFFIX_PAYLOAD_KEYS = new Set(['is_affix_locked']);
+
+/**
+ * Turns a raw payload affix map into rows ready to render.
+ *
+ * The order and the membership of this list are load-bearing: its indices ARE
+ * the reroll command's argument.
+ */
 export function toDisplayAffixes(affixes: Record<string, number>): DisplayAffix[] {
-  return Object.entries(affixes).map(([key, magnitude]) => {
+  return Object.entries(affixes)
+    .filter(([key, magnitude]) => !NON_AFFIX_PAYLOAD_KEYS.has(key) && typeof magnitude === 'number')
+    .map(([key, magnitude]) => {
     const parsed = parseAffixKey(key);
     return {
       key,
