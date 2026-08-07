@@ -32,6 +32,22 @@ for (const width of WIDTHS) {
   // Signed-in is signed-in regardless of what the nav is doing.
   await page.waitForSelector('header button.navtoggle', { timeout: 20000 });
   await page.waitForTimeout(2500);
+
+  // Modul: the offline summary is a modal whose backdrop swallows every click,
+  // and it ARRIVES LATE - built from the first state packet. Sampled once
+  // instead of polled, it is missed, and the miss surfaces thirty seconds later
+  // as an unrelated button "not receiving pointer events". exercise.mjs learned
+  // this the same way.
+  const deadline = Date.now() + 6000;
+  while (Date.now() < deadline) {
+    const cont = page.getByRole('button', { name: 'Continue', exact: true });
+    if ((await cont.count()) > 0) {
+      await cont.first().click();
+      break;
+    }
+    await page.waitForTimeout(250);
+  }
+
   for (let i = await page.locator('.toast button').count(); i > 0; i--) {
     await page.locator('.toast button').first().click().catch(() => {});
   }
@@ -70,6 +86,32 @@ for (const width of WIDTHS) {
 
     // A couple of pixels is rounding; anything more is a layout that does not
     // fit the screen it is on.
+    // Modul: THE MAP'S PLATE LABELS, specifically.
+    //
+    // They sit inside a fixed circular disc, so a label too big for it does
+    // not overflow the PAGE - it wraps inside the wood and reads as "COMBA /
+    // T". Nothing above would ever catch that, because nothing crosses the
+    // viewport. Reported from a phone as the last letter jumping to its own
+    // line.
+    if (screen === 'Map') {
+      const wrapped = await page.evaluate(() =>
+        [...document.querySelectorAll('.place span')]
+          .filter((el) => {
+            // Labels that are authored as two lines carry a newline; anything
+            // taller than the lines it was written with is wrapping by
+            // accident.
+            const authoredLines = (el.textContent ?? '').trim().split(String.fromCharCode(10)).length;
+            const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 1;
+            return el.getBoundingClientRect().height > lineHeight * authoredLines + 2;
+          })
+          .map((el) => (el.textContent ?? '').trim()),
+      );
+      if (wrapped.length > 0) {
+        console.log(`FAIL ${width}px Map: plate labels wrap - ${wrapped.join(', ')}`);
+        failures++;
+      }
+    }
+
     if (worst.overflow > 2) {
       console.log(`FAIL ${width}px ${screen}: ${worst.what} overflows by ${worst.overflow}px`);
       failures++;

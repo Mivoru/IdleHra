@@ -271,8 +271,24 @@ namespace FolkIdle.Server.Domain.Shared
                         player.LogicEpochCounter = state.LogicEpochCounter + 1;
                         player.BankedChronoSeconds = state.BankedChronoSeconds;
                         player.IsChronoAccelerating = state.IsChronoAccelerating;
-                        player.Quarantine_Active = state.Quarantine_Active;
-                        player.IsQuarantined = state.IsQuarantined;
+                        // Modul: THE CHECKPOINT NO LONGER WRITES THE
+                        // QUARANTINE FLAGS.
+                        //
+                        // AntiCheatTelemetryEngine.RequestShadowBan writes them
+                        // to the database itself, in its own transaction, and
+                        // then mirrors them onto the payload for the tick. This
+                        // wrote them BACK from the payload every flush - so a
+                        // live session's stale copy could resurrect a
+                        // quarantine that had already been lifted, and an
+                        // operator could never lift one for an online player at
+                        // all. Clearing the columns appeared to work and the
+                        // next flush undid it.
+                        //
+                        // Same shape as the gold bug: changing the database
+                        // out-of-band while a session holds the old value. Gold
+                        // survives because it is persisted as a delta; these
+                        // are absolutes, so the only safe answer is one writer.
+                        // Hydration reads them - see the payload build below.
                         player.BaseStrength = state.STR;
                         player.BaseDexterity = state.DEX;
                         player.BaseConstitution = state.CON;
@@ -328,8 +344,11 @@ namespace FolkIdle.Server.Domain.Shared
                             LogicEpochCounter = state.LogicEpochCounter + 1,
                             BankedChronoSeconds = state.BankedChronoSeconds,
                             IsChronoAccelerating = state.IsChronoAccelerating,
-                            Quarantine_Active = state.Quarantine_Active,
-                            IsQuarantined = state.IsQuarantined
+                            // A row being created for the first time cannot
+                            // already be quarantined, and the flags have one
+                            // writer now - see above.
+                            Quarantine_Active = false,
+                            IsQuarantined = false
                         });
                         await UpsertAccountChronoRegistryAsync(dbContext, state);
                         await UpsertChroniclePassAsync(dbContext, state);
@@ -1445,7 +1464,8 @@ namespace FolkIdle.Server.Domain.Shared
                         player.LogicEpochCounter = state.LogicEpochCounter + 1;
                         player.BankedChronoSeconds = state.BankedChronoSeconds;
                         player.IsChronoAccelerating = state.IsChronoAccelerating;
-                        player.Quarantine_Active = state.Quarantine_Active;
+                        // Not written here either - one writer, see the
+                        // main flush path above.
                         player.IsQuarantined = state.IsQuarantined;
                         player.BaseStrength = state.STR;
                         player.BaseDexterity = state.DEX;

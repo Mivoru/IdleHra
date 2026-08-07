@@ -68,7 +68,6 @@
         { key: 'larder', label: 'Auto-Eat' },
         { key: 'crafting', label: 'Crafting' },
         { key: 'forge', label: 'Forge' },
-        { key: 'mailbox', label: 'Mail' },
       ],
     },
     {
@@ -383,11 +382,15 @@
   }
 
   @media (max-width: 40rem) {
+    /* Modul: pushed to its own line. Inline beside the title it drew over
+       "FolkIdle" once the label grew - a header that overlaps itself. */
     .navtoggle {
       display: inline-flex;
       align-items: center;
       gap: 0.3rem;
       min-height: 2.2rem;
+      order: 1;
+      margin-left: auto;
     }
 
     nav {

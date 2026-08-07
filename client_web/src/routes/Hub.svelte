@@ -64,6 +64,8 @@
   }
 
   .place {
+    /* Makes cqw above measure THIS element. */
+    container-type: inline-size;
     position: absolute;
     transform: translate(-50%, -50%);
     width: 10.5%;
@@ -106,14 +108,25 @@
        painted plank rather than on the page. */
     color: #17110a;
     font-weight: 800;
-    /* Sized so the longest label (WORLD BOSS) still fits the plate's inner
-       disc rather than running off the wood. */
-    font-size: clamp(0.55rem, 0.85vw, 0.92rem);
+    /* Modul: SIZED AGAINST THE PLATE, not the window.
+       This was `0.85vw`, which ties the label to the viewport - and once the
+       plates were allowed to shrink on a phone the two stopped tracking each
+       other: an 8.8px label on a 44px plate wrapped every word, so COMBAT read
+       "COMBA / T" and MARKET read "MARKE / T".
+       Container units measure the plate itself, which is the box the text has
+       to fit, so the relationship holds at every size.
+
+       19cqw is the largest that still fits: at 21 the labels wrap again -
+       measured, not guessed, and mobile-check.mjs asserts it, because a label
+       too big for its disc does not overflow the PAGE and so nothing else
+       would ever catch it. */
+    font-size: clamp(0.42rem, 19cqw, 0.92rem);
     line-height: 1.05;
     text-align: center;
     letter-spacing: 0.01em;
     text-transform: uppercase;
-    max-width: 76%;
+    /* A little more of the disc, now that the wood is smaller. */
+    max-width: 90%;
     overflow-wrap: break-word;
     /* The label carries its own line breaks - "World\nBoss" is two lines by
        authorship, not by the box happening to be narrow. */
