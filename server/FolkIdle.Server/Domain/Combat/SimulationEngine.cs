@@ -2555,7 +2555,31 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                     else if (cmd.Command == CommandType.ReloadState)
                     {
-                        currentPayload.IsSuspended = false;
+                        // Modul: RELOAD NOW ACTUALLY RELOADS.
+                        //
+                        // This set IsSuspended = false and nothing else. Every
+                        // engine that changes the database out-of-band - reroll,
+                        // fusion, market, village, crafting - finishes by
+                        // enqueuing ReloadState precisely so the live payload
+                        // picks the change up. None of them did. The in-memory
+                        // payload kept its old gold, its old inventory counts
+                        // and its old equipment, and the only way to see the
+                        // truth was to sign in again.
+                        //
+                        // Reported as "I have to press F5 for the gold to
+                        // update, and a reroll does not deduct straight away".
+                        // Exactly right, and it was never only gold.
+                        //
+                        // Suspended and flushed by the command that scheduled
+                        // the work, so the database already holds this player's
+                        // tick state - re-reading it here cannot lose anything
+                        // the tick had and not yet written.
+                        long reloadPlayerId = currentPayload.PlayerId;
+                        SafeDispatchAsync("ReloadState", reloadPlayerId, async () => {
+                            var reloaded = await _checkpointManager.LoadPlayerState(reloadPlayerId);
+                            reloaded.IsSuspended = false;
+                            AddActivePlayer(reloaded);
+                        });
                     }
                     else if (cmd.Command == CommandType.ConsumeChronoCore)
                     {

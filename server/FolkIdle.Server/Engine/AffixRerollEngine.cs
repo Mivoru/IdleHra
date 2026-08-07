@@ -372,20 +372,48 @@ namespace FolkIdle.Server.Engine
 
                 int resultMagnitude = AffixRegistry.RollMagnitude(resultDefinition, regionTier, resultRarity);
 
-                affixPayload.Remove(affixKeyToReroll);
-
                 // Preserve the stack shape: if the item already carries this
                 // affix, the result becomes a further stacked instance rather
                 // than overwriting the existing one.
                 int stackIndex = 1;
                 string newAffixKey = AffixRegistry.BuildPayloadKey(resultDefinition.Id, stackIndex, resultRarity);
-                while (affixPayload.ContainsKey(newAffixKey))
+                while (affixPayload.ContainsKey(newAffixKey) && newAffixKey != affixKeyToReroll)
                 {
                     stackIndex++;
                     newAffixKey = AffixRegistry.BuildPayloadKey(resultDefinition.Id, stackIndex, resultRarity);
                 }
 
-                affixPayload[newAffixKey] = resultMagnitude;
+                // Modul: THE REROLLED AFFIX KEEPS ITS PLACE IN THE LIST.
+                //
+                // This was Remove-then-assign, and assigning a new key to a
+                // JsonObject APPENDS it. So the affix a player had selected
+                // moved to the end of the item and every affix after it shifted
+                // up one - and since the reroll command addresses an affix by
+                // INDEX, the selection silently landed on a different one.
+                //
+                // Reported exactly: "I reroll and get Rare lifesteal, then it
+                // jumps to Epic attack speed out of nowhere and I am rerolling
+                // that instead." Nothing jumped; the list moved under a
+                // positional cursor.
+                //
+                // Rebuilt in order with the new key substituted at the old
+                // key's position. A dictionary with no order is not a list, and
+                // this payload has been addressed as a list since the reroll
+                // shipped.
+                var rebuilt = new JsonObject();
+                foreach (var existing in affixPayload)
+                {
+                    if (existing.Key == affixKeyToReroll)
+                    {
+                        rebuilt[newAffixKey] = resultMagnitude;
+                    }
+                    else
+                    {
+                        rebuilt[existing.Key] = existing.Value?.DeepClone();
+                    }
+                }
+                affixPayload = rebuilt;
+
                 targetItem.AffixPayload = affixPayload.ToJsonString();
 
                 LastRerollResultRarity = resultRarity;

@@ -20,6 +20,7 @@
   import Affixes from '../lib/ui/Affixes.svelte';
 
   import { takePendingFocusEquipment } from '../lib/stores/navigation';
+  import { commandResults } from '../lib/stores/game';
 
   const client = useQueryClient();
   const forge = createQuery(() => ({ queryKey: queryKeys.forge, queryFn: fetchForge }));
@@ -28,12 +29,35 @@
   const forgeLevel = $derived(snap?.ForgeLevel ?? 0);
   const owned = $derived(forge.data?.OwnedEquipment ?? []);
 
+  // Modul: REFRESH WHEN THE SERVER ANSWERS, not 800ms after we asked.
+  //
+  // A fixed timer is a guess about how long a Serializable transaction and a
+  // state reload take, and it is wrong in both directions: too early on a
+  // loaded server, so the screen re-reads the OLD rows and looks unchanged,
+  // and needlessly late otherwise. Reported as "I have to press F5 to see it
+  // and the gold does not come off straight away".
+  //
+  // The command-result feed is the server saying "I am done with that", which
+  // is the actual event worth reacting to. The timer stays as a backstop for
+  // paths that report nothing.
   function refresh() {
-    setTimeout(() => {
-      client.invalidateQueries({ queryKey: queryKeys.forge });
-      client.invalidateQueries({ queryKey: queryKeys.inventory });
-    }, 800);
+    invalidate();
+    setTimeout(invalidate, 800);
   }
+
+  function invalidate() {
+    client.invalidateQueries({ queryKey: queryKeys.forge });
+    client.invalidateQueries({ queryKey: queryKeys.inventory });
+  }
+
+  let lastSeenResultId = 0;
+  $effect(() => {
+    const latest = $commandResults[0];
+    if (latest && latest.id !== lastSeenResultId) {
+      lastSeenResultId = latest.id;
+      invalidate();
+    }
+  });
 
   function label(item: ForgeEquipment): string {
     return `${prettifyBaseId(item.BaseItemId)} [${rarityName(item.QualityTier)}] #${item.Id}`;
@@ -450,9 +474,23 @@
         </p>
       {/if}
 
-      <button onclick={doReroll} disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked}>
+      <!-- Modul: THE PRICE IS ON THE BUTTON.
+           It was stated in a paragraph above, which is where a player does not
+           look at the moment they commit. A charge belongs on the thing that
+           charges - and this is the button that quietly took a night's income
+           over five presses. -->
+      <button
+        onclick={doReroll}
+        disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked || gold < rerollFee}
+      >
         {autoReroll ? `Auto-reroll up to ${autoAttempts}x` : 'Reroll once'}
+        &middot; {rerollFee.toLocaleString()}g{autoReroll ? ' each' : ''}
       </button>
+      {#if gold < rerollFee}
+        <p class="dim tiny">
+          You have {gold.toLocaleString()}g and this costs {rerollFee.toLocaleString()}g.
+        </p>
+      {/if}
     {/if}
   </section>
 

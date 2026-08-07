@@ -17,6 +17,7 @@ import {
 } from '../net/interpolation';
 import { DamageFeed, type DamageEvent } from './damage';
 import { CommandResultFeed, COMMAND_RESULT_SUCCESS, type CommandResultEntry } from './commandResults';
+import { queryClient } from '../net/queryClient';
 import { initTutorial, notifyItemLooted, notifyItemCrafted, notifyCombatWon } from './tutorial';
 import { play } from '../ui/audio';
 import type { StateUpdate, ResponseChatMessage, ResponseLootDrop } from '../net/protocol.generated';
@@ -341,6 +342,24 @@ export function startSession(token: string): void {
         // One cue per batch, not per result: the ring buffer can deliver four
         // at once and four overlapping error tones is a noise, not a signal.
         if (results.some((r) => r.code !== COMMAND_RESULT_SUCCESS)) play('error');
+
+        // Modul: A COMMAND RESULT IS THE SERVER SAYING "THAT IS DONE", so it is
+        // the moment every screen's data is stale.
+        //
+        // Nine screens each guessed at this with a setTimeout - 400ms here,
+        // 700 there, 900 in Breeding - which is a guess about how long a
+        // Serializable transaction plus a state reload takes. Too short and
+        // the refetch reads the OLD rows and the screen looks unchanged; too
+        // long and it feels broken. Reported as "I have to press F5 to see the
+        // gold update".
+        //
+        // Invalidated globally rather than per screen because the results ring
+        // does not say WHICH command it is answering - and a command a player
+        // just issued can change gold, inventory, equipment and the village at
+        // once. TanStack only refetches what is actually mounted and observed,
+        // so the cost of the broad brush is small and the cost of missing one
+        // is a screen that lies.
+        queryClient.invalidateQueries();
       }
 
       // Modul: the tutorial arms from IsFreshAccount - the server's own signal
