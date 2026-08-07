@@ -249,6 +249,15 @@ input {
    forever. One place that can be read and changed is worth the shout.
    --------------------------------------------------------------------------- */
 @media (max-width: 40rem) {
+  /* Modul: MATCHED BY WHAT THEY HOLD, not by what they are called.
+     This listed `.grid` and `.wrap`, and Combat's container is called
+     `.layout` - so the one screen with a 20rem minimum column was the one
+     screen the rule never reached, and it overflowed by exactly its own
+     padding. Naming containers one at a time means the next screen to invent a
+     name is broken and nobody finds out until someone opens it on a phone.
+     The single thing every screen-level container has in common is that it
+     contains panels. */
+  :has(> .panel),
   .grid,
   .wrap {
     grid-template-columns: 1fr !important;
@@ -276,9 +285,51 @@ input {
   }
 }
 
+/* Modul: A GRID COLUMN THAT CANNOT SHRINK IS WHY THE RIGHT EDGE WAS CUT OFF.
+   Reported from a phone: the Character panel ran off the screen, taking the
+   health bar and the fourth combat-rating column with it.
+
+   `1fr` is `minmax(auto, 1fr)`, and `auto` as a MINIMUM means "at least as wide
+   as my content". So `repeat(4, 1fr)` holding four labelled numbers is not four
+   flexible columns - it is four columns that refuse to go below their text, and
+   on a 360px screen the row is simply wider than the phone. Eleven screens use
+   that pattern.
+
+   The fix is the standard one and it is a fix to the CAUSE: let the items
+   shrink. Columns then narrow and text wraps instead of the panel growing.
+   `!important` because Svelte scopes component styles with an extra class,
+   which outranks any plain global selector - the alternative is editing the
+   same rule into eleven files and keeping them in step.
+
+   Images and canvases are excluded: they have intrinsic sizes and squeezing
+   them to nothing is not what anybody wants. */
+.panel,
+.grid > *,
+.wrap > *,
+:has(> .panel) > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 40rem) {
+  .panel *:not(img):not(svg):not(canvas) {
+    min-width: 0 !important;
+  }
+
+  /* Long unbroken numbers - "1 594 323g" - are the other way a cell refuses to
+     narrow. */
+  .panel {
+    overflow-wrap: anywhere;
+  }
+}
+
 /* Nothing may push the page wider than the viewport, on any screen. This is a
    backstop rather than a layout: if it ever fires, something above it is wrong,
-   but a player should not meet that as a sideways-scrolling game. */
+   but a player should not meet that as a sideways-scrolling game.
+
+   Note it HIDES rather than fixes - which is exactly why the phone report read
+   as "the right side is cut off" instead of "the page scrolls sideways". The
+   rules above are what stop it from firing. */
 html,
 body {
   max-width: 100%;
