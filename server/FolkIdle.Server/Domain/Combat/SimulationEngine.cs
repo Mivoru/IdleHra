@@ -940,6 +940,12 @@ namespace FolkIdle.Server.Domain.Combat
                         continue;
                     }
 
+                    // Modul: stamped for the anti-cheat challenge, which needs
+                    // to tell "this client will not answer" from "this client
+                    // is not running right now". See the miss branch in
+                    // ProcessAccountTick.
+                    currentPayload.LastClientCommandAtMs = Environment.TickCount64;
+
                     int targetSlotIndex = ResolveSlotIndexForCharacter(ref currentPayload, activityChange.CharacterId);
                     if (targetSlotIndex < 0)
                     {
@@ -3065,9 +3071,42 @@ namespace FolkIdle.Server.Domain.Combat
                             // Marked answered so the next broadcast issues a
                             // fresh challenge rather than re-counting this one.
                             currentPayload.ActiveChallengeAnswered = 1;
-                            currentPayload.ConsecutiveChallengeMisses++;
 
-                            if (currentPayload.ConsecutiveChallengeMisses >= AntiCheatTelemetryEngine.ConsecutiveChallengeMissLimit)
+                            // Modul: A SILENT CLIENT IS A BACKGROUNDED ONE, NOT
+                            // A CHEATING ONE.
+                            //
+                            // This is an IDLE game, largely played on phones,
+                            // and a phone that locks its screen or switches
+                            // apps throttles the tab's timers - so a client
+                            // that is behaving perfectly cannot answer inside a
+                            // fifteen-second window. Four of those in a row is
+                            // four ordinary interruptions, and it was a
+                            // PERMANENT quarantine: the account stopped
+                            // simulating entirely, silently, and the player's
+                            // only clue was that nothing happened.
+                            //
+                            // Confirmed from the live log - "QUARANTINE applied
+                            // to player 8 (reason 54, detail 4)" - on a real
+                            // account, playing normally, twice.
+                            //
+                            // A cheating client cannot stay silent: faking
+                            // state is pointless unless it also SENDS
+                            // something. So a miss only counts against a client
+                            // that was otherwise talking during the window.
+                            // Silence resets the run rather than building it -
+                            // there is no evidence either way, and this
+                            // codebase has already shipped one anti-cheat that
+                            // punished people for how they play.
+                            bool clientWasTalking =
+                                Environment.TickCount64 - currentPayload.LastClientCommandAtMs
+                                    <= AntiCheatTelemetryEngine.ChallengeResponseWindowMs;
+
+                            if (!clientWasTalking)
+                            {
+                                currentPayload.ConsecutiveChallengeMisses = 0;
+                            }
+                            else if (++currentPayload.ConsecutiveChallengeMisses
+                                     >= AntiCheatTelemetryEngine.ConsecutiveChallengeMissLimit)
                             {
                                 currentPayload.IsQuarantined = true;
                                 currentPayload.Quarantine_Active = true;

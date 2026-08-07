@@ -70,7 +70,11 @@
     /* The plate's own proportions after the re-crop - very nearly square,
        because it is a disc. */
     aspect-ratio: 512 / 502;
-    min-width: 4.5rem;
+    /* Modul: 4.5rem forced every plate to 72px on a 360px phone, where 10.5%
+       of the painting is 36 - so the plates were double the size the map was
+       drawn for and crowded over each other. The floor exists so they stay
+       tappable, and 2.75rem (44px) is the size a thumb actually needs. */
+    min-width: 2.75rem;
     display: grid;
     place-items: center;
     padding: 0;

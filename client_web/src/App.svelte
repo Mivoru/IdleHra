@@ -106,6 +106,11 @@
   // stores/navigation.ts for why it carries a nonce.
   const ALL_SCREEN_KEYS = new Set<string>(GROUPS.flatMap((group) => group.screens.map((s) => s.key)));
 
+  let navOpen = $state(false);
+  const currentScreenLabel = $derived(
+    GROUPS.flatMap((group) => group.screens).find((item) => item.key === screen)?.label ?? 'Menu',
+  );
+
   $effect(() => {
     const request = $screenRequest;
     if (request && ALL_SCREEN_KEYS.has(request.screen)) {
@@ -159,13 +164,36 @@
     <header>
       <strong>FolkIdle</strong>
 
-      <nav>
+      <!-- Modul: ON A PHONE THE NAV IS A MENU, not a wall.
+           Twenty-two destinations in four labelled groups is a good desktop
+           header and it filled the whole first screen of a 360px phone - the
+           map, which is the screen it was sitting on top of, started below the
+           fold. A player opening the game saw a list of links and had to
+           scroll to reach the game.
+           Collapsed by default on narrow screens, showing where you are; the
+           full grouping is intact once opened, and choosing anything closes
+           it again. -->
+      <button
+        class="navtoggle"
+        aria-expanded={navOpen}
+        onclick={() => (navOpen = !navOpen)}
+      >
+        {navOpen ? 'Close' : 'Menu'} &middot; {currentScreenLabel}
+      </button>
+
+      <nav class:open={navOpen}>
         {#each GROUPS as group}
           <div class="group" role="group" aria-label={group.name}>
             <span class="group-name">{group.name}</span>
             <div class="group-buttons">
               {#each group.screens as item}
-                <button class:active={screen === item.key} onclick={() => (screen = item.key)}>
+                <button
+                  class:active={screen === item.key}
+                  onclick={() => {
+                    screen = item.key;
+                    navOpen = false;
+                  }}
+                >
                   {item.label}
                   {#if item.key === 'mailbox'}<MailBadge />{/if}
                 </button>
@@ -338,6 +366,12 @@
     color: var(--text);
   }
 
+  /* The toggle only exists on narrow screens - a desktop header has room for
+     the whole nav and hiding it there would be a step backwards. */
+  .navtoggle {
+    display: none;
+  }
+
   @media (max-width: 52rem) {
     nav {
       gap: 0.5rem;
@@ -345,6 +379,29 @@
     }
     .group-buttons {
       flex-wrap: wrap;
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .navtoggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      min-height: 2.2rem;
+    }
+
+    nav {
+      display: none;
+    }
+
+    nav.open {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    nav button {
+      min-height: 2.2rem;
     }
   }
 

@@ -62,6 +62,13 @@ namespace FolkIdle.Server.Engine
         public int CombatTargetTickAccumulator;
         
         public bool IsSuspended;
+
+        // Modul: when this client last SAID anything, in Environment.TickCount64.
+        //
+        // Used by the anti-cheat challenge to tell a backgrounded tab from a
+        // client that is refusing to answer. Server-side only - the wire packet
+        // is a separate struct, so this costs nothing on the network.
+        public long LastClientCommandAtMs;
         public bool Quarantine_Active;
 
         public long CurrentGold;

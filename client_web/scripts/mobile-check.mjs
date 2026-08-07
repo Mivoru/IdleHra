@@ -27,13 +27,26 @@ for (const width of WIDTHS) {
   await page.locator('input[type="email"]').fill('dev@folkidle.local');
   await page.locator('input[type="password"]').fill('FolkIdleDev123!');
   await page.getByRole('button', { name: 'Sign in', exact: true }).last().click();
-  await page.waitForSelector('text=Combat', { timeout: 20000 });
+  // Modul: NOT 'text=Combat' - that is a nav entry, and on these widths the
+  // nav is collapsed behind the Menu button, so waiting for it waits forever.
+  // Signed-in is signed-in regardless of what the nav is doing.
+  await page.waitForSelector('header button.navtoggle', { timeout: 20000 });
   await page.waitForTimeout(2500);
   for (let i = await page.locator('.toast button').count(); i > 0; i--) {
     await page.locator('.toast button').first().click().catch(() => {});
   }
 
   for (const screen of SCREENS) {
+    // Modul: the nav collapses behind a Menu button on narrow screens, so it
+    // has to be opened before a destination can be reached - which is also
+    // worth exercising, because a menu that does not open is a game with one
+    // screen.
+    const toggle = page.locator('header button.navtoggle');
+    if (await toggle.isVisible().catch(() => false)) {
+      await toggle.click();
+      await page.waitForTimeout(150);
+    }
+
     const nav = page.locator('header').getByRole('button', { name: screen, exact: true }).first();
     if ((await nav.count()) === 0) continue;
     await nav.click().catch(() => {});
