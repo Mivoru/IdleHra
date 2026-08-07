@@ -32,7 +32,6 @@ const {
   submitShardAttack,
   executeCombatTurn,
   assignMentor,
-  upgradeTool,
   triggerGdprPurge,
   MAX_BUFF_TICKS,
   MAX_BOSS_ATTEMPTS,
@@ -295,12 +294,19 @@ describe('mentor assignment', () => {
   });
 });
 
-describe('tool upgrade', () => {
-  it('carries nothing - everything is read server-side', () => {
-    upgradeTool();
-    expect(sent[0]).toEqual({ Command: CommandType.UpgradeTool });
-  });
-});
+// Modul: the tool-upgrade command is gone, and so is this test.
+//
+// VillageBuildingEngine.ExecuteUpgradeToolAsync was `return
+// Task.CompletedTask;` - a whole engine holding one empty method, constructed
+// in Program, threaded through the simulation constructor, dispatched to on
+// every request and accomplishing nothing. The village screen's tool panel had
+// already gone (tools are ordinary equipment now: crafted, carried, rerolled
+// and raised at the Forge), which left this helper with no callers.
+//
+// This test passed for months. It asserted that a command was well-formed,
+// which it was - it never asked whether anything happened at the other end.
+// That is worth writing down: an audit of the wire cannot tell you a feature
+// is dead.
 
 describe('account erasure', () => {
   it('carries a confirmation hash bound to the player and the epoch', () => {

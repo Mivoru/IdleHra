@@ -670,3 +670,148 @@ header strong {
     background-color: rgba(255, 255, 255, 0.6);
   }
 }
+
+/* ===========================================================================
+   THE SECOND PASS: troughs, sockets, rows, and the small ornaments.
+
+   The first pass gave the page its materials. This one is about the parts a
+   player looks AT rather than through - the bar that says how close to death
+   they are, the tile an item sits in, the row they scan two hundred times an
+   hour. Flat rectangles in a textured room read as placeholders.
+   =========================================================================== */
+
+/* --- bars: carved troughs ------------------------------------------------- */
+
+.bar {
+  /* Sunk into the surface rather than drawn on it: a dark inner rim at the
+     top where light would not reach, a faint lip at the bottom. */
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.65),
+    inset 0 -1px 0 rgba(216, 180, 90, 0.1);
+  border-color: var(--brass) !important;
+}
+
+.bar-fill {
+  /* The fill is liquid in a channel - lit along the top, shaded at the
+     bottom - and the diagonal ribbing is what makes a long bar read as
+     FULLER rather than just longer. The colour underneath still comes from
+     the component, so health stays green and a monster stays red. */
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(0, 0, 0, 0.25)),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.07) 0 6px,
+      transparent 6px 12px
+    );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.bar-label {
+  letter-spacing: 0.02em;
+}
+
+/* --- sockets: where an icon sits ----------------------------------------- */
+
+/* Modul: item art was floating on the panel. A socket - recessed, brass-edged -
+   is what makes a picture read as a THING you own rather than an illustration
+   of one, and it is the single cheapest way to make an inventory look like an
+   inventory. Scoped to the icon component's own wrapper so it cannot catch
+   ordinary images. */
+.icon,
+.item-icon,
+.slot {
+  background-color: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 1px rgba(216, 180, 90, 0.18);
+}
+
+/* --- rows: something to scan --------------------------------------------- */
+
+/* A hairline between rows rather than a box around each. Lists here are long
+   and a border per row turns a list into a ladder. */
+.rows > li,
+.slots > li,
+.monsters > li,
+.board > li {
+  border-bottom: 1px solid rgba(138, 106, 52, 0.22);
+}
+
+.rows > li:last-child,
+.slots > li:last-child,
+.monsters > li:last-child,
+.board > li:last-child {
+  border-bottom: 0;
+}
+
+/* The row under the cursor lifts out of the leather very slightly. No
+   transform: rows are clicked, and a target that moves as you reach it is the
+   oldest interface annoyance there is. */
+.rows > li:hover,
+.monsters > li:hover,
+.board > li:hover {
+  background-color: rgba(216, 180, 90, 0.06);
+}
+
+/* --- ornaments ------------------------------------------------------------ */
+
+/* A brass lozenge between sections, for panels that carry more than one. */
+/* Modul: NOT on a heading that is already a picture. Combat's region titles
+   are h3 elements with the location painting as their background, so a lozenge
+   nudged in from the left landed outside the band, floating on the page beside
+   it. */
+h3:not(.place):not([style*='background-image']) {
+  position: relative;
+  padding-left: 0.85rem;
+}
+
+h3:not(.place):not([style*='background-image'])::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 0.4rem;
+  height: 0.4rem;
+  transform: rotate(45deg);
+  background: var(--brass-lit);
+  opacity: 0.75;
+}
+
+/* The group labels in the header read as engraved rather than as small text. */
+.group-name {
+  font-variant: small-caps;
+  letter-spacing: 0.12em;
+  color: var(--brass);
+  opacity: 0.9;
+}
+
+/* --- scrollbars ----------------------------------------------------------- */
+
+/* Left default they are the one bright grey rectangle on a dark oak page. */
+* {
+  scrollbar-color: var(--brass) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--brass-lit), var(--brass));
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* Modul: an empty-state ornament was tried here and removed. `.dim:only-child`
+   is a structural accident, not a meaning - it caught some empty states, missed
+   others, and would have decorated any dim label that happened to be an only
+   child. A rule that fires where nobody intended is worse than a bare "Nothing
+   yet.", which at least says the same thing every time. */

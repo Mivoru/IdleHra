@@ -1714,7 +1714,6 @@ namespace FolkIdle.Server.Tests
             var guildLogisticsEngine = new GuildLogisticsEngine(serviceProvider, playerRegistry);
             var craftingEngine = new CraftingEngine(contextFactory, playerRegistry, _fixture.RetryingOptions);
             var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
-            var villageBuildingEngine = new VillageBuildingEngine(serviceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
             var guildWarEngine = new GuildWarEngine(serviceProvider);
             var chronoCoreEngine = new ChronoCoreEngine(serviceProvider, playerRegistry);
@@ -1725,7 +1724,7 @@ namespace FolkIdle.Server.Tests
             return new SimulationEngine(
                 lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageBuildingEngine, villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
         }
 
@@ -2418,7 +2417,6 @@ namespace FolkIdle.Server.Tests
             var guildLogisticsEngine = new GuildLogisticsEngine(serviceProvider, playerRegistry);
             var craftingEngine = new CraftingEngine(contextFactory, playerRegistry, _fixture.RetryingOptions);
             var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
-            var villageBuildingEngine = new VillageBuildingEngine(serviceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
             var guildWarEngine = new GuildWarEngine(serviceProvider);
             var chronoCoreEngine = new ChronoCoreEngine(serviceProvider, playerRegistry);
@@ -2432,7 +2430,7 @@ namespace FolkIdle.Server.Tests
             var simulationEngine = new SimulationEngine(
                 lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageBuildingEngine, villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, antiCheatTelemetryEngine, null!, null!, null!, null!, contextFactory);
 
             return (simulationEngine, networkSystem);
@@ -4385,7 +4383,6 @@ namespace FolkIdle.Server.Tests
             var guildLogisticsEngine = new GuildLogisticsEngine(_fixture.ServiceProvider, playerRegistry);
             var craftingEngine = new CraftingEngine(contextFactory, playerRegistry, retryingDbOptions);
             var worldBossEngine = new WorldBossEngine(_fixture.ServiceProvider, playerRegistry);
-            var villageBuildingEngine = new VillageBuildingEngine(_fixture.ServiceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, playerRegistry);
             var guildWarEngine = new GuildWarEngine(_fixture.ServiceProvider);
             var chronoCoreEngine = new ChronoCoreEngine(_fixture.ServiceProvider, playerRegistry);
@@ -4396,7 +4393,7 @@ namespace FolkIdle.Server.Tests
             var simulationEngine = new SimulationEngine(
                 lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageBuildingEngine, villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
 
             var managementEngine = new GuildManagementEngine(retryingDbOptions, playerRegistry);
@@ -8201,7 +8198,6 @@ namespace FolkIdle.Server.Tests
             var guildLogisticsEngine = new GuildLogisticsEngine(_fixture.ServiceProvider, playerRegistry);
             var craftingEngine = new CraftingEngine(contextFactory, playerRegistry, retryingDbOptions);
             var worldBossEngine = new WorldBossEngine(_fixture.ServiceProvider, playerRegistry);
-            var villageBuildingEngine = new VillageBuildingEngine(_fixture.ServiceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, playerRegistry);
             var guildWarEngine = new GuildWarEngine(_fixture.ServiceProvider);
             var chronoCoreEngine = new ChronoCoreEngine(_fixture.ServiceProvider, playerRegistry);
@@ -8212,7 +8208,7 @@ namespace FolkIdle.Server.Tests
             return new SimulationEngine(
                 lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageBuildingEngine, villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
         }
 

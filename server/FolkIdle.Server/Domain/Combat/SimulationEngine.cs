@@ -73,7 +73,6 @@ namespace FolkIdle.Server.Domain.Combat
         private readonly MailboxAndBankEngine _mailboxEngine;
         private readonly AffixRerollEngine _rerollEngine;
         private readonly BreedingEngine _breedingEngine;
-        private readonly VillageBuildingEngine _villageBuildingEngine;
         private readonly VillageManagementEngine _villageManagementEngine;
         private readonly GuildLogisticsEngine _guildLogisticsEngine;
         private readonly CraftingEngine _craftingEngine;
@@ -142,7 +141,7 @@ namespace FolkIdle.Server.Domain.Combat
 
         public static int ActiveGlobalEventId { get; private set; }
 
-        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageBuildingEngine villageBuildingEngine, VillageManagementEngine villageManagementEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null, InheritanceEngine? inheritanceEngine = null, SkillTreeEngine? skillTreeEngine = null)
+        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageManagementEngine villageManagementEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null, InheritanceEngine? inheritanceEngine = null, SkillTreeEngine? skillTreeEngine = null)
         {
             _lootEngine = lootEngine;
             _checkpointManager = checkpointManager;
@@ -155,7 +154,6 @@ namespace FolkIdle.Server.Domain.Combat
             _mailboxEngine = mailboxEngine;
             _rerollEngine = rerollEngine;
             _breedingEngine = breedingEngine;
-            _villageBuildingEngine = villageBuildingEngine;
             _guildLogisticsEngine = guildLogisticsEngine;
             _craftingEngine = craftingEngine;
             _larderEngine = larderEngine;
@@ -2203,18 +2201,25 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                     else if (cmd.Command == CommandType.UpgradeTool)
                     {
-                        if (!ClientCommandValidator.ValidateUpgradeRequest(ref currentPayload, (byte)cmd.Command, 0))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        
-                        SafeDispatchAsync("Village.UpgradeTool", pId, async () => {
-                            await _villageBuildingEngine.ExecuteUpgradeToolAsync(pId);
-                        });
+                        // Modul: UPGRADETOOL DOES NOTHING AND NEVER DID.
+                        //
+                        // VillageBuildingEngine.ExecuteUpgradeToolAsync was
+                        // `return Task.CompletedTask;` - a twenty-four line
+                        // engine holding one empty method, constructed in
+                        // Program, threaded through this constructor and
+                        // dispatched to on every request. The command validated,
+                        // routed, awaited and accomplished nothing.
+                        //
+                        // Worse, a request that failed validation DISCONNECTED
+                        // the player - the same defect fusion had, over a
+                        // command with no effect to protect.
+                        //
+                        // Tools are ordinary equipment now: crafted, carried,
+                        // rerolled and raised at the Forge like anything else.
+                        // A second upgrade path for them was removed from the
+                        // village screen; this is the other half of it. Ignored
+                        // rather than rejected, so a client built before the
+                        // removal is simply not answered.
                     }
                     else if (cmd.Command == CommandType.AssignMentor
                              || cmd.Command == CommandType.EstablishMentorship

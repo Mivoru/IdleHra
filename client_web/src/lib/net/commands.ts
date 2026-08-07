@@ -902,20 +902,11 @@ export function assignMentor(
 // Gathering tools
 // ---------------------------------------------------------------------------
 
-/**
- * Upgrades the gathering tool one tier. Carries NO payload at all - the
- * dispatcher passes a literal 0 to ValidateUpgradeRequest and the engine reads
- * everything else from the player's own record, so there is nothing to pick
- * and nothing to get wrong on the wire.
- *
- * The tier ceiling and the cost are both server-side, and a request the player
- * cannot afford simply does nothing without reporting - so the screen shows
- * CachedCurrentToolTier and lets the player see whether it moved.
- */
-export function upgradeTool(): CommandOutcome {
-  connection.send({ Command: CommandType.UpgradeTool });
-  return OK;
-}
+/* Modul: upgradeTool() removed - it had no callers and no effect.
+   The village screen's tool panel is gone (tools are ordinary equipment now)
+   and the server's handler was an empty stub, so this helper sent an opcode
+   that validated, routed, and accomplished nothing. Kept as a note rather than
+   silently deleted, because the opcode still exists on the wire. */
 
 // ---------------------------------------------------------------------------
 // Account erasure
