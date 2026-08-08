@@ -6,18 +6,20 @@ using Xunit.Abstractions;
 namespace FolkIdle.Server.Tests
 {
     /// <summary>
-    /// Sets reward QUALITY, not collection.
+    /// Sets have three tiers, reached by COUNT - and each tier is worth what
+    /// the pieces are worth.
     ///
-    /// The old rule counted matching pieces and paid at exactly two and
-    /// exactly four. That made a Transcendent helmet worth what a Normal one
-    /// was, made the third piece of a four-piece set worth nothing, and left a
-    /// player holding three superb pieces of one set and three of another with
-    /// nothing from either. The only build it rewarded was "collect four of
-    /// the same thing".
+    /// Two rules that answer different questions, and the history here is that
+    /// each was tried alone and each lost something:
     ///
-    /// Asked for directly: a player with better pieces from different sets
-    /// should get benefit matching that quality, rather than being forced to
-    /// hoard one set.
+    ///   - Counting alone (the original) made a Transcendent helmet worth what
+    ///     a Normal one was, and the third piece of a four-piece set worth
+    ///     nothing at all.
+    ///   - Scaling alone (the replacement) fixed that and removed the tiers, so
+    ///     five matching pieces of ordinary gear stopped being a set.
+    ///
+    /// Which tier you have is what you PUT ON. How much it gives is what those
+    /// pieces ARE.
     /// </summary>
     public class SetPotencyTests
     {
@@ -38,112 +40,140 @@ namespace FolkIdle.Server.Tests
         private const int Chiming = SetBonusEngine.ChimingSteelSetId;
         private const int Dread = SetBonusEngine.EternalDreadnoughtSetId;
 
-        [Fact]
-        public void FourOrdinaryPiecesIsAFullSet()
+        [Theory]
+        [InlineData(0, 0)]
+        [InlineData(1, 0)]
+        [InlineData(2, 1)]
+        [InlineData(3, 2)]
+        // Modul: FOUR IS NOT A TIER. Eight slots exist, and a 2/3/4/5 ladder
+        // would make every step a formality - so the fourth piece holds the
+        // third tier's bonus and the fifth is what a player reaches for.
+        [InlineData(4, 2)]
+        [InlineData(5, 3)]
+        [InlineData(8, 3)]
+        public void TheTiersAreTwoThreeAndFive(int pieceCount, int expectedTier)
         {
-            // Four Rare - the reference tier - is exactly 1.0, which is what
-            // the doc comment promises a player.
-            var result = SetBonusEngine.Evaluate(
-                Worn((Chiming, 4), (Chiming, 4), (Chiming, 4), (Chiming, 4)));
-
-            Assert.True(result.BurnApplicationActive, "a full ordinary set must arm the effect");
-            _output.WriteLine($"four Rare: fire {result.FireDamageMultiplierPct:F1}%");
+            Assert.Equal(expectedTier, SetBonusEngine.TierOf(pieceCount));
         }
 
         /// <summary>
-        /// The heart of the rework: quality substitutes for quantity. Two
-        /// exceptional pieces are worth a full set of ordinary ones.
+        /// The player's own framing: a Linen chest and Linen leggings are two
+        /// pieces of Linen whether they are Rare or Uncommon. Rarity decides
+        /// how strong the tier is; it never decides whether you have one.
         /// </summary>
         [Fact]
-        public void TwoExceptionalPiecesMatchFourOrdinaryOnes()
+        public void RarityDoesNotDecideWhetherASetIsWorn()
         {
-            var ordinary = SetBonusEngine.Evaluate(
-                Worn((Chiming, 4), (Chiming, 4), (Chiming, 4), (Chiming, 4)));
+            var mismatched = SetBonusEngine.Evaluate(Worn((Chiming, 4), (Chiming, 3)));
+            var poor = SetBonusEngine.Evaluate(Worn((Chiming, 1), (Chiming, 1)));
 
-            // Two at quality 8 sum to 16, the same as four at 4.
-            var exceptional = SetBonusEngine.Evaluate(Worn((Chiming, 8), (Chiming, 8)));
+            Assert.True(mismatched.FireDamageMultiplierPct > 0f);
+            Assert.True(poor.FireDamageMultiplierPct > 0f, "even two junk pieces are a set");
+            _output.WriteLine(
+                $"Rare+Uncommon {mismatched.FireDamageMultiplierPct:F2}%, " +
+                $"two Normal {poor.FireDamageMultiplierPct:F2}%");
+        }
 
-            Assert.Equal(ordinary.FireDamageMultiplierPct, exceptional.FireDamageMultiplierPct, 3);
-            Assert.True(exceptional.BurnApplicationActive);
+        [Fact]
+        public void EachTierIsWorthMoreThanTheOneBelow()
+        {
+            float two = SetBonusEngine.Evaluate(Worn((Chiming, 4), (Chiming, 4))).FireDamageMultiplierPct;
+            float three = SetBonusEngine.Evaluate(
+                Worn((Chiming, 4), (Chiming, 4), (Chiming, 4))).FireDamageMultiplierPct;
+            float five = SetBonusEngine.Evaluate(
+                Worn((Chiming, 4), (Chiming, 4), (Chiming, 4), (Chiming, 4), (Chiming, 4)))
+                .FireDamageMultiplierPct;
+
+            _output.WriteLine($"2 pieces {two:F1}%, 3 pieces {three:F1}%, 5 pieces {five:F1}%");
+            Assert.True(three > two);
+            Assert.True(five > three);
+        }
+
+        [Fact]
+        public void BetterPiecesMakeTheSameTierStronger()
+        {
+            float ordinary = SetBonusEngine.Evaluate(
+                Worn((Dread, 4), (Dread, 4), (Dread, 4))).TotalArmorMultiplierPct;
+            float excellent = SetBonusEngine.Evaluate(
+                Worn((Dread, 8), (Dread, 8), (Dread, 8))).TotalArmorMultiplierPct;
+
+            Assert.True(excellent > ordinary, "three excellent pieces must beat three ordinary ones");
+
+            // And it is the AVERAGE, so one upgraded piece already counts.
+            float oneUpgraded = SetBonusEngine.Evaluate(
+                Worn((Dread, 4), (Dread, 4), (Dread, 8))).TotalArmorMultiplierPct;
+            Assert.True(oneUpgraded > ordinary);
         }
 
         /// <summary>
-        /// The player's own words: better pieces from DIFFERENT sets should
-        /// pay a share of each, so nobody is forced to collect one set.
+        /// The request this whole rework came from: wear the best things you
+        /// own from two sets and get a real share of each, instead of being
+        /// forced to hoard one.
         /// </summary>
         [Fact]
-        public void MixingTwoSetsPaysAShareOfBoth()
+        public void MixingTwoSetsPaysTheTierEachHasReached()
         {
             var mixed = SetBonusEngine.Evaluate(
-                Worn((Chiming, 8), (Chiming, 8), (Dread, 8), (Dread, 8)));
+                Worn((Chiming, 8), (Chiming, 8), (Chiming, 8), (Dread, 8), (Dread, 8)));
 
-            Assert.True(mixed.FireDamageMultiplierPct > 0f, "the offensive half must pay");
-            Assert.True(mixed.TotalArmorMultiplierPct > 0f, "the defensive half must pay");
+            var chimingThreeAlone = SetBonusEngine.Evaluate(
+                Worn((Chiming, 8), (Chiming, 8), (Chiming, 8)));
+            var dreadTwoAlone = SetBonusEngine.Evaluate(Worn((Dread, 8), (Dread, 8)));
+
+            // Three of one and two of the other: the 3-piece tier and the
+            // 2-piece tier, each exactly what it would be on its own.
+            Assert.Equal(chimingThreeAlone.FireDamageMultiplierPct, mixed.FireDamageMultiplierPct, 3);
+            Assert.Equal(dreadTwoAlone.TotalArmorMultiplierPct, mixed.TotalArmorMultiplierPct, 3);
 
             _output.WriteLine(
-                $"mixed: fire {mixed.FireDamageMultiplierPct:F1}%, armour {mixed.TotalArmorMultiplierPct:F1}%");
-
-            // And each half is worth what those two pieces alone would be -
-            // mixing costs nothing beyond the pieces not spent on the other set.
-            var chimingAlone = SetBonusEngine.Evaluate(Worn((Chiming, 8), (Chiming, 8)));
-            Assert.Equal(chimingAlone.FireDamageMultiplierPct, mixed.FireDamageMultiplierPct, 3);
-        }
-
-        [Fact]
-        public void EveryUpgradeIsWorthSomethingImmediately()
-        {
-            // The old rule's worst edge: the third piece paid nothing at all.
-            var two = SetBonusEngine.Evaluate(Worn((Chiming, 4), (Chiming, 4)));
-            var three = SetBonusEngine.Evaluate(Worn((Chiming, 4), (Chiming, 4), (Chiming, 4)));
-
-            Assert.True(
-                three.FireDamageMultiplierPct > two.FireDamageMultiplierPct,
-                "a third piece must be worth more than two");
-
-            // And so is raising the rarity of a piece already worn.
-            var upgraded = SetBonusEngine.Evaluate(Worn((Chiming, 4), (Chiming, 5)));
-            Assert.True(upgraded.FireDamageMultiplierPct > two.FireDamageMultiplierPct);
+                $"3 Chiming + 2 Dreadnought: fire {mixed.FireDamageMultiplierPct:F1}%, " +
+                $"armour {mixed.TotalArmorMultiplierPct:F1}%");
         }
 
         [Fact]
         public void OneStrayPieceIsNotASet()
         {
-            // Wearing one piece of something is a coincidence, not a choice.
-            var stray = SetBonusEngine.Evaluate(Worn((Chiming, 4)));
+            var stray = SetBonusEngine.Evaluate(Worn((Chiming, 14)));
             Assert.Equal(0f, stray.FireDamageMultiplierPct);
             Assert.False(stray.BurnApplicationActive);
         }
 
         [Fact]
-        public void TheTopOfTheLadderIsCapped()
+        public void TheTopEffectsNeedTheTopTier()
         {
-            var transcendent = SetBonusEngine.Evaluate(
-                Worn((Dread, 14), (Dread, 14), (Dread, 14), (Dread, 14), (Dread, 14), (Dread, 14)));
+            // Quality cannot buy the boolean effects - only the fifth piece can.
+            var fourExcellent = SetBonusEngine.Evaluate(
+                Worn((Dread, 14), (Dread, 14), (Dread, 14), (Dread, 14)));
+            Assert.False(fourExcellent.ThornsReflectionActive);
 
-            // Six Transcendent pieces would be 84/16 = 5.25x without the cap,
-            // which would drown every other stat on the character.
-            Assert.Equal(SetBonusEngine.MaxPotency, SetBonusEngine.PotencyOf(84), 3);
-            Assert.Equal(25f * SetBonusEngine.MaxPotency, transcendent.TotalArmorMultiplierPct, 2);
+            var fiveOrdinary = SetBonusEngine.Evaluate(
+                Worn((Dread, 2), (Dread, 2), (Dread, 2), (Dread, 2), (Dread, 2)));
+            Assert.True(fiveOrdinary.ThornsReflectionActive);
+            Assert.True(fiveOrdinary.DamageCapActive);
+        }
+
+        [Fact]
+        public void QualityIsClampedAtBothEnds()
+        {
+            // A full set of junk still does something...
+            Assert.Equal(SetBonusEngine.MinQualityScale, SetBonusEngine.QualityScaleOf(5, 5), 3);
+            // ...and a full set of the very best does not drown everything else.
+            Assert.Equal(SetBonusEngine.MaxQualityScale, SetBonusEngine.QualityScaleOf(70, 5), 3);
         }
 
         /// <summary>
         /// Rows written before quality was recorded carry a zero. They are
-        /// still WORN, so they must still count for something - reading zero
-        /// as "not part of the set" would make old gear silently stop working.
+        /// still WORN, so they must still count - reading zero as "not part of
+        /// the set" would make old gear silently stop working.
         /// </summary>
         [Fact]
         public void APieceWithNoRecordedQualityStillCounts()
         {
             var ids = default(EquippedSetIds);
-            ids.SetBySlotIndex(0, Chiming, 0);
-            ids.SetBySlotIndex(1, Chiming, 0);
-            ids.SetBySlotIndex(2, Chiming, 0);
-            ids.SetBySlotIndex(3, Chiming, 0);
+            for (int slot = 0; slot < 3; slot++) ids.SetBySlotIndex(slot, Chiming, 0);
 
-            Assert.Equal(SetBonusEngine.PotencyOf(4), SetBonusEngine.PotencyOf(4));
-            Assert.True(SetBonusEngine.PotencyOf(4) >= SetBonusEngine.MinimumPotency,
-                "four pieces of unknown quality must still reach the floor");
-            Assert.True(SetBonusEngine.Evaluate(ids).FireDamageMultiplierPct > 0f);
+            var result = SetBonusEngine.Evaluate(ids);
+            Assert.True(result.FireDamageMultiplierPct > 0f);
         }
 
         [Fact]

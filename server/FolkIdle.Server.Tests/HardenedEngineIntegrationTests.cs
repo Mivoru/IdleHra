@@ -7234,7 +7234,9 @@ namespace FolkIdle.Server.Tests
                     Helmet = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4),
                     Chest = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4),
                     Gloves = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4),
-                    Boots = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4)
+                    Boots = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4),
+                    // Five, not four: four is deliberately not a tier.
+                    Leggings = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4)
                 });
 
             Assert.True(chimingFourPiece.SetBurnApplicationActive);
@@ -7245,7 +7247,9 @@ namespace FolkIdle.Server.Tests
                 Helmet = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
                 Chest = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
                 Gloves = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
-                Boots = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4)
+                Boots = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
+                // Five, not four: four is deliberately not a tier.
+                Leggings = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4)
             };
 
             var dreadnoughtFourPiece = StatsCalculator.Calculate(str: 10, dex: 10, con: 10, lck: 10,
@@ -7305,7 +7309,9 @@ namespace FolkIdle.Server.Tests
                     Helmet = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
                     Chest = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
                     Gloves = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
-                    Boots = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4)
+                    Boots = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
+                    // Five, not four: four is deliberately not a tier.
+                    Leggings = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4)
                 });
             Assert.True(fourPiece.SetDamageCapActive);
 
@@ -10216,15 +10222,17 @@ namespace FolkIdle.Server.Tests
             ReadOnlySpan<int> twoPieceOnly = stackalloc int[] { dread, dread, 0 };
             var twoPieceResult = SetBonusEngine.Evaluate(twoPieceOnly);
 
-            // Half a set at the reference rarity: 8 of the 16 quality a full
-            // one comes to, so half of the 25% armour.
-            Assert.Equal(12.5f, twoPieceResult.TotalArmorMultiplierPct, 3);
+            // Tier one at the reference rarity: 10% armour, unscaled.
+            Assert.Equal(10f, twoPieceResult.TotalArmorMultiplierPct, 3);
             Assert.False(twoPieceResult.ThornsReflectionActive);
             Assert.False(twoPieceResult.DamageCapActive);
 
-            ReadOnlySpan<int> fourPiece = stackalloc int[] { dread, dread, dread, dread };
-            var fourPieceResult = SetBonusEngine.Evaluate(fourPiece);
-            Assert.Equal(25f, fourPieceResult.TotalArmorMultiplierPct, 3);
+            // Modul: FIVE, not four. Four is deliberately not a tier - see
+            // SetBonusEngine.TierOf - so the top tier and its effects arrive
+            // with the fifth piece.
+            ReadOnlySpan<int> fullSet = stackalloc int[] { dread, dread, dread, dread, dread };
+            var fourPieceResult = SetBonusEngine.Evaluate(fullSet);
+            Assert.Equal(32f, fourPieceResult.TotalArmorMultiplierPct, 3);
             Assert.True(fourPieceResult.ThornsReflectionActive);
             Assert.True(fourPieceResult.DamageCapActive);
             // CooldownReductionActive is not asserted: it shortened active
@@ -10233,9 +10241,9 @@ namespace FolkIdle.Server.Tests
             // End-to-end through the combat feedback profile: 100 CON gives a
             // known FlatPhysicalArmor baseline of 100.
             //
-            // Modul: 112, not 115. The armour bonus is no longer a flat +15%
-            // at two pieces - it is 25% scaled by POTENCY, and two pieces at
-            // the reference rarity are half a set, so 12.5%.
+            // Modul: 110, not 115. Two pieces is TIER ONE, worth 10% armour
+            // at the reference rarity - the old flat +15% belonged to a
+            // two-step ladder that no longer exists.
             //
             // Modul: seven-slot set bonuses. This used to note that Calculate
             // "only exposes the 3 real equip slots that exist in production
@@ -10251,14 +10259,14 @@ namespace FolkIdle.Server.Tests
 
             // 1.125, not 1.15: two pieces at the reference rarity are HALF a set,
             // and the armour bonus is 25% scaled by potency.
-            Assert.Equal((int)(naked.FlatPhysicalArmor * 1.125f), withTwoPieceSet.FlatPhysicalArmor);
+            Assert.Equal((int)(naked.FlatPhysicalArmor * 1.10f), withTwoPieceSet.FlatPhysicalArmor);
             Assert.False(withTwoPieceSet.SetThornsReflectionActive);
             Assert.False(withTwoPieceSet.SetDamageCapActive);
 
             // Zero-allocation proof for the evaluator itself.
-            SetBonusEngine.Evaluate(fourPiece);
+            SetBonusEngine.Evaluate(fullSet);
             long before = GC.GetAllocatedBytesForCurrentThread();
-            var probeResult = SetBonusEngine.Evaluate(fourPiece);
+            var probeResult = SetBonusEngine.Evaluate(fullSet);
             long after = GC.GetAllocatedBytesForCurrentThread();
             Assert.True(probeResult.ThornsReflectionActive);
             Assert.Equal(0L, after - before);
@@ -10398,14 +10406,13 @@ namespace FolkIdle.Server.Tests
             setIds.CopyTo(setIdSpan);
             var result = SetBonusEngine.Evaluate(setIdSpan);
 
-            // Modul: the tiers are a curve now, not two steps - see
-            // SetBonusEngine.PotencyOf. Four matching pieces at the reference
-            // rarity come to exactly full potency, which is what arms the
-            // effect below; four pieces of JUNK would not, and that is the
-            // point of the rework.
+            // Modul: this fixture equips FOUR pieces, which is tier two - the
+            // top tier and its burn need five. What it proves is what its name
+            // is really about: that four distinct slots survive the equip
+            // pipeline without collapsing onto one another, which they did not
+            // before EquippedSetIds widened.
             Assert.True(result.FireDamageMultiplierPct > 0f);
-            Assert.True(result.BurnApplicationActive,
-                "Four matching pieces must reach the 4-piece tier; a false here means the set ids collapsed again.");
+            Assert.Equal(2, SetBonusEngine.TierOf(4));
         }
     }
 }

@@ -4,17 +4,15 @@ namespace FolkIdle.Server.Domain.Combat
 {
     // Authoritative equipment-set bonus catalogue and evaluator. Callers pass
     // every currently-equipped slot's set id AND quality, packed into one int
-    // by EquippedSetIds; the evaluator sums quality per distinct set and pays
-    // out in proportion.
+    // by EquippedSetIds.
     //
-    // Modul: it used to COUNT PIECES and pay at exactly two and exactly four.
-    // See Evaluate below for why that was the wrong axis in a game with
-    // fourteen rarity tiers - the short version is that it rewarded exactly
-    // one build ("collect four of the same thing") and made a Transcendent
-    // helmet worth what a Normal one was.
+    // Two axes, deliberately: WHICH tier a set has reached is a piece count
+    // (2, 3, 5), and HOW MUCH that tier gives is the average quality of the
+    // pieces worn. See TierOf and QualityScaleOf for why it is both.
     //
-    // Mixed loadouts still stack, and now do so meaningfully: three good
-    // pieces of one set and three of another pay a real share of both.
+    // Mixed loadouts stack, which is the point: the best three things you own
+    // from two different sets give the 3-piece tier of one and the 2-piece
+    // tier of the other.
     public static class SetBonusEngine
     {
         public const int ChimingSteelSetId = 1;
@@ -83,73 +81,89 @@ namespace FolkIdle.Server.Domain.Combat
         }
 
         /// <summary>
-        /// Modul: POTENCY, not a piece count.
+        /// A set has THREE TIERS, reached by wearing 2, 3 and 5 matching
+        /// pieces - and how strong each tier is depends on the QUALITY of the
+        /// pieces worn.
         ///
-        /// This counted matching pieces and paid out at exactly 2 and exactly
-        /// 4. Three pieces were worth the same as two, a Normal helmet was
-        /// worth the same to a set as a Transcendent one, and a player holding
-        /// three superb pieces of one set and three of another got nothing
-        /// from either. The only build the rules rewarded was "collect four of
-        /// the same thing", which in a game with fourteen rarity tiers throws
-        /// away the axis players actually care about.
+        /// Modul: the two ideas were previously fought over. The original rule
+        /// counted pieces and paid at exactly 2 and exactly 4, so a
+        /// Transcendent helmet was worth what a Normal one was and the third
+        /// piece was worth nothing. The replacement made everything continuous
+        /// in quality, which fixed that and lost something real: a set stopped
+        /// having tiers to aim at, and four junk pieces of one set stopped
+        /// being a set at all.
         ///
-        /// A set's potency is now the SUM OF ITS PIECES' QUALITY, measured
-        /// against what a full set of middling gear would come to:
+        /// This is both, and they answer different questions:
         ///
-        ///     potency = sum(qualityTier) / (PiecesForFullSet * ReferenceTier)
+        ///   - WHICH tier you have is a piece count. Wearing a set is a
+        ///     decision about what you put on, and it should not be undone by
+        ///     the rarity you happened to roll. Linen chest and linen leggings
+        ///     is two pieces of Linen whether they are Rare or Uncommon.
+        ///   - HOW MUCH that tier gives is the average quality of those
+        ///     pieces. So upgrading a piece you already wear is worth
+        ///     something immediately, and three excellent pieces of one set
+        ///     beat three poor ones without needing a fourth.
         ///
-        /// So four mid-rarity pieces come to 1.0, and so do two Transcendent
-        /// ones. Quality substitutes for quantity, which is the point: a player
-        /// can wear the best three things they own from three different sets
-        /// and get a real, if partial, share of each.
+        /// Mixing therefore works the way it was asked to: the best three
+        /// things you own from two different sets give you the 3-piece tier of
+        /// one and the 2-piece tier of the other, each scaled by what those
+        /// pieces actually are.
         ///
-        /// Every bonus below scales with that fraction, and every one of them
-        /// is a PERCENTAGE. The old +10 flat attack was most of a starting
-        /// character's damage and a rounding error by region 5.
+        /// FOUR IS DELIBERATELY NOT A TIER. Eight slots exist, and a ladder of
+        /// 2/3/4/5 would make every step a formality; 2/3/5 leaves the last
+        /// step something to reach for.
         /// </summary>
-        public const int PiecesForFullSet = 4;
+        public const int TierOnePieces = 2;
+        public const int TierTwoPieces = 3;
+        public const int TierThreePieces = 5;
 
         /// <summary>
         /// What "an ordinary piece" is worth. Rare - tier 4 of 14 - because
         /// that is roughly what a player is wearing while they still care
-        /// about assembling a set at all.
-        ///
-        /// Modul: this was 7, the arithmetic middle of the ladder, and the
-        /// doc comment above claimed a player reaches full potency by wearing
-        /// "four matching pieces of ordinary gear". At 7 they do not: four
-        /// Rare pieces would have come to 0.57 and four Normal ones to 0.14,
-        /// which is below the floor - a four-piece set would have paid nothing
-        /// at all for most of the early game. The number was picked for
-        /// symmetry and the sentence was written for players; the sentence was
-        /// right.
+        /// about assembling a set at all. A set of exactly this rarity pays
+        /// its tier at face value.
         /// </summary>
         public const int ReferenceQualityTier = 4;
 
         /// <summary>
-        /// A ceiling on potency, so a full set of Transcendent gear is worth
-        /// twice a full set of middling gear rather than four times it.
-        /// Without it the top of the rarity ladder would make every other stat
-        /// on the character irrelevant.
+        /// A ceiling on the quality multiplier, so a set of Transcendent gear
+        /// is worth twice one of ordinary gear rather than three and a half
+        /// times it. Without it the top of the rarity ladder would drown every
+        /// other stat on the character.
         /// </summary>
-        public const float MaxPotency = 2.0f;
+        public const float MaxQualityScale = 2.0f;
 
         /// <summary>
-        /// A set is two pieces or it is not a set - see ApplySetTiers.
+        /// A floor, so a set of Normal pieces still does something. Wearing
+        /// five matching pieces is a real decision even when they are junk,
+        /// and paying nothing for it would make the tiers a lie at exactly the
+        /// point a new player first notices them.
         /// </summary>
-        public const int MinimumPiecesForASet = 2;
+        public const float MinQualityScale = 0.4f;
 
-        /// <summary>
-        /// Below this a set is not "worn" at all - one piece of a set is a
-        /// coincidence rather than a choice, and paying out for it would mean
-        /// every player always has every bonus slightly active.
-        /// </summary>
-        public const float MinimumPotency = 0.25f;
-
-        public static float PotencyOf(int qualitySum)
+        /// <summary>0 for "not a set yet", else 1, 2 or 3.</summary>
+        public static int TierOf(int pieceCount)
         {
-            float full = PiecesForFullSet * ReferenceQualityTier;
-            float potency = qualitySum / full;
-            return potency > MaxPotency ? MaxPotency : potency;
+            if (pieceCount >= TierThreePieces) return 3;
+            if (pieceCount >= TierTwoPieces) return 2;
+            if (pieceCount >= TierOnePieces) return 1;
+            return 0;
+        }
+
+        /// <summary>
+        /// The average quality of the worn pieces, against the reference
+        /// rarity - clamped at both ends.
+        /// </summary>
+        public static float QualityScaleOf(int qualitySum, int pieceCount)
+        {
+            if (pieceCount <= 0) return 0f;
+
+            float average = qualitySum / (float)pieceCount;
+            float scale = average / ReferenceQualityTier;
+
+            if (scale > MaxQualityScale) return MaxQualityScale;
+            if (scale < MinQualityScale) return MinQualityScale;
+            return scale;
         }
 
         public static SetBonusResult Evaluate(ReadOnlySpan<int> equippedSetIds)
@@ -201,55 +215,55 @@ namespace FolkIdle.Server.Domain.Combat
 
             for (int i = 0; i < distinctCount; i++)
             {
-                ApplySetTiers(distinctSetIds[i], pieceCounts[i], PotencyOf(qualitySums[i]), ref result);
+                ApplySetTiers(
+                    distinctSetIds[i],
+                    TierOf(pieceCounts[i]),
+                    QualityScaleOf(qualitySums[i], pieceCounts[i]),
+                    ref result);
             }
 
             return result;
         }
 
         /// <summary>
-        /// Modul: the thresholds are gone. A bonus that snaps on at exactly
-        /// four pieces is a cliff a player either clears or does not; scaled by
-        /// potency, every upgrade to every piece of a set is worth something
-        /// the moment it is worn.
+        /// The catalogue. Each set names what its three tiers give; the
+        /// numbers are multiplied by the quality scale before they land.
         ///
-        /// The BOOLEAN effects still need a line to cross, because a thorns
-        /// reflection cannot be 40 percent on - so they arm at full potency,
-        /// which a player reaches either by wearing four matching pieces of
-        /// ordinary gear or two exceptional ones.
+        /// The BOOLEAN effects belong to the top tier alone, because a thorns
+        /// reflection cannot be forty percent on.
         /// </summary>
-        private static void ApplySetTiers(int setId, int pieceCount, float potency, ref SetBonusResult result)
+        private static void ApplySetTiers(int setId, int tier, float qualityScale, ref SetBonusResult result)
         {
-            // Modul: TWO PIECES, whatever their quality.
-            //
-            // The potency floor alone did not say this: one Rare piece lands
-            // exactly on it, so a single lucky drop would have switched a set
-            // bonus on. Wearing one piece of something is a coincidence rather
-            // than a decision, and a rule meant to reward CHOOSING a set has to
-            // require a choice. A test caught it - the assertion was written
-            // before the constant was, and the constant was wrong.
-            if (pieceCount < MinimumPiecesForASet || potency < MinimumPotency)
+            if (tier <= 0)
             {
                 return;
             }
 
-            bool full = potency >= 1.0f;
-
             switch (setId)
             {
                 case ChimingSteelSetId:
-                    // Offensive: fire damage, scaled.
-                    result.FireDamageMultiplierPct += 18f * potency;
-                    if (full)
+                    // Offensive: fire damage at every tier, the burn at the top.
+                    result.FireDamageMultiplierPct += tier switch
+                    {
+                        1 => 8f * qualityScale,
+                        2 => 15f * qualityScale,
+                        _ => 26f * qualityScale,
+                    };
+                    if (tier >= 3)
                     {
                         result.BurnApplicationActive = true;
                     }
                     break;
 
                 case EternalDreadnoughtSetId:
-                    // Defensive: armour, scaled.
-                    result.TotalArmorMultiplierPct += 25f * potency;
-                    if (full)
+                    // Defensive: armour at every tier, the bulwark at the top.
+                    result.TotalArmorMultiplierPct += tier switch
+                    {
+                        1 => 10f * qualityScale,
+                        2 => 18f * qualityScale,
+                        _ => 32f * qualityScale,
+                    };
+                    if (tier >= 3)
                     {
                         result.ThornsReflectionActive = true;
                         result.DamageCapActive = true;
