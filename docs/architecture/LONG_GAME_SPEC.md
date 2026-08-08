@@ -547,8 +547,14 @@ first two days are not dead, bad enough to want better.
      the same commit that wires its effect**, never before.
    - The respec **gate** works; the **purchase flow does not exist** and
      `PaidRespecGrants` has nothing that increments it yet.
-4. **NOT STARTED - breeding aptitudes**, weighted parental inheritance,
-   mutation, inbreeding degradation.
+4. **DONE - breeding aptitudes.** Four values, weighted parental inheritance,
+   mutation, inbreeding degradation, the diminishing curve, and all four
+   consumed by the game (damage, health, gathering, loot - live and offline)
+   with a panel that shows them.
+   - **Not built**: the aptitudes do not yet survive the season rollover.
+      is not touched by SeasonalRotationEngine
+     today, so they persist by accident rather than by design - which happens
+     to be the intended behaviour, but nothing states or tests it.
 5. **NOT STARTED - villager arrival**, Inn-scaled quality, population cap, Hall
    of Ancestors.
 6. **NOT STARTED - chapters II-V and Seals -> skill points.**
