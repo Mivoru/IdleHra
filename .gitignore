@@ -42,3 +42,6 @@ client_web/screens-*.png
 
 # Oracle box runtime secrets - DB password and the JWT signing key.
 ops/oracle/.env
+
+# Modul: a vitest cache file rode in on a . Never tracked.
+node_modules/
