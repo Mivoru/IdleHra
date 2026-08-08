@@ -763,10 +763,13 @@ there is reality to compare to.
 and the asset list names what should exist. `scripts/generate-sprites.mjs`
 holds the alias table where a wrong mapping would live.
 
-**Gloves, amulets and rings are thin in the drop tables** - one or two per
-location against five monsters, so some monsters offer none. Content, not code.
-Worth revisiting now that kills are seconds rather than minutes and a player
-sees far more drops.
+**~~Gloves, amulets and rings are thin in the drop tables~~ - DONE, and it was
+code rather than content.** One authored amulet per location dealt to exactly
+one of five monsters meant four of them dropped none, so a player with a
+favourite could farm it forever and never see one. Each slot is now dealt round
+robin with wrap-around: every monster carries exactly one piece of all eight
+slots, so an equipment roll is an even eight-way choice. `EquipmentDropTable`
+needs no change when a second amulet is authored - it starts alternating them.
 
 **`BankEquipmentInstances`** is the storage merge that was deliberately left
 out - see "One store, one number" above.

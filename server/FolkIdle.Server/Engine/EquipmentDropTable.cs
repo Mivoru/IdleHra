@@ -29,30 +29,48 @@ namespace FolkIdle.Server.Engine
     ///    happened to be spelled the other way.
     ///
     /// What replaces it: each location's droppable equipment is DEALT OUT across
-    /// that location's five monsters, one item at a time, slot group by slot
-    /// group. Dealing rather than filtering is what makes the two properties the
-    /// design actually wants both true by construction:
+    /// that location's five monsters, SLOT BY SLOT, and each slot is dealt round
+    /// robin until every monster holds one - wrapping back to the start of the
+    /// slot's item list when that list is shorter than five.
     ///
-    /// - **Every item drops from something.** Each candidate is dealt to exactly
-    ///   one monster, so nothing is orphaned. `EquipmentDropTableTests` asserts
-    ///   this over the whole catalogue rather than trusting the comment.
-    /// - **Every monster drops a mix.** The deal walks slot groups in order with
-    ///   a cursor that CONTINUES across group boundaries, so consecutive items
-    ///   of one slot land on consecutive monsters and each monster ends up
-    ///   holding several different slots. Every location authors at least five
-    ///   weapons, so the weapon group alone gives every monster one.
+    /// EVERY SLOT HAS THE SAME SHARE OF EVERY MONSTER'S TABLE, and that is the
+    /// point of the wrap. The catalogue authors fifteen pieces per location: two
+    /// each of helmet, chest, gloves, leggings and boots, three weapons, ONE
+    /// amulet and ONE ring. Dealing each item to exactly one monster - which is
+    /// what this did before - therefore meant four of the five monsters in every
+    /// location dropped no amulet and no ring at all, and a player who settled
+    /// on a favourite monster could farm it forever and never see either. The
+    /// thin slots were not a content shortage; they were a distribution that
+    /// gave one monster the whole supply.
+    ///
+    /// Three properties, all true by construction and all asserted in
+    /// `EquipmentDropTableTests`:
+    ///
+    /// - **Every item drops from something.** Every candidate is dealt at least
+    ///   once, so nothing is orphaned.
+    /// - **Every monster drops every slot**, exactly one per slot per pass, so
+    ///   an equipment roll is an even eight-way choice between slots rather than
+    ///   a lottery weighted by what the location happened to author.
+    /// - **Monsters still differ.** WHICH helmet, chest or weapon a monster
+    ///   carries rotates with the deal, so consecutive monsters hold different
+    ///   pieces of the same slot. Only the slots that author a single piece are
+    ///   shared by all five, and that is the alternative to four of them
+    ///   dropping nothing.
     ///
     /// The tables are derived, not authored, so adding an item to items.json
     /// puts it in a monster's table on the next boot instead of quietly becoming
     /// unobtainable - which is precisely how thirty-three of them got that way.
+    /// Authoring a second amulet needs no code change here: the deal simply
+    /// starts alternating them.
     /// </summary>
     public static class EquipmentDropTable
     {
-        // Slot groups are walked in THIS order. It is a content decision, not an
-        // alphabetical one: armour first so the early items dealt to each
-        // monster are the pieces a new character is missing, weapons last so
-        // they spread across all five monsters from a full rotation rather than
-        // clumping on whoever the cursor happened to reach first.
+        // Every gear slot, and every one of them is dealt to every monster - so
+        // this is a listing rather than a priority. The order still decides
+        // which PIECE of a slot a given monster gets first, which is why it is
+        // written out by hand instead of looped from 0 to LastGearSlot: a slot
+        // silently missing from this array would vanish from every drop table
+        // in the game, and a list you can read is how that stays visible.
         private static readonly int[] SlotDealOrder =
         {
             EquipmentSlotEngine.SlotHelmet,
@@ -138,17 +156,40 @@ namespace FolkIdle.Server.Engine
                     pending[firstMonster + i] = new List<int>(8);
                 }
 
-                // One cursor for the whole location, advanced across slot groups
-                // rather than reset per group - see the class comment on why the
-                // continuation is what mixes the slots.
-                int cursor = 0;
                 for (int s = 0; s < SlotDealOrder.Length; s++)
                 {
-                    foreach (int itemId in CandidatesForSlot(location, SlotDealOrder[s]))
+                    var candidates = CandidatesForSlot(location, SlotDealOrder[s]);
+                    if (candidates.Count == 0) continue;
+
+                    // Deal until BOTH are satisfied: every candidate placed at
+                    // least once, and every monster holding at least one of this
+                    // slot. With two helmets and five monsters that is five
+                    // deals wrapping the item list; with six it is six deals
+                    // wrapping the monster list. Taking the max is what makes
+                    // one expression cover both directions.
+                    int deals = Math.Max(candidates.Count, ContentRegistry.MonstersPerRegion);
+                    for (int d = 0; d < deals; d++)
                     {
-                        int monsterId = firstMonster + (cursor % ContentRegistry.MonstersPerRegion);
-                        pending[monsterId].Add(itemId);
-                        cursor++;
+                        int monsterId = firstMonster + (d % ContentRegistry.MonstersPerRegion);
+
+                        // ROTATED BY THE SLOT, not dealt straight down. Without
+                        // the `+ s` every slot would hand monster 1 its first
+                        // piece, monster 2 its second and so on, so the first
+                        // monster of a location would carry the first piece of
+                        // all eight slots and the third would carry a copy of
+                        // it. The rotation makes each monster a different
+                        // COMBINATION out of the same fifteen pieces.
+                        int itemId = candidates[(d + s) % candidates.Count];
+
+                        // A slot with more pieces than monsters wraps the
+                        // monster list, and the same piece must not land on one
+                        // monster twice - a duplicate entry would double that
+                        // item's odds against everything else in the table,
+                        // which is the weighting this whole rework removes.
+                        if (!pending[monsterId].Contains(itemId))
+                        {
+                            pending[monsterId].Add(itemId);
+                        }
                     }
                 }
             }

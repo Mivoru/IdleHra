@@ -68,27 +68,123 @@ namespace FolkIdle.Server.Tests
                 "these equipment items cannot drop from any monster:\n  " + string.Join("\n  ", orphaned));
         }
 
+        /// <summary>
+        /// A monster may share a piece with another monster - that is how a
+        /// location with ONE authored amulet still offers an amulet on all five
+        /// - but it may never list the same piece twice itself. The roll is
+        /// uniform over the table, so a duplicate entry is silently double odds
+        /// for that item against everything beside it, which is exactly the
+        /// weighting this whole table exists to remove.
+        /// </summary>
         [Fact]
-        public void NoItemIsDealtToTwoMonsters()
+        public void NoMonsterListsTheSameItemTwice()
         {
-            var owner = new Dictionary<int, int>();
-            var duplicates = new List<string>();
+            var offenders = new List<string>();
 
             foreach (int monsterId in AllCanonicalMonsters())
             {
-                foreach (int itemId in EquipmentDropTable.GetDrops(monsterId).ToArray())
+                var table = EquipmentDropTable.GetDrops(monsterId).ToArray();
+                foreach (var group in table.GroupBy(id => id).Where(g => g.Count() > 1))
                 {
-                    if (owner.TryGetValue(itemId, out int first))
-                    {
-                        duplicates.Add($"{ContentRegistry.GetItemBaseId(itemId)}: {first} and {monsterId}");
-                        continue;
-                    }
-
-                    owner[itemId] = monsterId;
+                    offenders.Add(
+                        $"{ContentRegistry.GetMonsterName(monsterId)} ({monsterId}) lists " +
+                        $"{ContentRegistry.GetItemBaseId(group.Key)} {group.Count()} times");
                 }
             }
 
-            Assert.True(duplicates.Count == 0, "dealt twice:\n  " + string.Join("\n  ", duplicates));
+            Assert.True(offenders.Count == 0, "duplicated:\n  " + string.Join("\n  ", offenders));
+        }
+
+        /// <summary>
+        /// EVERY SLOT HAS THE SAME SHARE OF EVERY TABLE, which is the whole
+        /// point of the rework and the thing a player feels.
+        ///
+        /// The catalogue authors ONE amulet and ONE ring per location against
+        /// two of every armour slot and three weapons. Dealing each piece to
+        /// exactly one monster therefore left four of the five monsters in every
+        /// location dropping no amulet and no ring at all - so a player who
+        /// settled on a favourite could farm it forever and never see either,
+        /// and the fix for "amulets are thin" was never more amulets.
+        ///
+        /// Asserted as an EQUAL count rather than "at least one", because the
+        /// roll is uniform over the table: a monster carrying three weapons and
+        /// one amulet is a monster on which amulets are a third as likely, and
+        /// that is the same complaint wearing a smaller number.
+        /// </summary>
+        [Fact]
+        public void EveryMonsterOffersEverySlotInEqualMeasure()
+        {
+            var complaints = new List<string>();
+
+            foreach (int monsterId in AllCanonicalMonsters())
+            {
+                // The final boss also carries the endgame tiers (6-10), which
+                // are dealt to him alone because he is the one monster nobody
+                // reaches without the clearance those items demand. His share of
+                // his own location is still even; the extras on top are not, and
+                // excluding him here is cheaper than pretending they are.
+                if (monsterId == ContentRegistry.LastCanonicalMonsterId) continue;
+
+                var counts = new Dictionary<int, int>();
+                for (int slot = EquipmentSlotEngine.SlotWeapon; slot <= EquipmentSlotEngine.LastGearSlot; slot++)
+                {
+                    counts[slot] = 0;
+                }
+
+                foreach (int itemId in EquipmentDropTable.GetDrops(monsterId).ToArray())
+                {
+                    counts[EquipmentSlotEngine.ResolveSlotIndex(ContentRegistry.GetItemBaseId(itemId))]++;
+                }
+
+                var missing = counts.Where(c => c.Value == 0).Select(c => c.Key).ToList();
+                if (missing.Count > 0)
+                {
+                    complaints.Add(
+                        $"{ContentRegistry.GetMonsterName(monsterId)} ({monsterId}) drops nothing for slot(s) " +
+                        string.Join(", ", missing));
+                    continue;
+                }
+
+                if (counts.Values.Distinct().Count() > 1)
+                {
+                    complaints.Add(
+                        $"{ContentRegistry.GetMonsterName(monsterId)} ({monsterId}) is uneven: " +
+                        string.Join(", ", counts.Select(c => $"slot {c.Key} x{c.Value}")));
+                }
+            }
+
+            Assert.True(complaints.Count == 0, string.Join("\n  ", complaints));
+        }
+
+        /// <summary>
+        /// Sharing the thin slots must not collapse into "every monster in a
+        /// location drops the same table", which is the bug the deal replaced.
+        /// Two monsters of one location may overlap - with fifteen pieces and
+        /// eight slots they have to - but no two may be IDENTICAL.
+        /// </summary>
+        [Theory]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(3)]
+        [InlineData(4)]
+        [InlineData(5)]
+        public void NoTwoMonstersInALocationDropTheSameTable(int location)
+        {
+            int first = ContentRegistry.FirstCanonicalMonsterId + (location - 1) * ContentRegistry.MonstersPerRegion;
+
+            for (int a = 0; a < ContentRegistry.MonstersPerRegion; a++)
+            {
+                for (int b = a + 1; b < ContentRegistry.MonstersPerRegion; b++)
+                {
+                    var tableA = EquipmentDropTable.GetDrops(first + a).ToArray().OrderBy(id => id).ToArray();
+                    var tableB = EquipmentDropTable.GetDrops(first + b).ToArray().OrderBy(id => id).ToArray();
+
+                    Assert.False(
+                        tableA.SequenceEqual(tableB),
+                        $"{ContentRegistry.GetMonsterName(first + a)} and {ContentRegistry.GetMonsterName(first + b)} " +
+                        "drop exactly the same items");
+                }
+            }
         }
 
         [Fact]
