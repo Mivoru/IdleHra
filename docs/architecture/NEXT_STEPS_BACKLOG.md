@@ -11,6 +11,138 @@ dated handoff immediately following is the live one.
 
 ---
 
+# HANDOFF 2026-08-08 - The Long Game (READ THIS FIRST)
+
+The design for all of it is `docs/architecture/LONG_GAME_SPEC.md`. It is
+agreed with the player and should not be re-litigated; read it before touching
+anything below. Section 6 of that spec tracks status and is kept current.
+
+**Shipped this session:** the achievement toast, Book of Deeds chapter I, all
+three rings of the skill tree with **all 15 node effects wired**, the respec
+gate, the season reset that was missing, breeding aptitudes end to end, and the
+village gene pool (table, arrival, endpoint, panel).
+
+Everything below is what remains, in the order I would do it.
+
+---
+
+## L1. Hero x villager pairing  **(the important one)**
+
+**Why first:** `village_newcomers` now fills up with people carrying real
+aptitudes, and **nothing can marry them**. `BreedingEngine.ExecuteBreedingAsync`
+still pairs two of the player's own `CharacterRecord`s. So the whole gene pool -
+the reason the village is rebuilt every season - is visible and inert. This is
+the single biggest gap in the feature set, not a polish item.
+
+**Where:**
+- `server/FolkIdle.Server/Engine/BreedingEngine.cs` - the pairing validation
+  and the child construction.
+- `/api/v1/breeding/roster` in `NetworkBroadcastSystem.cs` returns characters;
+  the picker needs newcomers alongside them.
+- `client_web/src/routes/Breeding.svelte`.
+
+**How:** the standard pair is **hero x villager**. The hero must be level 50;
+the newcomer only has to exist. Requiring level 50 of both parents means
+levelling two characters for one child, which is double the grind for one roll
+of the dice.
+
+**Traps:**
+- A newcomer who becomes a parent must be marked `IsElder` and become
+  unpairable. Otherwise one lucky 20 fathers the whole roster and the pool
+  collapses onto a single ancestor - the opposite of what it is for.
+- `BreedingAptitudes.AreRelated` already exists and takes optional
+  grandparents. A newcomer has no parents, so a hero x newcomer pairing is
+  never inbred - do not let the existing character-only inbreeding check
+  fire on it.
+- `BreedingEngine` already computes `isInbred` from lineage rows; that path
+  must survive for character x character pairings if you keep them.
+
+---
+
+## L2. Hall of Ancestors
+
+**What:** the lineage roster that carries across a rollover. **10 slots base,
++1 per inheritance purchase, hard cap 14.** At the rollover, when full, the
+player chooses who carries and who is let go - that choice is what gives the
+last week of a season weight.
+
+**Where:** `character_lineage_registry` already stores everything a member
+needs (race, four aptitudes, generation, epic flag, both parents). What is
+missing is the cap, the selection UI and the rollover step.
+
+**Trap - and this is the one that matters:** aptitudes currently survive the
+rollover **by accident**. `SeasonalRotationEngine` simply does not touch
+`character_lineage_registry`. That happens to be the intended behaviour and
+**nothing states or tests it**, so a future rollover change could delete the
+one axis a season is meant to leave standing. Add an explicit test when you
+touch this.
+
+---
+
+## L3. Book of Deeds chapters II-V, and Seals
+
+**What:** four more chapters (see spec part 2 for the deed lists), a Seal per
+completed chapter, and **each Seal granting +2 permanent skill points every
+season, forever**. That coupling is the load-bearing decision: it gives the
+tree a second source of points earned by exploring rather than levelling.
+
+**Where:** `client_web/src/lib/stores/chapterOne.ts` is the pattern - pure,
+tested, every deed reading a field already on the wire. Chapters II-V will not
+all manage that; some deeds need server counters.
+
+**Also here:** chapter I has **no rewards yet** (a Seal and a set of Common
+tools). It teaches, but it does not pay.
+
+**Trap:** every deed must have a live `x / y` counter. The existing tiered
+achievements returned 0 from `GetNextTierTarget` for most ids and the client
+rendered "0 / MAX". A deed without a number does not exist to the player.
+
+---
+
+## L4. Villager recruitment, and dismissal
+
+`VillagerArrivalRules.RecruitCostGold` and `RecruitBlockedReason` are written
+and tested (2,500 / 10,240 / 41,943 / 171,798 gold), and
+`VillageArrivalEngine.DismissAsync` exists. **Neither has a command or a
+button.** Recruitment is also the gold sink the top of the economy lacks.
+
+---
+
+## L5. The respec purchase flow
+
+The gate works: one free respec a season, then a `PaidRespecGrants` grant.
+**Nothing increments that counter** - the purchase flow does not exist.
+
+Decided with the player: **~2 EUR, real money, NOT diamonds**, and grants are
+per-season rather than permanent. Mobile has Capacitor purchases; **web has no
+payment provider at all**, so this means Stripe - checkout, webhook, receipt
+validation, refunds, EU VAT/OSS. The gate deliberately does not wait on it.
+
+---
+
+## Standing traps for whoever picks this up
+
+- **Nine pre-existing `svelte-check` errors** are unrelated to this work
+  (Combat/Forge "used before declaration", Market/Forge index-signature
+  variance, one unused variable). Do not treat a count of 9 as a regression.
+- **Running the local stack**: `--seed-dev` seeds and EXITS, it needs
+  `FOLKIDLE_ALLOW_DEV_SEED=1`, and without
+  `FOLKIDLE_WEB_ORIGINS="http://localhost:5173"` every request is blocked by
+  CORS and the UI says "Could not reach the server" - which reads as a dead
+  server when the server is fine.
+- **Stop the running server before `dotnet build`/`dotnet test`** or the build
+  fails on a locked `FolkIdle.Server.exe`.
+- **Do not edit multi-line C# initialisers with blind string replacement.** A
+  Plenty edit this session inserted a field into the middle of a four-term
+  `LootLuckPct` sum, silently re-parenting three bonuses onto the wrong field.
+  It compiled and all 470 tests passed. There is now a guard test, but the
+  lesson generalises.
+- **`SkillTreeRegistry.EffectPending` is empty and must stay empty.**
+  `SkillNodeEffectTests` asserts zero. If a node loses its effect, restore the
+  effect rather than re-adding the id.
+
+---
+
 # HANDOFF - 2026-08-06
 
 Everything below `## Client UI Hook Points` predates the web client.
