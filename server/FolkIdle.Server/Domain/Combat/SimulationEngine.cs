@@ -3546,6 +3546,10 @@ namespace FolkIdle.Server.Domain.Combat
                                 SkillTree_Scholar = currentPayload.Skill_Scholar,
                                 FreeRespecUsed = currentPayload.FreeRespecUsed,
                                 PaidRespecGrants = currentPayload.PaidRespecGrants,
+                                Aptitude_Strength = currentPayload.Aptitude_Strength,
+                                Aptitude_Skill = currentPayload.Aptitude_Skill,
+                                Aptitude_Endurance = currentPayload.Aptitude_Endurance,
+                                Aptitude_Fortune = currentPayload.Aptitude_Fortune,
                                 // Modul: the achievement-toast signal. Pure
                                 // functions of counters already on the
                                 // payload, so this costs three comparisons
@@ -3876,7 +3880,9 @@ namespace FolkIdle.Server.Domain.Combat
                 gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel,
                 payload.ToolGatherSpeedPct
                 + SkillTreeRegistry.GetBonusTenthsOfPercent(
-                    SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10);
+                    SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
+                // Modul: Skill, the bloodline's gathering and crafting aptitude.
+                + (int)BreedingAptitudes.BonusPercentFor(payload.Aptitude_Skill));
             // Modul: Logistics achievement family's stackable claim reward
             // (Phase: Full-Stack Production Polish, Part 2.3) - a flat
             // percent reduction in the tick threshold, i.e. a gathering
@@ -5484,7 +5490,8 @@ namespace FolkIdle.Server.Domain.Combat
                 };
                 int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel, payload.ToolGatherSpeedPct
                     + SkillTreeRegistry.GetBonusTenthsOfPercent(
-                        SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10);
+                        SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
+                    + (int)BreedingAptitudes.BonusPercentFor(payload.Aptitude_Skill));
                 payload.RequiredProgressTicks = requiredTicks;
                 payload.GatheringProgressTicks++;
 
@@ -5656,6 +5663,14 @@ namespace FolkIdle.Server.Domain.Combat
             // same additive-percent way inheritance is just above.
             effectiveMilliHp += effectiveMilliHp * (long)SkillTreeRegistry.GetBonusTenthsOfPercent(
                 SkillTreeRegistry.BoughFortitude, payload.Skill_Fortitude) / 1000L;
+
+            // Modul: Endurance, the bloodline's health aptitude. Layered the
+            // same additive-percent way as inheritance and the tree above it,
+            // and diminishing at the high end - see BreedingAptitudes for why
+            // a flat rate to a cap of fifty would make the leaderboard a
+            // function of account age.
+            effectiveMilliHp += (long)(effectiveMilliHp
+                * BreedingAptitudes.BonusPercentFor(payload.Aptitude_Endurance) / 100f);
             int effectiveMaxHp = (int)effectiveMilliHp;
 
             // Modul: Deferred Part 5 Implementation, Part 2. Active food
@@ -5771,6 +5786,15 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         effectiveMilliAttack += (effectiveMilliAttack * legacyCombatSpeedBonusPct) / 100;
                     }
+                    // Modul: Strength, the bloodline's combat aptitude. On
+                    // the pre-armour figure, alongside the inheritance bonus
+                    // that ComputeEffectiveMilliAttack already folded in.
+                    if (payload.Aptitude_Strength > 0)
+                    {
+                        effectiveMilliAttack += (long)(effectiveMilliAttack
+                            * BreedingAptitudes.BonusPercentFor(payload.Aptitude_Strength) / 100f);
+                    }
+
                     int rawDamage = (int)(effectiveMilliAttack * critMult);
 
                     // Active Skill Tree: a successful RequestCastSkill sets this
@@ -6284,6 +6308,8 @@ namespace FolkIdle.Server.Domain.Combat
                         // Modul: Rarity, the Fortune bough - the same currency
                         // as the root, so it simply adds.
                         + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughRarity, payload.Skill_Rarity)
+                        // Modul: Fortune, the bloodline's luck aptitude.
+                        + BreedingAptitudes.BonusPercentFor(payload.Aptitude_Fortune)
                 });
 
                 var lootTable = ContentRegistry.GetLootTable(activeMonster.LootTableId);

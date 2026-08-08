@@ -157,7 +157,22 @@ namespace FolkIdle.Server.Engine
                     childGenome = GeneticSplicingEngine.ApplyInbreedingDegradation(childGenome);
                 }
 
-                bool isEpicMutation = Random.Shared.NextDouble() < EpicMutationChance;
+                // Modul: the epic roll now lives with the rest of the breeding
+                // rules, and is WORSE between relatives - 5% ordinarily, 1% for
+                // a related pairing. See BreedingAptitudes.
+                bool isEpicMutation = BreedingAptitudes.RollEpic(isInbred, Random.Shared);
+
+                // Modul: APTITUDES. Each of the four is inherited from ONE
+                // parent, weighted by how strong that parent is in it, then
+                // mutated. Crossing two specialists therefore produces a child
+                // good at both, which is what makes marrying difference rather
+                // than similarity the strategy - see BreedingAptitudes.
+                int[] childAptitudes = BreedingAptitudes.Breed(
+                    pLineage.AptitudeVector(),
+                    mLineage.AptitudeVector(),
+                    isInbred,
+                    isEpicMutation,
+                    Random.Shared);
 
                 pChar.IsBreedingActive = true;
                 pChar.BreedingCooldownEndEpoch = nowEpoch + BreedingCooldownSeconds;
@@ -188,6 +203,7 @@ namespace FolkIdle.Server.Engine
                     IsEpicMutation = isEpicMutation,
                     IsInbred = isInbred
                 };
+                newLineage.SetAptitudeVector(childAptitudes);
 
                 dbContext.CharacterRecords.Add(newChar);
                 dbContext.CharacterLineages.Add(newLineage);

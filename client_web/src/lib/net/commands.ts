@@ -1173,6 +1173,45 @@ export function purchaseSkillTreeLevel(
 }
 
 // ---------------------------------------------------------------------------
+// Breeding aptitudes
+// ---------------------------------------------------------------------------
+
+/**
+ * Mirrors BreedingAptitudes. Four values a bloodline carries across seasons -
+ * the only axis in this game that a rollover does not wipe.
+ */
+export const APTITUDE_MAX = 50;
+export const APTITUDE_VILLAGE_CEILING = 20;
+
+export const APTITUDES: readonly {
+  field: string;
+  name: string;
+  blurb: string;
+}[] = [
+  { field: 'Aptitude_Strength', name: 'Strength', blurb: 'Every blow lands harder' },
+  { field: 'Aptitude_Skill', name: 'Skill', blurb: 'Gathering and crafting finish sooner' },
+  { field: 'Aptitude_Endurance', name: 'Endurance', blurb: 'A deeper health pool' },
+  { field: 'Aptitude_Fortune', name: 'Fortune', blurb: 'Better rarity on what drops' },
+];
+
+/**
+ * BreedingAptitudes.BonusPercentFor - three diminishing bands.
+ *
+ * Flat 1.5% to a cap of 50 would be +75% in one domain, which would make a
+ * shared seasonal leaderboard a function of account age rather than of how the
+ * season was played. The bands land at +30% / +40.5% / +45%.
+ */
+export function aptitudeBonusPercent(points: number): number {
+  if (points <= 0) return 0;
+  const p = Math.min(points, APTITUDE_MAX);
+
+  let total = Math.min(p, 20) * 1.5;
+  if (p > 20) total += (Math.min(p, 35) - 20) * 0.7;
+  if (p > 35) total += (p - 35) * 0.3;
+  return total;
+}
+
+// ---------------------------------------------------------------------------
 // Inheritance
 // ---------------------------------------------------------------------------
 

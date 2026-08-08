@@ -407,7 +407,8 @@ namespace FolkIdle.Server.Engine
                 node.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel,
                 payload.ToolGatherSpeedPct
                 + SkillTreeRegistry.GetBonusTenthsOfPercent(
-                    SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10);
+                    SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
+                + (int)BreedingAptitudes.BonusPercentFor(payload.Aptitude_Skill));
 
             double actionIntervalSeconds = requiredTicks / 10.0;
             double totalActionsDouble = elapsedSeconds / actionIntervalSeconds;
@@ -533,6 +534,13 @@ namespace FolkIdle.Server.Engine
             // same additive-percent way inheritance is just above.
             effectiveMilliHp += effectiveMilliHp * (long)SkillTreeRegistry.GetBonusTenthsOfPercent(
                 SkillTreeRegistry.BoughFortitude, payload.Skill_Fortitude) / 1000L;
+
+            // Modul: Endurance offline as well as live. The two health formulas
+            // diverging is a bug this codebase has already shipped once, in
+            // gathering - the offline path used a stale private formula for
+            // months while the live one moved on.
+            effectiveMilliHp += (long)(effectiveMilliHp
+                * BreedingAptitudes.BonusPercentFor(payload.Aptitude_Endurance) / 100f);
 
             double effectiveElapsedSeconds = elapsedSeconds;
             if (expectedIncomingMilliDps > 0.0)

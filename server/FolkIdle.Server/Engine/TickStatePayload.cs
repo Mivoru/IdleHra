@@ -339,6 +339,18 @@ namespace FolkIdle.Server.Engine
         // of them rather than one "respecs remaining".
         public byte FreeRespecUsed;
         public byte PaidRespecGrants;
+
+        // Modul: the ACTIVE character's aptitudes, so the tick can read them
+        // without touching the database. Bred by BreedingAptitudes, stored on
+        // character_lineage_registry, and hydrated here from slot 1's lineage.
+        //
+        // Per-character rather than per-account, unlike inheritance: aptitudes
+        // are what a bloodline carries, so switching to a different child has
+        // to change them.
+        public byte Aptitude_Strength;
+        public byte Aptitude_Skill;
+        public byte Aptitude_Endurance;
+        public byte Aptitude_Fortune;
         public int CachedLogisticsGatheringSpeedBonusPct;
 
         // Modul: Phase - Full-Stack Production Polish Phase 2, Part 3.1

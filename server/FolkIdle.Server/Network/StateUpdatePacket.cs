@@ -607,6 +607,15 @@ namespace FolkIdle.Server.Network
         public byte FreeRespecUsed;
         public byte PaidRespecGrants;
 
+        // Modul: the active character's aptitudes. On the wire because the
+        // Breeding and Character screens both have to show what a bloodline is
+        // worth - a bonus a player cannot see is indistinguishable from one
+        // that does not work.
+        public byte Aptitude_Strength;
+        public byte Aptitude_Skill;
+        public byte Aptitude_Endurance;
+        public byte Aptitude_Fortune;
+
         // Modul: THE ONE BYTE AN ACHIEVEMENT TOAST NEEDS.
         //
         // Achievements reach the client over REST - /achievements/snapshot for

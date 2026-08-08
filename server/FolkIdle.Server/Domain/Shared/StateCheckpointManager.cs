@@ -1048,6 +1048,17 @@ namespace FolkIdle.Server.Domain.Shared
                 payload.Slot1_AgePhase = characters[0].AgePhase;
                 payload.Slot1_GeneticVector = characters[0].Lineage?.GeneticVector ?? 0;
 
+                // Modul: and the active character's aptitudes. Defaulted to
+                // the starting value rather than zero when a character has no
+                // lineage row at all - an unbred founder is ordinary, not
+                // worthless, and zeroing it would quietly make every pre-
+                // breeding character weaker than a newly created one.
+                var aptLineage = characters[0].Lineage;
+                payload.Aptitude_Strength = (byte)(aptLineage?.AptitudeStrength ?? Engine.BreedingAptitudes.StartingValue);
+                payload.Aptitude_Skill = (byte)(aptLineage?.AptitudeSkill ?? Engine.BreedingAptitudes.StartingValue);
+                payload.Aptitude_Endurance = (byte)(aptLineage?.AptitudeEndurance ?? Engine.BreedingAptitudes.StartingValue);
+                payload.Aptitude_Fortune = (byte)(aptLineage?.AptitudeFortune ?? Engine.BreedingAptitudes.StartingValue);
+
                 // Modul: Play Mode audit fix. ActiveActivityId was hardcoded
                 // to 1 above regardless of what the character was actually
                 // doing - SimulationEngine.ChangeCharacterActivityAsync

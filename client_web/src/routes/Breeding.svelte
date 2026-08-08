@@ -12,6 +12,7 @@
   import { connection } from '../lib/net/connection';
   import { agePhaseName } from '../lib/ui/slots';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import AptitudePanel from '../lib/ui/AptitudePanel.svelte';
 
   const client = useQueryClient();
   const roster = createQuery(() => ({ queryKey: queryKeys.breedingRoster, queryFn: fetchBreedingRoster }));
@@ -89,6 +90,10 @@
 </script>
 
 <div class="grid">
+  <!-- Modul: what the bloodline is worth, first. It is the reason
+       breeding exists, and it was invisible until now. -->
+  <AptitudePanel />
+
   <section class="panel">
     <h2>Breeding lab</h2>
 

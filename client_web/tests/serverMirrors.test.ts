@@ -1,4 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import {
+  aptitudeBonusPercent,
+  APTITUDE_MAX,
+  APTITUDE_VILLAGE_CEILING,
+} from '../src/lib/net/commands';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -184,6 +189,51 @@ describe('the numbers the client mirrors still match the server', () => {
     // The client hard-codes the same boundaries inside skillRingOf.
     expect(commands).toMatch(/if \(nodeId >= 15\) return 'crown';/);
     expect(commands).toMatch(/if \(nodeId >= 5\) return 'bough';/);
+  });
+
+  // Modul: the aptitude curve is a mirror the moment the panel shows a
+  // percentage. Two diminishing tables drifting apart would have the client
+  // promising a bonus the server does not grant - and nobody would notice,
+  // because both numbers look plausible.
+  it('breeding: the aptitude cap, the village ceiling and the whole curve', () => {
+    const apt = read(serverRoot, 'Engine', 'BreedingAptitudes.cs');
+    // The CLIENT side is the real exported function, not a re-parse of its
+    // source: a test that reimplements the thing it is checking passes for the
+    // wrong reason the moment either copy moves.
+    const commands = read(clientRoot, 'lib', 'net', 'commands.ts');
+
+    expect(num(commands, /APTITUDE_MAX = (\d+)/, 'client cap')).toBe(
+      num(apt, /MaxValue = (\d+)/, 'server cap'),
+    );
+    expect(num(commands, /APTITUDE_VILLAGE_CEILING = (\d+)/, 'client village ceiling')).toBe(
+      num(apt, /VillagerCeiling = (\d+)/, 'server village ceiling'),
+    );
+    expect(APTITUDE_MAX).toBe(num(apt, /MaxValue = (\d+)/, 'server cap'));
+    expect(APTITUDE_VILLAGE_CEILING).toBe(num(apt, /VillagerCeiling = (\d+)/, 'server ceiling'));
+
+    // And the curve itself, band by band, at every boundary that matters.
+    const bandOneEnd = num(apt, /BandOneEnd = (\d+)/, 'band one end');
+    const bandTwoEnd = num(apt, /BandTwoEnd = (\d+)/, 'band two end');
+    const one = Number(apt.match(/BandOnePerPoint = ([\d.]+)f/)![1]);
+    const two = Number(apt.match(/BandTwoPerPoint = ([\d.]+)f/)![1]);
+    const three = Number(apt.match(/BandThreePerPoint = ([\d.]+)f/)![1]);
+    const cap = num(apt, /MaxValue = (\d+)/, 'cap');
+
+    const serverCurve = (points: number) => {
+      if (points <= 0) return 0;
+      const p = Math.min(points, cap);
+      let total = Math.min(p, bandOneEnd) * one;
+      if (p > bandOneEnd) total += (Math.min(p, bandTwoEnd) - bandOneEnd) * two;
+      if (p > bandTwoEnd) total += (p - bandTwoEnd) * three;
+      return total;
+    };
+
+    for (const points of [0, 1, 19, 20, 21, 34, 35, 36, 49, 50, 60]) {
+      expect(aptitudeBonusPercent(points), `${points} points`).toBeCloseTo(
+        serverCurve(points),
+        4,
+      );
+    }
   });
 
   it('combat: the first-clear boss multiplier', () => {

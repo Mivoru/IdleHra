@@ -131,7 +131,10 @@ namespace FolkIdle.Server.Network
         // rings at all - the flat version was an ordering, not a choice.
         //
         // Modul: respec gate, 763 -> 765. FreeRespecUsed and PaidRespecGrants.
-        public const int ExpectedStateUpdateSize = 765;
+        //
+        // Modul: breeding aptitudes, 765 -> 769. Four bytes, the active
+        // character's Strength/Skill/Endurance/Fortune.
+        public const int ExpectedStateUpdateSize = 769;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper
