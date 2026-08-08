@@ -8169,7 +8169,7 @@ namespace FolkIdle.Server.Tests
             // both statistically certain to have hit at least once each.
             for (int i = 0; i < 400; i++)
             {
-                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f })!;
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0 })!;
             }
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
@@ -10106,7 +10106,7 @@ namespace FolkIdle.Server.Tests
 
             for (int i = 0; i < 200; i++)
             {
-                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f })!;
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0 })!;
             }
 
             int publishedCount = 0;

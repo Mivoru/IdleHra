@@ -392,13 +392,8 @@ namespace FolkIdle.Server.Engine
         private static bool[] BuildEffectPending()
         {
             var pending = new bool[NodeCount];
-            foreach (int id in new[]
-            {
-                CrownGoldenFleece, CrownThunderer,
-            })
-            {
-                pending[id] = true;
-            }
+            // Empty: every node now has an effect. Add an id back here only
+            // alongside removing the effect that justified it.
             return pending;
         }
 

@@ -170,33 +170,10 @@ namespace FolkIdle.Server.Tests
             Assert.True(allFive > 200, "five full limbs must stay far beyond one season's points");
         }
 
-        /// <summary>
-        /// THE DEFECT THIS PREVENTS: spending a real resource on a bonus that
-        /// silently does nothing. This project has shipped that more than once
-        /// - crafting that granted nothing, loot dead after twenty kills,
-        /// gather-speed affixes computed and never read. All looked finished.
-        /// </summary>
-        [Fact]
-        public void ANodeWhoseEffectIsNotWiredCannotBeBought()
-        {
-            var ready = Levels(
-                (0, 10), (1, 10), (2, 10), (3, 10), (4, 10),
-                (SkillTreeRegistry.BoughGuile, 5),
-                (SkillTreeRegistry.BoughBloodthirst, 5),
-                (SkillTreeRegistry.BoughHarvest, 5));
-
-            int pending = 0;
-            for (int id = 0; id < SkillTreeRegistry.NodeCount; id++)
-            {
-                if (!SkillTreeRegistry.IsEffectPending(id)) continue;
-                pending++;
-                Assert.Equal("Not in the game yet - coming soon.",
-                    SkillTreeRegistry.BlockedReason(id, ready, 999));
-            }
-
-            _output.WriteLine($"{pending} of {SkillTreeRegistry.NodeCount} nodes await an effect");
-            Assert.True(pending > 0, "delete this test when the last effect lands");
-        }
+        // Modul: the "some nodes await an effect" test lived here and asked to
+        // be deleted when the last one landed. It has. What replaced it is
+        // stronger and lives in SkillNodeEffectTests: the pending list must now
+        // be EMPTY, so a node cannot be quietly disabled instead of fixed.
 
         [Fact]
         public void EveryNodeIsNamedAndDescribed()

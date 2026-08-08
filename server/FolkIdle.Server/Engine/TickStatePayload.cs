@@ -360,6 +360,11 @@ namespace FolkIdle.Server.Engine
         // Server-side only; the client has no use for it and this struct is
         // not the wire packet, so it costs nothing on the network.
         public int LastStandCooldownRemaining;
+
+        // Modul: kills since Golden Fleece last paid out. Server-side only -
+        // the client draws the counter from nothing today, and this struct is
+        // not the wire packet, so it costs no bytes on the network.
+        public int KillsSinceFleece;
         public int CachedLogisticsGatheringSpeedBonusPct;
 
         // Modul: Phase - Full-Stack Production Polish Phase 2, Part 3.1

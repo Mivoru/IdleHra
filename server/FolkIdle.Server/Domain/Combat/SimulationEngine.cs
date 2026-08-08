@@ -5329,6 +5329,33 @@ namespace FolkIdle.Server.Domain.Combat
         /// </summary>
         internal const int LastStandCooldownTicks = 36_000;
 
+        /// <summary>Kills between Golden Fleece payouts.</summary>
+        internal const int GoldenFleeceKillInterval = 100;
+
+        /// <summary>How far above its due a Golden Fleece drop rolls.</summary>
+        internal const int GoldenFleeceBonusTiers = 2;
+
+        /// <summary>
+        /// Thunderer, the Giantslayer crown: a boss fight opens with a free
+        /// blow at five times the weapon.
+        ///
+        /// REUSES PendingSkillDamageMultiplier, which the four removed active
+        /// skills left behind - the field was still on the payload and still
+        /// consumed on the next hit, with nothing left in the game to set it.
+        /// So the crown needed a mechanism that already existed and worked,
+        /// and this is it. Expressed as a multiplier on the next swing rather
+        /// than as an out-of-band hit, so it goes through the same to-hit,
+        /// armour, lifesteal and kill-check path everything else does.
+        /// </summary>
+        private static void ArmThundererIfBoss(ref TickStatePayload payload)
+        {
+            if (payload.Skill_Thunderer <= 0) return;
+            if (RaceUnlockRegistry.GetRegionForBossMonsterId(payload.CurrentMonsterId) <= 0) return;
+
+            payload.PendingSkillDamageMultiplier = SkillTreeRegistry.GetBonusPercent(
+                SkillTreeRegistry.CrownThunderer, payload.Skill_Thunderer) / 100f;
+        }
+
         private static void SetSkillTreeLevel(ref TickStatePayload payload, int branchId, byte level)
         {
             switch (branchId)
@@ -5731,6 +5758,7 @@ namespace FolkIdle.Server.Domain.Combat
             if (payload.CurrentMonsterId <= 0)
             {
                 payload.CurrentMonsterId = fallbackId;
+                ArmThundererIfBoss(ref payload);
                 payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId, payload.Skill_FirstBlood) * 1000L;
                 payload.CombatTargetTickAccumulator = 0;
             }
@@ -6290,6 +6318,21 @@ namespace FolkIdle.Server.Domain.Combat
 
                 QuestEngine.IncrementProgress(ref payload, QuestEngine.QuestTypeKillMonsters, 1);
 
+                // Modul: Golden Fleece, the Fortune crown - every hundredth
+                // kill drops an item two rarity tiers above its due.
+                //
+                // Counted even when the crown is not taken, so that TAKING it
+                // does not hand the player a hundred-kill head start they did
+                // not earn, and so untaking it (a respec) does not reset a
+                // counter they were watching.
+                payload.KillsSinceFleece++;
+                int fleeceTiers = 0;
+                if (payload.KillsSinceFleece >= GoldenFleeceKillInterval)
+                {
+                    payload.KillsSinceFleece = 0;
+                    if (payload.Skill_GoldenFleece > 0) fleeceTiers = GoldenFleeceBonusTiers;
+                }
+
                 long goldReward = (activeMonster.BaseGoldReward * (long)GlobalEngineState.GlobalGoldDropMultiplier) / 100L;
                 // Modul 13.4.3: Human's innate +5% Gold acquisition passive.
                 goldReward = (long)(goldReward * (1.0f + combatStats.GoldAcquisitionMultiplierPct / 100f));
@@ -6375,15 +6418,32 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     PlayerId = payload.PlayerId,
                     MonsterId = payload.CurrentMonsterId,
-                    LootLuckPct = combatStats.LootLuckPct + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck),
-                    MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(
-                        SkillTreeRegistry.BoughPlenty, payload.Skill_Plenty)
+                    // Modul: everything that shifts WHAT falls, summed into one
+                    // luck figure.
+                    //
+                    // These four lines were briefly split apart by an edit that
+                    // inserted MaterialQuantityPct into the middle of the sum,
+                    // which silently moved the Fortune root, the Rarity bough
+                    // and the luck aptitude out of loot luck and into material
+                    // quantity. It compiled and every test passed, because both
+                    // fields are floats and nothing asserted which one they fed
+                    // - so three bonuses quietly did the wrong job. Keep this
+                    // sum contiguous.
+                    LootLuckPct = combatStats.LootLuckPct
+                        + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck)
                         + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity)
-                        // Modul: Rarity, the Fortune bough - the same currency
-                        // as the root, so it simply adds.
+                        // Rarity, the Fortune bough - the same currency as the
+                        // root, so it simply adds.
                         + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughRarity, payload.Skill_Rarity)
-                        // Modul: Fortune, the bloodline's luck aptitude.
-                        + BreedingAptitudes.BonusPercentFor(payload.Aptitude_Fortune)
+                        // Fortune, the bloodline's luck aptitude.
+                        + BreedingAptitudes.BonusPercentFor(payload.Aptitude_Fortune),
+
+                    // Plenty changes HOW MUCH of a material falls, which is a
+                    // different question from what falls, and has its own field.
+                    MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(
+                        SkillTreeRegistry.BoughPlenty, payload.Skill_Plenty),
+
+                    BonusRarityTiers = fleeceTiers
                 });
 
                 var lootTable = ContentRegistry.GetLootTable(activeMonster.LootTableId);

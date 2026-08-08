@@ -96,6 +96,56 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
+        /// THE BUG THIS EXISTS FOR, caught in review rather than in play.
+        ///
+        /// The live loot request builds LootLuckPct as a four-term sum across
+        /// several lines. An edit that inserted another field into the middle
+        /// of it truncated the sum and re-parented the Fortune root, the Rarity
+        /// bough and the luck aptitude onto MaterialQuantityPct - so three
+        /// bonuses fed the wrong number. It compiled and all 470 tests passed,
+        /// because both fields are floats and nothing asserted which was which.
+        ///
+        /// Reading the source is a blunt instrument, but the failure is
+        /// textual: two adjacent float assignments that a careless line can
+        /// merge. The alternative - exercising the tick loop to observe which
+        /// number moved - needs a whole harness for one assertion.
+        /// </summary>
+        [Fact]
+        public void LootLuckAndMaterialQuantityAreNotSpliced()
+        {
+            string source = System.IO.File.ReadAllText(
+                System.IO.Path.Combine(RepoRoot(), "FolkIdle.Server", "Domain", "Combat", "SimulationEngine.cs"));
+
+            int at = source.IndexOf("MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(", StringComparison.Ordinal);
+            Assert.True(at > 0, "the loot request no longer sets MaterialQuantityPct - update this test");
+
+            while (at > 0)
+            {
+                // The assignment must END at BoughPlenty. Anything summed onto
+                // it afterwards is a term that belongs to loot luck.
+                int close = source.IndexOf("payload.Skill_Plenty)", at, StringComparison.Ordinal);
+                Assert.True(close > 0, "Plenty's assignment lost its argument");
+
+                string tail = source.Substring(close, Math.Min(120, source.Length - close));
+                Assert.DoesNotContain("+ SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.Branch", tail);
+                Assert.DoesNotContain("+ BreedingAptitudes.BonusPercentFor", tail);
+
+                at = source.IndexOf("MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(", at + 1, StringComparison.Ordinal);
+            }
+        }
+
+        private static string RepoRoot()
+        {
+            var dir = new System.IO.DirectoryInfo(AppContext.BaseDirectory);
+            while (dir != null && !System.IO.Directory.Exists(System.IO.Path.Combine(dir.FullName, "FolkIdle.Server")))
+            {
+                dir = dir.Parent;
+            }
+            Assert.NotNull(dir);
+            return dir!.FullName;
+        }
+
+        /// <summary>
         /// A ratchet on the work itself: the pending list may only ever get
         /// shorter. If a future change puts a node BACK on it, that is a
         /// regression worth failing over rather than a quiet retreat.
@@ -110,8 +160,7 @@ namespace FolkIdle.Server.Tests
             }
 
             _output.WriteLine($"{pending} nodes still await an effect");
-            Assert.True(pending <= 2,
-                "a node was returned to the pending list - wire its effect back rather than disabling it");
+            Assert.Equal(0, pending);
         }
     }
 }

@@ -197,6 +197,12 @@ namespace FolkIdle.Server.Engine
         // tick thread and has no access to the payload, which is exactly why
         // LootLuckPct is here too.
         public float MaterialQuantityPct;
+
+        // Modul: Golden Fleece, the Fortune crown - every hundredth kill drops
+        // an item two rarity tiers above its due. Carried per-request rather
+        // than counted here, because the count belongs to the tick that did
+        // the killing and this engine runs off that thread.
+        public int BonusRarityTiers;
     }
 
     // Modul 03/10/11/12: rolls and persists combat-kill equipment/diamond
@@ -307,7 +313,8 @@ namespace FolkIdle.Server.Engine
                 while (DropRequestQueue.TryDequeue(out var request))
                 {
                     await ProcessMonsterLootDropAsync(
-                        request.PlayerId, request.MonsterId, request.LootLuckPct, request.MaterialQuantityPct);
+                        request.PlayerId, request.MonsterId, request.LootLuckPct,
+                        request.MaterialQuantityPct, request.BonusRarityTiers);
                 }
 
                 while (GatheringGrantQueue.TryDequeue(out var gathered))
@@ -395,7 +402,8 @@ namespace FolkIdle.Server.Engine
         // grows; the player sells or bins what they do not want.
 
         private async Task ProcessMonsterLootDropAsync(
-            long playerId, int monsterId, float lootLuckPct, float materialQuantityPct)
+            long playerId, int monsterId, float lootLuckPct, float materialQuantityPct,
+            int bonusRarityTiers)
         {
             int monsterRegion = ContentRegistry.GetMonsterRegionTier(monsterId);
             if (monsterRegion < 1) monsterRegion = 1;
@@ -463,7 +471,8 @@ namespace FolkIdle.Server.Engine
                 // Roll 2: equipment, from THIS monster's table. Independent of
                 // the materials roll above, so a kill can pay both, either or
                 // neither.
-                TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, EquipmentDropChance);
+                TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
+                    EquipmentDropChance, bonusRarityTiers);
 
                 // Regional bosses always drop one piece on top of that, which
                 // is the whole of what makes a boss kill worth walking to. It
@@ -472,7 +481,8 @@ namespace FolkIdle.Server.Engine
                 // boss is authored to carry.
                 if (isRegionalBoss)
                 {
-                    TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct, 1.0);
+                    TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
+                        1.0, bonusRarityTiers);
                 }
 
                 await dbContext.SaveChangesAsync();
@@ -593,7 +603,9 @@ namespace FolkIdle.Server.Engine
         // synchronous and the single SaveChangesAsync happens once for the whole
         // kill in the caller, so the four awaits this replaces each cost a state
         // machine to return an already-completed task.
-        private void TryRollEquipment(FolkIdleDbContext dbContext, long playerId, int monsterId, int monsterRegion, float lootLuckPct, double dropChance)
+        private void TryRollEquipment(
+            FolkIdleDbContext dbContext, long playerId, int monsterId, int monsterRegion,
+            float lootLuckPct, double dropChance, int bonusRarityTiers = 0)
         {
             if (Random.Shared.NextDouble() >= dropChance) return;
 
@@ -604,6 +616,16 @@ namespace FolkIdle.Server.Engine
             if (chosenItemId == 0) return;
 
             int tier = RarityTier.RollTier(lootLuckPct);
+
+            // Modul: Golden Fleece, the Fortune crown. Two tiers ABOVE what the
+            // roll produced, rather than a reroll with better odds - the crown
+            // is meant to be a moment the player can see coming and then see
+            // land, and "your hundredth kill rolled slightly better" is not
+            // one. Clamped to the fourteen real tiers.
+            if (bonusRarityTiers > 0)
+            {
+                tier = Math.Clamp(tier + bonusRarityTiers, 1, Domain.Economy.CraftingEngine.RarityTierCount);
+            }
             string baseItemId = ContentRegistry.GetItemBaseId(chosenItemId);
 
             // Modul: NOTHING IS EVER DESTROYED ON THE WAY IN.
