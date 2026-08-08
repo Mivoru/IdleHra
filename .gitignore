@@ -45,3 +45,4 @@ ops/oracle/.env
 
 # Modul: a vitest cache file rode in on a . Never tracked.
 node_modules/
+TestResults/
