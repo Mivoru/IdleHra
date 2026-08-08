@@ -191,6 +191,12 @@ namespace FolkIdle.Server.Engine
         public long PlayerId;
         public int MonsterId;
         public float LootLuckPct;
+
+        // Modul: Plenty, the Fortune bough - bigger material stacks. Carried
+        // on the request beside loot luck because the loot engine runs off the
+        // tick thread and has no access to the payload, which is exactly why
+        // LootLuckPct is here too.
+        public float MaterialQuantityPct;
     }
 
     // Modul 03/10/11/12: rolls and persists combat-kill equipment/diamond
@@ -300,7 +306,8 @@ namespace FolkIdle.Server.Engine
 
                 while (DropRequestQueue.TryDequeue(out var request))
                 {
-                    await ProcessMonsterLootDropAsync(request.PlayerId, request.MonsterId, request.LootLuckPct);
+                    await ProcessMonsterLootDropAsync(
+                        request.PlayerId, request.MonsterId, request.LootLuckPct, request.MaterialQuantityPct);
                 }
 
                 while (GatheringGrantQueue.TryDequeue(out var gathered))
@@ -387,7 +394,8 @@ namespace FolkIdle.Server.Engine
         // what to destroy, and that decision belongs to the player. The chest
         // grows; the player sells or bins what they do not want.
 
-        private async Task ProcessMonsterLootDropAsync(long playerId, int monsterId, float lootLuckPct)
+        private async Task ProcessMonsterLootDropAsync(
+            long playerId, int monsterId, float lootLuckPct, float materialQuantityPct)
         {
             int monsterRegion = ContentRegistry.GetMonsterRegionTier(monsterId);
             if (monsterRegion < 1) monsterRegion = 1;
@@ -448,7 +456,7 @@ namespace FolkIdle.Server.Engine
                     LootTableEntry[] lootTable = ContentRegistry.GetLootTable(monsterLootTableId).ToArray();
                     if (lootTable.Length > 0)
                     {
-                        await GrantMaterialDropAsync(dbContext, playerId, monsterId, lootTable);
+                        await GrantMaterialDropAsync(dbContext, playerId, monsterId, lootTable, materialQuantityPct);
                     }
                 }
 
@@ -522,7 +530,9 @@ namespace FolkIdle.Server.Engine
         // needs to be told WHAT dropped, which is the whole point of the
         // feed, and only this method knows which loot-table entry won the
         // weighted roll.
-        private async Task GrantMaterialDropAsync(FolkIdleDbContext dbContext, long playerId, int monsterId, LootTableEntry[] lootTable)
+        private async Task GrantMaterialDropAsync(
+            FolkIdleDbContext dbContext, long playerId, int monsterId, LootTableEntry[] lootTable,
+            float materialQuantityPct)
         {
             int totalWeight = 0;
             for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight;
@@ -539,6 +549,17 @@ namespace FolkIdle.Server.Engine
                 int quantity = entry.MaxQuantity > 0
                     ? Random.Shared.Next(Math.Max(1, entry.MinQuantity), entry.MaxQuantity + 1)
                     : 1;
+
+                // Modul: Plenty, the Fortune bough. Scales the drawn quantity
+                // rather than the authored range, so a stack can exceed
+                // MaxQuantity - which is the point of the branch. Rounded UP
+                // from at least one, because a bonus that rounds a single-item
+                // drop back down to one would be invisible on exactly the
+                // drops a new player sees most.
+                if (materialQuantityPct > 0f)
+                {
+                    quantity = (int)Math.Ceiling(quantity * (1f + materialQuantityPct / 100f));
+                }
 
                 // Modul: GetMaterialString only covers the original 6
                 // hardcoded gathering materials (ids 1-6) and falls back

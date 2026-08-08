@@ -539,11 +539,13 @@ first two days are not dead, bad enough to want better.
    change.
 3. **DONE - rings 2 and 3 of the tree, plus the respec gate.** Structure,
    exclusion, prerequisites, the drawing, the season reset that was missing.
-   - **12 of 15 new nodes have their effect wired**: Rarity, First Blood,
-     Trophy Hunter, Guile, Relentless, Bloodthirst, Fortitude, Craft, Harvest,
-     Double Strike, Last Stand, Scholar.
-   - **3 do not, and are blocked from purchase** by
-     `SkillTreeRegistry.EffectPending`: Plenty, Golden Fleece, Thunderer.
+   - **13 of 15 new nodes have their effect wired**: Plenty, Rarity, First
+     Blood, Trophy Hunter, Guile, Relentless, Bloodthirst, Fortitude, Craft,
+     Harvest, Double Strike, Last Stand, Scholar.
+   - **2 do not, and are blocked from purchase** by
+     `SkillTreeRegistry.EffectPending`: Golden Fleece (needs a per-player kill
+     counter the wire does not carry) and Thunderer (needs a hook at the moment
+     a boss fight opens, which the tick loop has no concept of today).
    - **Craft was redefined rather than faked.** Its first wording promised
      "crafting finishes sooner" and crafting in this game is instantaneous -
      `ExecuteCraftingAsync` has no duration and `PlayerCraftingSlot.CompletionEpoch`

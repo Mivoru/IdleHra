@@ -4076,7 +4076,9 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     PlayerId = payload.PlayerId,
                     MonsterId = monsterId,
-                    LootLuckPct = warpCombatStats.LootLuckPct + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck)
+                    LootLuckPct = warpCombatStats.LootLuckPct + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck),
+                    MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(
+                        SkillTreeRegistry.BoughPlenty, payload.Skill_Plenty)
                 });
             }
 
@@ -6373,7 +6375,9 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     PlayerId = payload.PlayerId,
                     MonsterId = payload.CurrentMonsterId,
-                    LootLuckPct = combatStats.LootLuckPct + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck)
+                    LootLuckPct = combatStats.LootLuckPct + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck),
+                    MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(
+                        SkillTreeRegistry.BoughPlenty, payload.Skill_Plenty)
                         + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity)
                         // Modul: Rarity, the Fortune bough - the same currency
                         // as the root, so it simply adds.

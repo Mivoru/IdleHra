@@ -1053,7 +1053,7 @@ export const SKILL_TREE_BRANCHES = SKILL_TREE_NODES.filter((n) => n.ring === 'ro
  *
  * Remove an id here in the same commit that wires its effect, never before.
  */
-export const SKILL_TREE_EFFECT_PENDING: readonly number[] = [5, 15, 16];
+export const SKILL_TREE_EFFECT_PENDING: readonly number[] = [15, 16];
 
 export function isSkillEffectPending(nodeId: number): boolean {
   return SKILL_TREE_EFFECT_PENDING.includes(nodeId);
