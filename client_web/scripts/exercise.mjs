@@ -913,6 +913,42 @@ await go('Breeding');
   }
 }
 
+// --- the Book of Deeds -------------------------------------------------------
+//
+// Modul: five chapters, and the Seals that couple them to the skill tree. A
+// Seal grants +2 permanent skill points EVERY season, so the chapters and the
+// awarding both live on the server - this checks the client renders the real
+// answer, with a number on every deed. The old tiered achievements returned 0
+// from GetNextTierTarget for most ids and drew "0 / MAX"; a deed without a
+// number does not exist to the player, which is why the counter is what gets
+// asserted rather than the list.
+await go('Progress');
+{
+  const text = await page.evaluate(() => document.body.innerText);
+  record('the Book of Deeds is shown', /Book of Deeds/i.test(text));
+  record(
+    'all five chapters are listed',
+    /The Village Road/.test(text) && /Smiths/.test(text) && /Hunters/.test(text) &&
+      /Stewards/.test(text) && /Ledger of Legends/.test(text),
+  );
+  record('a Seal is priced in skill points', /skill points/i.test(text));
+
+  // Every unfinished deed with a target above one must show its x / y.
+  const meters = await page.locator('.deeds .count').allInnerTexts();
+  record(
+    'unfinished deeds carry a live counter',
+    meters.length > 0 && meters.every((m) => /\d[\d,]*\s*\/\s*\d/.test(m)),
+    meters.slice(0, 3).join(', '),
+  );
+
+  // The fixture has done chapter I many times over, so its Seal must be real.
+  record(
+    'a finished chapter is sealed',
+    /sealed/i.test(text),
+    (text.match(/(\d+) Seals?/) ?? ['no seals'])[0],
+  );
+}
+
 // --- the Hall of Ancestors ---------------------------------------------------
 //
 // Modul: the roster that outlives a season, and the door that never existed.

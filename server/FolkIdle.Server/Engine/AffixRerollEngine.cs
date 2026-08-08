@@ -350,6 +350,12 @@ namespace FolkIdle.Server.Engine
 
                 currencyRecord.Quantity -= cost;
 
+                // Modul: the Book of Deeds, chapter II. Counted where the gold
+                // is spent, inside the same transaction, so the number matches
+                // what the player actually paid for.
+                var rerollingPlayer = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
+                if (rerollingPlayer != null) rerollingPlayer.AffixRerollsPerformed++;
+
                 // Modul: ONE ROLL, ALL THREE AXES. Type, rarity and magnitude
                 // together - see RerollOperation on why the three separate
                 // operations went. `operation` is accepted and ignored so an

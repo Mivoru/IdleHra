@@ -236,6 +236,40 @@ namespace FolkIdle.Server.Models
         public long TotalDeaths { get; set; }
         public long TotalPlayTimeSeconds { get; set; }
 
+        // Modul: the Book of Deeds, chapters II and V.
+        //
+        // Three counters, added because their chapters cannot be written
+        // without them and there is no existing source to sum. Everything else
+        // the five chapters ask about was already derivable - kills from the
+        // codex, crafts and deaths from the columns above, buildings and
+        // masteries from their own tables - and a deed that cannot show a live
+        // x/y counter does not exist to the player, which is the first of the
+        // spec's two non-negotiables.
+        //
+        // Lifetime, like the three above: they describe the account's history,
+        // not the era's, and a Seal earned is earned forever.
+        public long ForgeFusionsCompleted { get; set; }
+        public long AffixRerollsPerformed { get; set; }
+
+        /// <summary>
+        /// The best (lowest) leaderboard rank this account has ever finished a
+        /// season on, or 0 for "never placed". Written at the rollover, where
+        /// the whole roster is already ranked for placement rewards.
+        /// </summary>
+        public int BestSeasonRank { get; set; }
+
+        /// <summary>
+        /// Which chapters of the Book of Deeds have been completed, one bit
+        /// each. **Each Seal grants +2 permanent skill points every season,
+        /// forever** - the coupling that gives the skill tree a second source
+        /// of points, earned by exploring the game rather than by levelling.
+        ///
+        /// A mask rather than a count because the chapters are not ordered by
+        /// difficulty and a player may finish IV before III; and permanent,
+        /// like everything else a season is not allowed to take back.
+        /// </summary>
+        public int SealsEarnedMask { get; set; }
+
         // Modul: Prestige (Legacy Shard) permanent perk tree - purchased
         // through LegacyStoreEngine.PurchaseLegacyPerkAsync, distinct from
         // CitizenMultiSlotsUnlocked (a per-era ledger field). Bitmask: each

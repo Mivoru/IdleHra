@@ -944,6 +944,17 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: the Book of Deeds. Five chapters, their live
+                    // counters, and the Seals - which are BANKED on this read,
+                    // because a Seal grants permanent skill points and a client
+                    // that decided when it had earned one could award itself
+                    // the whole tree.
+                    if (requestPath == "/api/v1/deeds/snapshot" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleDeedsSnapshot(context);
+                        continue;
+                    }
+
                     // Modul: the Hall of Ancestors. The breeding roster answers
                     // "who can I pair"; this answers "who carries into next
                     // season, and where do they stand" - the cap, the marks,
@@ -3202,6 +3213,113 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"HandleVillageNewcomers failed: {ex.Message}");
+                context.Response.StatusCode = 500;
+                context.Response.Close();
+            }
+        }
+
+        /// <summary>
+        /// The Book of Deeds: five chapters, every deed with a live x / y, and
+        /// the Seals.
+        ///
+        /// AWARDS ON READ. There is no claim command and deliberately is not
+        /// one - a claim button is a thing to forget, and the question "how am
+        /// I doing" is the same question as "have I finished a chapter". A
+        /// chapter that completes while the player is offline is theirs the
+        /// next time they look.
+        ///
+        /// A CHAPTER OPENS WHEN THE ONE BEFORE IT COMPLETES, so the payload
+        /// says which are open rather than letting the client guess from the
+        /// Seal mask - "open" and "sealed" differ for exactly one chapter at a
+        /// time and that is the one the player is working on.
+        /// </summary>
+        private async Task HandleDeedsSnapshot(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var progress = await Engine.DeedProgressSource.LoadAsync(db, playerId);
+
+                var player = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
+                if (player == null)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                int newlyAwarded = await Engine.SealEngine.AwardCompletedChaptersAsync(db, player, progress);
+
+                var chapters = Engine.DeedRegistry.Chapters;
+                bool previousComplete = true;
+
+                var payload = new
+                {
+                    SealsEarnedMask = player.SealsEarnedMask,
+                    SealCount = Engine.DeedRegistry.SealCount(player.SealsEarnedMask),
+                    SkillPointsFromSeals = Engine.DeedRegistry.SkillPointsFrom(player.SealsEarnedMask),
+                    SkillPointsPerSeal = Engine.DeedRegistry.SkillPointsPerSeal,
+                    // A bitmask of chapters sealed by THIS request, so the
+                    // client can celebrate the moment rather than noticing a
+                    // number changed.
+                    NewlySealedMask = newlyAwarded,
+                    Chapters = chapters.Select(chapter =>
+                    {
+                        bool isOpen = previousComplete;
+                        bool isComplete = Engine.DeedRegistry.IsComplete(chapter, progress);
+
+                        // A CHAPTER STAYS OPEN ONCE ITS PREDECESSOR IS SEALED,
+                        // even if that predecessor's deeds later read as
+                        // undone. Several are STATE rather than history - "wear
+                        // a weapon" and "fill the larder" both go false the
+                        // moment a player changes their mind - so keying the
+                        // next chapter on live completeness would slam it shut
+                        // behind somebody who swapped a sword. The Seal is the
+                        // record that the chapter happened, and it is
+                        // permanent; this is what it records.
+                        previousComplete = isComplete
+                            || Engine.DeedRegistry.HasSeal(player.SealsEarnedMask, chapter.Index);
+
+                        return new
+                        {
+                            chapter.Index,
+                            chapter.Title,
+                            chapter.Reward,
+                            IsOpen = isOpen,
+                            IsComplete = isComplete,
+                            HasSeal = Engine.DeedRegistry.HasSeal(player.SealsEarnedMask, chapter.Index),
+                            Deeds = chapter.Deeds.Select(deed => new
+                            {
+                                deed.Id,
+                                deed.Title,
+                                deed.Body,
+                                deed.Screen,
+                                deed.Target,
+                                Current = Math.Min(deed.Progress(progress), deed.Target),
+                                Done = deed.Progress(progress) >= deed.Target,
+                            }).ToList(),
+                        };
+                    }).ToList(),
+                };
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, payload);
+                context.Response.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"HandleDeedsSnapshot failed: {ex.Message}");
                 context.Response.StatusCode = 500;
                 context.Response.Close();
             }

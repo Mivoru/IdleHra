@@ -141,6 +141,16 @@ namespace FolkIdle.Server.Models
             await UpsertCommodityAsync(db, playerId, ContentRegistry.GetMaterialString(3), 5_000L); // iron_ore
             await UpsertCommodityAsync(db, playerId, ContentRegistry.GetMaterialString(4), 5_000L); // oak_log
 
+            // Modul: THE VILLAGE'S OWN THREE, which are different commodities
+            // from the crafting materials above and were not stocked at all.
+            // Village upgrades are priced in wood, stone and iron ore (see
+            // VillageManagementEngine), so the fixture could pay for none of
+            // them that wanted the first two - on the account that exists
+            // specifically for driving the village by hand.
+            await UpsertCommodityAsync(db, playerId, VillageManagementEngine.WoodCommodityId, 50_000L);
+            await UpsertCommodityAsync(db, playerId, VillageManagementEngine.StoneCommodityId, 50_000L);
+            await UpsertCommodityAsync(db, playerId, VillageManagementEngine.IronOreCommodityId, 50_000L);
+
             // And every material any recipe actually asks for, derived FROM the
             // recipe table rather than listed by hand - a hardcoded slug list
             // is precisely what went stale above, and it would go stale again

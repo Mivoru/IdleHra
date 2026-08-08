@@ -357,6 +357,15 @@ namespace FolkIdle.Server.Domain.Economy
                     
                     targetItem.AffixPayload = affixPayload.ToJsonString();
 
+                    // Modul: the Book of Deeds, chapter II. A lifetime count
+                    // of SUCCESSFUL fusions, incremented inside the same
+                    // transaction that consumed the sacrifices - a counter
+                    // written outside it would drift every time a fusion rolled
+                    // back, and a deed whose number is wrong is worse than one
+                    // that does not exist.
+                    var fusingPlayer = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
+                    if (fusingPlayer != null) fusingPlayer.ForgeFusionsCompleted++;
+
                     Console.WriteLine($"Fusion Success! Target item {targetItem.Id} upgraded to Tier {targetItem.QualityTier}.");
                     await db.SaveChangesAsync();
                     await transaction.CommitAsync();

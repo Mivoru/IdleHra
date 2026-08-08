@@ -255,7 +255,26 @@ namespace FolkIdle.Server.Engine
                 // gear. Must null these out in the same statement/
                 // transaction as the level/gold reset below, before the
                 // TRUNCATE recycles the id space.
-                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"CurrentLevel\" = 1, \"CurrentXp\" = 0, \"AccumulatedTimeBankSeconds\" = 0, \"ActiveOffensivePotionId\" = 0, \"OffensivePotionDurationMs\" = 0, \"ActiveDefensivePotionId\" = 0, \"DefensivePotionDurationMs\" = 0, \"BankedChronoSeconds\" = 0, \"IsChronoAccelerating\" = FALSE, \"FreeRespecUsed\" = FALSE, \"AvailableSkillPoints\" = 0", stoppingToken);
+                // Modul: AvailableSkillPoints resets to what the SEALS pay, not
+                // to zero.
+                //
+                // "Each Seal grants +2 permanent skill points, EVERY SEASON,
+                // forever" is the coupling the whole Book of Deeds exists for -
+                // it gives the tree a second source of points, earned by
+                // exploring rather than levelling. Zeroing the column outright
+                // would pay a Seal exactly once, in the season it was earned,
+                // and quietly turn a permanent reward into a one-off.
+                //
+                // Expressed as arithmetic on the mask rather than a lookup, so
+                // it is one statement over the whole roster like everything
+                // else in this method. Two points per bit, five bits.
+                await db.Database.ExecuteSqlRawAsync(
+                    "UPDATE \"PlayerRecords\" SET \"CurrentLevel\" = 1, \"CurrentXp\" = 0, \"AccumulatedTimeBankSeconds\" = 0, \"ActiveOffensivePotionId\" = 0, \"OffensivePotionDurationMs\" = 0, \"ActiveDefensivePotionId\" = 0, \"DefensivePotionDurationMs\" = 0, \"BankedChronoSeconds\" = 0, \"IsChronoAccelerating\" = FALSE, \"FreeRespecUsed\" = FALSE, " +
+                    "\"AvailableSkillPoints\" = {0} * (" +
+                    "  (\"SealsEarnedMask\" & 1) + ((\"SealsEarnedMask\" >> 1) & 1) + ((\"SealsEarnedMask\" >> 2) & 1)" +
+                    "+ ((\"SealsEarnedMask\" >> 3) & 1) + ((\"SealsEarnedMask\" >> 4) & 1))",
+                    new object[] { DeedRegistry.SkillPointsPerSeal },
+                    stoppingToken);
 
                 // Modul: THE SKILL TREE DID NOT RESET, AND WAS ALWAYS MEANT TO.
                 //
@@ -427,6 +446,35 @@ namespace FolkIdle.Server.Engine
             if (standings.Count == 0)
             {
                 return;
+            }
+
+            // Modul: the Book of Deeds asks "did you ever finish a season in
+            // the top fifty", and the roster is already ranked right here. A
+            // separate pass over the leaderboard later would be a second
+            // ordering that could disagree with the one that paid the prizes.
+            //
+            // BEST (lowest) rank ever, never overwritten by a worse season: it
+            // is a record of a thing that happened, and a bad season does not
+            // un-happen a good one. 0 means "never placed".
+            var placedInTopFifty = new List<long>();
+            for (int i = 0; i < standings.Count && i < 50; i++)
+            {
+                placedInTopFifty.Add(standings[i].PlayerId);
+            }
+
+            for (int i = 0; i < placedInTopFifty.Count; i++)
+            {
+                // The params overload would read the CancellationToken as a
+                // third SQL parameter - EF answers that with "no store type
+                // mapping for CancellationToken", which reads like a schema
+                // problem and is an argument-list one. Pass the values as an
+                // explicit array.
+                await db.Database.ExecuteSqlRawAsync(
+                    @"UPDATE ""PlayerRecords""
+                      SET ""BestSeasonRank"" = {0}
+                      WHERE ""Id"" = {1} AND (""BestSeasonRank"" = 0 OR ""BestSeasonRank"" > {0})",
+                    new object[] { i + 1, placedInTopFifty[i] },
+                    stoppingToken);
             }
 
             // Grouped by reward so the whole roster costs a handful of

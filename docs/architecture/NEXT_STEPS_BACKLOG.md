@@ -22,6 +22,21 @@ three rings of the skill tree with **all 15 node effects wired**, the respec
 gate, the season reset that was missing, breeding aptitudes end to end, and the
 village gene pool (table, arrival, endpoint, panel).
 
+**Shipped 2026-08-09: L3, the Book of Deeds.** All five chapters, every deed
+with a live x / y, and the Seals - **+2 permanent skill points per Seal, every
+season, forever**, which is the coupling the whole document turns on. The
+chapters moved to the SERVER (`DeedRegistry`, `DeedProgressSource`,
+`SealEngine`, `/api/v1/deeds/snapshot`): a Seal pays permanent skill points, so
+a client that decided when it had earned one could award itself the tree.
+`chapterOne.ts` is deleted rather than kept - a second copy of the content is a
+second copy that drifts.
+
+Three deeds substitute for spec entries this game does not count (which
+materials a craft consumed, a narrow escape below 10% HP, cooking totals), and
+each substitution is named in `DeedRegistry`'s own comment. Two new lifetime
+counters (fusions, rerolls) and `BestSeasonRank`, written where the rollover
+already ranks the roster.
+
 **Shipped 2026-08-09: L2, the Hall of Ancestors.** The 10-to-14 cap, the
 diamond slot purchase, the keep marks, the rollover cull, and an Ancestors
 screen showing the pedigree and who the rollover would let go. **And the door
@@ -56,26 +71,6 @@ spent. Detail and the two defects it uncovered are in `LONG_GAME_SPEC.md`
 section 6 item 5.
 
 Everything below is what remains, in the order I would do it.
-
----
-
-## L3. Book of Deeds chapters II-V, and Seals
-
-**What:** four more chapters (see spec part 2 for the deed lists), a Seal per
-completed chapter, and **each Seal granting +2 permanent skill points every
-season, forever**. That coupling is the load-bearing decision: it gives the
-tree a second source of points earned by exploring rather than levelling.
-
-**Where:** `client_web/src/lib/stores/chapterOne.ts` is the pattern - pure,
-tested, every deed reading a field already on the wire. Chapters II-V will not
-all manage that; some deeds need server counters.
-
-**Also here:** chapter I has **no rewards yet** (a Seal and a set of Common
-tools). It teaches, but it does not pay.
-
-**Trap:** every deed must have a live `x / y` counter. The existing tiered
-achievements returned 0 from `GetNextTierTarget` for most ids and the client
-rendered "0 / MAX". A deed without a number does not exist to the player.
 
 ---
 

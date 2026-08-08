@@ -31,6 +31,7 @@ export const queryKeys = {
   metadata: ['meta', 'metadata'] as const,
   breedingRoster: ['meta', 'breeding'] as const,
   ancestorsHall: ['meta', 'ancestors'] as const,
+  deeds: ['meta', 'deeds'] as const,
   breedingPreview: (a: string, b: string) => ['meta', 'breeding', 'preview', a, b] as const,
   villagerBreedingPreview: (heroId: string, newcomerId: number) =>
     ['meta', 'breeding', 'preview', 'village', heroId, newcomerId] as const,
@@ -757,6 +758,51 @@ export interface HallSnapshot {
 
 export function fetchAncestorsHall(): Promise<HallSnapshot> {
   return authedGet<HallSnapshot>('/api/v1/ancestors/hall');
+}
+
+/**
+ * The Book of Deeds, as the SERVER sees it.
+ *
+ * The chapter definitions live on the server rather than here, and that is not
+ * a preference: completing a chapter awards a Seal, a Seal grants +2 permanent
+ * skill points every season forever, and a client that decided when it had
+ * earned one could award itself the whole tree. So this renders an answer, it
+ * does not compute one.
+ */
+export interface DeedEntry {
+  Id: string;
+  Title: string;
+  Body: string;
+  Screen: string;
+  Target: number;
+  Current: number;
+  Done: boolean;
+}
+
+export interface DeedChapterEntry {
+  Index: number;
+  Title: string;
+  Reward: string;
+  /** A chapter opens when the one before it completes. */
+  IsOpen: boolean;
+  IsComplete: boolean;
+  HasSeal: boolean;
+  Deeds: DeedEntry[];
+}
+
+export interface DeedsSnapshot {
+  SealsEarnedMask: number;
+  SealCount: number;
+  SkillPointsFromSeals: number;
+  SkillPointsPerSeal: number;
+  /** Chapters sealed by THIS request, so the moment can be celebrated rather
+   * than noticed as a number that changed. */
+  NewlySealedMask: number;
+  Chapters: DeedChapterEntry[];
+}
+
+export function fetchDeeds(): Promise<DeedsSnapshot> {
+  return authedGet<DeedsSnapshot>('/api/v1/deeds/snapshot');
 }
 
 export interface GeneLocusPreview {
