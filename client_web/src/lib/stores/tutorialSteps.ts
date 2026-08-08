@@ -47,7 +47,12 @@ const STEPS = [
   },
   {
     step: TutorialStep.StockTheLarder,
-    done: (s: StateUpdate) => Number(s.Food1_Count) > 0,
+    // Modul: ALL THREE SLOTS. This read Food1_Count alone, so a player whose
+    // food sat in slot two or three was told to fill a larder that was full -
+    // caught by a screenshot where the banner asked for food beside a briefing
+    // reporting 1,609 bites. The larder is three slots and any of them counts.
+    done: (s: StateUpdate) =>
+      Number(s.Food1_Count) + Number(s.Food2_Count) + Number(s.Food3_Count) > 0,
     screen: 'larder' as const,
     title: 'Fill the larder',
     body:

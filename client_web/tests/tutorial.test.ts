@@ -18,7 +18,14 @@ import { nextTutorialStep, TutorialStep } from '../src/lib/stores/tutorialSteps'
 
 /** The fields the tutorial reads, with everything else left off. */
 function snapshot(fields: Record<string, number>): any {
-  return { CurrentLevel: 1, EquippedWeaponId: 0, Food1_Count: 0, ...fields };
+  return {
+    CurrentLevel: 1,
+    EquippedWeaponId: 0,
+    Food1_Count: 0,
+    Food2_Count: 0,
+    Food3_Count: 0,
+    ...fields,
+  };
 }
 
 describe('what a new player is told next', () => {

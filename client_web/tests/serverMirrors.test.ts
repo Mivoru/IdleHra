@@ -116,6 +116,42 @@ describe('the numbers the client mirrors still match the server', () => {
     );
   });
 
+  // Modul: found while drawing the skill tree - the branch table is a TENTH
+  // mirror nobody had noticed. The client carries a per-level figure for each
+  // of the five branches purely so the panel can say "+3.0% for 2 points"
+  // before the point is spent, and the server carries the same numbers as
+  // tenths of a percent. Nothing held them together.
+  it('skill tree: the per-level figure of every branch', () => {
+    const registry = read(serverRoot, 'Engine', 'SkillTreeRegistry.cs');
+    const commands = read(clientRoot, 'lib', 'net', 'commands.ts');
+
+    // TenthsOfPercentPerLevel = { 10, 20, 4, 30, 4 }
+    // The C# table is a multi-line array with a trailing comment per entry, so
+    // the numbers are pulled line by line rather than by splitting one string.
+    const block = registry
+      .slice(registry.indexOf('TenthsOfPercentPerLevel'))
+      .split('};')[0];
+    const tenths = [...block.matchAll(/^\s*(\d+),/gm)].map((m) => Number(m[1]));
+
+    expect(tenths).toHaveLength(5);
+
+    const clientPerLevel = [...commands.matchAll(/perLevel: ([\d.]+)/g)].map((m) => Number(m[1]));
+    expect(clientPerLevel).toHaveLength(5);
+
+    for (let branch = 0; branch < 5; branch++) {
+      expect(clientPerLevel[branch], `branch ${branch}`).toBeCloseTo(tenths[branch] / 10, 5);
+    }
+  });
+
+  it('skill tree: the level cap', () => {
+    const registry = read(serverRoot, 'Engine', 'SkillTreeRegistry.cs');
+    const commands = read(clientRoot, 'lib', 'net', 'commands.ts');
+
+    expect(num(commands, /SKILL_TREE_MAX_LEVEL = (\d+)/, 'client cap')).toBe(
+      num(registry, /MaxLevel = (\d+)/, 'server cap'),
+    );
+  });
+
   it('combat: the first-clear boss multiplier', () => {
     const rules = read(serverRoot, 'Domain', 'Combat', 'BossFirstClearRules.cs');
     const combat = read(clientRoot, 'routes', 'Combat.svelte');
