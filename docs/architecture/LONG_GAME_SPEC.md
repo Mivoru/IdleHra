@@ -27,10 +27,15 @@ its floor):
 
 One hour of play: level 11, 1,529 gold, 53 kills.
 
-So the season is not empty - **region 5 does not fit inside it**. Even at the
-geared rate it is 164 days against a 90-day season, and region 4 eats most of
-what is left. That is a real balance problem, it is the opposite of the one
-assumed above, and it is tracked separately from this document.
+Read those hours carefully, because the alarming one measures the wrong thing.
+The per-region figure is the cost of **clearing** a region - region 5's is
+614,287 kills - and nobody needs to clear region 5. What a player is actually
+chasing is *reaching* it, and then farming it for top-tier gear and affixes.
+
+Reaching region 5 means clearing 1-4: **1,888 hours bare, ~629 geared, about 26
+days** of a 90-day season, leaving ~64 days to farm the last region. That is the
+normal and healthy shape for an idle game - the final region is not a checklist,
+it is the endless endgame - and it is why the balance below is left alone.
 
 What this means for the three systems below: they are **not** here to fill dead
 time, because there is none. They are here because the game's only axes today
@@ -527,12 +532,17 @@ first two days are not dead, bad enough to want better.
 5. **Crowns** (5 keystones). The most work - each is its own mechanic.
 6. **Chapters II-V and Seals -> skill points.**
 
-# 7. Open, deliberately not decided here
+# 7. Balance: deliberately left alone
 
-**Region 5 does not fit in a season.** See the table at the top: ~3,934 geared
-hours against a 2,160-hour season. Region 4 is ~549 and already consumes most of
-what a player has. Either the season lengthens, or regions 4-5 come down, or the
-gear curve has to outrun the monster curve far more steeply than 3x. This is the
-biggest open balance question in the game and it needs its own pass with its own
-measurements - deciding it inside a design document about three other systems
-would be guessing.
+**Region 5 being uncompletable inside one season is the intent, not a bug.**
+
+Reaching it takes ~26 days of a 90-day season; the remaining ~64 are for farming
+it. Highest rarity tier and best affixes are the goal there, and neither is a
+completion bar - they are a chase, and a chase that outlasts a season is exactly
+what makes the cross-season axes matter. Inheritance, aptitudes and Seals are
+what turn "I cannot get there yet" into "I will get further next season", which
+is the whole reason those three systems exist.
+
+The number worth watching is therefore **time to reach region 5** (~26 days),
+not time to clear it. If that figure ever grows past roughly half a season,
+regions 1-4 need a pass. Until then, do not touch the ladder.
