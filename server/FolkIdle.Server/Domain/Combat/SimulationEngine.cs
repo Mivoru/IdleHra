@@ -4045,6 +4045,17 @@ namespace FolkIdle.Server.Domain.Combat
                 // Modul: inheritance. A permanent, season-crossing multiplier.
                 goldReward = (long)(goldReward * (1.0f + InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100f));
 
+                // Modul: Trophy Hunter, the Giantslayer bough - bosses pay
+                // more. ONLY bosses: the branch is about the fights that are
+                // events, and a flat gold bonus on every field mouse would be
+                // a different node on a different limb.
+                if (payload.Skill_TrophyHunter > 0
+                    && RaceUnlockRegistry.GetRegionForBossMonsterId(monster.Id) > 0)
+                {
+                    goldReward = (long)(goldReward * (1.0f + SkillTreeRegistry.GetBonusPercent(
+                        SkillTreeRegistry.BoughTrophyHunter, payload.Skill_TrophyHunter) / 100f));
+                }
+
             if (goldReward > 0)
             {
                 payload.AddGold(goldReward);
@@ -5310,6 +5321,12 @@ namespace FolkIdle.Server.Domain.Combat
         /// </summary>
         internal const int AutoEatCooldownTicks = 25;
 
+        /// <summary>
+        /// One hour at 10 Hz - Last Stand's cooldown. See the crown's use site;
+        /// without it the effect is flat immortality rather than a reprieve.
+        /// </summary>
+        internal const int LastStandCooldownTicks = 36_000;
+
         private static void SetSkillTreeLevel(ref TickStatePayload payload, int branchId, byte level)
         {
             switch (branchId)
@@ -5688,7 +5705,25 @@ namespace FolkIdle.Server.Domain.Combat
 
             if (payload.PlayerHp <= 0)
             {
-                payload.PlayerHp = effectiveMaxHp;
+                // Modul: Last Stand, the Cruelty crown - once an hour, the blow
+                // that would kill you leaves you at one health instead.
+                //
+                // ONCE AN HOUR, tracked on the payload against the same tick
+                // clock everything else here uses. Without the cooldown it
+                // would be flat immortality, because this branch is reached
+                // every time the pool empties and death here already only costs
+                // a reset to full - so the crown has to buy something narrower:
+                // surviving AT one health, which is a real state a player can
+                // then heal out of.
+                if (payload.Skill_LastStand > 0 && payload.LastStandCooldownRemaining <= 0)
+                {
+                    payload.PlayerHp = 1;
+                    payload.LastStandCooldownRemaining = LastStandCooldownTicks;
+                }
+                else
+                {
+                    payload.PlayerHp = effectiveMaxHp;
+                }
             }
 
             if (payload.CurrentMonsterId <= 0)
@@ -5710,6 +5745,22 @@ namespace FolkIdle.Server.Domain.Combat
             // on the 200 ms floor at seven and a half times the intended swing
             // rate.
             int playerAttackSpeedMs = CombatDamageModel.AttackIntervalMs(in combatStats);
+
+            // Modul: Relentless, the Precision bough - you swing faster, and
+            // everything else in this loop scales off how often you hit.
+            //
+            // Applied to the resolved interval rather than to CombatStats,
+            // because the tree is an account bonus and CombatStats describes
+            // the gear. Floored at 200 ms, the same floor AttackIntervalMs
+            // itself enforces - a swing rate the tick cannot deliver would
+            // just silently round away, and the pacing model does not know
+            // about sub-tick swings.
+            if (payload.Skill_Relentless > 0)
+            {
+                float faster = SkillTreeRegistry.GetBonusPercent(
+                    SkillTreeRegistry.BoughRelentless, payload.Skill_Relentless) / 100f;
+                playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - faster)));
+            }
 
             // Modul: attack cadence fix, 2026-08-02.
             //
@@ -6033,6 +6084,13 @@ namespace FolkIdle.Server.Domain.Combat
             // At one bite every AutoEatCooldownTicks, healing has a ceiling and
             // the question becomes whether the player survives BETWEEN bites -
             // which is what armour and health are for.
+            // Modul: Last Stand's hour, counted down on the same path auto-eat
+            // uses - one place where per-tick cooldowns tick.
+            if (payload.LastStandCooldownRemaining > 0)
+            {
+                payload.LastStandCooldownRemaining--;
+            }
+
             if (payload.AutoEatCooldownTicks > 0)
             {
                 payload.AutoEatCooldownTicks--;
@@ -6236,6 +6294,18 @@ namespace FolkIdle.Server.Domain.Combat
                 goldReward = (long)(goldReward * (1.0f + LegacyPerkResolver.GetGoldBonusPct(payload.CachedLegacyPerks) / 100f));
                 // Modul: inheritance. A permanent, season-crossing multiplier.
                 goldReward = (long)(goldReward * (1.0f + InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100f));
+
+                // Modul: Trophy Hunter on the LIVE kill path as well as the
+                // offline one above. A bonus that only pays while the player is
+                // asleep is the kind of divergence this codebase has shipped
+                // before, in gathering.
+                if (payload.Skill_TrophyHunter > 0
+                    && RaceUnlockRegistry.GetRegionForBossMonsterId(activeMonster.Id) > 0)
+                {
+                    goldReward = (long)(goldReward * (1.0f + SkillTreeRegistry.GetBonusPercent(
+                        SkillTreeRegistry.BoughTrophyHunter, payload.Skill_TrophyHunter) / 100f));
+                }
+
                 if (goldReward > 0)
                 {
                     payload.AddGold(goldReward);

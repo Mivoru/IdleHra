@@ -351,6 +351,15 @@ namespace FolkIdle.Server.Engine
         public byte Aptitude_Skill;
         public byte Aptitude_Endurance;
         public byte Aptitude_Fortune;
+
+        // Modul: ticks until Last Stand is available again.
+        //
+        // A COUNTDOWN, matching AutoEatCooldownTicks rather than storing an
+        // absolute tick, because this payload has no absolute clock - and a
+        // countdown survives the checkpoint round trip without needing one.
+        // Server-side only; the client has no use for it and this struct is
+        // not the wire packet, so it costs nothing on the network.
+        public int LastStandCooldownRemaining;
         public int CachedLogisticsGatheringSpeedBonusPct;
 
         // Modul: Phase - Full-Stack Production Polish Phase 2, Part 3.1

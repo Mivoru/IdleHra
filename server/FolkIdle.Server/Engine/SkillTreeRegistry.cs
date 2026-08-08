@@ -394,8 +394,8 @@ namespace FolkIdle.Server.Engine
             var pending = new bool[NodeCount];
             foreach (int id in new[]
             {
-                BoughPlenty, BoughTrophyHunter, BoughRelentless, BoughCraft,
-                CrownGoldenFleece, CrownThunderer, CrownLastStand,
+                BoughPlenty, BoughCraft,
+                CrownGoldenFleece, CrownThunderer,
             })
             {
                 pending[id] = true;
