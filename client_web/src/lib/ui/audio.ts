@@ -25,6 +25,7 @@ export const CLIPS = {
   craftingCompleted: 'crafting_completed.wav',
   levelUp: 'level_up.wav',
   raceUnlocked: 'race_unlocked.wav',
+  achievementUnlock: 'achievement_unlock.wav',
   error: 'error.wav',
 } as const;
 

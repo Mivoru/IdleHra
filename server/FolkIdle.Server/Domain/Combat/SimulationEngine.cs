@@ -3503,6 +3503,15 @@ namespace FolkIdle.Server.Domain.Combat
                                 SkillTree_CritChance = currentPayload.Skill_CritChance,
                                 SkillTree_CritDamage = currentPayload.Skill_CritDamage,
                                 SkillTree_XpGain = currentPayload.Skill_XpGain,
+                                // Modul: the achievement-toast signal. Pure
+                                // functions of counters already on the
+                                // payload, so this costs three comparisons
+                                // and no DB read. See StateUpdatePacket.
+                                AchievementTierTotal = (byte)(
+                                    Engine.AchievementMilestones.EvaluateTreasuryTier(currentPayload.CurrentGold)
+                                    + Engine.AchievementMilestones.EvaluateForgingTier(
+                                        currentPayload.ForgeUpgradeCount, currentPayload.HighestForgeSynthesisTier)
+                                    + Engine.AchievementMilestones.EvaluateLogisticsTier(currentPayload.HarvestLoopCount)),
                                 OfflineElapsedSeconds = currentPayload.OfflineElapsedSeconds,
                                 OfflineGoldEarned = currentPayload.OfflineGoldEarned,
                                 OfflineSlot1Gold = currentPayload.OfflineSlot1Gold,

@@ -580,6 +580,35 @@ namespace FolkIdle.Server.Network
         public byte SkillTree_CritDamage;
         public byte SkillTree_XpGain;
 
+        // Modul: THE ONE BYTE AN ACHIEVEMENT TOAST NEEDS.
+        //
+        // Achievements reach the client over REST - /achievements/snapshot for
+        // per-achievement progress, /achievements/state for the claim
+        // bitmasks - and nothing about them was on this packet at all. So the
+        // client had no way to learn that a tier had just been crossed except
+        // by polling, which is both wasteful and late for something whose
+        // whole value is landing in the same second the player earned it.
+        //
+        // This is the SUM of the three tiered achievements' current tiers,
+        // 0-12. Not the tiers themselves: the client does not need to know
+        // WHICH one moved from this byte, only THAT one did - it refetches the
+        // snapshot and diffs to find out, which it must do anyway to draw the
+        // card.
+        //
+        // Computed here from payload fields rather than read from
+        // player_lifetime_achievements, because AchievementMilestones'
+        // Evaluate*Tier are pure functions of counters the payload already
+        // carries. No DB read on the broadcast path, and no dependency on
+        // when StateCheckpointManager last flushed.
+        //
+        // A CONSEQUENCE OF COMPUTING IT LIVE: the DB's CompletedTier is a
+        // high-water mark and this is not. Spend below a gold threshold and
+        // this byte falls, then rises again on the way back up. The client
+        // therefore toasts only on rising ABOVE ITS OWN HIGH-WATER MARK, and
+        // treats the first packet of a session as the baseline - the same
+        // edge-detection contract OfflineSummaryTick already established.
+        public byte AchievementTierTotal;
+
         // Modul: Phase - Full-Stack Production Polish, Part 1.1 (Offline
         // "Welcome Back" flow). Set once by OfflineSimulationEngine.
         // ExtrapolateOfflineProgressAsync at login, carrying exactly what

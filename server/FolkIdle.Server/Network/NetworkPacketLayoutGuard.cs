@@ -121,7 +121,11 @@ namespace FolkIdle.Server.Network
         // Modul: first-clear bosses, 746 -> 747. DefeatedRegionBossMask (1
         // byte) - the client draws a boss's health from the content tables and
         // had no way to know a boss it has never beaten is five times that.
-        public const int ExpectedStateUpdateSize = 747;
+        //
+        // Modul: achievement toast, 747 -> 748. AchievementTierTotal (1 byte) -
+        // achievements travel over REST and the client had no push signal at
+        // all, so a tier could be crossed and nothing on screen would say so.
+        public const int ExpectedStateUpdateSize = 748;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

@@ -19,6 +19,15 @@ import { DamageFeed, type DamageEvent } from './damage';
 import { CommandResultFeed, COMMAND_RESULT_SUCCESS, type CommandResultEntry } from './commandResults';
 import { queryClient } from '../net/queryClient';
 import { play } from '../ui/audio';
+import { fetchAchievements, type AchievementEntry } from '../net/rest';
+import {
+  createWatermark,
+  observeTierTotal,
+  diffTiers,
+  tierLabel,
+  achievementName,
+  type AchievementToast,
+} from './achievementToasts';
 import type { StateUpdate, ResponseChatMessage, ResponseLootDrop } from '../net/protocol.generated';
 
 // ---------------------------------------------------------------------------
@@ -250,6 +259,97 @@ export function dismissOfflineSummary(): void {
 }
 
 // ---------------------------------------------------------------------------
+// Achievement toasts
+// ---------------------------------------------------------------------------
+
+// Modul: the moment of earning IS most of the reward.
+//
+// Achievements are auto-awarded in StateCheckpointManager and reach the client
+// only over REST, so until now a tier could be crossed and absolutely nothing
+// on screen said so - the diamonds simply appeared. A player who never opens
+// the achievements screen never learned the system existed.
+//
+// AchievementTierTotal on the packet is the push signal (see
+// StateUpdatePacket). It says a tier moved, not which; naming the deed needs
+// the snapshot, which the card needs anyway for a title and a reward.
+export const achievementToasts = writable<AchievementToast[]>([]);
+
+const toastWatermark = createWatermark();
+let lastTierSnapshot: AchievementEntry[] = [];
+let toastSequence = 0;
+
+export function dismissAchievementToast(id: number): void {
+  achievementToasts.update((list) => list.filter((toast) => toast.id !== id));
+}
+
+// Modul: a way to SEE the card without earning a tier.
+//
+// A toast only fires on a threshold crossing, which cannot be staged on demand
+// - so without this the only proof the component renders is that it compiles,
+// and this codebase has been bitten more than once by a perfect hierarchy that
+// draws nothing. Dev builds only; `import.meta.env.DEV` is statically false in
+// a production bundle, so the whole block is dropped at build time.
+if (import.meta.env.DEV) {
+  (globalThis as Record<string, unknown>).__folkidleDemoAchievement = (tier = 3) => {
+    achievementToasts.update((list) => [
+      ...list,
+      {
+        id: ++toastSequence,
+        achievementId: 2,
+        title: achievementName(2),
+        tier,
+        tierLabel: tierLabel(tier),
+        reward: '+250 diamonds',
+      },
+    ]);
+    play('achievementUnlock');
+  };
+}
+
+/**
+ * Resolves which deed advanced and queues the cards.
+ *
+ * Deliberately tolerant: if the snapshot fetch fails, the player loses a
+ * celebration, not their achievement. Nothing here is the source of truth for
+ * anything - the reward was already granted server-side.
+ */
+async function raiseAchievementToasts(): Promise<void> {
+  // AchievementEntry, not TierRow: the card wants NextTierReward too, and
+  // AchievementEntry already satisfies TierRow structurally for diffTiers.
+  let rows: AchievementEntry[];
+  try {
+    rows = await fetchAchievements();
+  } catch {
+    return;
+  }
+
+  const crossed = diffTiers(lastTierSnapshot, rows);
+  lastTierSnapshot = rows;
+  if (crossed.length === 0) return;
+
+  const cards: AchievementToast[] = crossed.map(({ achievementId, tier }) => {
+    const row = rows.find((entry) => entry.AchievementId === achievementId);
+    return {
+      id: ++toastSequence,
+      achievementId,
+      title: achievementName(achievementId),
+      tier,
+      tierLabel: tierLabel(tier),
+      reward: row && row.NextTierReward > 0 ? `+${row.NextTierReward} diamonds` : '',
+    };
+  });
+
+  achievementToasts.update((list) => [...list, ...cards]);
+  play('achievementUnlock');
+
+  // Each card retires itself. Four seconds is long enough to read a title and
+  // a tier without becoming furniture, and the component animates out first.
+  for (const card of cards) {
+    setTimeout(() => dismissAchievementToast(card.id), 4000);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Wiring
 // ---------------------------------------------------------------------------
 
@@ -259,6 +359,12 @@ export function startSession(token: string): void {
   damageEvents.set([]);
   offlineSummary.set(null);
   lastOfflineSummaryTick = -1;
+  // A different account has different deeds. Resetting the watermark makes the
+  // next packet a baseline again, so switching accounts cannot toast the new
+  // player for the old one's tiers.
+  achievementToasts.set([]);
+  toastWatermark.highWater = -1;
+  lastTierSnapshot = [];
   // A different account has a different maximum; carrying the old one over
   // would scale the new player's bar against a stranger's health.
   observedMaxPlayerHp.set(1);
@@ -402,6 +508,15 @@ export function startSession(token: string): void {
       // the EDGE, or a stopped character would buzz every 1.6 seconds forever.
       if (lastHaltReason === 0 && packet.ActivityHaltReason !== 0) play('error');
       lastHaltReason = packet.ActivityHaltReason;
+
+      // Modul: an earned deed, announced the second it lands. observeTierTotal
+      // owns both edge rules - the first packet is a baseline, and only a rise
+      // above the session high-water mark counts (the server computes the
+      // total live from gold, so spending back down and re-earning would
+      // otherwise toast a deed twice). See stores/achievementToasts.
+      if (observeTierTotal(toastWatermark, packet.AchievementTierTotal)) {
+        void raiseAchievementToasts();
+      }
 
       if (packet.OfflineSummaryTick !== lastOfflineSummaryTick) {
         const isFirstPacketOfSession = lastOfflineSummaryTick === -1;

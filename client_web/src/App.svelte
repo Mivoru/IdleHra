@@ -27,6 +27,7 @@
   import Boosts from './routes/Boosts.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
+  import AchievementToast from './lib/ui/AchievementToast.svelte';
   import MailBadge from './lib/ui/MailBadge.svelte';
   import EventBanner from './lib/ui/EventBanner.svelte';
   import Money from './lib/ui/Money.svelte';
@@ -76,6 +77,11 @@
         { key: 'market', label: 'Market' },
         { key: 'social', label: 'Social' },
         { key: 'guildops', label: 'Guild' },
+        // Modul: Mail belongs here, not under Items - and for a while it
+        // belonged NOWHERE. Moving it out of Items dropped the entry without
+        // adding it back, which left the route and its unread badge reachable
+        // only by a cross-screen navigation request. There was no button.
+        { key: 'mailbox', label: 'Mail' },
       ],
     },
     {
@@ -106,8 +112,16 @@
   const ALL_SCREEN_KEYS = new Set<string>(GROUPS.flatMap((group) => group.screens.map((s) => s.key)));
 
   let navOpen = $state(false);
+  // Modul: flattened through an explicit type. `GROUPS` is a readonly tuple OF
+  // readonly tuples, and flatMap over that infers the union of the tuples
+  // themselves rather than of their elements - so `item` came out as unknown
+  // and `item.label` did not typecheck. Naming the element type is the whole
+  // fix; the runtime behaviour never changed.
+  const ALL_SCREENS: readonly { key: ScreenKey; label: string }[] = GROUPS.flatMap(
+    (group) => group.screens as readonly { key: ScreenKey; label: string }[],
+  );
   const currentScreenLabel = $derived(
-    GROUPS.flatMap((group) => group.screens).find((item) => item.key === screen)?.label ?? 'Menu',
+    ALL_SCREENS.find((item) => item.key === screen)?.label ?? 'Menu',
   );
 
   $effect(() => {
@@ -308,6 +322,7 @@
     <OfflineSummary />
     <ChatDock />
     <Toasts />
+    <AchievementToast />
   {:else}
     <Login onAuthenticated={(newToken) => (token = newToken)} />
   {/if}
