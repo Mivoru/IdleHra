@@ -133,6 +133,29 @@ namespace FolkIdle.Server.Models
         // remaining, unspent balance).
         public int AvailableSkillPoints { get; set; }
 
+        // Modul: RESPEC, which the three-ring tree made compulsory rather than
+        // convenient.
+        //
+        // Ring 2 forks and taking one side LOCKS THE OTHER for the season. A
+        // ninety-day season is far too long to live with a misclick, so there
+        // has to be a way back - and a way back that is free and unlimited
+        // would delete the exclusivity that is the only real choice in the
+        // tree. One free respec a season, then a purchase.
+        //
+        // TWO COLUMNS, not one. The free one has to reset at the rollover
+        // while granted ones do not, and folding them into a single "respecs
+        // remaining" would lose which is which the first time a player buys
+        // one and then the season turns over.
+        public bool FreeRespecUsed { get; set; }
+
+        /// <summary>
+        /// Paid respecs bought and not yet spent. Incremented by the purchase
+        /// flow, which does not exist yet - the gate ships first so it can be
+        /// correct before money is involved, and so a payment provider is not
+        /// on the critical path of a gameplay feature.
+        /// </summary>
+        public int PaidRespecGrants { get; set; }
+
         // Modul: lifetime statistics. Three counters the Statistics screen
         // needs and that nothing in this codebase tracked.
         //

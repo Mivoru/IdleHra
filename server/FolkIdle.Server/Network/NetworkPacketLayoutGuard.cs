@@ -129,7 +129,9 @@ namespace FolkIdle.Server.Network
         // Modul: skill tree rings 2 and 3, 748 -> 763. Ten boughs and five
         // crowns, one byte each. See SkillTreeRegistry for why the tree grew
         // rings at all - the flat version was an ordering, not a choice.
-        public const int ExpectedStateUpdateSize = 763;
+        //
+        // Modul: respec gate, 763 -> 765. FreeRespecUsed and PaidRespecGrants.
+        public const int ExpectedStateUpdateSize = 765;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

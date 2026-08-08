@@ -333,6 +333,12 @@ namespace FolkIdle.Server.Engine
         public byte Skill_DoubleStrike;
         public byte Skill_LastStand;
         public byte Skill_Scholar;
+
+        // Modul: whether a respec is available, so the panel can say so
+        // without a REST round trip. See PlayerRecord for why there are two
+        // of them rather than one "respecs remaining".
+        public byte FreeRespecUsed;
+        public byte PaidRespecGrants;
         public int CachedLogisticsGatheringSpeedBonusPct;
 
         // Modul: Phase - Full-Stack Production Polish Phase 2, Part 3.1

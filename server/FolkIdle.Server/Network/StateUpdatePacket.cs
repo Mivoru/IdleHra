@@ -601,6 +601,12 @@ namespace FolkIdle.Server.Network
         public byte SkillTree_LastStand;
         public byte SkillTree_Scholar;
 
+        // Modul: respec availability. The panel has to know before the click
+        // whether the button will work, because refusing after the fact is
+        // how a player learns a rule by being punished by it.
+        public byte FreeRespecUsed;
+        public byte PaidRespecGrants;
+
         // Modul: THE ONE BYTE AN ACHIEVEMENT TOAST NEEDS.
         //
         // Achievements reach the client over REST - /achievements/snapshot for

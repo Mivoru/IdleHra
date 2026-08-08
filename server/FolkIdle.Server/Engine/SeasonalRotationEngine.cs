@@ -255,7 +255,33 @@ namespace FolkIdle.Server.Engine
                 // gear. Must null these out in the same statement/
                 // transaction as the level/gold reset below, before the
                 // TRUNCATE recycles the id space.
-                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"CurrentLevel\" = 1, \"CurrentXp\" = 0, \"AccumulatedTimeBankSeconds\" = 0, \"ActiveOffensivePotionId\" = 0, \"OffensivePotionDurationMs\" = 0, \"ActiveDefensivePotionId\" = 0, \"DefensivePotionDurationMs\" = 0, \"BankedChronoSeconds\" = 0, \"IsChronoAccelerating\" = FALSE", stoppingToken);
+                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"CurrentLevel\" = 1, \"CurrentXp\" = 0, \"AccumulatedTimeBankSeconds\" = 0, \"ActiveOffensivePotionId\" = 0, \"OffensivePotionDurationMs\" = 0, \"ActiveDefensivePotionId\" = 0, \"DefensivePotionDurationMs\" = 0, \"BankedChronoSeconds\" = 0, \"IsChronoAccelerating\" = FALSE, \"FreeRespecUsed\" = FALSE, \"AvailableSkillPoints\" = 0", stoppingToken);
+
+                // Modul: THE SKILL TREE DID NOT RESET, AND WAS ALWAYS MEANT TO.
+                //
+                // PlayerSkillTreeNode's own doc comment says "Levels RESET WITH
+                // THE SEASON" and explains why - points come from account
+                // levels and the rollover takes those back, so a tree that
+                // survived would be paid for twice. Nothing implemented it.
+                // Neither the rows nor AvailableSkillPoints were ever cleared.
+                //
+                // Left alone, a player finishes season one with ~100 points
+                // spent, re-levels to 100 in season two and spends ~100 MORE on
+                // top of a tree still standing. By the third season the whole
+                // 215-point tree is bought and the choice is gone permanently -
+                // and with ring 2 exclusive, the fork they did not take is
+                // locked forever rather than for a season.
+                //
+                // TRUNCATE rather than DELETE for the same reason as the tables
+                // above: it deallocates pages directly instead of writing a
+                // tombstone per row.
+                await db.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"player_skill_tree\" RESTART IDENTITY", stoppingToken);
+
+                // Modul: the free respec comes back with the season, and
+                // PAID GRANTS DELIBERATELY DO NOT RESET. They are bought, so
+                // an unspent one has to survive a rollover - wiping it would
+                // be taking something a player paid real money for. Only the
+                // free one is a per-season allowance. See PlayerRecord.
 
                 // Modul: per-character equipment. The six equip pointers moved
                 // off "PlayerRecords" onto "characters", so the seasonal wipe

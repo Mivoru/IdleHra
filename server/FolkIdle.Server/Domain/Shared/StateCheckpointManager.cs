@@ -1013,6 +1013,8 @@ namespace FolkIdle.Server.Domain.Shared
                 Skill_DoubleStrike = skillTreeLevels[SkillTreeRegistry.CrownDoubleStrike],
                 Skill_LastStand = skillTreeLevels[SkillTreeRegistry.CrownLastStand],
                 Skill_Scholar = skillTreeLevels[SkillTreeRegistry.CrownScholar],
+                FreeRespecUsed = (byte)(player.FreeRespecUsed ? 1 : 0),
+                PaidRespecGrants = (byte)Math.Clamp(player.PaidRespecGrants, 0, 255),
                 CachedLogisticsGatheringSpeedBonusPct = player.LogisticsGatheringSpeedBonusPct,
                 CachedMaxPopulationCapacity = VillageManagementEngine.CalculatePopulationCapacity(innLevel),
                 CachedInnMaturationBonus = innLevel,

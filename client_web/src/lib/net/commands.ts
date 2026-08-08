@@ -1137,6 +1137,29 @@ export function skillNodeBlockedReason(
   return null;
 }
 
+/**
+ * Why a respec cannot happen, or null if it can. Mirrors
+ * SkillTreeEngine.RespecBlockedReason.
+ *
+ * A respec exists because ring 2 forks and taking one side locks the other for
+ * a NINETY-DAY season - far too long to live with a misclick. It is limited
+ * because a free and unlimited one would delete that exclusivity, which is the
+ * only real choice the tree has.
+ */
+export function respecBlockedReason(freeRespecUsed: boolean, paidGrants: number): string | null {
+  if (!freeRespecUsed) return null;
+  if (paidGrants > 0) return null;
+  return 'You have used this season’s free respec.';
+}
+
+export function respecSkillTree(freeRespecUsed: boolean, paidGrants: number): CommandOutcome {
+  const blocked = respecBlockedReason(freeRespecUsed, paidGrants);
+  if (blocked) return refuse(blocked);
+
+  connection.send({ Command: CommandType.RespecSkillTree });
+  return OK;
+}
+
 export function purchaseSkillTreeLevel(
   nodeId: number,
   levels: readonly number[],

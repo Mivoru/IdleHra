@@ -118,6 +118,16 @@ namespace FolkIdle.Server.Network
         // exactly once as of this writing: 1..67 with no gaps worth reusing.
         PurchaseSkillTreeLevel = 67,
 
+        // Modul: respec. Refunds every point in the tree and clears every
+        // node, so the exclusive forks of ring 2 can be chosen again.
+        //
+        // Carries NO new wire fields - there is nothing to say beyond "undo
+        // it all". A partial respec was considered and dropped: refunding one
+        // fork while leaving its crown standing would need a rule for what
+        // happens to a crown whose prerequisite just vanished, and "all of
+        // it" has no such corner.
+        RespecSkillTree = 68,
+
         // Modul: larder. Loads food from the backpack into one of the three
         // auto-eat slots, or unloads a slot back into the backpack. Carries no
         // new wire fields: ConsumableItemId is the food, TargetSlotIndex the

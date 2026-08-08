@@ -23,6 +23,8 @@
     skillTreeUpgradeCost,
     skillNodeBlockedReason,
     purchaseSkillTreeLevel,
+    respecSkillTree,
+    respecBlockedReason,
     siblingBoughOf,
     boughsOfRoot,
     crownOfRoot,
@@ -104,6 +106,20 @@
     }
     return total;
   });
+
+  // Modul: the way back. Ring 2 locks a fork for a NINETY-DAY season, so a
+  // misclick without a respec is three months of regret. Limited rather than
+  // free, or the exclusivity that is the whole choice would be gone.
+  const freeUsed = $derived(Number(snap?.FreeRespecUsed ?? 0) > 0);
+  const grants = $derived(Number(snap?.PaidRespecGrants ?? 0));
+  const respecBlocked = $derived(respecBlockedReason(freeUsed, grants));
+  let confirmingRespec = $state(false);
+
+  function doRespec() {
+    const outcome = respecSkillTree(freeUsed, grants);
+    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    confirmingRespec = false;
+  }
 
   function buy(nodeId: number) {
     const outcome = purchaseSkillTreeLevel(nodeId, levels, points);
@@ -251,7 +267,29 @@
     {/each}
   </svg>
 
-  <p class="dim tiny spent">{spent} points invested</p>
+  <div class="respec-row">
+    <p class="dim tiny spent">{spent} points invested</p>
+
+    {#if confirmingRespec}
+      <!-- Confirmed, because a respec undoes a season of decisions and the
+           free one does not come back until the rollover. -->
+      <span class="confirm">
+        <span class="dim tiny">Refund every point and unlock both forks again?</span>
+        <button onclick={doRespec}>Yes, respec</button>
+        <button onclick={() => (confirmingRespec = false)}>Cancel</button>
+      </span>
+    {:else}
+      <button
+        class="respec"
+        disabled={respecBlocked !== null}
+        title={respecBlocked ??
+          (freeUsed ? `${grants} paid respec left` : 'Your free respec this season')}
+        onclick={() => (confirmingRespec = true)}
+      >
+        Respec{#if !freeUsed} (free){:else} ({grants} left){/if}
+      </button>
+    {/if}
+  </div>
 
   <div class="limbs">
     {#each limbs as limb (limb.root.id)}
@@ -321,6 +359,31 @@
 </section>
 
 <style>
+  .respec-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .respec-row .spent {
+    margin: 0;
+  }
+
+  .confirm {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .respec {
+    padding: 0.2rem 0.55rem;
+    font-size: 0.78rem;
+  }
+
   .head {
     display: flex;
     align-items: flex-start;
@@ -523,9 +586,6 @@
     stroke: var(--brass);
   }
 
-  .bud.hot {
-    fill: var(--accent);
-  }
 
   .limb-label {
     fill: var(--text-dim);
@@ -555,55 +615,23 @@
     flex-wrap: wrap;
     margin-bottom: 0.4rem;
   }
-  header h3 { margin: 0; }
   header .dim { margin-left: auto; }
 
   .small { font-size: 0.9rem; max-width: 46rem; }
   .tiny  { font-size: 0.8rem; }
   .dim   { opacity: 0.75; }
 
-  .branches {
-    list-style: none;
-    margin: 1rem 0 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-    gap: 0.9rem;
-  }
 
-  .branches li {
-    display: grid;
-    gap: 0.45rem;
-    padding: 0.85rem 0.95rem;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: rgba(127, 127, 127, 0.04);
-  }
 
   /* A maxed branch stays fully legible - it is an achievement, not a disabled
      control, and dimming it would read as "broken". */
-  .branches li.capped { border-color: var(--accent); }
 
   .head {
     display: flex;
     align-items: baseline;
     gap: 0.6rem;
   }
-  .name { font-weight: 650; }
-  .value {
-    margin-left: auto;
-    font-variant-numeric: tabular-nums;
-    font-weight: 650;
-  }
 
-  .blurb { margin: 0; }
 
-  .buy { margin-top: 0.15rem; }
-  .buy button {
-    width: 100%;
-    font-size: 0.85rem;
-    padding: 0.4rem 0.6rem;
-  }
 
-  .footer { margin: 1rem 0 0; }
 </style>

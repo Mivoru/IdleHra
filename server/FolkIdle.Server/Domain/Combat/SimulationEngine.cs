@@ -1440,6 +1440,16 @@ namespace FolkIdle.Server.Domain.Combat
                         // its own copy - two subtractions of one purchase is
                         // exactly how a counter drifts.
                         treePayload.AvailableSkillPoints = treeNotif.RemainingSkillPoints;
+
+                        // Modul: and the respec counters, which a respec also
+                        // moves. Without this the levels cleared and the points
+                        // came back, but the button went on offering a free
+                        // respec the player had already spent - it only
+                        // corrected itself at the next full hydration. The same
+                        // "the output side was never wired" shape this codebase
+                        // keeps finding; the write happened, nothing carried it.
+                        treePayload.FreeRespecUsed = treeNotif.FreeRespecUsed;
+                        treePayload.PaidRespecGrants = treeNotif.PaidRespecGrants;
                         treePayload.IsDirty = true;
                     }
                 }
@@ -2377,6 +2387,22 @@ namespace FolkIdle.Server.Domain.Combat
                         int treeBranchId = (int)cmd.TargetId;
                         SafeDispatchAsync("SkillTree.Purchase", treePlayerId, async () => {
                             if (_skillTreeEngine != null) await _skillTreeEngine.PurchaseLevelAsync(treePlayerId, treeBranchId);
+                        });
+                    }
+                    else if (cmd.Command == CommandType.RespecSkillTree)
+                    {
+                        // Modul: respec. Ring 2 forks and taking one side locks
+                        // the other for a ninety-day season, so there has to be
+                        // a way back - and it cannot be free and unlimited, or
+                        // the exclusivity that IS the choice would be gone.
+                        // One free a season, then a purchased grant.
+                        //
+                        // Dispatched off the tick like every other write: the
+                        // cleared levels come back through SkillTreeSyncQueue,
+                        // because the tick thread owns the payload.
+                        long respecPlayerId = currentPayload.PlayerId;
+                        SafeDispatchAsync("SkillTree.Respec", respecPlayerId, async () => {
+                            if (_skillTreeEngine != null) await _skillTreeEngine.RespecAsync(respecPlayerId);
                         });
                     }
                     else if (cmd.Command == CommandType.PurchaseBattlePass)
@@ -3518,6 +3544,8 @@ namespace FolkIdle.Server.Domain.Combat
                                 SkillTree_DoubleStrike = currentPayload.Skill_DoubleStrike,
                                 SkillTree_LastStand = currentPayload.Skill_LastStand,
                                 SkillTree_Scholar = currentPayload.Skill_Scholar,
+                                FreeRespecUsed = currentPayload.FreeRespecUsed,
+                                PaidRespecGrants = currentPayload.PaidRespecGrants,
                                 // Modul: the achievement-toast signal. Pure
                                 // functions of counters already on the
                                 // payload, so this costs three comparisons
