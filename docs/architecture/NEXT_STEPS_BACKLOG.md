@@ -644,11 +644,12 @@ sees far more drops.
 **`BankEquipmentInstances`** is the storage merge that was deliberately left
 out - see "One store, one number" above.
 
-**`ExecuteUpgradeToolAsync` is an empty stub** returning `Task.CompletedTask`,
-and the Village screen has a button wired to it. It is a leftover of the
-account-wide tool tier that crafted tools replaced; either delete the button or
-give the method a body. Found while tracing the gathering loop, not fixed -
-the real tool system works and this is a dead door beside it.
+**~~`ExecuteUpgradeToolAsync` is an empty stub~~ - DONE.** The button, the
+helper, the command handler and the whole twenty-four-line
+`VillageBuildingEngine` are gone. The dead door was wider than this entry
+knew: the engine was constructed in `Program`, threaded through the simulation
+constructor and dispatched to on every request, and a request that failed
+validation DISCONNECTED the player - over a command with no effect to protect.
 
 ## How to verify a gameplay change
 
