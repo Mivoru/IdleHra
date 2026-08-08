@@ -17,6 +17,7 @@
   import Village from './routes/Village.svelte';
   import Codex from './routes/Codex.svelte';
   import Breeding from './routes/Breeding.svelte';
+  import Ancestors from './routes/Ancestors.svelte';
   import Store from './routes/Store.svelte';
   import SkillsPanel from './lib/ui/SkillsPanel.svelte';
   import Inheritance from './routes/Inheritance.svelte';
@@ -93,6 +94,7 @@
         { key: 'inheritance', label: 'Inheritance' },
         { key: 'codex', label: 'Codex' },
         { key: 'breeding', label: 'Breeding' },
+        { key: 'ancestors', label: 'Ancestors' },
         { key: 'store', label: 'Store' },
         { key: 'settings', label: 'Settings' },
       ],
@@ -288,6 +290,8 @@
       <Codex />
     {:else if screen === 'breeding'}
       <Breeding />
+    {:else if screen === 'ancestors'}
+      <Ancestors />
     {:else if screen === 'inheritance'}
       <Inheritance />
     {:else if screen === 'store'}

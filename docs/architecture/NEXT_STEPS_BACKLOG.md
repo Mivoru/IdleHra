@@ -22,6 +22,22 @@ three rings of the skill tree with **all 15 node effects wired**, the respec
 gate, the season reset that was missing, breeding aptitudes end to end, and the
 village gene pool (table, arrival, endpoint, panel).
 
+**Shipped 2026-08-09: L2, the Hall of Ancestors.** The 10-to-14 cap, the
+diamond slot purchase, the keep marks, the rollover cull, and an Ancestors
+screen showing the pedigree and who the rollover would let go. **And the door
+that never existed: nothing in this server had ever written a
+`CharacterRecord.SlotIndex` after creation**, so every child bred past the
+third slot was permanently unplayable and "begin the next season with your best
+child" could not be performed. `AssignCharacterSlot` (75) swaps.
+
+Three defects found on the way, all fixed: the aptitudes migration backfilled
+**0** into every lineage row that predated it while a fresh character starts at
+4 (every founder on every account older than 2026-08-08 was four points down on
+the one axis that never resets); the dev fixture's repair path assumed slot 0
+always held the account's own character, which stopped being true the moment
+slots could move, and re-seeding threw on the primary key; and a breeding test
+ignored the 5% epic bonus, so it failed one run in twenty.
+
 **Shipped 2026-08-09: L4, the village roster.** `RecruitVillager` (70) and
 `DismissNewcomer` (71), a `VillagerRecruitmentsThisSeason` counter that prices
 the escalation, and both buttons on the Village screen. **And the rollover wipe
@@ -40,35 +56,6 @@ spent. Detail and the two defects it uncovered are in `LONG_GAME_SPEC.md`
 section 6 item 5.
 
 Everything below is what remains, in the order I would do it.
-
----
-
-## L2. Hall of Ancestors
-
-**What:** the lineage roster that carries across a rollover. **10 slots base,
-+1 per inheritance purchase, hard cap 14.** At the rollover, when full, the
-player chooses who carries and who is let go - that choice is what gives the
-last week of a season weight.
-
-**Where:** `character_lineage_registry` already stores everything a member
-needs (race, four aptitudes, generation, epic flag, both parents). What is
-missing is the cap, the selection UI and the rollover step.
-
-**Trap - and this is the one that matters:** aptitudes currently survive the
-rollover **by accident**. `SeasonalRotationEngine` simply does not touch
-`character_lineage_registry`. That happens to be the intended behaviour and
-**nothing states or tests it**, so a future rollover change could delete the
-one axis a season is meant to leave standing. Add an explicit test when you
-touch this.
-
-**Second trap, new since the pairing shipped:** a child of a villager stores
-`ParentPaternalId` OR `ParentMaternalId` and leaves the other **null** - the
-villager is not a `CharacterRecord` and the village is wiped at the rollover,
-so a column pointing at one would dangle within ninety days. The inbreeding
-check handles the nulls correctly today (it is `HasValue`-guarded, and a
-villager marries exactly once so no half-siblings can exist through them). A
-Hall of Ancestors that wants to SHOW who married in will find that the answer
-is not stored anywhere. Decide deliberately; do not add the column by reflex.
 
 ---
 

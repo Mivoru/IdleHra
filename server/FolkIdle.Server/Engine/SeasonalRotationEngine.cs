@@ -355,11 +355,26 @@ namespace FolkIdle.Server.Engine
                 await db.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"village_newcomers\" RESTART IDENTITY", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"LastVillagerArrivalEpoch\" = 0, \"VillagerRecruitmentsThisSeason\" = 0", stoppingToken);
 
-                // Modul: character_lineage_registry is NOT in this method, and
-                // that is the intent rather than an oversight - see the list
-                // above. Aptitudes are the axis a season is meant to leave
-                // standing, so they survive on purpose; SeasonalRotationTests
-                // asserts it rather than leaving it to be true by accident.
+                // Modul: character_lineage_registry is NOT wiped, and that is
+                // the intent rather than an oversight - see the list above.
+                // Aptitudes are the axis a season is meant to leave standing,
+                // so they survive on purpose, and the rollover test asserts it
+                // rather than leaving it to be true by accident.
+                //
+                // What DOES happen to it is a cull to the Hall's cap. Without
+                // one, ninety days of breeding accumulates every child ever
+                // born and the last week of a season is worth exactly as much
+                // as the first - which is the choice this whole system exists
+                // to create. Ten slots, fourteen bought; who stays is the
+                // player's mark first and the strongest blood after, and the
+                // main character can never be the one let go because their id
+                // IS the account's PlayerGuid.
+                //
+                // Runs LAST, after the level and gear wipes, so the surviving
+                // roster is the one that has already been reset - a cull that
+                // ran first would renumber slots the statements above then
+                // write over.
+                await HallOfAncestorsEngine.CullToCapAsync(db, stoppingToken);
 
                 // player_race_unlocks was never in this method and stays out:
                 // a race you have earned is yours.

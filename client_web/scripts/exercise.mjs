@@ -830,7 +830,7 @@ await go('Breeding');
     // marriage started ("resting"). Both are honest states rather than
     // failures, and picking one turns this step into a test of the refusal.
     const heroText = await heroSelect.locator('option').nth(heroIndex).innerText();
-    if (/needs 50|resting/.test(heroText)) continue;
+    if (/needs 50|resting|still a child/.test(heroText)) continue;
 
     await heroSelect.selectOption({ index: heroIndex });
     await page.waitForTimeout(250);
@@ -875,7 +875,16 @@ await go('Breeding');
       /What the child would inherit/i.test(preview) &&
         /Strength/.test(preview) && /Fortune/.test(preview),
     );
-    record('the preview quotes a price', /Costs [\d,]+g/.test(preview), (preview.match(/Costs [\d,]+g/) ?? [''])[0]);
+    // On a failure the screen's own refusal is the useful detail - it is a
+    // sentence now rather than a server code, so it says what to fix.
+    const priced = /Costs [\d,]+g/.test(preview);
+    record(
+      'the preview quotes a price',
+      priced,
+      priced
+        ? (preview.match(/Costs [\d,\s]+g/) ?? [''])[0]
+        : (await page.locator('.panel .warn').allInnerTexts()).join(' | ') || 'no reason shown',
+    );
 
     await dismissToasts();
     const marryButton = page.getByRole('button', { name: 'Marry', exact: true });
@@ -901,6 +910,70 @@ await go('Breeding');
       );
       await dismissToasts();
     }
+  }
+}
+
+// --- the Hall of Ancestors ---------------------------------------------------
+//
+// Modul: the roster that outlives a season, and the door that never existed.
+// Nothing in this server had ever written a CharacterRecord.SlotIndex after
+// creation, so a child bred past the third slot was permanently unplayable -
+// which makes "begin the next season with your best child", the loop the whole
+// long game is built on, impossible to perform.
+await go('Ancestors');
+{
+  const text = await page.evaluate(() => document.body.innerText);
+  record('the Hall states what a season does not take', /does not take these/i.test(text));
+  record(
+    'the Hall shows how many carry',
+    /\d+\s*\/\s*\d+/.test(text),
+    (text.match(/(\d+)\s*\/\s*(\d+)/) ?? [''])[0],
+  );
+
+  const rows = page.locator('.panel li');
+  record('the Hall lists the roster', (await rows.count()) > 0, `${await rows.count()} members`);
+
+  // The pedigree: everybody came from somewhere, and a founder says so.
+  record(
+    'every member names where they came from',
+    /a founder of the line|somebody from the village| x /i.test(text),
+  );
+
+  // Marking. The whole reason the cap is a decision rather than a surprise.
+  const keep = page.getByRole('button', { name: 'Keep', exact: true });
+  if ((await keep.count()) > 0) {
+    await dismissToasts();
+    await keep.first().click();
+    await page.waitForTimeout(2500);
+    const kept = await page.getByRole('button', { name: 'Kept', exact: true }).count();
+    record('marking an ancestor to carry sticks', kept > 0, `${kept} kept`);
+  } else {
+    record('marking an ancestor to carry sticks', false, 'no Keep button rendered');
+  }
+
+  // FIELDING - the missing door. A benched child picks a slot and the roster
+  // has to actually change, not just the dropdown.
+  const bench = page.locator('.acts select');
+  const benched = await bench.count();
+  record('benched members can be fielded', benched > 0, `${benched} on the bench`);
+
+  if (benched > 0) {
+    // A SWAP, so counting fielded members proves nothing - one leaves as one
+    // arrives. Identify the row being fielded and check THAT row ends up with
+    // a slot badge.
+    const row = page.locator('.panel li').filter({ has: page.locator('.acts select') }).first();
+    const fingerprint = (await row.locator('.apts').innerText()).replace(/\s+/g, ' ').trim();
+
+    await row.locator('select').selectOption('0');
+    await page.waitForTimeout(3000);
+
+    const nowFielded = await page.locator('.panel li').filter({ hasText: /slot \d/ }).allInnerTexts();
+    record(
+      'fielding an ancestor swaps them into a playable slot',
+      nowFielded.some((t) => t.replace(/\s+/g, ' ').includes(fingerprint)),
+      `${fingerprint} -> ${nowFielded.length} fielded`,
+    );
+    await dismissToasts();
   }
 }
 

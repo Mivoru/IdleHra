@@ -139,6 +139,46 @@ namespace FolkIdle.Server.Tests
             Assert.True(breedingLevel > 0, "the fixture has no Breeding Grounds, so every pairing is refused");
         }
 
+        /// <summary>
+        /// SLOTS MOVE NOW. AssignCharacterSlot can swap a bred child into slot
+        /// 0 and push the account's own character down the roster, and the
+        /// repair above read "slot 0 is not the PlayerGuid character" as "the
+        /// PlayerGuid character is missing" - then threw on the primary key
+        /// re-inserting one that already existed. Re-seeding the fixture failed
+        /// outright, on an account whose documented fix for everything is
+        /// "re-run the seeder".
+        /// </summary>
+        [Fact]
+        public async Task Seeder_SurvivesTheAccountCharacterHavingBeenSwappedOutOfSlotZero()
+        {
+            await using var db = NewContext();
+            long playerId = await DevFixtureSeeder.SeedAsync(db);
+            db.ChangeTracker.Clear();
+
+            var player = await db.PlayerRecords.AsNoTracking().FirstAsync(p => p.Id == playerId);
+
+            // Exactly what a swap leaves behind: the account's own character
+            // benched, somebody else at the front.
+            var accountCharacter = await db.CharacterRecords.FirstAsync(c => c.Id == player.PlayerGuid);
+            var other = await db.CharacterRecords.FirstAsync(c => c.PlayerId == playerId && c.Id != player.PlayerGuid);
+            accountCharacter.SlotIndex = other.SlotIndex;
+            other.SlotIndex = 0;
+            await db.SaveChangesAsync();
+            db.ChangeTracker.Clear();
+
+            await DevFixtureSeeder.SeedAsync(db);
+            db.ChangeTracker.Clear();
+
+            var front = await db.CharacterRecords.AsNoTracking()
+                .FirstAsync(c => c.PlayerId == playerId && c.SlotIndex == 0);
+            Assert.Equal(player.PlayerGuid, front.Id);
+
+            // And nobody was duplicated or lost putting it back.
+            var roster = await db.CharacterRecords.AsNoTracking().Where(c => c.PlayerId == playerId).ToListAsync();
+            Assert.Equal(roster.Count, roster.Select(c => c.Id).Distinct().Count());
+            Assert.Equal(roster.Count, roster.Select(c => c.SlotIndex).Distinct().Count());
+        }
+
         [Fact]
         public async Task Seeder_RepairsAFixtureSeededBeforeTheInvariantWasEnforced()
         {

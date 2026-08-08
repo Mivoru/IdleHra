@@ -131,6 +131,11 @@
     const who = `${raceName(candidate.LocusRaceDominant)} ${candidate.IsFemale ? 'woman' : 'man'}`;
     const marks = [`lv ${candidate.Level}`, apt];
     if (candidate.Level < 50) marks.push('needs 50');
+    // Modul: BOTH halves of the gate. The engine wants level 50 AND an adult,
+    // and this label only ever mentioned the level - so a character who was
+    // old enough on paper and still a child in AgePhase read as eligible and
+    // was refused with no visible reason.
+    if (candidate.AgePhase < 1) marks.push('still a child');
     if (candidate.BreedingCooldownEndEpoch > nowSeconds) {
       marks.push(`resting ${candidate.BreedingCooldownEndEpoch - nowSeconds}s`);
     }

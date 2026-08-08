@@ -660,6 +660,63 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
+        /// <summary>
+        /// The four Hall of Ancestors commands.
+        ///
+        /// Everything real - ownership, the diamond balance, the Town Hall gate
+        /// on a slot - is checked in HallOfAncestorsEngine against the database
+        /// inside the transaction that acts on it. This rejects the shapes that
+        /// are wrong before any of that: a purchase carrying a target, a
+        /// keep/release without one, a slot index outside the three that exist.
+        /// </summary>
+        public static bool ValidateHallOfAncestorsRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
+        {
+            var command = packet.Command;
+            bool isPurchase = command == FolkIdle.Server.Network.CommandType.PurchaseAncestorSlot;
+            bool isMark = command == FolkIdle.Server.Network.CommandType.KeepAncestor
+                       || command == FolkIdle.Server.Network.CommandType.ReleaseAncestor;
+            bool isAssign = command == FolkIdle.Server.Network.CommandType.AssignCharacterSlot;
+
+            if (!isPurchase && !isMark && !isAssign)
+            {
+                return true;
+            }
+
+            byte commandValue = (byte)command;
+
+            if ((isMark || isAssign) && packet.TargetGuid == Guid.Empty)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = commandValue, Value2 = 1, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            if (isPurchase && packet.TargetGuid != Guid.Empty)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = commandValue, Value2 = 2, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            if (isAssign && packet.RequestedSlotIndex >= Domain.Combat.CharacterSlotEngine.MaxCharacterSlots)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = commandValue, Value2 = 3, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            if (!isAssign && packet.RequestedSlotIndex != 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = commandValue, Value2 = 4, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            if (packet.TargetId != 0 || packet.SecondaryId != 0 || packet.TertiaryId != 0 || packet.LimitPrice != 0 || packet.IsBuy != 0 || packet.QualityTier != 0 || packet.SecondaryGuid != Guid.Empty || packet.TargetUnlockId != 0 || packet.MaterialId != 0 || packet.DepositQuantity != 0 || packet.MatchId != 0 || packet.ClientPredictedTurnCounter != 0 || packet.TargetPlayerId != 0 || packet.MentorshipRole != 0 || packet.TargetBuildingId != 0 || packet.TargetVillagerSlot != 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = commandValue, Value2 = 5, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            return true;
+        }
+
         public static bool ValidateVillageManagementRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
         {
             if (packet.Command != FolkIdle.Server.Network.CommandType.UpgradeBuilding && packet.Command != FolkIdle.Server.Network.CommandType.EvictVillager)

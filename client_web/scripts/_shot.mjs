@@ -1,0 +1,16 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: 1400, height: 1100 } });
+await p.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+await p.getByRole('button', { name: 'Sign in' }).click();
+await p.locator('input[type="email"]').fill('dev@folkidle.local');
+await p.locator('input[type="password"]').fill('FolkIdleDev123!');
+await p.getByRole('button', { name: 'Sign in', exact: true }).last().click();
+await p.waitForSelector('text=Combat', { timeout: 20000 });
+await p.waitForTimeout(3000);
+const cont = p.getByRole('button', { name: 'Continue', exact: true });
+if (await cont.count()) await cont.first().click();
+await p.locator('header').getByRole('button', { name: 'Ancestors', exact: true }).first().click();
+await p.waitForTimeout(2500);
+await p.screenshot({ path: 'C:/tmp/hall.png', fullPage: true });
+await b.close();

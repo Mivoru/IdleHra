@@ -9172,7 +9172,14 @@ namespace FolkIdle.Server.Tests
 
                 // Each aptitude came from ONE parent (then drifted by at most
                 // one), so Strength must be reachable from 4 or from 18.
+                //
+                // The epic bonus is added on TOP of that band and is a 5% roll,
+                // so it has to be read off the child rather than assumed away -
+                // without this the test failed one run in twenty, which is the
+                // worst possible failure rate: often enough to be real, rare
+                // enough to be dismissed as a fluke.
                 BreedingAptitudes.PreviewOne(4, 18, out int min, out int max);
+                if (childLineage.IsEpicMutation) max += BreedingAptitudes.EpicBonus;
                 Assert.InRange(childLineage.AptitudeStrength, min, max);
 
                 // THE REFUSAL THAT MAKES THE POOL A POOL: one child per
@@ -9310,6 +9317,168 @@ namespace FolkIdle.Server.Tests
                 Assert.All(veteran, v => Assert.True(
                     v.RaceId == RaceIds.Human || v.RaceId == RaceIds.Vila,
                     $"a villager of race {v.RaceId} arrived for a player who has only unlocked Vila"));
+            }
+        }
+
+        // Modul: THE HALL OF ANCESTORS, and the door that never existed.
+        //
+        // Nothing in this server had ever written CharacterRecord.SlotIndex
+        // after the row was created, so every child bred past the third slot
+        // was permanently unplayable - which makes the season loop the whole
+        // design rests on ("begin the next season with your best child")
+        // impossible to actually perform.
+        [Fact]
+        public async Task Test_Hall_AssignSlotSwapsAndRespectsTheTownHallGate()
+        {
+            const long testPlayerId = 970004630L;
+            Guid mainId = Guid.NewGuid();
+            Guid benchedId = Guid.NewGuid();
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = mainId, AuthenticatorToken = Guid.NewGuid() });
+                // Town Hall 0: slot 1 is open, slots 2 and 3 are not.
+                db.CharacterRecords.AddRange(
+                    new CharacterRecord { Id = mainId, PlayerId = testPlayerId, Level = 40, AgePhase = 1, SlotIndex = 0, ActiveActivityId = 55L },
+                    new CharacterRecord { Id = benchedId, PlayerId = testPlayerId, Level = 1, AgePhase = 0, SlotIndex = 7 });
+                await db.SaveChangesAsync();
+            }
+
+            var hall = new HallOfAncestorsEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            // A locked slot is refused: slots 2 and 3 are bought with Town Hall
+            // levels, and a swap that sidestepped that would make the building
+            // optional.
+            await hall.AssignSlotAsync(testPlayerId, benchedId, 2);
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var still = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == benchedId);
+                Assert.Equal(7, still.SlotIndex);
+            }
+
+            // The real swap. The benched child comes to the front and the
+            // character that was there takes its index - a MOVE would either
+            // leave two characters on slot 0 or open a hole in the first three,
+            // and both break "position IS SlotIndex".
+            await hall.AssignSlotAsync(testPlayerId, benchedId, 0);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var fielded = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == benchedId);
+                var displaced = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == mainId);
+
+                Assert.Equal(0, fielded.SlotIndex);
+                Assert.Equal(7, displaced.SlotIndex);
+
+                // The bench is not a place to be doing anything: a benched
+                // character keeping its activity would hold the occupancy mutex
+                // on a job nobody is working, and the next character told to
+                // take that job would be refused for colliding with somebody
+                // who is not even fielded.
+                Assert.Equal(0L, displaced.ActiveActivityId);
+            }
+        }
+
+        // Modul: the cull. This is the only thing in the game that DELETES a
+        // character, so the assertion is not "the count is right" but "the
+        // right people are gone".
+        //
+        // ITS OWN DATABASE, and that is not fastidiousness: CullToCapAsync
+        // walks EVERY player, because a rollover is global. Run against the
+        // shared fixture it would cull the rosters of every other test in this
+        // class, which is an order-dependent failure somewhere else entirely -
+        // strictly worse than an outright one.
+        [Fact]
+        public async Task Test_Hall_RolloverCullsToTheCapAndKeepsTheMarkedAndTheMain()
+        {
+            await using var container = new PostgreSqlBuilder("postgres:16")
+                .WithDatabase("folkidle_test_hall")
+                .WithUsername("postgres")
+                .WithPassword("postgres")
+                .Build();
+            await container.StartAsync();
+
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<FolkIdleDbContext>(options => options.UseNpgsql(container.GetConnectionString()));
+            var serviceProvider = services.BuildServiceProvider();
+            var dbContextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+
+            await using (var migrateDb = await dbContextFactory.CreateDbContextAsync())
+            {
+                await migrateDb.Database.MigrateAsync();
+            }
+
+            const long testPlayerId = 970004631L;
+            Guid mainId = Guid.NewGuid();
+            Guid markedWeakId = Guid.NewGuid();
+
+            await using (var db = await dbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = mainId, AuthenticatorToken = Guid.NewGuid() });
+
+                // The main character, deliberately the WEAKEST on the roster so
+                // that surviving proves the invariant rather than the ranking.
+                db.CharacterRecords.Add(new CharacterRecord { Id = mainId, PlayerId = testPlayerId, Level = 1, AgePhase = 1, SlotIndex = 0 });
+                var mainLineage = new CharacterLineageRegistry { CharacterId = mainId, GenerationIndex = 0, GeneticVector = 0L };
+                mainLineage.SetAptitudeVector(new[] { 1, 1, 1, 1 });
+                db.CharacterLineages.Add(mainLineage);
+
+                // Marked, and also weak - the mark has to beat the numbers.
+                db.CharacterRecords.Add(new CharacterRecord { Id = markedWeakId, PlayerId = testPlayerId, Level = 1, AgePhase = 1, SlotIndex = 1 });
+                var markedLineage = new CharacterLineageRegistry { CharacterId = markedWeakId, GenerationIndex = 1, GeneticVector = 0L, IsKeptAtRollover = true };
+                markedLineage.SetAptitudeVector(new[] { 2, 2, 2, 2 });
+                db.CharacterLineages.Add(markedLineage);
+
+                // Sixteen strong unmarked children, so the roster is well over
+                // the base cap of ten.
+                for (int i = 0; i < 16; i++)
+                {
+                    var id = Guid.NewGuid();
+                    db.CharacterRecords.Add(new CharacterRecord { Id = id, PlayerId = testPlayerId, Level = 1, AgePhase = 1, SlotIndex = 2 + i });
+                    var lineage = new CharacterLineageRegistry { CharacterId = id, GenerationIndex = 2, GeneticVector = 0L };
+                    lineage.SetAptitudeVector(new[] { 10 + i, 10, 10, 10 });
+                    db.CharacterLineages.Add(lineage);
+                }
+
+                await db.SaveChangesAsync();
+            }
+
+            await using (var db = await dbContextFactory.CreateDbContextAsync())
+            {
+                await HallOfAncestorsEngine.CullToCapAsync(db, CancellationToken.None);
+            }
+
+            await using (var verify = await dbContextFactory.CreateDbContextAsync())
+            {
+                var survivors = await verify.CharacterRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == testPlayerId)
+                    .OrderBy(c => c.SlotIndex)
+                    .ToListAsync();
+
+                Assert.Equal(HallOfAncestorsRules.BaseSlots, survivors.Count);
+                Assert.Contains(survivors, c => c.Id == mainId);
+                Assert.Contains(survivors, c => c.Id == markedWeakId);
+
+                // HALF A MEMBER IS WORSE THAN NONE: a character with no lineage
+                // row is skipped by the breeding roster and cannot pair, and a
+                // lineage row with no character is a name in a family tree that
+                // nothing can play. Both directions, over the whole table.
+                var survivingIds = survivors.Select(c => c.Id).ToHashSet();
+                var lineages = await verify.CharacterLineages.AsNoTracking().ToListAsync();
+
+                Assert.Equal(survivors.Count, lineages.Count);
+                foreach (var lineage in lineages)
+                {
+                    Assert.Contains(lineage.CharacterId, survivingIds);
+                }
+
+                // The surviving roster must occupy 0..n-1 with no holes, or
+                // every consumer that treats position as SlotIndex reads the
+                // wrong character.
+                for (int i = 0; i < survivors.Count; i++)
+                {
+                    Assert.Equal(i, survivors[i].SlotIndex);
+                }
             }
         }
 

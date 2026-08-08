@@ -170,7 +170,30 @@ namespace FolkIdle.Server.Network
         // NOT EvictVillager (30), which names the older VillageResident work-slot
         // table - a different table with no rows and no identity. Two concepts.
         RecruitVillager = 70,
-        DismissNewcomer = 71
+        DismissNewcomer = 71,
+
+        // Modul: the Hall of Ancestors - the roster that outlives a season.
+        //
+        // PurchaseAncestorSlot buys one of the four extra slots with diamonds
+        // and carries no fields. Keep/Release mark a member as one to carry
+        // through the rollover and carry the character on TargetGuid - two
+        // commands rather than one toggle, following AddFriend/RemoveFriend,
+        // because a toggle that arrives twice undoes itself and a dropped
+        // acknowledgement is not a reason to lose a bloodline.
+        PurchaseAncestorSlot = 72,
+        KeepAncestor = 73,
+        ReleaseAncestor = 74,
+
+        // AssignCharacterSlot puts a member into one of the three playable
+        // slots, swapping out whoever was there. TargetGuid is the character,
+        // RequestedSlotIndex the slot.
+        //
+        // NOTHING IN THIS SERVER COULD CHANGE A SlotIndex before this existed.
+        // It was written once at creation and never again, so every child bred
+        // past the third slot was permanently unplayable - which makes the
+        // season loop the whole design is built on ("begin the next season with
+        // your best child") impossible to actually perform.
+        AssignCharacterSlot = 75
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

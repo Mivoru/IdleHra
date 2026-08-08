@@ -944,6 +944,17 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: the Hall of Ancestors. The breeding roster answers
+                    // "who can I pair"; this answers "who carries into next
+                    // season, and where do they stand" - the cap, the marks,
+                    // the pedigree and which of the three playable slots each
+                    // member occupies.
+                    if (requestPath == "/api/v1/ancestors/hall" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleAncestorsHall(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/breeding/preview" && context.Request.HttpMethod == "GET")
                     {
                         await HandleBreedingPreview(context);
@@ -3191,6 +3202,144 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"HandleVillageNewcomers failed: {ex.Message}");
+                context.Response.StatusCode = 500;
+                context.Response.Close();
+            }
+        }
+
+        /// <summary>
+        /// The Hall of Ancestors: everyone the account owns, what they carry,
+        /// and how many of them survive the next rollover.
+        ///
+        /// Returns the CAP and the marks together, because "11 / 14" and "these
+        /// four are safe" are the same decision seen from two sides, and a
+        /// client that had to derive the cap would be mirroring
+        /// HallOfAncestorsRules into TypeScript for one label.
+        ///
+        /// Also returns the ranking the cull would use RIGHT NOW - see
+        /// WouldCarry. A cap that only reveals what it did after a rollover has
+        /// already deleted somebody is not a decision, it is a surprise.
+        /// </summary>
+        private async Task HandleAncestorsHall(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var player = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => p.Id == playerId)
+                    .Select(p => new { p.PlayerGuid, p.AncestorSlotsPurchased, p.PremiumDiamonds })
+                    .FirstOrDefaultAsync();
+
+                if (player == null)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                var characters = await db.CharacterRecords
+                    .AsNoTracking()
+                    .Where(c => c.PlayerId == playerId)
+                    .OrderBy(c => c.SlotIndex)
+                    .ToListAsync();
+
+                var characterIds = characters.ConvertAll(c => c.Id);
+                var lineages = await db.CharacterLineages
+                    .AsNoTracking()
+                    .Where(l => characterIds.Contains(l.CharacterId))
+                    .ToListAsync();
+
+                var lineageById = new System.Collections.Generic.Dictionary<Guid, CharacterLineageRegistry>(lineages.Count);
+                for (int i = 0; i < lineages.Count; i++) lineageById[lineages[i].CharacterId] = lineages[i];
+
+                int cap = Engine.HallOfAncestorsRules.CapFor(player.AncestorSlotsPurchased);
+
+                var ranking = new System.Collections.Generic.List<Engine.HallOfAncestorsRules.Member>(characters.Count);
+                for (int i = 0; i < characters.Count; i++)
+                {
+                    lineageById.TryGetValue(characters[i].Id, out var lineage);
+                    ranking.Add(new Engine.HallOfAncestorsRules.Member(
+                        characters[i].Id,
+                        characters[i].Id == player.PlayerGuid,
+                        lineage?.IsKeptAtRollover ?? false,
+                        lineage?.IsEpicMutation ?? false,
+                        lineage is null ? 0 : lineage.AptitudeVector().Sum(),
+                        lineage?.GenerationIndex ?? 0));
+                }
+
+                var carried = new System.Collections.Generic.HashSet<Guid>(
+                    Engine.HallOfAncestorsRules.ChooseSurvivors(ranking, cap));
+
+                int townHallLevel = await db.VillageInfrastructures
+                    .AsNoTracking()
+                    .Where(v => v.PlayerId == playerId
+                             && v.BuildingId == Domain.Progression.VillageManagementEngine.TownHallBuildingId)
+                    .Select(v => v.CurrentLevel)
+                    .FirstOrDefaultAsync();
+
+                var payload = new
+                {
+                    Cap = cap,
+                    MaxCap = Engine.HallOfAncestorsRules.MaxSlots,
+                    SlotsPurchased = player.AncestorSlotsPurchased,
+                    NextSlotCostDiamonds = Engine.HallOfAncestorsRules.NextSlotCostDiamonds(player.AncestorSlotsPurchased),
+                    Diamonds = player.PremiumDiamonds,
+                    PlayableSlots = Domain.Combat.CharacterSlotEngine.GetUnlockedSlotCount(townHallLevel),
+                    Members = characters.ConvertAll(c =>
+                    {
+                        lineageById.TryGetValue(c.Id, out var lineage);
+                        var genes = new GeneticVector(lineage?.GeneticVector ?? 0L);
+
+                        return new
+                        {
+                            CharacterId = c.Id.ToString(),
+                            c.Level,
+                            c.AgePhase,
+                            c.IsFemale,
+                            c.SlotIndex,
+                            // -1 rather than null for "not fielded": the client
+                            // compares this against a slot number and a null
+                            // would have to be special-cased at every use.
+                            PlayableSlot = c.SlotIndex < Domain.Combat.CharacterSlotEngine.MaxCharacterSlots ? c.SlotIndex : -1,
+                            RaceId = (int)genes.LocusRace.Dominant,
+                            GenerationIndex = lineage?.GenerationIndex ?? 0,
+                            IsEpicMutation = lineage?.IsEpicMutation ?? false,
+                            IsInbred = lineage?.IsInbred ?? false,
+                            IsKept = lineage?.IsKeptAtRollover ?? false,
+                            WouldCarry = carried.Contains(c.Id),
+                            IsMainCharacter = c.Id == player.PlayerGuid,
+                            AptitudeStrength = lineage?.AptitudeStrength ?? 0,
+                            AptitudeSkill = lineage?.AptitudeSkill ?? 0,
+                            AptitudeEndurance = lineage?.AptitudeEndurance ?? 0,
+                            AptitudeFortune = lineage?.AptitudeFortune ?? 0,
+                            // The pedigree. Empty rather than null for an
+                            // unknown parent - a founder and a villager's child
+                            // both have one, and neither is an error.
+                            ParentPaternalId = lineage?.ParentPaternalId?.ToString() ?? string.Empty,
+                            ParentMaternalId = lineage?.ParentMaternalId?.ToString() ?? string.Empty,
+                        };
+                    }),
+                };
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, payload);
+                context.Response.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"HandleAncestorsHall failed: {ex.Message}");
                 context.Response.StatusCode = 500;
                 context.Response.Close();
             }

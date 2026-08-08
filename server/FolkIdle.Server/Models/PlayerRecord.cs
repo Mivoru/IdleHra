@@ -187,6 +187,17 @@ namespace FolkIdle.Server.Models
         /// </summary>
         public int VillagerRecruitmentsThisSeason { get; set; }
 
+        /// <summary>
+        /// Extra Hall of Ancestors slots bought with diamonds, 0-4.
+        ///
+        /// Bought, so it SURVIVES the rollover along with the inheritance
+        /// stats - taking back something a player paid for is the one thing a
+        /// season reset may never do. Stored here rather than as a seventh
+        /// InheritanceRegistry stat because that table is six percentages with
+        /// one shared curve and one shared cap, and a slot is none of those.
+        /// </summary>
+        public int AncestorSlotsPurchased { get; set; }
+
         // Modul: lifetime statistics. Three counters the Statistics screen
         // needs and that nothing in this codebase tracked.
         //

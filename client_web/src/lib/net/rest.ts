@@ -30,6 +30,7 @@ export const queryKeys = {
   codex: ['meta', 'codex'] as const,
   metadata: ['meta', 'metadata'] as const,
   breedingRoster: ['meta', 'breeding'] as const,
+  ancestorsHall: ['meta', 'ancestors'] as const,
   breedingPreview: (a: string, b: string) => ['meta', 'breeding', 'preview', a, b] as const,
   villagerBreedingPreview: (heroId: string, newcomerId: number) =>
     ['meta', 'breeding', 'preview', 'village', heroId, newcomerId] as const,
@@ -700,6 +701,62 @@ export interface BreedingCandidate {
 
 export function fetchBreedingRoster(): Promise<BreedingCandidate[]> {
   return authedGet<BreedingCandidate[]>('/api/v1/breeding/roster');
+}
+
+/**
+ * A member of the Hall of Ancestors: everybody the account owns, and what they
+ * carry. The breeding roster answers "who can I pair"; this answers "who
+ * carries into next season, and where do they stand".
+ */
+export interface HallMember {
+  CharacterId: string;
+  Level: number;
+  AgePhase: number;
+  IsFemale: boolean;
+  SlotIndex: number;
+
+  /** Which of the three playable slots they occupy, or -1 for benched. */
+  PlayableSlot: number;
+
+  RaceId: number;
+  GenerationIndex: number;
+  IsEpicMutation: boolean;
+  IsInbred: boolean;
+
+  /** Marked by the player to carry through the rollover. */
+  IsKept: boolean;
+
+  /**
+   * Whether the cull would keep them if the season ended NOW. A cap that only
+   * reveals what it did after a rollover has already deleted somebody is not a
+   * decision, it is a surprise.
+   */
+  WouldCarry: boolean;
+
+  IsMainCharacter: boolean;
+  AptitudeStrength: number;
+  AptitudeSkill: number;
+  AptitudeEndurance: number;
+  AptitudeFortune: number;
+
+  /** "" for an unknown parent - a founder and a villager's child both have
+   * one, and neither is an error. */
+  ParentPaternalId: string;
+  ParentMaternalId: string;
+}
+
+export interface HallSnapshot {
+  Cap: number;
+  MaxCap: number;
+  SlotsPurchased: number;
+  NextSlotCostDiamonds: number;
+  Diamonds: number;
+  PlayableSlots: number;
+  Members: HallMember[];
+}
+
+export function fetchAncestorsHall(): Promise<HallSnapshot> {
+  return authedGet<HallSnapshot>('/api/v1/ancestors/hall');
 }
 
 export interface GeneLocusPreview {

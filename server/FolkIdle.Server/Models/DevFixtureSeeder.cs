@@ -305,6 +305,23 @@ namespace FolkIdle.Server.Models
                 .Select(p => p.PlayerGuid)
                 .FirstAsync();
 
+            // THE ACCOUNT'S OWN CHARACTER COMES TO THE FRONT FIRST, before any
+            // gap is filled.
+            //
+            // Slots move now - AssignCharacterSlot can swap a bred child into
+            // slot 0 and bench the PlayerGuid character - so "slot 0 is empty"
+            // is no longer the same statement as "the PlayerGuid character does
+            // not exist". Filling the gap first minted a second character with
+            // that id and EF refused to track two of them, which is how
+            // re-seeding this fixture came to fail outright.
+            var accountCharacter = existing.FirstOrDefault(c => c.Id == playerGuid);
+            if (accountCharacter != null && accountCharacter.SlotIndex != 0)
+            {
+                var atFront = existing.FirstOrDefault(c => c.SlotIndex == 0);
+                if (atFront != null) atFront.SlotIndex = accountCharacter.SlotIndex;
+                accountCharacter.SlotIndex = 0;
+            }
+
             for (int slotIndex = 0; slotIndex < CharacterSlotEngine.MaxCharacterSlots; slotIndex++)
             {
                 if (existing.Any(c => c.SlotIndex == slotIndex)) continue;
@@ -328,9 +345,20 @@ namespace FolkIdle.Server.Models
             // the seeder would leave it exactly as unable to breed as before -
             // and "re-run the seeder" is the documented fix for everything
             // about this account.
+            //
+            // ONLY THE FIXTURE'S OWN THREE. An earlier version bumped every
+            // character on the roster, which after a session of breeding meant
+            // re-seeding turned every bred INFANT into a level-50 one - a state
+            // no gameplay path can produce, and one that reads as eligible on
+            // every screen while BreedingEngine refuses it for AgePhase. The
+            // fixture must look like a real account, so it may not manufacture
+            // shapes a real account cannot reach.
             foreach (var character in existing)
             {
+                if (character.SlotIndex >= CharacterSlotEngine.MaxCharacterSlots) continue;
+
                 if (character.Level < CharacterLevel) character.Level = CharacterLevel;
+                character.AgePhase = 1;
                 character.IsFemale = character.SlotIndex != 0;
             }
 
@@ -338,8 +366,13 @@ namespace FolkIdle.Server.Models
             // documented as idempotent and re-runnable, so a fixture that
             // predates the fix has to be brought into line rather than left
             // permanently unable to equip anything.
+            // Reached only when the PlayerGuid character exists NOWHERE - the
+            // swap above has already handled the case where it exists and is
+            // merely benched. That is the genuinely broken fixture this repair
+            // was written for: seeded before the invariant, with three random
+            // ids and no row matching the account.
             var mainSlot = existing.FirstOrDefault(c => c.SlotIndex == 0);
-            if (mainSlot != null && mainSlot.Id != playerGuid)
+            if (mainSlot != null && mainSlot.Id != playerGuid && accountCharacter == null)
             {
                 // The Id is the primary key, so this is a delete-and-reinsert
                 // rather than an update. Safe here because the fixture's

@@ -1426,6 +1426,54 @@ export function dismissNewcomer(newcomerId: number): CommandOutcome {
 }
 
 // ---------------------------------------------------------------------------
+// The Hall of Ancestors
+// ---------------------------------------------------------------------------
+
+/** Buys one of the four extra roster slots with diamonds. Carries no fields;
+ * ValidateHallOfAncestorsRequest disconnects on a target. */
+export function purchaseAncestorSlot(): CommandOutcome {
+  connection.send({ Command: CommandType.PurchaseAncestorSlot });
+  return OK;
+}
+
+/**
+ * Marks a member as one to carry through the rollover, or unmarks them.
+ *
+ * Two commands rather than a toggle, following AddFriend/RemoveFriend: a
+ * toggle that arrives twice undoes itself, and a dropped acknowledgement is
+ * not a reason to lose a bloodline.
+ */
+export function setAncestorKept(characterId: string, kept: boolean): CommandOutcome {
+  if (!characterId) return refuse('Pick somebody.');
+  connection.send({
+    Command: kept ? CommandType.KeepAncestor : CommandType.ReleaseAncestor,
+    TargetGuid: characterId,
+  });
+  return OK;
+}
+
+/**
+ * Puts a member into one of the three playable slots, swapping out whoever was
+ * there.
+ *
+ * Nothing in the server could change a SlotIndex before this existed, so every
+ * child bred past the third slot was unplayable. The Town Hall gate on slots 2
+ * and 3 is checked server-side; sending a locked slot is refused, not punished.
+ */
+export function assignCharacterSlot(characterId: string, slotIndex: number): CommandOutcome {
+  if (!characterId) return refuse('Pick somebody.');
+  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= 3) {
+    return refuse('There are three slots.');
+  }
+  connection.send({
+    Command: CommandType.AssignCharacterSlot,
+    TargetGuid: characterId,
+    RequestedSlotIndex: slotIndex,
+  });
+  return OK;
+}
+
+// ---------------------------------------------------------------------------
 // Breeding
 // ---------------------------------------------------------------------------
 

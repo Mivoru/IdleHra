@@ -62,6 +62,7 @@ namespace FolkIdle.Server.Domain.Combat
         private const double TickIntervalSeconds = TickIntervalMs / 1000.0;
         private readonly LootTableEngine _lootEngine;
         private readonly InheritanceEngine? _inheritanceEngine;
+        private readonly HallOfAncestorsEngine? _hallOfAncestorsEngine;
         private readonly SkillTreeEngine? _skillTreeEngine;
         private readonly StateCheckpointManager _checkpointManager;
         private readonly NetworkBroadcastSystem _networkSystem;
@@ -141,7 +142,7 @@ namespace FolkIdle.Server.Domain.Combat
 
         public static int ActiveGlobalEventId { get; private set; }
 
-        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageManagementEngine villageManagementEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null, InheritanceEngine? inheritanceEngine = null, SkillTreeEngine? skillTreeEngine = null)
+        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageManagementEngine villageManagementEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null, InheritanceEngine? inheritanceEngine = null, SkillTreeEngine? skillTreeEngine = null, HallOfAncestorsEngine? hallOfAncestorsEngine = null)
         {
             _lootEngine = lootEngine;
             _checkpointManager = checkpointManager;
@@ -159,6 +160,7 @@ namespace FolkIdle.Server.Domain.Combat
             _larderEngine = larderEngine;
             _inheritanceEngine = inheritanceEngine;
             _skillTreeEngine = skillTreeEngine;
+            _hallOfAncestorsEngine = hallOfAncestorsEngine;
             _worldBossEngine = worldBossEngine;
             _guildWarEngine = guildWarEngine;
             _chronoCoreEngine = chronoCoreEngine;
@@ -2424,6 +2426,53 @@ namespace FolkIdle.Server.Domain.Combat
                         int inheritStatId = (int)cmd.TargetId;
                         SafeDispatchAsync("Inheritance.Purchase", inheritPlayerId, async () => {
                             if (_inheritanceEngine != null) await _inheritanceEngine.PurchaseLevelAsync(inheritPlayerId, inheritStatId);
+                        });
+                    }
+                    // Modul: the Hall of Ancestors. Four commands over one
+                    // validator, because they share a shape: a character or
+                    // nothing, and never a field belonging to something else.
+                    else if (cmd.Command == CommandType.PurchaseAncestorSlot
+                          || cmd.Command == CommandType.KeepAncestor
+                          || cmd.Command == CommandType.ReleaseAncestor
+                          || cmd.Command == CommandType.AssignCharacterSlot)
+                    {
+                        if (!ClientCommandValidator.ValidateHallOfAncestorsRequest(ref currentPayload, ref cmd))
+                        {
+                            RemoveActivePlayer(routingPlayerId);
+                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
+                            _networkSystem.ForceDisconnect(routingPlayerId);
+                            continue;
+                        }
+
+                        long hallPlayerId = currentPayload.PlayerId;
+                        var hallCommand = cmd.Command;
+                        var hallCharacterId = cmd.TargetGuid;
+                        int hallSlotIndex = (int)cmd.RequestedSlotIndex;
+
+                        SafeDispatchAsync("Hall." + hallCommand, hallPlayerId, async () => {
+                            if (_hallOfAncestorsEngine == null) return;
+
+                            switch (hallCommand)
+                            {
+                                case CommandType.PurchaseAncestorSlot:
+                                    await _hallOfAncestorsEngine.PurchaseSlotAsync(hallPlayerId);
+                                    break;
+                                case CommandType.KeepAncestor:
+                                    await _hallOfAncestorsEngine.SetKeptAsync(hallPlayerId, hallCharacterId, true);
+                                    break;
+                                case CommandType.ReleaseAncestor:
+                                    await _hallOfAncestorsEngine.SetKeptAsync(hallPlayerId, hallCharacterId, false);
+                                    break;
+                                case CommandType.AssignCharacterSlot:
+                                    await _hallOfAncestorsEngine.AssignSlotAsync(hallPlayerId, hallCharacterId, hallSlotIndex);
+                                    // Which character is in which slot decides
+                                    // everything the payload caches about the
+                                    // active register - gear, activity, stats -
+                                    // so the tick has to re-read it rather than
+                                    // keep simulating the character that moved.
+                                    _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = hallPlayerId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+                                    break;
+                            }
                         });
                     }
                     else if (cmd.Command == CommandType.PurchaseSkillTreeLevel)

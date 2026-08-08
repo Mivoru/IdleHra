@@ -72,6 +72,22 @@ namespace FolkIdle.Server.Models
             AptitudeFortune = v[BreedingAptitudes.Fortune];
         }
 
+        /// <summary>
+        /// Marked by the player as one to carry into the next season.
+        ///
+        /// A FLAG SET DURING THE SEASON, not an answer given at the rollover.
+        /// The rollover runs server-side with every client disconnected, so
+        /// there is nobody there to ask - and a prompt on the way back in would
+        /// arrive after the season it belongs to had already ended. Marking is
+        /// what gives the last week weight; see
+        /// HallOfAncestorsRules.ChooseSurvivors for how ties and overruns
+        /// resolve, and why the main character can never be the one let go.
+        ///
+        /// Survives the rollover with the row, so a member kept once stays
+        /// marked - the choice was about them, not about that particular season.
+        /// </summary>
+        public bool IsKeptAtRollover { get; set; }
+
         public CharacterRecord? Character { get; set; }
     }
 }

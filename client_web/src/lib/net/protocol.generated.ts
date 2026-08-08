@@ -411,6 +411,10 @@ export const CommandType = {
   ExecuteVillagerBreeding: 69,
   RecruitVillager: 70,
   DismissNewcomer: 71,
+  PurchaseAncestorSlot: 72,
+  KeepAncestor: 73,
+  ReleaseAncestor: 74,
+  AssignCharacterSlot: 75,
 } as const;
 
 export type CommandTypeName = keyof typeof CommandType;
