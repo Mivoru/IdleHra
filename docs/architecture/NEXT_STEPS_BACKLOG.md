@@ -781,11 +781,11 @@ validation DISCONNECTED the player - over a command with no effect to protect.
 ## How to verify a gameplay change
 
 `client_web/scripts/exercise.mjs` drives every interactive feature against a
-real server, database and browser and asserts the world CHANGED. **51/51 as of
-2026-08-06**, including the inheritance purchase. Needs Postgres, the server
-with `--seed-dev`, and vite on 5173.
+real server, database and browser and asserts the world CHANGED. **58/58 as of
+2026-08-09**, including the inheritance purchase and marrying a villager. Needs
+Postgres, the server with `--seed-dev`, and vite on 5173.
 
-Server suite: **341/341**. Client: **192/192**. Run the server suite with NO
+Server suite: **480/480**. Client: **238**. Run the server suite with NO
 filter - see the section on the red suite for why that sentence is here.
 
 Read the last line of its output, not the last check: a Playwright call that
