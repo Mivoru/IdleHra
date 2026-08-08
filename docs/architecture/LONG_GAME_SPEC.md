@@ -529,15 +529,33 @@ first two days are not dead, bad enough to want better.
 
 ---
 
-# 6. Build order
+# 6. Build order and where it stands
 
-1. **Book of Deeds chapter I + the toast.** It is the onboarding fix, and it is
-   the largest impact for the least work in this document.
-2. **Ring 2 of the skill tree** (10 nodes) **+ the respec gate.**
-3. **Breeding aptitudes**, inheritance, mutation, inbreeding degradation.
-4. **Villager arrival**, Inn-scaled quality, population cap, Hall of Ancestors.
-5. **Crowns** (5 keystones). The most work - each is its own mechanic.
-6. **Chapters II-V and Seals -> skill points.**
+1. **DONE - the achievement toast.** One byte, `AchievementTierTotal`, computed
+   at broadcast from counters the payload already carried.
+2. **DONE - Book of Deeds chapter I.** Six deeds with live counters on the
+   Progress screen. **Rewards not built**: no Seal, no Common tools. Every deed
+   reads a field already on the wire, which is why it shipped without a packet
+   change.
+3. **DONE - rings 2 and 3 of the tree, plus the respec gate.** Structure,
+   exclusion, prerequisites, the drawing, the season reset that was missing.
+   - **8 of 15 new nodes have their effect wired**: Rarity, First Blood, Guile,
+     Bloodthirst, Fortitude, Harvest, Double Strike, Scholar.
+   - **7 do not, and are blocked from purchase** by
+     `SkillTreeRegistry.EffectPending`: Plenty, Trophy Hunter, Relentless,
+     Craft, Golden Fleece, Thunderer, Last Stand. Delete an entry there **in
+     the same commit that wires its effect**, never before.
+   - The respec **gate** works; the **purchase flow does not exist** and
+     `PaidRespecGrants` has nothing that increments it yet.
+4. **NOT STARTED - breeding aptitudes**, weighted parental inheritance,
+   mutation, inbreeding degradation.
+5. **NOT STARTED - villager arrival**, Inn-scaled quality, population cap, Hall
+   of Ancestors.
+6. **NOT STARTED - chapters II-V and Seals -> skill points.**
+
+The four things that are half-built are listed above rather than left implicit,
+because a half-built system that looks finished is how this project has shipped
+its worst defects.
 
 # 7. Balance: deliberately left alone
 
