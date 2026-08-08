@@ -221,6 +221,25 @@ namespace FolkIdle.Server.Engine
                     await db.SaveChangesAsync(stoppingToken); // save ledgers per chunk to avoid memory bloat
                 }
 
+                // Modul: AND WHAT THE SEASON'S PLACING WAS WORTH.
+                //
+                // Everything above pays out for what a player ACCUMULATED -
+                // gold, levels, gear. This pays for where they FINISHED, which
+                // is a different thing and the only reason a leaderboard is
+                // worth looking at twice.
+                //
+                // Ranked by the same rule the live board uses, and for the
+                // same reason: a season that ends on a different ordering than
+                // the one players watched all season is a broken promise.
+                // Level first, then the hardest monster they ever put down,
+                // then how many times.
+                //
+                // One query, not one per player: this runs inside the era
+                // transition with every client disconnected, but a per-player
+                // round trip over the whole roster is how a five-minute
+                // maintenance window becomes an hour.
+                await AwardPlacementRewardsAsync(db, closedEraId, stoppingToken);
+
                 // Bulk Updates & Truncations within the same transaction
                 // Modul: Play Mode audit fix. EquippedWeaponId/ArmorId/
                 // LeggingsId were never cleared here even though the
@@ -296,6 +315,87 @@ namespace FolkIdle.Server.Engine
                 Console.WriteLine($"SEASONAL RESET FAILURE - EraId {closedEraId}: {ex}");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Ranks the whole roster the way the live leaderboard does and pays
+        /// the placement table into PremiumDiamonds.
+        ///
+        /// Diamonds rather than gold or shards - see SeasonPlacementRewards
+        /// for why. In short: gold is wiped at the rollover and shards have no
+        /// shop, so neither can be a prize.
+        /// </summary>
+        internal static async Task AwardPlacementRewardsAsync(
+            FolkIdleDbContext db,
+            int closedEraId,
+            CancellationToken stoppingToken)
+        {
+            // The same ordering as LeaderboardCronEngine, expressed against
+            // the same tables. Quarantined accounts are excluded there and are
+            // excluded here: a season they were not simulating is not a season
+            // they placed in.
+            var standings = await db.Database
+                .SqlQueryRaw<PlacementRow>(@"
+                    SELECT p.""Id"" AS ""PlayerId""
+                    FROM ""PlayerRecords"" p
+                    LEFT JOIN LATERAL (
+                        SELECT c.""MonsterId"", c.""KillCount""
+                        FROM ""monster_codex_entries"" c
+                        WHERE c.""PlayerId"" = p.""Id"" AND c.""KillCount"" >= 1
+                        ORDER BY c.""MonsterId"" DESC
+                        LIMIT 1
+                    ) m ON TRUE
+                    WHERE NOT p.""IsQuarantined"" AND NOT p.""Quarantine_Active""
+                    ORDER BY p.""CurrentLevel"" DESC,
+                             COALESCE(m.""MonsterId"", 0) DESC,
+                             COALESCE(m.""KillCount"", 0) DESC")
+                .ToListAsync(stoppingToken);
+
+            if (standings.Count == 0)
+            {
+                return;
+            }
+
+            // Grouped by reward so the whole roster costs a handful of
+            // statements rather than one per player.
+            var byReward = new Dictionary<int, List<long>>();
+            for (int i = 0; i < standings.Count; i++)
+            {
+                int diamonds = SeasonPlacementRewards.DiamondsForRank(i + 1);
+                if (diamonds <= 0) continue;
+
+                if (!byReward.TryGetValue(diamonds, out var bucket))
+                {
+                    bucket = new List<long>();
+                    byReward[diamonds] = bucket;
+                }
+                bucket.Add(standings[i].PlayerId);
+            }
+
+            foreach (var (diamonds, playerIds) in byReward)
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    @"UPDATE ""PlayerRecords"" SET ""PremiumDiamonds"" = ""PremiumDiamonds"" + {0}
+                      WHERE ""Id"" = ANY({1})",
+                    new object[] { diamonds, playerIds.ToArray() },
+                    stoppingToken);
+            }
+
+            // The top of the board is worth saying out loud - it is the one
+            // moment in a season where a name means something to everyone else.
+            for (int i = 0; i < standings.Count && i < 3; i++)
+            {
+                string who = await PlayerNameResolver.GetAsync(standings[i].PlayerId);
+                Domain.Social.ChatEngine.EnqueueSystemAnnouncement(
+                    $"Season {closedEraId} is over. {who} finished #{i + 1} " +
+                    $"({SeasonPlacementRewards.BandNameForRank(i + 1)}). Congratulations!");
+            }
+        }
+
+        /// <summary>One player's final standing, straight off the query.</summary>
+        public sealed class PlacementRow
+        {
+            public long PlayerId { get; set; }
         }
 
         public static int CalculateLegacyShards(long totalGold, long characterLevelSquareSum, long inventoryScore)
