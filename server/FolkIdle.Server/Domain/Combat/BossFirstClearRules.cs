@@ -1,3 +1,4 @@
+using System;
 using FolkIdle.Server.Engine;
 
 namespace FolkIdle.Server.Domain.Combat
@@ -77,11 +78,27 @@ namespace FolkIdle.Server.Domain.Combat
         /// health bar jumping when a player switches targets and comes back.
         /// </summary>
         public static long MaxHpFor(byte defeatedMask, int monsterId)
+            => MaxHpFor(defeatedMask, monsterId, firstBloodLevel: 0);
+
+        /// <summary>
+        /// The same, softened by First Blood - the Giantslayer bough.
+        ///
+        /// It reduces the PENALTY, never the boss: at level 8 the 5x multiplier
+        /// becomes about 3.4x, and no amount of investment can take it below
+        /// 1x. Softening the wall is the reward; removing it would delete the
+        /// mechanic the wall exists for.
+        /// </summary>
+        public static long MaxHpFor(byte defeatedMask, int monsterId, int firstBloodLevel)
         {
             long baseHp = ContentRegistry.GetScaledMonsterMaxHp(monsterId);
-            return IsFirstClearPending(defeatedMask, monsterId)
-                ? baseHp * FirstClearHpMultiplier
-                : baseHp;
+            if (!IsFirstClearPending(defeatedMask, monsterId)) return baseHp;
+
+            float penalty = FirstClearHpMultiplier - 1f;
+            float relief = Engine.SkillTreeRegistry.GetBonusPercent(
+                Engine.SkillTreeRegistry.BoughFirstBlood, firstBloodLevel) / 100f;
+            float softened = 1f + penalty * Math.Max(0f, 1f - relief);
+
+            return (long)Math.Max(baseHp, baseHp * softened);
         }
 
         public static long AttackPowerFor(byte defeatedMask, int monsterId)

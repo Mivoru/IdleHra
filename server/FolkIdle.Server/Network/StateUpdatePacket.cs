@@ -580,6 +580,27 @@ namespace FolkIdle.Server.Network
         public byte SkillTree_CritDamage;
         public byte SkillTree_XpGain;
 
+        // Modul: rings two and three, ten boughs then five crowns, in
+        // SkillTreeRegistry id order (5-19). The client draws locks and
+        // prerequisites from these, so it needs all of them and not just the
+        // ones the player took - a fork whose untaken side is invisible is a
+        // fork nobody can plan against.
+        public byte SkillTree_Plenty;
+        public byte SkillTree_Rarity;
+        public byte SkillTree_FirstBlood;
+        public byte SkillTree_TrophyHunter;
+        public byte SkillTree_Guile;
+        public byte SkillTree_Relentless;
+        public byte SkillTree_Bloodthirst;
+        public byte SkillTree_Fortitude;
+        public byte SkillTree_Craft;
+        public byte SkillTree_Harvest;
+        public byte SkillTree_GoldenFleece;
+        public byte SkillTree_Thunderer;
+        public byte SkillTree_DoubleStrike;
+        public byte SkillTree_LastStand;
+        public byte SkillTree_Scholar;
+
         // Modul: THE ONE BYTE AN ACHIEVEMENT TOAST NEEDS.
         //
         // Achievements reach the client over REST - /achievements/snapshot for

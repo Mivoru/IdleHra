@@ -116,16 +116,18 @@ describe('the numbers the client mirrors still match the server', () => {
     );
   });
 
-  // Modul: found while drawing the skill tree - the branch table is a TENTH
+  // Modul: found while drawing the skill tree - the node table is a TENTH
   // mirror nobody had noticed. The client carries a per-level figure for each
-  // of the five branches purely so the panel can say "+3.0% for 2 points"
-  // before the point is spent, and the server carries the same numbers as
-  // tenths of a percent. Nothing held them together.
-  it('skill tree: the per-level figure of every branch', () => {
+  // node purely so the panel can say "+3.0% for 2 points" before the point is
+  // spent, and the server carries the same numbers as tenths of a percent.
+  // Nothing held them together.
+  //
+  // Twenty of them now, not five: the tree grew boughs and crowns, and each
+  // one is another chance for the two tables to drift.
+  it('skill tree: the per-level figure of every node', () => {
     const registry = read(serverRoot, 'Engine', 'SkillTreeRegistry.cs');
     const commands = read(clientRoot, 'lib', 'net', 'commands.ts');
 
-    // TenthsOfPercentPerLevel = { 10, 20, 4, 30, 4 }
     // The C# table is a multi-line array with a trailing comment per entry, so
     // the numbers are pulled line by line rather than by splitting one string.
     const block = registry
@@ -133,23 +135,55 @@ describe('the numbers the client mirrors still match the server', () => {
       .split('};')[0];
     const tenths = [...block.matchAll(/^\s*(\d+),/gm)].map((m) => Number(m[1]));
 
-    expect(tenths).toHaveLength(5);
+    expect(tenths).toHaveLength(20);
 
     const clientPerLevel = [...commands.matchAll(/perLevel: ([\d.]+)/g)].map((m) => Number(m[1]));
-    expect(clientPerLevel).toHaveLength(5);
+    expect(clientPerLevel).toHaveLength(20);
 
-    for (let branch = 0; branch < 5; branch++) {
-      expect(clientPerLevel[branch], `branch ${branch}`).toBeCloseTo(tenths[branch] / 10, 5);
+    // Crowns are qualitative - the server's number is a magnitude the client
+    // never renders as a per-level rate, so it carries 0 on purpose. Only the
+    // fifteen scaling nodes have to agree.
+    for (let node = 0; node < 15; node++) {
+      expect(clientPerLevel[node], `node ${node}`).toBeCloseTo(tenths[node] / 10, 5);
+    }
+    for (let node = 15; node < 20; node++) {
+      expect(clientPerLevel[node], `crown ${node} must not claim a per-level rate`).toBe(0);
     }
   });
 
-  it('skill tree: the level cap', () => {
+  it('skill tree: the three caps and the two prices', () => {
     const registry = read(serverRoot, 'Engine', 'SkillTreeRegistry.cs');
     const commands = read(clientRoot, 'lib', 'net', 'commands.ts');
 
-    expect(num(commands, /SKILL_TREE_MAX_LEVEL = (\d+)/, 'client cap')).toBe(
-      num(registry, /MaxLevel = (\d+)/, 'server cap'),
-    );
+    const pairs: [RegExp, RegExp, string][] = [
+      [/SKILL_TREE_ROOT_MAX = (\d+)/, /RootMaxLevel = (\d+)/, 'root cap'],
+      [/SKILL_TREE_BOUGH_MAX = (\d+)/, /BoughMaxLevel = (\d+)/, 'bough cap'],
+      [/SKILL_TREE_CROWN_MAX = (\d+)/, /CrownMaxLevel = (\d+)/, 'crown cap'],
+      [/SKILL_TREE_BOUGH_COST = (\d+)/, /BoughCostPerLevel = (\d+)/, 'bough price'],
+      [/SKILL_TREE_CROWN_COST = (\d+)/, /CrownCost = (\d+)/, 'crown price'],
+      [/SKILL_TREE_BOUGH_NEEDS_ROOT = (\d+)/, /BoughRequiresRootLevel = (\d+)/, 'bough gate'],
+      [/SKILL_TREE_CROWN_NEEDS_BOUGH = (\d+)/, /CrownRequiresBoughLevel = (\d+)/, 'crown gate'],
+    ];
+
+    for (const [clientPattern, serverPattern, what] of pairs) {
+      expect(num(commands, clientPattern, `client ${what}`), what).toBe(
+        num(registry, serverPattern, `server ${what}`),
+      );
+    }
+  });
+
+  // The exclusion rule is the one thing in the tree a player can permanently
+  // get wrong, so the two id layouts must agree on which nodes are a pair.
+  it('skill tree: both sides agree where the boughs and crowns start', () => {
+    const registry = read(serverRoot, 'Engine', 'SkillTreeRegistry.cs');
+    const commands = read(clientRoot, 'lib', 'net', 'commands.ts');
+
+    expect(num(registry, /FirstBoughId = (\d+)/, 'server first bough')).toBe(5);
+    expect(num(registry, /FirstCrownId = (\d+)/, 'server first crown')).toBe(15);
+
+    // The client hard-codes the same boundaries inside skillRingOf.
+    expect(commands).toMatch(/if \(nodeId >= 15\) return 'crown';/);
+    expect(commands).toMatch(/if \(nodeId >= 5\) return 'bough';/);
   });
 
   it('combat: the first-clear boss multiplier', () => {

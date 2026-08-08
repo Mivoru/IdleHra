@@ -24,15 +24,22 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void Test_SkillTree_ASeasonBuysTwoBranchesDeepOrFiveShallow()
         {
-            int fullBranch = SkillTreeRegistry.TotalCostForFullBranch();
-            int everything = fullBranch * SkillTreeRegistry.BranchCount;
+            // A LIMB, not a bare branch. The tree grew two rings above the
+            // roots, and measuring only the root would be measuring the
+            // cheapest third of what a player actually buys.
+            int fullBranch = SkillTreeRegistry.TotalCostForFullLimb(SkillTreeRegistry.BranchLootRarity);
+            int everything = 0;
+            for (int root = 0; root < SkillTreeRegistry.RootCount; root++)
+            {
+                everything += SkillTreeRegistry.TotalCostForFullLimb(root);
+            }
 
             // A season is a hundred levels, so a hundred points.
             const int pointsPerSeason = 100;
 
-            _output.WriteLine($"one branch to cap: {fullBranch} points");
-            _output.WriteLine($"all five branches: {everything} points");
-            _output.WriteLine($"a season pays:     {pointsPerSeason} points");
+            _output.WriteLine($"one limb to cap:  {fullBranch} points");
+            _output.WriteLine($"all five limbs:   {everything} points");
+            _output.WriteLine($"a season pays:    {pointsPerSeason} points");
 
             // THE CHOICE HAS TO BE REAL. If a season paid for everything the
             // tree would be a formality with a delay on it, and if it paid for
@@ -51,11 +58,11 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(1, SkillTreeRegistry.GetUpgradeCost(0));
             Assert.Equal(1, SkillTreeRegistry.GetUpgradeCost(4));
             Assert.Equal(2, SkillTreeRegistry.GetUpgradeCost(5));
-            Assert.Equal(4, SkillTreeRegistry.GetUpgradeCost(19));
+            Assert.Equal(2, SkillTreeRegistry.GetUpgradeCost(9));
 
             // Nothing costs anything past the cap, and nothing is free below it.
-            Assert.Equal(0, SkillTreeRegistry.GetUpgradeCost(SkillTreeRegistry.MaxLevel));
-            for (int level = 0; level < SkillTreeRegistry.MaxLevel; level++)
+            Assert.Equal(0, SkillTreeRegistry.GetUpgradeCost(SkillTreeRegistry.RootMaxLevel));
+            for (int level = 0; level < SkillTreeRegistry.RootMaxLevel; level++)
             {
                 Assert.True(SkillTreeRegistry.GetUpgradeCost(level) > 0);
             }
@@ -67,12 +74,14 @@ namespace FolkIdle.Server.Tests
             _output.WriteLine("branch                  at cap");
             for (int branch = 0; branch < SkillTreeRegistry.BranchCount; branch++)
             {
-                float atCap = SkillTreeRegistry.GetBonusPercent(branch, SkillTreeRegistry.MaxLevel);
+                float atCap = SkillTreeRegistry.GetBonusPercent(branch, SkillTreeRegistry.RootMaxLevel);
                 _output.WriteLine($"{SkillTreeRegistry.GetName(branch),-20} {atCap,7:F1}%");
 
                 // The brief, checked: tens of percent for a whole season in one
                 // branch. Nothing here may double anything.
-                Assert.InRange(atCap, 5.0f, 60.0f);
+                // Halved with the cap: the ceiling moved up into the boughs
+                // and crowns, which SkillTreeRingTests covers.
+                Assert.InRange(atCap, 2.0f, 30.0f);
             }
         }
 
@@ -91,9 +100,9 @@ namespace FolkIdle.Server.Tests
             const float baseCritMultiplier = 1.5f;
 
             float treeChance = baseCritChance
-                + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritChance, SkillTreeRegistry.MaxLevel);
+                + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritChance, SkillTreeRegistry.RootMaxLevel);
             float treeMultiplier = baseCritMultiplier
-                + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritDamage, SkillTreeRegistry.MaxLevel) / 100f);
+                + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritDamage, SkillTreeRegistry.RootMaxLevel) / 100f);
 
             double before = 1.0 + (baseCritChance / 100.0) * (baseCritMultiplier - 1.0);
             double after = 1.0 + (treeChance / 100.0) * (treeMultiplier - 1.0);
@@ -105,7 +114,7 @@ namespace FolkIdle.Server.Tests
             // Tens of percent, not a multiple. The mechanic this replaced was
             // +90% and it was reached by clicking rather than by spending a
             // season, which is the whole distinction.
-            Assert.InRange(gain, 0.05, 0.40);
+            Assert.InRange(gain, 0.02, 0.40);
         }
 
         [Fact]
@@ -114,10 +123,10 @@ namespace FolkIdle.Server.Tests
             // Insight is the only branch that shortens the season directly, so
             // it is the one where a generous number would undo the curve
             // without appearing to touch it.
-            float atCap = SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchXpGain, SkillTreeRegistry.MaxLevel);
+            float atCap = SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchXpGain, SkillTreeRegistry.RootMaxLevel);
 
             _output.WriteLine($"a season of Insight shortens the next one by {atCap:F1}%");
-            Assert.InRange(atCap, 2.0f, 12.0f);
+            Assert.InRange(atCap, 1.0f, 12.0f);
         }
 
         [Fact]
@@ -135,8 +144,8 @@ namespace FolkIdle.Server.Tests
                 // Past the cap pays no more than at it - a level 40 row written
                 // by hand into the database must not pay double.
                 Assert.Equal(
-                    SkillTreeRegistry.GetBonusTenthsOfPercent(branch, SkillTreeRegistry.MaxLevel),
-                    SkillTreeRegistry.GetBonusTenthsOfPercent(branch, SkillTreeRegistry.MaxLevel * 2));
+                    SkillTreeRegistry.GetBonusTenthsOfPercent(branch, SkillTreeRegistry.RootMaxLevel),
+                    SkillTreeRegistry.GetBonusTenthsOfPercent(branch, SkillTreeRegistry.RootMaxLevel * 2));
 
                 Assert.Equal(0, SkillTreeRegistry.GetBonusTenthsOfPercent(branch, 0));
             }

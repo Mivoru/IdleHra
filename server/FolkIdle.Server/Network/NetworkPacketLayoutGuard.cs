@@ -125,7 +125,11 @@ namespace FolkIdle.Server.Network
         // Modul: achievement toast, 747 -> 748. AchievementTierTotal (1 byte) -
         // achievements travel over REST and the client had no push signal at
         // all, so a tier could be crossed and nothing on screen would say so.
-        public const int ExpectedStateUpdateSize = 748;
+        //
+        // Modul: skill tree rings 2 and 3, 748 -> 763. Ten boughs and five
+        // crowns, one byte each. See SkillTreeRegistry for why the tree grew
+        // rings at all - the flat version was an ordering, not a choice.
+        public const int ExpectedStateUpdateSize = 763;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

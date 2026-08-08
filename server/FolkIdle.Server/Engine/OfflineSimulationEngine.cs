@@ -129,6 +129,23 @@ namespace FolkIdle.Server.Engine
             long effectiveMaxOfflineSeconds = RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(payload.VodnikMasteryLevel, MaxOfflineSeconds);
             long elapsedSeconds = Math.Min(effectiveMaxOfflineSeconds, rawDeltaSeconds);
 
+            // Modul: Scholar, the Insight crown - everything earned while away
+            // comes in a quarter faster.
+            //
+            // A SEPARATE NUMBER from elapsedSeconds, deliberately. Inflating
+            // the elapsed time itself would also age the character faster and
+            // would make the morning card report a night longer than the one
+            // the player actually slept. What Scholar buys is the RATE, so
+            // only the projections read this; aging, the overflow bank and
+            // OfflineElapsedSeconds all keep the honest number.
+            long earningSeconds = elapsedSeconds;
+            if (payload.Skill_Scholar > 0)
+            {
+                float bonus = SkillTreeRegistry.GetBonusPercent(
+                    SkillTreeRegistry.CrownScholar, payload.Skill_Scholar) / 100f;
+                earningSeconds = (long)(elapsedSeconds * (1f + bonus));
+            }
+
             // Modul: active (Slot1) character aging for the offline period,
             // mirroring SimulationEngine.ProcessAgeSlot's exact thresholds
             // (36000/72000/108000 AgeTicks) and its 10-AgeTicks-per-real-second
@@ -146,7 +163,7 @@ namespace FolkIdle.Server.Engine
                 else payload.Slot1_AgePhase = 0;
             }
 
-            await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.QuarryLevel, payload.MineLevel, payload.WarehouseLevel, payload.TownHallLevel, elapsedSeconds);
+            await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.QuarryLevel, payload.MineLevel, payload.WarehouseLevel, payload.TownHallLevel, earningSeconds);
 
             // Modul: Phase - Full-Stack Production Polish, Part 1.1 (Offline
             // "Welcome Back" flow). Captured before the projection branches
@@ -189,12 +206,12 @@ namespace FolkIdle.Server.Engine
 
                     if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out GatheringNodeDefinition gatheringNode))
                     {
-                        LootProjection projection = CalculateGatheringProjection(ref payload, gatheringNode, elapsedSeconds);
+                        LootProjection projection = CalculateGatheringProjection(ref payload, gatheringNode, earningSeconds);
                         slotDrops += await GrantProjectedLootAsync(db, payload.PlayerId, projection, MaxOfflineLootRolls);
                     }
                     else if (payload.ActiveActivityId > 0)
                     {
-                        LootProjection projection = CalculateCombatProjection(ref payload, elapsedSeconds);
+                        LootProjection projection = CalculateCombatProjection(ref payload, earningSeconds);
                         if (projection.IsValid)
                         {
                             slotDrops += projection.EquipmentDropsGranted;
@@ -387,7 +404,10 @@ namespace FolkIdle.Server.Engine
                 _ => 0
             };
             int requiredTicks = Domain.Shared.GatheringToolEngine.ComputeRequiredTicks(
-                node.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel, payload.ToolGatherSpeedPct);
+                node.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel,
+                payload.ToolGatherSpeedPct
+                + SkillTreeRegistry.GetBonusTenthsOfPercent(
+                    SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10);
 
             double actionIntervalSeconds = requiredTicks / 10.0;
             double totalActionsDouble = elapsedSeconds / actionIntervalSeconds;
@@ -509,6 +529,10 @@ namespace FolkIdle.Server.Engine
             long baseMilliHp = 100000L;
             long effectiveMilliHp = baseMilliHp + (baseMilliHp * lineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.MaxHp * 1000L);
             effectiveMilliHp += effectiveMilliHp * InheritanceRegistry.GetBonusPct(payload.Inherit_MaxHp) / 100L;
+            // Modul: Fortitude, the Cruelty bough - more health, layered the
+            // same additive-percent way inheritance is just above.
+            effectiveMilliHp += effectiveMilliHp * (long)SkillTreeRegistry.GetBonusTenthsOfPercent(
+                SkillTreeRegistry.BoughFortitude, payload.Skill_Fortitude) / 1000L;
 
             double effectiveElapsedSeconds = elapsedSeconds;
             if (expectedIncomingMilliDps > 0.0)

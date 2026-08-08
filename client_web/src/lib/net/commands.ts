@@ -988,47 +988,164 @@ export function claimBattlePassMilestone(milestoneIndex: number, quarantined: bo
  * Mirrors the server table rather than restating it: the magnitudes below are
  * SkillTreeRegistry's, and the cost curve is its GetUpgradeCost.
  */
-export const SKILL_TREE_MAX_LEVEL = 20;
+export const SKILL_TREE_ROOT_MAX = 10;
+export const SKILL_TREE_BOUGH_MAX = 8;
+export const SKILL_TREE_CROWN_MAX = 1;
+export const SKILL_TREE_BOUGH_COST = 2;
+export const SKILL_TREE_CROWN_COST = 12;
+export const SKILL_TREE_BOUGH_NEEDS_ROOT = 5;
+export const SKILL_TREE_CROWN_NEEDS_BOUGH = 5;
 
-export const SKILL_TREE_BRANCHES: readonly {
+/** Kept as the old name for the root cap, which is all any caller meant. */
+export const SKILL_TREE_MAX_LEVEL = SKILL_TREE_ROOT_MAX;
+
+export type SkillRing = 'root' | 'bough' | 'crown';
+
+export const SKILL_TREE_NODES: readonly {
   id: number;
+  ring: SkillRing;
+  /** The root this node hangs from; itself for a root. */
+  root: number;
   name: string;
   blurb: string;
   /** Percent added per level. Crit chance is percentage POINTS. */
   perLevel: number;
-  unit: 'pct' | 'points';
+  unit: 'pct' | 'points' | 'special';
 }[] = [
-  { id: 0, name: 'Fortune', blurb: 'Better rarity on what drops. Not more loot - better loot.', perLevel: 1.0, unit: 'pct' },
-  { id: 1, name: 'Giantslayer', blurb: 'Every blow against a world boss lands harder.', perLevel: 2.0, unit: 'pct' },
-  { id: 2, name: 'Precision', blurb: 'More of your hits are critical ones.', perLevel: 0.4, unit: 'points' },
-  { id: 3, name: 'Cruelty', blurb: 'Your critical hits take a larger bite.', perLevel: 3.0, unit: 'pct' },
-  { id: 4, name: 'Insight', blurb: 'Levels arrive sooner, which is the slowest part of a season.', perLevel: 0.4, unit: 'pct' },
+  // roots
+  { id: 0, ring: 'root', root: 0, name: 'Fortune', blurb: 'Better rarity on what drops. Not more loot - better loot.', perLevel: 1.0, unit: 'pct' },
+  { id: 1, ring: 'root', root: 1, name: 'Giantslayer', blurb: 'Every blow against a world boss lands harder.', perLevel: 2.0, unit: 'pct' },
+  { id: 2, ring: 'root', root: 2, name: 'Precision', blurb: 'More of your hits are critical ones.', perLevel: 0.4, unit: 'points' },
+  { id: 3, ring: 'root', root: 3, name: 'Cruelty', blurb: 'Your critical hits take a larger bite.', perLevel: 3.0, unit: 'pct' },
+  { id: 4, ring: 'root', root: 4, name: 'Insight', blurb: 'Levels arrive sooner, which is the slowest part of a season.', perLevel: 0.4, unit: 'pct' },
+
+  // boughs, two per root - only ONE of each pair may ever be levelled
+  { id: 5, ring: 'bough', root: 0, name: 'Plenty', blurb: 'Materials drop in bigger stacks. Crafting eats stacks.', perLevel: 1.5, unit: 'pct' },
+  { id: 6, ring: 'bough', root: 0, name: 'Rarity', blurb: 'A drop has a chance to roll one rarity higher than it should.', perLevel: 1.0, unit: 'pct' },
+  { id: 7, ring: 'bough', root: 1, name: 'First Blood', blurb: 'A boss you have never beaten is less monstrous the first time.', perLevel: 4.0, unit: 'pct' },
+  { id: 8, ring: 'bough', root: 1, name: 'Trophy Hunter', blurb: 'Bosses pay more gold, and always leave a material behind.', perLevel: 2.5, unit: 'pct' },
+  { id: 9, ring: 'bough', root: 2, name: 'Guile', blurb: 'Critical hits bite deeper still.', perLevel: 3.0, unit: 'pct' },
+  { id: 10, ring: 'bough', root: 2, name: 'Relentless', blurb: 'You swing faster. Everything else scales off how often you hit.', perLevel: 1.0, unit: 'pct' },
+  { id: 11, ring: 'bough', root: 3, name: 'Bloodthirst', blurb: 'A share of the damage you deal comes back as health - food you never had to cook.', perLevel: 0.5, unit: 'pct' },
+  { id: 12, ring: 'bough', root: 3, name: 'Fortitude', blurb: 'More health and more armour. The difference between a wall and a grind.', perLevel: 2.0, unit: 'pct' },
+  { id: 13, ring: 'bough', root: 4, name: 'Craft', blurb: 'Crafting finishes sooner, and sometimes costs you nothing.', perLevel: 2.5, unit: 'pct' },
+  { id: 14, ring: 'bough', root: 4, name: 'Harvest', blurb: 'Gathering finishes sooner, and sometimes yields twice.', perLevel: 2.0, unit: 'pct' },
+
+  // crowns, one per root
+  { id: 15, ring: 'crown', root: 0, name: 'Golden Fleece', blurb: 'Every hundredth kill drops an item two rarity tiers above its due.', perLevel: 0, unit: 'special' },
+  { id: 16, ring: 'crown', root: 1, name: 'Thunderer', blurb: 'You open a boss fight with a free blow at five times your weapon.', perLevel: 0, unit: 'special' },
+  { id: 17, ring: 'crown', root: 2, name: 'Double Strike', blurb: 'A critical hit has a chance to land a second time.', perLevel: 0, unit: 'special' },
+  { id: 18, ring: 'crown', root: 3, name: 'Last Stand', blurb: 'Once an hour, the blow that would kill you leaves you at one health.', perLevel: 0, unit: 'special' },
+  { id: 19, ring: 'crown', root: 4, name: 'Scholar', blurb: 'Everything you earn while away comes in a quarter faster.', perLevel: 0, unit: 'special' },
 ];
 
-/** SkillTreeRegistry.GetUpgradeCost - five levels at each price. */
-export function skillTreeUpgradeCost(currentLevel: number): number {
-  if (currentLevel < 0 || currentLevel >= SKILL_TREE_MAX_LEVEL) return 0;
-  return Math.floor(currentLevel / 5) + 1;
+/** Kept for anything that still only wants the five roots. */
+export const SKILL_TREE_BRANCHES = SKILL_TREE_NODES.filter((n) => n.ring === 'root');
+
+/**
+ * Nodes whose EFFECT is not wired up on the server yet.
+ *
+ * Mirrors SkillTreeRegistry.EffectPending, and exists for the same reason: a
+ * player must never spend a real resource on a bonus that quietly does
+ * nothing. This codebase has shipped that defect more than once - crafting
+ * that granted nothing, loot that went dead after twenty kills, gather-speed
+ * affixes computed and never read. All of them looked finished.
+ *
+ * Remove an id here in the same commit that wires its effect, never before.
+ */
+export const SKILL_TREE_EFFECT_PENDING: readonly number[] = [5, 8, 10, 13, 15, 16, 18];
+
+export function isSkillEffectPending(nodeId: number): boolean {
+  return SKILL_TREE_EFFECT_PENDING.includes(nodeId);
+}
+
+export function skillRingOf(nodeId: number): SkillRing {
+  if (nodeId >= 15) return 'crown';
+  if (nodeId >= 5) return 'bough';
+  return 'root';
+}
+
+export function skillNodeMaxLevel(nodeId: number): number {
+  const ring = skillRingOf(nodeId);
+  if (ring === 'root') return SKILL_TREE_ROOT_MAX;
+  if (ring === 'bough') return SKILL_TREE_BOUGH_MAX;
+  return SKILL_TREE_CROWN_MAX;
+}
+
+/** The other bough on the same fork - the one taking this node locks. */
+export function siblingBoughOf(nodeId: number): number {
+  if (skillRingOf(nodeId) !== 'bough') return -1;
+  const offset = nodeId - 5;
+  return 5 + (offset % 2 === 0 ? offset + 1 : offset - 1);
+}
+
+export function boughsOfRoot(rootId: number): [number, number] {
+  return [5 + rootId * 2, 6 + rootId * 2];
+}
+
+export function crownOfRoot(rootId: number): number {
+  return 15 + rootId;
+}
+
+/** SkillTreeRegistry.GetUpgradeCost. */
+export function skillTreeUpgradeCost(nodeId: number, currentLevel: number): number {
+  if (currentLevel < 0 || currentLevel >= skillNodeMaxLevel(nodeId)) return 0;
+  const ring = skillRingOf(nodeId);
+  if (ring === 'root') return Math.floor(currentLevel / 5) + 1;
+  if (ring === 'bough') return SKILL_TREE_BOUGH_COST;
+  return SKILL_TREE_CROWN_COST;
+}
+
+/**
+ * Mirrors SkillTreeRegistry.BlockedReason.
+ *
+ * A REASON rather than a bool, because every one of these is something the
+ * player needs told. A node greyed out without a cause is a node nobody can
+ * plan against, and four of the five reasons here are recoverable.
+ */
+export function skillNodeBlockedReason(
+  nodeId: number,
+  levels: readonly number[],
+  availablePoints: number,
+): string | null {
+  const node = SKILL_TREE_NODES.find((n) => n.id === nodeId);
+  if (!node) return 'No such skill.';
+
+  if (isSkillEffectPending(nodeId)) return 'Not in the game yet - coming soon.';
+
+  const level = levels[nodeId] ?? 0;
+  if (level >= skillNodeMaxLevel(nodeId)) return 'Already at its limit.';
+
+  if (node.ring === 'bough') {
+    if ((levels[node.root] ?? 0) < SKILL_TREE_BOUGH_NEEDS_ROOT) {
+      return `Needs ${SKILL_TREE_NODES[node.root].name} at ${SKILL_TREE_BOUGH_NEEDS_ROOT}.`;
+    }
+    const sibling = siblingBoughOf(nodeId);
+    if ((levels[sibling] ?? 0) > 0) {
+      return `${SKILL_TREE_NODES[sibling].name} was taken instead. One branch per fork.`;
+    }
+  } else if (node.ring === 'crown') {
+    const [a, b] = boughsOfRoot(node.root);
+    if (Math.max(levels[a] ?? 0, levels[b] ?? 0) < SKILL_TREE_CROWN_NEEDS_BOUGH) {
+      return `Needs a branch of ${SKILL_TREE_NODES[node.root].name} at ${SKILL_TREE_CROWN_NEEDS_BOUGH}.`;
+    }
+  }
+
+  const cost = skillTreeUpgradeCost(nodeId, level);
+  if (availablePoints < cost) return `Costs ${cost} points; you have ${availablePoints}.`;
+
+  return null;
 }
 
 export function purchaseSkillTreeLevel(
-  branchId: number,
-  currentLevel: number,
+  nodeId: number,
+  levels: readonly number[],
   availablePoints: number,
 ): CommandOutcome {
-  if (!SKILL_TREE_BRANCHES.some((b) => b.id === branchId)) {
-    return refuse('Unknown branch.');
-  }
-  if (currentLevel >= SKILL_TREE_MAX_LEVEL) {
-    return refuse('That branch is already at its maximum.');
-  }
+  const blocked = skillNodeBlockedReason(nodeId, levels, availablePoints);
+  if (blocked) return refuse(blocked);
 
-  const cost = skillTreeUpgradeCost(currentLevel);
-  if (availablePoints < cost) {
-    return refuse(`Needs ${cost} skill point${cost === 1 ? '' : 's'}; you have ${availablePoints}.`);
-  }
-
-  connection.send({ Command: CommandType.PurchaseSkillTreeLevel, TargetId: branchId });
+  connection.send({ Command: CommandType.PurchaseSkillTreeLevel, TargetId: nodeId });
   return OK;
 }
 

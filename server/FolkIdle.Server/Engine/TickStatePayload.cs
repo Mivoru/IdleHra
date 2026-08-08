@@ -309,6 +309,30 @@ namespace FolkIdle.Server.Engine
         public byte Skill_CritChance;
         public byte Skill_CritDamage;
         public byte Skill_XpGain;
+
+        // Modul: RINGS TWO AND THREE. Ten boughs and five crowns, one byte
+        // each, in SkillTreeRegistry id order (5-19) so the ids index this
+        // block directly.
+        //
+        // Fifteen named fields rather than an array for the same reason the
+        // five above are: this struct is blitted, and C# has no blittable
+        // array short of an unsafe fixed buffer. It is repetitive and it is
+        // the cheap half - the registry entry and the EFFECT are the work.
+        public byte Skill_Plenty;
+        public byte Skill_Rarity;
+        public byte Skill_FirstBlood;
+        public byte Skill_TrophyHunter;
+        public byte Skill_Guile;
+        public byte Skill_Relentless;
+        public byte Skill_Bloodthirst;
+        public byte Skill_Fortitude;
+        public byte Skill_Craft;
+        public byte Skill_Harvest;
+        public byte Skill_GoldenFleece;
+        public byte Skill_Thunderer;
+        public byte Skill_DoubleStrike;
+        public byte Skill_LastStand;
+        public byte Skill_Scholar;
         public int CachedLogisticsGatheringSpeedBonusPct;
 
         // Modul: Phase - Full-Stack Production Polish Phase 2, Part 3.1

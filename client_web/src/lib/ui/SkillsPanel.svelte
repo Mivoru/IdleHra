@@ -1,264 +1,475 @@
 <script lang="ts">
-  // Modul: THE SKILL TREE. Five passive branches, bought with the points an
-  // account earns one per level.
+  // Modul: THE SKILL TREE, in three rings.
   //
-  // This panel used to drive four ACTIVE skills - buttons with cooldowns and a
-  // mana bar. They were removed after being measured: mana refilled faster than
-  // the cooldowns cleared, so at a 1.5 second swing nearly every hit could be
-  // buffed, which came to +90% damage and +136% with the status synergy. All of
-  // it available only to a player willing to click every three seconds, in a
-  // game whose premise is that you do not have to.
+  // It used to be five flat branches of twenty levels, and that looked like a
+  // choice without being one: every branch was a pure bonus and the cost curve
+  // was nearly flat, so the best play was always "pour into the strongest, then
+  // the next". An ORDERING, not an identity. Two players ended a season the
+  // same shape.
   //
-  // What a branch is worth is stated on its card, because a passive bonus the
+  // Now each root forks into two boughs and ONLY ONE MAY BE TAKEN, with a crown
+  // above whichever fork was chosen. The locked side stays drawn, greyed, with
+  // its name still readable - a fork whose other half is invisible is a fork
+  // nobody can plan against, and the plan is the point.
+  //
+  // What a node is worth is stated on its card, because a passive bonus the
   // player cannot see is indistinguishable from one that does not work - a
   // mistake this project has made more than once.
   import { playerState, pushLocalNotice } from '../stores/game';
   import {
-    SKILL_TREE_BRANCHES,
-    SKILL_TREE_MAX_LEVEL,
+    SKILL_TREE_NODES,
+    SKILL_TREE_ROOT_MAX,
+    skillNodeMaxLevel,
     skillTreeUpgradeCost,
+    skillNodeBlockedReason,
     purchaseSkillTreeLevel,
+    siblingBoughOf,
+    boughsOfRoot,
+    crownOfRoot,
   } from '../net/commands';
-  import Bar from './Bar.svelte';
 
   const snap = $derived($playerState);
   const points = $derived(snap?.AvailableSkillPoints ?? 0);
 
-  // The wire carries one byte per branch, indexed by the same ids the server's
+  // The wire carries one byte per node, indexed by the same ids the server's
   // SkillTreeRegistry uses, so the two cannot drift on ordering.
-  function levelOf(branchId: number): number {
-    if (!snap) return 0;
-    switch (branchId) {
-      case 0: return snap.SkillTree_LootRarity;
-      case 1: return snap.SkillTree_WorldBossDamage;
-      case 2: return snap.SkillTree_CritChance;
-      case 3: return snap.SkillTree_CritDamage;
-      case 4: return snap.SkillTree_XpGain;
-      default: return 0;
-    }
-  }
+  const levels = $derived.by((): number[] => {
+    const s = snap;
+    if (!s) return new Array(20).fill(0);
+    return [
+      s.SkillTree_LootRarity, s.SkillTree_WorldBossDamage, s.SkillTree_CritChance,
+      s.SkillTree_CritDamage, s.SkillTree_XpGain,
+      s.SkillTree_Plenty, s.SkillTree_Rarity, s.SkillTree_FirstBlood,
+      s.SkillTree_TrophyHunter, s.SkillTree_Guile, s.SkillTree_Relentless,
+      s.SkillTree_Bloodthirst, s.SkillTree_Fortitude, s.SkillTree_Craft,
+      s.SkillTree_Harvest,
+      s.SkillTree_GoldenFleece, s.SkillTree_Thunderer, s.SkillTree_DoubleStrike,
+      s.SkillTree_LastStand, s.SkillTree_Scholar,
+    ].map((v) => Number(v) || 0);
+  });
 
-  const rows = $derived(
-    SKILL_TREE_BRANCHES.map((branch) => {
-      const level = levelOf(branch.id);
-      const cost = skillTreeUpgradeCost(level);
-      const total = level * branch.perLevel;
-      return {
-        ...branch,
-        level,
-        cost,
-        capped: level >= SKILL_TREE_MAX_LEVEL,
-        affordable: cost > 0 && points >= cost,
-        // Crit chance is percentage POINTS; the others are percentages of
-        // their own quantity. Writing "+8%" for both would be wrong for one.
-        label: branch.unit === 'points' ? `+${total.toFixed(1)} pts` : `+${total.toFixed(1)}%`,
-      };
-    }),
-  );
-
-  const spent = $derived(
-    rows.reduce((sum, row) => {
-      let total = 0;
-      for (let i = 0; i < row.level; i++) total += skillTreeUpgradeCost(i);
-      return sum + total;
-    }, 0),
-  );
-
-  // Modul: THE TREE IS DRAWN, not listed.
-  //
-  // Five rows with a progress bar each is a settings page. This is meant to be
-  // the one screen a player looks forward to opening, and a world-tree is the
-  // shape the game's own setting already suggests - so the branches grow out of
-  // a trunk, and they THICKEN and REACH FURTHER as they are invested in.
-  //
-  // Geometry rather than art: an inline SVG whose branch paths are computed
-  // from the levels, so the picture is the data. No files, and it cannot fall
-  // out of step with the numbers beside it.
-  const VIEW_W = 460;
-  const VIEW_H = 300;
-  const ROOT_X = VIEW_W / 2;
-  const ROOT_Y = VIEW_H - 12;
-
-  /**
-   * How tall the trunk is. Modul: branch starts were computed as a fraction of
-   * the VIEW height, which is taller than the trunk - so the topmost branch
-   * left the trunk above its own tip and its label was drawn at a negative y,
-   * outside the box, on top of the paragraph above the picture. A branch grows
-   * out of the trunk, so the trunk is what its position should be measured
-   * against.
-   */
-  const TRUNK_H = 168;
-
-  /** Where each branch leaves the trunk and which way it goes. */
-  /** startY is how far UP the trunk the branch leaves it, 0 at the roots. */
-  const BRANCH_LAYOUT = [
-    { dx: -1.00, dy: -0.30, startY: 0.30 },
-    { dx: -0.80, dy: -0.64, startY: 0.58 },
-    { dx: 0.00, dy: -1.00, startY: 0.88 },
-    { dx: 0.80, dy: -0.64, startY: 0.58 },
-    { dx: 1.00, dy: -0.30, startY: 0.30 },
-  ] as const;
-
-  type Limb = {
-    id: number;
-    name: string;
+  type NodeRow = (typeof SKILL_TREE_NODES)[number] & {
     level: number;
-    path: string;
-    width: number;
-    tipX: number;
-    tipY: number;
-    lit: boolean;
+    max: number;
+    cost: number;
+    blocked: string | null;
+    /** Foreclosed for the season: the other side of the fork was taken. */
+    lockedOut: boolean;
+    label: string;
   };
 
-  const limbs = $derived.by((): Limb[] =>
-    rows.map((row, i) => {
-      const layout = BRANCH_LAYOUT[i % BRANCH_LAYOUT.length];
-      const startX = ROOT_X;
-      const startY = ROOT_Y - TRUNK_H * layout.startY;
+  function rowFor(node: (typeof SKILL_TREE_NODES)[number]): NodeRow {
+    const level = levels[node.id] ?? 0;
+    const max = skillNodeMaxLevel(node.id);
+    const sibling = siblingBoughOf(node.id);
+    const lockedOut = sibling >= 0 && (levels[sibling] ?? 0) > 0 && level === 0;
 
-      // Modul: an untaken branch reaches MOST of the way already.
-      //
-      // The first version started at 28% of full reach, which put five labels
-      // within thirty pixels of the trunk - GIANTSLAYER and CRUELTY printed on
-      // top of each other. The shape of the tree has to be legible before any
-      // point is spent, because reading it is how a player decides where the
-      // first one goes. Investment thickens and extends a branch; it does not
-      // conjure it.
-      const growth = 0.74 + 0.26 * (row.level / SKILL_TREE_MAX_LEVEL);
-      const reach = 128 * growth;
+    const total = level * node.perLevel;
+    const label =
+      node.unit === 'special'
+        ? level > 0
+          ? 'Taken'
+          : ''
+        : node.unit === 'points'
+          ? `+${total.toFixed(1)} pts`
+          : `+${total.toFixed(1)}%`;
 
-      const tipX = startX + layout.dx * reach;
-      const tipY = startY + layout.dy * reach;
+    return {
+      ...node,
+      level,
+      max,
+      cost: skillTreeUpgradeCost(node.id, level),
+      blocked: skillNodeBlockedReason(node.id, levels, points),
+      lockedOut,
+      label,
+    };
+  }
 
-      // One control point, pulled outward, so a branch curves away from the
-      // trunk rather than leaving it as a spoke.
-      const cx = startX + layout.dx * reach * 0.55;
-      const cy = startY + layout.dy * reach * 0.15;
-
+  /** One limb: its root, both boughs, and the crown above them. */
+  const limbs = $derived(
+    SKILL_TREE_NODES.filter((n) => n.ring === 'root').map((root) => {
+      const [a, b] = boughsOfRoot(root.id);
       return {
-        id: row.id,
-        name: row.name,
-        level: row.level,
-        path: `M ${startX} ${startY} Q ${cx} ${cy} ${tipX} ${tipY}`,
-        width: 2 + 5 * (row.level / SKILL_TREE_MAX_LEVEL),
-        tipX,
-        tipY,
-        lit: row.level > 0,
+        root: rowFor(root),
+        boughs: [rowFor(SKILL_TREE_NODES[a]), rowFor(SKILL_TREE_NODES[b])],
+        crown: rowFor(SKILL_TREE_NODES[crownOfRoot(root.id)]),
       };
     }),
   );
+
+  const spent = $derived.by(() => {
+    let total = 0;
+    for (const node of SKILL_TREE_NODES) {
+      for (let l = 0; l < (levels[node.id] ?? 0); l++) total += skillTreeUpgradeCost(node.id, l);
+    }
+    return total;
+  });
+
+  function buy(nodeId: number) {
+    const outcome = purchaseSkillTreeLevel(nodeId, levels, points);
+    if (!outcome.ok) pushLocalNotice(outcome.reason);
+  }
+
+  // ---- the drawing ---------------------------------------------------------
+  //
+  // Geometry rather than art: the branch paths are computed from the levels, so
+  // the picture IS the data and cannot fall out of step with the numbers beside
+  // it. No files either.
+  const VIEW_W = 460;
+  const VIEW_H = 320;
+  const ROOT_X = VIEW_W / 2;
+  const ROOT_Y = VIEW_H - 14;
+  const TRUNK_H = 176;
+
+  /** Where each limb leaves the trunk and which way it grows. */
+  const LIMB_LAYOUT = [
+    { dx: -1.0, dy: -0.3, startY: 0.3 },
+    { dx: -0.8, dy: -0.64, startY: 0.58 },
+    { dx: 0.0, dy: -1.0, startY: 0.88 },
+    { dx: 0.8, dy: -0.64, startY: 0.58 },
+    { dx: 1.0, dy: -0.3, startY: 0.3 },
+  ] as const;
 
   let hovered = $state<number | null>(null);
 
-  function buy(branchId: number, level: number) {
-    const outcome = purchaseSkillTreeLevel(branchId, level, points);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
-  }
+  const drawn = $derived(
+    limbs.map((limb, i) => {
+      const layout = LIMB_LAYOUT[i % LIMB_LAYOUT.length];
+      const startX = ROOT_X;
+      const startY = ROOT_Y - TRUNK_H * layout.startY;
+
+      // A limb still grows while untaken, as a bud - the tree's SHAPE must not
+      // change as it fills in, or a player cannot see what they are choosing
+      // between before they choose.
+      const growth = 0.74 + 0.26 * (limb.root.level / SKILL_TREE_ROOT_MAX);
+      const reach = 108 * growth;
+      const forkX = startX + layout.dx * reach;
+      const forkY = startY + layout.dy * reach;
+
+      // The two twigs leave the fork at a spread, one up and one out.
+      const twigs = limb.boughs.map((bough, side) => {
+        const spread = side === 0 ? -0.55 : 0.55;
+        const twigReach = 46 + 26 * (bough.level / bough.max);
+        const tipX = forkX + (layout.dx * 0.6 + spread) * twigReach;
+        const tipY = forkY + (layout.dy * 0.9 - 0.35) * twigReach;
+        return { bough, tipX, tipY };
+      });
+
+      const taken = twigs.find((t) => t.bough.level > 0) ?? twigs[0];
+
+      return {
+        id: limb.root.id,
+        name: limb.root.name,
+        level: limb.root.level,
+        limbPath: `M ${startX} ${startY} Q ${startX + layout.dx * reach * 0.55} ${startY + layout.dy * reach * 0.15} ${forkX} ${forkY}`,
+        width: 2 + 5 * (limb.root.level / SKILL_TREE_ROOT_MAX),
+        forkX,
+        forkY,
+        twigs,
+        crown: limb.crown,
+        crownX: taken.tipX,
+        crownY: taken.tipY - 16,
+        // Along the limb and clear of it. A near-horizontal limb needs the
+        // label beside its tip; the vertical one needs it under the fork.
+        labelDx: layout.dx * 26,
+        labelDy: Math.abs(layout.dy) > 0.9 ? 20 : 16,
+        labelAnchor: layout.dx < -0.5 ? 'end' : layout.dx > 0.5 ? 'start' : 'middle',
+      };
+    }),
+  );
 </script>
 
 <section class="panel">
-  <header>
-    <h3>Skill tree</h3>
-    <span class="dim tiny">{points} point{points === 1 ? '' : 's'} unspent</span>
+  <header class="head">
+    <div>
+      <h2>Skill tree</h2>
+      <p class="dim small">
+        Roots are cheap and you want some of each. Each root forks into two, and
+        <strong>taking one locks the other</strong> for the season. A crown sits
+        above whichever fork you chose.
+      </p>
+    </div>
+    <span class="points">{points} <span class="dim tiny">points</span></span>
   </header>
 
-  <p class="dim small">
-    One point per level. Five branches, twenty levels each, and the price rises
-    every fifth level - so a season buys two branches deep or five shallow.
-    These reset when the season does.
-  </p>
+  <svg
+    class="tree"
+    viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+    role="img"
+    aria-label="Your skill tree: five limbs, each forking into two branches with a crown above"
+  >
+    <path
+      d={`M ${ROOT_X} ${ROOT_Y} C ${ROOT_X - 12} ${ROOT_Y - 70}, ${ROOT_X + 12} ${ROOT_Y - 130}, ${ROOT_X} ${ROOT_Y - TRUNK_H}`}
+      class="trunk"
+    />
+    <path
+      d={`M ${ROOT_X} ${ROOT_Y} l -26 10 M ${ROOT_X} ${ROOT_Y} l 26 10 M ${ROOT_X} ${ROOT_Y} l -8 12 M ${ROOT_X} ${ROOT_Y} l 9 12`}
+      class="roots"
+    />
 
-  {#if !snap}
-    <p class="dim">Waiting for your state to arrive...</p>
-  {:else}
-    <!-- Modul: the tree, and the list beneath it. The picture is for deciding
-         WHERE to put a point; the list is for reading exactly what one buys.
-         Neither replaces the other, and the drawing is derived from the same
-         rows the list renders, so they cannot disagree. -->
-    <svg
-      class="tree"
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-      role="img"
-      aria-label="Your skill tree, drawn as branches that thicken as you invest"
-    >
-      <!-- The trunk. -->
+    {#each drawn as limb (limb.id)}
       <path
-        d={`M ${ROOT_X} ${ROOT_Y} C ${ROOT_X - 12} ${ROOT_Y - 70}, ${ROOT_X + 12} ${ROOT_Y - 120}, ${ROOT_X} ${ROOT_Y - 168}`}
-        class="trunk"
+        d={limb.limbPath}
+        class="limb"
+        class:lit={limb.level > 0}
+        class:hot={hovered === limb.id}
+        style={`stroke-width: ${limb.width}`}
       />
-      <!-- Roots, purely so the trunk does not float. -->
-      <path d={`M ${ROOT_X} ${ROOT_Y} l -26 10 M ${ROOT_X} ${ROOT_Y} l 26 10 M ${ROOT_X} ${ROOT_Y} l -8 12 M ${ROOT_X} ${ROOT_Y} l 9 12`} class="roots" />
 
-      {#each limbs as limb (limb.id)}
+      {#each limb.twigs as twig (twig.bough.id)}
         <path
-          d={limb.path}
-          class="limb"
-          class:lit={limb.lit}
-          class:hot={hovered === limb.id}
-          style={`stroke-width: ${limb.width}`}
+          d={`M ${limb.forkX} ${limb.forkY} L ${twig.tipX} ${twig.tipY}`}
+          class="twig"
+          class:lit={twig.bough.level > 0}
+          class:dead={twig.bough.lockedOut}
         />
         <circle
-          cx={limb.tipX}
-          cy={limb.tipY}
-          r={limb.lit ? 4 + limb.level / 6 : 3}
+          cx={twig.tipX}
+          cy={twig.tipY}
+          r={twig.bough.level > 0 ? 3.5 + twig.bough.level / 4 : 2.5}
           class="bud"
-          class:lit={limb.lit}
-          class:hot={hovered === limb.id}
+          class:lit={twig.bough.level > 0}
+          class:dead={twig.bough.lockedOut}
         />
-        <text x={limb.tipX} y={limb.tipY - 10} class="limb-label" text-anchor="middle">
-          {limb.name}{#if limb.level > 0} {limb.level}{/if}
-        </text>
       {/each}
-    </svg>
 
-    <ul class="branches">
-      {#each rows as row (row.id)}
-        <li
-          class:capped={row.capped}
-          onmouseenter={() => (hovered = row.id)}
-          onmouseleave={() => (hovered = null)}
-        >
-          <div class="head">
-            <span class="name">{row.name}</span>
-            <span class="value">
-              {#if row.level > 0}{row.label}{:else}<span class="dim">not taken</span>{/if}
-            </span>
+      {#if limb.crown.level > 0}
+        <circle cx={limb.crownX} cy={limb.crownY} r="6" class="crown-bud" />
+      {/if}
+
+      <!-- Pushed OUTWARD along the limb rather than straight down: a label 15px
+           below a near-horizontal limb lands on the limb itself, which is what
+           it did to Fortune and Insight. -->
+      <text
+        x={limb.forkX + limb.labelDx}
+        y={limb.forkY + limb.labelDy}
+        class="limb-label"
+        text-anchor={limb.labelAnchor}
+      >
+        {limb.name}{#if limb.level > 0}&#160;{limb.level}{/if}
+      </text>
+    {/each}
+  </svg>
+
+  <p class="dim tiny spent">{spent} points invested</p>
+
+  <div class="limbs">
+    {#each limbs as limb (limb.root.id)}
+      <div
+        class="limb-card"
+        onmouseenter={() => (hovered = limb.root.id)}
+        onmouseleave={() => (hovered = null)}
+        role="group"
+      >
+        <!-- The root -->
+        <div class="node root" class:capped={limb.root.level >= limb.root.max}>
+          <div class="node-text">
+            <strong>{limb.root.name} <span class="lvl">{limb.root.level}/{limb.root.max}</span></strong>
+            <p class="dim small">{limb.root.blurb}</p>
+            {#if limb.root.label}<span class="worth">{limb.root.label}</span>{/if}
           </div>
+          <button
+            disabled={limb.root.blocked !== null}
+            title={limb.root.blocked ?? ''}
+            onclick={() => buy(limb.root.id)}
+          >
+            {limb.root.cost > 0 ? `${limb.root.cost} pt` : '—'}
+          </button>
+        </div>
 
-          <p class="blurb dim tiny">{row.blurb}</p>
-
-          <Bar
-            value={row.level}
-            max={SKILL_TREE_MAX_LEVEL}
-            color="var(--accent)"
-            label={`${row.level} / ${SKILL_TREE_MAX_LEVEL}`}
-          />
-
-          <div class="buy">
-            {#if row.capped}
-              <span class="dim tiny">At maximum.</span>
-            {:else}
+        <!-- The fork: two boughs, one of which will be locked out -->
+        <div class="fork">
+          {#each limb.boughs as bough (bough.id)}
+            <div class="node bough" class:taken={bough.level > 0} class:locked={bough.lockedOut}>
+              <div class="node-text">
+                <strong>
+                  {bough.name}
+                  <span class="lvl">{bough.level}/{bough.max}</span>
+                </strong>
+                <p class="dim tiny">{bough.blurb}</p>
+                {#if bough.level > 0}<span class="worth">{bough.label}</span>{/if}
+                {#if bough.lockedOut}<span class="dim tiny locked-note">Foreclosed this season</span>{/if}
+              </div>
               <button
-                disabled={!row.affordable}
-                title={row.affordable ? '' : `Needs ${row.cost} point${row.cost === 1 ? '' : 's'}`}
-                onclick={() => buy(row.id, row.level)}
+                disabled={bough.blocked !== null}
+                title={bough.blocked ?? ''}
+                onclick={() => buy(bough.id)}
               >
-                +{row.perLevel}{row.unit === 'points' ? ' pts' : '%'} for {row.cost}
-                point{row.cost === 1 ? '' : 's'}
+                {bough.cost > 0 ? `${bough.cost} pt` : '—'}
               </button>
-            {/if}
-          </div>
-        </li>
-      {/each}
-    </ul>
+            </div>
+          {/each}
+        </div>
 
-    {#if spent > 0}
-      <p class="dim tiny footer">{spent} points spent this season.</p>
-    {/if}
-  {/if}
+        <!-- The crown -->
+        <div class="node crown" class:taken={limb.crown.level > 0}>
+          <div class="node-text">
+            <strong>♦ {limb.crown.name}</strong>
+            <p class="dim tiny">{limb.crown.blurb}</p>
+          </div>
+          <button
+            disabled={limb.crown.blocked !== null}
+            title={limb.crown.blocked ?? ''}
+            onclick={() => buy(limb.crown.id)}
+          >
+            {limb.crown.level > 0 ? 'Taken' : `${limb.crown.cost} pt`}
+          </button>
+        </div>
+      </div>
+    {/each}
+  </div>
 </section>
 
 <style>
+  .head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.6rem;
+  }
+
+  .head h2 {
+    margin: 0 0 0.15rem;
+  }
+
+  .head p {
+    margin: 0;
+    max-width: 42ch;
+  }
+
+  .points {
+    flex: none;
+    padding: 0.2rem 0.55rem;
+    border: 1px solid var(--brass);
+    border-radius: var(--radius);
+    color: var(--brass-lit);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .spent {
+    text-align: center;
+    margin: 0 0 0.5rem;
+  }
+
+  .twig {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .twig.lit {
+    stroke: var(--brass-lit);
+    stroke-width: 3;
+  }
+
+  /* Foreclosed, not absent: still drawn so the fork stays legible. */
+  .twig.dead {
+    stroke: var(--border);
+    opacity: 0.3;
+    stroke-dasharray: 3 3;
+  }
+
+  .bud.dead {
+    opacity: 0.3;
+  }
+
+  .crown-bud {
+    fill: var(--brass-lit);
+    stroke: var(--brass);
+    stroke-width: 1.5;
+  }
+
+  .limbs {
+    display: grid;
+    gap: 0.6rem;
+  }
+
+  .limb-card {
+    display: grid;
+    gap: 0.3rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    min-width: 0;
+  }
+
+  .node {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    min-width: 0;
+  }
+
+  .node-text {
+    display: grid;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+
+  .node-text p {
+    margin: 0;
+  }
+
+  .node button {
+    flex: none;
+    margin-left: auto;
+    padding: 0.22rem 0.5rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .lvl {
+    color: var(--text-dim);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .worth {
+    color: var(--brass-lit);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .fork {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.3rem;
+  }
+
+  .node.taken {
+    border-color: var(--brass);
+    background: rgba(216, 180, 90, 0.08);
+  }
+
+  .node.locked {
+    opacity: 0.45;
+  }
+
+  .locked-note {
+    font-style: italic;
+  }
+
+  .node.crown {
+    border-style: dashed;
+  }
+
+  .node.crown.taken {
+    border-style: solid;
+  }
+
+  /* A fork side by side is unreadable under about 26rem - the two cards each
+     get half of an already narrow column and the blurbs turn into one word a
+     line. */
+  @media (max-width: 30rem) {
+    .fork {
+      grid-template-columns: 1fr;
+    }
+  }
+
   .tree {
     display: block;
     width: 100%;

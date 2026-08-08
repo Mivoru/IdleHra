@@ -90,12 +90,19 @@ percentage - a qualitative effect that changes how the character plays.
 
 | | Cost |
 |---|---|
-| Full limb (Root 10 + Bough 8 + Crown) | 10 + 16 + 12 = **38** |
-| All five limbs | **190** |
+| Root to 10 (five levels at 1, five at 2) | **15** |
+| Bough to 8 (flat 2) | **16** |
+| Crown | **12** |
+| Full limb | **43** |
+| All five limbs | **215** |
 | Points per season | ~100 (+2 per Seal, see part 2) |
 
 So a season buys **two full limbs and part of a third**. All five crowns are out
 of reach. That gap is the design.
+
+(An earlier draft said 38 and 190, having forgotten that roots keep their
+rising cost curve rather than charging a flat 1. The code is right and the
+intent is unchanged; only these figures were wrong.)
 
 ## The five limbs
 

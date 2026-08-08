@@ -3503,6 +3503,21 @@ namespace FolkIdle.Server.Domain.Combat
                                 SkillTree_CritChance = currentPayload.Skill_CritChance,
                                 SkillTree_CritDamage = currentPayload.Skill_CritDamage,
                                 SkillTree_XpGain = currentPayload.Skill_XpGain,
+                                SkillTree_Plenty = currentPayload.Skill_Plenty,
+                                SkillTree_Rarity = currentPayload.Skill_Rarity,
+                                SkillTree_FirstBlood = currentPayload.Skill_FirstBlood,
+                                SkillTree_TrophyHunter = currentPayload.Skill_TrophyHunter,
+                                SkillTree_Guile = currentPayload.Skill_Guile,
+                                SkillTree_Relentless = currentPayload.Skill_Relentless,
+                                SkillTree_Bloodthirst = currentPayload.Skill_Bloodthirst,
+                                SkillTree_Fortitude = currentPayload.Skill_Fortitude,
+                                SkillTree_Craft = currentPayload.Skill_Craft,
+                                SkillTree_Harvest = currentPayload.Skill_Harvest,
+                                SkillTree_GoldenFleece = currentPayload.Skill_GoldenFleece,
+                                SkillTree_Thunderer = currentPayload.Skill_Thunderer,
+                                SkillTree_DoubleStrike = currentPayload.Skill_DoubleStrike,
+                                SkillTree_LastStand = currentPayload.Skill_LastStand,
+                                SkillTree_Scholar = currentPayload.Skill_Scholar,
                                 // Modul: the achievement-toast signal. Pure
                                 // functions of counters already on the
                                 // payload, so this costs three comparisons
@@ -3825,8 +3840,15 @@ namespace FolkIdle.Server.Domain.Combat
                 1 => payload.PickaxeToolTier,
                 _ => payload.RodToolTier
             };
+            // Modul: Harvest, the Insight bough, rides the affix parameter -
+            // it is the same currency (a flat percent off the tick threshold)
+            // and giving it a parameter of its own would be two knobs where
+            // the engine already has one.
             int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(
-                gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel);
+                gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel,
+                payload.ToolGatherSpeedPct
+                + SkillTreeRegistry.GetBonusTenthsOfPercent(
+                    SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10);
             // Modul: Logistics achievement family's stackable claim reward
             // (Phase: Full-Stack Production Polish, Part 2.3) - a flat
             // percent reduction in the tick threshold, i.e. a gathering
@@ -3955,7 +3977,7 @@ namespace FolkIdle.Server.Domain.Combat
             if (completedKills <= 0)
             {
                 payload.CurrentMonsterId = monsterId;
-                payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, monsterId) * 1000L;
+                payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, monsterId, payload.Skill_FirstBlood) * 1000L;
                 return;
             }
 
@@ -4014,7 +4036,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
 
             payload.CurrentMonsterId = monsterId;
-            payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, monsterId) * 1000L;
+            payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, monsterId, payload.Skill_FirstBlood) * 1000L;
         }
 
         // Modul: drains Food1-3 in a fixed order, mirroring
@@ -5263,6 +5285,21 @@ namespace FolkIdle.Server.Domain.Combat
                 case SkillTreeRegistry.BranchCritChance: payload.Skill_CritChance = level; break;
                 case SkillTreeRegistry.BranchCritDamage: payload.Skill_CritDamage = level; break;
                 case SkillTreeRegistry.BranchXpGain: payload.Skill_XpGain = level; break;
+                case SkillTreeRegistry.BoughPlenty: payload.Skill_Plenty = level; break;
+                case SkillTreeRegistry.BoughRarity: payload.Skill_Rarity = level; break;
+                case SkillTreeRegistry.BoughFirstBlood: payload.Skill_FirstBlood = level; break;
+                case SkillTreeRegistry.BoughTrophyHunter: payload.Skill_TrophyHunter = level; break;
+                case SkillTreeRegistry.BoughGuile: payload.Skill_Guile = level; break;
+                case SkillTreeRegistry.BoughRelentless: payload.Skill_Relentless = level; break;
+                case SkillTreeRegistry.BoughBloodthirst: payload.Skill_Bloodthirst = level; break;
+                case SkillTreeRegistry.BoughFortitude: payload.Skill_Fortitude = level; break;
+                case SkillTreeRegistry.BoughCraft: payload.Skill_Craft = level; break;
+                case SkillTreeRegistry.BoughHarvest: payload.Skill_Harvest = level; break;
+                case SkillTreeRegistry.CrownGoldenFleece: payload.Skill_GoldenFleece = level; break;
+                case SkillTreeRegistry.CrownThunderer: payload.Skill_Thunderer = level; break;
+                case SkillTreeRegistry.CrownDoubleStrike: payload.Skill_DoubleStrike = level; break;
+                case SkillTreeRegistry.CrownLastStand: payload.Skill_LastStand = level; break;
+                case SkillTreeRegistry.CrownScholar: payload.Skill_Scholar = level; break;
             }
         }
 
@@ -5417,7 +5454,9 @@ namespace FolkIdle.Server.Domain.Combat
                     1 => payload.PickaxeToolTier,
                     _ => payload.RodToolTier
                 };
-                int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel, payload.ToolGatherSpeedPct);
+                int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel, payload.ToolGatherSpeedPct
+                    + SkillTreeRegistry.GetBonusTenthsOfPercent(
+                        SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10);
                 payload.RequiredProgressTicks = requiredTicks;
                 payload.GatheringProgressTicks++;
 
@@ -5585,6 +5624,10 @@ namespace FolkIdle.Server.Domain.Combat
             // the damage bonus is applied last - a flat addition would stop
             // mattering.
             effectiveMilliHp += effectiveMilliHp * InheritanceRegistry.GetBonusPct(payload.Inherit_MaxHp) / 100L;
+            // Modul: Fortitude, the Cruelty bough - more health, layered the
+            // same additive-percent way inheritance is just above.
+            effectiveMilliHp += effectiveMilliHp * (long)SkillTreeRegistry.GetBonusTenthsOfPercent(
+                SkillTreeRegistry.BoughFortitude, payload.Skill_Fortitude) / 1000L;
             int effectiveMaxHp = (int)effectiveMilliHp;
 
             // Modul: Deferred Part 5 Implementation, Part 2. Active food
@@ -5608,7 +5651,7 @@ namespace FolkIdle.Server.Domain.Combat
             if (payload.CurrentMonsterId <= 0)
             {
                 payload.CurrentMonsterId = fallbackId;
-                payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId) * 1000L;
+                payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId, payload.Skill_FirstBlood) * 1000L;
                 payload.CombatTargetTickAccumulator = 0;
             }
 
@@ -5665,7 +5708,25 @@ namespace FolkIdle.Server.Domain.Combat
                     if (Random.Shared.NextDouble() <= (treeCritChance / 100.0f))
                     {
                         critMult = StatsCalculator.ComputeCritMultiplier(combatStats)
-                            + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritDamage, payload.Skill_CritDamage) / 100f);
+                            + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritDamage, payload.Skill_CritDamage) / 100f)
+                            // Modul: Guile, the Precision bough. Stacks with
+                            // Cruelty rather than replacing it - a player who
+                            // took the crit fork should feel both.
+                            + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughGuile, payload.Skill_Guile) / 100f);
+
+                        // Modul: Double Strike, the Precision crown. Expressed
+                        // as extra multiplier rather than a second swing,
+                        // because a second swing here would need its own
+                        // to-hit, its own lifesteal and its own kill check -
+                        // three places to get out of step for an effect the
+                        // player experiences as "that one hit harder".
+                        if (payload.Skill_DoubleStrike > 0
+                            && Random.Shared.NextDouble()
+                               <= (SkillTreeRegistry.GetBonusPercent(
+                                       SkillTreeRegistry.CrownDoubleStrike, payload.Skill_DoubleStrike) / 100.0f))
+                        {
+                            critMult *= 2f;
+                        }
                     }
 
                     long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel, InheritanceRegistry.GetBonusPct(payload.Inherit_Damage));
@@ -5725,6 +5786,26 @@ namespace FolkIdle.Server.Domain.Combat
                     }
 
                     payload.CurrentMonsterHp -= netDamage;
+
+                    // Modul: Bloodthirst, the Cruelty bough - a share of the
+                    // damage dealt comes back as health.
+                    //
+                    // On the POST-armour figure, so it scales with what you
+                    // actually did rather than with what you swung for, and
+                    // capped at the health pool because overhealing into a
+                    // bar the client scales against observedMaxPlayerHp would
+                    // draw a health bar longer than the bar.
+                    if (payload.Skill_Bloodthirst > 0 && netDamage > 0)
+                    {
+                        long healed = (long)netDamage
+                            * SkillTreeRegistry.GetBonusTenthsOfPercent(
+                                SkillTreeRegistry.BoughBloodthirst, payload.Skill_Bloodthirst) / 1000L;
+                        if (healed > 0)
+                        {
+                            payload.PlayerHp = (int)Math.Min(
+                                effectiveMaxHp, payload.PlayerHp + healed);
+                        }
+                    }
 
                     // Modul: set bonuses made real. Burn - the Chiming Steel
                     // 4-piece's damage-over-time half. Deliberately modelled as
@@ -6172,6 +6253,9 @@ namespace FolkIdle.Server.Domain.Combat
                     MonsterId = payload.CurrentMonsterId,
                     LootLuckPct = combatStats.LootLuckPct + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck)
                         + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity)
+                        // Modul: Rarity, the Fortune bough - the same currency
+                        // as the root, so it simply adds.
+                        + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughRarity, payload.Skill_Rarity)
                 });
 
                 var lootTable = ContentRegistry.GetLootTable(activeMonster.LootTableId);
@@ -6228,7 +6312,7 @@ namespace FolkIdle.Server.Domain.Combat
                 }
 
                 payload.CurrentMonsterId = fallbackId;
-                payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId) * 1000L;
+                payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId, payload.Skill_FirstBlood) * 1000L;
                 payload.CombatTargetTickAccumulator = 0;
             }
         }
