@@ -623,7 +623,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                 if (pieceSlotIndex >= 0)
                 {
-                    setIds.SetBySlotIndex(pieceSlotIndex, piece.SetId);
+                    setIds.SetBySlotIndex(pieceSlotIndex, piece.SetId, piece.QualityTier);
                 }
             }
 

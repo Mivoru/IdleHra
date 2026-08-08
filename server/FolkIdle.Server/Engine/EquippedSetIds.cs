@@ -57,21 +57,45 @@ namespace FolkIdle.Server.Engine
             destination[7] = Ring;
         }
 
-        // Modul: eight-slot set bonuses. Assigns by the slot indices
-        // EquipmentSlotEngine already defines, so the mapping lives in one
-        // place and a new slot cannot be silently dropped.
-        public void SetBySlotIndex(int slotIndex, int setId)
+        // Modul: EACH SLOT CARRIES ITS QUALITY AS WELL AS ITS SET.
+        //
+        // Set bonuses used to be decided by COUNTING pieces, which made a
+        // Normal helmet worth exactly as much to a set as a Transcendent one,
+        // and made the third piece of a four-piece set worth nothing at all.
+        // A player with three superb pieces of one set and three of another
+        // got nothing from either.
+        //
+        // Quality is packed into the high bits of the same int rather than
+        // added as eight more fields, because this struct is copied onto the
+        // payload and passed by value down the 10Hz combat path. Only this
+        // file and SetBonusEngine know the layout; everyone else uses the
+        // accessors.
+        private const int QualityShift = 16;
+        private const int SetIdMask = (1 << QualityShift) - 1;
+
+        public static int Pack(int setId, int qualityTier)
+            => (setId & SetIdMask) | (Math.Clamp(qualityTier, 0, 0x7FFF) << QualityShift);
+
+        public static int SetIdOf(int packed) => packed & SetIdMask;
+
+        public static int QualityOf(int packed) => packed >>> QualityShift;
+
+        // Assigns by the slot indices EquipmentSlotEngine already defines, so
+        // the mapping lives in one place and a new slot cannot be silently
+        // dropped.
+        public void SetBySlotIndex(int slotIndex, int setId, int qualityTier)
         {
+            int packed = Pack(setId, qualityTier);
             switch (slotIndex)
             {
-                case 0: Weapon = setId; break;
-                case 1: Helmet = setId; break;
-                case 2: Chest = setId; break;
-                case 3: Gloves = setId; break;
-                case 4: Leggings = setId; break;
-                case 5: Boots = setId; break;
-                case 6: Amulet = setId; break;
-                case 7: Ring = setId; break;
+                case 0: Weapon = packed; break;
+                case 1: Helmet = packed; break;
+                case 2: Chest = packed; break;
+                case 3: Gloves = packed; break;
+                case 4: Leggings = packed; break;
+                case 5: Boots = packed; break;
+                case 6: Amulet = packed; break;
+                case 7: Ring = packed; break;
             }
         }
     }

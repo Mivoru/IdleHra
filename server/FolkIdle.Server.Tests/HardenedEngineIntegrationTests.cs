@@ -7226,13 +7226,15 @@ namespace FolkIdle.Server.Tests
 
             // Four Chiming Steel pieces - the tier that was unreachable until
             // EquippedSetIds widened the caller from three slots to seven.
+            // Four Chiming Steel pieces at the reference rarity - full
+            // potency, which is what arms the boolean effects.
             var chimingFourPiece = StatsCalculator.Calculate(str: 10, dex: 10, con: 10, lck: 10,
                 equippedSetIds: new EquippedSetIds
                 {
-                    Helmet = SetBonusEngine.ChimingSteelSetId,
-                    Chest = SetBonusEngine.ChimingSteelSetId,
-                    Gloves = SetBonusEngine.ChimingSteelSetId,
-                    Boots = SetBonusEngine.ChimingSteelSetId
+                    Helmet = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4),
+                    Chest = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4),
+                    Gloves = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4),
+                    Boots = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4)
                 });
 
             Assert.True(chimingFourPiece.SetBurnApplicationActive);
@@ -7240,21 +7242,22 @@ namespace FolkIdle.Server.Tests
 
             var dreadnoughtSetIds = new EquippedSetIds
             {
-                Helmet = SetBonusEngine.EternalDreadnoughtSetId,
-                Chest = SetBonusEngine.EternalDreadnoughtSetId,
-                Gloves = SetBonusEngine.EternalDreadnoughtSetId,
-                Boots = SetBonusEngine.EternalDreadnoughtSetId
+                Helmet = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
+                Chest = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
+                Gloves = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
+                Boots = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4)
             };
 
             var dreadnoughtFourPiece = StatsCalculator.Calculate(str: 10, dex: 10, con: 10, lck: 10,
                 equippedSetIds: dreadnoughtSetIds);
 
             Assert.True(dreadnoughtFourPiece.SetThornsReflectionActive);
-            // Cooldown reduction is asserted against SetBonusEngine rather than
-            // CombatStats: the skill-cast site is a command handler with no
-            // CombatStats in scope and reads the flag from here directly, so
-            // this is the value production actually consumes.
-            Assert.True(SetBonusEngine.Evaluate(in dreadnoughtSetIds).CooldownReductionActive);
+
+            // Modul: the cooldown-reduction assertion is gone. It shortened
+            // ACTIVE SKILL cooldowns, and active skills were removed from the
+            // game - the "skill-cast site" the old comment here pointed at
+            // does not exist. The flag is no longer set, and a test asserting
+            // it would be pinning a promise nothing can keep.
             Assert.True(dreadnoughtFourPiece.SetDamageCapActive);
         }
 
@@ -7299,18 +7302,18 @@ namespace FolkIdle.Server.Tests
             var fourPiece = StatsCalculator.Calculate(str: 0, dex: 0, con: 0, lck: 0,
                 equippedSetIds: new EquippedSetIds
                 {
-                    Helmet = SetBonusEngine.EternalDreadnoughtSetId,
-                    Chest = SetBonusEngine.EternalDreadnoughtSetId,
-                    Gloves = SetBonusEngine.EternalDreadnoughtSetId,
-                    Boots = SetBonusEngine.EternalDreadnoughtSetId
+                    Helmet = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
+                    Chest = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
+                    Gloves = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
+                    Boots = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4)
                 });
             Assert.True(fourPiece.SetDamageCapActive);
 
             var twoPiece = StatsCalculator.Calculate(str: 0, dex: 0, con: 0, lck: 0,
                 equippedSetIds: new EquippedSetIds
                 {
-                    Helmet = SetBonusEngine.EternalDreadnoughtSetId,
-                    Chest = SetBonusEngine.EternalDreadnoughtSetId
+                    Helmet = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
+                    Chest = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4)
                 });
             Assert.False(twoPiece.SetDamageCapActive);
         }
@@ -10204,22 +10207,35 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void Test_SetBonusEngine_FourPieceEternalDreadnoughtAppliesDefensiveMultipliers()
         {
-            ReadOnlySpan<int> twoPieceOnly = stackalloc int[] { SetBonusEngine.EternalDreadnoughtSetId, SetBonusEngine.EternalDreadnoughtSetId, 0 };
+            // Modul: PACKED with a rarity. A bare set id carries quality 0,
+            // which the evaluator floors at 1 - so this used to describe two
+            // Normal pieces, and under the rework those are worth almost
+            // nothing. The scenario being tested is "two pieces of a set", not
+            // "two pieces of junk".
+            int dread = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4);
+            ReadOnlySpan<int> twoPieceOnly = stackalloc int[] { dread, dread, 0 };
             var twoPieceResult = SetBonusEngine.Evaluate(twoPieceOnly);
-            Assert.Equal(15f, twoPieceResult.TotalArmorMultiplierPct);
+
+            // Half a set at the reference rarity: 8 of the 16 quality a full
+            // one comes to, so half of the 25% armour.
+            Assert.Equal(12.5f, twoPieceResult.TotalArmorMultiplierPct, 3);
             Assert.False(twoPieceResult.ThornsReflectionActive);
             Assert.False(twoPieceResult.DamageCapActive);
 
-            ReadOnlySpan<int> fourPiece = stackalloc int[] { SetBonusEngine.EternalDreadnoughtSetId, SetBonusEngine.EternalDreadnoughtSetId, SetBonusEngine.EternalDreadnoughtSetId, SetBonusEngine.EternalDreadnoughtSetId };
+            ReadOnlySpan<int> fourPiece = stackalloc int[] { dread, dread, dread, dread };
             var fourPieceResult = SetBonusEngine.Evaluate(fourPiece);
-            Assert.Equal(15f, fourPieceResult.TotalArmorMultiplierPct);
+            Assert.Equal(25f, fourPieceResult.TotalArmorMultiplierPct, 3);
             Assert.True(fourPieceResult.ThornsReflectionActive);
             Assert.True(fourPieceResult.DamageCapActive);
-            Assert.True(fourPieceResult.CooldownReductionActive);
+            // CooldownReductionActive is not asserted: it shortened active
+            // skill cooldowns and active skills were removed from the game.
 
-            // End-to-end through the combat feedback profile: 100 CON gives
-            // a known FlatPhysicalArmor baseline (100) that the 2-piece
-            // +15% multiplier must scale deterministically.
+            // End-to-end through the combat feedback profile: 100 CON gives a
+            // known FlatPhysicalArmor baseline of 100.
+            //
+            // Modul: 112, not 115. The armour bonus is no longer a flat +15%
+            // at two pieces - it is 25% scaled by POTENCY, and two pieces at
+            // the reference rarity are half a set, so 12.5%.
             //
             // Modul: seven-slot set bonuses. This used to note that Calculate
             // "only exposes the 3 real equip slots that exist in production
@@ -10229,11 +10245,13 @@ namespace FolkIdle.Server.Tests
             CombatStats withTwoPieceSet = StatsCalculator.Calculate(str: 0, dex: 0, con: 100, lck: 0,
                 equippedSetIds: new EquippedSetIds
                 {
-                    Weapon = SetBonusEngine.EternalDreadnoughtSetId,
-                    Chest = SetBonusEngine.EternalDreadnoughtSetId
+                    Weapon = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4),
+                    Chest = EquippedSetIds.Pack(SetBonusEngine.EternalDreadnoughtSetId, 4)
                 });
 
-            Assert.Equal((int)(naked.FlatPhysicalArmor * 1.15f), withTwoPieceSet.FlatPhysicalArmor);
+            // 1.125, not 1.15: two pieces at the reference rarity are HALF a set,
+            // and the armour bonus is 25% scaled by potency.
+            Assert.Equal((int)(naked.FlatPhysicalArmor * 1.125f), withTwoPieceSet.FlatPhysicalArmor);
             Assert.False(withTwoPieceSet.SetThornsReflectionActive);
             Assert.False(withTwoPieceSet.SetDamageCapActive);
 
@@ -10267,8 +10285,8 @@ namespace FolkIdle.Server.Tests
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = setBonusMainCharacterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60 });
                 SeedAllRegionBossKills(db, testPlayerId);
                 db.CharacterRecords.Add(new CharacterRecord { Id = setBonusMainCharacterId, PlayerId = testPlayerId, Level = 60, AgePhase = 1, SlotIndex = 0 });
-                var weapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "bronze_dagger_melee_weapon_slot_base", QualityTier = 0, AffixPayload = "{}", SetId = SetBonusEngine.ChimingSteelSetId };
-                var armor = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "iron_breastplate_chest_armor_slot_base", QualityTier = 0, AffixPayload = "{}", SetId = SetBonusEngine.ChimingSteelSetId };
+                var weapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "bronze_dagger_melee_weapon_slot_base", QualityTier = 4, AffixPayload = "{}", SetId = SetBonusEngine.ChimingSteelSetId };
+                var armor = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "iron_breastplate_chest_armor_slot_base", QualityTier = 4, AffixPayload = "{}", SetId = SetBonusEngine.ChimingSteelSetId };
                 db.EquipmentInstances.Add(weapon);
                 db.EquipmentInstances.Add(armor);
                 await db.SaveChangesAsync();
@@ -10289,13 +10307,20 @@ namespace FolkIdle.Server.Tests
             // slot now. Under the old weapon/armour/leggings triple it went
             // into a generic "armor" slot that also stood in for helmet, gloves
             // and boots.
-            Assert.Equal(SetBonusEngine.ChimingSteelSetId, setIds.Weapon);
-            Assert.Equal(SetBonusEngine.ChimingSteelSetId, setIds.Chest);
+            Assert.Equal(SetBonusEngine.ChimingSteelSetId, EquippedSetIds.SetIdOf(setIds.Weapon));
+            Assert.Equal(SetBonusEngine.ChimingSteelSetId, EquippedSetIds.SetIdOf(setIds.Chest));
 
             int[] setIdSpan = new int[EquippedSetIds.SlotCount];
             setIds.CopyTo(setIdSpan);
             var result = SetBonusEngine.Evaluate(setIdSpan);
-            Assert.Equal(10, result.FlatAttackPowerBonus);
+
+            // Modul: was `FlatAttackPowerBonus == 10`. That bonus is gone - a
+            // flat +10 attack is most of a starting character's damage and a
+            // rounding error by region 5. Set bonuses are percentages scaled by
+            // the QUALITY of the pieces worn now, so what this asserts is that
+            // two matching pieces pay something at all.
+            Assert.True(result.FireDamageMultiplierPct > 0f,
+                "two matching pieces must pay a share of the set");
         }
 
         // Modul: seven-slot set bonuses. The regression this pass fixed: the
@@ -10339,7 +10364,10 @@ namespace FolkIdle.Server.Tests
                     {
                         PlayerId = testPlayerId,
                         BaseItemId = pieces[i],
-                        QualityTier = 0,
+                        // Rare - the reference tier. At 0 these pieces are
+                        // worth nothing to a set, and this test is about the
+                        // equip pipeline rather than about junk gear.
+                        QualityTier = 4,
                         AffixPayload = "{}",
                         SetId = SetBonusEngine.ChimingSteelSetId
                     };
@@ -10361,18 +10389,21 @@ namespace FolkIdle.Server.Tests
             (_, EquippedSetIds setIds) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verify, character);
 
             // All four landed in distinct slots rather than overwriting one.
-            Assert.Equal(SetBonusEngine.ChimingSteelSetId, setIds.Helmet);
-            Assert.Equal(SetBonusEngine.ChimingSteelSetId, setIds.Chest);
-            Assert.Equal(SetBonusEngine.ChimingSteelSetId, setIds.Gloves);
-            Assert.Equal(SetBonusEngine.ChimingSteelSetId, setIds.Boots);
+            Assert.Equal(SetBonusEngine.ChimingSteelSetId, EquippedSetIds.SetIdOf(setIds.Helmet));
+            Assert.Equal(SetBonusEngine.ChimingSteelSetId, EquippedSetIds.SetIdOf(setIds.Chest));
+            Assert.Equal(SetBonusEngine.ChimingSteelSetId, EquippedSetIds.SetIdOf(setIds.Gloves));
+            Assert.Equal(SetBonusEngine.ChimingSteelSetId, EquippedSetIds.SetIdOf(setIds.Boots));
 
             int[] setIdSpan = new int[EquippedSetIds.SlotCount];
             setIds.CopyTo(setIdSpan);
             var result = SetBonusEngine.Evaluate(setIdSpan);
 
-            // The 2-piece core, plus the 4-piece tier that was previously
-            // impossible to reach.
-            Assert.Equal(10, result.FlatAttackPowerBonus);
+            // Modul: the tiers are a curve now, not two steps - see
+            // SetBonusEngine.PotencyOf. Four matching pieces at the reference
+            // rarity come to exactly full potency, which is what arms the
+            // effect below; four pieces of JUNK would not, and that is the
+            // point of the rework.
+            Assert.True(result.FireDamageMultiplierPct > 0f);
             Assert.True(result.BurnApplicationActive,
                 "Four matching pieces must reach the 4-piece tier; a false here means the set ids collapsed again.");
         }
