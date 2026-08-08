@@ -740,6 +740,58 @@ await go('Inheritance');
   }
 }
 
+// --- the village roster: pay for one, send one away --------------------------
+//
+// Modul: both of these had rules, a price curve and fifteen tests, and no way
+// to reach any of it. A full village STOPS the arrival clock, so before this
+// existed a bad roll occupied its slot for the rest of the season and the gold
+// sink the top of the economy lacks was unreachable.
+await go('Village');
+{
+  const tally = async () => page.locator('.folk li').count();
+
+  const before = await tally();
+  const feastButton = page.getByRole('button', { name: /^Throw a feast/ });
+  const price = async () => Number((await feastButton.first().innerText()).replace(/[^\d]/g, ''));
+
+  const offered = (await feastButton.count()) > 0;
+  record('the village offers a feast with a price', offered,
+    offered ? `${(await price()).toLocaleString()}g` : '');
+
+  if (offered && !(await feastButton.first().isDisabled())) {
+    const askedBefore = await price();
+    await dismissToasts();
+    await feastButton.first().click();
+    await page.waitForTimeout(2500);
+
+    const after = await tally();
+    record('paying for a feast brings somebody in', after > before, `${before} -> ${after}`);
+
+    // The escalation is what stops this being a slot machine: a flat price
+    // would hand a player forty rolls at a twenty in one sitting, and the
+    // two-phase climb assumes the village deals about forty-five a season.
+    const askedAfter = await price();
+    record(
+      'the next feast costs more than the last',
+      askedAfter > askedBefore,
+      `${askedBefore.toLocaleString()}g -> ${askedAfter.toLocaleString()}g`,
+    );
+  }
+
+  const sendButtons = page.getByRole('button', { name: 'Send on', exact: true });
+  const dismissable = await sendButtons.count();
+  record('the village offers to send somebody on', dismissable > 0, `${dismissable} not yet married in`);
+
+  if (dismissable > 0) {
+    const held = await tally();
+    await sendButtons.first().click();
+    await page.waitForTimeout(2500);
+    const left = await tally();
+    record('sending somebody on frees the slot', left < held, `${held} -> ${left}`);
+    await dismissToasts();
+  }
+}
+
 // --- breeding: marrying the village in ---------------------------------------
 //
 // Modul: THE STANDARD PAIR. A child takes each aptitude from ONE parent, so it
@@ -773,6 +825,13 @@ await go('Breeding');
   let marriableLabel = '';
   let villagerTotal = 0;
   for (let heroIndex = 1; heroIndex < heroCount && marriable === null; heroIndex++) {
+    // Skip the heroes the screen has already said cannot: a level-1 child from
+    // an earlier run ("needs 50") and anybody inside the cooldown a previous
+    // marriage started ("resting"). Both are honest states rather than
+    // failures, and picking one turns this step into a test of the refusal.
+    const heroText = await heroSelect.locator('option').nth(heroIndex).innerText();
+    if (/needs 50|resting/.test(heroText)) continue;
+
     await heroSelect.selectOption({ index: heroIndex });
     await page.waitForTimeout(250);
 

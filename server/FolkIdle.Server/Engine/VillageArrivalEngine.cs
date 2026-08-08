@@ -82,6 +82,52 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>
+        /// Throws a feast and attracts somebody NOW, rather than waiting out
+        /// the day or two the Inn's clock takes.
+        ///
+        /// The price escalates 1.6x per recruitment within a season so this
+        /// cannot be spammed into a slot machine for a twenty-roll, and it is
+        /// priced in gold because the top of the economy has no sink that is
+        /// not the Forge. See VillagerArrivalRules, which owns every number.
+        ///
+        /// Returns the refusal, or null on success - a reason rather than a
+        /// bool because both refusals are things the player can act on ("the
+        /// village is full" and "that costs more than you have"), and a command
+        /// that fails in silence is how the last four features looked broken.
+        ///
+        /// DOES NOT TOUCH THE ARRIVAL CLOCK. Paying for somebody is not the
+        /// same as waiting for them, and folding the recruit into the clock
+        /// would mean gold could postpone the free arrival it was meant to
+        /// pre-empt.
+        /// </summary>
+        public static async Task<string?> RecruitAsync(
+            FolkIdleDbContext db, PlayerRecord player, int innLevel, long nowEpoch)
+        {
+            int population = await db.VillageNewcomers.CountAsync(v => v.PlayerId == player.Id);
+
+            var gold = await db.CommodityRecords
+                .FirstOrDefaultAsync(c => c.PlayerId == player.Id && c.ItemId == "gold");
+            long held = gold?.Quantity ?? 0L;
+
+            string? refusal = VillagerArrivalRules.RecruitBlockedReason(
+                innLevel, population, held, player.VillagerRecruitmentsThisSeason);
+
+            if (refusal != null) return refusal;
+
+            // Read the price back from the same function that just approved it
+            // rather than recomputing it from a different argument list.
+            long cost = VillagerArrivalRules.RecruitCostGold(player.VillagerRecruitmentsThisSeason);
+            gold!.Quantity -= cost;
+            player.VillagerRecruitmentsThisSeason++;
+
+            byte[] races = await UnlockedRacesAsync(db, player.Id);
+            db.VillageNewcomers.Add(Roll(player.Id, innLevel, nowEpoch, races));
+
+            await db.SaveChangesAsync();
+            return null;
+        }
+
+        /// <summary>
         /// Turns somebody away, freeing a slot.
         ///
         /// Deleting rather than flagging: a dismissed newcomer has no history

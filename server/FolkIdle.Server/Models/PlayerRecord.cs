@@ -171,6 +171,22 @@ namespace FolkIdle.Server.Models
         /// </summary>
         public long LastVillagerArrivalEpoch { get; set; }
 
+        /// <summary>
+        /// How many villagers have been RECRUITED this season, which is what
+        /// prices the next one - see VillagerArrivalRules.RecruitCostGold, where
+        /// each costs 1.6x the last.
+        ///
+        /// A stored counter rather than a count of the village, because the two
+        /// are different questions: recruits can be dismissed, can marry in and
+        /// become elders, and arrive alongside the ones who walked in on their
+        /// own. Pricing off the population would make the escalation resettable
+        /// by turning somebody away, which is the loophole that makes an
+        /// escalating price pointless.
+        ///
+        /// RESET AT THE ROLLOVER, with the village it prices.
+        /// </summary>
+        public int VillagerRecruitmentsThisSeason { get; set; }
+
         // Modul: lifetime statistics. Three counters the Statistics screen
         // needs and that nothing in this codebase tracked.
         //

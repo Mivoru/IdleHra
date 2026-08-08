@@ -99,6 +99,87 @@ namespace FolkIdle.Server.Domain.Progression
             _playerRegistry = playerRegistry;
         }
 
+        /// <summary>
+        /// Pays for a villager now. See VillageArrivalEngine.RecruitAsync for
+        /// the rule; this is the scope, the lock and the transaction around it.
+        ///
+        /// SERIALIZABLE with the player row locked FOR UPDATE, because the
+        /// escalating price lives on that row: two concurrent recruits reading
+        /// the same counter would both charge the cheaper price and the
+        /// escalation - the only thing stopping this being a slot machine -
+        /// would be worth nothing.
+        /// </summary>
+        public async Task ExecuteRecruitVillagerAsync(long playerId)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var player = await db.PlayerRecords
+                    .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
+                    .FirstOrDefaultAsync();
+
+                if (player == null)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                int innLevel = await db.VillageInfrastructures
+                    .AsNoTracking()
+                    .Where(v => v.PlayerId == playerId && v.BuildingId == InnBuildingId)
+                    .Select(v => v.CurrentLevel)
+                    .FirstOrDefaultAsync();
+
+                string? refusal = await Engine.VillageArrivalEngine.RecruitAsync(
+                    db, player, innLevel, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
+                if (refusal != null)
+                {
+                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 70, Value2 = 1, Timestamp = Environment.TickCount64 });
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                await transaction.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                Console.WriteLine($"Recruit villager failed: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Turns somebody away, freeing a slot for a better roll.
+        ///
+        /// The other half of the population cap being a DECISION rather than a
+        /// timer: a full village stops the arrival clock entirely, so somebody
+        /// who turned up at 4/3/9/2 is occupying the slot the twenty would have
+        /// walked into. An elder is refused - they married into the line and
+        /// are a record of it, not a resident.
+        /// </summary>
+        public async Task ExecuteDismissNewcomerAsync(long playerId, long newcomerId)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+            try
+            {
+                bool dismissed = await Engine.VillageArrivalEngine.DismissAsync(db, playerId, newcomerId);
+                if (!dismissed)
+                {
+                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 71, Value2 = 1, Timestamp = Environment.TickCount64 });
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Dismiss newcomer failed: {ex.Message}");
+            }
+        }
+
         public async Task ExecuteUpgradeBuildingAsync(long playerId, uint targetBuildingId)
         {
             if (!IsValidBuildingId(targetBuildingId))

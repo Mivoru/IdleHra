@@ -615,6 +615,51 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
+        /// <summary>
+        /// The two village-roster commands.
+        ///
+        /// Recruitment carries NO fields at all - the price escalates off a
+        /// server-side counter the client cannot see, so there is nothing
+        /// honest for a packet to say beyond "somebody, now". Dismissal carries
+        /// the row on TargetId and nothing else.
+        ///
+        /// Neither is gated on gold or population HERE: both are read inside
+        /// VillageArrivalEngine against the database in the same transaction
+        /// that spends them, and a gateway check on a stale payload copy would
+        /// only be a second answer that can disagree with the first.
+        /// </summary>
+        public static bool ValidateVillageRosterRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
+        {
+            bool isRecruit = packet.Command == FolkIdle.Server.Network.CommandType.RecruitVillager;
+            bool isDismiss = packet.Command == FolkIdle.Server.Network.CommandType.DismissNewcomer;
+            if (!isRecruit && !isDismiss)
+            {
+                return true;
+            }
+
+            byte commandValue = (byte)packet.Command;
+
+            if (isRecruit && packet.TargetId != 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = commandValue, Value2 = 1, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            if (isDismiss && packet.TargetId <= 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = commandValue, Value2 = 2, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            if (packet.SecondaryId != 0 || packet.TertiaryId != 0 || packet.LimitPrice != 0 || packet.IsBuy != 0 || packet.QualityTier != 0 || packet.TargetGuid != Guid.Empty || packet.SecondaryGuid != Guid.Empty || packet.TargetUnlockId != 0 || packet.RequestedSlotIndex != 0 || packet.MaterialId != 0 || packet.DepositQuantity != 0 || packet.MatchId != 0 || packet.ClientPredictedTurnCounter != 0 || packet.TargetPlayerId != 0 || packet.MentorshipRole != 0 || packet.TargetBuildingId != 0 || packet.TargetVillagerSlot != 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = commandValue, Value2 = 3, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            return true;
+        }
+
         public static bool ValidateVillageManagementRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
         {
             if (packet.Command != FolkIdle.Server.Network.CommandType.UpgradeBuilding && packet.Command != FolkIdle.Server.Network.CommandType.EvictVillager)

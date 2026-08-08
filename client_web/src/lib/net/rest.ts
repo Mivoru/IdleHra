@@ -556,6 +556,20 @@ export interface VillageNewcomersSnapshot {
   InnLevel: number;
   PopulationCap: number;
   IntervalSeconds: number;
+
+  /**
+   * What throwing a feast costs right now. Escalates 1.6x per recruitment
+   * within a season off a counter only the server has, so this cannot be
+   * computed client-side and a button that guessed would eventually quote the
+   * wrong number.
+   */
+  RecruitCostGold: number;
+
+  /** Why a feast is refused, or "" when it is not. Comes from the same
+   * function the command itself runs, so a disabled button and a rolled-back
+   * command can never disagree about why. */
+  RecruitBlockedReason: string;
+
   Newcomers: VillageNewcomer[];
 }
 

@@ -409,6 +409,8 @@ export const CommandType = {
   PurchaseSkillTreeLevel: 67,
   RespecSkillTree: 68,
   ExecuteVillagerBreeding: 69,
+  RecruitVillager: 70,
+  DismissNewcomer: 71,
 } as const;
 
 export type CommandTypeName = keyof typeof CommandType;

@@ -2230,6 +2230,36 @@ namespace FolkIdle.Server.Domain.Combat
                             await _villageManagementEngine.ExecuteEvictVillagerAsync(pId, villagerSlot);
                         });
                     }
+                    // Modul: the village as something the player DOES. The
+                    // recruitment price and the refusals were written and
+                    // tested, DismissAsync existed, and neither had a way in -
+                    // so a full village was a dead end and the gold sink the top
+                    // of the economy lacks was unreachable.
+                    else if (cmd.Command == CommandType.RecruitVillager || cmd.Command == CommandType.DismissNewcomer)
+                    {
+                        if (!ClientCommandValidator.ValidateVillageRosterRequest(ref currentPayload, ref cmd))
+                        {
+                            RemoveActivePlayer(routingPlayerId);
+                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
+                            _networkSystem.ForceDisconnect(routingPlayerId);
+                            continue;
+                        }
+
+                        long pId = currentPayload.PlayerId;
+                        bool isRecruit = cmd.Command == CommandType.RecruitVillager;
+                        long newcomerId = cmd.TargetId;
+
+                        SafeDispatchAsync(isRecruit ? "Village.Recruit" : "Village.Dismiss", pId, async () => {
+                            if (isRecruit)
+                            {
+                                await _villageManagementEngine.ExecuteRecruitVillagerAsync(pId);
+                            }
+                            else
+                            {
+                                await _villageManagementEngine.ExecuteDismissNewcomerAsync(pId, newcomerId);
+                            }
+                        });
+                    }
                     else if (cmd.Command == CommandType.UpgradeTool)
                     {
                         // Modul: UPGRADETOOL DOES NOTHING AND NEVER DID.

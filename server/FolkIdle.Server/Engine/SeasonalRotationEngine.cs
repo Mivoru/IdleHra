@@ -329,6 +329,38 @@ namespace FolkIdle.Server.Engine
                 // gold, materials, the market and the chronicle pass all reset,
                 // because the season is the ladder and the ladder is the game.
                 //
+                // Modul: THE VILLAGE ROSTER WAS DOCUMENTED AS SEASONAL AND WAS
+                // NEVER WIPED.
+                //
+                // VillageNewcomer's own comment says so in capitals - "SEASONAL,
+                // unlike the lineage; newcomers are wiped at the rollover along
+                // with the village they came to; only BORN CHILDREN carry
+                // forward" - and nothing here touched the table. So a season
+                // ended with its whole gene pool intact, including the elders
+                // who had already married in, and the two starter villagers
+                // would never be dealt again.
+                //
+                // That is not a cosmetic drift. The village is the ONE thing a
+                // player rebuilds each season, and the deal that makes rebuilding
+                // worth doing is that this season's Inn decides what blood you
+                // can marry into this season's line. A village that persists
+                // makes the Inn a one-time purchase and the second season's
+                // gene pool a leftover.
+                //
+                // The arrival clock and the recruitment counter go with it: zero
+                // means "never settled", which is what deals the season's two
+                // starters on the first login, and a price that escalated all
+                // last season must not still be escalated on day one of this
+                // one.
+                await db.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"village_newcomers\" RESTART IDENTITY", stoppingToken);
+                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"LastVillagerArrivalEpoch\" = 0, \"VillagerRecruitmentsThisSeason\" = 0", stoppingToken);
+
+                // Modul: character_lineage_registry is NOT in this method, and
+                // that is the intent rather than an oversight - see the list
+                // above. Aptitudes are the axis a season is meant to leave
+                // standing, so they survive on purpose; SeasonalRotationTests
+                // asserts it rather than leaving it to be true by accident.
+
                 // player_race_unlocks was never in this method and stays out:
                 // a race you have earned is yours.
                 await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerChroniclePasses\" SET \"PassLevel\" = 0, \"AccumulatedXp\" = 0, \"ClaimedMilestonesBitmask\" = 0", stoppingToken);

@@ -9,13 +9,15 @@
   // The cap is shown as "11 / 14" because that fraction is the whole decision:
   // somebody arrives at 4/3/9/2, and a full village means keeping them or
   // turning them away for a better roll later.
-  import { createQuery } from '@tanstack/svelte-query';
-  import { queryKeys, fetchVillageNewcomers } from '../net/rest';
-  import { APTITUDE_VILLAGE_CEILING } from '../net/commands';
+  import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import { queryKeys, fetchVillageNewcomers, type VillageNewcomer } from '../net/rest';
+  import { APTITUDE_VILLAGE_CEILING, recruitVillager, dismissNewcomer } from '../net/commands';
+  import { pushLocalNotice } from '../stores/game';
   import RaceIcon from './RaceIcon.svelte';
   import { raceName } from './races';
   import Skeleton from './Skeleton.svelte';
 
+  const client = useQueryClient();
   const folk = createQuery(() => ({
     queryKey: queryKeys.villageNewcomers,
     queryFn: fetchVillageNewcomers,
@@ -25,6 +27,27 @@
 
   function hours(seconds: number): string {
     return `${Math.round(seconds / 3600)}h`;
+  }
+
+  // Modul: the two decisions the population cap exists to pose, and neither
+  // had a button. A full village STOPS the arrival clock, so somebody who
+  // turned up at 4/3/9/2 is occupying the slot a twenty would have walked
+  // into - "keep them or send them on" is the whole game of the gene pool,
+  // and it was unplayable.
+  function refresh() {
+    setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.villageNewcomers }), 900);
+  }
+
+  function feast() {
+    const outcome = recruitVillager();
+    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    refresh();
+  }
+
+  function sendAway(person: VillageNewcomer) {
+    const outcome = dismissNewcomer(person.Id);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    refresh();
   }
 </script>
 
@@ -74,11 +97,37 @@
               <span title="Endurance">{person.AptitudeEndurance}</span>
               <span title="Fortune">{person.AptitudeFortune}</span>
             </span>
+            <!-- An elder married into the line. They are a record of the blood
+                 that came in, not a resident, and the server refuses to dismiss
+                 them - so no button rather than a button that fails. -->
+            {#if !person.IsElder}
+              <button
+                class="send"
+                title="Send them on their way and free the slot"
+                onclick={() => sendAway(person)}
+              >
+                Send on
+              </button>
+            {/if}
           </li>
         {/each}
       </ul>
       <p class="dim tiny key">Strength &middot; Skill &middot; Endurance &middot; Fortune</p>
     {/if}
+
+    <div class="feast">
+      <button disabled={data.RecruitBlockedReason !== ''} onclick={feast}>
+        Throw a feast &middot; {data.RecruitCostGold.toLocaleString()}g
+      </button>
+      <p class="dim tiny">
+        {#if data.RecruitBlockedReason}
+          {data.RecruitBlockedReason}
+        {:else}
+          Attracts somebody today instead of in {hours(data.IntervalSeconds)}. Each
+          feast this season costs more than the last.
+        {/if}
+      </p>
+    </div>
   {/if}
 </section>
 
@@ -164,6 +213,45 @@
     border-radius: 3px;
     background: var(--bg);
     color: var(--brass-lit);
+  }
+
+  .send {
+    flex: none;
+    font: inherit;
+    font-size: 0.72rem;
+    padding: 0.15rem 0.4rem;
+    color: var(--text-dim);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+
+  .send:hover {
+    color: var(--warn);
+    border-color: var(--warn);
+  }
+
+  .feast {
+    display: grid;
+    gap: 0.2rem;
+    margin-top: 0.2rem;
+  }
+
+  .feast button {
+    font: inherit;
+    padding: 0.35rem 0.5rem;
+    color: inherit;
+    background: var(--bg);
+    border: 1px solid var(--brass);
+    border-radius: var(--radius);
+    cursor: pointer;
+  }
+
+  .feast button:disabled {
+    opacity: 0.5;
+    border-color: var(--border);
+    cursor: default;
   }
 
   .key,

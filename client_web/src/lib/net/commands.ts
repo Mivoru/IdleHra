@@ -1398,6 +1398,33 @@ export function evictVillager(villagerSlot: number): CommandOutcome {
   return OK;
 }
 
+/**
+ * Throws a feast and attracts somebody now.
+ *
+ * Carries NO fields: the price escalates off a counter only the server has,
+ * so there is nothing honest a packet could say beyond "somebody, now" -
+ * and ValidateVillageRosterRequest disconnects on a non-zero TargetId.
+ *
+ * Whether it is affordable is the newcomers endpoint's answer
+ * (RecruitBlockedReason), not this function's: the server checks gold and the
+ * population cap inside the same transaction that spends them, and a second
+ * opinion here could only be a stale one.
+ */
+export function recruitVillager(): CommandOutcome {
+  connection.send({ Command: CommandType.RecruitVillager });
+  return OK;
+}
+
+/** Turns somebody away, freeing a slot. Elders are refused server-side - they
+ * married into the line and are a record of it, not a resident. */
+export function dismissNewcomer(newcomerId: number): CommandOutcome {
+  if (!Number.isInteger(newcomerId) || newcomerId <= 0) {
+    return refuse('Pick somebody to send on their way.');
+  }
+  connection.send({ Command: CommandType.DismissNewcomer, TargetId: newcomerId });
+  return OK;
+}
+
 // ---------------------------------------------------------------------------
 // Breeding
 // ---------------------------------------------------------------------------

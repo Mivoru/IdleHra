@@ -2660,7 +2660,11 @@ namespace FolkIdle.Server.Tests
                     PlayerGuid = mainCharacterId,
                     AuthenticatorToken = Guid.NewGuid(),
                     CurrentLevel = 42,
-                    CurrentXp = 123_456
+                    CurrentXp = 123_456,
+                    // Deep into a season's village: the clock has been settled
+                    // many times and four feasts have been paid for.
+                    LastVillagerArrivalEpoch = 1_700_000_000L,
+                    VillagerRecruitmentsThisSeason = 4
                 });
                 db.CharacterRecords.Add(new CharacterRecord
                 {
@@ -2674,6 +2678,30 @@ namespace FolkIdle.Server.Tests
                 // The ladder - all of this is supposed to go.
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 750_000L });
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "iron_ore", Quantity = 900L });
+
+                // The village roster, which is documented as seasonal and was
+                // never actually wiped - including an ELDER, who is the case
+                // that mattered: a gene pool that survives makes the Inn a
+                // one-time purchase and next season's pool a leftover.
+                var settler = new VillageNewcomer { PlayerId = playerId, RaceId = RaceIds.Human, IsFemale = true, ArrivedAtEpoch = 1_700_000_000L };
+                var elder = new VillageNewcomer { PlayerId = playerId, RaceId = RaceIds.Human, IsFemale = false, ArrivedAtEpoch = 1_700_000_000L, IsElder = true };
+                settler.SetAptitudeVector(new[] { 9, 9, 9, 9 });
+                elder.SetAptitudeVector(new[] { 14, 3, 3, 3 });
+                db.VillageNewcomers.AddRange(settler, elder);
+
+                // THE ONE AXIS A SEASON IS MEANT TO LEAVE STANDING. It survives
+                // today only because this engine happens not to name the table,
+                // which is not the same thing as being intended - so it is
+                // asserted here rather than left to be true by accident.
+                var lineage = new CharacterLineageRegistry
+                {
+                    CharacterId = mainCharacterId,
+                    GenerationIndex = 3,
+                    GeneticVector = 0L,
+                    IsEpicMutation = true
+                };
+                lineage.SetAptitudeVector(new[] { 17, 11, 8, 6 });
+                db.CharacterLineages.Add(lineage);
 
                 // The three survivors.
                 db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = playerId, BuildingId = 9, CurrentLevel = 7 });
@@ -2719,6 +2747,29 @@ namespace FolkIdle.Server.Tests
                     .ToDictionaryAsync(s => s.StatId, s => s.Level);
                 Assert.Equal(6, inherited[0]);
                 Assert.Equal(2, inherited[3]);
+
+                // The village ROSTER goes, unlike the buildings. This season's
+                // Inn decides what blood you can marry into this season's line,
+                // which is the entire reason rebuilding a village is worth
+                // doing - and the elder goes with the rest: they are last
+                // season's ancestry, and the child they produced is what
+                // carries forward.
+                Assert.Empty(await verify.VillageNewcomers.AsNoTracking().Where(v => v.PlayerId == playerId).ToListAsync());
+
+                // Zero means "never settled", which is what deals the new
+                // season's two starters on the first login; a price that
+                // escalated all last season must not still be escalated.
+                Assert.Equal(0L, player.LastVillagerArrivalEpoch);
+                Assert.Equal(0, player.VillagerRecruitmentsThisSeason);
+
+                // AND THE BLOODLINE STANDS. Every field, not just the row:
+                // a rollover that reset the aptitudes to the starting four
+                // would leave the row in place and satisfy any count.
+                var lineage = await verify.CharacterLineages.AsNoTracking()
+                    .SingleAsync(l => l.CharacterId == player.PlayerGuid);
+                Assert.Equal(3, lineage.GenerationIndex);
+                Assert.True(lineage.IsEpicMutation);
+                Assert.Equal(new[] { 17, 11, 8, 6 }, lineage.AptitudeVector());
             }
         }
 
@@ -9259,6 +9310,164 @@ namespace FolkIdle.Server.Tests
                 Assert.All(veteran, v => Assert.True(
                     v.RaceId == RaceIds.Human || v.RaceId == RaceIds.Vila,
                     $"a villager of race {v.RaceId} arrived for a player who has only unlocked Vila"));
+            }
+        }
+
+        // Modul: RECRUITMENT, which had rules, a price curve and fifteen tests
+        // and no way to reach any of it.
+        //
+        // The escalation is the part worth asserting rather than the first
+        // price: a flat cost would make this a slot machine you pull until a
+        // twenty falls out, and the whole two-phase climb assumes the village
+        // hands out roughly forty-five rolls a season, not four hundred.
+        [Fact]
+        public async Task Test_VillageRecruit_ChargesAnEscalatingPriceAndStopsAtTheCap()
+        {
+            const long testPlayerId = 970004620L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid(),
+                    // Non-zero so SettleAsync is not involved: this test is
+                    // about paying, not about waiting.
+                    LastVillagerArrivalEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 1_000_000L });
+                await db.SaveChangesAsync();
+            }
+
+            var engine = new VillageManagementEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            // Inn 0, so the population cap is the base six.
+            for (int i = 0; i < 3; i++)
+            {
+                await engine.ExecuteRecruitVillagerAsync(testPlayerId);
+            }
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var village = await verify.VillageNewcomers.AsNoTracking()
+                    .Where(v => v.PlayerId == testPlayerId).ToListAsync();
+                Assert.Equal(3, village.Count);
+
+                var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+                Assert.Equal(3, player.VillagerRecruitmentsThisSeason);
+
+                long expectedSpend =
+                    VillagerArrivalRules.RecruitCostGold(0) +
+                    VillagerArrivalRules.RecruitCostGold(1) +
+                    VillagerArrivalRules.RecruitCostGold(2);
+
+                var gold = await verify.CommodityRecords.AsNoTracking()
+                    .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "gold");
+                Assert.Equal(1_000_000L - expectedSpend, gold.Quantity);
+
+                // Each cost more than the last, which is the property; the
+                // exact figures are VillagerArrivalTests' business.
+                Assert.True(VillagerArrivalRules.RecruitCostGold(1) > VillagerArrivalRules.RecruitCostGold(0));
+                Assert.True(VillagerArrivalRules.RecruitCostGold(2) > VillagerArrivalRules.RecruitCostGold(1));
+            }
+
+            // Fill to the cap and then some. A FULL VILLAGE MUST REFUSE, and it
+            // must refuse without charging - a rollback that takes the gold
+            // anyway is the shape of bug the Serializable transaction is for.
+            for (int i = 0; i < 6; i++)
+            {
+                await engine.ExecuteRecruitVillagerAsync(testPlayerId);
+            }
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                int cap = VillagerArrivalRules.PopulationCapFor(0);
+                var village = await verify.VillageNewcomers.AsNoTracking()
+                    .Where(v => v.PlayerId == testPlayerId).ToListAsync();
+                Assert.Equal(cap, village.Count);
+
+                var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+                Assert.Equal(cap, player.VillagerRecruitmentsThisSeason);
+
+                long spent = 0L;
+                for (int i = 0; i < cap; i++) spent += VillagerArrivalRules.RecruitCostGold(i);
+
+                var gold = await verify.CommodityRecords.AsNoTracking()
+                    .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "gold");
+                Assert.Equal(1_000_000L - spent, gold.Quantity);
+            }
+        }
+
+        // Modul: dismissal, the other half of the population cap being a
+        // DECISION. A full village stops the arrival clock entirely, so a bad
+        // roll occupies the slot a twenty would have walked into.
+        [Fact]
+        public async Task Test_VillageDismiss_FreesASlotButNeverRemovesAnElder()
+        {
+            const long testPlayerId = 970004621L;
+            long settlerId;
+            long elderId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+
+                var settler = new VillageNewcomer { PlayerId = testPlayerId, RaceId = RaceIds.Human, IsFemale = true };
+                var elder = new VillageNewcomer { PlayerId = testPlayerId, RaceId = RaceIds.Human, IsFemale = false, IsElder = true };
+                db.VillageNewcomers.AddRange(settler, elder);
+                await db.SaveChangesAsync();
+
+                settlerId = settler.Id;
+                elderId = elder.Id;
+            }
+
+            var engine = new VillageManagementEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            await engine.ExecuteDismissNewcomerAsync(testPlayerId, settlerId);
+            // An elder married into the line - they are the record of blood
+            // that entered it, and a dismissal would erase that history to free
+            // a slot the game does not need freed.
+            await engine.ExecuteDismissNewcomerAsync(testPlayerId, elderId);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var remaining = await verify.VillageNewcomers.AsNoTracking()
+                    .Where(v => v.PlayerId == testPlayerId).ToListAsync();
+
+                Assert.Single(remaining);
+                Assert.Equal(elderId, remaining[0].Id);
+            }
+        }
+
+        // Modul: another player's village is not yours to empty. Dismissal
+        // resolves the row by (Id, PlayerId) rather than by Id, and this is the
+        // assertion that keeps it that way.
+        [Fact]
+        public async Task Test_VillageDismiss_CannotTouchAnotherPlayersVillage()
+        {
+            const long ownerId = 970004622L;
+            const long attackerId = 970004623L;
+            long villagerId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.AddRange(
+                    new PlayerRecord { Id = ownerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() },
+                    new PlayerRecord { Id = attackerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+
+                var villager = new VillageNewcomer { PlayerId = ownerId, RaceId = RaceIds.Human, IsFemale = true };
+                db.VillageNewcomers.Add(villager);
+                await db.SaveChangesAsync();
+                villagerId = villager.Id;
+            }
+
+            var engine = new VillageManagementEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await engine.ExecuteDismissNewcomerAsync(attackerId, villagerId);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.True(await verify.VillageNewcomers.AsNoTracking().AnyAsync(v => v.Id == villagerId));
             }
         }
 

@@ -154,7 +154,23 @@ namespace FolkIdle.Server.Network
         // 69 because 68 is RespecSkillTree - read this enum before adding to
         // it, see the note on PurchaseInheritanceLevel for what a collision
         // costs.
-        ExecuteVillagerBreeding = 69
+        ExecuteVillagerBreeding = 69,
+
+        // Modul: the village, as something the player DOES rather than watches.
+        // VillagerArrivalRules had the recruitment price, the refusals and
+        // fifteen tests, and VillageArrivalEngine.DismissAsync was written -
+        // and neither had a command or a button, so the two decisions the gene
+        // pool is built around (pay for a roll now, turn away a bad one) could
+        // not be made at all.
+        //
+        // RecruitVillager carries no fields: the price is the server's to
+        // compute from a counter the client cannot see. DismissNewcomer carries
+        // the village_newcomers row on TargetId.
+        //
+        // NOT EvictVillager (30), which names the older VillageResident work-slot
+        // table - a different table with no rows and no identity. Two concepts.
+        RecruitVillager = 70,
+        DismissNewcomer = 71
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

@@ -3143,11 +3143,32 @@ namespace FolkIdle.Server.Network
                     .Select(b => b.CurrentLevel)
                     .FirstOrDefaultAsync();
 
+                // Modul: recruitment. The price escalates 1.6x per recruitment
+                // WITHIN a season off a counter only the server has, so the
+                // client cannot compute it and a button that guessed would
+                // eventually quote the wrong number. The refusal comes from the
+                // same function the command runs, so a disabled button and a
+                // rolled-back command can never disagree about why.
+                int recruitments = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => p.Id == playerId)
+                    .Select(p => p.VillagerRecruitmentsThisSeason)
+                    .FirstOrDefaultAsync();
+
+                long heldGold = await db.CommodityRecords
+                    .AsNoTracking()
+                    .Where(c => c.PlayerId == playerId && c.ItemId == "gold")
+                    .Select(c => c.Quantity)
+                    .FirstOrDefaultAsync();
+
                 var payload = new
                 {
                     InnLevel = innLevel,
                     PopulationCap = Engine.VillagerArrivalRules.PopulationCapFor(innLevel),
                     IntervalSeconds = Engine.VillagerArrivalRules.IntervalSecondsFor(innLevel),
+                    RecruitCostGold = Engine.VillagerArrivalRules.RecruitCostGold(recruitments),
+                    RecruitBlockedReason = Engine.VillagerArrivalRules.RecruitBlockedReason(
+                        innLevel, rows.Count, heldGold, recruitments) ?? string.Empty,
                     Newcomers = rows.ConvertAll(v => new
                     {
                         v.Id,

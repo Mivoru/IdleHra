@@ -22,6 +22,15 @@ three rings of the skill tree with **all 15 node effects wired**, the respec
 gate, the season reset that was missing, breeding aptitudes end to end, and the
 village gene pool (table, arrival, endpoint, panel).
 
+**Shipped 2026-08-09: L4, the village roster.** `RecruitVillager` (70) and
+`DismissNewcomer` (71), a `VillagerRecruitmentsThisSeason` counter that prices
+the escalation, and both buttons on the Village screen. **And the rollover wipe
+that `VillageNewcomer` documented in capitals and nobody had written** - the
+roster, the arrival clock and the recruitment price now reset with the season,
+so this season's Inn decides this season's gene pool. `character_lineage_registry`
+is still untouched by the rollover, and is now asserted rather than left to
+chance.
+
 **Shipped 2026-08-09: L1, hero x villager pairing - the gene pool is live.**
 `ExecuteHeroVillagerBreedingAsync`, `CommandType.ExecuteVillagerBreeding` (69),
 `/api/v1/breeding/village-preview`, and a two-tab Breeding screen. Driven end
@@ -80,15 +89,6 @@ tools). It teaches, but it does not pay.
 **Trap:** every deed must have a live `x / y` counter. The existing tiered
 achievements returned 0 from `GetNextTierTarget` for most ids and the client
 rendered "0 / MAX". A deed without a number does not exist to the player.
-
----
-
-## L4. Villager recruitment, and dismissal
-
-`VillagerArrivalRules.RecruitCostGold` and `RecruitBlockedReason` are written
-and tested (2,500 / 10,240 / 41,943 / 171,798 gold), and
-`VillageArrivalEngine.DismissAsync` exists. **Neither has a command or a
-button.** Recruitment is also the gold sink the top of the economy lacks.
 
 ---
 
