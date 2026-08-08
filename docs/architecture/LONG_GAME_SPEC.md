@@ -5,14 +5,40 @@ problem, stated first because every number below is chosen against it.
 
 ## The problem these three solve
 
-`SeasonalRotationEngine.EraDurationSeconds` is **90 days**. Measured pacing puts
-level 100 at roughly **13 hours of play**. So the content is exhausted in week
-one and the season runs for another eighty-three days.
+An earlier draft of this document opened by claiming the content was exhausted
+in 13 hours of play, and built its whole motivation on that. **That number was
+wrong** - it was carried over from a note written on 2026-08-05, before the
+rebalance that tripled monster HP and attack, rebuilt the ladder and added the
+5x first-clear boss. Recording the correction here because the real numbers
+point the opposite way.
 
-Nothing here is decoration. The skill tree gives the season a shape, the Book of
-Deeds gives it a checklist, and breeding gives the *next* season a reason to
-exist. If a change to one of them does not help fill those eighty-three days, it
-is the wrong change.
+`SeasonalRotationEngine.EraDurationSeconds` is **90 days** = 2,160 hours.
+`ProgressionRateTests` measures the current content, bare (the model ignores
+affixes, STR growth and set bonuses on purpose, and live play runs roughly 3x
+its floor):
+
+| Region | s/kill | kills | hours bare | ~3x geared |
+|---|---|---|---|---|
+| 1 | 62 | 180 | 3.1 | ~1 |
+| 2 | 75 | 1,201 | 25 | ~8 |
+| 3 | 79 | 9,604 | 212 | ~71 |
+| 4 | 77 | 76,748 | 1,648 | ~549 |
+| 5 | 69 | 614,287 | 11,802 | ~3,934 |
+
+One hour of play: level 11, 1,529 gold, 53 kills.
+
+So the season is not empty - **region 5 does not fit inside it**. Even at the
+geared rate it is 164 days against a 90-day season, and region 4 eats most of
+what is left. That is a real balance problem, it is the opposite of the one
+assumed above, and it is tracked separately from this document.
+
+What this means for the three systems below: they are **not** here to fill dead
+time, because there is none. They are here because the game's only axes today
+are level and gear, both of which the rollover wipes - so a season leaves
+nothing behind but diamonds. The skill tree gives a season a shape, the Book of
+Deeds gives it a checklist that teaches the game, and breeding gives the *next*
+season a reason to exist. Judge a change to any of them on that, not on filling
+a calendar.
 
 ---
 
@@ -174,8 +200,10 @@ Three problems:
 
 1. It is a **list**, not a tree. Nothing leads to anything.
 2. It **teaches nothing**. A new player is told none of the game's order.
-3. The thresholds are **unreachable**. Treasury tier IV is 2.5 billion gold in a
-   game where level 100 is 13 hours away.
+3. The thresholds are **unreachable**. Treasury tier IV is 2.5 billion gold;
+   `ProgressionRateTests` measures region 4 as yielding 53M gold over 1,648
+   hours, so tier IV is roughly two full seasons of uninterrupted region-4
+   farming spent on nothing else.
 
 ## Structure: chapters and Seals
 
@@ -501,6 +529,10 @@ first two days are not dead, bad enough to want better.
 
 # 7. Open, deliberately not decided here
 
-**The 90-day season should be re-examined.** Even with everything above, a season
-whose leaderboard is effectively settled in week one is a long time to hold. That
-is its own discussion and was kept out of this one on purpose.
+**Region 5 does not fit in a season.** See the table at the top: ~3,934 geared
+hours against a 2,160-hour season. Region 4 is ~549 and already consumes most of
+what a player has. Either the season lengthens, or regions 4-5 come down, or the
+gear curve has to outrun the monster curve far more steeply than 3x. This is the
+biggest open balance question in the game and it needs its own pass with its own
+measurements - deciding it inside a design document about three other systems
+would be guessing.
