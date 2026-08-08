@@ -950,6 +950,16 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: the village gene pool. The roster above is the
+                    // player's OWN characters; this is the outside blood they
+                    // can marry into the line, which is a different list
+                    // answering a different question.
+                    if (requestPath == "/api/v1/village/newcomers" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleVillageNewcomers(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/mastery/snapshot" && context.Request.HttpMethod == "GET")
                     {
                         await HandleMasterySnapshot(context);
@@ -3076,6 +3086,74 @@ namespace FolkIdle.Server.Network
         // why an ineligible pairing was rejected, rather than this endpoint
         // silently hiding characters and leaving a player unable to tell an
         // "under cooldown" character apart from one that was never bred.
+        /// <summary>
+        /// The village's current gene pool, and how much room is left in it.
+        ///
+        /// Returns the CAP alongside the people, because "Village 11/14" is the
+        /// number that makes the keep-or-turn-away decision legible, and
+        /// deriving it client-side would mean mirroring
+        /// VillagerArrivalRules.PopulationCapFor into TypeScript for one label.
+        /// </summary>
+        private async Task HandleVillageNewcomers(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var rows = await db.VillageNewcomers
+                    .AsNoTracking()
+                    .Where(v => v.PlayerId == playerId)
+                    .OrderByDescending(v => v.ArrivedAtEpoch)
+                    .ToListAsync();
+
+                int innLevel = await db.VillageInfrastructures
+                    .AsNoTracking()
+                    .Where(b => b.PlayerId == playerId
+                             && b.BuildingId == Domain.Progression.VillageManagementEngine.InnBuildingId)
+                    .Select(b => b.CurrentLevel)
+                    .FirstOrDefaultAsync();
+
+                var payload = new
+                {
+                    InnLevel = innLevel,
+                    PopulationCap = Engine.VillagerArrivalRules.PopulationCapFor(innLevel),
+                    IntervalSeconds = Engine.VillagerArrivalRules.IntervalSecondsFor(innLevel),
+                    Newcomers = rows.ConvertAll(v => new
+                    {
+                        v.Id,
+                        v.RaceId,
+                        v.IsFemale,
+                        v.AptitudeStrength,
+                        v.AptitudeSkill,
+                        v.AptitudeEndurance,
+                        v.AptitudeFortune,
+                        v.ArrivedAtEpoch,
+                        v.IsElder,
+                    }),
+                };
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, payload);
+                context.Response.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"HandleVillageNewcomers failed: {ex.Message}");
+                context.Response.StatusCode = 500;
+                context.Response.Close();
+            }
+        }
+
         private async Task HandleBreedingRosterSnapshot(HttpListenerContext context)
         {
             try

@@ -76,6 +76,12 @@ namespace FolkIdle.Server.Models
         // were removed by measurement rather than taste.
         public DbSet<PlayerSkillTreeNode> PlayerSkillTreeNodes { get; set; }
 
+        // Modul: the village gene pool - people with genes, as opposed to
+        // VillageResidents, which is an older table of work slots with no
+        // identity. Seasonal: wiped at the rollover with the village itself,
+        // because only born children carry forward.
+        public DbSet<VillageNewcomer> VillageNewcomers { get; set; }
+
         public FolkIdleDbContext(DbContextOptions<FolkIdleDbContext> options) : base(options)
         {
         }

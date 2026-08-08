@@ -560,14 +560,18 @@ first two days are not dead, bad enough to want better.
       is not touched by SeasonalRotationEngine
      today, so they persist by accident rather than by design - which happens
      to be the intended behaviour, but nothing states or tests it.
-5. **PART DONE - villagers.** `VillagerArrivalRules` holds every decision -
+5. **MOSTLY DONE - villagers.** `VillagerArrivalRules` holds every decision -
    interval, population cap, recruitment price, and the refusals - with 15
    tests. Measured: 45 arrivals a season at Inn 0 and 90 at the ceiling;
    recruitment runs 2,500 / 10,240 / 41,943 / 171,798 gold.
-   - **Nothing calls it yet.** Villagers have no table: today's breeding roster
-     is the player's own characters, so hero-x-villager pairing still needs
-     storage, an arrival hook and a screen. The rules shipped first because
-     they can be verified alone.
+   - **Built:** `village_newcomers` table, `VillageArrivalEngine` settling the
+     clock on login, `/api/v1/village/newcomers`, and a panel on the Village
+     screen showing the pool with its cap.
+   - **Named apart from VillageResident**, which is an older table of work
+     slots with no identity. Two concepts, two tables.
+   - **Still missing: hero-x-villager PAIRING.** Breeding still pairs two of
+     the player's own characters, so the gene pool is visible but cannot yet
+     be married into - the one thing it exists for.
    - **Hall of Ancestors not started** - the 10-to-14 roster and the
      choose-who-carries moment at the rollover.
 6. **NOT STARTED - chapters II-V and Seals -> skill points.**

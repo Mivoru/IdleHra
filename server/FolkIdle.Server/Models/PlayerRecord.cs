@@ -156,6 +156,21 @@ namespace FolkIdle.Server.Models
         /// </summary>
         public int PaidRespecGrants { get; set; }
 
+        /// <summary>
+        /// When the village arrival clock was last settled, as a unix epoch.
+        ///
+        /// Stored rather than derived from the newest resident, because
+        /// VillagerArrivalRules deliberately carries the PARTIAL interval
+        /// forward - dropping the remainder would quietly lengthen every wait
+        /// and leave a season's village several people short - and a partial
+        /// interval has nobody to hang off.
+        ///
+        /// Zero means "never settled", which the arrival pass treats as
+        /// starting now rather than as 1970: a new account is not owed fifty
+        /// years of villagers.
+        /// </summary>
+        public long LastVillagerArrivalEpoch { get; set; }
+
         // Modul: lifetime statistics. Three counters the Statistics screen
         // needs and that nothing in this codebase tracked.
         //

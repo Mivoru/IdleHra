@@ -23,6 +23,7 @@ export const queryKeys = {
   bank: ['player', 'bank'] as const,
   friends: ['social', 'friends'] as const,
   achievements: ['meta', 'achievements'] as const,
+  villageNewcomers: ['village', 'newcomers'] as const,
   loginBonus: ['meta', 'loginBonus'] as const,
   leaderboard: ['meta', 'leaderboard'] as const,
   guildLeaderboard: ['meta', 'leaderboard', 'guilds'] as const,
@@ -527,6 +528,37 @@ export interface AchievementEntry {
   NextTierTarget: number;
   NextTierReward: number;
   IsClaimed: boolean;
+}
+
+/**
+ * The village gene pool: who lives there, and how many more will fit.
+ *
+ * The CAP comes from the server rather than being derived here, because
+ * "11 / 14" is the number that makes the keep-or-turn-away decision legible
+ * and mirroring VillagerArrivalRules.PopulationCapFor into TypeScript for one
+ * label would be a tenth copy of a server rule.
+ */
+export interface VillageNewcomer {
+  Id: number;
+  RaceId: number;
+  IsFemale: boolean;
+  AptitudeStrength: number;
+  AptitudeSkill: number;
+  AptitudeEndurance: number;
+  AptitudeFortune: number;
+  ArrivedAtEpoch: number;
+  IsElder: boolean;
+}
+
+export interface VillageNewcomersSnapshot {
+  InnLevel: number;
+  PopulationCap: number;
+  IntervalSeconds: number;
+  Newcomers: VillageNewcomer[];
+}
+
+export function fetchVillageNewcomers(): Promise<VillageNewcomersSnapshot> {
+  return authedGet<VillageNewcomersSnapshot>('/api/v1/village/newcomers');
 }
 
 export function fetchAchievements(): Promise<AchievementEntry[]> {

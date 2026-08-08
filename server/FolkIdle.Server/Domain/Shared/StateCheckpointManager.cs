@@ -791,6 +791,26 @@ namespace FolkIdle.Server.Domain.Shared
             // way - SkillTreeSyncQueue carries a purchase back to the tick.
             byte[] skillTreeLevels = await SkillTreeEngine.LoadLevelsAsync(dbContext, playerId);
 
+            // Modul: SETTLE THE VILLAGE ARRIVAL CLOCK on the way in.
+            //
+            // Arrivals are hours apart, so checking them on a 10 Hz loop would
+            // run three hundred thousand times per villager. What matters is
+            // that the roster is right the moment a player looks at it, and a
+            // login is the only moment that can be made true of anything they
+            // were not watching.
+            //
+            // Wrapped rather than awaited bare: a village that fails to settle
+            // must never block a login. The worst case is that nobody arrived
+            // this session, and the next login settles the same elapsed time.
+            try
+            {
+                await VillageArrivalEngine.SettleAsync(dbContext, player, innLevel, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"VillageArrival: settle failed for player {playerId}: {ex.Message}");
+            }
+
             long loadedGold = await dbContext.CommodityRecords
                 .AsNoTracking()
                 .Where(c => c.PlayerId == playerId && c.ItemId == "gold")

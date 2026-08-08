@@ -5,6 +5,7 @@
   import { BUILDINGS, upgradeBuilding, villageCostLabel } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import type { StateUpdate } from '../lib/net/protocol.generated';
+  import VillageFolk from '../lib/ui/VillageFolk.svelte';
 
 
   const statistics = createQuery(() => ({ queryKey: queryKeys.statistics, queryFn: fetchStatistics }));
@@ -56,6 +57,10 @@
   <p class="dim pad">Waiting for state...</p>
 {:else}
   <div class="grid">
+    <!-- Modul: the people, before the buildings. The village's reason to exist
+         is the blood it brings in; the buildings are how it gets better at
+         it. -->
+    <VillageFolk />
     <section class="panel">
       <div class="head">
         <h2>Village</h2>
