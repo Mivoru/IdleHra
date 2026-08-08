@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { language, setLanguage, translations, loadTranslations, coverage, LANGUAGES, t } from '../lib/ui/i18n';
   import { volume, muted, unlockAudio, play, preloadAll, CLIPS, type ClipName } from '../lib/ui/audio';
-  import { tutorialStep, skipTutorial, TutorialStep, currentPrompt } from '../lib/stores/tutorial';
+  import { tutorialPrompt, skipTutorial, unskipTutorial } from '../lib/stores/tutorial';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
   import { playerState, pushLocalNotice, commandResults, connectionStatus } from '../lib/stores/game';
@@ -42,6 +42,10 @@
   function skip() {
     skipTutorial();
     pushLocalNotice('Tutorial skipped.', 'info');
+  }
+
+  function showAgain() {
+    unskipTutorial();
   }
 
   const clipNames = Object.keys(CLIPS) as ClipName[];
@@ -190,13 +194,22 @@
   <section class="panel">
     <h2>Tutorial</h2>
 
-    {#if $tutorialStep === TutorialStep.Completed}
-      <p class="dim">Finished. It will not start again on this browser.</p>
-    {:else if $tutorialStep === TutorialStep.Inactive}
-      <p class="dim">Not started. It arms automatically on a brand-new account.</p>
+    <!-- Modul: the three states became two, because the third was a fiction.
+         "Not started - it arms automatically on a brand-new account" described
+         a machine that armed off IsFreshAccount and then never advanced. The
+         steps are read from the player's own state now, so there is nothing to
+         start: either the three things are done or they are not. -->
+    {#if $tutorialPrompt}
+      <p class="active">
+        {$tutorialPrompt.index} / {$tutorialPrompt.total} &middot; {$tutorialPrompt.title}
+      </p>
+      <p class="dim small">{$tutorialPrompt.body}</p>
+      <button onclick={skip}>Hide the tutorial</button>
     {:else}
-      <p class="active">Step {$tutorialStep} of 3 &middot; {currentPrompt()}</p>
-      <button onclick={skip}>Skip the tutorial</button>
+      <p class="dim">
+        Nothing outstanding - you have fought, dressed and stocked the larder.
+      </p>
+      <button onclick={showAgain}>Show it again</button>
     {/if}
 
     <h3>Accessibility</h3>

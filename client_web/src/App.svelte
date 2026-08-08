@@ -36,7 +36,7 @@
   import { HALT_REASON_SHORT } from './lib/ui/slots';
   import { initLanguage, loadTranslations } from './lib/ui/i18n';
   import { unlockAudio, play } from './lib/ui/audio';
-  import { tutorialStep, currentPrompt, TutorialStep } from './lib/stores/tutorial';
+  import { tutorialPrompt, skipTutorial } from './lib/stores/tutorial';
 
   initLanguage();
   void loadTranslations();
@@ -290,11 +290,18 @@
       <Boosts />
     {/if}
 
-    {#if $tutorialStep > TutorialStep.Inactive && $tutorialStep < TutorialStep.Completed}
+    <!-- Modul: A BANNER THAT DOES SOMETHING.
+         The old one printed "Step 1 of 3" and a sentence, and its only button
+         went to Settings to turn itself off - so the one action it offered was
+         to make it go away. It now names the step, says WHY the step matters,
+         and its main button takes the player to the screen where the thing is
+         done. Pointing is the whole job. -->
+    {#if $tutorialPrompt}
       <div class="tutorial" role="status">
-        <strong>Step {$tutorialStep} of 3</strong>
-        <span>{currentPrompt()}</span>
-        <button onclick={() => (screen = 'settings')}>Skip</button>
+        <strong>{$tutorialPrompt.index} / {$tutorialPrompt.total} &middot; {$tutorialPrompt.title}</strong>
+        <span>{$tutorialPrompt.body}</span>
+        <button class="gilded" onclick={() => (screen = $tutorialPrompt.screen)}>Take me there</button>
+        <button onclick={skipTutorial}>Skip</button>
       </div>
     {/if}
 

@@ -1,175 +1,66 @@
 import { describe, it, expect } from 'vitest';
-import {
-  TutorialStateMachine,
-  TutorialStep,
-  type TutorialUiElement,
-} from '../src/lib/stores/tutorial';
+import { nextTutorialStep, TutorialStep } from '../src/lib/stores/tutorialSteps';
 
-// Modul: TutorialStateMachine.cs is pure C# specifically so the server's xUnit
-// suite can compile it verbatim through a csproj link and assert on it. This
-// TypeScript version is a PORT, which means it is a second source of truth -
-// small, but real. These tests exist to hold it to the same rules the C# suite
-// holds the original to, so the two cannot drift silently.
+// Modul: this file used to hold PARITY tests against TutorialStateMachine.cs,
+// which the server's csproj links out of client/Assets/Scripts/Engine and
+// tests with xUnit. That machine belongs to the UNITY client, which is
+// abandoned - so the parity being defended was with a program nobody runs, and
+// the port it was defending is gone.
 //
-// Every case below is one of the original's own documented rules, not a
-// property invented here.
+// The C# original and its server-side test are left in place: deleting Unity
+// code is a separate decision from replacing the web client's onboarding, and
+// it is not one to make quietly inside a tutorial change.
+//
+// What is tested here instead is the thing that now decides what a new player
+// is told: given a state packet, which of the three steps is outstanding. It
+// is a pure function of the snapshot, which is exactly why it was worth
+// rewriting this way.
 
-const ALL_ELEMENTS: TutorialUiElement[] = [
-  'Inventory',
-  'Forge',
-  'Arena',
-  'Market',
-  'Guild',
-  'SkillTree',
-  'Chat',
-  'Settings',
-];
+/** The fields the tutorial reads, with everything else left off. */
+function snapshot(fields: Record<string, number>): any {
+  return { CurrentLevel: 1, EquippedWeaponId: 0, Food1_Count: 0, ...fields };
+}
 
-describe('step ordering', () => {
-  it('keeps the numeric ordering the server tests assert on', () => {
-    // The C# enum's values are explicit and contiguous because the server
-    // asserts on the ORDER, not the names.
-    expect(TutorialStep.Inactive).toBeLessThan(TutorialStep.LootFirstItem);
-    expect(TutorialStep.LootFirstItem).toBeLessThan(TutorialStep.CraftFirstItem);
-    expect(TutorialStep.CraftFirstItem).toBeLessThan(TutorialStep.WinFirstCombat);
-    expect(TutorialStep.WinFirstCombat).toBeLessThan(TutorialStep.Completed);
-  });
-});
-
-describe('begin', () => {
-  it('arms from the pristine state', () => {
-    const machine = new TutorialStateMachine();
-    machine.begin();
-    expect(machine.currentStep).toBe(TutorialStep.LootFirstItem);
+describe('what a new player is told next', () => {
+  it('says nothing before the first packet arrives', () => {
+    expect(nextTutorialStep(null)).toBeNull();
   });
 
-  it('is idempotent - a re-login never restarts a flow in progress', () => {
-    const machine = new TutorialStateMachine();
-    machine.begin();
-    machine.notifyItemLooted();
-    machine.begin();
-    expect(machine.currentStep).toBe(TutorialStep.CraftFirstItem);
+  it('starts with the fight, because nothing else can happen first', () => {
+    const prompt = nextTutorialStep(snapshot({}))!;
+    expect(prompt.step).toBe(TutorialStep.WinAFight);
+    expect(prompt.screen).toBe('combat');
+    expect(prompt.index).toBe(1);
   });
 
-  it('never restarts a completed flow', () => {
-    const machine = new TutorialStateMachine();
-    machine.skip();
-    machine.begin();
-    expect(machine.currentStep).toBe(TutorialStep.Completed);
-  });
-});
-
-describe('signals', () => {
-  it('advances through the ladder in order', () => {
-    const machine = new TutorialStateMachine();
-    machine.begin();
-    machine.notifyItemLooted();
-    expect(machine.currentStep).toBe(TutorialStep.CraftFirstItem);
-    machine.notifyItemCrafted();
-    expect(machine.currentStep).toBe(TutorialStep.WinFirstCombat);
-    machine.notifyCombatWon();
-    expect(machine.currentStep).toBe(TutorialStep.Completed);
+  it('moves to gear once a level has been earned', () => {
+    expect(nextTutorialStep(snapshot({ CurrentLevel: 2 }))!.step).toBe(TutorialStep.EquipADrop);
   });
 
-  it('DROPS out-of-order signals rather than queueing them', () => {
-    // Crafting during LootFirstItem must not let the player skip the loot
-    // step - the original is explicit that these are dropped, not queued.
-    const machine = new TutorialStateMachine();
-    machine.begin();
-    machine.notifyItemCrafted();
-    machine.notifyCombatWon();
-    expect(machine.currentStep).toBe(TutorialStep.LootFirstItem);
+  it('moves to the larder once something is worn', () => {
+    const prompt = nextTutorialStep(snapshot({ CurrentLevel: 2, EquippedWeaponId: 41 }))!;
+    expect(prompt.step).toBe(TutorialStep.StockTheLarder);
+    expect(prompt.screen).toBe('larder');
   });
 
-  it('treats a stale signal after completion as a harmless no-op', () => {
-    const machine = new TutorialStateMachine();
-    machine.skip();
-    machine.notifyCombatWon();
-    expect(machine.currentStep).toBe(TutorialStep.Completed);
+  it('falls silent when all three are done', () => {
+    expect(
+      nextTutorialStep(snapshot({ CurrentLevel: 2, EquippedWeaponId: 41, Food1_Count: 30 })),
+    ).toBeNull();
   });
 
-  it('fires the change event exactly once per transition', () => {
-    // Every transition funnels through one place in the original precisely so
-    // this holds.
-    const machine = new TutorialStateMachine();
-    const seen: number[] = [];
-    machine.onStepChanged = (step) => seen.push(step);
-
-    machine.begin();
-    machine.begin(); // idempotent, must not fire again
-    machine.notifyItemLooted();
-    machine.notifyItemCrafted();
-    machine.notifyCombatWon();
-    machine.skip(); // already Completed, must not fire again
-
-    expect(seen).toEqual([
-      TutorialStep.LootFirstItem,
-      TutorialStep.CraftFirstItem,
-      TutorialStep.WinFirstCombat,
-      TutorialStep.Completed,
-    ]);
-  });
-});
-
-describe('interaction gate', () => {
-  it('allows everything when inactive or completed', () => {
-    const inactive = new TutorialStateMachine();
-    for (const element of ALL_ELEMENTS) {
-      expect(inactive.isInteractionAllowed(element)).toBe(true);
-    }
-
-    const done = new TutorialStateMachine();
-    done.skip();
-    for (const element of ALL_ELEMENTS) {
-      expect(done.isInteractionAllowed(element)).toBe(true);
-    }
+  // Modul: THE POINT OF READING STATE RATHER THAN EVENTS. A player who did the
+  // first two things in a closed tab - or before any of this shipped - is
+  // shown the step they are actually on. The event-driven version had to be
+  // watching at the moment each thing happened, and a missed moment was
+  // missed for good.
+  it('skips ahead for a player who arrives having already done the work', () => {
+    expect(nextTutorialStep(snapshot({ CurrentLevel: 40, EquippedWeaponId: 7 }))!.step).toBe(
+      TutorialStep.StockTheLarder,
+    );
   });
 
-  it('funnels to exactly one screen per active step', () => {
-    const expected: [number, TutorialUiElement][] = [
-      [TutorialStep.LootFirstItem, 'Inventory'],
-      [TutorialStep.CraftFirstItem, 'Forge'],
-      [TutorialStep.WinFirstCombat, 'Arena'],
-    ];
-
-    const machine = new TutorialStateMachine();
-    machine.begin();
-
-    for (const [step, allowed] of expected) {
-      expect(machine.currentStep).toBe(step);
-      for (const element of ALL_ELEMENTS) {
-        // Settings is exempt; see below.
-        const shouldAllow = element === allowed || element === 'Settings';
-        expect(machine.isInteractionAllowed(element), `${step} / ${element}`).toBe(shouldAllow);
-      }
-
-      if (step === TutorialStep.LootFirstItem) machine.notifyItemLooted();
-      else if (step === TutorialStep.CraftFirstItem) machine.notifyItemCrafted();
-    }
-  });
-
-  it('NEVER blocks Settings, at any active step', () => {
-    // A tutorial must never trap a player away from settings or sign-out.
-    const machine = new TutorialStateMachine();
-    machine.begin();
-    expect(machine.isInteractionAllowed('Settings')).toBe(true);
-    machine.notifyItemLooted();
-    expect(machine.isInteractionAllowed('Settings')).toBe(true);
-    machine.notifyItemCrafted();
-    expect(machine.isInteractionAllowed('Settings')).toBe(true);
-  });
-});
-
-describe('skip', () => {
-  it('works from any state, including before the flow ever armed', () => {
-    const fresh = new TutorialStateMachine();
-    fresh.skip();
-    expect(fresh.currentStep).toBe(TutorialStep.Completed);
-
-    const midway = new TutorialStateMachine();
-    midway.begin();
-    midway.notifyItemLooted();
-    midway.skip();
-    expect(midway.currentStep).toBe(TutorialStep.Completed);
-  });
+  // Modul: dismissal is NOT tested here. It lives in the store, behind
+  // localStorage, and reaching it would drag the whole state store into a node
+  // test runner - which is the coupling this split exists to remove.
 });

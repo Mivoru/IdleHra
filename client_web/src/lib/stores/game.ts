@@ -18,7 +18,6 @@ import {
 import { DamageFeed, type DamageEvent } from './damage';
 import { CommandResultFeed, COMMAND_RESULT_SUCCESS, type CommandResultEntry } from './commandResults';
 import { queryClient } from '../net/queryClient';
-import { initTutorial, notifyItemLooted, notifyItemCrafted, notifyCombatWon } from './tutorial';
 import { play } from '../ui/audio';
 import type { StateUpdate, ResponseChatMessage, ResponseLootDrop } from '../net/protocol.generated';
 
@@ -314,7 +313,6 @@ export function startSession(token: string): void {
       // the only "you won" signal available - see damage.ts for why this wire
       // carries no combat events at all.
       if (lastMonsterHp > 0 && packet.CurrentMonsterHp <= 0 && packet.CurrentMonsterId > 0) {
-        notifyCombatWon();
         play('monsterDefeated');
       }
       lastMonsterHp = packet.CurrentMonsterHp;
@@ -365,10 +363,10 @@ export function startSession(token: string): void {
       // Modul: the tutorial arms from IsFreshAccount - the server's own signal
       // that this account's first character has never aged - which is the same
       // thing UiTutorialController keys off. Armed once, on the first packet.
-      if (!tutorialArmed) {
-        tutorialArmed = true;
-        initTutorial(packet.IsFreshAccount !== 0);
-      }
+      // Modul: the tutorial no longer needs arming. It reads the same packet
+      // this handler already has and works out what is outstanding, so there
+      // is no moment to catch and nothing to arm from - see stores/tutorial.ts
+      // on why IsFreshAccount was the wrong signal to hang it on.
 
       // Modul: TotalItemsCraftedCount RISING is how a finished craft is
       // detected - there is no craft-completed event on this wire, and the
@@ -376,7 +374,6 @@ export function startSession(token: string): void {
       // It sat at a hardcoded zero until 2026-08-01, which made that tutorial
       // step impossible to complete.
       if (lastCraftedCount >= 0 && packet.TotalItemsCraftedCount > lastCraftedCount) {
-        notifyItemCrafted();
         play('craftingCompleted');
       }
       lastCraftedCount = packet.TotalItemsCraftedCount;
@@ -483,7 +480,6 @@ export function startSession(token: string): void {
     },
 
     onLootDrop: (packet: ResponseLootDrop) => {
-      notifyItemLooted();
       play(packet.QualityTier >= 10 ? 'lootRare' : 'lootDropped');
 
       lootLog.update((entries) => {

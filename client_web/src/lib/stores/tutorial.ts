@@ -1,174 +1,111 @@
-// Modul: the FTUE state machine, ported from
-// client/Assets/Scripts/Engine/TutorialStateMachine.cs.
+// Modul: the WIRING for onboarding. The rule lives in tutorialSteps.ts.
 //
-// A PORT, NOT A REIMPLEMENTATION. That file is pure C# with no UnityEngine
-// reference precisely so it can be shared - the server's xUnit suite compiles
-// it verbatim through a csproj link and asserts on its behaviour. This is the
-// same rules in TypeScript, and where the original's comments explain WHY a
-// rule exists they are carried across rather than summarised, because the
-// reasons are the parts a reimplementation loses.
+// THE ORDER WAS THE PROBLEM, not the plumbing. The previous version was a
+// three-step machine - loot, then craft, then win a fight - advanced by
+// notifyItemLooted, notifyItemCrafted and notifyCombatWon, and those three
+// were wired correctly from the state store. It worked. It just asked for the
+// wrong things in the wrong order:
 //
-// Ideally this would be generated like the protocol types are. It is not, and
-// that is a real (small) second source of truth - so the rules below are
-// mirrored exactly and covered by tests that mirror the server's own.
+//   - Crafting was step two, and a brand-new account has no materials. The
+//     second instruction was one the player could not follow for a long time.
+//     (game.ts still carries a note about that step having been outright
+//     impossible until a counter was fixed.)
+//   - "Win a fight" was step three, after looting - but you cannot loot before
+//     you fight. The sequence described the middle of the game.
+//   - Nothing in it mentioned the larder, which is the mechanic a new player
+//     most needs and is least likely to find on their own. They die instead.
+//
+// Its interaction gate WAS dead: isInteractionAllowed had no callers anywhere.
+// That is the one part of the old design worth being glad about - see below.
+//
+// The steps are re-chosen and read off the state packet rather than off
+// events, which makes onboarding SELF-HEALING: a player who levelled in a
+// closed tab, or who equipped something before any of this shipped, is shown
+// the step they are actually on. An event-driven machine has to catch the
+// moment or lose it forever.
+import { derived, get, writable } from 'svelte/store';
+import { playerState } from './game';
+import { nextTutorialStep, TutorialStep, type TutorialPrompt } from './tutorialSteps';
 
-import { writable, get } from 'svelte/store';
+export { TutorialStep, nextTutorialStep };
+export type { TutorialPrompt };
 
-// Values are explicit and contiguous because the server-side integration tests
-// assert on the numeric ordering Inactive < LootFirstItem < CraftFirstItem <
-// WinFirstCombat < Completed rather than on names.
-export const TutorialStep = {
-  Inactive: 0,
-  LootFirstItem: 1,
-  CraftFirstItem: 2,
-  WinFirstCombat: 3,
-  Completed: 4,
-} as const;
+const STORAGE_KEY = 'folkidle.tutorialDismissed';
 
-export type TutorialStepValue = (typeof TutorialStep)[keyof typeof TutorialStep];
+/**
+ * Dismissal is the ONLY thing worth persisting. The steps themselves are read
+ * from the packet every frame, so there is no progress here to lose - which is
+ * also why the old storage key is not reused: it held a step NUMBER, and
+ * restoring one would resurrect the very staleness this replaces.
+ */
+const dismissed = writable<boolean>(readDismissed());
 
-// The coarse UI surfaces the interaction gate can block. Deliberately a closed
-// list of top-level screens, not per-button ids - the tutorial only funnels the
-// player toward one screen at a time.
-export type TutorialUiElement =
-  | 'Inventory'
-  | 'Forge'
-  | 'Arena'
-  | 'Market'
-  | 'Guild'
-  | 'SkillTree'
-  | 'Chat'
-  | 'Settings';
-
-const STORAGE_KEY = 'folkidle.tutorialStep';
-
-export class TutorialStateMachine {
-  private step: TutorialStepValue = TutorialStep.Inactive;
-
-  get currentStep(): TutorialStepValue {
-    return this.step;
-  }
-
-  /** "Active" means inside the guided flow (steps 1-3). Inactive and Completed are both unrestricted. */
-  get isActive(): boolean {
-    return this.step >= TutorialStep.LootFirstItem && this.step <= TutorialStep.WinFirstCombat;
-  }
-
-  onStepChanged: ((step: TutorialStepValue) => void) | null = null;
-
-  /**
-   * Idempotent - it only arms the tutorial from the pristine Inactive state.
-   * A re-login on an account that already progressed, completed or skipped
-   * must never restart the flow.
-   */
-  begin(): void {
-    if (this.step !== TutorialStep.Inactive) return;
-    this.transition(TutorialStep.LootFirstItem);
-  }
-
-  // Each notify advances only when the machine is sitting on exactly the
-  // matching step. Out-of-order signals are DROPPED, not queued: crafting
-  // during LootFirstItem must not let the player skip the loot step, and a
-  // stale combat win arriving after completion is a harmless no-op.
-  notifyItemLooted(): void {
-    if (this.step !== TutorialStep.LootFirstItem) return;
-    this.transition(TutorialStep.CraftFirstItem);
-  }
-
-  notifyItemCrafted(): void {
-    if (this.step !== TutorialStep.CraftFirstItem) return;
-    this.transition(TutorialStep.WinFirstCombat);
-  }
-
-  notifyCombatWon(): void {
-    if (this.step !== TutorialStep.WinFirstCombat) return;
-    this.transition(TutorialStep.Completed);
-  }
-
-  /**
-   * Opt-out escape hatch, valid from any state including Inactive - a player
-   * may skip before the first step ever arms. The only no-op is already being
-   * Completed, so the completion event never fires twice.
-   */
-  skip(): void {
-    if (this.step === TutorialStep.Completed) return;
-    this.transition(TutorialStep.Completed);
-  }
-
-  /**
-   * While active, ONLY the single screen the current step needs is
-   * interactable. Settings is exempt unconditionally - a tutorial must never
-   * trap a player away from settings or sign-out. Outside the active range
-   * everything is allowed.
-   */
-  isInteractionAllowed(element: TutorialUiElement): boolean {
-    if (!this.isActive) return true;
-    if (element === 'Settings') return true;
-
-    switch (this.step) {
-      case TutorialStep.LootFirstItem:
-        return element === 'Inventory';
-      case TutorialStep.CraftFirstItem:
-        return element === 'Forge';
-      case TutorialStep.WinFirstCombat:
-        return element === 'Arena';
-      default:
-        return true;
-    }
-  }
-
-  /** Restores a persisted step. The C# original leaves persistence to its driver. */
-  restore(step: TutorialStepValue): void {
-    this.step = step;
-  }
-
-  private transition(next: TutorialStepValue): void {
-    this.step = next;
-    this.onStepChanged?.(next);
+function readDismissed(): boolean {
+  try {
+    return localStorage.getItem(STORAGE_KEY) === '1';
+  } catch {
+    return false;
   }
 }
 
-// ---------------------------------------------------------------------------
-// The driver - everything the C# version deliberately kept out of the machine
-// ---------------------------------------------------------------------------
-
-export const tutorialStep = writable<TutorialStepValue>(TutorialStep.Inactive);
-
-const machine = new TutorialStateMachine();
-machine.onStepChanged = (step) => {
-  tutorialStep.set(step);
-  localStorage.setItem(STORAGE_KEY, String(step));
-};
-
-export function initTutorial(isFreshAccount: boolean): void {
-  const stored = Number(localStorage.getItem(STORAGE_KEY));
-  if (Number.isInteger(stored) && stored >= 0 && stored <= TutorialStep.Completed) {
-    machine.restore(stored as TutorialStepValue);
-    tutorialStep.set(machine.currentStep);
-    return;
+export function skipTutorial(): void {
+  dismissed.set(true);
+  try {
+    localStorage.setItem(STORAGE_KEY, '1');
+  } catch {
+    // A browser refusing storage should not break the game; the tutorial will
+    // simply come back next session, which is the harmless direction to fail.
   }
-
-  // IsFreshAccount is the server's own signal - true when this account's first
-  // character has never aged - and is what the Unity controller arms from too.
-  if (isFreshAccount) machine.begin();
-  tutorialStep.set(machine.currentStep);
 }
 
-export const notifyItemLooted = () => machine.notifyItemLooted();
-export const notifyItemCrafted = () => machine.notifyItemCrafted();
-export const notifyCombatWon = () => machine.notifyCombatWon();
-export const skipTutorial = () => machine.skip();
-
-export function isInteractionAllowed(element: TutorialUiElement): boolean {
-  return machine.isInteractionAllowed(element);
+/**
+ * Undo a dismissal. Worth having because dismissing is one click, and a player
+ * who did it by accident had no way back at all.
+ */
+export function unskipTutorial(): void {
+  dismissed.set(false);
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    // See skipTutorial.
+  }
 }
 
-export const STEP_PROMPTS: Record<number, string> = {
-  [TutorialStep.LootFirstItem]: 'Fight something and pick up your first drop.',
-  [TutorialStep.CraftFirstItem]: 'Take what you found to the Forge and make something.',
-  [TutorialStep.WinFirstCombat]: 'Win a fight with what you made.',
-};
+/**
+ * The current step, or null when there is nothing to say.
+ *
+ * Modul: it does NOT arm from IsFreshAccount any more. That flag is true only
+ * while the first character has never aged, so it turns false on its own after
+ * a while - and took the tutorial with it, mid-onboarding, for a player who
+ * had done none of it. What matters is whether the three things are done, not
+ * how old the account is.
+ */
+export const tutorialPrompt = derived(
+  [playerState, dismissed],
+  ([snapshot, isDismissed]): TutorialPrompt | null =>
+    isDismissed ? null : nextTutorialStep(snapshot),
+);
+
+/** True while any step is outstanding - for anything that wants to know. */
+export const tutorialActive = derived(tutorialPrompt, (prompt) => prompt !== null);
+
+/**
+ * Modul: kept as a no-op with its old name, and it was ALREADY a no-op in
+ * practice - nothing ever called it. Retained deliberately so the idea does
+ * not come back: it funnelled the player by DISABLING every screen except the
+ * one the current step needed, which in a game whose whole promise is that it
+ * runs without you means locking someone out of their own village to teach
+ * them about fishing. The banner points; it does not fence.
+ */
+export function isInteractionAllowed(): boolean {
+  return true;
+}
+
+/** Compatibility for callers that only need "is onboarding finished". */
+export const tutorialStep = derived(tutorialPrompt, (prompt) =>
+  prompt === null ? TutorialStep.Completed : prompt.step,
+);
 
 export function currentPrompt(): string {
-  return STEP_PROMPTS[get(tutorialStep)] ?? '';
+  return get(tutorialPrompt)?.body ?? '';
 }
