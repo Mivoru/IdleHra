@@ -17,8 +17,6 @@ vi.mock('../src/lib/net/connection', () => ({
 const {
   listItemOnMarket,
   buyMarketListing,
-  depositToBank,
-  withdrawFromBank,
   startTreeCraft,
   executeForgeFusion,
   rerollAffix,
@@ -74,21 +72,6 @@ describe('market', () => {
     expect(buyMarketListing(7).ok).toBe(true);
     expect(sent[0]).toMatchObject({ Command: CommandType.MarketBuyItem, TargetId: 7 });
     expect(sent[0].LimitPrice).toBeUndefined();
-  });
-});
-
-describe('bank', () => {
-  it('deposits by equipment instance id and withdraws by BANK ROW id', () => {
-    depositToBank(11);
-    withdrawFromBank(22);
-    expect(sent[0]).toMatchObject({ Command: CommandType.DepositToBank, TargetId: 11 });
-    expect(sent[1]).toMatchObject({ Command: CommandType.WithdrawFromBank, TargetId: 22 });
-  });
-
-  it('refuses non-positive ids', () => {
-    expect(depositToBank(0).ok).toBe(false);
-    expect(withdrawFromBank(0).ok).toBe(false);
-    expect(sent).toHaveLength(0);
   });
 });
 

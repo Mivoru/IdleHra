@@ -20,7 +20,6 @@ export const queryKeys = {
   inventory: ['player', 'inventory'] as const,
   statistics: ['player', 'statistics'] as const,
   monsterLoot: (monsterId: number) => ['monsters', 'loot', monsterId] as const,
-  bank: ['player', 'bank'] as const,
   friends: ['social', 'friends'] as const,
   achievements: ['meta', 'achievements'] as const,
   villageNewcomers: ['village', 'newcomers'] as const,
@@ -123,24 +122,6 @@ export interface PlayerStatistics {
 
 export function fetchStatistics(): Promise<PlayerStatistics> {
   return authedGet<PlayerStatistics>('/api/v1/player/statistics');
-}
-
-// ---------------------------------------------------------------------------
-// /api/v1/bank/list
-// ---------------------------------------------------------------------------
-
-// Modul: `Id` here is the BANK ROW id, not the equipment instance id it came
-// from. WithdrawFromBank addresses this row, so the distinction is load-bearing
-// rather than incidental.
-export interface BankEntry {
-  Id: number;
-  BaseItemId: string;
-  QualityTier: number;
-  IsAffixLocked: boolean;
-}
-
-export function fetchBank(): Promise<BankEntry[]> {
-  return authedGet<BankEntry[]>('/api/v1/bank/list');
 }
 
 // ---------------------------------------------------------------------------

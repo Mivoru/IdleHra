@@ -1567,25 +1567,6 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                while (_playerRegistry.BankWithdrawRequestQueue.TryDequeue(out var req))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, req.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        if (currentPayload.InventorySpaceRemaining <= 0)
-                        {
-                            _playerRegistry.EnqueueCommandResult(req.PlayerId, (byte)CommandResultCode.InventoryFull);
-                            SafeDispatchAsync("BankWithdraw.Reject", req.PlayerId, async () => { await _mailboxEngine.CommitBankWithdrawAsync(req.PlayerId, req.BankId, false); });
-                        }
-                        else
-                        {
-                            currentPayload.InventorySpaceRemaining--;
-                            currentPayload.IsDirty = true;
-                            SafeDispatchAsync("BankWithdraw.Accept", req.PlayerId, async () => { await _mailboxEngine.CommitBankWithdrawAsync(req.PlayerId, req.BankId, true); });
-                        }
-                    }
-                }
-
                 while (_networkSystem.CommandQueue.TryDequeue(out var cmdWrapper))
                 {
                     var cmd = cmdWrapper.Packet;
@@ -2518,21 +2499,20 @@ namespace FolkIdle.Server.Domain.Combat
                             await ExecutePassPurchaseAsync(pId);
                         });
                     }
-                    else if (cmd.Command == CommandType.DepositToBank)
+                    // Modul: THE BANK IS RETIRED, and both commands are now
+                    // ignored rather than routed. See the RetireTheBank
+                    // migration: it was a 100-slot store that existed to
+                    // relieve a backpack cap the game no longer has, and an
+                    // item inside it could not be equipped, fused, rerolled or
+                    // sold - every one of those reads EquipmentInstances. Its
+                    // rows were moved there and the table dropped.
+                    //
+                    // Ignored rather than treated as a protocol violation: a
+                    // client still sending these is an old bundle, and
+                    // disconnecting a stale tab teaches nobody anything.
+                    else if (cmd.Command == CommandType.DepositToBank || cmd.Command == CommandType.WithdrawFromBank)
                     {
-                        long pId = currentPayload.PlayerId;
-                        long instanceId = cmd.TargetId;
-                        SafeDispatchAsync("Bank.Deposit", pId, async () => {
-                            await _mailboxEngine.DepositToBankAsync(pId, instanceId);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.WithdrawFromBank)
-                    {
-                        long pId = currentPayload.PlayerId;
-                        long bankId = cmd.TargetId;
-                        SafeDispatchAsync("Bank.Withdraw", pId, async () => {
-                            await _mailboxEngine.WithdrawFromBankAsync(pId, bankId);
-                        });
+                        // Deliberately empty.
                     }
                     else if (cmd.Command == CommandType.ActivateChronoBoost)
                     {

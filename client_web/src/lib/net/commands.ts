@@ -143,26 +143,12 @@ export function placeLimitOrder(options: {
   return OK;
 }
 
-// ---------------------------------------------------------------------------
-// Bank vault
-// ---------------------------------------------------------------------------
-
-export function depositToBank(equipmentInstanceId: number): CommandOutcome {
-  if (!Number.isInteger(equipmentInstanceId) || equipmentInstanceId <= 0) {
-    return refuse('Pick an item to deposit.');
-  }
-  connection.send({ Command: CommandType.DepositToBank, TargetId: equipmentInstanceId });
-  return OK;
-}
-
-/** Withdraw addresses the BANK ROW id, not the equipment instance id. */
-export function withdrawFromBank(bankRowId: number): CommandOutcome {
-  if (!Number.isInteger(bankRowId) || bankRowId <= 0) {
-    return refuse('Pick a stored item to withdraw.');
-  }
-  connection.send({ Command: CommandType.WithdrawFromBank, TargetId: bankRowId });
-  return OK;
-}
+// Modul: THE BANK VAULT IS RETIRED, and depositToBank/withdrawFromBank are
+// gone with it. It was a hundred-slot store that relieved a backpack cap this
+// game no longer has, and an item inside it could not be worn, upgraded,
+// rerolled or sold - every one of those reads EquipmentInstances. Its rows were
+// moved there and the table dropped; see the RetireTheBank migration. Neither
+// function had a caller in this client.
 
 // ---------------------------------------------------------------------------
 // Mailbox

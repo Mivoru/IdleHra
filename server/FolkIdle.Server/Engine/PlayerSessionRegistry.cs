@@ -141,12 +141,6 @@ namespace FolkIdle.Server.Engine
         public bool HasItem;
     }
 
-    public struct BankWithdrawRequest
-    {
-        public long PlayerId;
-        public long BankId;
-    }
-
     /// <summary>
     /// A recount of how many backpack slots a player occupies, handed to the
     /// tick thread after an operation that changed it.
@@ -375,7 +369,6 @@ namespace FolkIdle.Server.Engine
         // about it the same way it learns about every other off-thread result.
         public ConcurrentQueue<RaceUnlockNotification> RaceUnlockQueue { get; } = new();
         public ConcurrentQueue<MailClaimRequest> MailClaimRequestQueue { get; } = new();
-        public ConcurrentQueue<BankWithdrawRequest> BankWithdrawRequestQueue { get; } = new();
         public ConcurrentQueue<BirthNotification> BirthNotificationQueue { get; } = new();
         public ConcurrentQueue<WorldBossAttemptUpdateNotification> WorldBossAttemptUpdateQueue { get; } = new();
         public ConcurrentQueue<MasteryUpdateNotification> MasteryUpdateQueue { get; } = new();

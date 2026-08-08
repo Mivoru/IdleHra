@@ -12,7 +12,6 @@ namespace FolkIdle.Server.Models
         public DbSet<CommodityRecord> CommodityRecords { get; set; }
         public DbSet<MarketEquipmentInstance> MarketEquipmentInstances { get; set; }
         public DbSet<EquipmentInstance> EquipmentInstances { get; set; }
-        public DbSet<BankEquipmentInstance> BankEquipmentInstances { get; set; }
         public DbSet<MailboxInstance> MailboxInstances { get; set; }
         public DbSet<MarketOrderRecord> MarketOrderRecords { get; set; }
         public DbSet<HistoricalMarketArchive> HistoricalMarketArchives { get; set; }
@@ -234,10 +233,6 @@ namespace FolkIdle.Server.Models
                 .HasColumnType("jsonb");
 
             modelBuilder.Entity<EquipmentInstance>()
-                .Property(e => e.AffixPayload)
-                .HasColumnType("jsonb");
-
-            modelBuilder.Entity<BankEquipmentInstance>()
                 .Property(e => e.AffixPayload)
                 .HasColumnType("jsonb");
 

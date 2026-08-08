@@ -1194,12 +1194,6 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
-                    if (requestPath == "/api/v1/bank/list" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleBankListSnapshot(context);
-                        continue;
-                    }
-
                     // Modul: Phase - Full-Stack Production Polish Phase 2,
                     // Part 3.1. Exposes ContentRegistry.Balance.
                     // IapProductPrices (loaded from GameBalanceConfig.json)
@@ -2608,51 +2602,6 @@ namespace FolkIdle.Server.Network
             public string BaseItemId { get; set; } = string.Empty;
             public int QualityTier { get; set; }
             public bool IsAffixLocked { get; set; }
-        }
-
-        private async Task HandleBankListSnapshot(HttpListenerContext context)
-        {
-            try
-            {
-                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
-                if (playerId <= 0)
-                {
-                    context.Response.StatusCode = 401;
-                    context.Response.Close();
-                    return;
-                }
-
-                using var scope = _serviceProvider.CreateScope();
-                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-
-                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
-                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
-
-                var entries = await db.BankEquipmentInstances
-                    .AsNoTracking()
-                    .Where(b => b.PlayerId == playerId)
-                    .Select(b => new BankEntryResponse
-                    {
-                        Id = b.Id,
-                        BaseItemId = b.BaseItemId,
-                        QualityTier = b.QualityTier,
-                        IsAffixLocked = b.IsAffixLocked
-                    })
-                    .ToListAsync();
-
-                await transaction.CommitAsync();
-
-                context.Response.StatusCode = 200;
-                context.Response.ContentType = "application/json";
-                await JsonSerializer.SerializeAsync(context.Response.OutputStream, entries);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Bank list snapshot error: {ex}");
-                context.Response.StatusCode = 500;
-            }
-
-            context.Response.Close();
         }
 
         private sealed class StoreCatalogEntryResponse

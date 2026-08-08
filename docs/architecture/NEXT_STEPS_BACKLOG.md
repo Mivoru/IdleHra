@@ -384,9 +384,14 @@ feature - every spend already drew from the sum - and it produced the same bug
 three times, each found separately: the larder, the boosts panel and the guild
 deposit each filtered on one half. The API returns a single `Quantity`.
 
-`BankEquipmentInstances` is the third table and was NOT merged: it holds
-equipment with affixes, so it duplicates `EquipmentInstances` instead, and that
-merge needs the Bank's remaining callers looked at first.
+`BankEquipmentInstances` **is now merged too, and then dropped** - see the
+`RetireTheBank` migration. It was a hundred-slot store that existed to relieve a
+backpack cap the game no longer has, and it did active harm: `EquipmentSlotEngine`,
+forge fusion, affix reroll and every market listing read `EquipmentInstances`, so
+an item in the Bank could not be worn, upgraded, rerolled or sold. Depositing
+was a way to make your own gear inert and nothing said so. Its rows were moved
+across rather than dropped with the table, and commands 12/13 are ignored rather
+than routed.
 
 ## The suite was red, and the red was not being read
 
@@ -771,8 +776,8 @@ robin with wrap-around: every monster carries exactly one piece of all eight
 slots, so an equipment roll is an even eight-way choice. `EquipmentDropTable`
 needs no change when a second amulet is authored - it starts alternating them.
 
-**`BankEquipmentInstances`** is the storage merge that was deliberately left
-out - see "One store, one number" above.
+**~~`BankEquipmentInstances`~~ - DONE.** Merged into `EquipmentInstances` and
+the table dropped; see "One store, one number" above.
 
 **~~`ExecuteUpgradeToolAsync` is an empty stub~~ - DONE.** The button, the
 helper, the command handler and the whole twenty-four-line

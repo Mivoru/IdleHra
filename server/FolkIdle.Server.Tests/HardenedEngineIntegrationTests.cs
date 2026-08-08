@@ -5693,74 +5693,15 @@ namespace FolkIdle.Server.Tests
             return buffer;
         }
 
-        // Modul: Phase - Full-Stack Production Polish Phase 2, Part 1.
-        // Fires two concurrent WithdrawFromBankAsync calls for the SAME
-        // BankEquipmentInstances row. TryBeginPendingTransaction's
-        // ConcurrentDictionary.TryAdd is atomic, so exactly one of the two
-        // must win and reach the queue; the other must be rejected with
-        // TransactionPending before ever touching the database. Then
-        // simulates the tick loop's terminal CommitBankWithdrawAsync step
-        // for the sole accepted request and proves only one real
-        // EquipmentInstances row was ever created - the previous
-        // double-enqueue race this task's Part 1 exists to close.
-        [Fact]
-        public async Task Test_MailboxAndBankEngine_ConcurrentWithdrawals_RejectSecondWithTransactionPendingAndPreventCloning()
-        {
-            const long testPlayerId = 970002001L;
-            const string baseItemId = "integration_test_bank_withdraw_concurrent";
-            long bankId;
+        // Modul: THE BANK IS RETIRED, and this test went with it.
+        //
+        // It guarded a real race - two concurrent withdrawals of one row
+        // cloning a single item into two - on a store that no longer exists.
+        // Those rows are in EquipmentInstances now and there is no withdraw
+        // path left to race. See the RetireTheBank migration for why the table
+        // went: it relieved a backpack cap the game no longer has, and an item
+        // inside it could not be worn, upgraded, rerolled or sold.
 
-            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
-                var bankItem = new BankEquipmentInstance
-                {
-                    PlayerId = testPlayerId,
-                    BaseItemId = baseItemId,
-                    QualityTier = 1,
-                    AffixPayload = "{}"
-                };
-                db.BankEquipmentInstances.Add(bankItem);
-                await db.SaveChangesAsync();
-                bankId = bankItem.Id;
-            }
-
-            var playerRegistry = new PlayerSessionRegistry();
-            var mailboxEngine = new MailboxAndBankEngine(_fixture.ServiceProvider, playerRegistry);
-
-            await Task.WhenAll(
-                mailboxEngine.WithdrawFromBankAsync(testPlayerId, bankId),
-                mailboxEngine.WithdrawFromBankAsync(testPlayerId, bankId));
-
-            int queuedCount = 0;
-            while (playerRegistry.BankWithdrawRequestQueue.TryDequeue(out var req))
-            {
-                queuedCount++;
-                Assert.Equal(testPlayerId, req.PlayerId);
-                Assert.Equal(bankId, req.BankId);
-            }
-            Assert.Equal(1, queuedCount);
-
-            bool sawTransactionPending = false;
-            while (playerRegistry.CommandResultQueue.TryDequeue(out var result))
-            {
-                if (result.PlayerId == testPlayerId && result.ResultCode == (byte)FolkIdle.Server.Network.CommandResultCode.TransactionPending)
-                {
-                    sawTransactionPending = true;
-                }
-            }
-            Assert.True(sawTransactionPending, "The second concurrent withdrawal attempt must have been rejected with TransactionPending.");
-
-            await mailboxEngine.CommitBankWithdrawAsync(testPlayerId, bankId, true);
-
-            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
-            int clonedEquipmentCount = await verifyDb.EquipmentInstances.AsNoTracking()
-                .CountAsync(e => e.PlayerId == testPlayerId && e.BaseItemId == baseItemId);
-            Assert.Equal(1, clonedEquipmentCount);
-
-            bool bankRowStillExists = await verifyDb.BankEquipmentInstances.AsNoTracking().AnyAsync(b => b.Id == bankId);
-            Assert.False(bankRowStillExists);
-        }
 
         // Modul: Phase - Full-Stack Production Polish Phase 2, Part 2.1.
         // Directly exercises ProgressionEngine.ProcessMonsterDeath's

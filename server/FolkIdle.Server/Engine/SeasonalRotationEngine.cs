@@ -163,12 +163,6 @@ namespace FolkIdle.Server.Engine
                         .GroupBy(c => c.PlayerId)
                         .ToDictionaryAsync(g => g.Key, g => g.ToList(), stoppingToken);
                         
-                    var bankByPlayer = await db.BankEquipmentInstances
-                        .AsNoTracking()
-                        .Where(c => chunkIds.Contains(c.PlayerId))
-                        .GroupBy(c => c.PlayerId)
-                        .ToDictionaryAsync(g => g.Key, g => g.ToList(), stoppingToken);
-                        
                     var marketByPlayer = await db.MarketEquipmentInstances
                         .AsNoTracking()
                         .Where(c => chunkIds.Contains(c.PlayerId) && !c.IsLockedInEscrow)
@@ -192,9 +186,8 @@ namespace FolkIdle.Server.Engine
                         }
 
                         var eq = eqByPlayer.GetValueOrDefault(playerId, new List<EquipmentInstance>());
-                        var bEq = bankByPlayer.GetValueOrDefault(playerId, new List<BankEquipmentInstance>());
                         var mEq = marketByPlayer.GetValueOrDefault(playerId, new List<MarketEquipmentInstance>());
-                        long inventoryScore = CalculateInventoryScore(eq, bEq, mEq);
+                        long inventoryScore = CalculateInventoryScore(eq, mEq);
 
                         long totalGold = Math.Max(0L, goldDict.GetValueOrDefault(playerId, 0L));
                         int shardsEarned = CalculateLegacyShards(totalGold, levelSquareSum, inventoryScore);
@@ -319,7 +312,7 @@ namespace FolkIdle.Server.Engine
                 // CASCADE is a no-op safety net here (this schema does not
                 // enforce real FK constraints on these tables) but protects
                 // against a future FK addition silently breaking this reset.
-                await db.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"EquipmentInstances\", \"BankEquipmentInstances\" RESTART IDENTITY CASCADE", stoppingToken);
+                await db.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"EquipmentInstances\" RESTART IDENTITY CASCADE", stoppingToken);
 
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"MarketOrderRecords\" o USING \"MarketEquipmentInstances\" e WHERE o.\"EquipmentInstanceId\" = e.\"Id\" AND e.\"IsLockedInEscrow\" = FALSE AND o.\"Status\" = 0 AND o.\"OrderType\" = 'SELL'", stoppingToken);
                 await db.Database.ExecuteSqlRawAsync("UPDATE \"MarketOrderRecords\" o SET \"EquipmentInstanceId\" = NULL FROM \"MarketEquipmentInstances\" e WHERE o.\"EquipmentInstanceId\" = e.\"Id\" AND e.\"IsLockedInEscrow\" = FALSE", stoppingToken);
@@ -530,11 +523,13 @@ namespace FolkIdle.Server.Engine
             return (int)raw;
         }
 
-        private static long CalculateInventoryScore(List<EquipmentInstance> equipment, List<BankEquipmentInstance> bankEquipment, List<MarketEquipmentInstance> marketEquipment)
+        // Modul: the bank is retired - see the RetireTheBank migration. Its
+        // rows were moved into EquipmentInstances, which this already counts,
+        // so the shard payout is unchanged by the merge.
+        private static long CalculateInventoryScore(List<EquipmentInstance> equipment, List<MarketEquipmentInstance> marketEquipment)
         {
             long score = 0L;
             for (int i = 0; i < equipment.Count; i++) score += Math.Max(1, equipment[i].QualityTier);
-            for (int i = 0; i < bankEquipment.Count; i++) score += Math.Max(1, bankEquipment[i].QualityTier);
             for (int i = 0; i < marketEquipment.Count; i++) score += Math.Max(1, marketEquipment[i].QualityTier);
             return score;
         }
