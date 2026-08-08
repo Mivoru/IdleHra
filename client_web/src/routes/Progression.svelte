@@ -19,6 +19,7 @@
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import { RACE_NAMES, ALL_RACE_IDS, isRaceUnlocked } from '../lib/ui/races';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import BookOfDeeds from '../lib/ui/BookOfDeeds.svelte';
 
   const client = useQueryClient();
   const achievements = createQuery(() => ({ queryKey: queryKeys.achievements, queryFn: fetchAchievements }));
@@ -78,6 +79,11 @@
 </script>
 
 <div class="grid">
+  <!-- Modul: the first chapter leads, because it is the onboarding. A new
+       player opening Progress should meet six things they can do today, not a
+       Treasury tier asking for 100,000 gold they have never seen. -->
+  <BookOfDeeds />
+
   <section class="panel">
     <div class="head">
       <h2>Achievements</h2>
