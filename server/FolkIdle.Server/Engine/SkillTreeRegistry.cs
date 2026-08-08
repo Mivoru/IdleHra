@@ -236,7 +236,7 @@ namespace FolkIdle.Server.Engine
             "You swing faster. Everything else scales off how often you hit.",
             "A share of the damage you deal comes back as health - food you never had to cook.",
             "More health and more armour. The difference between a wall and a grind.",
-            "Crafting finishes sooner, and sometimes costs you nothing.",
+            "A craft sometimes costs you nothing at all - the materials stay in the sack.",
             "Gathering finishes sooner, and sometimes yields twice.",
 
             "Every hundredth kill drops an item two rarity tiers above its due.",
@@ -394,7 +394,7 @@ namespace FolkIdle.Server.Engine
             var pending = new bool[NodeCount];
             foreach (int id in new[]
             {
-                BoughPlenty, BoughCraft,
+                BoughPlenty,
                 CrownGoldenFleece, CrownThunderer,
             })
             {

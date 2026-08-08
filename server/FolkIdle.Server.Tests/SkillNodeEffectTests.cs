@@ -110,7 +110,7 @@ namespace FolkIdle.Server.Tests
             }
 
             _output.WriteLine($"{pending} nodes still await an effect");
-            Assert.True(pending <= 4,
+            Assert.True(pending <= 3,
                 "a node was returned to the pending list - wire its effect back rather than disabling it");
         }
     }

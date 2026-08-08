@@ -217,7 +217,31 @@ namespace FolkIdle.Server.Domain.Economy
                 // numeric content id used directly as a real game-object
                 // identity string instead of being resolved through
                 // GetItemBaseId first.
-                if (recipe.Mat1Id > 0 && recipe.Mat1Count > 0)
+                // Modul: Craft, the Insight bough - "sometimes costs you
+                // nothing".
+                //
+                // THE BRANCH PROMISED SOMETHING THIS GAME CANNOT DO. Its first
+                // wording was "crafting finishes sooner", and crafting here is
+                // instantaneous - ExecuteCraftingAsync has no duration to
+                // shorten and PlayerCraftingSlot.CompletionEpoch is a column
+                // nothing has ever written. Rather than invent a timer so a
+                // node could reduce it, the node now does the half of its
+                // promise the game actually has.
+                //
+                // ONE ROLL FOR THE WHOLE CRAFT, not one per material: "this
+                // craft was free" is a thing a player can notice, while "one of
+                // your two inputs was refunded" is a rounding error they will
+                // never see.
+                int craftLevel = await context.PlayerSkillTreeNodes
+                    .Where(n => n.PlayerId == playerId && n.BranchId == Engine.SkillTreeRegistry.BoughCraft)
+                    .Select(n => n.Level)
+                    .FirstOrDefaultAsync();
+
+                bool materialsRefunded = craftLevel > 0
+                    && Random.Shared.NextDouble() * 100.0 < Engine.SkillTreeRegistry.GetBonusPercent(
+                        Engine.SkillTreeRegistry.BoughCraft, craftLevel);
+
+                if (!materialsRefunded && recipe.Mat1Id > 0 && recipe.Mat1Count > 0)
                 {
                     string mat1ItemId = ContentRegistry.GetItemBaseId(recipe.Mat1Id);
                     if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, mat1ItemId, recipe.Mat1Count))
@@ -227,7 +251,7 @@ namespace FolkIdle.Server.Domain.Economy
                     }
                 }
 
-                if (recipe.Mat2Id > 0 && recipe.Mat2Count > 0)
+                if (!materialsRefunded && recipe.Mat2Id > 0 && recipe.Mat2Count > 0)
                 {
                     string mat2ItemId = ContentRegistry.GetItemBaseId(recipe.Mat2Id);
                     if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, mat2ItemId, recipe.Mat2Count))

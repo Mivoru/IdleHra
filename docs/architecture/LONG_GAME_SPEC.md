@@ -539,12 +539,17 @@ first two days are not dead, bad enough to want better.
    change.
 3. **DONE - rings 2 and 3 of the tree, plus the respec gate.** Structure,
    exclusion, prerequisites, the drawing, the season reset that was missing.
-   - **11 of 15 new nodes have their effect wired**: Rarity, First Blood,
-     Trophy Hunter, Guile, Relentless, Bloodthirst, Fortitude, Harvest,
+   - **12 of 15 new nodes have their effect wired**: Rarity, First Blood,
+     Trophy Hunter, Guile, Relentless, Bloodthirst, Fortitude, Craft, Harvest,
      Double Strike, Last Stand, Scholar.
-   - **4 do not, and are blocked from purchase** by
-     `SkillTreeRegistry.EffectPending`: Plenty, Craft, Golden Fleece,
-     Thunderer. Delete an entry there **in the same commit that wires its
+   - **3 do not, and are blocked from purchase** by
+     `SkillTreeRegistry.EffectPending`: Plenty, Golden Fleece, Thunderer.
+   - **Craft was redefined rather than faked.** Its first wording promised
+     "crafting finishes sooner" and crafting in this game is instantaneous -
+     `ExecuteCraftingAsync` has no duration and `PlayerCraftingSlot.CompletionEpoch`
+     is a column nothing has ever written. Rather than invent a timer so a node
+     could shorten it, the node now does the half of its promise the game has:
+     a chance the whole craft costs no materials. Delete an entry there **in the same commit that wires its
      effect**, never before - and note that SkillNodeEffectTests now ratchets
      the list, so putting a node back on it fails the build.
    - The respec **gate** works; the **purchase flow does not exist** and

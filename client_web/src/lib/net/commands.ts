@@ -1028,7 +1028,7 @@ export const SKILL_TREE_NODES: readonly {
   { id: 10, ring: 'bough', root: 2, name: 'Relentless', blurb: 'You swing faster. Everything else scales off how often you hit.', perLevel: 1.0, unit: 'pct' },
   { id: 11, ring: 'bough', root: 3, name: 'Bloodthirst', blurb: 'A share of the damage you deal comes back as health - food you never had to cook.', perLevel: 0.5, unit: 'pct' },
   { id: 12, ring: 'bough', root: 3, name: 'Fortitude', blurb: 'More health and more armour. The difference between a wall and a grind.', perLevel: 2.0, unit: 'pct' },
-  { id: 13, ring: 'bough', root: 4, name: 'Craft', blurb: 'Crafting finishes sooner, and sometimes costs you nothing.', perLevel: 2.5, unit: 'pct' },
+  { id: 13, ring: 'bough', root: 4, name: 'Craft', blurb: 'A craft sometimes costs you nothing at all - the materials stay in the sack.', perLevel: 2.5, unit: 'pct' },
   { id: 14, ring: 'bough', root: 4, name: 'Harvest', blurb: 'Gathering finishes sooner, and sometimes yields twice.', perLevel: 2.0, unit: 'pct' },
 
   // crowns, one per root
@@ -1053,7 +1053,7 @@ export const SKILL_TREE_BRANCHES = SKILL_TREE_NODES.filter((n) => n.ring === 'ro
  *
  * Remove an id here in the same commit that wires its effect, never before.
  */
-export const SKILL_TREE_EFFECT_PENDING: readonly number[] = [5, 13, 15, 16];
+export const SKILL_TREE_EFFECT_PENDING: readonly number[] = [5, 15, 16];
 
 export function isSkillEffectPending(nodeId: number): boolean {
   return SKILL_TREE_EFFECT_PENDING.includes(nodeId);
