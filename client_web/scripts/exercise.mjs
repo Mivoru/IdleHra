@@ -740,6 +740,111 @@ await go('Inheritance');
   }
 }
 
+// --- breeding: marrying the village in ---------------------------------------
+//
+// Modul: THE STANDARD PAIR. A child takes each aptitude from ONE parent, so it
+// can never exceed the best number already in the pair - crossing your own
+// characters converges on what you already have, and the village is the only
+// thing that puts a number into a bloodline that was not in it.
+//
+// That makes this the one step where "the screen renders" is worth nothing:
+// the gene pool was VISIBLE and INERT for a whole release, filling up every
+// season with people nothing in the game could marry. So this reads the roster
+// back and asserts it GREW.
+await go('Breeding');
+{
+  const text = await page.evaluate(() => document.body.innerText);
+  record('the breeding lab offers both pairings', /Marry the village/i.test(text) && /Cross your own/i.test(text));
+
+  const heroSelect = page.locator('select').first();
+  const villagerSelect = page.locator('select').nth(1);
+
+  const heroCount = await heroSelect.locator('option').count();
+  // Every character the fixture owns needs a lineage row to appear here at
+  // all - the roster endpoint skips a character that has none, which is what
+  // made this list silently empty.
+  record('the hero list is populated', heroCount > 1, `${heroCount - 1} characters`);
+
+  // THE HERO FIRST, and this order is the whole point rather than tidiness:
+  // who a villager can marry depends on which hero is chosen (same race,
+  // opposite sex), so enumerating the village before picking one reads every
+  // villager as available and then picks one who is not.
+  let marriable = null;
+  let marriableLabel = '';
+  let villagerTotal = 0;
+  for (let heroIndex = 1; heroIndex < heroCount && marriable === null; heroIndex++) {
+    await heroSelect.selectOption({ index: heroIndex });
+    await page.waitForTimeout(250);
+
+    // Read the disabled flag off the DOM rather than through isDisabled():
+    // Playwright's editability check is defined for inputs and selects, and
+    // answers "not disabled" for an <option> whatever its attribute says - so
+    // the loop below happily picked a villager the screen had greyed out.
+    const options = await villagerSelect.evaluate((select) =>
+      [...select.options].slice(1).map((o) => ({
+        value: o.value,
+        label: o.textContent.trim(),
+        disabled: o.disabled,
+      })),
+    );
+    villagerTotal = options.length;
+
+    const open = options.find((o) => !o.disabled);
+    if (open) {
+      marriable = open.value;
+      marriableLabel = open.label;
+    }
+  }
+
+  record(
+    'the village offers somebody marriable',
+    marriable !== null,
+    `${villagerTotal} in the village${marriable ? ` - ${marriableLabel}` : ''}`,
+  );
+
+  if (heroCount > 1 && marriable !== null) {
+    const before = heroCount;
+    await villagerSelect.selectOption(marriable);
+    await page.waitForTimeout(1200);
+
+    const preview = await page.evaluate(() => document.body.innerText);
+    // The four aptitudes ARE the decision. A pairing screen without them is
+    // the loci preview all over again: precise about the thing nobody picks a
+    // partner for.
+    record(
+      'the preview quotes what the child would inherit',
+      /What the child would inherit/i.test(preview) &&
+        /Strength/.test(preview) && /Fortune/.test(preview),
+    );
+    record('the preview quotes a price', /Costs [\d,]+g/.test(preview), (preview.match(/Costs [\d,]+g/) ?? [''])[0]);
+
+    await dismissToasts();
+    const marryButton = page.getByRole('button', { name: 'Marry', exact: true });
+    const blocked = await marryButton.isDisabled();
+    record('the fixture can afford to marry', !blocked);
+
+    if (!blocked) {
+      await marryButton.click();
+      await page.waitForTimeout(2500);
+
+      // A child on the roster is the whole claim. The villager list shrinking
+      // would not prove it - a dismissal does that too.
+      const after = await heroSelect.locator('option').count();
+      record('marrying the village produces a child', after > before, `${before - 1} -> ${after - 1} characters`);
+
+      // ONE CHILD PER VILLAGER, forever. Without this a single lucky twenty
+      // fathers the whole roster and the pool collapses onto one ancestor.
+      const elderText = await page.evaluate(() => document.body.innerText);
+      record(
+        'the villager who married is spent',
+        /already married in/i.test(elderText),
+        (elderText.match(/[^\n]*already married in[^\n]*/) ?? [''])[0].trim().slice(0, 60),
+      );
+      await dismissToasts();
+    }
+  }
+}
+
 // --- icons actually loaded ---------------------------------------------------
 {
   const broken = await page.evaluate(() =>

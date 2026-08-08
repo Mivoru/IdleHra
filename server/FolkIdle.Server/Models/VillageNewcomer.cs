@@ -77,5 +77,24 @@ namespace FolkIdle.Server.Models
         /// <summary>The sum, for ranking a roster at a glance.</summary>
         public int AptitudeTotal()
             => AptitudeStrength + AptitudeSkill + AptitudeEndurance + AptitudeFortune;
+
+        /// <summary>
+        /// The genome a newcomer brings to a pairing: race in the first locus,
+        /// dominant AND recessive, and nothing anywhere else.
+        ///
+        /// EXACTLY WHAT A FRESH CHARACTER CARRIES - see CharacterGrantEngine,
+        /// which builds a starter the same way. The consequence is deliberate
+        /// and worth stating: Speed/Crit/Yield only ever grow by mutation, so a
+        /// hero who has accumulated them will see a child inherit at most one
+        /// of each pair from them and a zero from the villager. Outside blood
+        /// raises aptitudes and dilutes the loci. That is the trade, not a bug,
+        /// and it is why crossing your own line still has a use.
+        /// </summary>
+        public long Genome()
+        {
+            var genome = new GeneticVector(0L);
+            genome.LocusRace = new Locus { Dominant = (byte)RaceId, Recessive = (byte)RaceId };
+            return genome.RawValue;
+        }
     }
 }

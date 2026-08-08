@@ -34,6 +34,8 @@ namespace FolkIdle.Server.Engine
         {
             int population = await db.VillageNewcomers.CountAsync(v => v.PlayerId == player.Id);
 
+            byte[] races = await UnlockedRacesAsync(db, player.Id);
+
             // Modul: A NEW ACCOUNT IS NOT OWED FIFTY YEARS OF VILLAGERS.
             //
             // LastVillagerArrivalEpoch defaults to 0, and treating that as a
@@ -50,7 +52,7 @@ namespace FolkIdle.Server.Engine
                 {
                     for (int i = 0; i < VillagerArrivalRules.SeasonStartVillagers; i++)
                     {
-                        db.VillageNewcomers.Add(Roll(player.Id, VillagerArrivalRules.SeasonStartInnLevel, nowEpoch));
+                        db.VillageNewcomers.Add(Roll(player.Id, VillagerArrivalRules.SeasonStartInnLevel, nowEpoch, races));
                     }
                     await db.SaveChangesAsync();
                     return VillagerArrivalRules.SeasonStartVillagers;
@@ -72,7 +74,7 @@ namespace FolkIdle.Server.Engine
 
             for (int i = 0; i < arrivals; i++)
             {
-                db.VillageNewcomers.Add(Roll(player.Id, innLevel, nowEpoch));
+                db.VillageNewcomers.Add(Roll(player.Id, innLevel, nowEpoch, races));
             }
 
             await db.SaveChangesAsync();
@@ -100,20 +102,54 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>
+        /// The races that can turn up: Human, plus whatever the player has
+        /// unlocked by clearing a region boss.
+        ///
+        /// UNLOCKED ONLY, and this is load-bearing rather than flavour.
+        /// Breeding refuses a pair whose race differs, so a villager of a race
+        /// the player owns no character of is a portrait and nothing else.
+        /// Rolling uniformly over all six would have left five in six arrivals
+        /// unmarriageable on a fresh account - the village would fill with
+        /// people who exist to be dismissed. Restricting the roll instead means
+        /// a new player's whole village is marriageable, and clearing a boss
+        /// widens the pool as well as granting a pair.
+        /// </summary>
+        private static async Task<byte[]> UnlockedRacesAsync(FolkIdleDbContext db, long playerId)
+        {
+            var unlocked = await db.PlayerRaceUnlocks
+                .AsNoTracking()
+                .Where(u => u.PlayerId == playerId)
+                .Select(u => u.RaceId)
+                .ToListAsync();
+
+            // Human needs no unlock row - every account starts with it.
+            var races = new System.Collections.Generic.List<byte> { RaceIds.Human };
+            for (int i = 0; i < unlocked.Count; i++)
+            {
+                byte raceId = (byte)unlocked[i];
+                if (RaceUnlockRegistry.IsPlayableRace(raceId) && !races.Contains(raceId))
+                {
+                    races.Add(raceId);
+                }
+            }
+
+            return races.ToArray();
+        }
+
+        /// <summary>
         /// Rolls one newcomer against the Inn.
         ///
-        /// The race is uniform across the unlocked span rather than weighted:
-        /// the point of outside blood is that it is DIFFERENT from the line, so
-        /// biasing it toward what the player already has would defeat it.
+        /// The race is uniform across the unlocked set rather than weighted
+        /// toward the player's own line: the point of outside blood is that it
+        /// is DIFFERENT, so biasing it toward what they already have would
+        /// defeat it.
         /// </summary>
-        private static VillageNewcomer Roll(long playerId, int innLevel, long nowEpoch)
+        private static VillageNewcomer Roll(long playerId, int innLevel, long nowEpoch, byte[] races)
         {
             var newcomer = new VillageNewcomer
             {
                 PlayerId = playerId,
-                // One race per region, the same five the unlock ladder uses.
-                RaceId = Random.Shared.Next(
-                    RaceUnlockRegistry.FirstRegion, RaceUnlockRegistry.LastRegion + 1),
+                RaceId = races.Length > 0 ? races[Random.Shared.Next(races.Length)] : RaceIds.Human,
                 IsFemale = Random.Shared.Next(2) == 1,
                 ArrivedAtEpoch = nowEpoch,
                 IsElder = false,

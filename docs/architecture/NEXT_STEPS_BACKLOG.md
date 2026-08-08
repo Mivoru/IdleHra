@@ -17,45 +17,20 @@ The design for all of it is `docs/architecture/LONG_GAME_SPEC.md`. It is
 agreed with the player and should not be re-litigated; read it before touching
 anything below. Section 6 of that spec tracks status and is kept current.
 
-**Shipped this session:** the achievement toast, Book of Deeds chapter I, all
+**Shipped 2026-08-08:** the achievement toast, Book of Deeds chapter I, all
 three rings of the skill tree with **all 15 node effects wired**, the respec
 gate, the season reset that was missing, breeding aptitudes end to end, and the
 village gene pool (table, arrival, endpoint, panel).
 
+**Shipped 2026-08-09: L1, hero x villager pairing - the gene pool is live.**
+`ExecuteHeroVillagerBreedingAsync`, `CommandType.ExecuteVillagerBreeding` (69),
+`/api/v1/breeding/village-preview`, and a two-tab Breeding screen. Driven end
+to end in a browser by `client_web/scripts/exercise.mjs` (58/58), which marries
+a villager, reads the new child back off the roster and checks the villager is
+spent. Detail and the two defects it uncovered are in `LONG_GAME_SPEC.md`
+section 6 item 5.
+
 Everything below is what remains, in the order I would do it.
-
----
-
-## L1. Hero x villager pairing  **(the important one)**
-
-**Why first:** `village_newcomers` now fills up with people carrying real
-aptitudes, and **nothing can marry them**. `BreedingEngine.ExecuteBreedingAsync`
-still pairs two of the player's own `CharacterRecord`s. So the whole gene pool -
-the reason the village is rebuilt every season - is visible and inert. This is
-the single biggest gap in the feature set, not a polish item.
-
-**Where:**
-- `server/FolkIdle.Server/Engine/BreedingEngine.cs` - the pairing validation
-  and the child construction.
-- `/api/v1/breeding/roster` in `NetworkBroadcastSystem.cs` returns characters;
-  the picker needs newcomers alongside them.
-- `client_web/src/routes/Breeding.svelte`.
-
-**How:** the standard pair is **hero x villager**. The hero must be level 50;
-the newcomer only has to exist. Requiring level 50 of both parents means
-levelling two characters for one child, which is double the grind for one roll
-of the dice.
-
-**Traps:**
-- A newcomer who becomes a parent must be marked `IsElder` and become
-  unpairable. Otherwise one lucky 20 fathers the whole roster and the pool
-  collapses onto a single ancestor - the opposite of what it is for.
-- `BreedingAptitudes.AreRelated` already exists and takes optional
-  grandparents. A newcomer has no parents, so a hero x newcomer pairing is
-  never inbred - do not let the existing character-only inbreeding check
-  fire on it.
-- `BreedingEngine` already computes `isInbred` from lineage rows; that path
-  must survive for character x character pairings if you keep them.
 
 ---
 
@@ -76,6 +51,15 @@ rollover **by accident**. `SeasonalRotationEngine` simply does not touch
 **nothing states or tests it**, so a future rollover change could delete the
 one axis a season is meant to leave standing. Add an explicit test when you
 touch this.
+
+**Second trap, new since the pairing shipped:** a child of a villager stores
+`ParentPaternalId` OR `ParentMaternalId` and leaves the other **null** - the
+villager is not a `CharacterRecord` and the village is wiped at the rollover,
+so a column pointing at one would dangle within ninety days. The inbreeding
+check handles the nulls correctly today (it is `HasValue`-guarded, and a
+villager marries exactly once so no half-siblings can exist through them). A
+Hall of Ancestors that wants to SHOW who married in will find that the answer
+is not stored anywhere. Decide deliberately; do not add the column by reflex.
 
 ---
 
@@ -140,6 +124,17 @@ validation, refunds, EU VAT/OSS. The gate deliberately does not wait on it.
 - **`SkillTreeRegistry.EffectPending` is empty and must stay empty.**
   `SkillNodeEffectTests` asserts zero. If a node loses its effect, restore the
   effect rather than re-adding the id.
+- **The dev fixture is what makes a feature drivable by hand, and it silently
+  was not.** Breeding needed three things the fixture lacked, each fatal on its
+  own and none of which logs anything: the building, a
+  `character_lineage_registry` row per character, and sexes. If a screen on the
+  fixture looks empty, suspect the fixture before the screen -
+  `DevFixtureInvariantTests` is where that suspicion gets written down.
+- **`isDisabled()` does not work on an `<option>`.** Playwright's editability
+  check is defined for inputs and selects and answers "not disabled" whatever
+  an option's attribute says, so an exercise step happily picked a choice the
+  screen had greyed out and then reported the feature broken. Read `o.disabled`
+  through `evaluate` instead.
 
 ---
 

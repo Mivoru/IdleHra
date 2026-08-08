@@ -44,6 +44,21 @@ namespace FolkIdle.Server.Models
         private const int WorkshopLevel = 5;
         private const int ForgeLevel = 5;
 
+        // Modul: the fixture could not breed, at all.
+        //
+        // Three things were missing and each one alone was fatal: no Breeding
+        // Grounds (the engine refuses without it), no character_lineage_registry
+        // rows (the roster endpoint SKIPS a character with no lineage, so the
+        // parent list came back empty), and no sexes (every character defaulted
+        // to male, and a pair needs one of each). The account that exists
+        // specifically for driving the client by hand therefore had a dead
+        // Breeding screen.
+        //
+        // Characters are seeded at 50 rather than at PlayerLevel, because 50 is
+        // the gate the standard pair is built around - a fixture that stops one
+        // level short exercises the refusal and nothing else.
+        private const int CharacterLevel = 50;
+
         public static async Task<long> SeedAsync(FolkIdleDbContext db)
         {
             string normalizedEmail = Email.ToLowerInvariant();
@@ -137,8 +152,11 @@ namespace FolkIdle.Server.Models
             await UpsertBuildingAsync(db, playerId, VillageManagementEngine.ForgeBuildingId, ForgeLevel);
             await UpsertBuildingAsync(db, playerId, VillageManagementEngine.InnBuildingId, 5);
             await UpsertBuildingAsync(db, playerId, VillageManagementEngine.MentorshipAcademyBuildingId, 2);
+            await UpsertBuildingAsync(db, playerId, VillageManagementEngine.BreedingGroundsBuildingId, 1);
 
             await EnsureCharactersAsync(db, playerId);
+            await EnsureLineagesAsync(db, playerId);
+            await EnsureVillagersAsync(db, playerId);
             await EnsureEquipmentAsync(db, playerId);
 
             await db.SaveChangesAsync();
@@ -295,10 +313,25 @@ namespace FolkIdle.Server.Models
                 {
                     Id = slotIndex == 0 ? playerGuid : Guid.NewGuid(),
                     PlayerId = playerId,
-                    Level = PlayerLevel,
+                    Level = CharacterLevel,
                     AgePhase = 1,
-                    SlotIndex = slotIndex
+                    SlotIndex = slotIndex,
+                    // One male and two females, so BOTH pairings can be driven
+                    // by hand: hero x villager, and the roster crossing that
+                    // needs one of each sex.
+                    IsFemale = slotIndex != 0
                 });
+            }
+
+            // The same repair for the level and the sex. A fixture seeded
+            // before this existed has three level-40 men on it, so re-running
+            // the seeder would leave it exactly as unable to breed as before -
+            // and "re-run the seeder" is the documented fix for everything
+            // about this account.
+            foreach (var character in existing)
+            {
+                if (character.Level < CharacterLevel) character.Level = CharacterLevel;
+                character.IsFemale = character.SlotIndex != 0;
             }
 
             // Repairs a fixture seeded before this was fixed. The seeder is
@@ -319,10 +352,99 @@ namespace FolkIdle.Server.Models
                 {
                     Id = playerGuid,
                     PlayerId = playerId,
-                    Level = PlayerLevel,
+                    Level = CharacterLevel,
                     AgePhase = 1,
-                    SlotIndex = 0
+                    SlotIndex = 0,
+                    IsFemale = false
                 });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// Somebody the fixture's heroes can actually marry.
+        ///
+        /// The village fills on a 24-48h clock and rolls a race per arrival, so
+        /// a fixture that waits for one is a fixture on which hero x villager
+        /// cannot be driven by hand for a day or two - and then only if the
+        /// dice agree, because breeding refuses a mixed-race pair. Two Humans,
+        /// one of each sex, make the standard pair exercisable the moment the
+        /// account is seeded.
+        ///
+        /// Aptitudes of 10 against a starter's 4 on purpose: the whole reason
+        /// to marry out is a number the bloodline does not have, and a villager
+        /// who matched the hero would demonstrate the mechanism while hiding
+        /// the point of it.
+        /// </summary>
+        private static async Task EnsureVillagersAsync(FolkIdleDbContext db, long playerId)
+        {
+            var existing = await db.VillageNewcomers
+                .Where(v => v.PlayerId == playerId && !v.IsElder && v.RaceId == RaceIds.Human)
+                .ToListAsync();
+
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            foreach (bool isFemale in new[] { false, true })
+            {
+                if (existing.Any(v => v.IsFemale == isFemale)) continue;
+
+                var newcomer = new VillageNewcomer
+                {
+                    PlayerId = playerId,
+                    RaceId = RaceIds.Human,
+                    IsFemale = isFemale,
+                    ArrivedAtEpoch = now,
+                    IsElder = false,
+                };
+                newcomer.SetAptitudeVector(new[] { 10, 10, 10, 10 });
+                db.VillageNewcomers.Add(newcomer);
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        /// <summary>
+        /// A lineage row per character, because without one a character does
+        /// not exist to breeding at all.
+        ///
+        /// HandleBreedingRosterSnapshot `continue`s past any character with no
+        /// row in character_lineage_registry and BreedingEngine rolls back on
+        /// the same absence, so the fixture's three characters were invisible
+        /// to the Breeding screen and unbreedable behind it - which is the
+        /// "output side was never wired" shape this project keeps shipping.
+        ///
+        /// Human, generation 0, starting aptitudes: exactly what
+        /// CharacterGrantEngine gives a real account, so the fixture cannot
+        /// behave differently from one.
+        /// </summary>
+        private static async Task EnsureLineagesAsync(FolkIdleDbContext db, long playerId)
+        {
+            var characterIds = await db.CharacterRecords
+                .Where(c => c.PlayerId == playerId)
+                .Select(c => c.Id)
+                .ToListAsync();
+
+            var existing = await db.CharacterLineages
+                .Where(l => characterIds.Contains(l.CharacterId))
+                .Select(l => l.CharacterId)
+                .ToListAsync();
+
+            var genome = new GeneticVector(0L);
+            genome.LocusRace = new Locus { Dominant = RaceIds.Human, Recessive = RaceIds.Human };
+
+            foreach (var characterId in characterIds)
+            {
+                if (existing.Contains(characterId)) continue;
+
+                var lineage = new CharacterLineageRegistry
+                {
+                    CharacterId = characterId,
+                    GenerationIndex = 0,
+                    GeneticVector = genome.RawValue
+                };
+                lineage.SetAptitudeVector(BreedingAptitudes.Starting());
+                db.CharacterLineages.Add(lineage);
             }
 
             await db.SaveChangesAsync();

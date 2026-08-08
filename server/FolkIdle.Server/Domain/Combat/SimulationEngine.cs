@@ -2155,6 +2155,27 @@ namespace FolkIdle.Server.Domain.Combat
                             await _breedingEngine.ExecuteBreedingAsync(pId, patId, matId);
                         });
                     }
+                    // Modul: hero x villager - THE standard pair. The gene pool
+                    // the village fills up every season was inert until this
+                    // branch existed; nothing could marry into it.
+                    else if (cmd.Command == CommandType.ExecuteVillagerBreeding)
+                    {
+                        if (!ClientCommandValidator.ValidateVillagerBreedingRequest(ref currentPayload, ref cmd))
+                        {
+                            RemoveActivePlayer(routingPlayerId);
+                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
+                            _networkSystem.ForceDisconnect(routingPlayerId);
+                            continue;
+                        }
+
+                        long pId = currentPayload.PlayerId;
+                        var heroId = cmd.TargetGuid;
+                        long newcomerId = cmd.TargetId;
+
+                        SafeDispatchAsync("Breeding.ExecuteVillager", pId, async () => {
+                            await _breedingEngine.ExecuteHeroVillagerBreedingAsync(pId, heroId, newcomerId);
+                        });
+                    }
                     else if (cmd.Command == CommandType.InitializeCrafting)
                     {
                         long pId = currentPayload.PlayerId;

@@ -31,6 +31,7 @@ const {
   contributeGuildGold,
   establishMentorship,
   terminateMentorship,
+  executeVillagerBreeding,
 } = await import('../src/lib/net/commands');
 const { CommandType } = await import('../src/lib/net/protocol.generated');
 
@@ -259,6 +260,32 @@ describe('mentorship', () => {
     // connection.currentPlayerId is 0 in this mock, so 0 doubles as "self".
     expect(establishMentorship(0).ok).toBe(false);
     expect(terminateMentorship(0).ok).toBe(false);
+    expect(sent).toHaveLength(0);
+  });
+});
+
+describe('hero x villager pairing', () => {
+  it('sends the hero as a Guid and the villager as an id, and nothing else', () => {
+    // ValidateVillagerBreedingRequest is the INVERSE of the character
+    // pairing's field rule: SecondaryGuid must be empty and TargetId must not
+    // be. Sending the villager on SecondaryGuid would disconnect the tab.
+    expect(executeVillagerBreeding('a-hero-guid', 42, 1).ok).toBe(true);
+    expect(sent[0]).toEqual({
+      Command: CommandType.ExecuteVillagerBreeding,
+      TargetGuid: 'a-hero-guid',
+      TargetId: 42,
+    });
+  });
+
+  it('refuses without Breeding Grounds, which the server answers by disconnecting', () => {
+    expect(executeVillagerBreeding('a-hero-guid', 42, 0).ok).toBe(false);
+    expect(sent).toHaveLength(0);
+  });
+
+  it('refuses an unchosen hero or villager', () => {
+    expect(executeVillagerBreeding('', 42, 1).ok).toBe(false);
+    expect(executeVillagerBreeding('a-hero-guid', 0, 1).ok).toBe(false);
+    expect(executeVillagerBreeding('a-hero-guid', -1, 1).ok).toBe(false);
     expect(sent).toHaveLength(0);
   });
 });

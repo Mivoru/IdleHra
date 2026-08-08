@@ -53,6 +53,25 @@ namespace FolkIdle.Server.Engine
             AddCharacter(db, playerId, Guid.NewGuid(), raceId, isFemale: true, slotIndex: femaleSlot);
         }
 
+        // The lowest slot index nobody on this player's roster occupies.
+        //
+        // PUBLIC because BreedingEngine needs the same answer. A newborn used to
+        // take CharacterRecord.SlotIndex's default of 0, which is the main
+        // character's slot: StateCheckpointManager orders the roster by
+        // SlotIndex and then by Id and takes three, so a level-1 child could
+        // sort ahead of its own parent and become the character whose gear
+        // hydrates the active register. A child belongs at the end of the
+        // roster, which is what this returns.
+        public static async Task<int> NextFreeSlotIndexAsync(FolkIdleDbContext db, long playerId, CancellationToken cancellationToken = default)
+        {
+            var used = await db.CharacterRecords
+                .Where(c => c.PlayerId == playerId)
+                .Select(c => c.SlotIndex)
+                .ToListAsync(cancellationToken);
+
+            return NextFreeSlotIndex(used);
+        }
+
         // Slot indices beyond CharacterSlotEngine.MaxCharacterSlots are legal
         // and expected: a player who has beaten several bosses owns more
         // characters than they can field at once. Those wait in the roster for

@@ -31,6 +31,8 @@ export const queryKeys = {
   metadata: ['meta', 'metadata'] as const,
   breedingRoster: ['meta', 'breeding'] as const,
   breedingPreview: (a: string, b: string) => ['meta', 'breeding', 'preview', a, b] as const,
+  villagerBreedingPreview: (heroId: string, newcomerId: number) =>
+    ['meta', 'breeding', 'preview', 'village', heroId, newcomerId] as const,
   storeCatalog: ['shop', 'catalog'] as const,
   raceMastery: ['meta', 'raceMastery'] as const,
   guilds: ['social', 'guilds'] as const,
@@ -667,6 +669,17 @@ export interface BreedingCandidate {
   BreedingCooldownEndEpoch: number;
   IsEpicMutation: boolean;
   IsInbred: boolean;
+
+  // Modul: hero x villager. A pair needs one of each and the same race, and
+  // the aptitudes are what the pairing is chosen FOR - all three were missing
+  // from this roster, so the village pairing screen could not filter or
+  // compare anything.
+  IsFemale: boolean;
+  AptitudeStrength: number;
+  AptitudeSkill: number;
+  AptitudeEndurance: number;
+  AptitudeFortune: number;
+
   LocusRaceDominant: number;
   LocusRaceRecessive: number;
 }
@@ -684,6 +697,22 @@ export interface GeneLocusPreview {
   MutationChancePct: number;
 }
 
+/**
+ * The band a single aptitude can land in. Exact, not sampled - a child takes
+ * each aptitude from one parent and mutation moves it by at most one, so the
+ * reachable range is bounded. See BreedingAptitudes.PreviewOne.
+ *
+ * The 5% epic roll's +1 is NOT in these numbers; it would widen every band by
+ * one to describe something that almost never happens.
+ */
+export interface AptitudePreview {
+  AptitudeName: string;
+  ParentHero: number;
+  ParentPartner: number;
+  PredictedMin: number;
+  PredictedMax: number;
+}
+
 export interface BreedingPreview {
   IsEligible: boolean;
   IneligibleReason: string;
@@ -691,11 +720,25 @@ export interface BreedingPreview {
   BreedingCostGold: number;
   HasSufficientGold: boolean;
   Loci: GeneLocusPreview[];
+  Aptitudes: AptitudePreview[];
 }
 
 export function fetchBreedingPreview(paternalId: string, maternalId: string): Promise<BreedingPreview> {
   const query = new URLSearchParams({ paternalId, maternalId });
   return authedGet<BreedingPreview>(`/api/v1/breeding/preview?${query}`);
+}
+
+/**
+ * The same question for THE standard pair: one of your heroes and somebody
+ * from the village. A separate endpoint because the partner is a
+ * village_newcomers row rather than a character.
+ */
+export function fetchVillagerBreedingPreview(
+  heroId: string,
+  newcomerId: number,
+): Promise<BreedingPreview> {
+  const query = new URLSearchParams({ heroId, newcomerId: String(newcomerId) });
+  return authedGet<BreedingPreview>(`/api/v1/breeding/village-preview?${query}`);
 }
 
 // Modul: the catalog carries NO PRICE - only the product id and how many

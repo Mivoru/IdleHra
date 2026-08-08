@@ -950,6 +950,15 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: the same question asked of THE standard pair - a
+                    // hero and somebody from the village. Separate because the
+                    // partner is a village_newcomers row, not a character.
+                    if (requestPath == "/api/v1/breeding/village-preview" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleVillagerBreedingPreview(context);
+                        continue;
+                    }
+
                     // Modul: the village gene pool. The roster above is the
                     // player's OWN characters; this is the outside blood they
                     // can marry into the line, which is a different list
@@ -3067,6 +3076,18 @@ namespace FolkIdle.Server.Network
             public long BreedingCooldownEndEpoch { get; set; }
             public bool IsEpicMutation { get; set; }
             public bool IsInbred { get; set; }
+
+            // Modul: hero x villager. A pair needs one of each, and the roster
+            // did not say which a character was - so a client could only offer
+            // every villager for every hero and let the server silently roll
+            // back half of them. The four aptitudes are here for the same
+            // reason: which villager to marry is a comparison against what the
+            // hero already carries, and that comparison was unshowable.
+            public bool IsFemale { get; set; }
+            public int AptitudeStrength { get; set; }
+            public int AptitudeSkill { get; set; }
+            public int AptitudeEndurance { get; set; }
+            public int AptitudeFortune { get; set; }
             public int LocusRaceDominant { get; set; }
             public int LocusRaceRecessive { get; set; }
             public int LocusSpeedDominant { get; set; }
@@ -3212,6 +3233,11 @@ namespace FolkIdle.Server.Network
                         BreedingCooldownEndEpoch = character.BreedingCooldownEndEpoch,
                         IsEpicMutation = lineage.IsEpicMutation,
                         IsInbred = lineage.IsInbred,
+                        IsFemale = character.IsFemale,
+                        AptitudeStrength = lineage.AptitudeStrength,
+                        AptitudeSkill = lineage.AptitudeSkill,
+                        AptitudeEndurance = lineage.AptitudeEndurance,
+                        AptitudeFortune = lineage.AptitudeFortune,
                         LocusRaceDominant = geneVec.LocusRace.Dominant,
                         LocusRaceRecessive = geneVec.LocusRace.Recessive,
                         LocusSpeedDominant = geneVec.LocusSpeed.Dominant,
@@ -3246,6 +3272,21 @@ namespace FolkIdle.Server.Network
             public double MutationChancePct { get; set; }
         }
 
+        // Modul: aptitudes in the preview. The four aptitudes are what a pairing
+        // is actually FOR - loci are a 1.5%-a-generation curiosity, aptitudes
+        // are the axis a season leaves standing - and the preview did not
+        // mention them, so the one decision the gene pool exists to pose was
+        // being made blind. Exact rather than sampled: see
+        // BreedingAptitudes.PreviewOne.
+        private sealed class AptitudePreviewResponse
+        {
+            public string AptitudeName { get; set; } = string.Empty;
+            public int ParentHero { get; set; }
+            public int ParentPartner { get; set; }
+            public int PredictedMin { get; set; }
+            public int PredictedMax { get; set; }
+        }
+
         private sealed class BreedingPreviewResponse
         {
             public bool IsEligible { get; set; }
@@ -3254,6 +3295,24 @@ namespace FolkIdle.Server.Network
             public long BreedingCostGold { get; set; }
             public bool HasSufficientGold { get; set; }
             public System.Collections.Generic.List<GenePreviewLocusResponse> Loci { get; set; } = new();
+            public System.Collections.Generic.List<AptitudePreviewResponse> Aptitudes { get; set; } = new();
+        }
+
+        private static void AddAptitudePreviews(
+            System.Collections.Generic.List<AptitudePreviewResponse> into, int[] hero, int[] partner)
+        {
+            for (int i = 0; i < Engine.BreedingAptitudes.Count; i++)
+            {
+                Engine.BreedingAptitudes.PreviewOne(hero[i], partner[i], out int min, out int max);
+                into.Add(new AptitudePreviewResponse
+                {
+                    AptitudeName = Engine.BreedingAptitudes.NameOf(i),
+                    ParentHero = hero[i],
+                    ParentPartner = partner[i],
+                    PredictedMin = min,
+                    PredictedMax = max,
+                });
+            }
         }
 
         // Modul 13.4.3: read-only preview of ExecuteBreedingAsync's outcome -
@@ -3342,7 +3401,7 @@ namespace FolkIdle.Server.Network
                     || (pLineage.ParentMaternalId.HasValue && (pLineage.ParentMaternalId == mLineage.ParentPaternalId || pLineage.ParentMaternalId == mLineage.ParentMaternalId));
 
                 int maxGen = Math.Max(pLineage.GenerationIndex, mLineage.GenerationIndex);
-                response.BreedingCostGold = 500L * (maxGen + 1);
+                response.BreedingCostGold = Engine.BreedingEngine.CostFor(maxGen);
 
                 var goldRecord = await db.CommodityRecords
                     .AsNoTracking()
@@ -3353,6 +3412,7 @@ namespace FolkIdle.Server.Network
                 AddLocusPreview(response.Loci, "Speed", pVec.LocusSpeed, mVec.LocusSpeed, maxGen);
                 AddLocusPreview(response.Loci, "Crit", pVec.LocusCrit, mVec.LocusCrit, maxGen);
                 AddLocusPreview(response.Loci, "Yield", pVec.LocusYield, mVec.LocusYield, maxGen);
+                AddAptitudePreviews(response.Aptitudes, pLineage.AptitudeVector(), mLineage.AptitudeVector());
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
@@ -3361,6 +3421,119 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Breeding preview error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: hero x villager preview. Mirrors
+        // BreedingEngine.ExecuteHeroVillagerBreedingAsync's refusals in the same
+        // order, for the same reason the character preview mirrors its own
+        // engine: a preview that can promise a pairing the execute call rejects
+        // is worse than no preview, because the player learns nothing from the
+        // silence that follows.
+        private async Task HandleVillagerBreedingPreview(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                if (!Guid.TryParse(query["heroId"], out Guid heroId)
+                    || !long.TryParse(query["newcomerId"], out long newcomerId)
+                    || heroId == Guid.Empty
+                    || newcomerId <= 0)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var hero = await db.CharacterRecords.AsNoTracking().FirstOrDefaultAsync(c => c.Id == heroId);
+                var heroLineage = await db.CharacterLineages.AsNoTracking().FirstOrDefaultAsync(l => l.CharacterId == heroId);
+                var newcomer = await db.VillageNewcomers.AsNoTracking().FirstOrDefaultAsync(v => v.Id == newcomerId);
+
+                if (hero == null || heroLineage == null || newcomer == null
+                    || hero.PlayerId != playerId || newcomer.PlayerId != playerId)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                var response = new BreedingPreviewResponse();
+
+                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                bool heroOnCooldown = hero.IsBreedingActive && hero.BreedingCooldownEndEpoch > nowEpoch;
+
+                var heroVec = new GeneticVector(heroLineage.GeneticVector);
+                var villagerVec = new GeneticVector(newcomer.Genome());
+
+                // Only the hero needs the level gate - see the engine. The
+                // villager only has to exist and not already be an elder.
+                if (hero.AgePhase < 1 || hero.Level < 50)
+                {
+                    response.IneligibleReason = "hero_not_mature";
+                }
+                else if (hero.IsLockedInEscrow)
+                {
+                    response.IneligibleReason = "parent_locked_in_escrow";
+                }
+                else if (heroOnCooldown)
+                {
+                    response.IneligibleReason = "parent_on_cooldown";
+                }
+                else if (newcomer.IsElder)
+                {
+                    response.IneligibleReason = "villager_already_married";
+                }
+                else if (hero.IsFemale == newcomer.IsFemale)
+                {
+                    response.IneligibleReason = "same_sex";
+                }
+                else if (heroVec.LocusRace.Dominant != newcomer.RaceId)
+                {
+                    response.IneligibleReason = "race_mismatch";
+                }
+                else
+                {
+                    response.IsEligible = true;
+                }
+
+                // Never. A villager has no parents here and marries once.
+                response.IsInbredRisk = false;
+
+                int maxGen = heroLineage.GenerationIndex;
+                response.BreedingCostGold = Engine.BreedingEngine.CostFor(maxGen);
+
+                var goldRecord = await db.CommodityRecords
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(c => c.PlayerId == playerId && c.ItemId == "gold");
+                response.HasSufficientGold = goldRecord != null && goldRecord.Quantity >= response.BreedingCostGold;
+
+                AddLocusPreview(response.Loci, "Race", heroVec.LocusRace, villagerVec.LocusRace, maxGen);
+                AddLocusPreview(response.Loci, "Speed", heroVec.LocusSpeed, villagerVec.LocusSpeed, maxGen);
+                AddLocusPreview(response.Loci, "Crit", heroVec.LocusCrit, villagerVec.LocusCrit, maxGen);
+                AddLocusPreview(response.Loci, "Yield", heroVec.LocusYield, villagerVec.LocusYield, maxGen);
+                AddAptitudePreviews(response.Aptitudes, heroLineage.AptitudeVector(), newcomer.AptitudeVector());
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Villager breeding preview error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

@@ -575,6 +575,46 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
+        /// <summary>
+        /// The gateway check for hero x villager pairing.
+        ///
+        /// Deliberately NOT a copy of ValidateBreedingRequest: this command
+        /// carries one Guid (the hero) and one id (the newcomer row), so
+        /// SecondaryGuid must be empty and TargetId must not be - the exact
+        /// inverse of the character pairing's field rule. Everything real
+        /// - ownership, the level gate, the elder flag, the race and the sexes
+        /// - is checked inside BreedingEngine.ExecuteHeroVillagerBreedingAsync
+        /// against the database, which is the only place it can be checked
+        /// truthfully.
+        /// </summary>
+        public static bool ValidateVillagerBreedingRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
+        {
+            if (packet.Command != FolkIdle.Server.Network.CommandType.ExecuteVillagerBreeding)
+            {
+                return true;
+            }
+
+            if (payload.BreedingLevel == 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 69, Value2 = 1, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            if (packet.TargetGuid == Guid.Empty || packet.TargetId <= 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 69, Value2 = 2, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            if (packet.SecondaryId != 0 || packet.TertiaryId != 0 || packet.LimitPrice != 0 || packet.IsBuy != 0 || packet.QualityTier != 0 || packet.SecondaryGuid != Guid.Empty || packet.TargetUnlockId != 0 || packet.RequestedSlotIndex != 0 || packet.MaterialId != 0 || packet.DepositQuantity != 0 || packet.MatchId != 0 || packet.ClientPredictedTurnCounter != 0 || packet.TargetPlayerId != 0 || packet.MentorshipRole != 0 || packet.TargetBuildingId != 0 || packet.TargetVillagerSlot != 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 69, Value2 = 3, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            return true;
+        }
+
         public static bool ValidateVillageManagementRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
         {
             if (packet.Command != FolkIdle.Server.Network.CommandType.UpgradeBuilding && packet.Command != FolkIdle.Server.Network.CommandType.EvictVillager)

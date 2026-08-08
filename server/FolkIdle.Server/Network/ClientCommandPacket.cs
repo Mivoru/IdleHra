@@ -138,7 +138,23 @@ namespace FolkIdle.Server.Network
         // existed, so every player's larder was permanently empty and any
         // combat activity stopped the first time HP crossed the auto-eat
         // threshold. See LarderEngine.
-        StockFoodSlot = 65
+        StockFoodSlot = 65,
+
+        // Modul: hero x villager pairing - THE standard pair (LONG_GAME_SPEC
+        // part 3). TargetGuid is the hero, TargetId the village_newcomers row.
+        //
+        // A SEPARATE COMMAND rather than ExecuteBreeding with one Guid left
+        // empty. The two pairings have different parents (a character and a
+        // newcomer are different tables with different ids), different gates
+        // (only the hero needs level 50) and different outcomes (the villager
+        // becomes an elder, forever). ValidateBreedingRequest also rejects a
+        // non-zero TargetId outright, so overloading it would mean loosening
+        // the check that stops every other field being smuggled through.
+        //
+        // 69 because 68 is RespecSkillTree - read this enum before adding to
+        // it, see the note on PurchaseInheritanceLevel for what a collision
+        // costs.
+        ExecuteVillagerBreeding = 69
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

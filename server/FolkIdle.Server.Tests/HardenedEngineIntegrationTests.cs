@@ -9046,6 +9046,222 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        // Modul: HERO x VILLAGER - the standard pair.
+        //
+        // The gene pool was visible and inert: village_newcomers filled up every
+        // season and nothing in the game could marry into it. This is the whole
+        // path, end to end, plus the refusal that keeps the pool a pool.
+        [Fact]
+        public async Task Test_HeroVillager_MarriesAndTheVillagerBecomesAnElder()
+        {
+            const long testPlayerId = 970004610L;
+            Guid heroId = Guid.NewGuid();
+
+            var heroGenome = new GeneticVector(0);
+            heroGenome.LocusRace = new Locus { Dominant = RaceIds.Human, Recessive = RaceIds.Human };
+
+            long villagerId;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = testPlayerId, BuildingId = VillageManagementEngine.BreedingGroundsBuildingId, CurrentLevel = 1 });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10000L });
+                db.CharacterRecords.Add(new CharacterRecord { Id = heroId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, SlotIndex = 0, IsFemale = false });
+
+                var heroLineage = new CharacterLineageRegistry { CharacterId = heroId, GenerationIndex = 0, GeneticVector = heroGenome.RawValue };
+                heroLineage.SetAptitudeVector(new[] { 4, 4, 4, 4 });
+                db.CharacterLineages.Add(heroLineage);
+
+                // A villager far stronger than the hero in Strength. That is the
+                // point of the village: a number the bloodline does not have.
+                var newcomer = new VillageNewcomer
+                {
+                    PlayerId = testPlayerId,
+                    RaceId = RaceIds.Human,
+                    IsFemale = true,
+                    ArrivedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                };
+                newcomer.SetAptitudeVector(new[] { 18, 2, 2, 2 });
+                db.VillageNewcomers.Add(newcomer);
+
+                await db.SaveChangesAsync();
+                villagerId = newcomer.Id;
+            }
+
+            var breedingEngine = new BreedingEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await breedingEngine.ExecuteHeroVillagerBreedingAsync(testPlayerId, heroId, villagerId);
+
+            Guid childId;
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var roster = await verify.CharacterRecords.AsNoTracking().Where(c => c.PlayerId == testPlayerId).ToListAsync();
+                Assert.Equal(2, roster.Count);
+
+                var child = roster.Single(c => c.Id != heroId);
+                childId = child.Id;
+                Assert.Equal(1, child.Level);
+                Assert.Equal(0, child.AgePhase);
+
+                // A newborn goes to the END of the roster. At SlotIndex 0 it
+                // would tie with its own parent, and StateCheckpointManager
+                // breaks that tie by Id - so a level-1 child could become the
+                // character whose gear hydrates the active register.
+                Assert.NotEqual(0, child.SlotIndex);
+
+                var childLineage = await verify.CharacterLineages.AsNoTracking().SingleAsync(l => l.CharacterId == childId);
+                Assert.Equal(1, childLineage.GenerationIndex);
+                Assert.Equal(heroId, childLineage.ParentPaternalId);
+                // The villager is not a CharacterRecord, so the other side is
+                // null by design - see the engine.
+                Assert.Null(childLineage.ParentMaternalId);
+                // A hero x villager pairing is NEVER inbred: a newcomer has no
+                // parents here and marries exactly once.
+                Assert.False(childLineage.IsInbred);
+                Assert.Equal(RaceIds.Human, new GeneticVector(childLineage.GeneticVector).LocusRace.Dominant);
+
+                // Each aptitude came from ONE parent (then drifted by at most
+                // one), so Strength must be reachable from 4 or from 18.
+                BreedingAptitudes.PreviewOne(4, 18, out int min, out int max);
+                Assert.InRange(childLineage.AptitudeStrength, min, max);
+
+                // THE REFUSAL THAT MAKES THE POOL A POOL: one child per
+                // villager. Without it a single lucky twenty fathers the whole
+                // roster and every line converges on one ancestor.
+                var elder = await verify.VillageNewcomers.AsNoTracking().SingleAsync(v => v.Id == villagerId);
+                Assert.True(elder.IsElder);
+
+                var gold = await verify.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "gold");
+                Assert.Equal(10000L - BreedingEngine.CostFor(0), gold.Quantity);
+            }
+
+            // Second attempt with the same villager: refused, and nothing is
+            // spent. The hero's cooldown would stop it too, so it is cleared
+            // first to make sure it is the ELDER flag doing the work.
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var hero = await db.CharacterRecords.SingleAsync(c => c.Id == heroId);
+                hero.IsBreedingActive = false;
+                hero.BreedingCooldownEndEpoch = 0L;
+                await db.SaveChangesAsync();
+            }
+
+            await breedingEngine.ExecuteHeroVillagerBreedingAsync(testPlayerId, heroId, villagerId);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.Equal(2, await verify.CharacterRecords.AsNoTracking().CountAsync(c => c.PlayerId == testPlayerId));
+                var gold = await verify.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "gold");
+                Assert.Equal(10000L - BreedingEngine.CostFor(0), gold.Quantity);
+            }
+        }
+
+        // Modul: hero x villager, the refusals. Each of these used to be
+        // unreachable code because the pairing did not exist at all; the point
+        // of asserting them together is that a pairing that should be refused
+        // must cost NOTHING - a rollback that spends the gold anyway is the
+        // shape of bug this engine's Serializable transaction exists to stop.
+        [Fact]
+        public async Task Test_HeroVillager_RefusesWrongRaceSameSexAndUnderlevelledHero()
+        {
+            const long testPlayerId = 970004611L;
+            Guid maleHumanId = Guid.NewGuid();
+            Guid youngHumanId = Guid.NewGuid();
+
+            var humanGenome = new GeneticVector(0);
+            humanGenome.LocusRace = new Locus { Dominant = RaceIds.Human, Recessive = RaceIds.Human };
+
+            long vilaWomanId;
+            long humanManId;
+            long humanWomanId;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = testPlayerId, BuildingId = VillageManagementEngine.BreedingGroundsBuildingId, CurrentLevel = 1 });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10000L });
+
+                db.CharacterRecords.AddRange(
+                    new CharacterRecord { Id = maleHumanId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, SlotIndex = 0, IsFemale = false },
+                    new CharacterRecord { Id = youngHumanId, PlayerId = testPlayerId, Level = 49, AgePhase = 1, SlotIndex = 1, IsFemale = false });
+                db.CharacterLineages.AddRange(
+                    new CharacterLineageRegistry { CharacterId = maleHumanId, GenerationIndex = 0, GeneticVector = humanGenome.RawValue },
+                    new CharacterLineageRegistry { CharacterId = youngHumanId, GenerationIndex = 0, GeneticVector = humanGenome.RawValue });
+
+                var vilaWoman = new VillageNewcomer { PlayerId = testPlayerId, RaceId = RaceIds.Vila, IsFemale = true };
+                var humanMan = new VillageNewcomer { PlayerId = testPlayerId, RaceId = RaceIds.Human, IsFemale = false };
+                var humanWoman = new VillageNewcomer { PlayerId = testPlayerId, RaceId = RaceIds.Human, IsFemale = true };
+                db.VillageNewcomers.AddRange(vilaWoman, humanMan, humanWoman);
+
+                await db.SaveChangesAsync();
+                vilaWomanId = vilaWoman.Id;
+                humanManId = humanMan.Id;
+                humanWomanId = humanWoman.Id;
+            }
+
+            var breedingEngine = new BreedingEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+
+            // Wrong race - breeding refuses a mixed pair everywhere else too.
+            await breedingEngine.ExecuteHeroVillagerBreedingAsync(testPlayerId, maleHumanId, vilaWomanId);
+            // Two men is not a pair.
+            await breedingEngine.ExecuteHeroVillagerBreedingAsync(testPlayerId, maleHumanId, humanManId);
+            // Only the HERO needs level 50, but they do need it.
+            await breedingEngine.ExecuteHeroVillagerBreedingAsync(testPlayerId, youngHumanId, humanWomanId);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.Equal(2, await verify.CharacterRecords.AsNoTracking().CountAsync(c => c.PlayerId == testPlayerId));
+                Assert.Empty(await verify.VillageNewcomers.AsNoTracking().Where(v => v.PlayerId == testPlayerId && v.IsElder).ToListAsync());
+
+                var gold = await verify.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "gold");
+                Assert.Equal(10000L, gold.Quantity);
+            }
+        }
+
+        // Modul: WHO TURNS UP. Breeding refuses a mixed-race pair, so a villager
+        // of a race the player owns no character of is a portrait and nothing
+        // more. Rolling over all six would have made five in six arrivals
+        // unmarriageable on a fresh account.
+        [Fact]
+        public async Task Test_VillageArrival_OnlyRollsRacesThePlayerHasUnlocked()
+        {
+            const long humanOnlyPlayerId = 970004612L;
+            const long vilaPlayerId = 970004613L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.AddRange(
+                    new PlayerRecord { Id = humanOnlyPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), LastVillagerArrivalEpoch = 0L },
+                    new PlayerRecord { Id = vilaPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), LastVillagerArrivalEpoch = 1L });
+                db.PlayerRaceUnlocks.Add(new PlayerRaceUnlock { PlayerId = vilaPlayerId, RaceId = RaceIds.Vila, UnlockedAtEpoch = 1L });
+                await db.SaveChangesAsync();
+            }
+
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var fresh = await db.PlayerRecords.SingleAsync(p => p.Id == humanOnlyPlayerId);
+                await VillageArrivalEngine.SettleAsync(db, fresh, innLevel: 0, now);
+
+                // A season's worth of elapsed time for the second player, so the
+                // village fills to its cap and the sample is not one roll.
+                var veteran = await db.PlayerRecords.SingleAsync(p => p.Id == vilaPlayerId);
+                await VillageArrivalEngine.SettleAsync(db, veteran, innLevel: 0, now);
+            }
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var fresh = await verify.VillageNewcomers.AsNoTracking().Where(v => v.PlayerId == humanOnlyPlayerId).ToListAsync();
+                Assert.NotEmpty(fresh);
+                Assert.All(fresh, v => Assert.Equal(RaceIds.Human, v.RaceId));
+
+                var veteran = await verify.VillageNewcomers.AsNoTracking().Where(v => v.PlayerId == vilaPlayerId).ToListAsync();
+                Assert.NotEmpty(veteran);
+                Assert.All(veteran, v => Assert.True(
+                    v.RaceId == RaceIds.Human || v.RaceId == RaceIds.Vila,
+                    $"a villager of race {v.RaceId} arrived for a player who has only unlocked Vila"));
+            }
+        }
+
         // Modul: breeding pairs. A brand new account must be able to breed on
         // day one. It could not before: registration created exactly one
         // character, and BreedingEngine needs two of the same race.

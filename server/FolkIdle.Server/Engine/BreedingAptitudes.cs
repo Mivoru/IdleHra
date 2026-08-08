@@ -227,6 +227,34 @@ namespace FolkIdle.Server.Engine
             return v;
         }
 
+        // --- what the player is choosing between --------------------------------
+
+        /// <summary>
+        /// The band a single aptitude can land in, given two parents.
+        ///
+        /// EXACT, not sampled. InheritOne returns one of the two parent values
+        /// and Mutate then moves it by at most one in either direction, so the
+        /// reachable set is bounded by min(a,b)-1 and max(a,b)+1 - clamped, and
+        /// with the two-zeroes case falling out of the same arithmetic.
+        ///
+        /// This exists because choosing WHICH villager to marry is the whole of
+        /// the gene pool as a game, and that decision is unmakeable without a
+        /// number. The gene-locus preview answers a different and much less
+        /// interesting question.
+        ///
+        /// The epic roll's +1 is deliberately NOT folded in: it fires 5% of the
+        /// time and widening every band by one to describe it would make the
+        /// common case a lie.
+        /// </summary>
+        public static void PreviewOne(int parentA, int parentB, out int min, out int max)
+        {
+            parentA = Math.Clamp(parentA, 0, MaxValue);
+            parentB = Math.Clamp(parentB, 0, MaxValue);
+
+            min = Math.Clamp(Math.Min(parentA, parentB) - 1, 0, MaxValue);
+            max = Math.Clamp(Math.Max(parentA, parentB) + 1, 0, MaxValue);
+        }
+
         // --- relatedness -------------------------------------------------------
 
         /// <summary>

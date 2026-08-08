@@ -1427,6 +1427,32 @@ export function executeBreeding(
   return OK;
 }
 
+/**
+ * THE STANDARD PAIR: one of your heroes and somebody from the village.
+ *
+ * Mirrors ValidateVillagerBreedingRequest, which disconnects on a zero
+ * BreedingLevel, an empty hero Guid or a non-positive newcomer id. Everything
+ * else it checks - the level 50 gate, the elder flag, the sexes and the race -
+ * lives in the database and is the server's to refuse, so the screen shows the
+ * preview's reason rather than guessing here.
+ */
+export function executeVillagerBreeding(
+  heroId: string,
+  newcomerId: number,
+  breedingLevel: number,
+): CommandOutcome {
+  if (breedingLevel <= 0) return refuse('Build Breeding Grounds in your village first.');
+  if (!heroId) return refuse('Choose one of your characters.');
+  if (!Number.isInteger(newcomerId) || newcomerId <= 0) return refuse('Choose somebody from the village.');
+
+  connection.send({
+    Command: CommandType.ExecuteVillagerBreeding,
+    TargetGuid: heroId,
+    TargetId: newcomerId,
+  });
+  return OK;
+}
+
 // ---------------------------------------------------------------------------
 // Monetisation
 // ---------------------------------------------------------------------------

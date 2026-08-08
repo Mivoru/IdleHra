@@ -100,6 +100,45 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(3, characters.Select(c => c.Id).Distinct().Count());
         }
 
+        // Modul: THE FIXTURE MUST BE ABLE TO BREED.
+        //
+        // Three separate absences each made the Breeding screen dead on the one
+        // account that exists for driving the client by hand, and every one of
+        // them fails silently: no Breeding Grounds (the engine rolls back), no
+        // character_lineage_registry rows (the roster endpoint SKIPS a
+        // character that has none, so the parent list came back empty and
+        // looked like a loading state), and no sexes (every character defaulted
+        // to male, and a pair needs one of each).
+        [Fact]
+        public async Task Seeder_CanActuallyBreed()
+        {
+            await using var db = NewContext();
+            long playerId = await DevFixtureSeeder.SeedAsync(db);
+
+            var characters = await db.CharacterRecords.AsNoTracking()
+                .Where(c => c.PlayerId == playerId)
+                .OrderBy(c => c.SlotIndex)
+                .ToListAsync();
+
+            // The hero gate for the standard pair.
+            Assert.All(characters, c => Assert.True(c.Level >= 50, $"slot {c.SlotIndex} is level {c.Level}, below the breeding gate"));
+            Assert.Contains(characters, c => !c.IsFemale);
+            Assert.Contains(characters, c => c.IsFemale);
+
+            var lineageIds = await db.CharacterLineages.AsNoTracking()
+                .Where(l => characters.Select(c => c.Id).Contains(l.CharacterId))
+                .Select(l => l.CharacterId)
+                .ToListAsync();
+            Assert.Equal(characters.Count, lineageIds.Count);
+
+            int breedingLevel = await db.VillageInfrastructures.AsNoTracking()
+                .Where(v => v.PlayerId == playerId
+                         && v.BuildingId == Domain.Progression.VillageManagementEngine.BreedingGroundsBuildingId)
+                .Select(v => v.CurrentLevel)
+                .FirstOrDefaultAsync();
+            Assert.True(breedingLevel > 0, "the fixture has no Breeding Grounds, so every pairing is refused");
+        }
+
         [Fact]
         public async Task Seeder_RepairsAFixtureSeededBeforeTheInvariantWasEnforced()
         {

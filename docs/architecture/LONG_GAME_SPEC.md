@@ -569,16 +569,42 @@ first two days are not dead, bad enough to want better.
      screen showing the pool with its cap.
    - **Named apart from VillageResident**, which is an older table of work
      slots with no identity. Two concepts, two tables.
-   - **Still missing: hero-x-villager PAIRING.** Breeding still pairs two of
-     the player's own characters, so the gene pool is visible but cannot yet
-     be married into - the one thing it exists for.
+   - **DONE - hero x villager PAIRING**, the standard pair.
+     `BreedingEngine.ExecuteHeroVillagerBreedingAsync`, `CommandType
+     .ExecuteVillagerBreeding` (69), `/api/v1/breeding/village-preview`, and a
+     two-tab Breeding screen with the village tab first. Only the hero needs
+     level 50; a villager marries **once** and becomes an elder.
+   - **Villagers now roll only among UNLOCKED races.** Breeding refuses a
+     mixed-race pair, so a uniform roll over all six left five in six arrivals
+     unmarriageable on a fresh account - the village filled with people who
+     existed to be dismissed. Clearing a boss now widens the pool as well as
+     granting a pair.
+   - **The preview quotes APTITUDE BANDS**, not just gene loci. `min(a,b)-1` to
+     `max(a,b)+1`, exact rather than sampled (`BreedingAptitudes.PreviewOne`),
+     because which villager to marry is the decision the gene pool exists to
+     pose and it was unmakeable without a number. The 5% epic +1 is
+     deliberately outside the quoted band.
    - **Hall of Ancestors not started** - the 10-to-14 roster and the
      choose-who-carries moment at the rollover.
 6. **NOT STARTED - chapters II-V and Seals -> skill points.**
 
-The four things that are half-built are listed above rather than left implicit,
+The things that are half-built are listed above rather than left implicit,
 because a half-built system that looks finished is how this project has shipped
 its worst defects.
+
+**Two defects found while wiring the pairing, both fixed here:**
+
+- **A newborn took `SlotIndex` 0** - the main character's slot.
+  `StateCheckpointManager` orders the roster by `SlotIndex` then by `Id` and
+  takes three, so a level-1 child could sort ahead of its own parent and become
+  the character whose gear hydrates the active register. Children now go to the
+  end of the roster.
+- **The dev fixture could not breed at all**, three ways over: no Breeding
+  Grounds, no `character_lineage_registry` rows (the roster endpoint SKIPS a
+  character that has none, so the parent list came back empty and read as a
+  loading state), and no sexes. The account that exists for driving the client
+  by hand had a dead Breeding screen. `DevFixtureInvariantTests
+  .Seeder_CanActuallyBreed` now asserts all of it.
 
 # 7. Balance: deliberately left alone
 

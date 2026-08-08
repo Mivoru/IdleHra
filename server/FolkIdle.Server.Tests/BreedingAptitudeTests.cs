@@ -317,6 +317,70 @@ namespace FolkIdle.Server.Tests
             Assert.True(rich > poor + 3, "upgrading the Inn must visibly improve the gene pool");
         }
 
+        // --- the band the player is shown --------------------------------------------
+
+        /// <summary>
+        /// The preview is a PROMISE, so it has to be exact. Brute-forces the
+        /// real Breed() many times and asserts every outcome lands inside the
+        /// band PreviewOne quotes - and that the band is tight, not a shrug.
+        /// </summary>
+        [Theory]
+        [InlineData(4, 4)]
+        [InlineData(12, 4)]
+        [InlineData(0, 0)]
+        [InlineData(20, 19)]
+        [InlineData(50, 50)]
+        public void ThePreviewedBandContainsEveryOutcomeAndNothingSpare(int a, int b)
+        {
+            BreedingAptitudes.PreviewOne(a, b, out int min, out int max);
+
+            var rng = Seeded();
+            var father = new[] { a, a, a, a };
+            var mother = new[] { b, b, b, b };
+
+            int seenLow = int.MaxValue;
+            int seenHigh = int.MinValue;
+            for (int trial = 0; trial < 4000; trial++)
+            {
+                foreach (int value in BreedingAptitudes.Breed(father, mother, false, false, rng))
+                {
+                    Assert.InRange(value, min, max);
+                    if (value < seenLow) seenLow = value;
+                    if (value > seenHigh) seenHigh = value;
+                }
+            }
+
+            _output.WriteLine($"{a} x {b} -> previewed {min}-{max}, observed {seenLow}-{seenHigh}");
+
+            // Tight: over four thousand trials both ends are reached, so the
+            // band is the real range rather than a safe over-estimate.
+            Assert.Equal(min, seenLow);
+            Assert.Equal(max, seenHigh);
+        }
+
+        /// <summary>
+        /// The epic roll's +1 is deliberately outside the quoted band. Stated
+        /// as a test so a later "the preview was wrong once in twenty" report
+        /// finds the decision rather than re-litigating it.
+        /// </summary>
+        [Fact]
+        public void TheEpicBonusIsNotFoldedIntoTheBand()
+        {
+            BreedingAptitudes.PreviewOne(10, 10, out _, out int max);
+            Assert.Equal(11, max);
+
+            var rng = Seeded();
+            bool exceeded = false;
+            for (int trial = 0; trial < 200 && !exceeded; trial++)
+            {
+                var epicChild = BreedingAptitudes.Breed(
+                    new[] { 10, 10, 10, 10 }, new[] { 10, 10, 10, 10 }, false, true, rng);
+                exceeded = Array.Exists(epicChild, v => v > max);
+            }
+
+            Assert.True(exceeded, "an epic child must be able to land above the quoted band");
+        }
+
         // --- relatedness ------------------------------------------------------------
 
         [Fact]
