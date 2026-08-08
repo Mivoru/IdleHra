@@ -284,6 +284,52 @@ namespace FolkIdle.Server.Tests
             return models;
         }
 
+        /// <summary>
+        /// The health bar a player arriving in this region actually has, in
+        /// milli-HP.
+        ///
+        /// THE THREE THINGS THAT MOVE IT, and nothing else does: the flat 100
+        /// HP base, the lineage's per-level scaling, and CON - which
+        /// RaceAttributeGrowth adds about two points a level and StatsCalculator
+        /// pays at 15 HP each. Plus `flat_hp` affixes, which are the only gear
+        /// contribution and were the last thing missing from this model.
+        ///
+        /// Walked up level by level rather than assigned, because setting
+        /// CurrentLevel leaves STR/DEX/CON/LCK at zero - a mistake that once
+        /// printed a 100 HP bar for every region and was briefly taken for a
+        /// finding about the game. It is a finding about the fixture.
+        /// </summary>
+        private static long HealthPoolMilliHp(int region)
+        {
+            int level = ((region - 1) * 20) + 1;
+
+            var payload = default(TickStatePayload);
+            payload.SelectedLineageId = 1;
+            payload.CurrentLevel = level;
+
+            // Five pieces carrying a health roll at the rarity this region
+            // expects - the same loadout the armour and damage sides model, so
+            // one imaginary player wears all of it.
+            if (AffixRegistry.TryGetDefinition("flat_hp", out var flatHp))
+            {
+                payload.CachedAffixTotals.FlatHp =
+                    5 * AffixRegistry.CalculateMagnitude(flatHp, region, RarityForRegion(region));
+            }
+
+            RaceAttributeGrowth.ApplyLevelUpGrowth(ref payload, activeRaceId: 1, levelsGained: level - 1);
+
+            var stats = StatsCalculator.Calculate(
+                payload.STR, payload.DEX, payload.CON, payload.LCK, 0, 0, 1, 0, 0, 0, 0, 0,
+                payload.CachedAffixTotals, false, 0, 0, payload.CachedSetIds);
+
+            var lineage = ProgressionEngine.Lineages[payload.SelectedLineageId];
+
+            const long baseMilliHp = 100_000L;
+            return baseMilliHp
+                 + (baseMilliHp * lineage.HpScalePerLevelPct * level / 100)
+                 + (stats.MaxHp * 1000L);
+        }
+
         // Wood and ore, for the region's tools. Assumes the player makes a full
         // set - three kinds at both of the region's tiers - which is the
         // ceiling on this half rather than an average player.
@@ -330,14 +376,15 @@ namespace FolkIdle.Server.Tests
             // curves, and the one it picked is the one that does NOT feed the
             // bar. It matters because a bite heals a percentage of max HP, so
             // the wrong bar size prices every fish wrongly.
-            long effectiveMaxMilliHp = 100_000L;
-            if (AffixRegistry.TryGetDefinition("flat_hp", out var flatHp))
-            {
-                // Five pieces carrying a health roll, at the rarity this region
-                // expects - the same loadout the armour side models.
-                effectiveMaxMilliHp +=
-                    5L * AffixRegistry.CalculateMagnitude(flatHp, region, RarityForRegion(region)) * 1000L;
-            }
+            //
+            // Modul: AND THE BAR GROWS. The base was a hardcoded 100 HP - the
+            // level-1 bar - in a model about region 5, where it is roughly
+            // 2,500. A fish heals a PERCENTAGE of max HP, so an undersized bar
+            // makes every bite look small and the fishing look endless: this
+            // is why the measured gathering share was described as a ceiling
+            // rather than a reading. The bar is walked up the same way
+            // ProgressionRateTests walks it, through CON at 15 HP a point.
+            long effectiveMaxMilliHp = HealthPoolMilliHp(region);
             int fishItemId = RegionFishItemId(region);
             int healMilliHp = FoodRegistry.GetHealMilliHp(fishItemId, effectiveMaxMilliHp);
             if (healMilliHp <= 0) return 0.0;

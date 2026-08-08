@@ -730,10 +730,28 @@ The password minimum is six characters, which is short. And
 convenient at the registration form and is also an account enumeration oracle.
 Both are defensible; neither should be changed by accident.
 
-**The health pool ignores `flat_hp` affixes.** CON growth is measured - 100 HP
-at level 1, 2,500 by region 5 - but gear HP is not in the model. It can only
-make the bar bigger and the gathering share smaller, so 17-32% is a ceiling
-rather than a reading.
+**~~The health pool ignores `flat_hp` affixes~~ - DONE, and the reading moved
+a long way.** Both models carry gear HP now, and `GatheringShareTests` was also
+sizing every fish against a hardcoded **level-1** bar while modelling region 5.
+
+    region 1  100 hp bare, 175 geared     gathering 37% of playtime
+    region 2  700 hp bare, 960 geared               37%
+    region 3  1,300 bare, 2,225 geared              29%
+    region 4  1,900 bare, 5,170 geared              23%
+    region 5  2,500 bare, 14,010 geared             15%
+
+Two things fall out and neither was visible before. Gear **quintuples** the
+region-5 bar, which turns the strongest regular monster there from 583% of the
+bar per second (lethal in a fifth of a second, i.e. region 5 unplayable) into
+104% - dangerous, which is the intent. And the gathering share is no longer
+flat: it runs 37% early and 15% late, so the previously recorded "33-39% flat
+across regions 2-5" was an artefact of the level-1 bar.
+
+**The share now leaves the one-fifth-to-one-third band at BOTH ends** and that
+is a balance decision, deliberately not taken here: the guard in
+`GatheringShareTests` is 15-80% and region 5 sits on its floor. If it is worth
+flattening, the levers are `FoodRegistry.HealPercentOfMaxHpPerTier` and the
+monster attack formula, and they move together - see the section below.
 
 **Nothing is measured against real players.** Every figure here comes from a
 model driving the real tick, which is a much better thing than an estimate and

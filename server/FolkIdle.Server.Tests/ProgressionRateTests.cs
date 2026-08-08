@@ -389,6 +389,34 @@ namespace FolkIdle.Server.Tests
                     + (baseMilliHp * poolLineage.HpScalePerLevelPct * poolPayload.CurrentLevel / 100)
                     + (poolStats.MaxHp * 1000L);
 
+                // Modul: AND THE SAME BAR WITH GEAR ON IT.
+                //
+                // The bar above is the FLOOR - this whole test dresses its
+                // character in base power and no affixes on purpose. But the
+                // health pool is the number the food economy is sized against,
+                // and `flat_hp` is the only affix that touches it, so a floor
+                // was being used where a reading was wanted: the gathering
+                // share was knowingly recorded as "a ceiling" for exactly this
+                // reason. Both are printed, because the answer is a range and
+                // presenting either end of it alone is how the last three
+                // numbers in this document went stale.
+                long gearedMilliHp = effectiveMilliHp;
+                if (AffixRegistry.TryGetDefinition("flat_hp", out var flatHpAffix))
+                {
+                    // Five pieces carrying a health roll at the rarity the
+                    // region expects - the same loadout GatheringShareTests
+                    // models on the armour and damage sides.
+                    var rarity = region switch
+                    {
+                        1 => AffixRarity.Common,
+                        2 => AffixRarity.Uncommon,
+                        3 => AffixRarity.Rare,
+                        4 => AffixRarity.Epic,
+                        _ => AffixRarity.Legendary,
+                    };
+                    gearedMilliHp += 5L * AffixRegistry.CalculateMagnitude(flatHpAffix, region, rarity) * 1000L;
+                }
+
                 var strongest = ContentRegistry.Monsters[firstMonster + 3 - 1];
                 // Asked of the model, not re-derived - this was the fourth copy
                 // of `raw - armour`, and it would have gone on printing that
@@ -400,8 +428,9 @@ namespace FolkIdle.Server.Tests
                 double incomingPerSecond = netMilliPerHit * (1000.0 / strongest.AttackIntervalMs);
 
                 _output.WriteLine(
-                    $" region {region}: health pool {effectiveMilliHp / 1000.0,10:N0} hp, armour {poolStats.FlatPhysicalArmor,6}, " +
-                    $"strongest regular hits {netMilliPerHit / 1000.0,8:N0} net = {incomingPerSecond / effectiveMilliHp:P2} of the bar per second");
+                    $" region {region}: health pool {effectiveMilliHp / 1000.0,10:N0} hp bare, {gearedMilliHp / 1000.0,10:N0} hp with five health rolls, " +
+                    $"armour {poolStats.FlatPhysicalArmor,6}, strongest regular hits {netMilliPerHit / 1000.0,8:N0} net = " +
+                    $"{incomingPerSecond / effectiveMilliHp:P2} of the bare bar per second ({incomingPerSecond / gearedMilliHp:P2} geared)");
             }
 
             // XP the region's twenty levels demand, from the real curve.
