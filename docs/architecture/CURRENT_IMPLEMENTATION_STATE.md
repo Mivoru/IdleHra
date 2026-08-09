@@ -560,6 +560,14 @@ first control point leaves the trunk straight up, the second arrives along
 that spread's own outward direction, and both offsets are **capped** - past
 the cap a longer run adds length rather than bend.
 
+**A pale line needs a dark casing under it.** The centre limb runs straight up
+the PAINTED TRUNK - the one part of the illustration that is bright, warm and
+busy, and also the colour of the glow. It vanished completely: the node at the
+top of it lit, and nothing appeared to connect it to anything. No single
+stroke colour is safe over a painting, so every connector is drawn twice, a
+dark casing first and the bright stroke on top. Same answer as the labels and
+the unlit node halos.
+
 **Brass is a surface colour.** It reads painted on a panel and vanishes over a
 busy illustration. `--glow-warm`, `--glow-soft` and `--glow-hot` exist for
 things that emit rather than reflect. The same asymmetry runs through the

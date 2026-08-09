@@ -294,6 +294,17 @@
     />
 
     {#each drawn as limb (limb.id)}
+      <!-- Modul: EVERY CONNECTOR NEEDS A DARK CASING UNDER IT.
+           The centre limb runs straight up the PAINTED TRUNK - the one part of
+           this illustration that is bright, warm and busy, which is also the
+           colour of the glow. It vanished completely: the node at the top of
+           it lit, and nothing appeared to connect it to anything.
+
+           A pale line is only visible over what is darker than it, and this
+           background is a painting, so no single stroke colour can be safe
+           everywhere. Casing first, bright stroke on top - the same answer the
+           labels and the unlit node halos already use. -->
+      <path d={limb.limbPath} class="casing" style={`stroke-width: ${limb.width + 3}`} />
       <path
         d={limb.limbPath}
         class="limb"
@@ -303,6 +314,12 @@
       />
 
       {#each limb.twigs as twig (twig.bough.id)}
+        <path
+          d={`M ${limb.forkX} ${limb.forkY} L ${twig.tipX} ${twig.tipY}`}
+          class="casing"
+          class:dead={twig.bough.lockedOut}
+          style="stroke-width: 4"
+        />
         <path
           d={`M ${limb.forkX} ${limb.forkY} L ${twig.tipX} ${twig.tipY}`}
           class="twig"
@@ -629,10 +646,15 @@
 
      Held back hard (low opacity, blurred a touch) because the drawn limbs have
      to stay the thing the eye follows. */
+  /* Modul: this sat at 30rem and then 34rem, which on a desktop panel left the
+     illustration a stamp in the middle of a very wide empty box. It is the
+     centrepiece of the screen and the thing the player aims at, so it gets the
+     room. Still capped rather than full-bleed: past this the labels drift so
+     far from the trunk that the fan stops reading as one tree. */
   .treewrap {
     position: relative;
     width: 100%;
-    max-width: 34rem;
+    max-width: 52rem;
     margin: 0.2rem auto 0.6rem;
   }
 
@@ -649,6 +671,18 @@
      and lit nodes still win. */
   .art {
     opacity: 0.92;
+  }
+
+  /* Drawn under every connector so a pale line has something to be pale
+     against, whatever the painting is doing underneath it. */
+  .casing {
+    fill: none;
+    stroke: rgba(6, 10, 14, 0.72);
+    stroke-linecap: round;
+  }
+
+  .casing.dead {
+    opacity: 0.45;
   }
 
   .limb {
