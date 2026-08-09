@@ -53,6 +53,15 @@
   --brass: #8a6a34;
   --brass-lit: #d8b45a;
 
+  /* Modul: LIGHT, not metal. Brass is a surface colour - it works painted on a
+     panel and disappears the moment it is drawn over a busy illustration,
+     which is what happened to the skill tree's connectors over the Yggdrasil
+     art. These three are for things that EMIT: they are pale enough to read as
+     a glow against foliage rather than as a stroke of paint on top of it. */
+  --glow-warm: #ffd98a;
+  --glow-soft: rgba(255, 217, 138, 0.28);
+  --glow-hot: #ffe9b0;
+
   /* Modul: textures as inline SVG, not files.
      A parchment or a woodgrain PNG is 40-200 kB and one more thing to serve;
      fractal noise is a few hundred bytes, scales to any panel, and cannot

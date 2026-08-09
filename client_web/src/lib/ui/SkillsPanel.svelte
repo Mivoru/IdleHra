@@ -129,47 +129,79 @@
 
   // ---- the drawing ---------------------------------------------------------
   //
-  // Geometry rather than art: the branch paths are computed from the levels, so
-  // the picture IS the data and cannot fall out of step with the numbers beside
-  // it. No files either.
+  // Modul: THE PAINTING IS THE TREE. THIS IS THE CIRCUITRY ON TOP OF IT.
+  //
+  // This used to draw its own trunk, its own roots and five bare limbs in
+  // brass, laid over the artwork - which owns a magnificent trunk and a root
+  // system of its own. Two trees in the same place, and the drawn one won on
+  // z-order: a fat gold smear up the middle, sticks at angles that belonged to
+  // no branch in the picture, and a curve on the lower left that read as a
+  // banana. It looked like stick figures over a painting because that is what
+  // it was.
+  //
+  // The trunk and the roots are GONE - the art supplies both, better. What is
+  // left is only what carries data: a joint per limb, two buds per fork, a
+  // crown, and glowing connectors between them. They are positioned on the
+  // crotches of the five great branch spreads in the painting rather than on a
+  // geometric fan, so the lines look like they belong to the tree underneath.
+  //
+  // The artwork is an <image> INSIDE this svg rather than a CSS background on
+  // the wrapper, which is what guarantees the two cannot drift: one coordinate
+  // system, one aspect ratio, no way for a node to land off a branch because a
+  // container resized.
+  const ART_W = 1600;
+  const ART_H = 873;
   const VIEW_W = 460;
-  const VIEW_H = 320;
-  const ROOT_X = VIEW_W / 2;
-  const ROOT_Y = VIEW_H - 14;
-  const TRUNK_H = 176;
+  const VIEW_H = Math.round((VIEW_W * ART_H) / ART_W); // 251 - the art's own aspect
 
-  /** Where each limb leaves the trunk and which way it grows. */
-  const LIMB_LAYOUT = [
-    { dx: -1.0, dy: -0.3, startY: 0.3 },
-    { dx: -0.8, dy: -0.64, startY: 0.58 },
-    { dx: 0.0, dy: -1.0, startY: 0.88 },
-    { dx: 0.8, dy: -0.64, startY: 0.58 },
-    { dx: 1.0, dy: -0.3, startY: 0.3 },
+  // Where the trunk divides in the painting. Every connector starts here.
+  const ORIGIN_X = VIEW_W / 2;
+  const ORIGIN_Y = 196;
+
+  /**
+   * One anchor per limb, placed on the painting's own branch structure:
+   * far-left spread, upper-left, the crown of the canopy, upper-right,
+   * far-right. `out` is the direction that spread grows, which is what the
+   * buds and the label follow.
+   */
+  const LIMB_ANCHORS = [
+    { x: 78, y: 138, outX: -0.94, outY: -0.34, anchor: 'end' },
+    { x: 152, y: 74, outX: -0.66, outY: -0.75, anchor: 'end' },
+    { x: 230, y: 38, outX: 0, outY: -1, anchor: 'middle' },
+    { x: 308, y: 74, outX: 0.66, outY: -0.75, anchor: 'start' },
+    { x: 382, y: 138, outX: 0.94, outY: -0.34, anchor: 'start' },
   ] as const;
 
   let hovered = $state<number | null>(null);
 
   const drawn = $derived(
     limbs.map((limb, i) => {
-      const layout = LIMB_LAYOUT[i % LIMB_LAYOUT.length];
-      const startX = ROOT_X;
-      const startY = ROOT_Y - TRUNK_H * layout.startY;
+      const a = LIMB_ANCHORS[i % LIMB_ANCHORS.length];
 
-      // A limb still grows while untaken, as a bud - the tree's SHAPE must not
-      // change as it fills in, or a player cannot see what they are choosing
-      // between before they choose.
-      const growth = 0.74 + 0.26 * (limb.root.level / SKILL_TREE_ROOT_MAX);
-      const reach = 108 * growth;
-      const forkX = startX + layout.dx * reach;
-      const forkY = startY + layout.dy * reach;
+      // A limb still reaches its anchor while untaken, just short of it: the
+      // SHAPE must not change as points go in, or a player cannot see what
+      // they are choosing between before they choose.
+      const growth = 0.82 + 0.18 * (limb.root.level / SKILL_TREE_ROOT_MAX);
+      const jointX = ORIGIN_X + (a.x - ORIGIN_X) * growth;
+      const jointY = ORIGIN_Y + (a.y - ORIGIN_Y) * growth;
 
-      // The two twigs leave the fork at a spread, one up and one out.
+      // Bowed away from the trunk so the connector reads as a branch rather
+      // than as a wire. The bow is perpendicular to the run, scaled by how far
+      // the limb reaches.
+      const runX = jointX - ORIGIN_X;
+      const runY = jointY - ORIGIN_Y;
+      const bow = 0.16;
+      const ctrlX = ORIGIN_X + runX * 0.5 - runY * bow;
+      const ctrlY = ORIGIN_Y + runY * 0.5 + runX * bow;
+
       const twigs = limb.boughs.map((bough, side) => {
-        const spread = side === 0 ? -0.55 : 0.55;
-        const twigReach = 46 + 26 * (bough.level / bough.max);
-        const tipX = forkX + (layout.dx * 0.6 + spread) * twigReach;
-        const tipY = forkY + (layout.dy * 0.9 - 0.35) * twigReach;
-        return { bough, tipX, tipY };
+        const spread = side === 0 ? -0.62 : 0.62;
+        const cos = Math.cos(spread);
+        const sin = Math.sin(spread);
+        const dx = a.outX * cos - a.outY * sin;
+        const dy = a.outX * sin + a.outY * cos;
+        const reach = 24 + 12 * (bough.level / bough.max);
+        return { bough, tipX: jointX + dx * reach, tipY: jointY + dy * reach };
       });
 
       const taken = twigs.find((t) => t.bough.level > 0) ?? twigs[0];
@@ -178,19 +210,19 @@
         id: limb.root.id,
         name: limb.root.name,
         level: limb.root.level,
-        limbPath: `M ${startX} ${startY} Q ${startX + layout.dx * reach * 0.55} ${startY + layout.dy * reach * 0.15} ${forkX} ${forkY}`,
-        width: 2 + 5 * (limb.root.level / SKILL_TREE_ROOT_MAX),
-        forkX,
-        forkY,
+        limbPath: `M ${ORIGIN_X} ${ORIGIN_Y} Q ${ctrlX} ${ctrlY} ${jointX} ${jointY}`,
+        width: 1.4 + 2.2 * (limb.root.level / SKILL_TREE_ROOT_MAX),
+        forkX: jointX,
+        forkY: jointY,
         twigs,
         crown: limb.crown,
-        crownX: taken.tipX,
-        crownY: taken.tipY - 16,
-        // Along the limb and clear of it. A near-horizontal limb needs the
-        // label beside its tip; the vertical one needs it under the fork.
-        labelDx: layout.dx * 26,
-        labelDy: Math.abs(layout.dy) > 0.9 ? 20 : 16,
-        labelAnchor: layout.dx < -0.5 ? 'end' : layout.dx > 0.5 ? 'start' : 'middle',
+        crownX: taken.tipX + a.outX * 13,
+        crownY: taken.tipY + a.outY * 13,
+        // Along the spread and clear of the buds, so a label never lands on a
+        // node it does not name.
+        labelDx: a.outX * 30,
+        labelDy: a.outY * 26 + 4,
+        labelAnchor: a.anchor,
       };
     }),
   );
@@ -209,20 +241,34 @@
     <span class="points">{points} <span class="dim tiny">points</span></span>
   </header>
 
-  <div class="treewrap" style={`--yggdrasil: url('${backgroundUrl('yggdrasil')}')`}>
+  <div class="treewrap">
   <svg
     class="tree"
     viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
     role="img"
     aria-label="Your skill tree: five limbs, each forking into two branches with a crown above"
   >
-    <path
-      d={`M ${ROOT_X} ${ROOT_Y} C ${ROOT_X - 12} ${ROOT_Y - 70}, ${ROOT_X + 12} ${ROOT_Y - 130}, ${ROOT_X} ${ROOT_Y - TRUNK_H}`}
-      class="trunk"
-    />
-    <path
-      d={`M ${ROOT_X} ${ROOT_Y} l -26 10 M ${ROOT_X} ${ROOT_Y} l 26 10 M ${ROOT_X} ${ROOT_Y} l -8 12 M ${ROOT_X} ${ROOT_Y} l 9 12`}
-      class="roots"
+    <defs>
+      <!-- One soft bloom, reused by every lit element. Cheap: a single blur
+           merged under the source, not a filter per node. -->
+      <filter id="skillglow" x="-60%" y="-60%" width="220%" height="220%">
+        <feGaussianBlur stdDeviation="2.2" result="b" />
+        <feMerge>
+          <feMergeNode in="b" />
+          <feMergeNode in="b" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+    </defs>
+
+    <image
+      href={backgroundUrl('yggdrasil')}
+      x="0"
+      y="0"
+      width={VIEW_W}
+      height={VIEW_H}
+      preserveAspectRatio="xMidYMid meet"
+      class="art"
     />
 
     {#each drawn as limb (limb.id)}
@@ -241,27 +287,48 @@
           class:lit={twig.bough.level > 0}
           class:dead={twig.bough.lockedOut}
         />
-        <circle
-          cx={twig.tipX}
-          cy={twig.tipY}
-          r={twig.bough.level > 0 ? 3.5 + twig.bough.level / 4 : 2.5}
-          class="bud"
+        <!-- Modul: A BUD IS A JOINT, not a dot. Halo, ring, core - three
+             circles, because a single filled circle at this size reads as a
+             speck of dust on the painting rather than as something you can
+             spend a point on. -->
+        <g
+          class="node bud"
           class:lit={twig.bough.level > 0}
           class:dead={twig.bough.lockedOut}
-        />
+          transform={`translate(${twig.tipX} ${twig.tipY})`}
+        >
+          <circle class="halo" r={twig.bough.level > 0 ? 6.5 : 4.5} />
+          <circle class="ring" r={twig.bough.level > 0 ? 3.6 : 2.8} />
+          <circle class="core" r={twig.bough.level > 0 ? 1.7 : 1.1} />
+        </g>
       {/each}
 
+      <!-- The limb's own joint, where the fork happens. Larger than a bud:
+           it is the thing the two buds hang off. -->
+      <g
+        class="node joint"
+        class:lit={limb.level > 0}
+        class:hot={hovered === limb.id}
+        transform={`translate(${limb.forkX} ${limb.forkY})`}
+      >
+        <circle class="halo" r={limb.level > 0 ? 8.5 : 6} />
+        <circle class="ring" r={limb.level > 0 ? 4.8 : 3.8} />
+        <circle class="core" r={limb.level > 0 ? 2.2 : 1.5} />
+      </g>
+
       {#if limb.crown.level > 0}
-        <circle cx={limb.crownX} cy={limb.crownY} r="6" class="crown-bud" />
+        <g class="node crown lit" transform={`translate(${limb.crownX} ${limb.crownY})`}>
+          <circle class="halo" r="7.5" />
+          <circle class="ring" r="4.2" />
+          <circle class="core" r="2" />
+        </g>
       {/if}
 
-      <!-- Pushed OUTWARD along the limb rather than straight down: a label 15px
-           below a near-horizontal limb lands on the limb itself, which is what
-           it did to Fortune and Insight. -->
       <text
         x={limb.forkX + limb.labelDx}
         y={limb.forkY + limb.labelDy}
         class="limb-label"
+        class:lit={limb.level > 0}
         text-anchor={limb.labelAnchor}
       >
         {limb.name}{#if limb.level > 0}&#160;{limb.level}{/if}
@@ -417,34 +484,29 @@
     margin: 0 0 0.5rem;
   }
 
+  /* A CONNECTOR, NOT A BRANCH. The painting supplies the branches; these are
+     the lines of force between the nodes, so they are thin, bright and lit
+     from within rather than bark-coloured and thick. */
   .twig {
     fill: none;
-    stroke: var(--border);
-    stroke-width: 2;
+    stroke: rgba(226, 232, 240, 0.5);
+    stroke-width: 1.3;
     stroke-linecap: round;
   }
 
   .twig.lit {
-    stroke: var(--brass-lit);
-    stroke-width: 3;
+    stroke: var(--glow-warm);
+    stroke-width: 1.8;
+    filter: url(#skillglow);
   }
 
   /* Foreclosed, not absent: still drawn so the fork stays legible. */
   .twig.dead {
-    stroke: var(--border);
-    opacity: 0.3;
-    stroke-dasharray: 3 3;
+    stroke: rgba(226, 232, 240, 0.2);
+    opacity: 0.45;
+    stroke-dasharray: 2.5 3.5;
   }
 
-  .bud.dead {
-    opacity: 0.3;
-  }
-
-  .crown-bud {
-    fill: var(--brass-lit);
-    stroke: var(--brass);
-    stroke-width: 1.5;
-  }
 
   .limbs {
     display: grid;
@@ -548,21 +610,8 @@
   .treewrap {
     position: relative;
     width: 100%;
-    max-width: 30rem;
+    max-width: 34rem;
     margin: 0.2rem auto 0.6rem;
-  }
-
-  .treewrap::before {
-    content: '';
-    position: absolute;
-    inset: -6% -10% 0;
-    background-image: var(--yggdrasil);
-    background-size: contain;
-    background-position: center bottom;
-    background-repeat: no-repeat;
-    opacity: 0.4;
-    filter: blur(0.4px) saturate(0.85);
-    pointer-events: none;
   }
 
   .tree {
@@ -572,51 +621,93 @@
     overflow: visible;
   }
 
-  .trunk,
-  .roots {
-    fill: none;
-    stroke: var(--brass);
-    stroke-linecap: round;
-  }
-
-  .trunk {
-    stroke-width: 9;
-  }
-
-  .roots {
-    stroke-width: 3;
-    opacity: 0.55;
+  /* Modul: the art carries this panel now, so it is shown nearly as painted -
+     it used to sit at 0.4 opacity behind a blur, which made an expensive
+     illustration look like a smudge. Held back only enough that white text
+     and lit nodes still win. */
+  .art {
+    opacity: 0.92;
   }
 
   .limb {
     fill: none;
-    stroke: var(--border);
+    stroke: rgba(226, 232, 240, 0.5);
     stroke-linecap: round;
     transition: stroke 140ms ease;
   }
 
-  /* Invested branches are brass and alive; untaken ones stay bark-coloured, so
-     the tree reads as something grown rather than something unlocked. */
   .limb.lit {
-    stroke: var(--brass-lit);
+    stroke: var(--glow-warm);
+    filter: url(#skillglow);
   }
 
   .limb.hot {
-    stroke: var(--accent);
+    stroke: var(--glow-hot);
+    filter: url(#skillglow);
   }
 
-  .bud {
-    fill: var(--bg-raised);
-    stroke: var(--border);
-    stroke-width: 1.5;
-    transition: fill 140ms ease, stroke 140ms ease;
+  /* --- joints ---------------------------------------------------------------
+     Three concentric circles per node: a halo that bleeds light onto the
+     foliage, a ring that gives it an edge against a busy background, and a
+     core. Unlit ones are cool and quiet; lit ones burn. */
+  /* Modul: an UNLIT node needs contrast, not light. Over painted foliage a
+     faint white circle vanishes into whatever leaf it landed on, so the halo
+     of an unspent node is DARK - it clears a patch of background for the ring
+     to sit against. Spending a point flips that same circle to a glow. */
+  .node .halo {
+    fill: rgba(8, 12, 16, 0.6);
+    stroke: none;
   }
 
-  .bud.lit {
-    fill: var(--brass-lit);
-    stroke: var(--brass);
+  .node .ring {
+    fill: rgba(12, 16, 20, 0.7);
+    stroke: rgba(226, 232, 240, 0.72);
+    stroke-width: 1.1;
   }
 
+  .node .core {
+    fill: rgba(226, 232, 240, 0.8);
+    stroke: none;
+  }
+
+  .node.lit .halo {
+    fill: var(--glow-soft);
+    filter: url(#skillglow);
+  }
+
+  .node.lit .ring {
+    fill: rgba(24, 16, 4, 0.6);
+    stroke: var(--glow-warm);
+    stroke-width: 1.4;
+  }
+
+  .node.lit .core {
+    fill: #fff6d8;
+    filter: url(#skillglow);
+  }
+
+  .node.hot .ring {
+    stroke: var(--glow-hot);
+  }
+
+  .node.dead {
+    opacity: 0.35;
+  }
+
+  /* The crown is the top of a chosen fork - the one node that should look
+     like an achievement rather than a purchase. */
+  .node.crown .ring {
+    stroke: #bfe9ff;
+    stroke-width: 1.6;
+  }
+
+  .node.crown .core {
+    fill: #eaf8ff;
+  }
+
+  .node.crown .halo {
+    fill: rgba(120, 200, 255, 0.3);
+  }
 
   .limb-label {
     fill: var(--text);
@@ -632,9 +723,14 @@
     stroke-linejoin: round;
   }
 
+  .limb-label.lit {
+    fill: #ffeec2;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .limb,
-    .bud {
+    .node .ring,
+    .node .core {
       transition: none;
     }
   }
