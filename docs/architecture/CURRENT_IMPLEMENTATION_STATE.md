@@ -560,6 +560,27 @@ first control point leaves the trunk straight up, the second arrives along
 that spread's own outward direction, and both offsets are **capped** - past
 the cap a longer run adds length rather than bend.
 
+**A zero-width bounding box eats an SVG filter.** The glow was declared with
+the default `filterUnits="objectBoundingBox"` and percentage bounds. The
+centre limb's connector is a perfectly vertical line, so its bounding box has
+width zero - and 220% of zero is zero. The filter region collapsed and the lit
+stroke was never painted, leaving only its unfiltered dark casing: the middle
+branch rendered as a shadow while the other four glowed, which read as the
+fifth having been *designed* differently. It is `userSpaceOnUse` pinned to the
+viewBox now, where no element's own geometry can shrink it away. Any filter
+that may land on an axis-aligned line needs this.
+
+**Labels go PAST the fork, not among it.** A bud reaches at most 36 from its
+joint and the crown sits 13 beyond the taken one, so any label offset under
+about 50 lands on a node. It was 30, which merely *looked* fine on four limbs
+because their spreads run diagonally and the text drifted sideways off the
+buds. The centre limb's spread is straight up - which is exactly where its two
+buds go - so its label sat on its own fork. One number for all five (52) plus
+`PAD_TOP`, which extends the viewBox upward without scaling or cropping the
+art, so the top limb has sky to put a label in. Without that headroom the only
+way to place that one label was to special-case it, which is what caused the
+complaint in the first place.
+
 **A pale line needs a dark casing under it.** The centre limb runs straight up
 the PAINTED TRUNK - the one part of the illustration that is bright, warm and
 busy, and also the colour of the glow. It vanished completely: the node at the

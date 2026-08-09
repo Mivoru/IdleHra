@@ -154,6 +154,14 @@
   const VIEW_W = 460;
   const VIEW_H = Math.round((VIEW_W * ART_H) / ART_W); // 251 - the art's own aspect
 
+  // Modul: the canopy reaches the top of the illustration, so the centre
+  // limb's label and crown had nowhere to go that was not on top of its own
+  // buds. The viewBox is extended UPWARD by this much and the image still
+  // starts at y=0 - the art is not scaled or cropped, it simply gains sky
+  // above it. Without this the only way to place that one label was to treat
+  // it differently from the other four, which is the thing being fixed.
+  const PAD_TOP = 34;
+
   // Where the trunk divides in the painting. Every connector starts here.
   const ORIGIN_X = VIEW_W / 2;
   const ORIGIN_Y = 196;
@@ -240,10 +248,21 @@
         crown: limb.crown,
         crownX: taken.tipX + a.outX * 13,
         crownY: taken.tipY + a.outY * 13,
-        // Along the spread and clear of the buds, so a label never lands on a
-        // node it does not name.
-        labelDx: a.outX * 30,
-        labelDy: a.outY * 26 + 4,
+        // Modul: PAST THE BUDS, not among them.
+        //
+        // A bud reaches at most 36 from the joint and is 6.5 across, and the
+        // crown sits 13 beyond the taken one - so anything closer than about
+        // 50 lands on a node. The offset used to be 30, which was inside that
+        // for every limb and merely LOOKED fine on four of them, because their
+        // spreads run diagonally and the label drifted sideways off the buds.
+        // The centre limb's spread is straight up, which is also exactly where
+        // its two buds go, so PRECISION sat on its own fork.
+        //
+        // One rule, one number, all five: out * 52 clears the whole fork
+        // whichever way it points. The headroom above the canopy exists for
+        // this - see PAD_TOP.
+        labelDx: a.outX * 52,
+        labelDy: a.outY * 52 + 4,
         labelAnchor: a.anchor,
       };
     }),
@@ -266,14 +285,32 @@
   <div class="treewrap">
   <svg
     class="tree"
-    viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+    viewBox={`0 ${-PAD_TOP} ${VIEW_W} ${VIEW_H + PAD_TOP}`}
     role="img"
     aria-label="Your skill tree: five limbs, each forking into two branches with a crown above"
   >
     <defs>
       <!-- One soft bloom, reused by every lit element. Cheap: a single blur
            merged under the source, not a filter per node. -->
-      <filter id="skillglow" x="-60%" y="-60%" width="220%" height="220%">
+      <!-- Modul: userSpaceOnUse IS LOAD-BEARING, not a tidy-up.
+           A filter region defaults to objectBoundingBox units, and the centre
+           limb's connector is a PERFECTLY VERTICAL LINE - a bounding box of
+           zero width. 220% of zero is zero, so the filter region collapsed and
+           the lit stroke was never painted at all. What survived was its dark
+           casing, which carries no filter: the middle branch rendered as a
+           shadow while the other four glowed, and it looked like the fifth one
+           had been built differently on purpose.
+
+           Pinned to the viewBox in user space instead, where no element's own
+           geometry can shrink it away. -->
+      <filter
+        id="skillglow"
+        filterUnits="userSpaceOnUse"
+        x="-40"
+        y="-40"
+        width={VIEW_W + 80}
+        height={VIEW_H + 80}
+      >
         <feGaussianBlur stdDeviation="2.2" result="b" />
         <feMerge>
           <feMergeNode in="b" />
