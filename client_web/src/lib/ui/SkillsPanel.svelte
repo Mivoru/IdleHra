@@ -185,14 +185,36 @@
       const jointX = ORIGIN_X + (a.x - ORIGIN_X) * growth;
       const jointY = ORIGIN_Y + (a.y - ORIGIN_Y) * growth;
 
-      // Bowed away from the trunk so the connector reads as a branch rather
-      // than as a wire. The bow is perpendicular to the run, scaled by how far
-      // the limb reaches.
+      // Modul: A BRANCH LEAVES THE TRUNK UPWARD AND FLATTENS OUT. It does not
+      // bulge sideways.
+      //
+      // This was one quadratic with a bow set at a fixed FRACTION of the run,
+      // perpendicular to it - so every connector was the identical arc at a
+      // different scale, and the two long horizontal ones, having the longest
+      // run, bowed hardest. They came out as swoops that belonged to no branch
+      // in the painting.
+      //
+      // A cubic with two tangents instead. The first control point pushes
+      // straight UP out of the trunk, which is how a limb actually leaves it;
+      // the second pulls back along that spread's own outward direction, so
+      // the curve ARRIVES running the way the painted branch runs. The shape
+      // then falls out of each limb's own geometry rather than being imposed:
+      // the centre limb, whose spread is straight up, comes out very nearly
+      // straight, while the far left and right rise and then level off.
+      //
+      // Both offsets are CAPPED rather than proportional. That is the whole
+      // fix for "the longer ones are too curly" - past the cap a longer run
+      // adds length, not bend.
       const runX = jointX - ORIGIN_X;
       const runY = jointY - ORIGIN_Y;
-      const bow = 0.16;
-      const ctrlX = ORIGIN_X + runX * 0.5 - runY * bow;
-      const ctrlY = ORIGIN_Y + runY * 0.5 + runX * bow;
+      const reachLen = Math.hypot(runX, runY);
+      const rise = Math.min(reachLen * 0.5, 58);
+      const settle = Math.min(reachLen * 0.42, 52);
+
+      const c1x = ORIGIN_X + runX * 0.16;
+      const c1y = ORIGIN_Y - rise;
+      const c2x = jointX - a.outX * settle;
+      const c2y = jointY - a.outY * settle;
 
       const twigs = limb.boughs.map((bough, side) => {
         const spread = side === 0 ? -0.62 : 0.62;
@@ -210,7 +232,7 @@
         id: limb.root.id,
         name: limb.root.name,
         level: limb.root.level,
-        limbPath: `M ${ORIGIN_X} ${ORIGIN_Y} Q ${ctrlX} ${ctrlY} ${jointX} ${jointY}`,
+        limbPath: `M ${ORIGIN_X} ${ORIGIN_Y} C ${c1x} ${c1y} ${c2x} ${c2y} ${jointX} ${jointY}`,
         width: 1.4 + 2.2 * (limb.root.level / SKILL_TREE_ROOT_MAX),
         forkX: jointX,
         forkY: jointY,

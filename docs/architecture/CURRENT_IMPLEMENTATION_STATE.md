@@ -532,3 +532,52 @@ enough for a number and nothing else, which is why three small fields exist:
 `NetworkPacketLayoutGuard` pins the packet size and refuses to boot when it
 moves. Every entry in its comment history is a field that had to justify its
 bytes; add to that list rather than editing the number.
+
+## 21. Drawing over artwork, and how the two stay married
+
+The skill tree is the one screen where painted art and generated geometry
+share a frame, and it has now failed that twice in ways worth writing down.
+
+**It drew a second tree.** The overlay owned a trunk, a root system and five
+brass limbs, laid on top of a Yggdrasil illustration that has all three. Two
+trees in the same place, and the drawn one won on z-order. The trunk and roots
+are gone: the art supplies them, and what is left overlaid is **only what
+carries state** - a joint per limb, two buds per fork, a crown, and the
+connectors between them.
+
+**The art lives INSIDE the svg**, as an `<image>` at the viewBox's own aspect
+ratio, not as a CSS background on the wrapper. That is the whole guarantee
+that a node cannot land off a branch: one coordinate system, one aspect, no
+container resize that moves one and not the other. `LIMB_ANCHORS` are
+positions on the *painting's* branch crotches, so they are art-specific -
+replacing the illustration means re-placing those five points, and nothing
+else.
+
+**Curvature comes from tangents, not from a bow.** Each connector was one
+quadratic bowed by a fixed FRACTION of its run, so every limb was the same arc
+at a different scale and the longest ones bent hardest. It is a cubic now: the
+first control point leaves the trunk straight up, the second arrives along
+that spread's own outward direction, and both offsets are **capped** - past
+the cap a longer run adds length rather than bend.
+
+**Brass is a surface colour.** It reads painted on a panel and vanishes over a
+busy illustration. `--glow-warm`, `--glow-soft` and `--glow-hot` exist for
+things that emit rather than reflect. The same asymmetry runs through the
+nodes: an **unlit** joint's halo is DARK (it clears a patch of foliage for its
+ring to sit against) and spending a point flips that circle to a glow. A pale
+circle on painted leaves is invisible; a dark one is not.
+
+### `npm run check:overlap`
+
+Hit-tests every control on every screen at desktop and phone widths and
+reports the ones a player would aim at and miss. Its first version compared
+bounding boxes and reported 309 pairs, nearly all lies - a list with
+`overflow: auto` gives its scrolled-out children real rects that land on
+whatever is painted below the list. Asking `elementFromPoint`, and clipping
+against scroll ancestors first, is what makes it honest.
+
+Its standing finding is the floating chat handle covering real controls on
+narrow screens. The dock reserves its own footprint at the end of a page, but
+a long scrolling page always has something under a fixed corner; the durable
+fix is moving chat into the nav, which is a UX decision rather than a layout
+bug.

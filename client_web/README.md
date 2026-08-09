@@ -42,18 +42,34 @@ node scripts/generate-protocol.mjs --check # CI: fails if a struct changed
 
 ## How a change here is verified
 
-Three layers, and the last one is the one that catches real defects:
+Four layers, and the last two are the ones that catch real defects:
 
 ```bash
 npx vitest run                             # pure logic, 227 tests
 npx svelte-check --tsconfig ./tsconfig.json
 node scripts/exercise.mjs                  # drives a real browser, 73 checks
+npm run check:overlap                      # hit-tests controls on every screen
 ```
 
 `exercise.mjs` signs in as the dev fixture and CLICKS things, then asserts the
 world changed - the child appeared on the roster, the slot freed, the next feast
 cost more. `smoke-screens.mjs` only proves a screen renders, which a screen full
 of dead buttons does perfectly.
+
+`check:overlap` answers a question none of the others can: **is any control
+sitting on top of another one**. Both elements exist, both are "visible", the
+DOM is well formed, and only the geometry is wrong - so a type check and a
+structural query both pass. It asks `elementFromPoint` at five points per
+control, at desktop and phone widths.
+
+Do not rewrite it to compare bounding boxes. That was the first version and it
+reported 309 pairs, nearly all of them false: a list with `overflow: auto`
+gives its scrolled-out children real rects that land on whatever is painted
+below the list.
+
+Its standing finding is the floating chat handle covering controls on narrow
+screens - real, but a UX decision (move chat into the nav) rather than a
+layout bug.
 
 **Nine `svelte-check` errors are pre-existing** and unrelated to any current
 work (Combat/Forge "used before declaration", Market/Forge index-signature
