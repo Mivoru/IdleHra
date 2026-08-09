@@ -3868,6 +3868,24 @@ namespace FolkIdle.Server.Domain.Combat
 
         private static void ActivateChronoAcceleration(ref TickStatePayload payload, int multiplier)
         {
+            // Modul: 1 MEANS STOP, and it used to mean nothing.
+            //
+            // Acceleration could be turned on from the Boosts screen and not
+            // turned off from it: this method returned early for anything that
+            // was not 2 or 4, so a "1x" was silently discarded, and the only
+            // real off-switch was ToggleChronoAcceleration - wired to the STORE
+            // screen. A player who started a boost on one screen had to find
+            // another to stop it, or wait for the bank to drain.
+            if (multiplier == 1)
+            {
+                payload.SpeedMultiplier = 1;
+                payload.IsChronoAccelerating = false;
+                payload.ActiveChronoSpeedMultiplier = 1.0;
+                payload.ActiveChronoLockExpirationTicks = 0L;
+                payload.IsDirty = true;
+                return;
+            }
+
             if (multiplier != 2 && multiplier != 4)
             {
                 return;
@@ -6387,6 +6405,20 @@ namespace FolkIdle.Server.Domain.Combat
                 if (wasFirstClearForThisPlayer && clearedBossRegion > 0)
                 {
                     BossFirstClearAnnouncer.Announce(payload.PlayerId, activeMonster.Id);
+
+                    // Modul: and two hours into the chrono bank - the third of
+                    // the three things that fill it, and the only one paid at
+                    // the moment a player has just done something hard. See
+                    // ChronoGrantRules; before it, nothing filled the bank at
+                    // all and both its buttons were permanently disabled.
+                    //
+                    // Written on the payload rather than through the grant
+                    // queue: this IS the tick, holding the live payload, so
+                    // posting a notification to itself would only add a frame
+                    // of delay and a way to drop the grant.
+                    payload.BankedChronoSeconds = ChronoGrantRules.AddCapped(
+                        payload.BankedChronoSeconds, ChronoGrantRules.FirstBossClearSeconds);
+                    payload.IsDirty = true;
                 }
 
                 AddSeasonalXp(ref payload, seasonalCombatXp);

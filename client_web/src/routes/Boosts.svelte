@@ -142,6 +142,16 @@
     play('windowOpen');
   }
 
+  // Modul: YOU CAN TURN IT OFF NOW. Acceleration could be started here and
+  // stopped only from the Store screen - and sending 1x used to be a
+  // DISCONNECT, because the validator treated any multiplier that was not 2 or
+  // 4 as tampering.
+  function stopBoost() {
+    const outcome = activateChronoBoost(1, banked, quarantined);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    play('windowOpen');
+  }
+
   function warp() {
     const seconds = Math.round(warpMinutes * 60);
     const outcome = consumeTimeWarpCore(seconds, banked, quarantined);
@@ -234,9 +244,17 @@
 
   <section class="panel">
     <h2>Chrono bank</h2>
+    <!-- Modul: THIS PANEL USED TO LIE, THREE WAYS. It said the bank fills on
+         its own, that offline time lands in it, and that login rewards and the
+         season pass grant it. None of that happened: the only thing that could
+         add time was a "chrono core" item that was never authored, so the bank
+         was zero for every player who has ever played and both buttons below
+         were permanently disabled. It is now fed by the three rewards named
+         here - see ChronoGrantRules. -->
     <p class="dim small">
-      Time you were offline, converted into a balance you can spend. It fills on
-      its own and caps at seven days.
+      Banked time, earned rather than waited for: a seventh day of your login
+      streak, each chapter of the Book of Deeds, and the first time you put down
+      a region boss. Caps at seven days.
     </p>
 
     <div class="bar">
@@ -257,6 +275,7 @@
           <button disabled={banked <= 0} onclick={() => boost(multiplier)}>{multiplier}x</button>
         {/each}
         {#if accelerating}
+          <button class="stop" onclick={stopBoost}>Stop</button>
           <span class="on">accelerating</span>
         {/if}
       </div>
@@ -275,9 +294,9 @@
            time no character could use, plus whatever login rewards and the
            season pass grant. -->
       <p class="dim tiny">
-        Replays banked time at once. Time banks only when a character had
-        nothing to do - what you actually farmed while away is already yours,
-        and is shown when you sign in.
+        Replays banked time at once. What you farmed while away is already
+        yours and is shown when you sign in - this bank is separate, and holds
+        only what the three rewards above paid.
       </p>
       <div class="row">
         <label>
@@ -421,6 +440,11 @@
     font-size: 0.78rem;
     color: var(--text-dim);
     font-variant-numeric: tabular-nums;
+  }
+
+  .stop {
+    border-color: var(--warn);
+    color: var(--warn);
   }
 
   .chrono {

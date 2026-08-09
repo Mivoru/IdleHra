@@ -310,16 +310,29 @@ export const MAX_BANKED_CHRONO_SECONDS = 604800;
 /** The only two multipliers ValidateChronoManipulation accepts. */
 export const CHRONO_MULTIPLIERS = [2, 4] as const;
 
+/**
+ * Starts an acceleration, or stops one with `multiplier = 1`.
+ *
+ * Modul: 1 USED TO BE A DISCONNECT. ValidateChronoManipulation rejected
+ * anything but 2 or 4, and a rejection on that path is
+ * TerminateSessionForSecurity - so asking to turn the boost off would have
+ * kicked the player. Acceleration was startable here and stoppable only from
+ * the Store screen.
+ */
 export function activateChronoBoost(
   multiplier: number,
   bankedSeconds: number,
   quarantined: boolean,
 ): CommandOutcome {
   if (quarantined) return refuse('Your account is restricted.');
-  if (!CHRONO_MULTIPLIERS.includes(multiplier as 2 | 4)) {
+
+  const isStop = multiplier === 1;
+  if (!isStop && !CHRONO_MULTIPLIERS.includes(multiplier as 2 | 4)) {
     return refuse('Only 2x and 4x are available.');
   }
-  if (bankedSeconds <= 0) {
+  // An empty bank blocks starting, never stopping - running dry is exactly
+  // when a player most wants the stop to land.
+  if (!isStop && bankedSeconds <= 0) {
     return refuse('You have no banked time to spend.');
   }
 

@@ -170,16 +170,25 @@ describe('chrono - where LogicEpochCounter means something else', () => {
     expect(sent[0].LogicEpochCounter).toBe(1_700_000_000);
   });
 
-  it('accepts only 2x and 4x', () => {
+  it('accepts 2x and 4x to start, and 1x to STOP', () => {
+    // Modul: 1 used to be refused here and REJECTED server-side, where a
+    // rejection is TerminateSessionForSecurity - so asking to turn your own
+    // boost off got you kicked as an attacker, and the only working off-switch
+    // was on the Store screen. It is a stop now.
     expect(activateChronoBoost(3, 3600, false).ok).toBe(false);
-    expect(activateChronoBoost(1, 3600, false).ok).toBe(false);
     expect(sent).toHaveLength(0);
+
+    expect(activateChronoBoost(1, 3600, false).ok).toBe(true);
     expect(activateChronoBoost(4, 3600, false).ok).toBe(true);
   });
 
-  it('refuses a boost with an empty bank', () => {
+  it('refuses a boost with an empty bank, but still allows stopping one', () => {
     expect(activateChronoBoost(2, 0, false).ok).toBe(false);
     expect(sent).toHaveLength(0);
+
+    // The bank running dry is the common way a boost ends, so this is exactly
+    // when the stop most needs to go through.
+    expect(activateChronoBoost(1, 0, false).ok).toBe(true);
   });
 
   it('refuses either command for a quarantined account', () => {

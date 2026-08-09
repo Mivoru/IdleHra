@@ -143,6 +143,15 @@ namespace FolkIdle.Server.Domain.Progression
                         player.PremiumDiamonds += diamondReward;
                     }
 
+                    // Modul: the chrono bank had NO source at all - see
+                    // ChronoGrantRules. The seventh day is the day the streak
+                    // exists to reach, so it is the day that pays time.
+                    if (newStreakDay == 7)
+                    {
+                        player.BankedChronoSeconds = ChronoGrantRules.AddCapped(
+                            player.BankedChronoSeconds, ChronoGrantRules.LoginStreakDaySevenSeconds);
+                    }
+
                     await context.SaveChangesAsync();
                     await transaction.CommitAsync();
 

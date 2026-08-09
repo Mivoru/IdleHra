@@ -833,6 +833,30 @@ there is reality to compare to.
 and the asset list names what should exist. `scripts/generate-sprites.mjs`
 holds the alias table where a wrong mapping would live.
 
+**THE CHRONO BANK HAD NO SOURCE AT ALL - fixed 2026-08-09.** Its only producer
+was `ChronoCoreEngine`, which spends a "chrono core" item that **is not in
+items.json** - the engine's own comment already admitted it could never fire. So
+`BankedChronoSeconds` was zero for every player who has ever played, both of its
+buttons sat permanently disabled, and the Boosts screen claimed it "fills on its
+own" and that "login rewards and the season pass" grant it. Three false
+statements on one panel.
+
+Now fed by three rewards (`ChronoGrantRules`): a seventh login-streak day (1h),
+each Book of Deeds chapter (4h), and each first boss clear (2h). A full season
+pays **43 hours against the 168-hour cap**, so late rewards still land.
+
+**And acceleration could not be turned off where it was turned on.**
+`ActivateChronoAcceleration` ignored any multiplier that was not 2 or 4, and the
+validator treated one as tampering - so asking to stop **disconnected the
+player**. The only working off-switch was on the Store screen. 1x now means stop,
+is allowed even with an empty bank (which is when it is most needed), and the
+Boosts screen has the button.
+
+**`BankOverflowSeconds` is an empty method** - offline time past the 12-hour cap
+is discarded, not banked, which is the third thing that panel was wrong about.
+Left as-is deliberately: offline pays in full up to the cap, and banking the
+overflow would make the bank a second, hidden copy of offline progress.
+
 **MONSTERS DROPPED "ALMOST THE WHOLE SET PLUS BOOTS" - fixed 2026-08-09.**
 Reported from reading the tables and it was real: the deal alternated between a
 slot's two candidates by INDEX, and the index came from items.json's own order,

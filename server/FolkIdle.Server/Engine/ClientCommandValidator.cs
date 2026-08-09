@@ -1240,13 +1240,27 @@ namespace FolkIdle.Server.Engine
 
             if (packet.Command == FolkIdle.Server.Network.CommandType.ActivateChronoBoost)
             {
-                if (packet.RequestedSpeedMultiplier != 2.0 && packet.RequestedSpeedMultiplier != 4.0)
+                // Modul: 1 MEANS STOP, and it must not be a disconnect.
+                //
+                // This rejected anything but 2 or 4, and a rejection here is
+                // TerminateSessionForSecurity - so a client asking to TURN THE
+                // BOOST OFF would have been kicked as an attacker. Acceleration
+                // was therefore startable from the Boosts screen and stoppable
+                // only from the Store one.
+                bool isStopRequest = packet.RequestedSpeedMultiplier == 1.0;
+
+                if (!isStopRequest
+                    && packet.RequestedSpeedMultiplier != 2.0
+                    && packet.RequestedSpeedMultiplier != 4.0)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = (byte)packet.Command, Value2 = 3, Timestamp = Environment.TickCount64 });
                     return false;
                 }
 
-                if (authoritativeBankBalance == 0)
+                // An empty bank blocks STARTING a boost, never stopping one -
+                // the bank running dry is exactly when a player most wants the
+                // stop to go through.
+                if (!isStopRequest && authoritativeBankBalance == 0)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = (byte)packet.Command, Value2 = 4, Timestamp = Environment.TickCount64 });
                     return false;
