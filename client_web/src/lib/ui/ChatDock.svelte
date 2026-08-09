@@ -57,6 +57,20 @@
 </div>
 
 <style>
+  /* Modul: THE HANDLE HAS TO PAY FOR ITS OWN FOOTPRINT.
+     It is fixed to the bottom-right corner, so it floats over whatever the
+     page ends with - and a hit test across every screen found it sitting on
+     top of three real controls: "Kept" on Ancestors, "Bin" in the chest, and
+     a skill-point button on the tree. Not a near miss; a player aiming at
+     those hit the chat handle.
+
+     The reservation is declared HERE rather than on the app shell, so the
+     component that occupies the corner is the one that books the space and
+     the two cannot drift apart when either changes. */
+  :global(body) {
+    padding-bottom: 4.25rem;
+  }
+
   .dock {
     position: fixed;
     right: 1rem;

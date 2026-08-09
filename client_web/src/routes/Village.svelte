@@ -264,6 +264,20 @@
     grid-template-columns: auto 1fr auto;
   }
 
+  /* Modul: EVERY UPGRADE BUTTON THE SAME SIZE.
+     Each `li` is its own grid, so its `1fr` column is sized by that row's own
+     content - and the cost text differs per building ("100 logs + 100 ore"
+     against "980g + 225 logs + 225 ore"). The button wraps onto the second
+     row into that column, so it inherited a different width on every line and
+     the list read as nine buttons of nine sizes.
+
+     Pinned to a fixed width and left-aligned instead: the control is the same
+     control on every row, so it should be the same shape. */
+  .buildings li button {
+    justify-self: start;
+    width: 11rem;
+  }
+
   .slots select {
     font: inherit;
     color: inherit;

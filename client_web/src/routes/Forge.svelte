@@ -690,11 +690,18 @@ ${scope}`)) return;
     margin: 0.4rem 0;
   }
 
+  /* Modul: "Show all (tools too)" WAS TOUCHING THE FILTERS.
+     Measured, not guessed: zero vertical gap between this row's bottom and the
+     ItemBrowser's filter selects, and a 6px horizontal overlap with the rarity
+     one - so the button's rounded edge crossed into the control below it.
+     This row had no bottom margin at all and the browser beneath has no top
+     one, which left the two flush. */
   .pickhead {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
+    margin-bottom: 0.6rem;
   }
 
   .pickhead h3 {

@@ -409,6 +409,9 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.3rem;
+    /* The header rule above ends the title; the tabs are a new thing and were
+       sitting hard against it, which read as the rule underlining THEM. */
+    margin-top: 0.7rem;
     margin-bottom: 0.8rem;
   }
 

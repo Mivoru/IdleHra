@@ -517,6 +517,33 @@ textarea {
   color: var(--text);
 }
 
+/* Modul: THE DROPDOWN LIST IS DRAWN BY THE OS, NOT BY THIS PAGE.
+   Styling `select` only ever reached the closed control. The list that opens
+   on top of it is a native popup, and it fell back to the platform default -
+   grey plate, near-white text, a blue highlight - which is why picking a
+   rarity meant reading pale text on grey in the middle of a dark room, and
+   why it looked like it belonged to a different program.
+
+   `option` IS stylable in Chromium and Firefox (the browsers this ships to,
+   including the Capacitor webview) and is ignored by Safari on macOS, which
+   keeps its own default. That is an acceptable floor: the failure mode is the
+   old appearance, not an unreadable one.
+
+   The tint has to be an opaque colour - a popup has nothing behind it to show
+   through, so the rgba(0,0,0,.28) the closed control uses would render as
+   whatever the OS puts underneath. */
+option,
+optgroup {
+  background-color: #201812;
+  color: var(--text);
+}
+
+option:checked,
+option:hover {
+  background-color: var(--brass);
+  color: #1a1209;
+}
+
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
@@ -690,6 +717,20 @@ header strong {
   select,
   textarea {
     background-color: rgba(255, 255, 255, 0.6);
+  }
+
+  /* Opaque here too, and for the same reason - see the note beside the dark
+     rule. Parchment rather than the browser's white. */
+  option,
+  optgroup {
+    background-color: #f3e8cf;
+    color: #3a2c14;
+  }
+
+  option:checked,
+  option:hover {
+    background-color: #c9a227;
+    color: #241a08;
   }
 }
 

@@ -16,6 +16,7 @@
   // player cannot see is indistinguishable from one that does not work - a
   // mistake this project has made more than once.
   import { playerState, pushLocalNotice } from '../stores/game';
+  import { backgroundUrl } from './sprites';
   import {
     SKILL_TREE_NODES,
     SKILL_TREE_ROOT_MAX,
@@ -208,6 +209,7 @@
     <span class="points">{points} <span class="dim tiny">points</span></span>
   </header>
 
+  <div class="treewrap" style={`--yggdrasil: url('${backgroundUrl('yggdrasil')}')`}>
   <svg
     class="tree"
     viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
@@ -266,6 +268,7 @@
       </text>
     {/each}
   </svg>
+  </div>
 
   <div class="respec-row">
     <p class="dim tiny spent">{spent} points invested</p>
@@ -533,11 +536,39 @@
     }
   }
 
-  .tree {
-    display: block;
+  /* Modul: THE ART IS A BACKDROP, THE TREE IS STILL THE SVG.
+     The obvious reading of "replace the tree with this picture" would delete
+     the diagram - but the limbs, twigs and buds are not decoration: they light
+     as points go in, dim when a fork locks the other out, and carry the
+     labels. A painting cannot do any of that. So Yggdrasil goes BEHIND, and
+     the working tree draws on top of it.
+
+     Held back hard (low opacity, blurred a touch) because the drawn limbs have
+     to stay the thing the eye follows. */
+  .treewrap {
+    position: relative;
     width: 100%;
     max-width: 30rem;
     margin: 0.2rem auto 0.6rem;
+  }
+
+  .treewrap::before {
+    content: '';
+    position: absolute;
+    inset: -6% -10% 0;
+    background-image: var(--yggdrasil);
+    background-size: contain;
+    background-position: center bottom;
+    background-repeat: no-repeat;
+    opacity: 0.4;
+    filter: blur(0.4px) saturate(0.85);
+    pointer-events: none;
+  }
+
+  .tree {
+    display: block;
+    position: relative;
+    width: 100%;
     overflow: visible;
   }
 
@@ -588,10 +619,17 @@
 
 
   .limb-label {
-    fill: var(--text-dim);
+    fill: var(--text);
     font-size: 11px;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+    /* The backdrop behind these is painted foliage, not a flat panel, so a
+       dim grey label landed on whatever colour that branch happened to be.
+       Brightened and given a dark halo so it reads over leaf, bark or gap. */
+    paint-order: stroke;
+    stroke: rgba(0, 0, 0, 0.85);
+    stroke-width: 3px;
+    stroke-linejoin: round;
   }
 
   @media (prefers-reduced-motion: reduce) {
