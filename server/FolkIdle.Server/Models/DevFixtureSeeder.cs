@@ -80,6 +80,25 @@ namespace FolkIdle.Server.Models
 
             player.PasswordHash = PasswordHasher.Hash(Password);
             player.CurrentLevel = PlayerLevel;
+
+            // Modul: AND THE ATTRIBUTES THAT LEVEL IMPLIES.
+            //
+            // Setting CurrentLevel leaves STR/DEX/CON/LCK at zero, because in
+            // the real game they are added per level gained - so the fixture
+            // was a level-40 account with a 148 HP health bar, roughly a tenth
+            // of what a real one carries. It died to a first-clear boss that a
+            // genuine player of that level beats, which made the account
+            // useless for testing the one thing it is most needed for.
+            //
+            // Same rule the game uses, asked of the same authority: Human
+            // growth per level, applied for the levels this fixture claims to
+            // have gained. Recomputed rather than incremented, so re-seeding
+            // does not stack it.
+            RaceAttributeGrowth.GetGrowthPerLevel(RaceIds.Human, out int str, out int dex, out int con, out int lck);
+            player.BaseStrength = str * (PlayerLevel - 1);
+            player.BaseDexterity = dex * (PlayerLevel - 1);
+            player.BaseConstitution = con * (PlayerLevel - 1);
+            player.BaseLuck = lck * (PlayerLevel - 1);
             player.CurrentXp = 0;
             player.PremiumDiamonds = Diamonds;
             player.AvailableSkillPoints = PlayerLevel;

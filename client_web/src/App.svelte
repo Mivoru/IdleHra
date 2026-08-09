@@ -27,6 +27,8 @@
   import WorldBoss from './routes/WorldBoss.svelte';
   import Boosts from './routes/Boosts.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
+  import VictoryCard from './lib/ui/VictoryCard.svelte';
+  import DeathCard from './lib/ui/DeathCard.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
   import AchievementToast from './lib/ui/AchievementToast.svelte';
   import MailBadge from './lib/ui/MailBadge.svelte';
@@ -324,6 +326,11 @@
     {/if}
 
     <OfflineSummary />
+    <!-- Modul: the two moments the game never marked - a first boss
+         clear and a death. Both are modal because both are things the
+         player must not miss while looking at another screen. -->
+    <VictoryCard />
+    <DeathCard />
     <ChatDock />
     <Toasts />
     <AchievementToast />

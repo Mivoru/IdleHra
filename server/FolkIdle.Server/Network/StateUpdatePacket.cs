@@ -675,6 +675,33 @@ namespace FolkIdle.Server.Network
         public int OfflineMaterialDropsGranted;
         public byte OfflineSummaryTick;
 
+        // Modul: THE TWO MOMENTS THE GAME NEVER MARKED.
+        //
+        // A first boss clear and a death are the two loudest things that happen
+        // to a character, and the client learned about neither: death showed up
+        // as an ActivityHaltReason badge in the corner, and a first clear - the
+        // hardest fight in the game, carrying five times the boss's health -
+        // produced no acknowledgement at all. The player found out they had
+        // unlocked a race by noticing a new option on a different screen.
+        //
+        // Carried on the packet rather than fetched, following the offline
+        // summary exactly: the numbers are small and fixed, and the alternative
+        // is a table, an endpoint and an acknowledgement round trip for
+        // something shown once and dismissed.
+        //
+        // Both TICK fields are EDGES, not values - the same contract
+        // OfflineSummaryTick established. They increment only when a real event
+        // happened and never reset, so the client compares against its own
+        // last-seen value and shows each thing exactly once.
+        public int LastVictoryMonsterId;
+        public int LastVictoryDurationSeconds;
+        public long LastVictoryGold;
+        public long LastVictoryXp;
+        public byte LastVictoryTick;
+
+        public int LastDeathMonsterId;
+        public byte LastDeathTick;
+
         // Modul: Phase - Full-Stack Production Polish, Part 1.3 (save trust
         // indicator). Mirrors TickStatePayload.TicksSinceLastFlush exactly -
         // resets to 0 the tick StateCheckpointManager.FlushState actually

@@ -833,6 +833,26 @@ there is reality to compare to.
 and the asset list names what should exist. `scripts/generate-sprites.mjs`
 holds the alias table where a wrong mapping would live.
 
+**THE TWO LOUDEST MOMENTS WENT UNMARKED - fixed 2026-08-09.** A first boss
+clear carries 5x health and 2x attack, the hardest fight in the game, and
+produced no acknowledgement of any kind: a player learned they had unlocked a
+race by noticing a new option on another screen. A death showed a small badge
+reading "Died" and could not even name the killer, because the respawn clears
+`CurrentMonsterId` before any broadcast runs.
+
+Both are now cards, carried on the packet like the offline summary (769 -> 799
+bytes) and edge-triggered off a tick byte so they show exactly once. The victory
+card names the fight length, gold and xp, and derives the UNLOCKS client-side
+from the boss id - the race, the region that opened and the five monsters in it.
+The death card names the killer and diagnoses the cause, pointing at the larder
+when it is empty.
+
+**And the dev fixture had every attribute at zero.** Setting `CurrentLevel`
+directly leaves STR/DEX/CON/LCK at 0 - the trap `ProgressionRateTests` already
+documents - so the level-40 fixture had a **148 HP** health bar against the
+~3,100 a real one carries, and died to a first-clear boss a genuine player of
+that level beats. It now grows its attributes the way the game does.
+
 **THE CHRONO BANK HAD NO SOURCE AT ALL - fixed 2026-08-09.** Its only producer
 was `ChronoCoreEngine`, which spends a "chrono core" item that **is not in
 items.json** - the engine's own comment already admitted it could never fire. So

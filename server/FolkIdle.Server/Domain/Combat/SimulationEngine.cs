@@ -3653,6 +3653,17 @@ namespace FolkIdle.Server.Domain.Combat
                                 OfflineXpEarned = currentPayload.OfflineXpEarned,
                                 OfflineMaterialDropsGranted = currentPayload.OfflineMaterialDropsGranted,
                                 OfflineSummaryTick = currentPayload.OfflineSummaryTick,
+                                // Modul: the victory and death cards. Copied
+                                // straight across like the offline summary
+                                // above - the tick bytes are edges the client
+                                // compares against its own last-seen value.
+                                LastVictoryMonsterId = currentPayload.LastVictoryMonsterId,
+                                LastVictoryDurationSeconds = currentPayload.LastVictoryDurationSeconds,
+                                LastVictoryGold = currentPayload.LastVictoryGold,
+                                LastVictoryXp = currentPayload.LastVictoryXp,
+                                LastVictoryTick = currentPayload.LastVictoryTick,
+                                LastDeathMonsterId = currentPayload.LastDeathMonsterId,
+                                LastDeathTick = currentPayload.LastDeathTick,
                                 TicksSinceLastFlush = currentPayload.TicksSinceLastFlush
                             };
                             // Modul: this packet carries currentPayload's own
@@ -6297,6 +6308,9 @@ namespace FolkIdle.Server.Domain.Combat
 
             if (payload.PlayerHp <= 0)
             {
+                // Read before anything below can clear it.
+                int deathMonsterId = payload.CurrentMonsterId;
+
                 // Modul: Deferred Part 5 Implementation, Part 2. Death
                 // Ward Elixir - intercepts the lethal blow BEFORE the
                 // respawn reset: the player revives in place at 20 percent
@@ -6313,6 +6327,15 @@ namespace FolkIdle.Server.Domain.Combat
                     // Modul: halt reasons. A full-HP character sitting idle
                     // looked exactly like one that had never been deployed.
                     payload.ActivityHaltReason = Network.ActivityHaltReason.Died;
+
+                    // Modul: WHO killed you, not just that something did.
+                    //
+                    // Captured HERE because the next four lines wipe it -
+                    // CurrentMonsterId is cleared as part of the respawn, so
+                    // by the time any broadcast runs the killer is gone. A
+                    // death card that cannot name the monster is a shrug.
+                    payload.LastDeathMonsterId = deathMonsterId;
+                    payload.LastDeathTick++;
                     // Modul: lifetime statistics. The only place in the server
                     // where a player death is recognised, so the only place
                     // this can be counted. Intercepted lethal damage (the Death
@@ -6346,7 +6369,13 @@ namespace FolkIdle.Server.Domain.Combat
                 // payload fields behind it are fossils.
 
                 int seasonalCombatXp = activeMonster.BaseXpReward * finalXpMultiplier / 100;
+                long victoryXpBefore = payload.CurrentXp;
                 ProgressionEngine.ProcessMonsterDeath(ref payload, activeMonster.BaseXpReward, finalXpMultiplier, ActiveGlobalEventId, activeRaceId);
+                // Modul: what this ONE kill paid, for the victory card. Read as
+                // a delta rather than recomputed - ProcessMonsterDeath applies
+                // the event multiplier, the race passive and the level-up
+                // curve, and a second copy of that arithmetic would drift.
+                long victoryXpEarned = System.Math.Max(0L, payload.CurrentXp - victoryXpBefore);
 
                 // Modul: reaching a location unlocks its gathering. One kill is
                 // the whole requirement - if you can fight here, you can work
@@ -6405,6 +6434,23 @@ namespace FolkIdle.Server.Domain.Combat
                 if (wasFirstClearForThisPlayer && clearedBossRegion > 0)
                 {
                     BossFirstClearAnnouncer.Announce(payload.PlayerId, activeMonster.Id);
+
+                    // Modul: and the card that says what just happened.
+                    //
+                    // The duration comes from CombatTargetTickAccumulator,
+                    // which is zeroed when a monster spawns and incremented
+                    // once per tick - so it already IS the length of this
+                    // fight, in tenths. Nothing else in the payload knows when
+                    // the fight started.
+                    //
+                    // Gold and xp are filled in further down, after the reward
+                    // arithmetic that has not run yet at this point; this only
+                    // opens the record.
+                    payload.LastVictoryMonsterId = activeMonster.Id;
+                    payload.LastVictoryDurationSeconds = (int)(payload.CombatTargetTickAccumulator * TickIntervalSeconds);
+                    payload.LastVictoryGold = 0L;
+                    payload.LastVictoryXp = victoryXpEarned;
+                    payload.LastVictoryTick++;
 
                     // Modul: and two hours into the chrono bank - the third of
                     // the three things that fill it, and the only one paid at
@@ -6469,6 +6515,15 @@ namespace FolkIdle.Server.Domain.Combat
                     payload.RedisPendingGoldDelta += goldReward;
                     payload.RequiresRedisFlush = true;
                     payload.IsDirty = true;
+                }
+
+                // Modul: the victory card's gold, written only when THIS kill
+                // is the one it was opened for. Guarded on the monster id
+                // rather than on a bool, so a later ordinary kill of the same
+                // boss cannot overwrite the first clear's figures.
+                if (payload.LastVictoryMonsterId == activeMonster.Id && payload.LastVictoryGold == 0L)
+                {
+                    payload.LastVictoryGold = goldReward;
                 }
 
                 // Codex Integration (Sprint 38)

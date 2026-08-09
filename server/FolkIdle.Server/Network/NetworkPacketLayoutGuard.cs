@@ -134,7 +134,16 @@ namespace FolkIdle.Server.Network
         //
         // Modul: breeding aptitudes, 765 -> 769. Four bytes, the active
         // character's Strength/Skill/Endurance/Fortune.
-        public const int ExpectedStateUpdateSize = 769;
+        // Modul: the victory and death cards, 769 -> 799. Thirty bytes: a first
+        // boss clear carries its monster, duration, gold and xp (4+4+8+8) plus
+        // an edge tick, and a death carries its killer plus an edge tick.
+        //
+        // ON THE PACKET RATHER THAN BEHIND AN ENDPOINT, deliberately. Both are
+        // shown once and dismissed, exactly like the offline summary above
+        // them, and the alternative for something that small is a table, a
+        // route and an acknowledgement round trip. The two TICK bytes are
+        // edges, never values - the same contract OfflineSummaryTick set.
+        public const int ExpectedStateUpdateSize = 799;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

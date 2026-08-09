@@ -258,6 +258,43 @@ export function dismissOfflineSummary(): void {
   offlineSummary.set(null);
 }
 
+// Modul: THE TWO MOMENTS THE GAME NEVER MARKED.
+//
+// A first boss clear carries five times the boss's health and twice its
+// attack - the hardest fight in the game - and produced no acknowledgement at
+// all: the player learned they had unlocked a race by noticing a new option on
+// another screen. A death showed up as a small badge in the corner and never
+// said what killed them.
+//
+// Both are EDGE-TRIGGERED off a tick byte, the contract OfflineSummaryTick
+// established: the server increments only when the thing really happened and
+// never resets, so the card shows exactly once rather than on every broadcast
+// of the same state.
+export interface VictorySummary {
+  monsterId: number;
+  durationSeconds: number;
+  gold: number;
+  xp: number;
+}
+
+export const victorySummary = writable<VictorySummary | null>(null);
+let lastVictoryTick = -1;
+
+export function dismissVictory(): void {
+  victorySummary.set(null);
+}
+
+export interface DeathSummary {
+  monsterId: number;
+}
+
+export const deathSummary = writable<DeathSummary | null>(null);
+let lastDeathTick = -1;
+
+export function dismissDeath(): void {
+  deathSummary.set(null);
+}
+
 // ---------------------------------------------------------------------------
 // Achievement toasts
 // ---------------------------------------------------------------------------
@@ -359,6 +396,10 @@ export function startSession(token: string): void {
   damageEvents.set([]);
   offlineSummary.set(null);
   lastOfflineSummaryTick = -1;
+  victorySummary.set(null);
+  lastVictoryTick = -1;
+  deathSummary.set(null);
+  lastDeathTick = -1;
   // A different account has different deeds. Resetting the watermark makes the
   // next packet a baseline again, so switching accounts cannot toast the new
   // player for the old one's tiers.
@@ -516,6 +557,35 @@ export function startSession(token: string): void {
       // otherwise toast a deed twice). See stores/achievementToasts.
       if (observeTierTotal(toastWatermark, packet.AchievementTierTotal)) {
         void raiseAchievementToasts();
+      }
+
+      // Modul: the first packet of a session is a BASELINE, never a trigger.
+      // Both ticks persist on the server, so a player signing back in after
+      // beating a boss last night would otherwise be congratulated again for
+      // a fight they have already been told about - the same trap the offline
+      // summary handles below.
+      if (packet.LastVictoryTick !== lastVictoryTick) {
+        const isFirstPacket = lastVictoryTick === -1;
+        lastVictoryTick = packet.LastVictoryTick;
+
+        if (!isFirstPacket && Number(packet.LastVictoryMonsterId) > 0) {
+          victorySummary.set({
+            monsterId: Number(packet.LastVictoryMonsterId),
+            durationSeconds: Number(packet.LastVictoryDurationSeconds),
+            gold: Number(packet.LastVictoryGold),
+            xp: Number(packet.LastVictoryXp),
+          });
+          play('levelUp');
+        }
+      }
+
+      if (packet.LastDeathTick !== lastDeathTick) {
+        const isFirstPacket = lastDeathTick === -1;
+        lastDeathTick = packet.LastDeathTick;
+
+        if (!isFirstPacket) {
+          deathSummary.set({ monsterId: Number(packet.LastDeathMonsterId) });
+        }
       }
 
       if (packet.OfflineSummaryTick !== lastOfflineSummaryTick) {
