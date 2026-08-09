@@ -520,6 +520,45 @@ namespace FolkIdle.Server.Domain.Combat
         // whichever slots are currently filled, so both EquipItemAsync and
         // UnequipItemAsync always report a fully consistent snapshot regardless
         // of which single slot just changed.
+
+        /// <summary>
+        /// Which of the three weapon families a character is swinging: 0 melee,
+        /// 1 ranged, 2 magic, 0 for an empty hand.
+        ///
+        /// EXISTS FOR THE HIT EFFECT. The client draws a slash, an arrow or a
+        /// burst depending on this, and it has no other way to know - the
+        /// packet carries an equipment INSTANCE id, and resolving that to a
+        /// base item would mean an inventory fetch on the combat screen just to
+        /// decide which animation to play.
+        ///
+        /// Matched on the same substrings AffixRegistry and EquipmentDropTable
+        /// use. Note "_range_weapon_slot_" with no "d" - the canonical bows are
+        /// authored that way, and grepping for "_ranged_" is the exact typo
+        /// that once made every bow in the game undroppable.
+        /// </summary>
+        public static byte ResolveWeaponKind(string? baseItemId)
+        {
+            if (string.IsNullOrEmpty(baseItemId)) return 0;
+            if (baseItemId.Contains("_range_weapon_slot", StringComparison.Ordinal)) return 1;
+            if (baseItemId.Contains("_magic_weapon_slot", StringComparison.Ordinal)) return 2;
+            return 0;
+        }
+
+        /// <summary>The weapon kind a character is currently holding.</summary>
+        public static async Task<byte> ResolveEquippedWeaponKindAsync(FolkIdleDbContext db, CharacterRecord? character)
+        {
+            long weaponId = character?.EquippedWeaponId ?? 0L;
+            if (weaponId <= 0) return 0;
+
+            string? baseItemId = await db.EquipmentInstances
+                .AsNoTracking()
+                .Where(e => e.Id == weaponId)
+                .Select(e => e.BaseItemId)
+                .FirstOrDefaultAsync();
+
+            return ResolveWeaponKind(baseItemId);
+        }
+
         private static async Task<EquipmentSlotUpdateNotification> BuildNotificationAsync(FolkIdleDbContext db, CharacterRecord character)
         {
             (EquippedAffixTotals totals, EquippedSetIds setIds) = await ComputeEquippedTotalsAsync(db, character);
@@ -537,7 +576,8 @@ namespace FolkIdle.Server.Domain.Combat
                 EquippedAmuletId = character.EquippedAmuletId ?? 0L,
                 EquippedRingId = character.EquippedRingId ?? 0L,
                 AffixTotals = totals,
-                SetIds = setIds
+                SetIds = setIds,
+                EquippedWeaponKind = await ResolveEquippedWeaponKindAsync(db, character)
             };
         }
 

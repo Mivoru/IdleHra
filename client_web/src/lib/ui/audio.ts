@@ -19,6 +19,16 @@ export const CLIPS = {
   buttonClick: 'ui_button_click.wav',
   windowOpen: 'ui_window_open.wav',
   playerHit: 'combat_player_hit.wav',
+
+  // Modul: one hit sound for every weapon in the game is the same swing
+  // whether you are holding a claymore or a wand. These three are optional -
+  // playHit falls back to playerHit when a file is missing, so dropping the
+  // WAVs in later needs no code change and their absence is silence-free.
+  hitMelee: 'combat_hit_melee.wav',
+  hitRanged: 'combat_hit_ranged.wav',
+  hitMagic: 'combat_hit_magic.wav',
+  hitCrit: 'combat_hit_crit.wav',
+  playerDied: 'combat_player_died.wav',
   monsterDefeated: 'combat_monster_defeated.wav',
   lootDropped: 'loot_dropped.wav',
   lootRare: 'loot_rare_dropped.wav',
@@ -42,6 +52,10 @@ let context: AudioContext | null = null;
 let masterGain: GainNode | null = null;
 const buffers = new Map<string, AudioBuffer>();
 const pending = new Map<string, Promise<AudioBuffer | null>>();
+
+// Clips that are not on the server. Optional per-weapon hit sounds are
+// expected to be in here until somebody authors the files; see playHit.
+const missing = new Set<string>();
 
 export const volume = writable(readNumber(VOLUME_KEY, 0.6));
 export const muted = writable(localStorage.getItem(MUTED_KEY) === '1');
@@ -78,19 +92,31 @@ export function unlockAudio(): void {
 
 async function loadClip(file: string): Promise<AudioBuffer | null> {
   if (buffers.has(file)) return buffers.get(file)!;
+  // Modul: A MISS IS REMEMBERED, and it was not.
+  //
+  // `pending` is cleared in the finally below, so a clip that 404s was
+  // refetched by the NEXT caller - and once optional per-weapon hit clips
+  // existed, that meant one failed request per swing, for as long as the
+  // player fought. Sound is decoration; a request every 1.5 seconds forever
+  // is not.
+  if (missing.has(file)) return null;
   if (pending.has(file)) return pending.get(file)!;
   if (!context) return null;
 
   const task = (async () => {
     try {
       const response = await fetch(`${HTTP_BASE}/audio/${file}`);
-      if (!response.ok) return null;
+      if (!response.ok) {
+        missing.add(file);
+        return null;
+      }
       const decoded = await context!.decodeAudioData(await response.arrayBuffer());
       buffers.set(file, decoded);
       return decoded;
     } catch {
       // A missing or undecodable clip must never break the screen that asked
       // for it - sound is decoration here, not information.
+      missing.add(file);
       return null;
     } finally {
       pending.delete(file);
@@ -99,6 +125,55 @@ async function loadClip(file: string): Promise<AudioBuffer | null> {
 
   pending.set(file, task);
   return task;
+}
+
+/**
+ * The hit sound for a weapon family, falling back to the one clip that has
+ * always existed.
+ *
+ * A FALLBACK RATHER THAN A GAP. combat_hit_melee.wav and its siblings are not
+ * in the repository yet - they need authoring, which is not something code can
+ * do - and a missing clip resolves to silence in loadClip. Silence on every
+ * swing would be a worse combat feel than the single generic thump this
+ * replaces, so the generic one is what plays until the specific file exists.
+ */
+export function playHit(weaponKind: number, isCrit: boolean): void {
+  const specific: ClipName = isCrit
+    ? 'hitCrit'
+    : weaponKind === 1
+      ? 'hitRanged'
+      : weaponKind === 2
+        ? 'hitMagic'
+        : 'hitMelee';
+
+  playWithFallback(specific, 'playerHit');
+}
+
+/**
+ * Plays `name`, or `fallback` when that clip is not present.
+ *
+ * Resolves the buffer BEFORE deciding, so the fallback is chosen on what the
+ * server actually has rather than on a hardcoded list this file would have to
+ * keep in step with a directory.
+ */
+export function playWithFallback(name: ClipName, fallback: ClipName): void {
+  if (get(muted) || !context || !masterGain) return;
+
+  void loadClip(CLIPS[name]).then((buffer) => {
+    if (buffer) {
+      playBuffer(buffer);
+      return;
+    }
+    play(fallback);
+  });
+}
+
+function playBuffer(buffer: AudioBuffer): void {
+  if (!context || !masterGain || get(muted)) return;
+  const source = context.createBufferSource();
+  source.buffer = buffer;
+  source.connect(masterGain);
+  source.start();
 }
 
 export function play(name: ClipName): void {

@@ -143,7 +143,12 @@ namespace FolkIdle.Server.Network
         // them, and the alternative for something that small is a table, a
         // route and an acknowledgement round trip. The two TICK bytes are
         // edges, never values - the same contract OfflineSummaryTick set.
-        public const int ExpectedStateUpdateSize = 799;
+        // Modul: the hit effect, 799 -> 801. Two bytes: whether the last blow
+        // crit, and which of the three weapon families threw it. This wire
+        // carries no combat event at all - the client infers every hit from a
+        // health difference - so without these two a crit looked exactly like
+        // an ordinary swing and a wand looked exactly like a sword.
+        public const int ExpectedStateUpdateSize = 801;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

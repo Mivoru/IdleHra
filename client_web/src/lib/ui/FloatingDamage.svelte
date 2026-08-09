@@ -2,16 +2,19 @@
   import { damageEvents, typicalHit } from '../stores/game';
   import { DAMAGE_TEXT_LIFETIME_MS } from '../stores/damage';
 
-  // Modul: big hits are coloured and sized differently from ordinary ones.
+  // Modul: CRITS ARE YELLOW, ordinary hits are red.
   //
-  // THIS IS NOT A CRIT FLAG. The wire carries no such thing - damage is
-  // inferred here from the monster's health falling between snapshots, so all
-  // this client can honestly say is "that one was larger than your usual". A
-  // real crit and a hit that landed on a weakened enemy look identical from
-  // outside, and calling either of them "CRIT" would be inventing information.
+  // This comment used to say the opposite - that the wire carried no crit flag,
+  // so the client could only honestly say "that one was larger than usual" and
+  // must never call anything a CRIT. That was true and is not any more: the
+  // server now sends LastHitWasCrit, set at the one place that rolls it. A crit
+  // is a stat players spend skill points and affixes on, and until now it was
+  // completely invisible.
   //
-  // The threshold is relative to the running median rather than an absolute
-  // number, so it keeps meaning the same thing as the player's damage grows.
+  // The size ramp below stays, and stays independent: it says how big the hit
+  // was relative to the player's usual, which is a different question from
+  // whether it crit. A crit on a resistant target can be small; an ordinary
+  // blow on a weakened one can be huge.
   const BIG_HIT_RATIO = 1.6;
   const HUGE_HIT_RATIO = 2.5;
 
@@ -30,6 +33,7 @@
   {#each $damageEvents as event (event.id)}
     <span
       class="hit"
+      class:crit={event.isCrit}
       data-size={magnitude(event.amount)}
       style="left: {8 + event.offset * 78}%; --life: {DAMAGE_TEXT_LIFETIME_MS}ms"
     >
@@ -55,6 +59,16 @@
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
     animation: float-up var(--life) ease-out forwards;
     white-space: nowrap;
+  }
+
+  /* Yellow, and a little louder. The hue is the whole signal here - a player
+     glancing at the bar should be able to tell a crit landed without reading
+     the number. */
+  .hit.crit {
+    color: #ffd65c;
+    text-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.9),
+      0 0 10px rgba(255, 214, 92, 0.75);
   }
 
   /* Size carries the difference as well as hue, so the distinction survives

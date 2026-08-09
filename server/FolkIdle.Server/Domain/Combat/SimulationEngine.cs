@@ -850,6 +850,7 @@ namespace FolkIdle.Server.Domain.Combat
                         SwapSlotIntoActiveRegister(ref currentPayload, equipSlotIndex);
 
                         currentPayload.EquippedWeaponId = equipUpdate.EquippedWeaponId;
+                        currentPayload.EquippedWeaponKind = equipUpdate.EquippedWeaponKind;
                         currentPayload.EquippedHelmetId = equipUpdate.EquippedHelmetId;
                         currentPayload.EquippedArmorId = equipUpdate.EquippedChestId;
                         currentPayload.EquippedGlovesId = equipUpdate.EquippedGlovesId;
@@ -3664,6 +3665,8 @@ namespace FolkIdle.Server.Domain.Combat
                                 LastVictoryTick = currentPayload.LastVictoryTick,
                                 LastDeathMonsterId = currentPayload.LastDeathMonsterId,
                                 LastDeathTick = currentPayload.LastDeathTick,
+                                LastHitWasCrit = currentPayload.LastHitWasCrit,
+                                EquippedWeaponKind = currentPayload.EquippedWeaponKind,
                                 TicksSinceLastFlush = currentPayload.TicksSinceLastFlush
                             };
                             // Modul: this packet carries currentPayload's own
@@ -5938,8 +5941,14 @@ namespace FolkIdle.Server.Domain.Combat
                     float treeCritChance = combatStats.CritChancePct
                         + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritChance, payload.Skill_CritChance);
 
+                    // Modul: and the client is told, so a crit can look like
+                    // one. Cleared on every swing rather than only set, or a
+                    // single crit would paint every later hit yellow.
+                    payload.LastHitWasCrit = 0;
+
                     if (Random.Shared.NextDouble() <= (treeCritChance / 100.0f))
                     {
+                        payload.LastHitWasCrit = 1;
                         critMult = StatsCalculator.ComputeCritMultiplier(combatStats)
                             + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritDamage, payload.Skill_CritDamage) / 100f)
                             // Modul: Guile, the Precision bough. Stacks with

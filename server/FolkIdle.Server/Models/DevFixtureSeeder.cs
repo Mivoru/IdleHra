@@ -447,9 +447,18 @@ namespace FolkIdle.Server.Models
 
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
+            // TWO OF EACH SEX, not one. Every exercise run marries somebody,
+            // and marrying makes them an elder - so a standing pool of one was
+            // consumed by the second run and the village pairing step then
+            // failed for want of a partner rather than for a defect. A fixture
+            // that survives one pass is not re-runnable.
+            const int StandingPoolPerSex = 2;
+
             foreach (bool isFemale in new[] { false, true })
             {
-                if (existing.Any(v => v.IsFemale == isFemale)) continue;
+                int have = existing.Count(v => v.IsFemale == isFemale);
+                for (int i = have; i < StandingPoolPerSex; i++)
+                {
 
                 var newcomer = new VillageNewcomer
                 {
@@ -461,6 +470,7 @@ namespace FolkIdle.Server.Models
                 };
                 newcomer.SetAptitudeVector(new[] { 10, 10, 10, 10 });
                 db.VillageNewcomers.Add(newcomer);
+                }
             }
 
             await db.SaveChangesAsync();

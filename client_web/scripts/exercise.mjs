@@ -23,6 +23,13 @@ const consoleErrors = [];
 page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
 page.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e.message}`));
 
+// Modul: the console message for a failed fetch does NOT carry the URL - it is
+// the same "Failed to load resource" string whatever was asked for. So misses
+// are counted off the response stream, where the URL is, which is the only way
+// to tell an optional audio clip apart from a real problem.
+const missedUrls = [];
+page.on('response', (r) => { if (r.status() === 404) missedUrls.push(r.url()); });
+
 // Waits for the screen to have actually LOADED, not for a fixed delay. Most
 // screens open on a query, and a cold server answers the first one slowly
 // enough that a fixed wait passes locally and fails on a fresh boot - which is
@@ -1028,12 +1035,24 @@ await go('Ancestors');
 // browser logs every non-2xx fetch to the console regardless, so filtering it
 // out here is the difference between an assertion that means something and one
 // that fails on a working feature.
+// Modul: AND THE OPTIONAL HIT CLIPS.
+//
+// playHit asks for a per-weapon sound (combat_hit_magic.wav and friends) and
+// falls back to the one generic clip when the file is not there - which it is
+// not, because authoring a WAV is not something code does. The browser logs
+// the 404 regardless, once per clip per session now that audio.ts remembers a
+// miss. Expected, and the fallback is what makes it harmless.
 const realErrors = consoleErrors.filter((e) => !/status of 404/.test(e));
 record('no unexpected console errors', realErrors.length === 0, realErrors.slice(0, 3).join(' | '));
+// The optional per-weapon hit clips 404 once each per session - see above -
+// so they are counted separately from the one deliberate lookup miss rather
+// than inflating a number that is supposed to mean "exactly one".
+const audioMisses = missedUrls.filter((u) => u.includes('/audio/')).length;
+const otherMisses = missedUrls.filter((u) => !u.includes('/audio/')).length;
 record(
   'the only failed request is the deliberate unknown-player lookup',
-  consoleErrors.length === realErrors.length + 1 || consoleErrors.length === realErrors.length,
-  `${consoleErrors.length - realErrors.length} expected 404(s)`,
+  otherMisses <= 1,
+  `${otherMisses} lookup 404(s), ${audioMisses} optional audio clip(s) absent`,
 );
 
 await page.screenshot({ path: '/tmp/exercise-last.png', fullPage: true });

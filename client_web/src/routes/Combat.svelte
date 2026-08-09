@@ -18,6 +18,7 @@
   import Bar from '../lib/ui/Bar.svelte';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import FloatingDamage from '../lib/ui/FloatingDamage.svelte';
+  import HitSpark from '../lib/ui/HitSpark.svelte';
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
   import SessionLoot from '../lib/ui/SessionLoot.svelte';
 
@@ -277,6 +278,10 @@
             <span class="hit-shake">
               <span class="struckwrap" class:struck>
                 <MonsterPortrait monsterId={activeMonster.Id} name={activeMonster.Name} size="lg" />
+                <!-- Modul: the mark the blow leaves, drawn over the portrait it
+                     landed on. Shape depends on the weapon family, brightness on
+                     whether it crit. -->
+                <HitSpark />
               </span>
             </span>
           {/key}
@@ -441,6 +446,9 @@
   .struckwrap {
     display: inline-block;
     will-change: transform, filter;
+    /* The spark layer positions itself against this, so the arc and the burst
+       land on the monster rather than in the corner of the panel. */
+    position: relative;
   }
 
   .struckwrap.struck {

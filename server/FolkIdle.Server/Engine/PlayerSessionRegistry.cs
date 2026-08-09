@@ -66,6 +66,11 @@ namespace FolkIdle.Server.Engine
         public long EquippedAmuletId;
         public long EquippedRingId;
 
+        // Modul: which of the three weapon families, for the hit effect. See
+        // EquipmentSlotEngine.ResolveWeaponKind - the client cannot work it out
+        // from an instance id without fetching an inventory.
+        public byte EquippedWeaponKind;
+
         // Modul: the tool loadout, resolved with the rest of the gear.
         // The tick needs a tier and three percentages, not three instance ids -
         // and recomputing them from the database on a 10Hz path is exactly what

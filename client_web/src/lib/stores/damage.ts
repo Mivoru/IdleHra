@@ -25,6 +25,21 @@ export interface DamageEvent {
   /** 0..1 horizontal jitter so simultaneous numbers do not stack exactly. */
   offset: number;
   atMs: number;
+
+  /**
+   * Whether the blow that caused this crit.
+   *
+   * Modul: THE WIRE CARRIES THIS NOW. It did not when this file was written -
+   * the comment above still explains why a hit has to be inferred at all - so
+   * the client used to guess "that one was larger than usual" from a running
+   * median and was careful never to call it a crit. The server now says
+   * outright (LastHitWasCrit), because a crit that looks like every other hit
+   * is a stat the player pays for and never sees.
+   */
+  isCrit: boolean;
+
+  /** 0 melee, 1 ranged, 2 magic - which effect to draw. */
+  weaponKind: number;
 }
 
 /** How long a number stays on screen. Matches the CSS animation duration. */
@@ -41,6 +56,12 @@ export interface CombatSample {
   monsterId: number;
   monsterHp: number;
   atMs: number;
+
+  /** From the packet's LastHitWasCrit. Optional so the pure damage rules and
+   *  their tests stay independent of it. */
+  wasCrit?: boolean;
+  /** From the packet's EquippedWeaponKind: 0 melee, 1 ranged, 2 magic. */
+  weaponKind?: number;
 }
 
 /**
@@ -79,6 +100,8 @@ export class DamageFeed {
       amount,
       offset: Math.random(),
       atMs: sample.atMs,
+      isCrit: sample.wasCrit === true,
+      weaponKind: sample.weaponKind ?? 0,
     };
     this.events = [...this.events, event];
     this.record(amount);

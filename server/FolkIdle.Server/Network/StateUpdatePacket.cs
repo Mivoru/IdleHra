@@ -702,6 +702,27 @@ namespace FolkIdle.Server.Network
         public int LastDeathMonsterId;
         public byte LastDeathTick;
 
+        // Modul: WHAT THE HIT LOOKED LIKE.
+        //
+        // This protocol carries no combat event of any kind - the client infers
+        // every hit from the difference between two CurrentMonsterHp snapshots
+        // (see the client's damage.ts). That is enough to show a number and
+        // nothing else: it cannot know whether the blow crit, and it cannot
+        // know what the character is swinging, so every hit looked identical.
+        //
+        // Two bytes fix both. LastHitWasCrit is set by the player's own attack
+        // resolution - the only place that rolls it - and EquippedWeaponKind is
+        // resolved from the equipped weapon's base id so the client does not
+        // have to fetch an inventory to know whether to draw a slash, an arrow
+        // or a burst.
+        //
+        // A BYTE RATHER THAN AN EVENT, deliberately. At 10 Hz against a ~1.5s
+        // swing there is at most one hit between snapshots in ordinary play, so
+        // "the last hit crit" answers the question the client actually asks
+        // without inventing an event stream this wire has never had.
+        public byte LastHitWasCrit;
+        public byte EquippedWeaponKind;
+
         // Modul: Phase - Full-Stack Production Polish, Part 1.3 (save trust
         // indicator). Mirrors TickStatePayload.TicksSinceLastFlush exactly -
         // resets to 0 the tick StateCheckpointManager.FlushState actually

@@ -928,6 +928,11 @@ namespace FolkIdle.Server.Domain.Shared
                 CON = player.BaseConstitution,
                 LCK = player.BaseLuck,
                 EquippedWeaponId = mainCharacterRecord?.EquippedWeaponId ?? 0L,
+                // Modul: which weapon family, for the hit effect - see
+                // EquipmentSlotEngine.ResolveWeaponKind. Hydrated here as well
+                // as pushed on every equip, so a player who signs in mid-fight
+                // still swings the right animation.
+                EquippedWeaponKind = await Domain.Combat.EquipmentSlotEngine.ResolveEquippedWeaponKindAsync(dbContext, mainCharacterRecord),
                 EquippedHelmetId = mainCharacterRecord?.EquippedHelmetId ?? 0L,
                 EquippedArmorId = mainCharacterRecord?.EquippedChestId ?? 0L,
                 EquippedGlovesId = mainCharacterRecord?.EquippedGlovesId ?? 0L,

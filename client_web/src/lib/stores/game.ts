@@ -18,7 +18,7 @@ import {
 import { DamageFeed, type DamageEvent } from './damage';
 import { CommandResultFeed, COMMAND_RESULT_SUCCESS, type CommandResultEntry } from './commandResults';
 import { queryClient } from '../net/queryClient';
-import { play } from '../ui/audio';
+import { play, playHit, playWithFallback } from '../ui/audio';
 import { fetchAchievements, type AchievementEntry } from '../net/rest';
 import {
   createWatermark,
@@ -242,6 +242,17 @@ export interface OfflineSummary {
  * page refresh or a dropped connection, not "time away".
  */
 export const IDLE_WARNING_THRESHOLD_SECONDS = 300;
+
+// Modul: the visual half of a hit. One value rather than a list - a spark
+// lives for a few hundred milliseconds and the next one replaces it, so
+// keeping a collection would only be a queue nobody drains.
+export interface HitSpark {
+  id: number;
+  weaponKind: number;
+  isCrit: boolean;
+}
+
+export const hitSparks = writable<HitSpark | null>(null);
 
 export const offlineSummary = writable<OfflineSummary | null>(null);
 
@@ -468,10 +479,20 @@ export function startSession(token: string): void {
         monsterId: packet.CurrentMonsterId,
         monsterHp: packet.CurrentMonsterHp,
         atMs: arrivedAtMs,
+        wasCrit: Number(packet.LastHitWasCrit) === 1,
+        weaponKind: Number(packet.EquippedWeaponKind),
       });
       if (hit !== null) {
         damageEvents.set(damageFeed.current);
         typicalHit.set(damageFeed.typicalHit);
+
+        // Modul: A HIT MADE A SOUND AND A MARK.
+        //
+        // Combat was silent apart from the monster dying - the one thing that
+        // happens every 1.5 seconds for hours had no feedback at all. The clip
+        // is chosen by weapon family, so a wand does not sound like a sword.
+        playHit(hit.weaponKind, hit.isCrit);
+        hitSparks.set({ id: hit.id, weaponKind: hit.weaponKind, isCrit: hit.isCrit });
       }
 
       // Turns every silently-rejected command into an explanation. Without
@@ -585,6 +606,9 @@ export function startSession(token: string): void {
 
         if (!isFirstPacket) {
           deathSummary.set({ monsterId: Number(packet.LastDeathMonsterId) });
+          // A dedicated clip when one exists, the generic error tone until
+          // then - dying is the one moment that must not be silent.
+          playWithFallback('playerDied', 'error');
         }
       }
 
