@@ -294,6 +294,79 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
+        /// <summary>
+        /// What a challenge answer was worth. Modul: THIS USED TO BE A BOOL,
+        /// AND THE BOOL WAS THE BUG.
+        ///
+        /// False meant "quarantine this account permanently, now" - on the
+        /// FIRST occurrence, while a challenge that was never answered at all
+        /// only advanced a counter and needed four in a row. That is exactly
+        /// backwards: an answer that arrives a moment late is a race, and an
+        /// answer that arrives twice is a duplicate, and neither is evidence
+        /// of anything. Silence was treated as forgivable and a slightly
+        /// mistimed reply as proof of cheating.
+        ///
+        /// Confirmed on the live server: "QUARANTINE applied to player 8
+        /// (reason 54, detail 3)" on a real account, in the middle of an
+        /// auto-reroll run - a burst of legitimate commands, one answer landing
+        /// after the window closed, and the account was permanently stopped.
+        /// </summary>
+        public enum ChallengeAnswerVerdict
+        {
+            /// <summary>Correct and in time.</summary>
+            Accepted,
+
+            /// <summary>
+            /// Arrived for a challenge that is no longer open - already
+            /// answered, already cleared, or the window closed while it was in
+            /// flight. Carries NO information about the client: a correct one
+            /// and a cheating one produce this identically. Ignored.
+            /// </summary>
+            Stale,
+
+            /// <summary>
+            /// Present and open, but wrong: a malformed payload or a hash that
+            /// does not match. Counts toward the same consecutive run a missed
+            /// challenge does, rather than acting on its own.
+            /// </summary>
+            Rejected,
+        }
+
+        public static ChallengeAnswerVerdict JudgeAntiCheatChallengeResponse(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
+        {
+            if (packet.Command != FolkIdle.Server.Network.CommandType.AntiCheatChallengeResponse)
+            {
+                return ChallengeAnswerVerdict.Accepted;
+            }
+
+            if (packet.TargetId != 0 || packet.SecondaryId != 0 || packet.TertiaryId != 0 || packet.LimitPrice != 0 || packet.IsBuy != 0 || packet.QualityTier != 0 || packet.TargetGuid != Guid.Empty || packet.SecondaryGuid != Guid.Empty || packet.TargetUnlockId != 0 || packet.RequestedSlotIndex != 0 || packet.MaterialId != 0 || packet.DepositQuantity != 0 || packet.MatchId != 0 || packet.ClientPredictedTurnCounter != 0 || packet.TargetPlayerId != 0 || packet.MentorshipRole != 0 || packet.TargetBuildingId != 0 || packet.TargetVillagerSlot != 0)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 31, Value2 = 1, Timestamp = Environment.TickCount64 });
+                return ChallengeAnswerVerdict.Rejected;
+            }
+
+            long nowMs = Environment.TickCount64;
+            if (payload.ActiveChallengeSeed == 0 || payload.ActiveChallengeAnswered != 0 || nowMs - payload.ActiveChallengeIssuedAtMs > AntiCheatTelemetryEngine.ChallengeResponseWindowMs)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 31, Value2 = 2, Timestamp = nowMs });
+                return ChallengeAnswerVerdict.Stale;
+            }
+
+            uint expectedHash = AntiCheatTelemetryEngine.ComputeChallengeHash(payload.ActiveChallengeSeed, payload.PlayerId, payload.ActiveChallengeIssuedEpoch);
+            if (packet.ChallengeId != payload.ActiveChallengeSeed || packet.ChallengeVerificationHash != expectedHash)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 31, Value2 = 3, Timestamp = nowMs });
+                return ChallengeAnswerVerdict.Rejected;
+            }
+
+            return ChallengeAnswerVerdict.Accepted;
+        }
+
+        /// <summary>
+        /// Kept for callers that only need "was this answer good": Stale counts
+        /// as not-good here, so do NOT use this to decide a penalty. Use
+        /// <see cref="JudgeAntiCheatChallengeResponse"/> for that.
+        /// </summary>
         public static bool ValidateAntiCheatChallengeResponse(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
         {
             if (packet.Command != FolkIdle.Server.Network.CommandType.AntiCheatChallengeResponse)

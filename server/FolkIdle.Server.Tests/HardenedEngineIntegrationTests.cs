@@ -8827,6 +8827,80 @@ namespace FolkIdle.Server.Tests
             Assert.False(ClientCommandValidator.ValidateAntiCheatChallengeResponse(ref payload, ref wrongPacket));
         }
 
+        // Modul: A LATE ANSWER MUST NOT BE A PENALTY.
+        //
+        // The rejected-answer path used to quarantine PERMANENTLY on the first
+        // occurrence while a challenge that went completely unanswered needed
+        // four in a row - so the client that said nothing was forgiven and the
+        // client that replied a moment late was banned. It fired on a real
+        // account (reason 54, detail 3) during an auto-reroll run.
+        //
+        // The distinction this asserts is the whole fix: an answer to a
+        // challenge that is no longer open is STALE, which carries no
+        // information about the client, and must never be gathered as
+        // evidence. Only a wrong answer to an OPEN challenge is Rejected, and
+        // even that only counts toward a run.
+        [Fact]
+        public void Test_StaleChallengeAnswer_IsNotEvidence()
+        {
+            var payload = new TickStatePayload
+            {
+                PlayerId = 4242,
+                LogicEpochCounter = 99,
+                ActiveChallengeIssuedEpoch = 99,
+                ActiveChallengeSeed = 0xBEEF1234u,
+                ActiveChallengeAnswered = 0,
+                ActiveChallengeIssuedAtMs = Environment.TickCount64
+            };
+
+            var packet = new ClientCommandPacket
+            {
+                Command = CommandType.AntiCheatChallengeResponse,
+                ChallengeId = payload.ActiveChallengeSeed,
+                ChallengeVerificationHash = AntiCheatTelemetryEngine.ComputeChallengeHash(
+                    payload.ActiveChallengeSeed, payload.PlayerId, payload.ActiveChallengeIssuedEpoch)
+            };
+
+            Assert.Equal(
+                ClientCommandValidator.ChallengeAnswerVerdict.Accepted,
+                ClientCommandValidator.JudgeAntiCheatChallengeResponse(ref payload, ref packet));
+
+            // The window closed while the answer was in flight. This is the
+            // exact case that banned a live account.
+            var expired = payload;
+            expired.ActiveChallengeIssuedAtMs =
+                Environment.TickCount64 - (AntiCheatTelemetryEngine.ChallengeResponseWindowMs + 5000L);
+            Assert.Equal(
+                ClientCommandValidator.ChallengeAnswerVerdict.Stale,
+                ClientCommandValidator.JudgeAntiCheatChallengeResponse(ref expired, ref packet));
+
+            // A duplicate: the engine already accepted one for this seed.
+            var alreadyAnswered = payload;
+            alreadyAnswered.ActiveChallengeAnswered = 1;
+            Assert.Equal(
+                ClientCommandValidator.ChallengeAnswerVerdict.Stale,
+                ClientCommandValidator.JudgeAntiCheatChallengeResponse(ref alreadyAnswered, ref packet));
+
+            // No challenge outstanding at all.
+            var noChallenge = payload;
+            noChallenge.ActiveChallengeSeed = 0;
+            Assert.Equal(
+                ClientCommandValidator.ChallengeAnswerVerdict.Stale,
+                ClientCommandValidator.JudgeAntiCheatChallengeResponse(ref noChallenge, ref packet));
+
+            // A wrong answer to an OPEN challenge is the only thing that counts
+            // against the client - and even then only toward a run of four.
+            var wrong = packet;
+            wrong.ChallengeVerificationHash = packet.ChallengeVerificationHash + 1u;
+            Assert.Equal(
+                ClientCommandValidator.ChallengeAnswerVerdict.Rejected,
+                ClientCommandValidator.JudgeAntiCheatChallengeResponse(ref payload, ref wrong));
+
+            // One rejection is not four. The limit exists so a single bad
+            // answer can never be a ban on its own.
+            Assert.True(AntiCheatTelemetryEngine.ConsecutiveChallengeMissLimit > 1);
+        }
+
         // Modul: activity id bands. THE bug this pass exists to close. Monster
         // ids and gathering node ids share one activity space, and Region 3's
         // five monsters (101-105: Desert Crab, Ashen Basilisk, Ember Elemental,

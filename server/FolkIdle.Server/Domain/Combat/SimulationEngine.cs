@@ -1816,9 +1816,43 @@ namespace FolkIdle.Server.Domain.Combat
 
                     if (cmd.Command == CommandType.AntiCheatChallengeResponse)
                     {
-                        if (!ClientCommandValidator.ValidateAntiCheatChallengeResponse(ref currentPayload, ref cmd))
+                        // Modul: A LATE ANSWER IS NOT A CONFESSION.
+                        //
+                        // This branch used to quarantine PERMANENTLY on the
+                        // first rejected answer, while a challenge that went
+                        // completely unanswered only advanced a counter and
+                        // needed four in a row. Backwards: the client that
+                        // says nothing is the one there is no evidence about,
+                        // and the client that replies a moment late is almost
+                        // always racing the window rather than cheating.
+                        //
+                        // It fired on a real account mid auto-reroll - a burst
+                        // of perfectly legitimate commands, one reply landing
+                        // after the window closed - and stopped that account
+                        // dead with no way back short of editing the database.
+                        //
+                        // Three outcomes now. Stale is ignored outright: an
+                        // answer to a challenge that is already closed carries
+                        // no information, because an honest client and a
+                        // dishonest one produce it identically. A genuinely
+                        // wrong answer joins the same consecutive run a miss
+                        // does, so acting on it needs a PATTERN.
+                        var verdict = ClientCommandValidator.JudgeAntiCheatChallengeResponse(ref currentPayload, ref cmd);
+
+                        if (verdict == ClientCommandValidator.ChallengeAnswerVerdict.Stale)
                         {
-                            _antiCheatTelemetryEngine?.RequestShadowBan(routingPlayerId, 54, 3);
+                            continue;
+                        }
+
+                        if (verdict == ClientCommandValidator.ChallengeAnswerVerdict.Rejected)
+                        {
+                            if (++currentPayload.ConsecutiveChallengeMisses
+                                >= AntiCheatTelemetryEngine.ConsecutiveChallengeMissLimit)
+                            {
+                                currentPayload.IsQuarantined = true;
+                                currentPayload.Quarantine_Active = true;
+                                _antiCheatTelemetryEngine?.RequestShadowBan(routingPlayerId, 54, 3);
+                            }
                         }
                         else
                         {

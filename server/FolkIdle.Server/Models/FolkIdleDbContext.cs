@@ -229,13 +229,39 @@ namespace FolkIdle.Server.Models
             modelBuilder.Entity<DailyQuestRecord>()
                 .HasKey(q => new { q.PlayerId, q.QuestSlot });
 
+            // Modul: `json`, NOT `jsonb`, AND THE DIFFERENCE IS A BUG THIS
+            // COLUMN SHIPPED WITH.
+            //
+            // jsonb is the better default for almost everything - it indexes,
+            // it deduplicates keys, it parses once. It also DOES NOT PRESERVE
+            // KEY ORDER: it stores object keys sorted by length and then by
+            // bytes, and hands them back in that canonical order however they
+            // went in.
+            //
+            // This payload is addressed BY POSITION. The reroll command names
+            // an affix by its index, and AffixRerollEngine rebuilds the object
+            // with the new key substituted at the old key's place precisely so
+            // that index still means the same affix afterwards. jsonb threw
+            // that away on every write. Rerolling changed the affix's key,
+            // which changed its LENGTH, which teleported it to a different
+            // position - and a short new key landed it in the first slot.
+            // Reported as "the affixes jump to the first slot, or another one".
+            //
+            // Seen directly in the live data: every stored payload came back
+            // ordered `flat_hp@3`(9), `flat_armor@3`(12),
+            // `attack_speed_pct#2@4`(20) - ascending key length, never the
+            // order anything wrote them in.
+            //
+            // `json` stores the text exactly as given. Nothing here queries
+            // inside the payload in SQL, so the indexing jsonb buys is worth
+            // nothing to us, and the ordering it costs is load-bearing.
             modelBuilder.Entity<MarketEquipmentInstance>()
                 .Property(e => e.AffixPayload)
-                .HasColumnType("jsonb");
+                .HasColumnType("json");
 
             modelBuilder.Entity<EquipmentInstance>()
                 .Property(e => e.AffixPayload)
-                .HasColumnType("jsonb");
+                .HasColumnType("json");
 
             // The token hash is the only lookup key this table ever has -
             // CompleteResetAsync probes it once per attempt - and it must be
