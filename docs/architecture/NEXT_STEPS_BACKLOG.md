@@ -764,13 +764,32 @@ and a Google `sub` is not a secret. Production now gets
 validator (Google tokeninfo / Apple JWKS) is a prerequisite for the mobile
 launch**, not an optional extra.
 
-**NO EMAIL VERIFICATION, AND NO PASSWORD RESET.** There is no email
-infrastructure at all - no SMTP, no provider, and the only auth endpoints are
-login, register and oauth-link. Two consequences, and the second is the urgent
-one: an address is never proved, and **a player who forgets their password has
-lost the account permanently.** The game is live. Both need an email sender
-(Resend/Postmark/SES all have free tiers) plus a token table and two endpoints;
-the sending account is a product decision like the payment provider.
+**~~NO PASSWORD RESET~~ - BUILT 2026-08-09.** `/api/v1/auth/request-password-reset`
+and `/api/v1/auth/reset-password`, a `password_reset_tokens` table, and an
+`IEmailSender` with Resend as the concrete provider (chosen for having no SDK -
+one POST with a bearer key). **Configure `FOLKIDLE_RESEND_API_KEY` and
+`FOLKIDLE_MAIL_FROM` before the next deploy**: without them production gets
+`DisabledEmailSender` and the flow refuses rather than pretending, while
+development gets `ConsoleEmailSender`, which prints the link and is what makes
+the whole thing drivable with no provider account.
+
+The properties, all tested: a request answers 200 for every outcome (an unknown
+address must not be distinguishable - that is the oracle `check-email` was
+deleted for), the token is 32 CSPRNG bytes stored only as a SHA-256 hash,
+single-use, one hour, a new request supersedes the old link, and a successful
+reset also clears `DeviceId` because that field signs somebody in with NO
+password at all.
+
+**KNOWN LIMIT:** a reset does not end sessions already signed in. This server
+issues self-contained 24-hour JWTs and has no revocation list -
+`PlayerRecord.AuthenticatorToken` exists and is read by nothing - so an attacker
+who had the old password keeps their session until it expires. Closing that
+means a revocation check on every authenticated request, which is its own piece
+of work.
+
+**EMAIL VERIFICATION IS STILL NOT BUILT**, and is now the cheaper half: the
+sender, the token table and the throttle all exist, so it is one more token
+kind and one more endpoint.
 
 **~~Two auth decisions left~~ - BOTH DONE 2026-08-09.** The password minimum is
 **eight**, length only and no composition rule (see `PasswordPolicy` for why

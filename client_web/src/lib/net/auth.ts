@@ -146,6 +146,58 @@ export async function register(
   return readSession(response, 'Registration');
 }
 
+/**
+ * Asks for a reset link.
+ *
+ * ALWAYS RESOLVES, and the caller must show the same message either way -
+ * unknown address, known address and provider outage are deliberately
+ * indistinguishable, because any difference rebuilds the account enumeration
+ * oracle that /api/v1/auth/check-email was deleted for. The server answers 200
+ * regardless for the same reason.
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
+  await postJson('/api/v1/auth/request-password-reset', { email }).catch(() => undefined);
+}
+
+/**
+ * Spends a reset link and sets the new password.
+ *
+ * These outcomes ARE distinguished, unlike the request above: the caller is
+ * already holding the token, so naming the reason leaks nothing and refusing
+ * silently would strand them in front of a form that will not accept them.
+ */
+export async function completePasswordReset(token: string, password: string): Promise<void> {
+  const response = await postJson('/api/v1/auth/reset-password', { token, password });
+  if (response.ok) return;
+
+  if (response.status === 410) {
+    throw new AuthError('That link has expired or has already been used. Ask for a new one.', 410);
+  }
+  if (response.status === 422) {
+    throw new AuthError('That password is too short - eight characters or more.', 422);
+  }
+  throw new AuthError('That reset link is not valid. Ask for a new one.', response.status);
+}
+
+/**
+ * The reset token from the URL, or null.
+ *
+ * A HASH FRAGMENT, never a query string: everything after the # is never sent
+ * to a server, so the token stays out of this box's access log, out of any
+ * proxy's, and out of the Referer header on the next page the player opens.
+ *
+ * Cleared from the address bar as soon as it is read, so a shared screenshot or
+ * a browser history entry does not carry a live credential.
+ */
+export function takeResetTokenFromUrl(): string | null {
+  const hash = window.location.hash ?? '';
+  const match = hash.match(/^#reset=(.+)$/);
+  if (!match) return null;
+
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+  return decodeURIComponent(match[1]);
+}
+
 // Modul: isEmailAvailable IS GONE, with the endpoint behind it. Asking the
 // server whether an address has an account here is an enumeration oracle -
 // feed it a breach dump, get back the subset who play this game - and nothing

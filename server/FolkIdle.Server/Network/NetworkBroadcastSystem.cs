@@ -764,7 +764,14 @@ namespace FolkIdle.Server.Network
                     // X-Forwarded-For rather than the socket's address.
                     if (requestPath == "/api/v1/auth/login"
                         || requestPath == "/api/v1/auth/register"
-                        || requestPath == "/api/v1/auth/oauth-link")
+                        || requestPath == "/api/v1/auth/oauth-link"
+                        // Modul: the reset endpoints belong in the budget too.
+                        // The request side sends mail to somebody else's
+                        // address, so unthrottled it is a way to use this
+                        // server to spam a stranger; the completion side is a
+                        // guess against a token.
+                        || requestPath == "/api/v1/auth/request-password-reset"
+                        || requestPath == "/api/v1/auth/reset-password")
                     {
                         if (!AuthThrottle.TryConsume(AuthThrottle.ResolveClientAddress(context.Request)))
                         {
@@ -805,6 +812,21 @@ namespace FolkIdle.Server.Network
                     if (requestPath == "/api/v1/auth/register" && context.Request.HttpMethod == "POST")
                     {
                         _ = HandleAuthRegister(context);
+                        continue;
+                    }
+
+                    // Modul: PASSWORD RESET. Registration used to be the only
+                    // place this server set a password, so a player who forgot
+                    // theirs had permanently lost the account - on a live game.
+                    if (requestPath == "/api/v1/auth/request-password-reset" && context.Request.HttpMethod == "POST")
+                    {
+                        _ = HandleRequestPasswordReset(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/auth/reset-password" && context.Request.HttpMethod == "POST")
+                    {
+                        _ = HandleResetPassword(context);
                         continue;
                     }
 
@@ -6335,6 +6357,186 @@ namespace FolkIdle.Server.Network
         // immediately issues a JWT exactly like HandleAuthLogin does - a
         // successful registration logs the player straight into the game,
         // it does not require a separate follow-up login call.
+        /// <summary>
+        /// "I forgot my password."
+        ///
+        /// ALWAYS ANSWERS 200, whatever happened. Unknown address, known
+        /// address, an account with no password, the mail provider being down -
+        /// every one of them is reported identically, because any difference
+        /// turns this into the account enumeration oracle that
+        /// /api/v1/auth/check-email was deleted for. The player is told to
+        /// check their email either way, which is also the honest instruction:
+        /// if they own the address, the mail is on its way.
+        /// </summary>
+        private async Task HandleRequestPasswordReset(HttpListenerContext context)
+        {
+            try
+            {
+                string email = string.Empty;
+
+                if (context.Request.HasEntityBody)
+                {
+                    using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                    string body = await reader.ReadToEndAsync();
+                    try
+                    {
+                        using var document = System.Text.Json.JsonDocument.Parse(body);
+                        if (document.RootElement.TryGetProperty("email", out var emailElement))
+                        {
+                            email = emailElement.GetString() ?? string.Empty;
+                        }
+                    }
+                    catch (System.Text.Json.JsonException)
+                    {
+                        // Even a malformed body answers 200 - see above.
+                    }
+                }
+
+                if (email.Length > 0)
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                    long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    string? token = await Engine.PasswordResetEngine.BeginResetAsync(db, email, nowEpoch);
+
+                    if (token != null)
+                    {
+                        // THE TOKEN TRAVELS IN A HASH FRAGMENT. Everything after
+                        // the # is never sent to a server, so the link does not
+                        // land in this box's access log, in a proxy's, or in a
+                        // Referer header on the next page the player opens.
+                        string origin = ResolveClientOrigin(context.Request);
+                        string resetUrl = origin + "/#reset=" + token;
+
+                        var sender = _serviceProvider.GetRequiredService<Engine.IEmailSender>();
+                        await sender.SendAsync(
+                            email,
+                            "Reset your FolkIdle password",
+                            Engine.PasswordResetEngine.BuildEmailBody(resetUrl));
+                    }
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.Close();
+            }
+            catch (Exception ex)
+            {
+                // Logged without the address, for the same reason the provider
+                // failure path does not log it.
+                Console.WriteLine("Password reset request error: " + ex.Message);
+                // STILL 200. An exception that answered 500 for known addresses
+                // and 200 for unknown ones would be the oracle again, wearing a
+                // status code.
+                context.Response.StatusCode = 200;
+                context.Response.Close();
+            }
+        }
+
+        /// <summary>
+        /// "Here is the link, and my new password."
+        ///
+        /// Unlike the request side these outcomes ARE distinguished: the caller
+        /// is already holding a 256-bit token, so "that link has expired" tells
+        /// them nothing they could not infer, and refusing without a reason
+        /// would strand them in front of a form.
+        /// </summary>
+        private async Task HandleResetPassword(HttpListenerContext context)
+        {
+            try
+            {
+                if (!context.Request.HasEntityBody)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                string body = await reader.ReadToEndAsync();
+
+                string token = string.Empty;
+                string newPassword = string.Empty;
+                try
+                {
+                    using var document = System.Text.Json.JsonDocument.Parse(body);
+                    if (document.RootElement.TryGetProperty("token", out var tokenElement))
+                    {
+                        token = tokenElement.GetString() ?? string.Empty;
+                    }
+                    if (document.RootElement.TryGetProperty("password", out var passwordElement))
+                    {
+                        newPassword = passwordElement.GetString() ?? string.Empty;
+                    }
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                var outcome = await Engine.PasswordResetEngine.CompleteResetAsync(db, token, newPassword, nowEpoch);
+
+                context.Response.StatusCode = outcome switch
+                {
+                    Engine.PasswordResetOutcome.Success => 200,
+                    Engine.PasswordResetOutcome.InvalidPassword => 422,
+                    Engine.PasswordResetOutcome.Expired => 410,
+                    Engine.PasswordResetOutcome.AlreadyUsed => 410,
+                    _ => 400,
+                };
+                context.Response.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Password reset error: " + ex.Message);
+                context.Response.StatusCode = 500;
+                context.Response.Close();
+            }
+        }
+
+        /// <summary>
+        /// Where the client lives, for building a link back into it.
+        ///
+        /// The Origin header ONLY when it is one this server already trusts -
+        /// FOLKIDLE_WEB_ORIGINS is the existing CORS allowlist, so reusing it
+        /// means a reset link can only ever point somewhere this deployment
+        /// already serves. An attacker-supplied Origin is otherwise a way to
+        /// have us email somebody a link to the attacker's own site.
+        /// </summary>
+        private static string ResolveClientOrigin(HttpListenerRequest request)
+        {
+            string origin = request.Headers["Origin"] ?? string.Empty;
+            string configured = Environment.GetEnvironmentVariable("FOLKIDLE_WEB_ORIGINS") ?? string.Empty;
+            var allowedOrigins = configured.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            if (origin.Length > 0)
+            {
+                foreach (string allowed in allowedOrigins)
+                {
+                    if (string.Equals(allowed.TrimEnd('/'), origin.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))
+                    {
+                        return origin.TrimEnd('/');
+                    }
+                }
+            }
+
+            // Falls back to the FIRST configured origin rather than to the
+            // request's - a link nobody can follow is better than one that
+            // points at somebody else's server.
+            foreach (string allowed in allowedOrigins)
+            {
+                return allowed.TrimEnd('/');
+            }
+
+            return string.Empty;
+        }
+
         private async Task HandleAuthRegister(HttpListenerContext context)
         {
             try

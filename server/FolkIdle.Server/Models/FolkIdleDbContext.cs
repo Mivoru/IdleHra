@@ -13,6 +13,7 @@ namespace FolkIdle.Server.Models
         public DbSet<MarketEquipmentInstance> MarketEquipmentInstances { get; set; }
         public DbSet<EquipmentInstance> EquipmentInstances { get; set; }
         public DbSet<MailboxInstance> MailboxInstances { get; set; }
+        public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
         public DbSet<MarketOrderRecord> MarketOrderRecords { get; set; }
         public DbSet<HistoricalMarketArchive> HistoricalMarketArchives { get; set; }
         public DbSet<GuildRecord> GuildRecords { get; set; }
@@ -235,6 +236,14 @@ namespace FolkIdle.Server.Models
             modelBuilder.Entity<EquipmentInstance>()
                 .Property(e => e.AffixPayload)
                 .HasColumnType("jsonb");
+
+            // The token hash is the only lookup key this table ever has -
+            // CompleteResetAsync probes it once per attempt - and it must be
+            // unique: two rows with one hash would make "single use"
+            // ambiguous.
+            modelBuilder.Entity<PasswordResetToken>()
+                .HasIndex(t => t.TokenHash)
+                .IsUnique();
 
             modelBuilder.Entity<MonsterCodexEntry>()
                 .HasKey(m => new { m.PlayerId, m.MonsterId });

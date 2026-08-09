@@ -308,6 +308,36 @@ serviceCollection.AddSingleton(new RetryingDbContextOptions(retryConfiguredOptio
 // fail-closed shape as the admin endpoint's missing key. Swap in a real
 // Google tokeninfo / Apple JWKS implementation when OAuth is actually wanted;
 // until then it does not work, which is where it already was.
+// Modul: the password reset needs somebody to hand the mail to.
+//
+// FAILS CLOSED IN PRODUCTION, like the OAuth validator below and the admin
+// endpoint's missing key. Falling back to the console sender on a live server
+// would mean printing password reset links into the server's own log while
+// telling every player "check your email" - worse than the feature not
+// existing, because it looks like it works.
+//
+// Development gets the console sender, which is what makes the whole flow
+// drivable with no provider account at all: the link is printed, and whoever
+// is testing pastes it.
+string resendApiKey = Environment.GetEnvironmentVariable("FOLKIDLE_RESEND_API_KEY") ?? string.Empty;
+string mailFromAddress = Environment.GetEnvironmentVariable("FOLKIDLE_MAIL_FROM") ?? string.Empty;
+bool isProductionForMail = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") == "Production";
+
+if (resendApiKey.Length > 0 && mailFromAddress.Length > 0)
+{
+    serviceCollection.AddSingleton<IEmailSender>(provider =>
+        new ResendEmailSender(
+            provider.GetRequiredService<IHttpClientFactory>(), resendApiKey, mailFromAddress));
+}
+else if (isProductionForMail)
+{
+    serviceCollection.AddSingleton<IEmailSender, DisabledEmailSender>();
+}
+else
+{
+    serviceCollection.AddSingleton<IEmailSender, ConsoleEmailSender>();
+}
+
 bool isProductionForOAuth = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") == "Production";
 if (isProductionForOAuth)
 {

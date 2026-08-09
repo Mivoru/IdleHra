@@ -1,5 +1,13 @@
 <script lang="ts">
-  import { loginWithDevice, loginWithEmail, register, AuthError } from '../lib/net/auth';
+  import {
+    loginWithDevice,
+    loginWithEmail,
+    register,
+    requestPasswordReset,
+    completePasswordReset,
+    takeResetTokenFromUrl,
+    AuthError,
+  } from '../lib/net/auth';
   import { configurationProblem } from '../lib/net/config';
   import { isNativePlatform } from '../lib/net/platform';
 
@@ -15,12 +23,56 @@
 
   let { onAuthenticated }: Props = $props();
 
-  let mode = $state<'choose' | 'login' | 'register'>('choose');
+  // Modul: PASSWORD RESET. Registration used to be the only place a password
+  // was ever set, so forgetting one meant losing the account for good.
+  //
+  // 'reset' is entered from the emailed link rather than from a button: the
+  // token arrives in the URL fragment and is read once at startup, which is
+  // also what clears it out of the address bar.
+  // Read ONCE, at module scope: takeResetTokenFromUrl also clears the fragment
+  // from the address bar, so calling it twice would return null the second
+  // time and lose the token.
+  const linkedResetToken = takeResetTokenFromUrl();
+
+  let mode = $state<'choose' | 'login' | 'register' | 'forgot' | 'reset'>(
+    linkedResetToken === null ? 'choose' : 'reset',
+  );
+  let resetToken = $state<string>(linkedResetToken ?? '');
+  let notice = $state('');
   let email = $state('');
   let password = $state('');
   let username = $state('');
   let busy = $state(false);
   let error = $state('');
+
+  // Modul: ALWAYS THE SAME MESSAGE, whether or not that address has an
+  // account. Anything else would rebuild the enumeration oracle that
+  // /api/v1/auth/check-email was deleted for - and the server answers 200
+  // regardless, so the client could not tell the difference anyway.
+  async function askForLink() {
+    busy = true;
+    error = '';
+    await requestPasswordReset(email);
+    busy = false;
+    notice =
+      'If that address has an account, a reset link is on its way. It is good for one hour.';
+  }
+
+  async function applyNewPassword() {
+    busy = true;
+    error = '';
+    notice = '';
+    try {
+      await completePasswordReset(resetToken, password);
+      notice = 'Your password is set. Sign in with it.';
+      password = '';
+      mode = 'login';
+    } catch (err) {
+      error = err instanceof AuthError ? err.message : 'Could not reach the server.';
+    } finally {
+      busy = false;
+    }
+  }
 
   async function run(action: () => Promise<{ token: string }>) {
     busy = true;
@@ -55,7 +107,7 @@
     <button disabled={busy} onclick={() => run(loginWithDevice)}>Play as guest</button>
     <button disabled={busy} onclick={() => (mode = 'login')}>Sign in</button>
     <button disabled={busy} onclick={() => (mode = 'register')}>Create an account</button>
-  {:else}
+  {:else if mode === 'login' || mode === 'register'}
     <label>
       Email
       <input type="email" bind:value={email} autocomplete="email" />
@@ -96,6 +148,39 @@
       {mode === 'register' ? 'Create account' : 'Sign in'}
     </button>
     <button disabled={busy} onclick={() => (mode = 'choose')}>Back</button>
+
+    {#if mode === 'login'}
+      <button class="link" disabled={busy} onclick={() => (mode = 'forgot')}>
+        Forgot your password?
+      </button>
+    {/if}
+  {/if}
+
+  {#if mode === 'forgot'}
+    <p class="hint">
+      Tell us the address on the account and we will send a link to set a new
+      password.
+    </p>
+    <label>
+      Email
+      <input type="email" bind:value={email} autocomplete="email" />
+    </label>
+    <button disabled={busy || !email} onclick={askForLink}>Send the link</button>
+    <button disabled={busy} onclick={() => (mode = 'login')}>Back</button>
+  {/if}
+
+  {#if mode === 'reset'}
+    <p class="hint">Choose a new password for your account.</p>
+    <label>
+      New password
+      <input type="password" bind:value={password} autocomplete="new-password" />
+      <span class="hint-small">Eight characters or more. Length is all that is asked for.</span>
+    </label>
+    <button disabled={busy || !password} onclick={applyNewPassword}>Set it</button>
+  {/if}
+
+  {#if notice}
+    <p class="notice">{notice}</p>
   {/if}
 
   {#if error}
@@ -119,6 +204,27 @@
     margin: 0 0 0.25rem;
     font-size: 1.5rem;
     letter-spacing: 0.02em;
+  }
+
+  .notice {
+    margin: 0.25rem 0 0;
+    color: var(--brass-lit, inherit);
+  }
+
+  .link {
+    background: none;
+    border: none;
+    padding: 0.2rem;
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  .hint-small {
+    font-size: 0.75rem;
+    color: var(--text-dim);
   }
 
   .hint {
