@@ -74,15 +74,38 @@ Everything below is what remains, in the order I would do it.
 
 ---
 
-## L5. The respec purchase flow
+## L5. The respec purchase flow - DEFERRED TO THE MOBILE LAUNCH
 
 The gate works: one free respec a season, then a `PaidRespecGrants` grant.
-**Nothing increments that counter** - the purchase flow does not exist.
+**Nothing increments that counter** - the purchase flow does not exist, and as
+of 2026-08-09 it is deliberately not being built.
 
-Decided with the player: **~2 EUR, real money, NOT diamonds**, and grants are
-per-season rather than permanent. Mobile has Capacitor purchases; **web has no
-payment provider at all**, so this means Stripe - checkout, webhook, receipt
-validation, refunds, EU VAT/OSS. The gate deliberately does not wait on it.
+**Decided with the player: no payments on web. Nothing ships until the Google
+Play launch.** That is the right call for a reason worth writing down: on Play
+and the App Store, **Google and Apple are the merchant of record** for digital
+goods in the EU - they collect and remit the buyer's-country VAT themselves.
+Stripe on web makes the seller the merchant, which is where OSS registration and
+quarterly filing come from. Waiting does not just postpone the work, it removes
+most of the tax burden from it.
+
+The client already has Capacitor purchase plumbing and `BillingVerificationEngine`
+already validates store receipts with a duplicate-transaction guard, so the
+remaining work at that point is small.
+
+**Selling GOLD for money was considered and should not be done.** Measured, from
+`ProgressionRateTests`: region 1's entire economy is **7,124 gold**, while
+region 4 yields **53 million** and region 5 about **24 gold a second**. So a
+fixed pack is worth roughly a hundred times more to a beginner than to a
+veteran - the smallest pack discussed (10k) is more gold than the whole first
+region contains, which deletes the early game for anyone who buys one. Gold is
+also **wiped at every rollover**, and it buys market gear and affix rerolls,
+which is more direct power than the inheritance percentages diamonds buy.
+
+**Diamonds are already the earn-or-buy currency and that is the F2P-friendly
+shape.** They are earned from achievements, the daily login, season placement
+and the world boss, and four packs are already priced in
+`GameBalanceConfig.json` (`IapProductPrices`). Nothing needs a second paid
+currency.
 
 ---
 
