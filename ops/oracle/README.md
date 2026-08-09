@@ -87,7 +87,7 @@ changing the hostname is a rebuild, not a restart.
     cd ~/folkidle && git pull
     cd ops/oracle
     cp .env.example .env        # if it does not exist yet
-    $EDITOR .env                # DB connection string, JWT_SECRET_KEY
+    $EDITOR .env                # DB connection string, JWT_SECRET_KEY, mail
     docker compose up -d --build
 
 The first build takes a while — a .NET publish and an npm install on 2 vCPU.
@@ -96,6 +96,39 @@ The first build takes a while — a .NET publish and an npm install on 2 vCPU.
     docker compose logs -f caddy      # watch the certificate being obtained
     curl -s https://92-5-0-94.sslip.io/healthz
     curl -sI https://92-5-0-94.sslip.io/     # should be the client, 200 text/html
+
+## Mail, and what happens without it
+
+`FOLKIDLE_RESEND_API_KEY` and `FOLKIDLE_MAIL_FROM` drive the password reset
+flow. **Unset means the flow refuses**, deliberately: production falls back to
+`DisabledEmailSender`, the request still answers 200 (an unknown address must
+stay indistinguishable from a known one) and no mail leaves the box. The
+alternative — falling back to the console sender — would print reset links into
+the server's own log while telling players to check their inbox, which is worse
+than the feature not existing because it looks like it works.
+
+**Resend needs a sending domain you control.** `92-5-0-94.sslip.io` is not one:
+sslip.io resolves names, it does not let you add the SPF/DKIM records Resend
+verifies against. `onboarding@resend.dev` works with no domain but only delivers
+to the address on your own Resend account — fine to prove the pipe, useless for
+players.
+
+The sending domain and the site's domain are INDEPENDENT. The reset link points
+at whatever `FOLKIDLE_WEB_ORIGINS` says, so you can send from a real domain
+while the game still lives on sslip.io.
+
+## Migrations run themselves, and some of them are not additive
+
+The app image migrates on its own entrypoint (`--migrate && exec ...`), so every
+pending migration applies the moment the container starts — no prompt, no
+separate step. That is safe at exactly one replica and this file says elsewhere
+not to scale it.
+
+**Take a Supabase backup before a release that carries a destructive
+migration.** The 2026-08-09 release carried two: `BackfillFounderAptitudes`
+rewrote live lineage rows, and `RetireTheBank` copied rows out of
+`BankEquipmentInstances` and then dropped the table. Both were verified
+afterwards against the live database rather than assumed.
 
 ## JWT_SECRET_KEY
 

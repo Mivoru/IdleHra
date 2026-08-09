@@ -584,9 +584,39 @@ first two days are not dead, bad enough to want better.
      because which villager to marry is the decision the gene pool exists to
      pose and it was unmakeable without a number. The 5% epic +1 is
      deliberately outside the quoted band.
-   - **Hall of Ancestors not started** - the 10-to-14 roster and the
-     choose-who-carries moment at the rollover.
-6. **NOT STARTED - chapters II-V and Seals -> skill points.**
+   - **DONE - the Hall of Ancestors.** The 10-to-14 roster
+     (`HallOfAncestorsRules`), the diamond slot purchase, the keep marks, the
+     rollover cull, and a screen showing the pedigree and who the rollover
+     would let go. **Plus the door that never existed**: nothing had ever
+     written a `CharacterRecord.SlotIndex` after creation, so every child bred
+     past the third slot was unplayable and "begin the next season with your
+     best child" could not be performed. `AssignCharacterSlot` swaps.
+   - **DONE - recruitment and dismissal** (`RecruitVillager`,
+     `DismissNewcomer`), with the escalating price on a stored per-season
+     counter so turning somebody away cannot reset it. **And the rollover wipe
+     `VillageNewcomer` documented in capitals and nobody had written** - the
+     roster, the arrival clock and the price now reset with the season.
+6. **DONE - chapters II-V and Seals.** Five chapters, every deed with a live
+   `x / y`, and **+2 permanent skill points per Seal every season** - the
+   coupling this whole document turns on. The chapters moved to the SERVER
+   (`DeedRegistry`, `DeedProgressSource`, `SealEngine`,
+   `/api/v1/deeds/snapshot`), because a Seal pays permanent skill points and a
+   client that decided when it had earned one could award itself the tree.
+   `chapterOne.ts` was deleted rather than kept beside it.
+   - **Three deeds substitute** for spec entries this game does not count -
+     which materials a craft consumed, a narrow escape below 10% HP, cooking
+     totals - and each substitution is named in `DeedRegistry`'s own comment.
+     Inventing a counter on the 10 Hz combat path for one checklist entry is
+     worse than moving the entry.
+   - **Chapter I still pays no tools.** The Seal and the skill points are
+     real; the promised set of Common tools is not built.
+
+## What is left of this document
+
+**L5, the respec purchase, and nothing else.** It is deferred to the mobile
+launch on purpose - see `NEXT_STEPS_BACKLOG.md` for why that removes most of
+the tax burden rather than merely postponing it. Selling GOLD for money was
+considered and argued against there, with the measured numbers attached.
 
 The things that are half-built are listed above rather than left implicit,
 because a half-built system that looks finished is how this project has shipped

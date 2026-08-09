@@ -8,9 +8,9 @@ do not let it drift into aspirational/planned content - that belongs in
 ## 1. Solution Layout
 
 - `server/FolkIdle.Server/` - the ASP.NET-hosted game server (single
-  process, `Program.cs` entry point). `Engine/` holds 86 source files
-  (gameplay/simulation/background-worker logic); `Models/` holds 64 (EF Core
-  entities, DTOs, and `FolkIdleDbContext`); `Migrations/` holds 36 applied
+  process, `Program.cs` entry point). `Engine/` holds 109 source files
+  (gameplay/simulation/background-worker logic); `Models/` holds 66 (EF Core
+  entities, DTOs, and `FolkIdleDbContext`); `Migrations/` holds 55 applied
   migrations. `Domain/` has since been split into five sub-namespaces -
   `Combat`, `Economy`, `Progression`, `Social`, `Shared` - so the "both
   directories are flat" note that used to sit here no longer holds; the
@@ -18,10 +18,16 @@ do not let it drift into aspirational/planned content - that belongs in
 - `server/FolkIdle.Server.Tests/` - xUnit integration test project, uses
   Testcontainers to spin up a real Postgres 16 instance per test collection
   (`PostgresTestFixture`).
-- `client/` - Unity 6000.5.2f1 project. `Assets/Scripts/Network/` holds the
-  binary packet layer and `WebSocketClient`; `Assets/Scripts/UI/` holds
-  MonoBehaviour view/binder components; `Assets/Scripts/Engine/` holds
-  client-side caches (`CodexInventoryCache`, `EquipmentInventoryCache`, etc).
+- `client_web/` - **the client players actually run.** Svelte 5 + Vite,
+  twenty-four screens under `src/routes/` and twenty-five shared components
+  under `src/lib/ui/`. Its wire types are GENERATED from the server's own
+  `--dump-protocol` output and committed; nothing here mirrors a packet by
+  hand. Verified by `scripts/exercise.mjs`, which drives a real browser
+  against a real server and asserts the world changed.
+- `client/` - the retired Unity 6000.5.2f1 project. Kept for the shared
+  artwork and audio, which the web client fetches from the server rather than
+  duplicating (`client/Assets/Resources/Audio/README.md` is the live
+  reference for what plays when). The C# under `Assets/Scripts/` is history.
 - `docs/architecture/` - this documentation set (new as of this pass).
 
 ## 2. Core Tick Architecture
@@ -444,11 +450,34 @@ reintroduce a local copy.
 ## 18. Development Fixture
 
 `--seed-dev` provisions a repeatable playtest account
-(`dev@folkidle.local` / `FolkIdleDev123!`): three level-40 characters, all
-seven equip slots filled on the main one, Town Hall 5, materials, gold, and
-a stocked larder. It is double-guarded - the flag alone does nothing unless
+(`dev@folkidle.local` / `FolkIdleDev123!`): three level-50 characters, all
+equip slots filled on the main one, Town Hall 5, materials, gold, and a
+stocked larder. It is double-guarded - the flag alone does nothing unless
 `FOLKIDLE_ALLOW_DEV_SEED=1` is also set - because unlike the other operator
 flags it writes a known password.
+
+**A fixture that cannot do the thing you are testing is worse than no
+fixture**, and this one has failed that way four separate times. Each was
+silent, and each cost a debugging session that started by suspecting the
+feature:
+
+- **It could not breed.** No Breeding Grounds, no
+  `character_lineage_registry` rows, and no sexes. The roster endpoint SKIPS
+  a character with no lineage row, so the Breeding screen's parent list came
+  back empty and read as a loading state.
+- **Every attribute was zero.** Setting `CurrentLevel` directly does not grow
+  STR/DEX/CON/LCK - the game adds them per level GAINED - so a level-40
+  account fought with a 148 HP health bar against the ~3,100 a real one
+  carries, and died to a boss a genuine player beats. The same trap
+  `ProgressionRateTests` documents in its own comment.
+- **It stocked no wood or stone**, so no village upgrade priced in them could
+  be paid for.
+- **Its village pool was one villager per sex**, and every `exercise.mjs` run
+  marries one - so the second run had nobody left and the pairing step failed
+  for want of a partner rather than for a defect.
+
+`DevFixtureInvariantTests` now asserts the first of those. Suspect the
+fixture before the screen.
 
 **The stocked larder is load-bearing, not a convenience.** Auto-eat fires
 the moment HP crosses the threshold, and an empty larder stops the activity
@@ -456,3 +485,50 @@ outright with `ActivityHaltReason.OutOfFood`. The first version of this
 fixture omitted it and produced a character that halted about a minute into
 its first fight, which defeats the purpose of an unattended-playtest
 account.
+
+
+## 19. The Long Game: deeds, Seals, the Hall, and the gene pool
+
+Four systems that share one purpose - giving a season something it leaves
+behind, when levels and gear are both wiped. The design is
+`LONG_GAME_SPEC.md`; this is where the pieces live.
+
+- **`DeedRegistry`** holds five chapters of six deeds, pure and static so
+  every threshold is testable without a database. **`DeedProgressSource`**
+  reads the twenty-odd numbers they ask about off the tables once, behind
+  `/api/v1/deeds/snapshot`. **`SealEngine`** banks a Seal on that read -
+  there is no claim command, deliberately, because a claim button is a thing
+  to forget.
+- **A Seal is +2 permanent skill points EVERY season.** The seasonal reset
+  therefore sets `AvailableSkillPoints` to what the Seal mask pays rather
+  than to zero; zeroing it would have paid each Seal exactly once.
+- **`HallOfAncestorsRules`** decides who survives a rollover: ten slots, four
+  more for diamonds, the player's marks first and the strongest blood after.
+  The main character can never be culled - their id IS the account's
+  `PlayerGuid`, so losing them breaks the account rather than the roster.
+- **`BreedingEngine.ExecuteHeroVillagerBreedingAsync`** is the standard pair.
+  A villager marries once and becomes an elder; the pairing is never inbred,
+  because a newcomer has no parents here.
+- **`AssignCharacterSlot`** is the only thing in this server that has ever
+  written a `SlotIndex` after creation. Without it every child bred past the
+  third slot was permanently unplayable.
+
+## 20. What the client is told about a moment
+
+The wire carries **no combat event of any kind** - there is no "you hit for
+N" packet - so the client infers every hit from the difference between two
+`CurrentMonsterHp` snapshots (`client_web/src/lib/stores/damage.ts`). That is
+enough for a number and nothing else, which is why three small fields exist:
+
+- `LastHitWasCrit` - set where the crit is rolled, cleared on every swing.
+- `EquippedWeaponKind` - 0 melee, 1 ranged, 2 magic, resolved from the
+  equipped weapon's base id so the client need not fetch an inventory to
+  decide which effect to draw.
+- `LastVictoryTick` / `LastDeathTick` - EDGES, never values, the contract
+  `OfflineSummaryTick` established: incremented only when the thing really
+  happened, never reset, so the client compares against its own last-seen
+  value and shows each card exactly once.
+
+`NetworkPacketLayoutGuard` pins the packet size and refuses to boot when it
+moves. Every entry in its comment history is a field that had to justify its
+bytes; add to that list rather than editing the number.

@@ -1,12 +1,14 @@
 # client_web
 
-The browser client, and **the direction this project is going** - the decision
-gate was taken on 2026-08-02. Phases 1-3 of
-`docs/architecture/WEB_CLIENT_PORT_PLAN.md`: combat, gathering, character sheet,
-inventory, larder, crafting, forge, market and bank.
+**The client.** Not "the direction this project is going" any more - the Unity
+client in `client/` is retired, and this is what players actually run. The game
+is live at https://92-5-0-94.sslip.io, served from the same origin as the API
+(see `ops/oracle/README.md`).
 
-The Unity client in `client/` is in **feature freeze** - bug fixes only - but is
-still the shipping client until the web build genuinely surpasses it.
+Twenty-four screens, from combat and gathering through the forge, the market and
+the guild to the Book of Deeds, the Hall of Ancestors and breeding. `client/`
+survives only as the home of the shared artwork and audio, which this client
+fetches from the server rather than duplicating.
 
 ## Running it
 
@@ -29,7 +31,7 @@ request with an opaque browser CORS error.
 `src/lib/net/protocol.generated.ts` comes from the server's own
 `--dump-protocol` output, which is produced from the same reflected field plan
 `PacketJsonCodec` encodes with. A hand-written mirror of `StateUpdatePacket`'s
-159 fields would be the largest two-sources-of-truth surface in this project,
+~190 fields would be the largest two-sources-of-truth surface in this project,
 and that is this codebase's dominant bug class.
 
 ```bash
@@ -37,6 +39,25 @@ npm run generate:protocol                  # regenerate (committed, so a fresh
                                            # checkout builds without the SDK)
 node scripts/generate-protocol.mjs --check # CI: fails if a struct changed
 ```
+
+## How a change here is verified
+
+Three layers, and the last one is the one that catches real defects:
+
+```bash
+npx vitest run                             # pure logic, 227 tests
+npx svelte-check --tsconfig ./tsconfig.json
+node scripts/exercise.mjs                  # drives a real browser, 73 checks
+```
+
+`exercise.mjs` signs in as the dev fixture and CLICKS things, then asserts the
+world changed - the child appeared on the roster, the slot freed, the next feast
+cost more. `smoke-screens.mjs` only proves a screen renders, which a screen full
+of dead buttons does perfectly.
+
+**Nine `svelte-check` errors are pre-existing** and unrelated to any current
+work (Combat/Forge "used before declaration", Market/Forge index-signature
+variance, one unused variable). A count of nine is not a regression.
 
 ## Two wire obligations that are written down nowhere else
 
