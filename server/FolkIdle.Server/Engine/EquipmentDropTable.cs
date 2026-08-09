@@ -228,7 +228,52 @@ namespace FolkIdle.Server.Engine
                 found.Add(items[i].Id);
             }
 
+            OrderArmourBySet(regionTier, found);
             return found;
+        }
+
+        /// <summary>
+        /// Puts a slot's two armour pieces in SET ORDER - family A first,
+        /// family B second, the same way for every slot.
+        ///
+        /// THIS IS WHAT MAKES THE MIX A MIX. The deal already alternated
+        /// between a slot's two candidates by index, but the index came from
+        /// whatever order items.json happened to list them in, and that order
+        /// is not consistent per set: at region 1 it put linen first for the
+        /// helmet and steel first for the chest. The alternation was therefore
+        /// alternating between arbitrary things, and what fell out was one
+        /// monster wearing four linen pieces and a steel boot while the next
+        /// wore the mirror image - "almost the whole set, plus boots", which is
+        /// not a mix, it is two sets with a swapped shoe.
+        ///
+        /// Ordered by set, the same `(deal + slot) % 2` rotation produces
+        /// THREE pieces of one set and TWO of the other on every monster, and
+        /// flips which is which from one monster to the next. So no monster is
+        /// "the linen one", finishing a set means killing more than one thing,
+        /// and every table still holds a full spread of slots.
+        ///
+        /// Only armour is touched. Weapons are three archetypes rather than two
+        /// sets and belong to no family; amulets and rings author one piece
+        /// each, so there is nothing to order.
+        /// </summary>
+        private static void OrderArmourBySet(int regionTier, List<int> candidates)
+        {
+            if (candidates.Count < 2) return;
+
+            var families = ArmourSetRegistry.FamiliesAt(regionTier);
+            if (families.Count < 2) return;
+
+            candidates.Sort((left, right) =>
+            {
+                int leftRank = families.IndexOf(ArmourSetRegistry.FamilyOf(ContentRegistry.GetItemBaseId(left)));
+                int rightRank = families.IndexOf(ArmourSetRegistry.FamilyOf(ContentRegistry.GetItemBaseId(right)));
+
+                // Anything with no family - a weapon - keeps its catalogue
+                // order rather than being shuffled to one end.
+                if (leftRank < 0 || rightRank < 0) return left - right;
+                if (leftRank != rightRank) return leftRank - rightRank;
+                return left - right;
+            });
         }
     }
 }

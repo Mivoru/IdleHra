@@ -833,6 +833,27 @@ there is reality to compare to.
 and the asset list names what should exist. `scripts/generate-sprites.mjs`
 holds the alias table where a wrong mapping would live.
 
+**MONSTERS DROPPED "ALMOST THE WHOLE SET PLUS BOOTS" - fixed 2026-08-09.**
+Reported from reading the tables and it was real: the deal alternated between a
+slot's two candidates by INDEX, and the index came from items.json's own order,
+which is not consistent per set. So region 1 gave one monster four linen pieces
+and a steel boot, and the next the mirror image - two sets with a swapped shoe.
+`ArmourSetRegistry` now orders each slot's candidates by SET, which makes the
+same rotation deal **three pieces of one set and two of the other, flipping
+between monsters**. No monster is "the linen one" and completing a set means
+killing more than one thing.
+
+**AND THE SET BONUS HAS NEVER FIRED FOR ANYBODY.** `EquipmentInstance.SetId`
+exists, `SetBonusEngine` reads it, and **nothing in this server has ever written
+it** - nine places construct an EquipmentInstance and not one assigns a set, so
+every item every player owns is set 0. Two consequences: set bonuses are dead
+content, and the Book of Deeds entries "wear two pieces of one set" (chapter II)
+and "wear five pieces" (chapter V) are **unachievable**, which blocks those two
+Seals permanently. `ArmourSetRegistry` is what a fix would be built from -
+stamping a set id on drops is a few lines - but it turns a dead mechanic on and
+is therefore a BALANCE change, so it is left as a decision rather than slipped
+in.
+
 **~~Gloves, amulets and rings are thin in the drop tables~~ - DONE, and it was
 code rather than content.** One authored amulet per location dealt to exactly
 one of five monsters meant four of them dropped none, so a player with a

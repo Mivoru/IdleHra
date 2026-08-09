@@ -157,6 +157,65 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
+        /// EVERY MONSTER CARRIES A MIX OF BOTH SETS - three pieces of one and
+        /// two of the other, flipping from monster to monster.
+        ///
+        /// Reported from looking at the tables: "monsters always have almost
+        /// the whole set + boots". That was real. The deal alternated between a
+        /// slot's two candidates by INDEX, and the index came from whatever
+        /// order items.json listed them in - which is not consistent per set,
+        /// so at region 1 the helmet listed linen first and the chest listed
+        /// steel first. The alternation was therefore alternating between
+        /// arbitrary things, and it landed on one monster wearing four linen
+        /// pieces and a steel boot while the next wore the mirror image. Two
+        /// sets with a swapped shoe, not a mix.
+        ///
+        /// Ordering the candidates by SET makes the same rotation produce 3/2
+        /// and 2/3, so no monster is "the linen one" and completing a set means
+        /// killing more than one thing.
+        /// </summary>
+        [Theory]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(3)]
+        [InlineData(4)]
+        [InlineData(5)]
+        public void EveryMonsterWearsThreeOfOneSetAndTwoOfTheOther(int location)
+        {
+            int first = ContentRegistry.FirstCanonicalMonsterId + (location - 1) * ContentRegistry.MonstersPerRegion;
+            var families = ArmourSetRegistry.FamiliesAt(location);
+
+            Assert.Equal(ArmourSetRegistry.SetsPerTier, families.Count);
+
+            var splitsSeen = new HashSet<string>();
+
+            for (int i = 0; i < ContentRegistry.MonstersPerRegion; i++)
+            {
+                int monsterId = first + i;
+
+                var perFamily = new Dictionary<string, int>();
+                foreach (string family in families) perFamily[family] = 0;
+
+                foreach (int itemId in EquipmentDropTable.GetDrops(monsterId).ToArray())
+                {
+                    string family = ArmourSetRegistry.FamilyOf(ContentRegistry.GetItemBaseId(itemId));
+                    if (family.Length == 0) continue;
+                    if (perFamily.ContainsKey(family)) perFamily[family]++;
+                }
+
+                var counts = perFamily.Values.OrderByDescending(v => v).ToList();
+                Assert.Equal(new[] { 3, 2 }, counts);
+
+                splitsSeen.Add(string.Join(",", families.Select(f => f + ":" + perFamily[f])));
+            }
+
+            // BOTH ways round appear. A location where every monster split 3/2
+            // the SAME way would still pass the count check above while being
+            // the original complaint wearing a smaller number.
+            Assert.Equal(2, splitsSeen.Count);
+        }
+
+        /// <summary>
         /// Sharing the thin slots must not collapse into "every monster in a
         /// location drops the same table", which is the bug the deal replaced.
         /// Two monsters of one location may overlap - with fifteen pieces and
