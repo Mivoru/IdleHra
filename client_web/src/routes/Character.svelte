@@ -621,11 +621,19 @@
     opacity: 0.5;
   }
 
+  /* Modul: THE CHARACTER IS THE SUBJECT OF THIS SCREEN.
+     The middle column was `auto`, so it took only as much width as the picture
+     happened to need, and `align-items: start` parked that picture at the top.
+     Four gear slots down each side are much taller than a portrait and a name,
+     so the character ended up a small stamp with half a column of nothing
+     under it - the emptiest part of the screen sitting exactly where the eye
+     goes first. It gets the widest share now and is centred in its own
+     height. */
   .rig {
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr) minmax(0, 1fr);
     gap: 0.8rem;
-    align-items: start;
+    align-items: stretch;
   }
 
   .rig .column {
@@ -638,9 +646,45 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.25rem;
+    justify-content: center;
+    gap: 0.35rem;
     text-align: center;
-    padding-top: 0.6rem;
+  }
+
+  /* RaceIcon caps `xl` at 13rem, which was sized for the narrow middle column
+     that no longer exists. The column is the cap now. */
+  .figure :global(.race[data-size='xl'] img),
+  .figure :global(.race[data-size='xl'] .fallback) {
+    max-width: min(100%, 20rem);
+  }
+
+  /* Modul: on a phone three columns is one too many. The side rails squeezed
+     the portrait to a thumbnail between them, which is the complaint about
+     desktop only worse. The figure goes across the top at full width and the
+     gear sits under it in two columns - which is also the order it is read.
+     Placement is explicit rather than left to auto-flow: the figure sits
+     BETWEEN the two columns in the DOM, so auto-placement would put the left
+     rail above it. */
+  @media (max-width: 46rem) {
+    .rig {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .figure {
+      grid-column: 1 / -1;
+      grid-row: 1;
+      padding-bottom: 0.4rem;
+    }
+
+    .rig > .column:first-of-type {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .rig > .column:last-of-type {
+      grid-column: 2;
+      grid-row: 2;
+    }
   }
 
   .gearslot {
@@ -754,6 +798,16 @@
     gap: 1rem;
     padding: 1rem;
     align-items: start;
+  }
+
+  /* Modul: the paper doll is not a sibling of the stat panels, it is the
+     screen. Three equal auto-fit columns gave it the same width as a list of
+     numbers, and that width is what squeezed the character between its own
+     gear. It takes two tracks once there is room for two. */
+  @media (min-width: 64rem) {
+    .doll {
+      grid-column: span 2;
+    }
   }
 
   .panel {
