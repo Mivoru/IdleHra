@@ -292,11 +292,31 @@ var retryConfiguredOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
     .Options;
 serviceCollection.AddSingleton(new RetryingDbContextOptions(retryConfiguredOptions));
 
-// Modul: MockOAuthTokenValidator performs no cryptographic verification -
-// see its own doc comment. A real deployment must register a real
-// IOAuthTokenValidator (Google tokeninfo / Apple JWKS) before accepting
-// real OAuth links or logins.
-serviceCollection.AddSingleton<IOAuthTokenValidator, MockOAuthTokenValidator>();
+// Modul: THE MOCK OAUTH VALIDATOR WAS REGISTERED IN PRODUCTION.
+//
+// MockOAuthTokenValidator performs no cryptographic verification and its own
+// comment says never to register it outside local development - and this line
+// registered it unconditionally. /api/v1/auth/login is unauthenticated by
+// design and accepts an oauthProviderToken, so the live server would have taken
+// "mock:Google:{id}" from anybody as proof of identity.
+//
+// Not yet exploitable, and only by luck: nothing in the client can link an
+// OAuth identity, so the lookup finds no row. That luck ends the day OAuth
+// ships, and a Google `sub` is not a secret.
+//
+// Production therefore gets a validator that refuses everything - the same
+// fail-closed shape as the admin endpoint's missing key. Swap in a real
+// Google tokeninfo / Apple JWKS implementation when OAuth is actually wanted;
+// until then it does not work, which is where it already was.
+bool isProductionForOAuth = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") == "Production";
+if (isProductionForOAuth)
+{
+    serviceCollection.AddSingleton<IOAuthTokenValidator, DisabledOAuthTokenValidator>();
+}
+else
+{
+    serviceCollection.AddSingleton<IOAuthTokenValidator, MockOAuthTokenValidator>();
+}
 
 var jwtSecretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY");
 if (jwtSecretKey == null)

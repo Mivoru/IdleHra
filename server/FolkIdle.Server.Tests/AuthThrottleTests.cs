@@ -88,5 +88,35 @@ namespace FolkIdle.Server.Tests
 
             Assert.False(AuthThrottle.TryConsume(resolved));
         }
-    }
+    
+        /// <summary>
+        /// THE MOCK OAUTH VALIDATOR MUST NEVER BE THE ONE A PLAYER MEETS.
+        ///
+        /// It accepts "mock:Google:{id}" with no cryptography at all, and
+        /// /api/v1/auth/login is unauthenticated and accepts an
+        /// oauthProviderToken - so registering it in production means anybody
+        /// who knows an account's provider id can sign in as them. A Google
+        /// `sub` is not a secret.
+        ///
+        /// Production gets DisabledOAuthTokenValidator, which refuses
+        /// everything including the exact token shape the mock accepts. That is
+        /// the assertion: not "the disabled one returns false" in the abstract,
+        /// but that the specific credential the mock would have honoured is
+        /// refused.
+        /// </summary>
+        [Fact]
+        public void DisabledOAuthValidatorRefusesTheTokenTheMockWouldAccept()
+        {
+            const string forged = "mock:Google:114823901283091823";
+
+            var mock = new MockOAuthTokenValidator();
+            Assert.True(mock.Validate(forged).IsValid, "the mock is expected to accept this - that is the danger");
+
+            var production = new DisabledOAuthTokenValidator();
+            Assert.False(production.Validate(forged).IsValid);
+            Assert.False(production.Validate("mock:Apple:abc").IsValid);
+            Assert.False(production.Validate(string.Empty).IsValid);
+            Assert.Equal(OAuthProviderType.None, production.Validate(forged).ProviderType);
+        }
+}
 }

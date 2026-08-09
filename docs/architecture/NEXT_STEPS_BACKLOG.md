@@ -752,6 +752,26 @@ look like random bugs. It wants its own pass.
 
 ## Open
 
+**THE MOCK OAUTH VALIDATOR WAS REGISTERED IN PRODUCTION - fixed 2026-08-09.**
+`MockOAuthTokenValidator` accepts `mock:Google:{id}` with no cryptography, its
+own comment says never to register it outside local development, and
+`Program.cs` registered it unconditionally. `/api/v1/auth/login` is
+unauthenticated by design and accepts an `oauthProviderToken`. Not yet
+exploitable, and only by luck - nothing in the client can link an OAuth
+identity, so the lookup finds no row - but that luck ends the day OAuth ships,
+and a Google `sub` is not a secret. Production now gets
+`DisabledOAuthTokenValidator`, which refuses everything. **Writing a real
+validator (Google tokeninfo / Apple JWKS) is a prerequisite for the mobile
+launch**, not an optional extra.
+
+**NO EMAIL VERIFICATION, AND NO PASSWORD RESET.** There is no email
+infrastructure at all - no SMTP, no provider, and the only auth endpoints are
+login, register and oauth-link. Two consequences, and the second is the urgent
+one: an address is never proved, and **a player who forgets their password has
+lost the account permanently.** The game is live. Both need an email sender
+(Resend/Postmark/SES all have free tiers) plus a token table and two endpoints;
+the sending account is a product decision like the payment provider.
+
 **~~Two auth decisions left~~ - BOTH DONE 2026-08-09.** The password minimum is
 **eight**, length only and no composition rule (see `PasswordPolicy` for why
 NIST argues against required symbols), enforced at registration ONLY so nobody

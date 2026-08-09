@@ -40,6 +40,34 @@ namespace FolkIdle.Server.Engine
         OAuthTokenValidationResult Validate(string providerToken);
     }
 
+    /// <summary>
+    /// Refuses every token, and is what a real deployment gets.
+    ///
+    /// THE MOCK VALIDATOR WAS REGISTERED IN PRODUCTION. Its own comment says
+    /// "NEVER register this implementation outside local development and
+    /// tests", and `Program.cs` registered it unconditionally - so the live
+    /// server accepted `mock:Google:{id}` from anybody, with no cryptography,
+    /// on `/api/v1/auth/login`, which is unauthenticated by design.
+    ///
+    /// That was not yet exploitable, and only by luck: nothing in the web
+    /// client can link an OAuth identity, so `TryLoginByOAuthAsync` never finds
+    /// a row and answers 404. The moment OAuth ships - which is exactly what a
+    /// Google Play launch means - every linked account becomes signable-into by
+    /// anyone who knows its provider id. A Google `sub` is not a secret; every
+    /// app you have ever signed into with Google has it.
+    ///
+    /// So the production registration FAILS CLOSED, the same way the admin
+    /// endpoint's missing key means "closed" rather than "default password".
+    /// OAuth does not work in production until somebody writes a validator that
+    /// actually verifies a signature (Google tokeninfo, Apple JWKS) - which is
+    /// no loss, because it did not work SAFELY before.
+    /// </summary>
+    public sealed class DisabledOAuthTokenValidator : IOAuthTokenValidator
+    {
+        public OAuthTokenValidationResult Validate(string providerToken)
+            => OAuthTokenValidationResult.Invalid;
+    }
+
     // Modul: accepts tokens of the exact shape "mock:{providerType}:{externalId}"
     // (e.g. "mock:Google:114823..."). Deliberately not cryptographically
     // verified - this exists purely so the account-linking and login-
