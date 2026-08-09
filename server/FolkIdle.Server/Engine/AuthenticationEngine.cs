@@ -435,25 +435,12 @@ namespace FolkIdle.Server.Engine
             return (true, existing.Id, existing.PlayerGuid);
         }
 
-        // Modul: Email/Password Auth. Used by the register screen's
-        // email-availability check before it reveals the username/password
-        // fields - a normalized, invalid, or already-registered email all
-        // report "unavailable" so the caller cannot distinguish "malformed"
-        // from "taken" through this endpoint (Register itself returns the
-        // more specific EmailRegisterOutcome for the caller's own submit
-        // attempt).
-        public static async Task<bool> IsEmailAvailableAsync(RetryingDbContextOptions authOptions, string email)
-        {
-            string normalizedEmail = NormalizeEmail(email);
-            if (!IsValidEmailFormat(normalizedEmail))
-            {
-                return false;
-            }
-
-            await using var db = new FolkIdleDbContext(authOptions.Options);
-            bool exists = await db.PlayerRecords.AsNoTracking().AnyAsync(p => p.Email == normalizedEmail);
-            return !exists;
-        }
+        // Modul: IsEmailAvailableAsync IS GONE, with the /api/v1/auth/
+        // check-email endpoint it served. Unauthenticated and unthrottled, it
+        // answered "does this address have an account here" - an enumeration
+        // oracle, and one no screen in this game ever called. Registration
+        // still refuses a duplicate address, which is where a real player
+        // finds out.
 
         // Modul: Email/Password Auth. Creates a brand new account bound to
         // (Email, PasswordHash, Username) - mirrors LoginOrProvisionAsync's
@@ -477,7 +464,9 @@ namespace FolkIdle.Server.Engine
                 return (EmailRegisterOutcome.InvalidUsername, 0L, Guid.Empty);
             }
 
-            if (string.IsNullOrEmpty(password) || password.Length < 6)
+            // Length only, eight minimum - see PasswordPolicy for why there is
+            // no composition rule and why the maximum exists.
+            if (!PasswordPolicy.IsAcceptable(password))
             {
                 return (EmailRegisterOutcome.InvalidPassword, 0L, Guid.Empty);
             }

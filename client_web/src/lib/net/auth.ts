@@ -146,12 +146,10 @@ export async function register(
   return readSession(response, 'Registration');
 }
 
-export async function isEmailAvailable(email: string): Promise<boolean> {
-  const response = await postJson('/api/v1/auth/check-email', { email });
-  if (!response.ok) return false;
-  const parsed = await response.json();
-  return parsed.Available === true;
-}
+// Modul: isEmailAvailable IS GONE, with the endpoint behind it. Asking the
+// server whether an address has an account here is an enumeration oracle -
+// feed it a breach dump, get back the subset who play this game - and nothing
+// in this client ever called it. Registration still refuses a duplicate.
 
 /** Authenticated GET against the REST surface. */
 export async function authedGet<T>(path: string): Promise<T> {

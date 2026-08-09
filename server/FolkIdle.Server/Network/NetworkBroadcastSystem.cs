@@ -764,7 +764,6 @@ namespace FolkIdle.Server.Network
                     // X-Forwarded-For rather than the socket's address.
                     if (requestPath == "/api/v1/auth/login"
                         || requestPath == "/api/v1/auth/register"
-                        || requestPath == "/api/v1/auth/check-email"
                         || requestPath == "/api/v1/auth/oauth-link")
                     {
                         if (!AuthThrottle.TryConsume(AuthThrottle.ResolveClientAddress(context.Request)))
@@ -800,12 +799,6 @@ namespace FolkIdle.Server.Network
                     if (requestPath == "/api/v1/auth/oauth-link" && context.Request.HttpMethod == "POST")
                     {
                         _ = HandleOAuthLink(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/auth/check-email" && context.Request.HttpMethod == "POST")
-                    {
-                        _ = HandleCheckEmail(context);
                         continue;
                     }
 
@@ -6082,11 +6075,6 @@ namespace FolkIdle.Server.Network
             public long ExpiresAtEpoch { get; set; }
         }
 
-        private sealed class CheckEmailResponse
-        {
-            public bool Available { get; set; }
-        }
-
         private sealed class RegisterErrorResponse
         {
             public string Reason { get; set; } = string.Empty;
@@ -6327,65 +6315,20 @@ namespace FolkIdle.Server.Network
             context.Response.Close();
         }
 
-        // Modul: Email/Password Auth. Availability check the register
-        // screen calls before it reveals the username/password fields -
-        // see AuthenticationEngine.IsEmailAvailableAsync for why an
-        // invalid-format email also reports unavailable rather than a
-        // separate error (this endpoint only ever answers yes/no, never
-        // distinguishes the reason).
-        private async Task HandleCheckEmail(HttpListenerContext context)
-        {
-            try
-            {
-                if (!context.Request.HasEntityBody)
-                {
-                    context.Response.StatusCode = 400;
-                    context.Response.Close();
-                    return;
-                }
+        // Modul: /api/v1/auth/check-email IS GONE.
+        //
+        // It answered, unauthenticated and unthrottled, whether a given address
+        // has an account here - which is an account ENUMERATION ORACLE: feed it
+        // a breach dump and it hands back the subset of addresses that play
+        // this game, ready for credential stuffing or a targeted phish. It was
+        // built for a convenience nothing ended up using: `isEmailAvailable`
+        // had no caller anywhere in the client.
+        //
+        // Registration still refuses a duplicate address, so nothing a real
+        // player does has changed. The difference is that finding out now costs
+        // one registration attempt through the auth throttle instead of one
+        // cheap POST per address.
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                string body = await reader.ReadToEndAsync();
-
-                string email = string.Empty;
-                try
-                {
-                    using var document = System.Text.Json.JsonDocument.Parse(body);
-                    if (document.RootElement.TryGetProperty("email", out var emailElement))
-                    {
-                        email = emailElement.GetString() ?? string.Empty;
-                    }
-                }
-                catch (System.Text.Json.JsonException)
-                {
-                    context.Response.StatusCode = 400;
-                    context.Response.Close();
-                    return;
-                }
-
-                if (string.IsNullOrWhiteSpace(email))
-                {
-                    context.Response.StatusCode = 400;
-                    context.Response.Close();
-                    return;
-                }
-
-                var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
-                bool available = await AuthenticationEngine.IsEmailAvailableAsync(authOptions, email);
-
-                var response = new CheckEmailResponse { Available = available };
-                context.Response.StatusCode = 200;
-                context.Response.ContentType = "application/json";
-                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Check-email error: {ex}");
-                context.Response.StatusCode = 500;
-            }
-
-            context.Response.Close();
-        }
 
         // Modul: Email/Password Auth. Creates a new account (see
         // AuthenticationEngine.RegisterWithEmailAsync) and, on success,

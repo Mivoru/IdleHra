@@ -729,11 +729,14 @@ look like random bugs. It wants its own pass.
 
 ## Open
 
-**Two auth decisions left, because they are product calls rather than fixes.**
-The password minimum is six characters, which is short. And
-`/api/v1/auth/check-email` answers whether an address has an account, which is
-convenient at the registration form and is also an account enumeration oracle.
-Both are defensible; neither should be changed by accident.
+**~~Two auth decisions left~~ - BOTH DONE 2026-08-09.** The password minimum is
+**eight**, length only and no composition rule (see `PasswordPolicy` for why
+NIST argues against required symbols), enforced at registration ONLY so nobody
+holding an old six-character password is locked out. And
+`/api/v1/auth/check-email` is **deleted**, along with `IsEmailAvailableAsync`
+and the client's `isEmailAvailable` - it answered "does this address have an
+account here" unauthenticated and unthrottled, and no screen ever called it.
+Registration still refuses a duplicate, which is where a real player finds out.
 
 **~~The health pool ignores `flat_hp` affixes~~ - DONE, and the reading moved
 a long way.** Both models carry gear HP now, and `GatheringShareTests` was also

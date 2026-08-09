@@ -2969,6 +2969,61 @@ namespace FolkIdle.Server.Tests
 
             var shortPassword = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, "invalid_shapes2_970000803@example.com", "ValidUserB803", "abc", null);
             Assert.Equal(EmailRegisterOutcome.InvalidPassword, shortPassword.Outcome);
+
+            // Modul: EIGHT, up from six. Seven characters was legal until now -
+            // see PasswordPolicy for the arithmetic, and for why there is no
+            // composition rule to go with the length.
+            var sevenCharacters = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, "invalid_shapes3_970000803@example.com", "ValidUserC803", "abcdefg", null);
+            Assert.Equal(EmailRegisterOutcome.InvalidPassword, sevenCharacters.Outcome);
+
+            // And the ceiling, which is about denial of service rather than
+            // security: PBKDF2 at 210,000 iterations over a megabyte is a free
+            // way to burn a core on an unauthenticated endpoint.
+            var absurdlyLong = await AuthenticationEngine.RegisterWithEmailAsync(
+                _fixture.RetryingOptions, "invalid_shapes4_970000803@example.com", "ValidUserD803",
+                new string('x', PasswordPolicy.MaxLength + 1), null);
+            Assert.Equal(EmailRegisterOutcome.InvalidPassword, absurdlyLong.Outcome);
+        }
+
+        /// <summary>
+        /// RAISING A MINIMUM MUST NOT LOCK ANYBODY OUT.
+        ///
+        /// The policy is enforced at registration, which is the only place this
+        /// server sets a password - so an account created under the old
+        /// six-character rule has to keep signing in. Asserted rather than
+        /// assumed, because the obvious way to "tighten security" is to add the
+        /// same check to the login path, and that would silently bar every
+        /// player who registered before today.
+        /// </summary>
+        [Fact]
+        public async Task Test_AuthenticationEngine_AnOldShortPasswordStillSignsIn()
+        {
+            const string email = "legacy_short_password_970000805@example.com";
+            const string shortPassword = "sixchr";
+
+            // Written straight to the row, which is what an account registered
+            // under the old rule looks like today.
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = 970000805L,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid(),
+                    Email = email,
+                    Username = "LegacyShort805",
+                    PasswordHash = PasswordHasher.Hash(shortPassword),
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var login = await AuthenticationEngine.LoginWithEmailAsync(_fixture.RetryingOptions, email, shortPassword, null);
+            Assert.Equal(EmailLoginOutcome.Success, login.Outcome);
+
+            // But a NEW account may not be created with it.
+            var registration = await AuthenticationEngine.RegisterWithEmailAsync(
+                _fixture.RetryingOptions, "legacy_short_new_970000805@example.com", "LegacyNew805", shortPassword, null);
+            Assert.Equal(EmailRegisterOutcome.InvalidPassword, registration.Outcome);
         }
 
         [Fact]
@@ -3016,22 +3071,37 @@ namespace FolkIdle.Server.Tests
             Assert.False(afterLoginOldDevice.Found);
         }
 
+        /// <summary>
+        /// THE AVAILABILITY ORACLE IS GONE, and this is what replaced it.
+        ///
+        /// IsEmailAvailableAsync and /api/v1/auth/check-email answered
+        /// "does this address have an account here" to anybody who asked, with
+        /// no authentication and no throttle - feed it a breach dump and it
+        /// returns the subset who play this game. Nothing in the client ever
+        /// called it.
+        ///
+        /// What a real player depends on is unchanged and asserted here:
+        /// registration refuses a duplicate address, case-insensitively. The
+        /// difference is that finding out now costs a registration attempt
+        /// through the auth throttle instead of a cheap POST per address.
+        /// </summary>
         [Fact]
-        public async Task Test_AuthenticationEngine_IsEmailAvailable_ReturnsFalseOnceRegistered()
+        public async Task Test_AuthenticationEngine_RegistrationStillRefusesADuplicateAddress()
         {
             string email = "availability_970000806@example.com";
-
-            Assert.True(await AuthenticationEngine.IsEmailAvailableAsync(_fixture.RetryingOptions, email));
 
             var registerResult = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, email, "AvailabilityUser806", "correct password", null);
             Assert.Equal(EmailRegisterOutcome.Success, registerResult.Outcome);
 
-            Assert.False(await AuthenticationEngine.IsEmailAvailableAsync(_fixture.RetryingOptions, email));
-            // Case-insensitive - the same address with different casing is
-            // also reported unavailable.
-            Assert.False(await AuthenticationEngine.IsEmailAvailableAsync(_fixture.RetryingOptions, email.ToUpperInvariant()));
+            var again = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, email, "AvailabilityUserB806", "correct password", null);
+            Assert.Equal(EmailRegisterOutcome.EmailInUse, again.Outcome);
 
-            Assert.False(await AuthenticationEngine.IsEmailAvailableAsync(_fixture.RetryingOptions, "not-an-email"));
+            // Same address, different casing - still the same account.
+            var shouted = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, email.ToUpperInvariant(), "AvailabilityUserC806", "correct password", null);
+            Assert.Equal(EmailRegisterOutcome.EmailInUse, shouted.Outcome);
+
+            var malformed = await AuthenticationEngine.RegisterWithEmailAsync(_fixture.RetryingOptions, "not-an-email", "AvailabilityUserD806", "correct password", null);
+            Assert.Equal(EmailRegisterOutcome.InvalidEmail, malformed.Outcome);
         }
 
         [Fact]

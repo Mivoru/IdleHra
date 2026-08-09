@@ -75,6 +75,13 @@
         bind:value={password}
         autocomplete={mode === 'register' ? 'new-password' : 'current-password'}
       />
+      <!-- Modul: SAY THE RULE BEFORE IT IS BROKEN. The minimum moved from six
+           to eight and the form said nothing either way, so the only way to
+           discover it was to be refused. Length only - there is no required
+           digit or symbol, deliberately; see PasswordPolicy. -->
+      {#if mode === 'register'}
+        <span class="hint">Eight characters or more. Length is all that is asked for.</span>
+      {/if}
     </label>
 
     <button
@@ -141,5 +148,10 @@
   .error {
     margin: 0.25rem 0 0;
     color: var(--danger);
+  }
+
+  .hint {
+    font-size: 0.75rem;
+    color: var(--text-dim);
   }
 </style>
