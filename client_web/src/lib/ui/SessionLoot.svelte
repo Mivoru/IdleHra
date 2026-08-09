@@ -17,6 +17,7 @@
   import { lootLog, type LootEntry } from '../stores/game';
   import { itemName, type ContentRegistry } from '../net/content';
   import { rarityColor, shouldGlow } from './rarity';
+  import Burst from './Burst.svelte';
 
   interface Props {
     registry: ContentRegistry | null;
@@ -101,11 +102,26 @@
   {:else}
     <ul>
       {#each rows as row (row.key)}
-        <li>
+        {@const isRare = row.dropKind === KIND_EQUIPMENT && shouldGlow(row.qualityTier)}
+        <li class:rare={isRare} class:folk-sweep={isRare}>
+          <!-- Modul: A TOP-TIER DROP LOOKED LIKE EVERY OTHER LINE OF TEXT.
+               It had a sound and a colour and nothing else, so the one drop in
+               twenty-one that is worth stopping for scrolled past at the same
+               speed as a wolf pelt. Sparks in the item's own rarity colour,
+               and the shared sweep across the row.
+
+               Gated on shouldGlow - tier 10 and up - for the reason that
+               function exists: an effect on every drop is an effect on none. -->
+          {#if isRare}
+            <span class="burstwrap">
+              <Burst color={rarityColor(row.qualityTier)} reach={2.4} count={10} />
+            </span>
+          {/if}
+
           <span
             class="name"
             style="color: {row.dropKind === KIND_MATERIAL ? 'var(--text)' : rarityColor(row.qualityTier)}"
-            class:rarity-glow={row.dropKind === KIND_EQUIPMENT && shouldGlow(row.qualityTier)}
+            class:rarity-glow={isRare}
           >
             {label(row)}
           </span>
@@ -165,6 +181,22 @@
     align-items: baseline;
     gap: 0.45rem;
     font-size: 0.83rem;
+  }
+
+  /* Positioned so the burst can anchor to the row it belongs to, and padded so
+     the sweep has something to cross. */
+  li.rare {
+    position: relative;
+    border-radius: var(--radius);
+    padding: 0.1rem 0.25rem;
+  }
+
+  .burstwrap {
+    position: absolute;
+    left: 1.2rem;
+    top: 50%;
+    width: 0;
+    height: 0;
   }
 
   .name {

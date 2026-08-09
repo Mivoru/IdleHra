@@ -815,3 +815,85 @@ h3:not(.place):not([style*='background-image'])::before {
    others, and would have decorated any dim label that happened to be an only
    child. A rule that fires where nobody intended is worse than a bare "Nothing
    yet.", which at least says the same thing every time. */
+
+/* ---------------------------------------------------------------------------
+   Modul: THE EFFECT VOCABULARY, in one place.
+
+   A light sweep across brass and a glow pulse were written for the achievement
+   toast and lived inside it. Four more moments wanted the same two effects -
+   a rare drop, a forge reroll, a forge fusion, a first clear - and the choice
+   was four private copies or one shared pair. This codebase has lost items,
+   recipes and monster tables to copies that drifted; a visual language is no
+   different, and "the game's celebratory flourish" should be one thing rather
+   than five that slowly stop matching.
+
+   Global rather than a Svelte component because these are DECORATION applied
+   to an existing element - a sweep is a pseudo-element over a card, not a card
+   of its own - and Svelte scopes component styles away from the markup that
+   needs them.
+   --------------------------------------------------------------------------- */
+
+/* A band of light that crosses an element once. The element must be
+   positioned, and should clip - the sweep deliberately overshoots both edges
+   so it enters and leaves rather than fading in place. */
+.folk-sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.folk-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(255, 240, 200, 0.34) 48%,
+    transparent 74%
+  );
+  translate: -110% 0;
+  animation: folk-sweep-across 900ms ease-out 140ms;
+  pointer-events: none;
+}
+
+@keyframes folk-sweep-across {
+  to {
+    translate: 110% 0;
+  }
+}
+
+/* The border catching light, once. Paired with a sweep it reads as a thing
+   being presented; on its own it reads as a thing arriving. */
+.folk-glow {
+  animation: folk-glow-pulse 1.4s ease-out;
+}
+
+@keyframes folk-glow-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(216, 180, 90, 0.18),
+      0 10px 26px rgba(0, 0, 0, 0.45);
+  }
+  30% {
+    box-shadow:
+      0 0 0 1px rgba(216, 180, 90, 0.5),
+      0 0 22px rgba(216, 180, 90, 0.4),
+      0 10px 26px rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* Modul: reduced motion takes the movement, NOT the message. Every one of
+   these marks a thing the player would otherwise have no way of noticing, so
+   the effect is shortened to a still rather than removed - the border still
+   catches light, it simply does not travel. */
+@media (prefers-reduced-motion: reduce) {
+  .folk-sweep::after {
+    animation: none;
+    opacity: 0;
+  }
+
+  .folk-glow {
+    animation-duration: 400ms;
+  }
+}

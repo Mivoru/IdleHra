@@ -3,7 +3,7 @@
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import { locationBackground } from '../lib/ui/sprites';
   import { onMount } from 'svelte';
-  import { playerState, visualState, connectionStatus, observedMaxPlayerHp, damageEvents, pushLocalNotice } from '../lib/stores/game';
+  import { playerState, visualState, connectionStatus, observedMaxPlayerHp, damageEvents, pushLocalNotice, levelUpPulse } from '../lib/stores/game';
   import {
     loadContent,
     itemName,
@@ -19,6 +19,7 @@
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import FloatingDamage from '../lib/ui/FloatingDamage.svelte';
   import HitSpark from '../lib/ui/HitSpark.svelte';
+  import Burst from '../lib/ui/Burst.svelte';
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
   import SessionLoot from '../lib/ui/SessionLoot.svelte';
 
@@ -243,9 +244,18 @@
 
     {#if snap}
       <div class="stats">
-        <div>
+        <!-- Modul: the level number itself catches light when it changes.
+             Marked where the number IS, rather than as a banner somewhere
+             else - the eye is already on this figure when it moves. -->
+        <div class="levelcell">
           <span class="dim">Level</span>
           <strong>{snap.CurrentLevel}</strong>
+          {#if $levelUpPulse > 0}
+            {#key $levelUpPulse}
+              <span class="levelfx folk-sweep"></span>
+              <span class="levelburst"><Burst count={14} reach={2.8} /></span>
+            {/key}
+          {/if}
         </div>
         <div>
           <span class="dim">XP</span>
@@ -443,6 +453,27 @@
 </div>
 
 <style>
+  .levelcell {
+    position: relative;
+    border-radius: var(--radius);
+  }
+
+  .levelfx {
+    position: absolute;
+    inset: -0.2rem;
+    border-radius: var(--radius);
+    pointer-events: none;
+  }
+
+  .levelburst {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+  }
+
   .struckwrap {
     display: inline-block;
     will-change: transform, filter;

@@ -21,6 +21,7 @@
     FIRST_CLEAR_ATTACK_MULTIPLIER,
   } from './victories';
   import { requestScreen } from '../stores/navigation';
+  import Burst from './Burst.svelte';
 
   // The monster table is content, not state - loaded once, the same way
   // Combat loads it. A card that says "monster 105" is not a card.
@@ -41,7 +42,12 @@
 
 {#if victory && unlocks}
   <div class="backdrop" role="dialog" aria-modal="true" aria-label="First victory">
-    <div class="card">
+    <!-- Modul: the shared flourish, on the loudest moment in the game. A
+         sweep as it is presented and a burst behind the heading - the same
+         vocabulary the achievement toast uses, so a big moment looks like a
+         bigger version of a small one rather than like a different game. -->
+    <div class="card folk-sweep folk-glow">
+      <span class="crown"><Burst count={16} reach={4.5} /></span>
       <p class="kicker">First clear</p>
       <h2>{monsterName(registry, victory.monsterId)} is down</h2>
 
@@ -132,6 +138,14 @@
     padding: 1.2rem;
     display: grid;
     gap: 0.5rem;
+  }
+
+  .crown {
+    position: absolute;
+    left: 50%;
+    top: 2.2rem;
+    width: 0;
+    height: 0;
   }
 
   .kicker {

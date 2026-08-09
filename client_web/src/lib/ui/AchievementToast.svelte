@@ -15,7 +15,10 @@
 <div class="deeds" role="status" aria-live="polite">
   {#each $achievementToasts as toast (toast.id)}
     <div class="deed">
-      <!-- The sweep is a sibling rather than a background, so it can cross the
+      <!-- Modul: was a private .sweep span with its own keyframes. Now the
+           shared .folk-sweep in app.css, because four other moments wanted the
+           same flourish and five copies of one effect drift.
+           The sweep is a sibling rather than a background, so it can cross the
            whole card once and be done without fighting the frame's own paint. -->
       <span class="sweep" aria-hidden="true"></span>
 

@@ -3,6 +3,7 @@
   import { queryKeys, fetchForge, type ForgeEquipment } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
   import { executeForgeFusion, rerollAffix, REROLL_OPERATIONS } from '../lib/net/commands';
+  import Burst from '../lib/ui/Burst.svelte';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
   import { loadContent, type ContentRegistry } from '../lib/net/content';
@@ -175,6 +176,7 @@
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
     fusionSacOne = 0;
     fusionSacTwo = 0;
+    fusionFlash++;
     refresh();
   }
 
@@ -279,6 +281,23 @@
   const rerollAffixRows = $derived(rerollItem ? toDisplayAffixes(rerollItem.Affixes) : []);
   const selectedOperation = $derived(REROLL_OPERATIONS[rerollOperation] ?? REROLL_OPERATIONS[0]);
 
+  // Modul: THE FORGE GAVE NO SIGN IT HAD DONE ANYTHING.
+  //
+  // Both halves of this screen are the entire gear progression, and pressing
+  // either button produced a silent list refresh a moment later. A reroll that
+  // came back with a worse affix and a reroll that was rejected outright looked
+  // identical: nothing moved.
+  //
+  // The counters key the flourish so it replays on every press - without a key
+  // Svelte reuses the node and a CSS animation runs exactly once, ever, which
+  // is the same trap the hit spark and the achievement toast both document.
+  //
+  // Fired on ACCEPTANCE rather than on the server's answer, matching how the
+  // rest of this screen already behaves: the round trip is short, and a refusal
+  // arrives as a toast.
+  let fusionFlash = $state(0);
+  let rerollFlash = $state(0);
+
   function doReroll() {
     // The affix ABOUT TO BE DESTROYED, not the one that will replace it.
     const current = rerollAffixRows[rerollAffixIndex];
@@ -298,6 +317,7 @@ ${scope}`)) return;
       stopAffixIndex,
     });
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    rerollFlash++;
     refresh();
   }
 </script>
@@ -397,6 +417,13 @@ ${scope}`)) return;
     >
       Fuse
     </button>
+
+    {#if fusionFlash > 0}
+      {#key fusionFlash}
+        <span class="forgefx folk-sweep"></span>
+        <span class="forgeburst"><Burst count={14} reach={3.6} /></span>
+      {/key}
+    {/if}
   </section>
 
   <section class="panel">
@@ -563,6 +590,13 @@ ${scope}`)) return;
         {autoReroll ? `Auto-reroll up to ${autoAttempts}x` : 'Reroll once'}
         &middot; {rerollFee.toLocaleString()}g{autoReroll ? ' each' : ''}
       </button>
+
+      {#if rerollFlash > 0}
+        {#key rerollFlash}
+          <span class="forgefx folk-sweep"></span>
+          <span class="forgeburst"><Burst count={12} reach={3} color="var(--brass-lit)" /></span>
+        {/key}
+      {/if}
       {#if gold < rerollFee}
         <p class="dim tiny">
           You have {gold.toLocaleString()}g and this costs {rerollFee.toLocaleString()}g.
@@ -579,6 +613,29 @@ ${scope}`)) return;
 </div>
 
 <style>
+  /* The flourish overlays the whole panel rather than one control: a fusion
+     changes an item that is listed in several places on this screen, so
+     marking the machine reads better than marking one row of it. */
+  .forgefx {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+    pointer-events: none;
+  }
+
+  .forgeburst {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+  }
+
+  .panel {
+    position: relative;
+  }
+
   .guard {
     display: flex;
     align-items: center;

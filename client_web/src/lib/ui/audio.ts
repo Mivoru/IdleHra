@@ -29,6 +29,7 @@ export const CLIPS = {
   hitMagic: 'combat_hit_magic.wav',
   hitCrit: 'combat_hit_crit.wav',
   playerDied: 'combat_player_died.wav',
+  bossFirstClear: 'combat_boss_first_clear.wav',
   monsterDefeated: 'combat_monster_defeated.wav',
   lootDropped: 'loot_dropped.wav',
   lootRare: 'loot_rare_dropped.wav',

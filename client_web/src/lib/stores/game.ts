@@ -254,6 +254,9 @@ export interface HitSpark {
 
 export const hitSparks = writable<HitSpark | null>(null);
 
+/** Bumped on every level gained, so a component can key a flourish on it. */
+export const levelUpPulse = writable(0);
+
 export const offlineSummary = writable<OfflineSummary | null>(null);
 
 // Modul: OfflineSummaryTick is an EDGE, not a value. The server increments it
@@ -546,7 +549,14 @@ export function startSession(token: string): void {
       }
       lastCraftedCount = packet.TotalItemsCraftedCount;
 
-      if (lastLevel > 0 && packet.CurrentLevel > lastLevel) play('levelUp');
+      if (lastLevel > 0 && packet.CurrentLevel > lastLevel) {
+        play('levelUp');
+        // Modul: A LEVEL HAD A SOUND AND NO PICTURE. It is the most frequent
+        // thing worth celebrating in the game - roughly a hundred times a
+        // season - and a player with the tab muted, which is most of them,
+        // had no way to notice it at all.
+        levelUpPulse.update((n) => n + 1);
+      }
       lastLevel = packet.CurrentLevel;
 
       // Modul: the last two unused clips, wired to the events they were
@@ -596,7 +606,10 @@ export function startSession(token: string): void {
             gold: Number(packet.LastVictoryGold),
             xp: Number(packet.LastVictoryXp),
           });
-          play('levelUp');
+          // Its own fanfare when one exists; the level-up chime until then.
+          // Beating a boss for the first time is not the same event as
+          // gaining a level and should not sound like one forever.
+          playWithFallback('bossFirstClear', 'levelUp');
         }
       }
 
