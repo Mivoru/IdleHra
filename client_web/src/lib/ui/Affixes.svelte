@@ -28,9 +28,6 @@
     'var(--rarity-9)',
     'var(--rarity-12)',
   ];
-
-  ];
-
   const rows = $derived(toDisplayAffixes(affixes));
   const baseStats = $derived.by(() => {
     if (!registry || !baseItemId) return [];
