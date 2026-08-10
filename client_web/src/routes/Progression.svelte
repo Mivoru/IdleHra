@@ -6,8 +6,6 @@
     fetchAchievements,
     fetchAchievementsState,
     fetchLoginBonus,
-    fetchLeaderboard,
-    fetchGuildLeaderboard,
     fetchRaceMastery,
     fetchStatistics,
     type AchievementEntry,
@@ -34,8 +32,6 @@
     queryFn: fetchAchievementsState,
   }));
   const loginBonus = createQuery(() => ({ queryKey: queryKeys.loginBonus, queryFn: fetchLoginBonus }));
-  const leaderboard = createQuery(() => ({ queryKey: queryKeys.leaderboard, queryFn: fetchLeaderboard }));
-  const guildBoard = createQuery(() => ({ queryKey: queryKeys.guildLeaderboard, queryFn: fetchGuildLeaderboard }));
   const raceMastery = createQuery(() => ({ queryKey: queryKeys.raceMastery, queryFn: fetchRaceMastery }));
   const statistics = createQuery(() => ({ queryKey: queryKeys.statistics, queryFn: fetchStatistics }));
 
@@ -257,64 +253,9 @@
       {#if st.GuildName}
         <p class="dim tiny">Guild: {st.GuildName}</p>
       {/if}
+      {/if}
     {:else}
       <Skeleton />
-    {/if}
-  </section>
-
-  <section class="panel">
-    <h2>Leaderboard</h2>
-    <!-- Modul: SAY WHAT IT IS SORTED BY.
-         It ranked on raw XP and displayed level and XP, so two players on the
-         same level were separated by minutes of play and the order read as
-         noise. It ranks by level, then by the hardest monster ever put down,
-         then by kills of it - and a board that sorts by something it does not
-         show is a board whose order looks arbitrary. -->
-    <p class="dim tiny">
-      Ranked by level, then by the hardest monster you have ever beaten, then
-      by how many times you have beaten it.
-    </p>
-    {#if leaderboard.isPending}
-      <Skeleton />
-    {:else if (leaderboard.data ?? []).length === 0}
-      <p class="dim">No ranked players yet.</p>
-    {:else}
-      <ol class="board">
-        {#each leaderboard.data ?? [] as row (row.PlayerId)}
-          <li class:self={row.PlayerId === connection.currentPlayerId}>
-            <span class="rank dim">#{row.Rank}</span>
-            <span class="who">{row.DisplayName}</span>
-            <span class="dim tiny">lv {row.Level}</span>
-            <span class="progress dim tiny">
-              {#if row.HardestMonsterName}
-                {row.HardestMonsterName}
-                {#if row.KillsOfHardest > 0}&times;{row.KillsOfHardest.toLocaleString()}{/if}
-              {:else}
-                no kills yet
-              {/if}
-            </span>
-          </li>
-        {/each}
-      </ol>
-    {/if}
-
-    <h3>Guilds</h3>
-    <!-- Modul: /api/v1/leaderboard/guilds is implemented server-side but no
-         Unity screen has ever called it - one of the nine endpoints the port
-         plan lists as capability the old client never used. -->
-    {#if (guildBoard.data ?? []).length === 0}
-      <p class="dim tiny">No ranked guilds yet.</p>
-    {:else}
-      <ol class="board">
-        {#each guildBoard.data ?? [] as row (row.GuildId)}
-          <li>
-            <span class="rank dim">#{row.Rank}</span>
-            <span class="who">{row.Name}</span>
-            <span class="dim tiny">tier {row.GuildTier}</span>
-            <span class="xp">{row.GuildMMR.toLocaleString()} MMR</span>
-          </li>
-        {/each}
-      </ol>
     {/if}
   </section>
 </div>
@@ -534,42 +475,6 @@
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     font-size: 0.9rem;
-  }
-
-  .board {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 0.2rem;
-    max-height: 20rem;
-    overflow-y: auto;
-  }
-
-  .board li {
-    display: grid;
-    grid-template-columns: 2.5rem 1fr auto auto;
-    gap: 0.5rem;
-    align-items: baseline;
-    font-size: 0.83rem;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.2rem;
-  }
-
-  .board li.self {
-    color: var(--accent);
-    font-weight: 700;
-  }
-
-  .rank,
-  .xp {
-    font-variant-numeric: tabular-nums;
-  }
-
-  .who {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .tiny-btn {

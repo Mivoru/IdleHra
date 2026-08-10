@@ -14,6 +14,7 @@
   import Social from './routes/Social.svelte';
   import GuildOps from './routes/GuildOps.svelte';
   import Progression from './routes/Progression.svelte';
+  import Leaderboards from './routes/Leaderboards.svelte';
   import Village from './routes/Village.svelte';
   import Codex from './routes/Codex.svelte';
   import Breeding from './routes/Breeding.svelte';
@@ -75,16 +76,25 @@
       ],
     },
     {
-      name: 'Others',
+      name: 'Community',
       screens: [
         { key: 'market', label: 'Market' },
-        { key: 'social', label: 'Social' },
+        { key: 'social', label: 'Friends' },
         { key: 'guildops', label: 'Guild' },
         // Modul: Mail belongs here, not under Items - and for a while it
         // belonged NOWHERE. Moving it out of Items dropped the entry without
         // adding it back, which left the route and its unread badge reachable
         // only by a cross-screen navigation request. There was no button.
         { key: 'mailbox', label: 'Mail' },
+        { key: 'leaderboards', label: 'Leaderboards' },
+      ],
+    },
+    {
+      name: 'Genetics',
+      screens: [
+        { key: 'breeding', label: 'Breeding' },
+        { key: 'ancestors', label: 'Ancestors' },
+        { key: 'inheritance', label: 'Inheritance' },
       ],
     },
     {
@@ -93,10 +103,7 @@
         { key: 'village', label: 'Village' },
         { key: 'skills', label: 'Skill Tree' },
         { key: 'progression', label: 'Progress' },
-        { key: 'inheritance', label: 'Inheritance' },
         { key: 'codex', label: 'Codex' },
-        { key: 'breeding', label: 'Breeding' },
-        { key: 'ancestors', label: 'Ancestors' },
         { key: 'store', label: 'Store' },
         { key: 'settings', label: 'Settings' },
       ],
@@ -308,6 +315,8 @@
       <WorldBoss />
     {:else if screen === 'boosts'}
       <Boosts />
+    {:else if screen === 'leaderboards'}
+      <Leaderboards />
     {/if}
 
     <!-- Modul: A BANNER THAT DOES SOMETHING.

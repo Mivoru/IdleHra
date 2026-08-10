@@ -13,6 +13,8 @@
 
   import { itemIcon, initialsFor } from './sprites';
   import { rarityColor, rarityName, shouldGlow } from './rarity';
+  import { loadContent, type ContentRegistry } from '../net/content';
+  import { onMount } from 'svelte';
 
   interface Props {
     baseItemId: string;
@@ -26,12 +28,24 @@
 
   const { baseItemId, name, qualityTier = 0, size = 'md', quantity }: Props = $props();
 
+  let registry = $state<ContentRegistry | null>(null);
+  onMount(async () => {
+    registry = await loadContent().catch(() => null);
+  });
+
   const url = $derived(itemIcon(baseItemId));
   const color = $derived(rarityColor(qualityTier));
   const glow = $derived(shouldGlow(qualityTier));
+  const regionTier = $derived(registry?.itemsByBaseId.get(baseItemId)?.RegionTier ?? 0);
 
   // The title carries the rarity WORD, so the tier is never colour-only.
-  const title = $derived(qualityTier > 0 ? `${name} - ${rarityName(qualityTier)}` : name);
+  const title = $derived(
+    [
+      name,
+      qualityTier > 0 ? ` - ${rarityName(qualityTier)}` : '',
+      regionTier > 0 ? ` (Tier ${regionTier})` : ''
+    ].join('')
+  );
 </script>
 
 <span class="icon" data-size={size} style="--rarity: {color}" class:glow {title}>
@@ -45,6 +59,10 @@
 
   {#if quantity !== undefined && quantity > 1}
     <span class="qty">{quantity > 9999 ? `${Math.floor(quantity / 1000)}k` : quantity}</span>
+  {/if}
+
+  {#if regionTier > 0}
+    <span class="tier" aria-hidden="true">T{regionTier}</span>
   {/if}
 </span>
 
@@ -122,5 +140,21 @@
     background: var(--bg);
     color: var(--text);
     border-top-left-radius: 4px;
+  }
+
+  .tier {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    padding: 0 0.18rem;
+    font-size: 0.58rem;
+    line-height: 1.25;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    background: var(--bg);
+    color: var(--text-dim, #888);
+    border-top-right-radius: 4px;
+    opacity: 0.95;
+    z-index: 1;
   }
 </style>

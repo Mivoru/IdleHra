@@ -1,12 +1,20 @@
 <script lang="ts">
   import type { AffixMap } from '../net/rest';
   import { toDisplayAffixes } from './affixes';
+  import { loadContent, type ContentRegistry } from '../net/content';
+  import { onMount } from 'svelte';
 
   interface Props {
     affixes: AffixMap;
+    baseItemId?: string;
   }
 
-  let { affixes }: Props = $props();
+  let { affixes, baseItemId }: Props = $props();
+
+  let registry = $state<ContentRegistry | null>(null);
+  onMount(async () => {
+    registry = await loadContent().catch(() => null);
+  });
 
   // Affix rarity is a SEPARATE five-tier axis from the item's 14 quality
   // tiers: quality drives how MANY affixes an item has, affix rarity drives
@@ -21,11 +29,31 @@
     'var(--rarity-12)',
   ];
 
+  ];
+
   const rows = $derived(toDisplayAffixes(affixes));
+  const baseStats = $derived.by(() => {
+    if (!registry || !baseItemId) return [];
+    const item = registry.itemsByBaseId.get(baseItemId);
+    if (!item) return [];
+    const stats = [];
+    if (item.FlatAttackPower > 0) stats.push({ label: 'Attack', value: item.FlatAttackPower });
+    if (item.FlatDefenseRating > 0) stats.push({ label: 'Defense', value: item.FlatDefenseRating });
+    return stats;
+  });
 </script>
 
-{#if rows.length > 0}
+{#if baseStats.length > 0 || rows.length > 0}
   <ul class="affixes">
+    {#each baseStats as stat}
+      <li>
+        <span class="name" title="Base statistic">
+          <i class="pip" style="background: var(--text-dim)"></i>
+          {stat.label}
+        </span>
+        <b style="color: var(--text)">{stat.value}</b>
+      </li>
+    {/each}
     {#each rows as row (row.key)}
       <li>
         <span class="name" title={`${row.rarityName} affix`}>
