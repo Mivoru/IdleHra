@@ -71,8 +71,8 @@
   });
 
   let devAnnounceMsg = $state('');
-  let devBanId = $state('');
-  let devMailId = $state('');
+  let devBanUsername = $state('');
+  let devMailUsername = $state('');
   let devMailItem = $state('');
   let devMailQty = $state(1);
   let devMailGold = $state(0);
@@ -92,30 +92,30 @@
   }
 
   async function doBan() {
-    if (!devBanId) return;
-    await adminBan(parseInt(devBanId));
-    devBanId = '';
+    if (!devBanUsername) return;
+    await adminBan(devBanUsername);
+    devBanUsername = '';
     pushLocalNotice('Player banned.');
   }
 
   async function doUnban() {
-    if (!devBanId) return;
-    await adminUnban(parseInt(devBanId));
-    devBanId = '';
+    if (!devBanUsername) return;
+    await adminUnban(devBanUsername);
+    devBanUsername = '';
     pushLocalNotice('Player unbanned.');
   }
 
   async function doMail() {
     await adminSendMail({
-      TargetPlayerId: parseInt(devMailId) || 0,
+      TargetUsername: devMailUsername || null,
       BaseItemId: devMailItem || null,
       QualityTier: 0,
       Quantity: devMailQty,
       Gold: devMailGold,
-      SenderName: 'System Admin',
+      SenderName: 'Dev',
       MessageText: devMailMsg || null
     });
-    devMailId = '';
+    devMailUsername = '';
     devMailItem = '';
     devMailQty = 1;
     devMailGold = 0;
@@ -335,7 +335,7 @@
           <div class="admin-card">
             <h3>Ban / Unban Player</h3>
             <div class="flex-row">
-              <input type="number" bind:value={devBanId} placeholder="Player ID..." />
+              <input type="text" bind:value={devBanUsername} placeholder="Player Username..." />
               <button onclick={doBan} style="color: var(--err)">Ban</button>
               <button onclick={doUnban}>Unban</button>
             </div>
@@ -343,9 +343,9 @@
 
           <div class="admin-card" style="grid-column: 1 / -1;">
             <h3>Admin Mailer</h3>
-            <p class="dim tiny">Leave Target Player ID empty to send to ALL players.</p>
+            <p class="dim tiny">Leave Target Username empty to send to ALL players.</p>
             <div class="form-grid">
-              <input type="number" bind:value={devMailId} placeholder="Target Player ID (0 = ALL)" />
+              <input type="text" bind:value={devMailUsername} placeholder="Target Username (empty = ALL)" />
               <input type="text" bind:value={devMailItem} placeholder="Base Item ID (e.g. axe_copper)" />
               <input type="number" bind:value={devMailQty} placeholder="Quantity" />
               <input type="number" bind:value={devMailGold} placeholder="Gold Amount" />

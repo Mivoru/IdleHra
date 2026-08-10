@@ -1018,16 +1018,16 @@ export function adminAnnounce(text: string): Promise<null> {
   return authedPost<null>('/api/v1/admin/announce', { text });
 }
 
-export function adminBan(playerId: number): Promise<null> {
-  return authedPost<null>(`/api/v1/admin/ban?id=${playerId}`, {});
+export function adminBan(username: string): Promise<null> {
+  return authedPost<null>(`/api/v1/admin/ban?username=${encodeURIComponent(username)}`, {});
 }
 
-export function adminUnban(playerId: number): Promise<null> {
-  return authedPost<null>(`/api/v1/admin/unban?id=${playerId}`, {});
+export function adminUnban(username: string): Promise<null> {
+  return authedPost<null>(`/api/v1/admin/unban?username=${encodeURIComponent(username)}`, {});
 }
 
 export interface AdminMailRequest {
-  TargetPlayerId: number;
+  TargetUsername: string | null;
   BaseItemId: string | null;
   QualityTier: number;
   Quantity: number;

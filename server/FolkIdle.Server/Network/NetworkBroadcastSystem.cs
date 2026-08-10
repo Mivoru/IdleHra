@@ -7571,9 +7571,10 @@ namespace FolkIdle.Server.Network
                 if (requestPath == "/api/v1/admin/ban" && context.Request.HttpMethod == "POST")
                 {
                     var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
-                    if (long.TryParse(query["id"], out long targetId))
+                    string targetUsername = query["username"] ?? string.Empty;
+                    if (!string.IsNullOrEmpty(targetUsername))
                     {
-                        var target = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == targetId);
+                        var target = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Username != null && p.Username.ToLower() == targetUsername.ToLower());
                         if (target != null)
                         {
                             target.IsQuarantined = true;
@@ -7590,9 +7591,10 @@ namespace FolkIdle.Server.Network
                 if (requestPath == "/api/v1/admin/unban" && context.Request.HttpMethod == "POST")
                 {
                     var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
-                    if (long.TryParse(query["id"], out long targetId))
+                    string targetUsername = query["username"] ?? string.Empty;
+                    if (!string.IsNullOrEmpty(targetUsername))
                     {
-                        var target = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == targetId);
+                        var target = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Username != null && p.Username.ToLower() == targetUsername.ToLower());
                         if (target != null)
                         {
                             target.IsQuarantined = false;
@@ -7614,21 +7616,30 @@ namespace FolkIdle.Server.Network
                     {
                         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                         
-                        if (req.TargetPlayerId > 0)
+                        if (!string.IsNullOrEmpty(req.TargetUsername))
                         {
-                            var mail = new FolkIdle.Server.Models.MailboxInstance
+                            var target = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Username != null && p.Username.ToLower() == req.TargetUsername.ToLower());
+                            if (target != null)
                             {
-                                PlayerId = req.TargetPlayerId,
-                                BaseItemId = req.BaseItemId ?? string.Empty,
-                                QualityTier = req.QualityTier,
-                                Quantity = req.Quantity,
-                                GoldAttachment = req.Gold,
-                                SenderName = req.SenderName,
-                                MessageText = req.MessageText,
-                                ReceivedTimestamp = now
-                            };
-                            db.MailboxInstances.Add(mail);
-                            await db.SaveChangesAsync();
+                                var mail = new FolkIdle.Server.Models.MailboxInstance
+                                {
+                                    PlayerId = target.Id,
+                                    BaseItemId = req.BaseItemId ?? string.Empty,
+                                    QualityTier = req.QualityTier,
+                                    Quantity = req.Quantity,
+                                    GoldAttachment = req.Gold,
+                                    SenderName = req.SenderName,
+                                    MessageText = req.MessageText,
+                                    ReceivedTimestamp = now
+                                };
+                                db.MailboxInstances.Add(mail);
+                                await db.SaveChangesAsync();
+                            }
+                            else
+                            {
+                                context.Response.StatusCode = 404;
+                                return;
+                            }
                         }
                         else
                         {
@@ -7675,7 +7686,7 @@ namespace FolkIdle.Server.Network
 
         private class AdminMailRequest
         {
-            public long TargetPlayerId { get; set; }
+            public string? TargetUsername { get; set; }
             public string? BaseItemId { get; set; }
             public int QualityTier { get; set; }
             public int Quantity { get; set; }
