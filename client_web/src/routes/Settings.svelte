@@ -654,4 +654,13 @@
   .flex-row input, .form-grid input {
     min-width: 0;
   }
+
+  @media (max-width: 600px) {
+    .flex-row {
+      flex-direction: column;
+    }
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
 </style>
