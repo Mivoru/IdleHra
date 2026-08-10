@@ -75,3 +75,7 @@
 - **Změna:** Zavedena funkce `getArmourFamily` pro zjištění rodiny vybavení přímo z klienta na základě předpony v `BaseItemId`.
 - **Soubor:** `client_web/src/routes/Character.svelte`
 - **Změna:** Přidán seznam "Active Set Bonuses" vykreslovaný dynamicky, pokud hráč nasadí 2 a více kusů z jedné rodiny (např. Linen, Steel, Magus). Zobrazuje aktuální počet nasazených kusů setu.
+
+### 13. Opravy chyb (Bugfixes)
+- **Změna:** Ve výpisu postavy (Character screen) se nyní správně vykreslují reálné staty, které setový bonus poskytuje (např. +10% Armor, +15% Damage), místo pouhého textu "x/5 pieces".
+- **Změna:** V seznamu přátel (`Social.svelte`) lze nyní kliknout na jméno přátel, což otevře okno `PlayerProfileModal` se statistikami a vybavením jejich postav.
