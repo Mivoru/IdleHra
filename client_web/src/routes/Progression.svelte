@@ -253,7 +253,6 @@
       {#if st.GuildName}
         <p class="dim tiny">Guild: {st.GuildName}</p>
       {/if}
-      {/if}
     {:else}
       <Skeleton />
     {/if}
