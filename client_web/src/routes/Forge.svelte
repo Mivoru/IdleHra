@@ -490,6 +490,7 @@ ${scope}`)) return;
           {prettifyBaseId(rerollItem.BaseItemId)}
         </span>
         <Affixes affixes={rerollItem.Affixes} baseItemId={rerollItem.BaseItemId} />
+      </div>
 
       {#if rerollAffixRows.length === 0}
         <p class="dim">This item has no affixes to reroll.</p>
