@@ -7528,7 +7528,7 @@ namespace FolkIdle.Server.Network
                         {
                             MessageLength = (ushort)bytes.Length,
                             ChannelType = 3, // ANNOUNCEMENT
-                            SenderPlayerId = 0,
+                            SenderPlayerId = -1,
                             TimestampEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                         };
                         unsafe

@@ -105,7 +105,8 @@
   const nameById = $derived(new Map((names.data ?? []).map((n) => [n.PlayerId, n.Username])));
 
   function displayName(playerId: number): string {
-    if (playerId === 0) return 'Dev';
+    if (playerId === -1) return 'Dev';
+    if (playerId === 0) return 'World';
     if (playerId === connection.currentPlayerId) return 'You';
     return nameById.get(playerId) ?? `Player #${playerId}`;
   }
