@@ -22,7 +22,6 @@
     Id: number;
     BaseItemId: string;
     QualityTier: number;
-    [key: string]: unknown;
   };
 
   let {

@@ -11,7 +11,6 @@
     type AchievementEntry,
   } from '../lib/net/rest';
   import { claimAchievement } from '../lib/net/commands';
-  import { connection } from '../lib/net/connection';
   import Bar from '../lib/ui/Bar.svelte';
   import Money from '../lib/ui/Money.svelte';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';

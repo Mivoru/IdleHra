@@ -6,16 +6,7 @@
   import Burst from '../lib/ui/Burst.svelte';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
-  import { loadContent, type ContentRegistry } from '../lib/net/content';
 
-  // Needed for an item's RegionTier, which decides the fusion ceiling for its
-  // gear band - see bandCapFor below.
-  let registry = $state<ContentRegistry | null>(null);
-  $effect(() => {
-    loadContent()
-      .then((loaded) => (registry = loaded))
-      .catch(() => (registry = null));
-  });
   import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { toDisplayAffixes, AFFIX_RARITY_NAMES, KNOWN_AFFIX_IDS } from '../lib/ui/affixes';
   import Affixes from '../lib/ui/Affixes.svelte';
@@ -143,9 +134,6 @@
   // gone. A charge you cannot see before you agree to it is not a price.
   const REROLL_BASE_FEE = 100;
   const REROLL_FEE_GROWTH = 1.35;
-  const rerollFee = $derived(
-    rerollItem ? Math.floor(REROLL_BASE_FEE * Math.pow(REROLL_FEE_GROWTH, Math.max(0, rerollItem.QualityTier - 1))) : 0,
-  );
 
   function pickSet(base: string, tier: number) {
     const trio = owned.filter((i) => i.BaseItemId === base && i.QualityTier === tier).slice(0, 3);
@@ -278,6 +266,9 @@
   });
 
   const rerollItem = $derived(owned.find((i) => i.Id === rerollItemId) ?? null);
+  const rerollFee = $derived(
+    rerollItem ? Math.floor(REROLL_BASE_FEE * Math.pow(REROLL_FEE_GROWTH, Math.max(0, rerollItem.QualityTier - 1))) : 0,
+  );
   const rerollAffixRows = $derived(rerollItem ? toDisplayAffixes(rerollItem.Affixes) : []);
   const selectedOperation = $derived(REROLL_OPERATIONS[rerollOperation] ?? REROLL_OPERATIONS[0]);
 

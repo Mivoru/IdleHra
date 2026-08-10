@@ -2,16 +2,17 @@
   import { onMount } from 'svelte';
   import { loadContent, type ContentRegistry, getArmourFamily } from '../lib/net/content';
   import { locationName, nodeLocation } from '../lib/ui/locations';
-  import { professionName, craftingProfessionName, resolveSlotIndex } from '../lib/ui/slots';
-  import ItemIcon from '../lib/ui/ItemIcon.svelte';
+  import { professionName } from '../lib/ui/slots';
+  import { RACE_NAMES, ALL_RACE_IDS } from '../lib/ui/races';
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
-  import { queryKeys, fetchRecipes } from '../lib/net/rest';
-  import { createQuery } from '@tanstack/svelte-query';
-
+  import WikiDropChances from '../lib/ui/WikiDropChances.svelte';
+  import WikiMonsterDrops from '../lib/ui/WikiMonsterDrops.svelte';
+  import WikiItemDatabase from '../lib/ui/WikiItemDatabase.svelte';
+  import RaceIcon from '../lib/ui/RaceIcon.svelte';
+  
   let registry = $state<ContentRegistry | null>(null);
   let activeTab = $state('basics');
-  const recipes = createQuery(() => ({ queryKey: queryKeys.recipes, queryFn: fetchRecipes }));
 
   onMount(async () => {
     registry = await loadContent().catch(() => null);
@@ -20,6 +21,7 @@
   const tabs = [
     { id: 'basics', label: 'Basics & Progression' },
     { id: 'combat', label: 'Combat & Stats' },
+    { id: 'skills', label: 'Skill Tree' },
     { id: 'items', label: 'Items & Tiers' },
     { id: 'map', label: 'Map & Regions' },
     { id: 'gathering', label: 'Gathering & Crafting' },
@@ -36,11 +38,6 @@
     }
     return Array.from(sets).sort();
   });
-
-  function getItemsByRegion(regionTier: number) {
-    if (!registry) return [];
-    return Array.from(registry.items.values()).filter(i => i.RegionTier === regionTier);
-  }
 </script>
 
 <div class="wrap">
@@ -110,6 +107,22 @@
             {/each}
           </div>
 
+        {:else if activeTab === 'skills'}
+          <div class="head">
+            <h2>Skill Tree</h2>
+            <span class="dim tiny">Mastery & Builds</span>
+          </div>
+          <p>Every character earns Skill Points (SP) as they level up. These points can be invested in a sprawling skill tree to unlock passive bonuses and powerful abilities.</p>
+          <ul class="styled-list">
+            <li><strong>Pathways:</strong> The tree branches into different specializations (e.g., Melee combat, Defense, Resource Gathering).</li>
+            <li><strong>Synergy:</strong> Skills from different branches can synergize, allowing for unique build combinations.</li>
+            <li><strong>Permanence:</strong> Skill choices are permanent for that specific character, but you can build different specializations on your other character slots.</li>
+          </ul>
+          
+          <div style="margin-top: 1rem; border: 1px solid var(--border); border-radius: 8px; padding: 1rem; background: var(--bg-surface);">
+            <p class="dim small" style="text-align: center;"><em>See the <a href="#/progression">Progression screen</a> to interact with the full Skill Tree.</em></p>
+          </div>
+
         {:else if activeTab === 'items'}
           <div class="head">
             <h2>Items & Tiers</h2>
@@ -136,12 +149,16 @@
           </div>
 
           <h3>Drop Rates</h3>
-          <p class="dim small">Monsters have a base <strong>15% chance</strong> to drop equipment. Your <strong>Luck (LCK)</strong> stat heavily influences the Rarity Tier of the dropped item. For example, getting a Legendary (T7) drop requires overcoming low probabilities (~0.5% at +16% luck).</p>
+          <WikiDropChances />
+
+          <h3>Item Database</h3>
+          <p class="dim small">Search and browse through all items in the game.</p>
+          <WikiItemDatabase {registry} />
 
         {:else if activeTab === 'map'}
           <div class="head">
             <h2>Map & Regions</h2>
-            <span class="dim tiny">Exploration</span>
+            <span class="dim tiny">Exploration & Monster Drops</span>
           </div>
           <p>The world is divided into distinct regions. You must defeat the Boss of a region to unlock the next one.</p>
           
@@ -150,11 +167,14 @@
             <div class="monster-grid">
               {#each region as monster}
                 <div class="monster-card">
-                  <MonsterPortrait id={monster.Id} />
-                  <div class="monster-info">
-                    <strong>{monster.Name}</strong>
-                    <span class="dim tiny">HP: {monster.MaxHp.toLocaleString()} | DMG: {monster.AttackPower}</span>
+                  <div class="monster-header">
+                    <MonsterPortrait monsterId={monster.Id} name={monster.Name} size="sm" />
+                    <div class="monster-info">
+                      <strong>{monster.Name}</strong>
+                      <span class="dim tiny">HP: {monster.MaxHp.toLocaleString()} | DMG: {monster.AttackPower} | Armour: {monster.Armor} | Dodge: {monster.DodgeRating}</span>
+                    </div>
                   </div>
+                  <WikiMonsterDrops monsterId={monster.Id} />
                 </div>
               {/each}
             </div>
@@ -189,7 +209,7 @@
         {:else if activeTab === 'genetics'}
           <div class="head">
             <h2>Genetics & Breeding</h2>
-            <span class="dim tiny">Bloodlines</span>
+            <span class="dim tiny">Bloodlines & Races</span>
           </div>
           <p>Create the ultimate lineage by passing down traits from generation to generation.</p>
           
@@ -198,6 +218,17 @@
             <li><strong>Ancestors:</strong> Retired characters become Ancestors.</li>
             <li><strong>Inheritance:</strong> Select perks from your Ancestors to permanently buff your current active lineage.</li>
           </ul>
+
+          <h3>Races</h3>
+          <p class="dim small">Characters belong to one of the six races. Some are unlocked as you progress.</p>
+          <div class="badge-list">
+            {#each ALL_RACE_IDS as raceId}
+              <span class="fam-badge" style="display:flex; align-items:center; gap:0.25rem;">
+                <RaceIcon {raceId} size="sm" />
+                {RACE_NAMES[raceId]}
+              </span>
+            {/each}
+          </div>
 
         {:else if activeTab === 'guilds'}
           <div class="head">
@@ -352,12 +383,17 @@
 
   .monster-card {
     display: flex;
-    align-items: center;
-    gap: 1rem;
+    flex-direction: column;
     background: var(--bg-deep);
     padding: 0.75rem;
     border-radius: var(--radius, 8px);
     border: 1px solid var(--border);
+  }
+
+  .monster-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
   }
 
   .monster-info {

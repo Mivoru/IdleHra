@@ -1,6 +1,8 @@
 <script lang="ts">
   import { chatLog, type ChatEntry } from '../stores/game';
   import Chat from '../../routes/Chat.svelte';
+  import { createQuery } from '@tanstack/svelte-query';
+  import { fetchOnlineStats, queryKeys } from '../net/rest';
 
   // Modul: chat was a NAVIGATION TAB, which is the wrong shape for it. Chat is
   // ambient - it happens while you are doing something else - and a tab means
@@ -30,13 +32,25 @@
     open = !open;
     if (open) seenId = newestId;
   }
+
+  const onlineStatsQuery = createQuery(() => ({
+    queryKey: queryKeys.onlineStats,
+    queryFn: fetchOnlineStats,
+    refetchInterval: 10000
+  }));
+  const onlineCount = $derived(onlineStatsQuery.data?.OnlineCount ?? 0);
 </script>
 
 <div class="dock" class:open>
   {#if open}
     <div class="window">
       <header>
-        <strong>Chat</strong>
+        <div class="header-left">
+          <strong>Chat</strong>
+          <span class="online-indicator" title="{onlineCount} online">
+            <span class="online-dot"></span> {onlineCount}
+          </span>
+        </div>
         <button class="close" aria-label="Close chat" onclick={toggle}>&times;</button>
       </header>
       <div class="body">
@@ -121,12 +135,34 @@
   }
 
   header {
+    padding: 0.5rem;
+    background: var(--bg-dark);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-left {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 0.45rem 0.75rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    font-size: 0.9rem;
+    gap: 0.5rem;
+  }
+
+  .online-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+    color: var(--dim, #888);
+  }
+
+  .online-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--success, #4caf50);
+    display: inline-block;
   }
 
   .close {

@@ -71,7 +71,6 @@ let animationHandle = 0;
 
 // Tutorial and audio edge detection. -1 / 0 mean "no baseline yet", so the
 // first packet of a session never fires a cue for progress made while away.
-let tutorialArmed = false;
 let lastCraftedCount = -1;
 let lastLevel = 0;
 let lastMonsterHp = 0;
@@ -423,7 +422,6 @@ export function startSession(token: string): void {
   // A different account has a different maximum; carrying the old one over
   // would scale the new player's bar against a stranger's health.
   observedMaxPlayerHp.set(1);
-  tutorialArmed = false;
   lastCraftedCount = -1;
   lastLevel = 0;
   lastMonsterHp = 0;

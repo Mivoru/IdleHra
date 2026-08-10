@@ -36,6 +36,7 @@ export const MONSTER_ICONS: Readonly<Record<number, string>> = {
 };
 
 export const ITEM_ICONS: Readonly<Record<string, string>> = {
+  "yggdrasil_burl_woodcutting_material": "Backgrounds/yggdrasil.webp",
   "birch_log": "Locations/01/Materials&rest/Birch Log.webp",
   "birch_trees_woodcutting_material": "Locations/01/Materials&rest/Birch Tree.webp",
   "birch_twig": "Locations/01/Materials&rest/Birch Twig.webp",

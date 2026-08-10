@@ -48,9 +48,29 @@
 ### 8. Vytvoření herní Wiki
 - **Soubory:** `client_web/src/routes/Wiki.svelte` (NOVÝ), `client_web/src/App.svelte`
 - **Změna:** Vytvořena plnohodnotná in-game encyklopedie inspirovaná Terrarií. Rozdělena do kategorií (Basics, Combat, Items, Map, Gathering, Genetics, Guilds).
-- **Změna:** Do hlavního menu přidána nová skupina navigace "Others", přes kterou se do Wiki lze dostat.
 
-### 9. Zobrazení Set Bonusů u Postavy
+### 9. Vylepšení chatu a integrace online hráčů
+- **Soubor:** `server/FolkIdle.Server/Network/NetworkBroadcastSystem.cs`
+- **Změna:** Vytvořeny nové endpointy `/api/v1/players/resolve` pro překlad jména na PlayerId a `/api/v1/stats/online` pro sledování počtu aktivních hráčů.
+- **Soubor:** `client_web/src/lib/ui/ContextMenu.svelte` (NOVÝ), `client_web/src/routes/Chat.svelte`
+- **Změna:** Do chatu přidáno kontextové menu po kliknutí na jméno hráče, které umožňuje rychlé akce: Whisper, Add Friend, Block a View Profile. Zobrazení počtu online hráčů.
+
+### 10. Inspekce hráčských profilů (Player Inspection)
+- **Soubor:** `server/FolkIdle.Server/Network/NetworkBroadcastSystem.cs`
+- **Změna:** Přidán endpoint `/api/v1/players/profile?id=X` vracející všechny postavy daného hráče, jejich level, experience a detailní informace o jejich vybavených předmětech a affixech.
+- **Soubor:** `client_web/src/lib/ui/PlayerProfileModal.svelte` (NOVÝ)
+- **Změna:** Nová UI komponenta (okno) umožňující v reálném čase prohlížet vybavené předměty a základní statistiky ostatních hráčů (přístupné přes kontextové menu v chatu).
+
+### 11. Kompletní přepracování herní Wiki
+- **Soubor:** `client_web/src/routes/Wiki.svelte`
+- **Změna:** Kompletní vizuální a funkční restrukturalizace Wiki. Jediná dlouhá stránka byla rozdělena na přehledné záložky v postranním panelu.
+- **Soubory:** `WikiItemDatabase.svelte`, `WikiDropChances.svelte`, `WikiMonsterDrops.svelte` (NOVÉ)
+- **Změna:** Přidána interaktivní kalkulačka šance na padnutí různých tierů rarit podle štěstí hráče.
+- **Změna:** Přidán interaktivní vyhledatelný glosář všech předmětů (`ItemDatabase`) se základními statistikami.
+- **Změna:** K bestiáři a mapám byly připojeny reálné dropy všech monster získané z API (`/api/v1/monsters/loot`), včetně přesné procentuální šance a množství.
+- **Změna:** Integrováno grafické zobrazení ras a doplněno vysvětlení ke Stromu Dovedností (Skill Tree).
+
+### 12. Zobrazení Set Bonusů u Postavy
 - **Soubor:** `client_web/src/lib/net/content.ts`
 - **Změna:** Zavedena funkce `getArmourFamily` pro zjištění rodiny vybavení přímo z klienta na základě předpony v `BaseItemId`.
 - **Soubor:** `client_web/src/routes/Character.svelte`

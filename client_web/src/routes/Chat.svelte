@@ -6,9 +6,12 @@
   let { docked = false }: { docked?: boolean } = $props();
 
   import { createQuery } from '@tanstack/svelte-query';
-  import { chatLog, type ChatEntry } from '../lib/stores/game';
+  import { chatLog, type ChatEntry, pushLocalNotice } from '../lib/stores/game';
   import { connection } from '../lib/net/connection';
-  import { queryKeys, fetchPlayerNames } from '../lib/net/rest';
+  import { addFriend, blockPlayer } from '../lib/net/commands';
+  import ContextMenu from '../lib/ui/ContextMenu.svelte';
+  import PlayerProfileModal from '../lib/ui/PlayerProfileModal.svelte';
+  import { queryKeys, fetchPlayerNames, resolvePlayer } from '../lib/net/rest';
 
   // Modul: ChatEngine's channel numbering. Whisper is send-only from this
   // screen's point of view - an incoming whisper arrives tagged as the
@@ -33,7 +36,53 @@
 
   let active = $state(GLOBAL);
   let draft = $state('');
-  let whisperTarget = $state(0);
+  let whisperTarget = $state('');
+
+  let contextMenuOpen = $state(false);
+  let contextMenuX = $state(0);
+  let contextMenuY = $state(0);
+  let contextMenuUsername = $state('');
+  let contextMenuPlayerId = $state(0);
+  
+  let inspectingPlayerId = $state<number | null>(null);
+
+  function openContextMenu(e: MouseEvent, username: string, playerId: number) {
+    e.preventDefault();
+    // Do not open menu for yourself or system messages (id <= 0)
+    if (playerId <= 0 || playerId === connection.currentPlayerId) return;
+    contextMenuUsername = username;
+    contextMenuPlayerId = playerId;
+    contextMenuX = e.clientX;
+    contextMenuY = e.clientY;
+    contextMenuOpen = true;
+  }
+
+  function handleWhisper(username: string) {
+    active = WHISPER;
+    whisperTarget = username;
+  }
+
+  async function handleAddFriend(playerId: number) {
+    try {
+      await addFriend(playerId);
+      pushLocalNotice('Friend request sent.');
+    } catch {
+      pushLocalNotice('Failed to add friend.');
+    }
+  }
+
+  async function handleBlock(playerId: number) {
+    try {
+      await blockPlayer(playerId);
+      pushLocalNotice('Player blocked.');
+    } catch {
+      pushLocalNotice('Failed to block player.');
+    }
+  }
+
+  function handleViewProfile(playerId: number) {
+    inspectingPlayerId = playerId;
+  }
 
   const visible = $derived($chatLog.filter((m: ChatEntry) => m.channelType === active).slice(0, 200));
 
@@ -56,13 +105,6 @@
   const nameById = $derived(new Map((names.data ?? []).map((n) => [n.PlayerId, n.Username])));
 
   function displayName(playerId: number): string {
-    // Modul: SENDER 0 IS THE SERVER, not a player.
-    //
-    // Announcements are authored by the system and carry SenderPlayerId 0 -
-    // no real player has id 0, which is exactly how the client is meant to
-    // tell them apart. This asked the name map anyway, missed, and fell back
-    // to the id, so every announcement in the game was attributed to
-    // "Player #0".
     if (playerId === 0) return 'World';
     if (playerId === connection.currentPlayerId) return 'You';
     return nameById.get(playerId) ?? `Player #${playerId}`;
@@ -71,16 +113,27 @@
   function timeOf(atMs: number): string {
     return new Date(atMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
+  
+  let resolveError = $state('');
 
-  function send() {
+  async function send() {
     const text = draft.trim();
     if (!text) return;
-    // A whisper needs a recipient; the server drops one with an invalid target
-    // silently rather than disconnecting, but refusing here is clearer.
-    if (active === WHISPER && whisperTarget <= 0) return;
+    resolveError = '';
 
-    connection.sendChat(text, active, active === WHISPER ? whisperTarget : 0);
-    draft = '';
+    if (active === WHISPER) {
+      if (!whisperTarget) return;
+      try {
+        const result = await resolvePlayer(whisperTarget);
+        connection.sendChat(text, active, result.PlayerId);
+        draft = '';
+      } catch (e) {
+        resolveError = 'Player not found.';
+      }
+    } else {
+      connection.sendChat(text, active, 0);
+      draft = '';
+    }
   }
 
   // Modul: the congratulate button. NOT a dedicated command - the Unity client
@@ -107,9 +160,13 @@
       {#each visible as message (message.id)}
         <li>
           <span class="time dim">{timeOf(message.atMs)}</span>
-          <span class="who" class:self={message.senderPlayerId === connection.currentPlayerId}>
+          <button 
+            class="who" 
+            class:self={message.senderPlayerId === connection.currentPlayerId}
+            onclick={(e) => openContextMenu(e, displayName(message.senderPlayerId), message.senderPlayerId)}
+          >
             {displayName(message.senderPlayerId)}
-          </span>
+          </button>
           <span class="text" class:announcement={message.channelType === ANNOUNCEMENT}>
             {message.text}
           </span>
@@ -133,9 +190,8 @@
       {#if active === WHISPER}
         <input
           class="target"
-          type="number"
-          min="1"
-          placeholder="Player id"
+          type="text"
+          placeholder="Player username"
           bind:value={whisperTarget}
         />
       {/if}
@@ -145,16 +201,40 @@
         onkeydown={(e) => e.key === 'Enter' && send()}
         maxlength="128"
       />
-      <button onclick={send} disabled={!draft.trim() || (active === WHISPER && whisperTarget <= 0)}>
+      <button onclick={send} disabled={!draft.trim() || (active === WHISPER && !whisperTarget.trim())}>
         Send
       </button>
     </div>
+    {#if resolveError}
+      <p class="warn tiny" style="margin-top: 0.5rem; text-align: right;">{resolveError}</p>
+    {/if}
     <!-- RequestChatMessagePacket's MessageText is a fixed 128-byte buffer, so
          the input is bounded rather than truncated silently server-side. -->
     <p class="dim tiny">Up to 128 bytes per message.</p>
     {/if}
   </section>
 </div>
+
+{#if contextMenuOpen}
+  <ContextMenu
+    x={contextMenuX}
+    y={contextMenuY}
+    username={contextMenuUsername}
+    playerId={contextMenuPlayerId}
+    onClose={() => (contextMenuOpen = false)}
+    onWhisper={handleWhisper}
+    onAddFriend={handleAddFriend}
+    onBlock={handleBlock}
+    onViewProfile={handleViewProfile}
+  />
+{/if}
+
+{#if inspectingPlayerId !== null}
+  <PlayerProfileModal 
+    playerId={inspectingPlayerId} 
+    onClose={() => (inspectingPlayerId = null)} 
+  />
+{/if}
 
 <style>
   .wrap {

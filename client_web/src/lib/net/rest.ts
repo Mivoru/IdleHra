@@ -21,6 +21,7 @@ export const queryKeys = {
   statistics: ['player', 'statistics'] as const,
   monsterLoot: (monsterId: number) => ['monsters', 'loot', monsterId] as const,
   friends: ['social', 'friends'] as const,
+  onlineStats: ['stats', 'online'] as const,
   achievements: ['meta', 'achievements'] as const,
   villageNewcomers: ['village', 'newcomers'] as const,
   loginBonus: ['meta', 'loginBonus'] as const,
@@ -122,6 +123,16 @@ export interface PlayerStatistics {
 
 export function fetchStatistics(): Promise<PlayerStatistics> {
   return authedGet<PlayerStatistics>('/api/v1/player/statistics');
+}
+
+export interface OnlineStats {
+  OnlineCount: number;
+}
+
+export async function fetchOnlineStats() {
+  const res = await fetch('/api/v1/stats/online');
+  if (!res.ok) throw new Error('Failed to fetch online stats');
+  return res.json() as Promise<OnlineStats>;
 }
 
 // ---------------------------------------------------------------------------
@@ -983,3 +994,4 @@ export function scrubTrace(traceLog: string): string {
     .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[uuid]')
     .slice(0, 16000);
 }
+

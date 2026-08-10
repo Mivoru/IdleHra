@@ -23,6 +23,8 @@
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
   import SessionLoot from '../lib/ui/SessionLoot.svelte';
 
+  const snap = $derived($playerState);
+
   // Modul: region progression. The server refuses a target in a region whose
   // Modul: A BOSS YOU HAVE NEVER BEATEN IS FIVE TIMES THE MONSTER THE CONTENT
   // TABLES DESCRIBE.
@@ -99,6 +101,7 @@
   // first packet lands.
   const unlockedRegion = $derived($playerState?.HighestUnlockedRegion || 1);
 
+
   let registry = $state<ContentRegistry | null>(null);
   let contentError = $state('');
   let selectedMonsterId = $state(0);
@@ -118,7 +121,7 @@
   // imported - the header badge and this panel must never disagree about why a
   // character stopped.
 
-  const snap = $derived($playerState);
+
   const visual = $derived($visualState);
   const activeMonster = $derived(
     snap && snap.CurrentMonsterId > 0 ? (registry?.monsters.get(snap.CurrentMonsterId) ?? null) : null,

@@ -1031,6 +1031,18 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/players/profile" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandlePlayerProfile(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/stats/online" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleStatsOnline(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/guilds/kick" && context.Request.HttpMethod == "POST")
                     {
                         await HandleGuildKick(context);
@@ -4014,6 +4026,91 @@ namespace FolkIdle.Server.Network
             context.Response.Close();
         }
 
+        private async Task HandlePlayerProfile(HttpListenerContext context)
+        {
+            try
+            {
+                long requesterId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (requesterId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                if (!long.TryParse(query["id"], out long targetId) || targetId <= 0)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var player = await db.PlayerRecords.AsNoTracking().Where(p => p.Id == targetId).FirstOrDefaultAsync();
+                if (player == null)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                var characters = await db.CharacterRecords.AsNoTracking().Where(c => c.PlayerId == targetId).ToListAsync();
+                
+                var equipIds = new System.Collections.Generic.HashSet<long>();
+                foreach (var c in characters)
+                {
+                    if (c.EquippedAxeId.HasValue) equipIds.Add(c.EquippedAxeId.Value);
+                    if (c.EquippedPickaxeId.HasValue) equipIds.Add(c.EquippedPickaxeId.Value);
+                    if (c.EquippedRodId.HasValue) equipIds.Add(c.EquippedRodId.Value);
+                    if (c.EquippedWeaponId.HasValue) equipIds.Add(c.EquippedWeaponId.Value);
+                    if (c.EquippedHelmetId.HasValue) equipIds.Add(c.EquippedHelmetId.Value);
+                    if (c.EquippedChestId.HasValue) equipIds.Add(c.EquippedChestId.Value);
+                    if (c.EquippedGlovesId.HasValue) equipIds.Add(c.EquippedGlovesId.Value);
+                    if (c.EquippedLeggingsId.HasValue) equipIds.Add(c.EquippedLeggingsId.Value);
+                    if (c.EquippedBootsId.HasValue) equipIds.Add(c.EquippedBootsId.Value);
+                    if (c.EquippedAmuletId.HasValue) equipIds.Add(c.EquippedAmuletId.Value);
+                    if (c.EquippedRingId.HasValue) equipIds.Add(c.EquippedRingId.Value);
+                }
+
+                var equipment = new System.Collections.Generic.List<EquipmentInstance>();
+                if (equipIds.Count > 0)
+                {
+                    equipment = await db.EquipmentInstances.AsNoTracking().Where(e => equipIds.Contains(e.Id)).ToListAsync();
+                }
+
+                var payload = new
+                {
+                    PlayerId = player.Id,
+                    Username = player.Username,
+                    GuildId = player.GuildId,
+                    CurrentLevel = player.CurrentLevel,
+                    LastLogoutTimestamp = player.LastLogoutTimestamp,
+                    Characters = characters,
+                    Equipment = equipment
+                };
+
+                string responseJson = JsonSerializer.Serialize(payload);
+                var responseBytes = System.Text.Encoding.UTF8.GetBytes(responseJson);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                context.Response.ContentLength64 = responseBytes.Length;
+                await context.Response.OutputStream.WriteAsync(responseBytes, 0, responseBytes.Length);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Profile fetch error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
         private async Task HandleGuildKick(HttpListenerContext context)
         {
             if (context.Request.HttpMethod != "POST") { context.Response.StatusCode = 405; context.Response.Close(); return; }
@@ -4068,6 +4165,30 @@ namespace FolkIdle.Server.Network
                 context.Response.StatusCode = 500;
             }
             context.Response.Close();
+        }
+
+        private async Task HandleStatsOnline(HttpListenerContext context)
+        {
+            try
+            {
+                int count = _connectedClients.Count;
+                string json = "{\"OnlineCount\":" + count + "}";
+                var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                context.Response.ContentLength64 = bytes.Length;
+                await context.Response.OutputStream.WriteAsync(bytes, 0, bytes.Length);
+                context.Response.Close();
+            }
+            catch (Exception ex)
+            {
+                if (context != null && context.Response != null)
+                {
+                    context.Response.StatusCode = 500;
+                    context.Response.Close();
+                }
+            }
         }
 
         private async Task HandleGuildDemote(HttpListenerContext context)

@@ -52,11 +52,12 @@
         .map((item) => item.Id),
     ),
   );
+  let selectedSlot = $state(1);
 
   const activeSets = $derived.by(() => {
     const counts = new Map<string, number>();
     for (const item of inventory.data?.Equipment ?? []) {
-      if (item.EquippedByCharacterSlot !== (snap?.ActiveCharacterSlot ?? 1) - 1) continue;
+      if (item.EquippedByCharacterSlot !== selectedSlot - 1) continue;
       const family = getArmourFamily(item.BaseItemId);
       if (family) {
         counts.set(family, (counts.get(family) ?? 0) + 1);
@@ -210,7 +211,7 @@
   // worker who could not work. All three slots are always listed now, and a
   // locked one says which Town Hall level opens it, the way slot 3 already
   // did.
-  let selectedSlot = $state(1);
+
   const selected = $derived(roster.find((c) => c.slot === selectedSlot) ?? roster[0] ?? null);
 
   // Modul: gear per character, from the inventory snapshot rather than the
