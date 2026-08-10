@@ -97,3 +97,22 @@
 ### 13. Opravy chyb (Bugfixes)
 - **Změna:** Ve výpisu postavy (Character screen) se nyní správně vykreslují reálné staty, které setový bonus poskytuje (např. +10% Armor, +15% Damage), místo pouhého textu "x/5 pieces".
 - **Změna:** V seznamu přátel (`Social.svelte`) lze nyní kliknout na jméno přátel, což otevře okno `PlayerProfileModal` se statistikami a vybavením jejich postav.
+
+### 14. Ergonomie a vylepšení Dev Nastavení (Admin UI)
+- **Soubor:** `client_web/src/routes/Settings.svelte`
+- **Změna:** Zajištěna plná responzivita sekce pro administrátory na mobilních zařízeních (úprava CSS `flex-row` a `form-grid` pro `max-width: 600px`).
+- **Změna:** Změna způsobu cílení hráčů v nástrojích Ban, Unban a Mail. Původní vyžadování číselného `TargetPlayerId` bylo nahrazeno za vyhledávání podle textového `TargetUsername` pro lepší uživatelský komfort administrátorů.
+- **Soubor:** `server/FolkIdle.Server/Network/NetworkBroadcastSystem.cs`
+- **Změna:** Úprava backendových endpointů `/api/v1/admin/ban`, `unban` a `mail` tak, aby přijímaly a vyhledávaly hráče podle `Username` (case-insensitive pomocí `ToLower()`).
+
+### 15. Odlišení Dev Zpráv a Oznámení od "World" systému
+- **Soubor:** `server/FolkIdle.Server/Network/NetworkBroadcastSystem.cs`
+- **Změna:** V endpointu `/api/v1/admin/announce` změněno ID odesílatele `SenderPlayerId` na speciální hodnotu `-1`. Ostatní systémově generované herní události (např. reroll předmětů) si ponechávají ID `0`.
+- **Soubor:** `client_web/src/routes/Chat.svelte`
+- **Změna:** Přidána logika pro detekci ID `-1` jako **Dev**, zatímco původní ID `0` se nyní vykresluje jako tradiční **World**. Tím došlo k oddělení manuálních hromadných zpráv vývojáře od automatických herních logů.
+- **Soubor:** `client_web/src/routes/Settings.svelte`
+- **Změna:** Tvůrce mailu (`adminSendMail`) má nyní fixně nastavený parametr `SenderName = 'Dev'`, takže hromadná pošta už nechodí pod uživatelským jménem administrátora nebo pod jménem "System Admin".
+
+### 16. Google Safe Browsing a ověření domény
+- **Soubor:** `client_web/public/google78aba877d2a2cb61.html`
+- **Změna:** Přidán statický soubor do adresáře `public` pro ověření vlastnictví v Google Search Console. Cílem bylo odstranit falešné detekce pro "Predictive phishing", ke kterým docházelo u uživatelů při zadávání hesel kvůli subdoméně na `duckdns.org`.
