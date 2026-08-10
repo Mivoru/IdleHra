@@ -7462,7 +7462,7 @@ namespace FolkIdle.Server.Network
                 }
             }
         }
-        private bool IsAdmin(FolkIdle.Server.Models.PlayerRecord player)
+        private bool IsAdmin(FolkIdle.Server.Models.PlayerRecord? player)
         {
             if (player == null) return false;
             if (!string.IsNullOrEmpty(player.Username) && player.Username.Equals("Mivoru", StringComparison.OrdinalIgnoreCase)) return true;
@@ -7526,10 +7526,10 @@ namespace FolkIdle.Server.Network
                         var bytes = System.Text.Encoding.UTF8.GetBytes(message);
                         var packet = new ResponseChatMessagePacket
                         {
-                            MessageLength = (byte)bytes.Length,
+                            MessageLength = (ushort)bytes.Length,
                             ChannelType = 3, // ANNOUNCEMENT
                             SenderPlayerId = 0,
-                            AtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                            TimestampEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                         };
                         unsafe
                         {
@@ -7539,10 +7539,26 @@ namespace FolkIdle.Server.Network
                             }
                         }
 
+                        byte[]? chatJson = null;
+                        var packetBytes = new byte[System.Runtime.InteropServices.Marshal.SizeOf<ResponseChatMessagePacket>()];
+                        System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateReadOnlySpan(ref packet, 1)).CopyTo(packetBytes);
+                        var segment = new ArraySegment<byte>(packetBytes);
+
                         // Broadcast to everyone
                         foreach (var target in _connectedClients.Values)
                         {
-                            target.EnqueueMessage(OpCode.ChatMessage, packet);
+                            if (target.Socket.State == System.Net.WebSockets.WebSocketState.Open)
+                            {
+                                if (target.UseJsonProtocol)
+                                {
+                                    chatJson ??= PacketJsonCodec.SerializeToUtf8(ref packet);
+                                    await target.SendAsync(new ArraySegment<byte>(chatJson), System.Net.WebSockets.WebSocketMessageType.Text, true, CancellationToken.None);
+                                }
+                                else
+                                {
+                                    await target.SendAsync(segment, System.Net.WebSockets.WebSocketMessageType.Binary, true, CancellationToken.None);
+                                }
+                            }
                         }
                         
                         context.Response.StatusCode = 200;
