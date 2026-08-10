@@ -253,3 +253,11 @@ export function itemName(registry: ContentRegistry | null, itemId: number): stri
 export function monsterName(registry: ContentRegistry | null, monsterId: number): string {
   return registry?.monsters.get(monsterId)?.Name ?? `Monster #${monsterId}`;
 }
+
+export function getArmourFamily(baseItemId: string): string {
+  if (!baseItemId || !baseItemId.startsWith('eq_')) return '';
+  const parts = baseItemId.split('_');
+  if (parts.length < 3) return '';
+  const raw = parts[1];
+  return raw === 'dreadnought' ? 'dread' : raw;
+}

@@ -10,6 +10,7 @@
     rejectGuildApplication,
     resolvePlayer,
     fetchPlayerNames,
+    fetchStatistics,
   } from '../lib/net/rest';
   import {
     addFriend,
@@ -31,6 +32,9 @@
     queryKey: queryKeys.guildApplications,
     queryFn: fetchGuildApplications,
   }));
+  const statistics = createQuery(() => ({ queryKey: queryKeys.statistics, queryFn: fetchStatistics }));
+
+  const hasGuild = $derived((statistics.data?.GuildName ?? '') !== '');
 
   function refreshFriends() {
     setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.friends }), 600);
@@ -225,9 +229,12 @@
     <h2>Guilds</h2>
 
     <div class="adder">
-      <input placeholder="New guild name" bind:value={newGuildName} />
-      <button disabled={busy || !newGuildName.trim()} onclick={createGuild}>Create</button>
+      <input placeholder="New guild name" bind:value={newGuildName} disabled={hasGuild} />
+      <button disabled={busy || !newGuildName.trim() || hasGuild} onclick={createGuild}>Create</button>
     </div>
+    {#if hasGuild}
+      <p class="dim tiny">You are already in a guild. Leave it first to join or create a new one.</p>
+    {/if}
 
     {#if guilds.isPending}
       <Skeleton />
@@ -237,7 +244,12 @@
       <ul class="rows">
         {#each guilds.data ?? [] as guild (guild.GuildId)}
           <li class="guild">
-            <span class="name">{guild.Name}</span>
+            <span class="name">
+              {guild.Name}
+              {#if hasGuild && guild.Name === statistics.data?.GuildName}
+                <span class="dim tiny" style="margin-left: 0.3rem;">(Your Guild)</span>
+              {/if}
+            </span>
             <span class="dim tiny">
               tier {guild.CurrentTier} &middot; {guild.ActiveMembers}/{guild.MaxMembers}
               &middot; {guild.TaxRatePct}% tax
@@ -245,7 +257,7 @@
             </span>
             <button
               class="tiny-btn"
-              disabled={busy || guild.ActiveMembers >= guild.MaxMembers}
+              disabled={busy || guild.ActiveMembers >= guild.MaxMembers || hasGuild}
               onclick={() => joinGuild(guild.Name)}
             >
               {guild.JoinType === 0 ? 'Join' : 'Apply'}

@@ -4,7 +4,7 @@
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
   import { queryKeys, fetchInventory, type InventoryEquipment } from '../lib/net/rest';
-  import { loadContent, prettifyBaseId, monsterName, type ContentRegistry } from '../lib/net/content';
+  import { loadContent, prettifyBaseId, monsterName, getArmourFamily, type ContentRegistry } from '../lib/net/content';
   import { EQUIPMENT_SLOTS, agePhaseName, HALT_REASON_SHORT, isGatheringActivity, professionName, resolveSlotIndex, isCraftingActivity, craftingActivityId,
     SLOT_WEAPON, SLOT_HELMET, SLOT_CHEST, SLOT_GLOVES, SLOT_LEGGINGS, SLOT_BOOTS, SLOT_AMULET, SLOT_RING, SLOT_AXE, SLOT_PICKAXE, SLOT_ROD } from '../lib/ui/slots';
   import { craftingProfessionName } from '../lib/ui/slots';
@@ -52,6 +52,21 @@
         .map((item) => item.Id),
     ),
   );
+
+  const activeSets = $derived.by(() => {
+    const counts = new Map<string, number>();
+    for (const item of inventory.data?.Equipment ?? []) {
+      if (item.EquippedByCharacterSlot !== (snap?.ActiveCharacterSlot ?? 1) - 1) continue;
+      const family = getArmourFamily(item.BaseItemId);
+      if (family) {
+        counts.set(family, (counts.get(family) ?? 0) + 1);
+      }
+    }
+    // Filter sets that have at least 2 pieces (Tier 1 set bonus)
+    return Array.from(counts.entries())
+      .filter(([_, count]) => count >= 2)
+      .sort((a, b) => b[1] - a[1]);
+  });
 
   const candidatesBySlot = $derived.by(() => {
     const bySlot = new Map<number, InventoryEquipment[]>();
@@ -320,6 +335,18 @@
         </div>
         <div><dt>Skill pts</dt><dd>{snap.AvailableSkillPoints}</dd></div>
       </dl>
+
+      {#if activeSets.length > 0}
+        <h3>Active Set Bonuses</h3>
+        <dl class="stats">
+          {#each activeSets as [familyName, count]}
+            <div>
+              <dt style="text-transform: capitalize;">{familyName} Set</dt>
+              <dd>{count}/5 Pieces</dd>
+            </div>
+          {/each}
+        </dl>
+      {/if}
 
       <!-- Modul: skills sit with the character now. They spend mana, they have
            cooldowns and they multiply the next hit - they were under Village,

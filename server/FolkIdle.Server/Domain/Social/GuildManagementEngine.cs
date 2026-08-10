@@ -37,7 +37,8 @@ namespace FolkIdle.Server.Domain.Social
         }
 
         public const int RoleMember = 0;
-        public const int RoleLeader = 1;
+        public const int RoleOfficer = 1;
+        public const int RoleLeader = 2;
 
         // Modul: Advanced Economy Refactoring, Part 3.1. Universal
         // structural unlock gate - every guild interaction (creating,
@@ -441,7 +442,8 @@ namespace FolkIdle.Server.Domain.Social
                     var kickerMembership = await context.GuildMembers
                         .FirstOrDefaultAsync(m => m.PlayerId == kickerPlayerId);
 
-                    if (kickerMembership == null || kickerMembership.Role != RoleLeader)
+                    // Only Leader and Officer can kick.
+                    if (kickerMembership == null || kickerMembership.Role < RoleOfficer)
                     {
                         await transaction.RollbackAsync();
                         return 0L;
@@ -461,6 +463,13 @@ namespace FolkIdle.Server.Domain.Social
                         .SingleOrDefaultAsync();
 
                     if (guild == null || targetMembership == null || targetProfile == null)
+                    {
+                        await transaction.RollbackAsync();
+                        return 0L;
+                    }
+
+                    // Kicker must have a strictly higher role than the target (e.g. Leader can kick Officer, Officer can kick Member).
+                    if (kickerMembership.Role <= targetMembership.Role)
                     {
                         await transaction.RollbackAsync();
                         return 0L;
@@ -754,5 +763,87 @@ namespace FolkIdle.Server.Domain.Social
                 return false;
             }
         }
+        public async Task<bool> PromoteMemberAsync(long promoterId, long targetId)
+        {
+            if (promoterId == targetId) return false;
+
+            await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
+            var strategy = context.Database.CreateExecutionStrategy();
+
+            try
+            {
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    context.ChangeTracker.Clear();
+                    using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+                    var promoter = await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == promoterId);
+                    if (promoter == null || promoter.Role != RoleLeader)
+                    {
+                        await transaction.RollbackAsync();
+                        return false; // Only Leader can promote
+                    }
+
+                    var target = await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == targetId && m.GuildId == promoter.GuildId);
+                    if (target == null || target.Role >= RoleOfficer)
+                    {
+                        await transaction.RollbackAsync();
+                        return false; // Already officer or not in guild
+                    }
+
+                    target.Role = RoleOfficer;
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return true;
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild promote failed - PromoterId {promoterId}: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> DemoteMemberAsync(long demoterId, long targetId)
+        {
+            if (demoterId == targetId) return false;
+
+            await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
+            var strategy = context.Database.CreateExecutionStrategy();
+
+            try
+            {
+                return await strategy.ExecuteAsync(async () =>
+                {
+                    context.ChangeTracker.Clear();
+                    using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+                    var demoter = await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == demoterId);
+                    if (demoter == null || demoter.Role != RoleLeader)
+                    {
+                        await transaction.RollbackAsync();
+                        return false; // Only Leader can demote
+                    }
+
+                    var target = await context.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == targetId && m.GuildId == demoter.GuildId);
+                    if (target == null || target.Role != RoleOfficer)
+                    {
+                        await transaction.RollbackAsync();
+                        return false; // Not an officer or not in guild
+                    }
+
+                    target.Role = RoleMember;
+                    await context.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return true;
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild demote failed - DemoterId {demoterId}: {ex.Message}");
+                return false;
+            }
+        }
+
     }
 }

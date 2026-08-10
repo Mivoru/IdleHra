@@ -6133,7 +6133,7 @@ namespace FolkIdle.Server.Domain.Combat
                     if (combatStats.LifestealPct > 0)
                     {
                         long lifestealAmount = (long)(netDamage * (combatStats.LifestealPct / 100f));
-                        long lifestealCeiling = effectiveMaxHp / 20; // 5% of the bar per hit
+                        long lifestealCeiling = effectiveMaxHp / 100; // 1% of the bar per hit
                         if (lifestealAmount > lifestealCeiling) lifestealAmount = lifestealCeiling;
 
                         payload.PlayerHp += (int)lifestealAmount;

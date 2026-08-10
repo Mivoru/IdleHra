@@ -395,6 +395,18 @@ export function rejectGuildApplication(applicationId: number): Promise<GuildAppl
   });
 }
 
+export async function kickGuildMember(targetPlayerId: number): Promise<void> {
+  await authedPost('/api/v1/guilds/kick', { targetPlayerId });
+}
+
+export async function promoteGuildMember(targetPlayerId: number): Promise<void> {
+  await authedPost('/api/v1/guilds/promote', { targetPlayerId });
+}
+
+export async function demoteGuildMember(targetPlayerId: number): Promise<void> {
+  await authedPost('/api/v1/guilds/demote', { targetPlayerId });
+}
+
 // ---------------------------------------------------------------------------
 // /api/v1/guild/logistics/snapshot
 // ---------------------------------------------------------------------------

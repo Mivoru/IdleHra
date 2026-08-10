@@ -1031,6 +1031,24 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/guilds/kick" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleGuildKick(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/guilds/promote" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleGuildPromote(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/guilds/demote" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleGuildDemote(context);
+                        continue;
+                    }
+
                     // Modul: UI rework. Reverse lookup of the above -
                     // "?ids=1,2,3" to usernames, so chat/whisper rows can
                     // show a name instead of the raw SenderPlayerId the
@@ -3939,10 +3957,8 @@ namespace FolkIdle.Server.Network
         // WebSocketClient.SendAddFriendCommandZeroAlloc/SendBlockPlayerCommandZeroAlloc)
         // only ever took a raw numeric TargetPlayerId with no client-side way
         // to discover it - this resolves the one piece of public information
-        // a player would actually type, their username, to that Id. Exact,
-        // case-sensitive match - Username's uniqueness index (unlike Email's)
-        // is case-sensitive, so a case-insensitive lookup here could resolve
-        // ambiguously against two differently-cased usernames.
+        // a player would actually type, their username, to that Id.
+        // It is now case-insensitive using ILike so players don't have to match case perfectly.
         private async Task HandlePlayerResolve(HttpListenerContext context)
         {
             try
@@ -3972,7 +3988,7 @@ namespace FolkIdle.Server.Network
 
                 long targetPlayerId = await db.PlayerRecords
                     .AsNoTracking()
-                    .Where(p => p.Username == username)
+                    .Where(p => EF.Functions.ILike(p.Username, username))
                     .Select(p => p.Id)
                     .FirstOrDefaultAsync();
 
@@ -3995,6 +4011,90 @@ namespace FolkIdle.Server.Network
                 context.Response.StatusCode = 500;
             }
 
+            context.Response.Close();
+        }
+
+        private async Task HandleGuildKick(HttpListenerContext context)
+        {
+            if (context.Request.HttpMethod != "POST") { context.Response.StatusCode = 405; context.Response.Close(); return; }
+            try
+            {
+                long kickerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (kickerId <= 0) { context.Response.StatusCode = 401; context.Response.Close(); return; }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = JsonSerializer.Deserialize<JsonElement>(await reader.ReadToEndAsync());
+                if (!payload.TryGetProperty("targetPlayerId", out var targetEl)) { context.Response.StatusCode = 400; context.Response.Close(); return; }
+                long targetId = targetEl.GetInt64();
+
+                var guildManagementEngine = new GuildManagementEngine(
+                    _serviceProvider.GetRequiredService<RetryingDbContextOptions>(),
+                    _playerSessionRegistry ?? throw new InvalidOperationException());
+
+                bool ok = await guildManagementEngine.KickMemberAsync(kickerId, targetId);
+                context.Response.StatusCode = ok ? 200 : 403;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild kick error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            context.Response.Close();
+        }
+
+        private async Task HandleGuildPromote(HttpListenerContext context)
+        {
+            if (context.Request.HttpMethod != "POST") { context.Response.StatusCode = 405; context.Response.Close(); return; }
+            try
+            {
+                long promoterId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (promoterId <= 0) { context.Response.StatusCode = 401; context.Response.Close(); return; }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = JsonSerializer.Deserialize<JsonElement>(await reader.ReadToEndAsync());
+                if (!payload.TryGetProperty("targetPlayerId", out var targetEl)) { context.Response.StatusCode = 400; context.Response.Close(); return; }
+                long targetId = targetEl.GetInt64();
+
+                var guildManagementEngine = new GuildManagementEngine(
+                    _serviceProvider.GetRequiredService<RetryingDbContextOptions>(),
+                    _playerSessionRegistry ?? throw new InvalidOperationException());
+
+                bool ok = await guildManagementEngine.PromoteMemberAsync(promoterId, targetId);
+                context.Response.StatusCode = ok ? 200 : 403;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild promote error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            context.Response.Close();
+        }
+
+        private async Task HandleGuildDemote(HttpListenerContext context)
+        {
+            if (context.Request.HttpMethod != "POST") { context.Response.StatusCode = 405; context.Response.Close(); return; }
+            try
+            {
+                long demoterId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (demoterId <= 0) { context.Response.StatusCode = 401; context.Response.Close(); return; }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = JsonSerializer.Deserialize<JsonElement>(await reader.ReadToEndAsync());
+                if (!payload.TryGetProperty("targetPlayerId", out var targetEl)) { context.Response.StatusCode = 400; context.Response.Close(); return; }
+                long targetId = targetEl.GetInt64();
+
+                var guildManagementEngine = new GuildManagementEngine(
+                    _serviceProvider.GetRequiredService<RetryingDbContextOptions>(),
+                    _playerSessionRegistry ?? throw new InvalidOperationException());
+
+                bool ok = await guildManagementEngine.DemoteMemberAsync(demoterId, targetId);
+                context.Response.StatusCode = ok ? 200 : 403;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild demote error: {ex}");
+                context.Response.StatusCode = 500;
+            }
             context.Response.Close();
         }
 

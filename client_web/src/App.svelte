@@ -27,6 +27,7 @@
   import Chest from './routes/Chest.svelte';
   import WorldBoss from './routes/WorldBoss.svelte';
   import Boosts from './routes/Boosts.svelte';
+  import Wiki from './routes/Wiki.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import VictoryCard from './lib/ui/VictoryCard.svelte';
   import DeathCard from './lib/ui/DeathCard.svelte';
@@ -106,6 +107,12 @@
         { key: 'codex', label: 'Codex' },
         { key: 'store', label: 'Store' },
         { key: 'settings', label: 'Settings' },
+      ],
+    },
+    {
+      name: 'Others',
+      screens: [
+        { key: 'wiki', label: 'Wiki' },
       ],
     },
   ] as const;
@@ -317,6 +324,8 @@
       <Boosts />
     {:else if screen === 'leaderboards'}
       <Leaderboards />
+    {:else if screen === 'wiki'}
+      <Wiki />
     {/if}
 
     <!-- Modul: A BANNER THAT DOES SOMETHING.

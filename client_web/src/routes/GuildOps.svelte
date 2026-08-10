@@ -9,6 +9,9 @@
     fetchGuildLogistics,
     fetchGuildShardMatch,
     fetchInventory,
+    kickGuildMember,
+    promoteGuildMember,
+    demoteGuildMember,
   } from '../lib/net/rest';
   import {
     contributeToWarSupply,
@@ -43,7 +46,9 @@
   const nameById = $derived(new Map((names.data ?? []).map((n) => [n.PlayerId, n.Username])));
 
   function refresh() {
-    setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.guildRoster }), 600);
+    setTimeout(() => {
+        client.invalidateQueries({ queryKey: queryKeys.guildRoster });
+    }, 600);
   }
 
   // --- war ------------------------------------------------------------------
@@ -86,30 +91,60 @@
     refresh();
   }
 
-  // Modul: mentorship was removed from this screen. It is a player-to-player
-  // relationship, not a guild function, and living inside Guild implied you
-  // could only be mentored by a guildmate. The commands and the server engine
-  // are untouched - only the guild screen stopped claiming to own them.
-
-  // Modul: the roster was fetched and never rendered. Its only consumer was
-  // the mentorship picker, so removing that left a query with no screen -
-  // a guild page that could not show you who was in your guild.
   const members = $derived(
     [...(roster.data ?? [])].sort((a, b) => a.PlayerId - b.PlayerId),
   );
 
-  // --- depot ----------------------------------------------------------------
-  // Modul: the depot is a SEPARATE system from the logistics chain, despite
-  // both being "put materials into the guild". DepositGuildMaterial addresses
-  // the depot through MaterialId/DepositQuantity; ContributeToGuild addresses
-  // the chain through TargetId/LimitPrice. Different validators, different
-  // engines, different tables. Wiring one to the other's fields disconnects.
+  let busy = $state(false);
+  const myRole = $derived(members.find(m => m.PlayerId === connection.currentPlayerId)?.Role ?? 0);
+  const ROLE_NAMES: Record<number, string> = { 0: 'Member', 1: 'Officer', 2: 'Leader' };
 
+  async function handleKick(id: number) {
+    if (busy) return;
+    busy = true;
+    try {
+        await kickGuildMember(id);
+        pushLocalNotice('Member kicked.');
+    } catch (err: any) {
+        pushLocalNotice(err.message || 'Failed to kick.');
+    } finally {
+        busy = false;
+        refresh();
+    }
+  }
+
+  async function handlePromote(id: number) {
+    if (busy) return;
+    busy = true;
+    try {
+        await promoteGuildMember(id);
+        pushLocalNotice('Member promoted.');
+    } catch (err: any) {
+        pushLocalNotice(err.message || 'Failed to promote.');
+    } finally {
+        busy = false;
+        refresh();
+    }
+  }
+
+  async function handleDemote(id: number) {
+    if (busy) return;
+    busy = true;
+    try {
+        await demoteGuildMember(id);
+        pushLocalNotice('Member demoted.');
+    } catch (err: any) {
+        pushLocalNotice(err.message || 'Failed to demote.');
+    } finally {
+        busy = false;
+        refresh();
+    }
+  }
+
+  // --- depot ----------------------------------------------------------------
   const logistics = createQuery(() => ({
     queryKey: queryKeys.guildLogistics,
     queryFn: fetchGuildLogistics,
-    // NEVER add a query string to this - the handler treats any query as
-    // tampering and force-disconnects the player's WebSocket session.
     enabled: hasGuild,
   }));
 
@@ -122,16 +157,6 @@
 
   const itemDefinitionCount = $derived(registry?.items.size ?? 0);
 
-  /**
-   * Stackable materials the player can actually contribute, with their numeric
-   * ids.
-   *
-   * Modul: BOTH HALVES, because the server spends both. The contribution path
-   * ends in InventoryAndStashSystem.TryConsumeUnifiedAsync, which draws from
-   * CommodityRecords and VillageStashInstances together and refuses only when
-   * the SUM is short - so filtering on the backpack alone hid material the
-   * guild deposit would have taken. Same defect the larder had.
-   */
   const depositable = $derived.by(() => {
     if (!registry) return [];
     return (inventory.data?.Stacks ?? [])
@@ -483,12 +508,26 @@
         <ul class="members">
           {#each members as member (member.PlayerId)}
             <li>
-              <span class="who">
+              <span class="who" style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
                 {nameById.get(member.PlayerId) ?? `Player #${member.PlayerId}`}
+                <span class="dim tiny">[{ROLE_NAMES[member.Role] ?? 'Unknown'}]</span>
+                {#if member.PlayerId === connection.currentPlayerId}
+                  <span class="dim tiny">you</span>
+                {/if}
+                
+                <span style="flex: 1;"></span>
+                
+                {#if myRole >= 1 && member.Role < myRole && member.PlayerId !== connection.currentPlayerId}
+                  {#if myRole === 2}
+                    {#if member.Role === 0}
+                      <button class="tiny-btn" disabled={busy} onclick={() => handlePromote(member.PlayerId)}>Promote</button>
+                    {:else if member.Role === 1}
+                      <button class="tiny-btn" disabled={busy} onclick={() => handleDemote(member.PlayerId)}>Demote</button>
+                    {/if}
+                  {/if}
+                  <button class="tiny-btn warning" disabled={busy} onclick={() => handleKick(member.PlayerId)}>Kick</button>
+                {/if}
               </span>
-              {#if member.PlayerId === connection.currentPlayerId}
-                <span class="dim tiny">you</span>
-              {/if}
             </li>
           {/each}
         </ul>

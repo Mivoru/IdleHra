@@ -20,8 +20,8 @@ namespace FolkIdle.Server.Models
         public long GuildId { get; set; }
         public long ContributionPoints { get; set; }
 
-        // 0 = Member, 1 = Leader. Kick and (future) guild-administration
-        // actions are gated on Leader; a guild always has exactly one
+        // 0 = Member, 1 = Officer, 2 = Leader. Kick and guild-administration
+        // actions are gated on Officer/Leader; a guild always has exactly one
         // Leader, reassigned by GuildManagementEngine.LeaveGuildAsync when
         // the current leader departs a non-empty guild.
         public int Role { get; set; }
