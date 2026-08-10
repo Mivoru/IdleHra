@@ -23,6 +23,7 @@
   import { api } from '../lib/net/config';
   import { storedToken } from '../lib/net/auth';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import PlayerProfileModal from '../lib/ui/PlayerProfileModal.svelte';
 
   const client = useQueryClient();
   const friends = createQuery(() => ({ queryKey: queryKeys.friends, queryFn: fetchFriends }));
@@ -43,6 +44,7 @@
   // --- friends --------------------------------------------------------------
   let friendName = $state('');
   let busy = $state(false);
+  let inspectPlayerId = $state<number | null>(null);
 
   // Modul: the relationship commands take a numeric player id, but a player
   // knows a username - hence the resolve endpoint. Two steps rather than one
@@ -211,7 +213,14 @@
         {#each friends.data ?? [] as friend (friend.PlayerId)}
           <li>
             <span class="dot" class:online={friend.IsOnline} title={friend.IsOnline ? 'Online' : 'Offline'}></span>
-            <span class="name" class:blocked={friend.IsBlocked}>{friend.Username}</span>
+            <button 
+              class="name-btn" 
+              class:blocked={friend.IsBlocked}
+              onclick={() => { inspectPlayerId = friend.PlayerId; }}
+              title="Click to view profile"
+            >
+              {friend.Username}
+            </button>
             <span class="dim tiny">lv {friend.Level}</span>
             {#if friend.IsBlocked}
               <button class="tiny-btn" onclick={() => act(unblockPlayer, friend.PlayerId)}>Unblock</button>
@@ -393,8 +402,25 @@
     font-weight: 600;
     margin-right: auto;
   }
+  
+  .name-btn {
+    font-weight: 600;
+    margin-right: auto;
+    background: none;
+    border: none;
+    color: var(--text);
+    padding: 0;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    font-size: inherit;
+  }
+  
+  .name-btn:hover {
+    text-decoration: underline;
+  }
 
-  .name.blocked {
+  .name-btn.blocked {
     text-decoration: line-through;
     color: var(--text-dim);
   }
@@ -417,3 +443,10 @@
     flex: none;
   }
 </style>
+
+{#if inspectPlayerId !== null}
+  <PlayerProfileModal 
+    playerId={inspectPlayerId} 
+    onClose={() => { inspectPlayerId = null; }} 
+  />
+{/if}

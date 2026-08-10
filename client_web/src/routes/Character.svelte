@@ -341,9 +341,15 @@
         <h3>Active Set Bonuses</h3>
         <dl class="stats">
           {#each activeSets as [familyName, count]}
-            <div>
-              <dt style="text-transform: capitalize;">{familyName} Set</dt>
-              <dd>{count}/5 Pieces</dd>
+            <div style="flex-direction: column; align-items: flex-start; gap: 0.25rem; padding-bottom: 0.5rem;">
+              <dt style="text-transform: capitalize; width: 100%; border-bottom: 1px solid var(--border); padding-bottom: 0.2rem; margin-bottom: 0.2rem;">
+                {familyName} Set <span class="dim tiny" style="float: right;">{count}/5</span>
+              </dt>
+              <dd style="text-align: left; width: 100%;">
+                {#if count >= 2}<div class="dim tiny" style="color: var(--good)">+10% Base Armor</div>{/if}
+                {#if count >= 3}<div class="dim tiny" style="color: var(--good)">+15% Base Damage</div>{/if}
+                {#if count >= 5}<div class="dim tiny" style="color: var(--accent)">+Unique passive effect</div>{/if}
+              </dd>
             </div>
           {/each}
         </dl>
