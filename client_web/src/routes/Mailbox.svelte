@@ -141,6 +141,17 @@
               {/if}
             </div>
 
+            {#if entry.SenderName || entry.MessageText}
+              <div class="message-content">
+                {#if entry.SenderName}
+                  <span class="sender">From: {entry.SenderName}</span>
+                {/if}
+                {#if entry.MessageText}
+                  <p class="text">{entry.MessageText}</p>
+                {/if}
+              </div>
+            {/if}
+
             <span class="dim tiny when">{received(entry.ReceivedTimestamp)}</span>
 
             <button
@@ -267,6 +278,30 @@
   .tiny-btn {
     font-size: 0.72rem;
     padding: 0.2rem 0.55rem;
+  }
+
+  .message-content {
+    grid-column: 1 / -1;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.5rem;
+    border-left: 2px solid var(--border);
+    border-radius: 0 4px 4px 0;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .message-content .sender {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 0.2rem;
+  }
+
+  .message-content .text {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--fg);
+    white-space: pre-wrap;
   }
 
   @media (max-width: 30rem) {

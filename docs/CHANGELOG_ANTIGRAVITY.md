@@ -1,5 +1,23 @@
 # Antigravity Changelog
 
+## 2026-08-10 - Dev Settings a textová administrátorská pošta
+**Autor:** Antigravity
+
+### 1. Dev Settings a Administrátorská práva
+- Přidána exkluzivní sekce do `Settings.svelte`, která se zobrazuje pouze administrátorům.
+- Backend zavedl metodu `IsAdmin(player)`, ověřující uživatelské jméno (`Mivoru`) nebo e-mail (`prochalcz@gmail.com`).
+- Nové API `/api/v1/admin/status` pro identifikaci administrátorských práv.
+
+### 2. Moderátorské nástroje
+- **Cenzura:** Přidán globální statický přepínač `ChatProfanityFilter.IsEnabled`, který lze dálkově přepínat přes Dev Settings, čímž se vypne hvězdičkování sprostých slov.
+- **Oznámení:** Z Dev Settings lze nyní přes endpoint `/api/v1/admin/announce` odeslat žluté systémové oznámení všem hráčům ve World Chatu (Kanál 3).
+- **Ban / Unban:** Do Dev Settings přidána možnost okamžitého zablokování (nebo odblokování) účtu přes atributy `IsQuarantined` a `Quarantine_Active`.
+
+### 3. Textové zprávy do Mailboxu a hromadná administrátorská pošta
+- Entity Framework Core model `MailboxInstance.cs` byl rozšířen o sloupce `SenderName` a `MessageText`. Byla provedena příslušná DB migrace.
+- `Mailbox.svelte` na klientovi byl aktualizován, aby vizuálně podporoval odlišení odesílatele a zobrazení těla zprávy.
+- Administrátor může přes Dev Settings formulář rozeslat poštu obsahující předměty a zlaťáky s textovým vzkazem konkrétnímu hráči, **případně hromadně úplně všem**.
+
 ## 2026-08-10 - Vizuální vylepšení předmětů a reorganizace UI
 **Autor:** Antigravity
 

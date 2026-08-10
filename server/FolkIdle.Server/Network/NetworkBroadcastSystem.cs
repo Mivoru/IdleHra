@@ -1147,6 +1147,12 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath.StartsWith("/api/v1/admin/"))
+                    {
+                        await HandleAdminEndpoints(context, requestPath);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/guilds/create" && context.Request.HttpMethod == "POST")
                     {
                         await HandleGuildCreate(context);
@@ -2585,6 +2591,8 @@ namespace FolkIdle.Server.Network
             public int Quantity { get; set; }
             public long GoldAttachment { get; set; }
             public bool HasEquipmentAttachment { get; set; }
+            public string? SenderName { get; set; }
+            public string? MessageText { get; set; }
             public long ReceivedTimestamp { get; set; }
         }
 
@@ -2622,6 +2630,8 @@ namespace FolkIdle.Server.Network
                         Quantity = m.Quantity,
                         GoldAttachment = m.GoldAttachment,
                         HasEquipmentAttachment = m.AttachedEquipmentId.HasValue,
+                        SenderName = m.SenderName,
+                        MessageText = m.MessageText,
                         ReceivedTimestamp = m.ReceivedTimestamp
                     })
                     .ToListAsync();
@@ -6132,11 +6142,11 @@ namespace FolkIdle.Server.Network
         private void DispatchInboundChatRequest(long playerId, WebSocketSession session, ref RequestChatMessagePacket chatRequest)
         {
             // Modul: Comprehensive Game System Audit, Part 2.3. Profanity
-            // masking runs in place over the packet's fixed byte buffer
-            // BEFORE ExtractChatMessageText materializes any managed string -
-            // the one zero-allocation insertion point on this path, and the
-            // single choke point every channel shares.
-            ApplyProfanityFilterInPlace(ref chatRequest);
+            // filtering on all unmoderated channels before transmission.
+            if (FolkIdle.Server.Engine.ChatProfanityFilter.IsEnabled)
+            {
+                ApplyProfanityFilterInPlace(ref chatRequest);
+            }
 
             string chatText = ExtractChatMessageText(ref chatRequest);
 
@@ -7451,6 +7461,211 @@ namespace FolkIdle.Server.Network
                     }
                 }
             }
+        }
+        private bool IsAdmin(FolkIdle.Server.Models.PlayerRecord player)
+        {
+            if (player == null) return false;
+            if (!string.IsNullOrEmpty(player.Username) && player.Username.Equals("Mivoru", StringComparison.OrdinalIgnoreCase)) return true;
+            if (!string.IsNullOrEmpty(player.Email) && player.Email.Equals("prochalcz@gmail.com", StringComparison.OrdinalIgnoreCase)) return true;
+            return false;
+        }
+
+        private async Task HandleAdminEndpoints(HttpListenerContext context, string requestPath)
+        {
+            try
+            {
+                long requesterId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (requesterId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var player = await db.PlayerRecords.AsNoTracking().Where(p => p.Id == requesterId).FirstOrDefaultAsync();
+                if (!IsAdmin(player))
+                {
+                    context.Response.StatusCode = 403;
+                    return;
+                }
+
+                if (requestPath == "/api/v1/admin/status" && context.Request.HttpMethod == "GET")
+                {
+                    string json = JsonSerializer.Serialize(new { isAdmin = true, profanityEnabled = FolkIdle.Server.Engine.ChatProfanityFilter.IsEnabled });
+                    var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.OutputStream.WriteAsync(bytes, 0, bytes.Length);
+                    return;
+                }
+
+                if (requestPath == "/api/v1/admin/profanity" && context.Request.HttpMethod == "POST")
+                {
+                    string body = await new System.IO.StreamReader(context.Request.InputStream).ReadToEndAsync();
+                    var req = JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, bool>>(body);
+                    if (req != null && req.TryGetValue("enabled", out bool isEnabled))
+                    {
+                        FolkIdle.Server.Engine.ChatProfanityFilter.IsEnabled = isEnabled;
+                        context.Response.StatusCode = 200;
+                        return;
+                    }
+                    context.Response.StatusCode = 400;
+                    return;
+                }
+
+                if (requestPath == "/api/v1/admin/announce" && context.Request.HttpMethod == "POST")
+                {
+                    string body = await new System.IO.StreamReader(context.Request.InputStream).ReadToEndAsync();
+                    var req = JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string>>(body);
+                    if (req != null && req.TryGetValue("text", out string message) && !string.IsNullOrWhiteSpace(message))
+                    {
+                        if (message.Length > 128) message = message.Substring(0, 128);
+                        
+                        var bytes = System.Text.Encoding.UTF8.GetBytes(message);
+                        var packet = new ResponseChatMessagePacket
+                        {
+                            MessageLength = (byte)bytes.Length,
+                            ChannelType = 3, // ANNOUNCEMENT
+                            SenderPlayerId = 0,
+                            AtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                        };
+                        unsafe
+                        {
+                            fixed (byte* src = bytes)
+                            {
+                                System.Buffer.MemoryCopy(src, packet.MessageText, 128, bytes.Length);
+                            }
+                        }
+
+                        // Broadcast to everyone
+                        foreach (var target in _connectedClients.Values)
+                        {
+                            target.EnqueueMessage(OpCode.ChatMessage, packet);
+                        }
+                        
+                        context.Response.StatusCode = 200;
+                        return;
+                    }
+                    context.Response.StatusCode = 400;
+                    return;
+                }
+                
+                if (requestPath == "/api/v1/admin/ban" && context.Request.HttpMethod == "POST")
+                {
+                    var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                    if (long.TryParse(query["id"], out long targetId))
+                    {
+                        var target = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == targetId);
+                        if (target != null)
+                        {
+                            target.IsQuarantined = true;
+                            target.Quarantine_Active = true;
+                            await db.SaveChangesAsync();
+                            context.Response.StatusCode = 200;
+                            return;
+                        }
+                    }
+                    context.Response.StatusCode = 404;
+                    return;
+                }
+
+                if (requestPath == "/api/v1/admin/unban" && context.Request.HttpMethod == "POST")
+                {
+                    var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                    if (long.TryParse(query["id"], out long targetId))
+                    {
+                        var target = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == targetId);
+                        if (target != null)
+                        {
+                            target.IsQuarantined = false;
+                            target.Quarantine_Active = false;
+                            await db.SaveChangesAsync();
+                            context.Response.StatusCode = 200;
+                            return;
+                        }
+                    }
+                    context.Response.StatusCode = 404;
+                    return;
+                }
+
+                if (requestPath == "/api/v1/admin/mail" && context.Request.HttpMethod == "POST")
+                {
+                    string body = await new System.IO.StreamReader(context.Request.InputStream).ReadToEndAsync();
+                    var req = JsonSerializer.Deserialize<AdminMailRequest>(body);
+                    if (req != null)
+                    {
+                        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                        
+                        if (req.TargetPlayerId > 0)
+                        {
+                            var mail = new FolkIdle.Server.Models.MailboxInstance
+                            {
+                                PlayerId = req.TargetPlayerId,
+                                BaseItemId = req.BaseItemId ?? string.Empty,
+                                QualityTier = req.QualityTier,
+                                Quantity = req.Quantity,
+                                GoldAttachment = req.Gold,
+                                SenderName = req.SenderName,
+                                MessageText = req.MessageText,
+                                ReceivedTimestamp = now
+                            };
+                            db.MailboxInstances.Add(mail);
+                            await db.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            // Send to all players
+                            var allPlayerIds = await db.PlayerRecords.Select(p => p.Id).ToListAsync();
+                            var mails = new System.Collections.Generic.List<FolkIdle.Server.Models.MailboxInstance>();
+                            foreach (var pId in allPlayerIds)
+                            {
+                                mails.Add(new FolkIdle.Server.Models.MailboxInstance
+                                {
+                                    PlayerId = pId,
+                                    BaseItemId = req.BaseItemId ?? string.Empty,
+                                    QualityTier = req.QualityTier,
+                                    Quantity = req.Quantity,
+                                    GoldAttachment = req.Gold,
+                                    SenderName = req.SenderName,
+                                    MessageText = req.MessageText,
+                                    ReceivedTimestamp = now
+                                });
+                            }
+                            db.MailboxInstances.AddRange(mails);
+                            await db.SaveChangesAsync();
+                        }
+
+                        context.Response.StatusCode = 200;
+                        return;
+                    }
+                    context.Response.StatusCode = 400;
+                    return;
+                }
+
+                context.Response.StatusCode = 404;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Admin endpoint error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        private class AdminMailRequest
+        {
+            public long TargetPlayerId { get; set; }
+            public string? BaseItemId { get; set; }
+            public int QualityTier { get; set; }
+            public int Quantity { get; set; }
+            public long Gold { get; set; }
+            public string? SenderName { get; set; }
+            public string? MessageText { get; set; }
         }
     }
 }

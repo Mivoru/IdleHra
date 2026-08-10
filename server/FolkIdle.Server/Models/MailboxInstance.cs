@@ -19,6 +19,8 @@ namespace FolkIdle.Server.Models
         public bool IsPending { get; set; }
         public long GoldAttachment { get; set; }
         public long? AttachedEquipmentId { get; set; }
+        public string? SenderName { get; set; }
+        public string? MessageText { get; set; }
         public long ReceivedTimestamp { get; set; }
     }
 }

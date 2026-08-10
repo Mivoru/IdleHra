@@ -36,6 +36,8 @@ namespace FolkIdle.Server.Engine
     // per-language morphology.
     public static class ChatProfanityFilter
     {
+        public static bool IsEnabled { get; set; } = true;
+
         // Curated lowercase blacklist. UTF-8 compiled once below - the
         // string literals themselves exist only during static init, never
         // on the per-message path.

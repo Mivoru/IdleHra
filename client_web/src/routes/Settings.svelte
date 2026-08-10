@@ -7,7 +7,8 @@
   import { CommandType } from '../lib/net/protocol.generated';
   import { playerState, pushLocalNotice, commandResults, connectionStatus } from '../lib/stores/game';
   import { triggerGdprPurge } from '../lib/net/commands';
-  import { submitSupportTicket, scrubTrace } from '../lib/net/rest';
+  import { submitSupportTicket, scrubTrace, fetchAdminStatus, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail } from '../lib/net/rest';
+  import { createQuery, useQueryClient } from '@tanstack/svelte-query';
 
   const snap = $derived($playerState);
 
@@ -49,6 +50,78 @@
   }
 
   const clipNames = Object.keys(CLIPS) as ClipName[];
+
+  // ---------------------------------------------------------------------------
+  // Admin / Dev Settings
+  // ---------------------------------------------------------------------------
+
+  const queryClient = useQueryClient();
+  const adminQuery = createQuery(() => ({
+    queryKey: ['adminStatus'],
+    queryFn: fetchAdminStatus,
+    retry: false // don't retry 403s
+  }));
+
+  const isAdmin = $derived(adminQuery.data?.isAdmin === true);
+  let devProfanity = $state(true);
+  $effect(() => {
+    if (adminQuery.data !== undefined) {
+      devProfanity = adminQuery.data.profanityEnabled;
+    }
+  });
+
+  let devAnnounceMsg = $state('');
+  let devBanId = $state('');
+  let devMailId = $state('');
+  let devMailItem = $state('');
+  let devMailQty = $state(1);
+  let devMailGold = $state(0);
+  let devMailMsg = $state('');
+  
+  async function toggleProfanity() {
+    devProfanity = !devProfanity;
+    await adminToggleProfanity(devProfanity);
+    pushLocalNotice('Profanity filter ' + (devProfanity ? 'enabled' : 'disabled'));
+  }
+
+  async function doAnnounce() {
+    if (!devAnnounceMsg) return;
+    await adminAnnounce(devAnnounceMsg);
+    devAnnounceMsg = '';
+    pushLocalNotice('Announcement sent!');
+  }
+
+  async function doBan() {
+    if (!devBanId) return;
+    await adminBan(parseInt(devBanId));
+    devBanId = '';
+    pushLocalNotice('Player banned.');
+  }
+
+  async function doUnban() {
+    if (!devBanId) return;
+    await adminUnban(parseInt(devBanId));
+    devBanId = '';
+    pushLocalNotice('Player unbanned.');
+  }
+
+  async function doMail() {
+    await adminSendMail({
+      TargetPlayerId: parseInt(devMailId) || 0,
+      BaseItemId: devMailItem || null,
+      QualityTier: 0,
+      Quantity: devMailQty,
+      Gold: devMailGold,
+      SenderName: 'System Admin',
+      MessageText: devMailMsg || null
+    });
+    devMailId = '';
+    devMailItem = '';
+    devMailQty = 1;
+    devMailGold = 0;
+    devMailMsg = '';
+    pushLocalNotice('Admin mail sent!');
+  }
 
   // ---------------------------------------------------------------------------
   // Support
@@ -233,8 +306,60 @@
     {/if}
   </section>
 
-  <section class="panel">
-    <h2>Support</h2>
+  {#if isAdmin}
+      <section class="panel admin-panel">
+        <header class="head">
+          <h2 style="color: var(--err)">Dev Settings (Admin Only)</h2>
+        </header>
+
+        <p class="dim small">
+          These settings are visible only to you.
+        </p>
+
+        <div class="admin-grid">
+          <div class="admin-card">
+            <h3>Global Profanity Filter</h3>
+            <button onclick={toggleProfanity} class:active={devProfanity}>
+              {devProfanity ? 'Enabled (ON)' : 'Disabled (OFF)'}
+            </button>
+          </div>
+
+          <div class="admin-card">
+            <h3>Announcement</h3>
+            <div class="flex-row">
+              <input type="text" bind:value={devAnnounceMsg} placeholder="Message to all players..." />
+              <button onclick={doAnnounce}>Broadcast</button>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <h3>Ban / Unban Player</h3>
+            <div class="flex-row">
+              <input type="number" bind:value={devBanId} placeholder="Player ID..." />
+              <button onclick={doBan} style="color: var(--err)">Ban</button>
+              <button onclick={doUnban}>Unban</button>
+            </div>
+          </div>
+
+          <div class="admin-card" style="grid-column: 1 / -1;">
+            <h3>Admin Mailer</h3>
+            <p class="dim tiny">Leave Target Player ID empty to send to ALL players.</p>
+            <div class="form-grid">
+              <input type="number" bind:value={devMailId} placeholder="Target Player ID (0 = ALL)" />
+              <input type="text" bind:value={devMailItem} placeholder="Base Item ID (e.g. axe_copper)" />
+              <input type="number" bind:value={devMailQty} placeholder="Quantity" />
+              <input type="number" bind:value={devMailGold} placeholder="Gold Amount" />
+              <input type="text" bind:value={devMailMsg} placeholder="Text Message (optional)" style="grid-column: 1 / -1;" />
+              <button onclick={doMail} style="grid-column: 1 / -1;">Send Mail</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    {/if}
+
+    <section class="panel">
+      <header class="head">
+        <h2>Support</h2>
     <p class="dim small">
       Sends a short diagnostic bundle with your message. Bearer tokens, email
       addresses and long opaque ids are stripped in your browser before
@@ -487,5 +612,46 @@
     margin: 0;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+  }
+  .admin-panel {
+    border: 1px solid var(--err);
+    background: rgba(255, 0, 0, 0.05);
+  }
+
+  .admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .admin-card {
+    background: var(--bg-hover);
+    padding: 1rem;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .admin-card h3 {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--fg);
+  }
+
+  .flex-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .flex-row input, .form-grid input {
+    min-width: 0;
   }
 </style>

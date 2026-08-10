@@ -517,6 +517,8 @@ export interface MailboxEntry {
   Quantity: number;
   GoldAttachment: number;
   HasEquipmentAttachment: boolean;
+  SenderName: string | null;
+  MessageText: string | null;
   /** Unix seconds. */
   ReceivedTimestamp: number;
 }
@@ -995,3 +997,45 @@ export function scrubTrace(traceLog: string): string {
     .slice(0, 16000);
 }
 
+// ---------------------------------------------------------------------------
+// Admin Endpoints
+// ---------------------------------------------------------------------------
+
+export interface AdminStatus {
+  isAdmin: boolean;
+  profanityEnabled: boolean;
+}
+
+export function fetchAdminStatus(): Promise<AdminStatus> {
+  return authedGet<AdminStatus>('/api/v1/admin/status');
+}
+
+export function adminToggleProfanity(enabled: boolean): Promise<null> {
+  return authedPost<null>('/api/v1/admin/profanity', { enabled });
+}
+
+export function adminAnnounce(text: string): Promise<null> {
+  return authedPost<null>('/api/v1/admin/announce', { text });
+}
+
+export function adminBan(playerId: number): Promise<null> {
+  return authedPost<null>(`/api/v1/admin/ban?id=${playerId}`, {});
+}
+
+export function adminUnban(playerId: number): Promise<null> {
+  return authedPost<null>(`/api/v1/admin/unban?id=${playerId}`, {});
+}
+
+export interface AdminMailRequest {
+  TargetPlayerId: number;
+  BaseItemId: string | null;
+  QualityTier: number;
+  Quantity: number;
+  Gold: number;
+  SenderName: string | null;
+  MessageText: string | null;
+}
+
+export function adminSendMail(req: AdminMailRequest): Promise<null> {
+  return authedPost<null>('/api/v1/admin/mail', req);
+}
