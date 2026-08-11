@@ -1325,7 +1325,6 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.CachedInnMaturationBonus = updateNotif.InnMaturationBonus;
                         currentPayload.CachedMaxPopulationCapacity = updateNotif.MaxPopulationCapacity;
                         currentPayload.LumberjackLevel = updateNotif.LumberjackLevel;
-                        currentPayload.QuarryLevel = updateNotif.QuarryLevel;
                         currentPayload.MineLevel = updateNotif.MineLevel;
                         currentPayload.WarehouseLevel = updateNotif.WarehouseLevel;
                         currentPayload.TownHallLevel = updateNotif.TownHallLevel;
@@ -3627,7 +3626,6 @@ namespace FolkIdle.Server.Domain.Combat
                                 GuildRaidBossCurrentHp = currentPayload.CachedGuildRaidBossCurrentHp,
                                 GuildRaidBossMaxHp = currentPayload.CachedGuildRaidBossMaxHp,
                                 LumberjackLevel = currentPayload.LumberjackLevel,
-                                QuarryLevel = currentPayload.QuarryLevel,
                                 MineLevel = currentPayload.MineLevel,
                                 WarehouseLevel = currentPayload.WarehouseLevel,
                                 TownHallLevel = (byte)currentPayload.TownHallLevel,
@@ -4960,12 +4958,6 @@ namespace FolkIdle.Server.Domain.Combat
                 payload.AccumulatedWood += (float)(woodRate * deltaTimeSeconds);
             }
 
-            float stoneRate = payload.QuarryLevel * VillageManagementEngine.QuarryStoneRatePerLevel;
-            if (stoneRate > 0f && payload.CachedStoneStock < maxStorage)
-            {
-                payload.AccumulatedStone += (float)(stoneRate * deltaTimeSeconds);
-            }
-
             float ironRate = payload.MineLevel * VillageManagementEngine.MineIronRatePerLevel;
             if (ironRate > 0f && payload.CachedIronOreStock < maxStorage)
             {
@@ -5043,9 +5035,6 @@ namespace FolkIdle.Server.Domain.Combat
                     break;
                 case VillageManagementEngine.LumberjackBuildingId:
                     payload.LumberjackLevel++;
-                    break;
-                case VillageManagementEngine.QuarryBuildingId:
-                    payload.QuarryLevel++;
                     break;
                 case VillageManagementEngine.MineBuildingId:
                     payload.MineLevel++;

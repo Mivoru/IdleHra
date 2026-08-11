@@ -1327,13 +1327,6 @@ export const BUILDINGS: readonly {
     what: 'Produces wood on its own, and speeds up your own woodcutting by 5% a level.',
   },
   {
-    id: 6,
-    name: 'Quarry',
-    stateField: 'QuarryLevel',
-    costKind: 'production',
-    what: 'Produces stone on its own.',
-  },
-  {
     id: 7,
     name: 'Mine',
     stateField: 'MineLevel',
@@ -1359,15 +1352,23 @@ export function villageGoldCost(currentLevel: number): number {
 
 /** Mirrors VillageManagementEngine.CalculateProductionUpgradeCost - materials. */
 export function villageMaterialCost(currentLevel: number): number {
-  return Math.ceil(100 * Math.pow(1.5, Math.max(0, currentLevel)));
+  const levelInTier = currentLevel % 5;
+  return Math.ceil(100 * Math.pow(1.5, Math.max(0, levelInTier)));
 }
 
 /** What the next level of this building will take, in words. */
 export function villageCostLabel(costKind: CostKind, currentLevel: number): string {
   const materials = villageMaterialCost(currentLevel).toLocaleString();
-  if (costKind === 'production') return `${materials} wood + ${materials} stone`;
-  if (costKind === 'structural') return `${materials} logs + ${materials} ore`;
-  return `${villageGoldCost(currentLevel).toLocaleString()}g + ${materials} logs + ${materials} ore`;
+  const tier = Math.floor(currentLevel / 5);
+  
+  const tierLogs = ["Birch Log", "Willow Log", "Acacia Log", "Frostpine Log", "Ebon Log"];
+  const tierOres = ["Copper Ore", "Iron Ore", "Sulfur Ore", "Silver Ore", "Darksteel Ore"];
+  
+  const logName = tier < tierLogs.length ? tierLogs[tier] : "Ebon Log";
+  const oreName = tier < tierOres.length ? tierOres[tier] : "Darksteel Ore";
+  
+  if (costKind === 'production' || costKind === 'structural') return `${materials} ${logName} + ${materials} ${oreName}`;
+  return `${villageGoldCost(currentLevel).toLocaleString()}g + ${materials} ${logName} + ${materials} ${oreName}`;
 }
 
 /**

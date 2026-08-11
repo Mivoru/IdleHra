@@ -91,7 +91,7 @@ export interface ClientCommand {
   RerollStopAffixIndex: number;
 }
 
-/** StateUpdatePacket - 801 bytes on the binary wire. */
+/** StateUpdatePacket - 800 bytes on the binary wire. */
 export interface StateUpdate {
   readonly type: typeof PacketType.StateUpdate;
   PlayerId: number;
@@ -248,7 +248,6 @@ export interface StateUpdate {
   GuildRaidBossCurrentHp: number;
   GuildRaidBossMaxHp: number;
   LumberjackLevel: number;
-  QuarryLevel: number;
   MineLevel: number;
   WarehouseLevel: number;
   CachedWoodStock: number;
@@ -432,7 +431,7 @@ export type CommandTypeName = keyof typeof CommandType;
 export const PACKET_BYTE_SIZE = {
   AuthHandshake: 530,
   ClientCommand: 359,
-  StateUpdate: 801,
+  StateUpdate: 800,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
   ResponseLootDrop: 22,

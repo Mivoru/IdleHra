@@ -461,7 +461,6 @@ namespace FolkIdle.Server.Engine
 
         // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
         public byte LumberjackLevel;
-        public byte QuarryLevel;
         public byte MineLevel;
         public byte WarehouseLevel;
 

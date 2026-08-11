@@ -163,7 +163,7 @@ namespace FolkIdle.Server.Engine
                 else payload.Slot1_AgePhase = 0;
             }
 
-            await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.QuarryLevel, payload.MineLevel, payload.WarehouseLevel, payload.TownHallLevel, earningSeconds);
+            await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.MineLevel, payload.WarehouseLevel, payload.TownHallLevel, earningSeconds);
 
             // Modul: Phase - Full-Stack Production Polish, Part 1.1 (Offline
             // "Welcome Back" flow). Captured before the projection branches
@@ -281,28 +281,32 @@ namespace FolkIdle.Server.Engine
         // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
         // Grants offline wood/stone/iron_ore analytically, independent of
         // whatever gathering/combat activity was active while offline.
-        private static async Task GrantVillagePassiveProductionAsync(FolkIdleDbContext db, long playerId, int lumberjackLevel, int quarryLevel, int mineLevel, int warehouseLevel, int townHallLevel, long elapsedSeconds)
+        private static async Task GrantVillagePassiveProductionAsync(FolkIdleDbContext db, long playerId, int lumberjackLevel, int mineLevel, int warehouseLevel, int townHallLevel, long elapsedSeconds)
         {
             if (elapsedSeconds <= 0)
             {
                 return;
             }
 
-            // Modul: Economy Polish, Part 2. Town Hall passive gold is
-            // granted regardless of warehouse storage (gold is liquidity,
-            // not a warehoused material - the storage cap below only
-            // governs wood/stone/iron). Pure integer math:
-            // goldEarned = elapsedSeconds * ratePerHour / 3600.
             long goldRatePerHour = VillageManagementEngine.GetTownHallGoldRatePerHour(townHallLevel);
             long goldEarned = elapsedSeconds * goldRatePerHour / 3600L;
 
-            long maxStorage = VillageManagementEngine.CalculateWarehouseMaxStorage(warehouseLevel);
+            int lumberjackTierLevel = lumberjackLevel % 5;
+            long woodRatePerHour = lumberjackLevel > 0 ? (lumberjackTierLevel + 1) * 100L : 0;
+            
+            int mineTierLevel = mineLevel % 5;
+            long ironRatePerHour = mineLevel > 0 ? (mineTierLevel + 1) * 100L : 0;
+            
+            var lumberjackMats = VillageManagementEngine.GetTierMaterials(lumberjackLevel);
+            var mineMats = VillageManagementEngine.GetTierMaterials(mineLevel);
 
-            float woodRate = lumberjackLevel * VillageManagementEngine.LumberjackWoodRatePerLevel;
-            float stoneRate = quarryLevel * VillageManagementEngine.QuarryStoneRatePerLevel;
-            float ironRate = mineLevel * VillageManagementEngine.MineIronRatePerLevel;
+            int warehouseTierLevel = warehouseLevel % 5;
+            long maxStoragePerItem = warehouseLevel > 0 ? ((warehouseTierLevel + 1) * 100L) * 5L : 0;
 
-            bool anyMaterialProduction = maxStorage > 0 && (woodRate > 0f || stoneRate > 0f || ironRate > 0f);
+            long woodEarned = Math.Min(elapsedSeconds * woodRatePerHour / 3600L, maxStoragePerItem);
+            long oreEarned = Math.Min(elapsedSeconds * ironRatePerHour / 3600L, maxStoragePerItem);
+
+            bool anyMaterialProduction = woodEarned > 0 || oreEarned > 0;
             if (!anyMaterialProduction && goldEarned <= 0)
             {
                 return;
@@ -311,11 +315,13 @@ namespace FolkIdle.Server.Engine
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
-                if (anyMaterialProduction)
+                if (woodEarned > 0)
                 {
-                    await GrantSingleCommodityProductionAsync(db, playerId, VillageManagementEngine.WoodCommodityId, woodRate, elapsedSeconds, maxStorage);
-                    await GrantSingleCommodityProductionAsync(db, playerId, VillageManagementEngine.StoneCommodityId, stoneRate, elapsedSeconds, maxStorage);
-                    await GrantSingleCommodityProductionAsync(db, playerId, VillageManagementEngine.IronOreCommodityId, ironRate, elapsedSeconds, maxStorage);
+                    await GrantSingleCommodityProductionAsync(db, playerId, lumberjackMats.Log, woodEarned, maxStoragePerItem);
+                }
+                if (oreEarned > 0)
+                {
+                    await GrantSingleCommodityProductionAsync(db, playerId, mineMats.Ore, oreEarned, maxStoragePerItem);
                 }
 
                 if (goldEarned > 0)
@@ -340,25 +346,16 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        private static async Task GrantSingleCommodityProductionAsync(FolkIdleDbContext db, long playerId, string itemId, float productionRatePerSecond, long elapsedSeconds, long maxStorage)
+        private static async Task GrantSingleCommodityProductionAsync(FolkIdleDbContext db, long playerId, string itemId, long amountToGrant, long maxStorage)
         {
-            if (productionRatePerSecond <= 0f)
-            {
-                return;
-            }
-
-            long potential = (long)(elapsedSeconds * productionRatePerSecond);
-            if (potential <= 0)
-            {
-                return;
-            }
+            if (amountToGrant <= 0) return;
 
             var commodity = await db.CommodityRecords
                 .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, itemId)
                 .SingleOrDefaultAsync();
 
             long currentStorage = commodity?.Quantity ?? 0L;
-            long grantedAmount = Math.Min(potential, Math.Max(0L, maxStorage - currentStorage));
+            long grantedAmount = Math.Min(amountToGrant, Math.Max(0L, maxStorage - currentStorage));
             if (grantedAmount <= 0)
             {
                 return;

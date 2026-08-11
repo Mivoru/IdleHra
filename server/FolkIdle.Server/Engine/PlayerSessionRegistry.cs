@@ -222,7 +222,6 @@ namespace FolkIdle.Server.Engine
         // UpgradeBuilding command against Lumberjack/Quarry/Mine/Warehouse
         // replicates immediately instead of only refreshing at next login.
         public byte LumberjackLevel;
-        public byte QuarryLevel;
         public byte MineLevel;
         public byte WarehouseLevel;
 

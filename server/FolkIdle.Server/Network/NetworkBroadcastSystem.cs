@@ -7790,7 +7790,16 @@ namespace FolkIdle.Server.Network
                 var payload = JsonSerializer.Deserialize<JsonElement>(body);
 
                 string itemId = payload.GetProperty("itemId").GetString() ?? "";
-                int quantity = payload.GetProperty("quantity").GetInt32();
+                int quantity = 0;
+                var qProp = payload.GetProperty("quantity");
+                if (qProp.ValueKind == JsonValueKind.Number)
+                {
+                    quantity = qProp.GetInt32();
+                }
+                else if (qProp.ValueKind == JsonValueKind.String)
+                {
+                    int.TryParse(qProp.GetString(), out quantity);
+                }
 
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();

@@ -148,7 +148,7 @@ namespace FolkIdle.Server.Network
         // carries no combat event at all - the client infers every hit from a
         // health difference - so without these two a crit looked exactly like
         // an ordinary swing and a wand looked exactly like a sword.
-        public const int ExpectedStateUpdateSize = 801;
+        public const int ExpectedStateUpdateSize = 800;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

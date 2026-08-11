@@ -25,7 +25,6 @@ namespace FolkIdle.Server.Domain.Progression
         // VillageInfrastructures is keyed on (PlayerId, BuildingId) - reusing 1-4
         // here would silently collide with those existing building rows.
         public const int LumberjackBuildingId = 5;
-        public const int QuarryBuildingId = 6;
         public const int MineBuildingId = 7;
         public const int WarehouseBuildingId = 8;
 
@@ -75,9 +74,23 @@ namespace FolkIdle.Server.Domain.Progression
         public const string IronOreCommodityId = "iron_ore";
 
         public const float LumberjackWoodRatePerLevel = 0.1f;
-        public const float QuarryStoneRatePerLevel = 0.08f;
         public const float MineIronRatePerLevel = 0.05f;
         public const long WarehouseCapacityPerLevel = 1000L;
+
+        private static readonly (string Log, string Ore, string RareLog)[] TierMaterials = new[]
+        {
+            ("birch_log", "copper_ore", "golden_birch_log"),
+            ("willow_log", "iron_ore", "golden_willow_log"),
+            ("acacia_log", "sulfur_ore", "golden_acacia_log"),
+            ("frostpine_log", "silver_ore", "golden_frostpine_log"),
+            ("ebon_log", "darksteel_ore", "golden_ebon_log"),
+        };
+
+        public static (string Log, string Ore, string RareLog) GetTierMaterials(int currentLevel)
+        {
+            int tier = Math.Clamp(currentLevel / 5, 0, 4);
+            return TierMaterials[tier];
+        }
 
         public static long CalculateWarehouseMaxStorage(int warehouseLevel)
         {
@@ -260,94 +273,42 @@ namespace FolkIdle.Server.Domain.Progression
                 // Quarry/Mine/Warehouse) are raw-material sinks - upgrading them
                 // costs Wood and Stone rather than the Gold the original four
                 // service buildings (Forge/Inn/Breeding/Academy) use.
-                bool isProductionBuilding = targetBuildingId >= LumberjackBuildingId && targetBuildingId <= WarehouseBuildingId;
-                long cost;
+                bool isProductionBuilding = targetBuildingId == LumberjackBuildingId || targetBuildingId == MineBuildingId || targetBuildingId == WarehouseBuildingId;
+                long cost = CalculateProductionUpgradeCost(infrastructure.CurrentLevel);
+                
+                var tierMats = GetTierMaterials(infrastructure.CurrentLevel);
 
-                if (isStructuralBuilding)
+                // ALL buildings consume tiered logs and ores now
+                if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, tierMats.Log, cost) ||
+                    !await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, tierMats.Ore, cost))
                 {
-                    // Modul: Deferred Part 5 Implementation, Part 3.
-                    // Structural upgrades are permanent resource sinks fed
-                    // through the unified Backpack+Stash consumption path:
-                    // Logs + Ores (raw_log + copper_ore), and the Crafting
-                    // Workshop additionally consumes a rare log
-                    // (golden_birch_log) per upgrade.
-                    cost = CalculateProductionUpgradeCost(infrastructure.CurrentLevel);
+                    await transaction.RollbackAsync();
+                    return;
+                }
 
-                    if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, "raw_log", cost) ||
-                        !await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, "copper_ore", cost))
+                if (isStructuralBuilding && targetBuildingId == CraftingWorkshopBuildingId)
+                {
+                    long rareLogCost = Math.Max(1L, cost / 10L);
+                    if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, tierMats.RareLog, rareLogCost))
                     {
                         await transaction.RollbackAsync();
                         return;
                     }
-
-                    if (targetBuildingId == CraftingWorkshopBuildingId)
-                    {
-                        long rareLogCost = Math.Max(1L, cost / 10L);
-                        if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, "golden_birch_log", rareLogCost))
-                        {
-                            await transaction.RollbackAsync();
-                            return;
-                        }
-                    }
                 }
-                else if (isProductionBuilding)
+                else if (!isStructuralBuilding && !isProductionBuilding)
                 {
-                    cost = CalculateProductionUpgradeCost(infrastructure.CurrentLevel);
-
-                    var woodRecord = await db.CommodityRecords
-                        .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, WoodCommodityId)
-                        .SingleOrDefaultAsync();
-
-                    var stoneRecord = await db.CommodityRecords
-                        .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, StoneCommodityId)
-                        .SingleOrDefaultAsync();
-
-                    if (woodRecord == null || stoneRecord == null || woodRecord.Quantity < cost || stoneRecord.Quantity < cost)
-                    {
-                        await transaction.RollbackAsync();
-                        return;
-                    }
-
-                    woodRecord.Quantity -= cost;
-                    stoneRecord.Quantity -= cost;
-                }
-                else
-                {
-                    // Modul: THE SERVICE BUILDINGS COST MATERIALS NOW, not gold
-                    // alone.
-                    //
-                    // Reported from play as "I click upgrade and the Forge is
-                    // built without consuming any material at all" - gold is
-                    // material to a player only in the sense that it is a
-                    // number, and it arrives from combat whether or not anyone
-                    // ever swings an axe. Wood and ore are what woodcutting and
-                    // mining are FOR, and a village raised out of them is the
-                    // reason those professions exist.
-                    //
-                    // Gold is still charged alongside, because a raise that
-                    // stopped costing gold would remove the only sink the
-                    // currency has at this scale.
-                    cost = CalculateUpgradeCost(infrastructure.CurrentLevel);
-                    long materialCost = CalculateProductionUpgradeCost(infrastructure.CurrentLevel);
-
+                    // Service buildings (Forge, Inn, Breeding, Academy) ALSO cost gold
+                    long goldCost = CalculateUpgradeCost(infrastructure.CurrentLevel);
                     var goldRecord = await db.CommodityRecords
                         .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
                         .SingleOrDefaultAsync();
 
-                    if (goldRecord == null || goldRecord.Quantity < cost)
+                    if (goldRecord == null || goldRecord.Quantity < goldCost)
                     {
                         await transaction.RollbackAsync();
                         return;
                     }
-
-                    if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, "raw_log", materialCost) ||
-                        !await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, "copper_ore", materialCost))
-                    {
-                        await transaction.RollbackAsync();
-                        return;
-                    }
-
-                    goldRecord.Quantity -= cost;
+                    goldRecord.Quantity -= goldCost;
                 }
 
                 infrastructure.UpgradeTargetLevel = infrastructure.CurrentLevel + 1;
@@ -454,7 +415,7 @@ namespace FolkIdle.Server.Domain.Progression
             // was to raise a contract cap is a gold sink with nothing on the
             // end of it.
             return (buildingId >= ForgeBuildingId && buildingId <= BreedingGroundsBuildingId)
-                || (buildingId >= LumberjackBuildingId && buildingId <= WarehouseBuildingId)
+                || buildingId == LumberjackBuildingId || buildingId == MineBuildingId || buildingId == WarehouseBuildingId
                 || buildingId == TownHallBuildingId
                 || buildingId == CraftingWorkshopBuildingId;
         }
@@ -482,7 +443,9 @@ namespace FolkIdle.Server.Domain.Progression
         public static long CalculateProductionUpgradeCost(int currentLevel)
         {
             if (currentLevel < 0) currentLevel = 0;
-            double scaled = BaseProductionUpgradeCost * Math.Pow(1.5, currentLevel);
+            // Cost resets per tier
+            int tierLevel = currentLevel % 5;
+            double scaled = BaseProductionUpgradeCost * Math.Pow(1.5, tierLevel);
             if (scaled > long.MaxValue) return long.MaxValue;
             return (long)Math.Ceiling(scaled);
         }
@@ -501,7 +464,6 @@ namespace FolkIdle.Server.Domain.Progression
             int breedingLevel = 0;
             int academyLevel = 0;
             int lumberjackLevel = 0;
-            int quarryLevel = 0;
             int mineLevel = 0;
             int warehouseLevel = 0;
             int townHallLevel = 0;
@@ -516,7 +478,6 @@ namespace FolkIdle.Server.Domain.Progression
                 else if (levels[i].BuildingId == BreedingGroundsBuildingId) breedingLevel = levels[i].CurrentLevel;
                 else if (levels[i].BuildingId == MentorshipAcademyBuildingId) academyLevel = levels[i].CurrentLevel;
                 else if (levels[i].BuildingId == LumberjackBuildingId) lumberjackLevel = levels[i].CurrentLevel;
-                else if (levels[i].BuildingId == QuarryBuildingId) quarryLevel = levels[i].CurrentLevel;
                 else if (levels[i].BuildingId == MineBuildingId) mineLevel = levels[i].CurrentLevel;
                 else if (levels[i].BuildingId == WarehouseBuildingId) warehouseLevel = levels[i].CurrentLevel;
                 else if (levels[i].BuildingId == TownHallBuildingId) townHallLevel = levels[i].CurrentLevel;
@@ -556,7 +517,6 @@ namespace FolkIdle.Server.Domain.Progression
                 MaxPopulationCapacity = CalculatePopulationCapacity(innLevel),
                 InnMaturationBonus = innLevel,
                 LumberjackLevel = ClampByte(lumberjackLevel),
-                QuarryLevel = ClampByte(quarryLevel),
                 MineLevel = ClampByte(mineLevel),
                 WarehouseLevel = ClampByte(warehouseLevel),
                 TownHallLevel = ClampByte(townHallLevel),

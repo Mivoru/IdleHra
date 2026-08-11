@@ -1043,6 +1043,7 @@ export function adminSendMail(req: AdminMailRequest): Promise<null> {
 
 export interface GuildDepotResponse {
   Balances: Record<number, number>;
+  DepotByBaseId?: Record<string, number>;
   Leaderboard: GuildMemberInfo[];
   ActiveBuffs: GuildActiveBuffInfo[];
   GuildGold: number;
@@ -1056,6 +1057,7 @@ export interface GuildMemberInfo {
 
 export interface GuildActiveBuffInfo {
   BuffType: string;
+  Tier: number;
   ExpiresAtEpoch: number;
 }
 

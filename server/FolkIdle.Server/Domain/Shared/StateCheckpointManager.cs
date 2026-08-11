@@ -685,7 +685,6 @@ namespace FolkIdle.Server.Domain.Shared
             int breedingLevel = 0;
             int academyLevel = 0;
             int lumberjackLevel = 0;
-            int quarryLevel = 0;
             int mineLevel = 0;
             int warehouseLevel = 0;
             int townHallLevel = 0;
@@ -699,7 +698,7 @@ namespace FolkIdle.Server.Domain.Shared
                 else if (villageRows[i].BuildingId == VillageManagementEngine.BreedingGroundsBuildingId) breedingLevel = villageRows[i].CurrentLevel;
                 else if (villageRows[i].BuildingId == VillageManagementEngine.MentorshipAcademyBuildingId) academyLevel = villageRows[i].CurrentLevel;
                 else if (villageRows[i].BuildingId == VillageManagementEngine.LumberjackBuildingId) lumberjackLevel = villageRows[i].CurrentLevel;
-                else if (villageRows[i].BuildingId == VillageManagementEngine.QuarryBuildingId) quarryLevel = villageRows[i].CurrentLevel;
+
                 else if (villageRows[i].BuildingId == VillageManagementEngine.MineBuildingId) mineLevel = villageRows[i].CurrentLevel;
                 else if (villageRows[i].BuildingId == VillageManagementEngine.WarehouseBuildingId) warehouseLevel = villageRows[i].CurrentLevel;
                 else if (villageRows[i].BuildingId == VillageManagementEngine.TownHallBuildingId) townHallLevel = villageRows[i].CurrentLevel;
@@ -996,7 +995,6 @@ namespace FolkIdle.Server.Domain.Shared
                 CurrentPopulationCount = ClampByte(activeResidentCount),
                 ActiveMentorshipContractCount = 0,
                 LumberjackLevel = ClampByte(lumberjackLevel),
-                QuarryLevel = ClampByte(quarryLevel),
                 MineLevel = ClampByte(mineLevel),
                 WarehouseLevel = ClampByte(warehouseLevel),
                 TownHallLevel = townHallLevel,
