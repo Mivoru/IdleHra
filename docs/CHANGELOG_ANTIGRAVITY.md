@@ -1,3 +1,34 @@
+## 2026-08-11 - Guild Buffs, Donations a Weekly Leaderboard
+**Autor:** Antigravity
+
+### 1. Rozšíření Gildovních Systémů (Backend)
+- **GuildActiveBuffs:** Do databáze `FolkIdleDbContext` byla přidána nová tabulka pro evidenci aktivních buffů a vygenerována odpovídající Entity Framework Core migrace.
+- **GuildBonusesCache:** Nová služba, která dynamicky asynchronně překlápí data z databáze do mezipaměti a zásobuje enginy výhodami plynoucími ze zakoupených buffů.
+- Zavedeny **čtyři klíčové buffy**: 
+  - Zvýšení nabytých zkušeností (Exp) o +25%.
+  - Zvýšení počtu zlaťáků z monster (Gold) o +25%.
+  - Globální 1.2x modifikátor pro jakýkoliv loot (Drop Rate).
+  - Přímý 15% multiplikátor způsobovaného poškození v boji (Damage).
+
+### 2. Donatování Materiálů do Pokladnice (Backend API)
+- Nové API pro darování libovolných materiálů přímo z batohu do pokladnice cechu.
+- Integrován algoritmus, který propočítává `WeeklyContributionPoints` podle rarity darovaného předmětu (např. Golden Ebon log poskytne exponenciálně více bodů než Birch twig).
+- Tyto darované materiály se proměňují v "Palivo" v pokladnici, za které může cech hromadně nakupovat výše zmíněné buffy (Cena pevně stanovena na 50 000 materiálů).
+
+### 3. Týdenní Rozdělování Zlaťáků (Cron Job)
+- Ve třídě `LeaderboardCronEngine.cs` byla spuštěna týdenní automatizace.
+- Úloha projde `GuildRecord`, zjistí celkovou sumu vydělaných zlaťáků gildy a vytvoří tzv. *Prize Pool* v hodnotě **50%**.
+- Nalezne **TOP 3 hráče**, kteří darovali v probíhajícím týdnu nejvíce materiálů.
+- Tomuto žebříčku automaticky rozdělí odměny v poměru (25%, 15%, 10%) z *Prize Poolu*.
+- Body (`WeeklyContributionPoints`) se po úspěšném vyplacení všem členům resetují.
+
+### 4. Vizuální rozhraní Guild Ops (Svelte Client)
+- **Soubor:** `client_web/src/routes/GuildOps.svelte`
+- Do záložky *Treasury* byla napojena sekce **Guild Treasury & Buffs**.
+- Vypsán seznam všech dostupných buffů a zobrazen jejich aktuální stav (Koupit / Vyprší v...).
+- Přidán vizuální žebříček **Weekly Leaderboard** zobrazující pořadí členů a jejich nahrané body.
+- Zavedeno ovládací rozhraní (Drop-down + Input) pro výběr předmětů a částky pro odeslání **Donation** materiálů k získání příspěvkových bodů.
+
 # Antigravity Changelog
 
 ## 2026-08-10 - Dev Settings a textová administrátorská pošta
