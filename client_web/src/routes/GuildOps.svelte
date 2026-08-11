@@ -505,11 +505,11 @@
           <Skeleton />
         {:else if guildDepot.data}
           <div style="margin-bottom: 1rem; font-size: 1.2rem;">
-            <Money amount={guildDepot.data.GuildGold} icon />
+            <Money amount={guildDepot.data.GuildGold ?? 0} icon />
           </div>
           <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
             {#each BUFF_TYPES as buff}
-              {@const active = guildDepot.data.ActiveBuffs.find(b => b.BuffType === buff.type)}
+              {@const active = (guildDepot.data.ActiveBuffs ?? []).find(b => b.BuffType === buff.type)}
               <div style="border: 1px solid var(--border); padding: 0.5rem; border-radius: 4px; flex: 1; min-width: 140px;">
                 <div style="font-weight: bold; margin-bottom: 0.2rem;">{buff.label}</div>
                 {#if active}
@@ -536,11 +536,11 @@
         {:else if guildDepot.data}
           <h3>Weekly Leaderboard</h3>
           <p class="dim tiny">Top 3 contributors receive a cut of the guild's gold at the end of the week.</p>
-          {#if guildDepot.data.Leaderboard.length === 0}
+          {#if (guildDepot.data.Leaderboard ?? []).length === 0}
             <p class="dim small">No contributions this week.</p>
           {:else}
             <ul class="members" style="margin-bottom: 1rem;">
-              {#each guildDepot.data.Leaderboard as member, i}
+              {#each (guildDepot.data.Leaderboard ?? []) as member, i}
                 <li>
                   <span class="who">
                     #{i + 1} {member.Name}
