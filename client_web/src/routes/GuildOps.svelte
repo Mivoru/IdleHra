@@ -89,10 +89,19 @@
   // --- treasury -------------------------------------------------------------
   let treasuryGold = $state(1000);
 
-  function giveGold() {
-    const outcome = contributeGuildGold(treasuryGold, hasGuild);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-    refresh();
+  async function giveGold() {
+    if (!hasGuild) return pushLocalNotice('You are not in a guild.', 'info');
+    if (treasuryGold < 1) return;
+    try {
+      await donateToGuildDepot('gold', treasuryGold);
+      pushLocalNotice('Gold contributed to treasury!', 'info');
+      setTimeout(() => {
+        client.invalidateQueries({ queryKey: queryKeys.guildDepot });
+        client.invalidateQueries({ queryKey: queryKeys.inventory });
+      }, 700);
+    } catch (e: any) {
+      pushLocalNotice(e.message || 'Failed to contribute gold.', 'info');
+    }
   }
 
   const members = $derived(
@@ -325,6 +334,12 @@
   }
 
   // Buff tier definitions: [commonWood, rareWood, commonOre, rareOre] per tier
+  let expandedBuff = $state<string | null>(null);
+
+  function toggleBuff(type: string) {
+    expandedBuff = expandedBuff === type ? null : type;
+  }
+
   const BUFF_TIERS = [
     { tier: 1, region: 'Sunlit Plains',       commonWood: 'birch_log',       rareWood: 'golden_birch_log',    commonOre: 'copper_ore',    rareOre: 'malachite_ore'  },
     { tier: 2, region: 'Whispering Woods',    commonWood: 'willow_log',      rareWood: 'golden_willow_log',   commonOre: 'iron_ore',      rareOre: 'hematite_ore'   },
@@ -334,10 +349,10 @@
   ];
 
   const BUFF_TYPES = [
-    { type: 'Exp',      label: 'Experience Boost', icon: '✨' },
-    { type: 'Gold',     label: 'Gold Gain Boost',  icon: '🪙' },
-    { type: 'DropRate', label: 'Drop Rate Boost',  icon: '🎁' },
-    { type: 'Damage',   label: 'Damage Boost',     icon: '⚔️' },
+    { type: 'Exp',      label: 'Experience Boost' },
+    { type: 'Gold',     label: 'Gold Gain Boost'  },
+    { type: 'DropRate', label: 'Drop Rate Boost'  },
+    { type: 'Damage',   label: 'Damage Boost'     },
   ];
 
   const BUFF_COST_PER_MAT = 25_000; // 25k wood + 25k ore = 50k total
@@ -494,14 +509,13 @@
           Raises the guild's tier and your own contribution ranking on the roster.
         </p>
 
-        <h3>Deposit</h3>
-
+        <h3>Donate Materials</h3>
+        <p class="dim tiny">Donujte materialy do depotu guildy. Vzacnejsi materialy daji vice bodu.</p>
         <label>
           Material
           <select bind:value={depotMaterial}>
-            <option value={0}>Choose...</option>
-              <option value="gold">Gold</option>
-            {#each depositable as row (row.definition!.Id)}
+            <option value={0}>Vyberte...</option>
+            {#each depositable.filter(r => BUFF_MATERIAL_IDS.has(r.baseId)) as row (row.definition!.Id)}
               <option value={row.baseId}>
                 {prettifyBaseId(row.baseId)} (x{row.quantity})
               </option>
@@ -512,20 +526,20 @@
         <div class="row">
           <input type="number" min="1" max={depotMax || 1} bind:value={depotQuantity} />
           <button disabled={depotMaterial === 0 || depotMax === 0} onclick={deposit}>
-            To depot
+            Do depotu
           </button>
           <button disabled={depotMaterial === 0 || depotMax === 0} onclick={contributeStock}>
-            To chain
+            Do retezce
+          </button>
+          <button disabled={depotMaterial === 0 || donateMax === 0} onclick={handleDonate}>
+            Donovat
           </button>
         </div>
 
-        <!-- These two buttons look interchangeable and are not. Saying so is
-             cheaper than a player wondering why one number moved and not the
-             other. -->
         <p class="dim tiny">
-          <strong>To depot</strong> fills the requirements above.
-          <strong>To chain</strong> feeds the logistics production bar instead.
-          They are separate systems that happen to take the same materials.
+          <strong>Do depotu</strong> plni pozadavky logistiky.
+          <strong>Do retezce</strong> krmí vyrobní bar.
+          <strong>Donovat</strong> pridava materialy do pokladny pro buffy a contribution pointy.
         </p>
 
         {#if depositable.length === 0}
@@ -543,18 +557,16 @@
         {#if guildDepot.isPending}
           <Skeleton />
         {:else if guildDepot.data}
-          <div style="margin-bottom: 0.5rem; font-size: 1.2rem;">
+          <div style="margin-bottom: 0.75rem; font-size: 1.1rem;">
             <Money amount={guildDepot.data.GuildGold ?? 0} icon />
           </div>
 
-          <!-- Active buffs summary -->
           {#if (guildDepot.data.ActiveBuffs ?? []).filter(b => b.ExpiresAtEpoch * 1000 > Date.now()).length > 0}
             <div class="active-buffs-bar">
               {#each (guildDepot.data.ActiveBuffs ?? []).filter(b => b.ExpiresAtEpoch * 1000 > Date.now()) as ab}
                 {@const buffInfo = BUFF_TYPES.find(b => b.type === ab.BuffType)}
                 <span class="active-buff-chip">
-                  {buffInfo?.icon ?? '⚡'} {buffInfo?.label ?? ab.BuffType} T{ab.Tier}
-                  <span class="dim tiny">→ {new Date(ab.ExpiresAtEpoch * 1000).toLocaleTimeString()}</span>
+                  {buffInfo?.label ?? ab.BuffType} T{ab.Tier} — do {new Date(ab.ExpiresAtEpoch * 1000).toLocaleTimeString()}
                 </span>
               {/each}
             </div>
@@ -562,65 +574,64 @@
 
           {#each BUFF_TYPES as buff}
             {@const active = (guildDepot.data.ActiveBuffs ?? []).find(b => b.BuffType === buff.type && b.ExpiresAtEpoch * 1000 > Date.now())}
+            {@const isOpen = expandedBuff === buff.type}
             <div class="buff-block">
-              <div class="buff-header">
-                <span class="buff-title">{buff.icon} {buff.label}</span>
+              <button class="buff-header" onclick={() => toggleBuff(buff.type)}>
+                <span class="buff-title">{isOpen ? '▼' : '▶'} {buff.label}</span>
                 {#if active}
-                  <span class="good-text tiny">Active T{active.Tier} until {new Date(active.ExpiresAtEpoch * 1000).toLocaleString()}</span>
+                  <span class="good-text tiny">Aktivni T{active.Tier} do {new Date(active.ExpiresAtEpoch * 1000).toLocaleString()}</span>
                 {:else}
-                  <span class="dim tiny">Inactive</span>
+                  <span class="dim tiny">Neaktivni</span>
                 {/if}
-              </div>
+              </button>
 
-              {#each BUFF_TIERS as td}
-                <div class="buff-tier-row">
-                  <span class="tier-label">T{td.tier} <span class="dim tiny">{td.region}</span></span>
+              {#if isOpen}
+                {#each BUFF_TIERS as td}
+                  <div class="buff-tier-row">
+                    <span class="tier-label">T{td.tier}<br><span class="dim tiny">{td.region}</span></span>
 
-                  <!-- Common path -->
-                  <div class="buff-path">
-                    <div class="mat-req">
-                      <span class="mat-name">{prettifyBaseId(td.commonWood)}</span>
-                      <span class="mat-stock" class:mat-ok={getDepotQty(td.commonWood) >= BUFF_COST_PER_MAT} class:mat-low={getDepotQty(td.commonWood) < BUFF_COST_PER_MAT}>
-                        {getDepotQty(td.commonWood).toLocaleString()} / {BUFF_COST_PER_MAT.toLocaleString()}
-                      </span>
+                    <div class="buff-path">
+                      <div class="mat-req">
+                        <span class="mat-name">{prettifyBaseId(td.commonWood)}</span>
+                        <span class="mat-stock" class:mat-ok={getDepotQty(td.commonWood) >= BUFF_COST_PER_MAT} class:mat-low={getDepotQty(td.commonWood) < BUFF_COST_PER_MAT}>
+                          {getDepotQty(td.commonWood).toLocaleString()} / {BUFF_COST_PER_MAT.toLocaleString()}
+                        </span>
+                      </div>
+                      <div class="mat-req">
+                        <span class="mat-name">{prettifyBaseId(td.commonOre)}</span>
+                        <span class="mat-stock" class:mat-ok={getDepotQty(td.commonOre) >= BUFF_COST_PER_MAT} class:mat-low={getDepotQty(td.commonOre) < BUFF_COST_PER_MAT}>
+                          {getDepotQty(td.commonOre).toLocaleString()} / {BUFF_COST_PER_MAT.toLocaleString()}
+                        </span>
+                      </div>
+                      <button
+                        class="tiny-btn"
+                        disabled={myRole < 1 || !canActivateTierPath(td, 'common')}
+                        onclick={() => handleActivateBuff(buff.type, td.tier, 'common')}
+                      >Aktivovat (1h)</button>
                     </div>
-                    <div class="mat-req">
-                      <span class="mat-name">{prettifyBaseId(td.commonOre)}</span>
-                      <span class="mat-stock" class:mat-ok={getDepotQty(td.commonOre) >= BUFF_COST_PER_MAT} class:mat-low={getDepotQty(td.commonOre) < BUFF_COST_PER_MAT}>
-                        {getDepotQty(td.commonOre).toLocaleString()} / {BUFF_COST_PER_MAT.toLocaleString()}
-                      </span>
+
+                    <div class="buff-path rare">
+                      <div class="mat-req">
+                        <span class="mat-name rare-mat">{prettifyBaseId(td.rareWood)}</span>
+                        <span class="mat-stock" class:mat-ok={getDepotQty(td.rareWood) >= BUFF_COST_PER_MAT} class:mat-low={getDepotQty(td.rareWood) < BUFF_COST_PER_MAT}>
+                          {getDepotQty(td.rareWood).toLocaleString()} / {BUFF_COST_PER_MAT.toLocaleString()}
+                        </span>
+                      </div>
+                      <div class="mat-req">
+                        <span class="mat-name rare-mat">{prettifyBaseId(td.rareOre)}</span>
+                        <span class="mat-stock" class:mat-ok={getDepotQty(td.rareOre) >= BUFF_COST_PER_MAT} class:mat-low={getDepotQty(td.rareOre) < BUFF_COST_PER_MAT}>
+                          {getDepotQty(td.rareOre).toLocaleString()} / {BUFF_COST_PER_MAT.toLocaleString()}
+                        </span>
+                      </div>
+                      <button
+                        class="tiny-btn rare-btn"
+                        disabled={myRole < 1 || !canActivateTierPath(td, 'rare')}
+                        onclick={() => handleActivateBuff(buff.type, td.tier, 'rare')}
+                      >Aktivovat (9h)</button>
                     </div>
-                    <button
-                      class="tiny-btn"
-                      disabled={myRole < 1 || !canActivateTierPath(td, 'common')}
-                      onclick={() => handleActivateBuff(buff.type, td.tier, 'common')}
-                      title="1 hour"
-                    >Activate (1h)</button>
                   </div>
-
-                  <!-- Rare path -->
-                  <div class="buff-path rare">
-                    <div class="mat-req">
-                      <span class="mat-name rare-mat">{prettifyBaseId(td.rareWood)}</span>
-                      <span class="mat-stock" class:mat-ok={getDepotQty(td.rareWood) >= BUFF_COST_PER_MAT} class:mat-low={getDepotQty(td.rareWood) < BUFF_COST_PER_MAT}>
-                        {getDepotQty(td.rareWood).toLocaleString()} / {BUFF_COST_PER_MAT.toLocaleString()}
-                      </span>
-                    </div>
-                    <div class="mat-req">
-                      <span class="mat-name rare-mat">{prettifyBaseId(td.rareOre)}</span>
-                      <span class="mat-stock" class:mat-ok={getDepotQty(td.rareOre) >= BUFF_COST_PER_MAT} class:mat-low={getDepotQty(td.rareOre) < BUFF_COST_PER_MAT}>
-                        {getDepotQty(td.rareOre).toLocaleString()} / {BUFF_COST_PER_MAT.toLocaleString()}
-                      </span>
-                    </div>
-                    <button
-                      class="tiny-btn rare-btn"
-                      disabled={myRole < 1 || !canActivateTierPath(td, 'rare')}
-                      onclick={() => handleActivateBuff(buff.type, td.tier, 'rare')}
-                      title="9 hours"
-                    >Activate (9h)</button>
-                  </div>
-                </div>
-              {/each}
+                {/each}
+              {/if}
             </div>
           {/each}
         {/if}
@@ -636,12 +647,12 @@
           <Skeleton />
         {:else if guildDepot.data}
           <div class="prize-info">
-            <h3>🏆 Weekly Prizes</h3>
-            <p class="dim tiny">Every week, <strong>50% of the guild treasury</strong> is distributed to the top 3 material contributors:</p>
+            <h3> Weekly Prizes</h3>
+            <p class="dim tiny">Every week, <strong>50 % pokladny guildy</strong> is distributed to the top 3 material contributors:</p>
             <ul class="prize-list">
-              <li><span class="gold-text">🥇 1st place</span> — 25% of treasury</li>
-              <li><span class="silver-text">🥈 2nd place</span> — 15% of treasury</li>
-              <li><span class="bronze-text">🥉 3rd place</span> — 10% of treasury</li>
+              <li><span class="gold-text">1. misto</span> — 25 % pokladny</li>
+              <li><span class="silver-text">2. misto</span> — 15 % pokladny</li>
+              <li><span class="bronze-text">3. misto</span> — 10 % pokladny</li>
             </ul>
             <p class="dim tiny">Only material contributions count toward the leaderboard, not gold donations.</p>
           </div>
@@ -654,7 +665,7 @@
               {#each (guildDepot.data.Leaderboard ?? []).filter(m => m.WeeklyContributionPoints > 0) as member, i}
                 <li>
                   <span class="who">
-                    {#if i === 0}🥇{:else if i === 1}🥈{:else if i === 2}🥉{:else}#{i + 1}{/if}
+                    {#if i === 0}{:else if i === 1}{:else if i === 2}{:else}#{i + 1}{/if}
                     {member.Name}
                     {#if member.PlayerId === connection.currentPlayerId}<span class="dim tiny">you</span>{/if}
                   </span>
@@ -664,25 +675,7 @@
             </ul>
           {/if}
 
-          <h3>Donate Materials</h3>
-          <p class="dim tiny">Donate logs and ores to the guild depot. Rarer materials grant more contribution points!</p>
-          <label>
-            Material
-            <select bind:value={donateMaterial}>
-              <option value={0}>Choose...</option>
-              {#each depositable.filter(r => isDonatableMaterial(r.baseId)) as row}
-                <option value={row.baseId}>
-                  {prettifyBaseId(row.baseId)} (x{row.quantity})
-                </option>
-              {/each}
-            </select>
-          </label>
-          <div class="row">
-            <input type="number" min="1" max={donateMax || 1} bind:value={donateQuantity} />
-            <button disabled={donateMaterial === 0 || donateMax === 0} onclick={handleDonate}>
-              Donate
-            </button>
-          </div>
+
         {/if}
       {/if}
     </section>
@@ -786,6 +779,16 @@
     padding: 0.4rem 0.6rem;
     background: color-mix(in srgb, var(--accent) 10%, transparent);
     border-bottom: 1px solid var(--border);
+    width: 100%;
+    text-align: left;
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+    color: inherit;
+    font: inherit;
+  }
+  .buff-header:hover {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
   }
 
   .buff-title {
@@ -795,12 +798,12 @@
 
   .buff-tier-row {
     display: grid;
-    grid-template-columns: 5rem 1fr 1fr;
-    gap: 0.3rem;
-    padding: 0.35rem 0.6rem;
+    grid-template-columns: 4rem 1fr 1fr;
+    gap: 0.25rem;
+    padding: 0.35rem 0.5rem;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
-    align-items: center;
-    font-size: 0.78rem;
+    align-items: start;
+    font-size: 0.75rem;
   }
 
   .buff-tier-row:last-child {
@@ -852,6 +855,11 @@
 
   .mat-ok { color: var(--good); }
   .mat-low { color: var(--danger); }
+
+  .tiny-btn {
+    white-space: nowrap;
+    font-size: 0.72rem;
+  }
 
   .rare-btn {
     background: color-mix(in srgb, var(--accent) 20%, transparent);
