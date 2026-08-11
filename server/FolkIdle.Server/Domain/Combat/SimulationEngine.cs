@@ -4171,6 +4171,7 @@ namespace FolkIdle.Server.Domain.Combat
             finalXpMultiplier += LegacyPerkResolver.GetXpBonusPct(payload.CachedLegacyPerks);
             finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
             finalXpMultiplier += (int)SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchXpGain, payload.Skill_XpGain);
+            finalXpMultiplier += FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Exp") * 2;
 
             // Modul: the mentorship XP bonus was multiplied in here. Nothing
             // raises it any more - the feature is gone - so the branch went
@@ -4188,6 +4189,7 @@ namespace FolkIdle.Server.Domain.Combat
             // for the offline warp path.
             goldReward = (long)(goldReward * (1.0f + warpCombatStats.GoldAcquisitionMultiplierPct / 100f));
             goldReward = (long)(goldReward * (1.0f + LegacyPerkResolver.GetGoldBonusPct(payload.CachedLegacyPerks) / 100f));
+            goldReward = (long)(goldReward * (1.0f + FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Gold") * 0.02f));
                 // Modul: inheritance. A permanent, season-crossing multiplier.
                 goldReward = (long)(goldReward * (1.0f + InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100f));
 
@@ -4222,7 +4224,7 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     PlayerId = payload.PlayerId,
                     MonsterId = monsterId,
-                    LootLuckPct = warpCombatStats.LootLuckPct + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck),
+                    LootLuckPct = warpCombatStats.LootLuckPct + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck) + (FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "DropRate") * 2.0f),
                     MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(
                         SkillTreeRegistry.BoughPlenty, payload.Skill_Plenty)
                 });
@@ -4297,7 +4299,7 @@ namespace FolkIdle.Server.Domain.Combat
 
             var stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
 
-            long rawMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in stats, lineage.DamageScalePerLevelPct, payload.CurrentLevel, InheritanceRegistry.GetBonusPct(payload.Inherit_Damage));
+            long rawMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in stats, lineage.DamageScalePerLevelPct, payload.CurrentLevel, (InheritanceRegistry.GetBonusPct(payload.Inherit_Damage) + (FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Damage") * 2)));
             double secondsPerKill = CombatDamageModel.ExpectedSecondsPerKill(in stats, in monster, rawMilliAttack, payload.CachedCodexDamageMultiplier);
 
             if (double.IsInfinity(secondsPerKill) || secondsPerKill <= 0.0) return long.MaxValue;
@@ -6005,7 +6007,7 @@ namespace FolkIdle.Server.Domain.Combat
                         }
                     }
 
-                    long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel, InheritanceRegistry.GetBonusPct(payload.Inherit_Damage));
+                    long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel, (InheritanceRegistry.GetBonusPct(payload.Inherit_Damage) + (FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Damage") * 2)));
 
                     // Modul: Prestige "combat speed" perk (LegacyPerkResolver) -
                     // applied as a flat percent boost to effective damage
@@ -6406,6 +6408,7 @@ namespace FolkIdle.Server.Domain.Combat
             finalXpMultiplier += LegacyPerkResolver.GetXpBonusPct(payload.CachedLegacyPerks);
             finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
             finalXpMultiplier += (int)SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchXpGain, payload.Skill_XpGain);
+            finalXpMultiplier += FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Exp") * 2;
 
                 // Modul: and the same removal on the live-kill path. Two copies
                 // of one bonus, which is why it is worth saying twice that the
@@ -6538,6 +6541,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // Modul 13.4.3: Human's innate +5% Gold acquisition passive.
                 goldReward = (long)(goldReward * (1.0f + combatStats.GoldAcquisitionMultiplierPct / 100f));
                 goldReward = (long)(goldReward * (1.0f + LegacyPerkResolver.GetGoldBonusPct(payload.CachedLegacyPerks) / 100f));
+            goldReward = (long)(goldReward * (1.0f + FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Gold") * 0.02f));
                 // Modul: inheritance. A permanent, season-crossing multiplier.
                 goldReward = (long)(goldReward * (1.0f + InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100f));
 
@@ -6641,7 +6645,7 @@ namespace FolkIdle.Server.Domain.Combat
                     // sum contiguous.
                     LootLuckPct = combatStats.LootLuckPct
                         + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck)
-                        + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity)
+                        + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity) + (FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "DropRate") * 2.0f)
                         // Rarity, the Fortune bough - the same currency as the
                         // root, so it simply adds.
                         + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughRarity, payload.Skill_Rarity)

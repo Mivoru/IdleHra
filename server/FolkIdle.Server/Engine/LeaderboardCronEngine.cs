@@ -44,6 +44,7 @@ namespace FolkIdle.Server.Engine
                 try
                 {
                     await SyncLeaderboardsAsync();
+                    await SyncGuildWeeklyLeaderboardsAsync();
                 }
                 catch (Exception ex)
                 {
@@ -268,5 +269,91 @@ namespace FolkIdle.Server.Engine
                 await dbRedis.KeyDeleteAsync(prodKey);
             }
         }
-    }
+    
+        private async Task SyncGuildWeeklyLeaderboardsAsync()
+        {
+            var dbRedis = _redis.GetDatabase();
+
+            string lastSyncKey = "leaderboard:guild:weekly_last_sync";
+            var lastSyncVal = await dbRedis.StringGetAsync(lastSyncKey);
+            
+            DateTime now = DateTime.UtcNow;
+            
+            // Sync happens on Monday (as 0). Wait, DayOfWeek.Monday is 1. Let's do Sunday midnight or Monday midnight.
+            // A simple approach: we store the week number. "2026-W32"
+            var cal = System.Globalization.DateTimeFormatInfo.CurrentInfo.Calendar;
+            int weekOfYear = cal.GetWeekOfYear(now, System.Globalization.CalendarWeekRule.FirstDay, DayOfWeek.Monday);
+            string currentWeekStr = $"{now.Year}-W{weekOfYear}";
+            
+            if (lastSyncVal.HasValue && lastSyncVal.ToString() == currentWeekStr)
+            {
+                return; // Already processed this week
+            }
+            
+            string lockKey = "lock:leaderboard:guild_weekly_sync";
+            string lockToken = Guid.NewGuid().ToString();
+            
+            bool acquired = await dbRedis.StringSetAsync(lockKey, lockToken, TimeSpan.FromSeconds(30), StackExchange.Redis.When.NotExists);
+            if (!acquired) return;
+            
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdle.Server.Models.FolkIdleDbContext>();
+                
+                await using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                
+                var guilds = await dbContext.GuildRecords.ToListAsync();
+                foreach (var guild in guilds)
+                {
+                    var members = await dbContext.GuildMembers
+                        .Where(m => m.GuildId == guild.Id && m.WeeklyContributionPoints > 0)
+                        .OrderByDescending(m => m.WeeklyContributionPoints)
+                        .Take(3)
+                        .ToListAsync();
+                        
+                    if (members.Count() > 0 && guild.TotalGoldContributed > 0)
+                    {
+                        long pool = guild.TotalGoldContributed / 2;
+                        guild.TotalGoldContributed -= pool;
+                        
+                        long[] cuts = { (long)(pool * 0.25), (long)(pool * 0.15), (long)(pool * 0.10) };
+                        
+                        for (int i = 0; i < members.Count() && i < 3; i++)
+                        {
+                            long payout = cuts[i];
+                            if (payout > 0)
+                            {
+                                var goldRow = await dbContext.CommodityRecords.FirstOrDefaultAsync(c => c.PlayerId == members[i].PlayerId && c.ItemId == "gold");
+                                if (goldRow != null)
+                                {
+                                    goldRow.Quantity += payout;
+                                }
+                                else
+                                {
+                                    dbContext.CommodityRecords.Add(new FolkIdle.Server.Models.CommodityRecord { PlayerId = members[i].PlayerId, ItemId = "gold", Quantity = payout });
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Reset everyone's points
+                await dbContext.Database.ExecuteSqlRawAsync("UPDATE \"GuildMembers\" SET \"WeeklyContributionPoints\" = 0");
+                
+                await dbContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+                
+                await dbRedis.StringSetAsync(lastSyncKey, currentWeekStr);
+            }
+            finally
+            {
+                var currentLock = await dbRedis.StringGetAsync(lockKey);
+                if (currentLock == lockToken)
+                {
+                    await dbRedis.KeyDeleteAsync(lockKey);
+                }
+            }
+        }
+}
 }

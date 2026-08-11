@@ -462,17 +462,17 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void WhatAnHourOfGoldBuys()
         {
-            _output.WriteLine("reroll gold cost by ITEM rarity tier, first attempt:");
-            foreach (int tier in new[] { 1, 4, 7, 10, 14 })
+            _output.WriteLine("reroll gold cost by REGION tier, first attempt:");
+            foreach (int tier in new[] { 1, 2, 3, 4, 5 })
             {
                 _output.WriteLine($"  tier {tier,2}: {AffixRegistry.CalculateRerollGoldCost(tier, 0, false),12:N0}");
             }
 
             _output.WriteLine("");
-            _output.WriteLine("the same reroll after N consecutive attempts (item tier 7):");
+            _output.WriteLine("the same reroll after N consecutive attempts (region tier 3):");
             foreach (int attempt in new[] { 0, 5, 10, 20 })
             {
-                _output.WriteLine($"  attempt {attempt,2}: {AffixRegistry.CalculateRerollGoldCost(7, attempt, false),12:N0}");
+                _output.WriteLine($"  attempt {attempt,2}: {AffixRegistry.CalculateRerollGoldCost(3, attempt, false),12:N0}");
             }
         }
 

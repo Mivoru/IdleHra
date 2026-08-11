@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { queryKeys, fetchForge, type ForgeEquipment } from '../lib/net/rest';
-  import { prettifyBaseId } from '../lib/net/content';
+  import { prettifyBaseId, loadContent, type ContentRegistry } from '../lib/net/content';
   import { executeForgeFusion, rerollAffix, REROLL_OPERATIONS } from '../lib/net/commands';
   import Burst from '../lib/ui/Burst.svelte';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
@@ -13,6 +13,11 @@
 
   import { takePendingFocusEquipment } from '../lib/stores/navigation';
   import { commandResults } from '../lib/stores/game';
+
+  let content: ContentRegistry | null = $state(null);
+  $effect(() => {
+    loadContent().then((c) => (content = c));
+  });
 
   const client = useQueryClient();
   const forge = createQuery(() => ({ queryKey: queryKeys.forge, queryFn: fetchForge }));
@@ -132,8 +137,6 @@
   // and the only way to learn the rate was to watch the balance - which is how
   // someone spends a night's income on five rolls without noticing until it is
   // gone. A charge you cannot see before you agree to it is not a price.
-  const REROLL_BASE_FEE = 100;
-  const REROLL_FEE_GROWTH = 1.35;
 
   function pickSet(base: string, tier: number) {
     const trio = owned.filter((i) => i.BaseItemId === base && i.QualityTier === tier).slice(0, 3);
@@ -265,10 +268,27 @@
     }
   });
 
+  const REROLL_BASE_FEE = 100;
+  const REROLL_FEE_GROWTH = 1.35;
+
+  function getRerollCost(regionTier: number): number {
+    switch (regionTier) {
+      case 1: return 1000;
+      case 2: return 2000;
+      case 3: return 4000;
+      case 4: return 5000;
+      case 5: return 10000;
+      default: return 10000;
+    }
+  }
+
   const rerollItem = $derived(owned.find((i) => i.Id === rerollItemId) ?? null);
-  const rerollFee = $derived(
-    rerollItem ? Math.floor(REROLL_BASE_FEE * Math.pow(REROLL_FEE_GROWTH, Math.max(0, rerollItem.QualityTier - 1))) : 0,
-  );
+  const rerollFee = $derived.by(() => {
+    if (!rerollItem || !content) return 0;
+    const def = content.itemsByBaseId.get(rerollItem.BaseItemId);
+    const regionTier = def?.RegionTier ?? 1;
+    return getRerollCost(regionTier);
+  });
   const rerollAffixRows = $derived(rerollItem ? toDisplayAffixes(rerollItem.Affixes) : []);
   const selectedOperation = $derived(REROLL_OPERATIONS[rerollOperation] ?? REROLL_OPERATIONS[0]);
 

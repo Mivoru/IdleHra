@@ -1564,3 +1564,5 @@ export function toggleChronoAcceleration(multiplier: number): CommandOutcome {
   connection.send({ Command: CommandType.ToggleChronoAcceleration, TargetId: multiplier });
   return OK;
 }
+
+// ---------------------------------------------------------------------------

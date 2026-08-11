@@ -18,6 +18,7 @@ namespace FolkIdle.Server.Models
         public DbSet<HistoricalMarketArchive> HistoricalMarketArchives { get; set; }
         public DbSet<GuildRecord> GuildRecords { get; set; }
         public DbSet<GuildDepotBalance> GuildDepotBalances { get; set; }
+        public DbSet<GuildActiveBuff> GuildActiveBuffs { get; set; }
         public DbSet<GuildMaterialSinkLedger> GuildMaterialSinkLedgers { get; set; }
         public DbSet<GuildLogisticsDepot> GuildLogisticsDepots { get; set; }
         public DbSet<GuildContributionLedger> GuildContributionLedgers { get; set; }

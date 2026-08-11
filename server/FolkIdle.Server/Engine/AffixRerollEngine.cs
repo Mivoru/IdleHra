@@ -333,7 +333,7 @@ namespace FolkIdle.Server.Engine
                 // No stat-type surcharge either: there is one operation, so
                 // there is nothing for a multiplier to distinguish.
                 long cost = AffixRegistry.CalculateRerollGoldCost(
-                    targetItem.QualityTier,
+                    regionTier,
                     consecutiveAttempts,
                     rerollStatType: false);
 

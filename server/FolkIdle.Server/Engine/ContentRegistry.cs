@@ -738,6 +738,21 @@ namespace FolkIdle.Server.Engine
         /// <summary>Whether this id names an item that still exists.</summary>
         public static bool ItemExists(int itemId) => GetItemBaseId(itemId).Length > 0;
 
+        public static int GetMaterialDropWeight(string baseItemId)
+        {
+            if (TryGetItemDefinitionByBaseId(baseItemId, out var itemDef))
+            {
+                for (int i = 0; i < _lootEntries.Length; i++)
+                {
+                    if (_lootEntries[i].ItemId == itemDef.Id)
+                    {
+                        return _lootEntries[i].Weight;
+                    }
+                }
+            }
+            return 90; // Default weight
+        }
+
         /// <summary>
         /// Which of the five locations this item's gear belongs to, or 0 when
         /// the slug names nothing.

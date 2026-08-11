@@ -578,18 +578,25 @@ namespace FolkIdle.Server.Engine
         // reachable by item tier alone, which tops out around 1.05M at tier 14.
         public const long RerollGoldMaxCost = 100_000_000L;
 
-        public static long CalculateRerollGoldCost(int itemRarityTier, int consecutiveAttempts, bool rerollStatType)
+        public static long CalculateRerollGoldCost(int regionTier, int consecutiveAttempts, bool rerollStatType)
         {
-            if (itemRarityTier < 1) itemRarityTier = 1;
             if (consecutiveAttempts < 0) consecutiveAttempts = 0;
 
-            double cost = RerollGoldBase
-                * Math.Pow(RerollGoldItemTierGrowth, itemRarityTier - 1)
-                * Math.Pow(RerollGoldStreakGrowth, consecutiveAttempts);
+            long baseCost = regionTier switch
+            {
+                1 => 1000L,
+                2 => 2000L,
+                3 => 4000L,
+                4 => 5000L,
+                5 => 10000L,
+                _ => 10000L
+            };
+
+            double cost = baseCost * Math.Pow(RerollGoldStreakGrowth, consecutiveAttempts);
 
             if (rerollStatType) cost *= RerollStatTypeMultiplier;
 
-            if (double.IsNaN(cost) || cost <= 0.0) return RerollGoldBase;
+            if (double.IsNaN(cost) || cost <= 0.0) return baseCost;
             if (cost >= RerollGoldMaxCost) return RerollGoldMaxCost;
             return (long)Math.Floor(cost);
         }

@@ -7,6 +7,9 @@
     fetchPlayerNames,
     fetchStatistics,
     fetchGuildLogistics,
+    fetchGuildDepot,
+    donateToGuildDepot,
+    activateGuildBuff,
     fetchGuildShardMatch,
     fetchInventory,
     kickGuildMember,
@@ -145,6 +148,9 @@
   const logistics = createQuery(() => ({
     queryKey: queryKeys.guildLogistics,
     queryFn: fetchGuildLogistics,
+    fetchGuildDepot,
+    donateToGuildDepot,
+    activateGuildBuff,
     enabled: hasGuild,
   }));
 
@@ -266,6 +272,59 @@
     const outcome = executeCombatTurn(matchId, turnCounter, hasGuild);
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
   }
+
+  // --- guild treasury ---
+  const guildDepot = createQuery(() => ({
+    queryKey: queryKeys.guildDepot,
+    queryFn: fetchGuildDepot,
+    enabled: hasGuild,
+  }));
+
+  function refreshDepotFull() {
+    setTimeout(() => {
+      client.invalidateQueries({ queryKey: queryKeys.guildDepot });
+      client.invalidateQueries({ queryKey: queryKeys.inventory });
+    }, 700);
+  }
+
+  let donateMaterial = $state(0);
+  let donateQuantity = $state(1);
+
+  const donateMax = $derived(
+    depositable.find((row: any) => row.definition!.Id === donateMaterial)?.quantity ?? 0,
+  );
+
+  async function handleDonate() {
+    if (!hasGuild) return pushLocalNotice('You are not in a guild.', 'info');
+    if (donateQuantity < 1) return pushLocalNotice('Quantity must be positive.', 'info');
+    
+    try {
+        await donateToGuildDepot(donateMaterial, Math.min(donateQuantity, donateMax));
+        pushLocalNotice('Material donated for Weekly Contribution Points!', 'info');
+        refreshDepotFull();
+    } catch (e: any) {
+        pushLocalNotice(e.message || 'Failed to donate.', 'info');
+    }
+  }
+
+  async function handleActivateBuff(buffType: string) {
+    if (!hasGuild) return pushLocalNotice('You are not in a guild.', 'info');
+    
+    try {
+        await activateGuildBuff(buffType);
+        pushLocalNotice(buffType + ' buff activated!', 'info');
+        refreshDepotFull();
+    } catch (e: any) {
+        pushLocalNotice(e.message || 'Failed to activate buff.', 'info');
+    }
+  }
+
+  const BUFF_TYPES = [
+    { type: 'Exp', label: 'Experience Boost' },
+    { type: 'Gold', label: 'Gold Gain Boost' },
+    { type: 'DropRate', label: 'Drop Rate Boost' },
+    { type: 'Damage', label: 'Damage Boost' },
+  ];
 </script>
 
 {#if !snap}
@@ -420,6 +479,73 @@
 
         {#if depositable.length === 0}
           <p class="dim tiny">You are not carrying any stackable materials.</p>
+        {/if}
+      {/if}
+    </section>
+
+
+    <section class="panel">
+      <h2>Guild Treasury & Buffs</h2>
+      {#if !hasGuild}
+        <p class="dim">Join a guild to use the treasury.</p>
+      {:else}
+        {#if guildDepot.isPending}
+          <Skeleton />
+        {:else if guildDepot.data}
+          <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+            {#each BUFF_TYPES as buff}
+              {@const active = guildDepot.data.ActiveBuffs.find(b => b.BuffType === buff.type)}
+              <div style="border: 1px solid var(--border); padding: 0.5rem; border-radius: 4px; flex: 1; min-width: 140px;">
+                <div style="font-weight: bold; margin-bottom: 0.2rem;">{buff.label}</div>
+                {#if active}
+                  <div class="good-text tiny">Active until: {new Date(active.ExpiresAtEpoch * 1000).toLocaleString()}</div>
+                {:else}
+                  <div class="dim tiny" style="margin-bottom: 0.5rem;">Inactive</div>
+                  <button class="tiny-btn" onclick={() => handleActivateBuff(buff.type)}>Activate (50k)</button>
+                {/if}
+              </div>
+            {/each}
+          </div>
+
+          <h3>Weekly Leaderboard</h3>
+          <p class="dim tiny">Top 3 contributors receive a cut of the guild's gold at the end of the week.</p>
+          {#if guildDepot.data.Leaderboard.length === 0}
+            <p class="dim small">No contributions this week.</p>
+          {:else}
+            <ul class="members" style="margin-bottom: 1rem;">
+              {#each guildDepot.data.Leaderboard as member, i}
+                <li>
+                  <span class="who">
+                    #{i + 1} {member.Name}
+                    {#if member.PlayerId === connection.currentPlayerId}<span class="dim tiny">you</span>{/if}
+                  </span>
+                  <span class="dim">{member.WeeklyContributionPoints.toLocaleString()} pts</span>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+
+          <h3>Donate Materials</h3>
+          <label>
+            Material
+            <select bind:value={donateMaterial}>
+              <option value={0}>Choose...</option>
+              {#each depositable as row}
+                <option value={row.definition!.Id}>
+                  {row.baseId} (x{row.quantity})
+                </option>
+              {/each}
+            </select>
+          </label>
+          <div class="row">
+            <input type="number" min="1" max={donateMax || 1} bind:value={donateQuantity} />
+            <button disabled={donateMaterial === 0 || donateMax === 0} onclick={handleDonate}>
+              Donate
+            </button>
+          </div>
+          <p class="dim tiny">
+            Donated materials go to the treasury for buffs. Higher rarity materials grant more contribution points!
+          </p>
         {/if}
       {/if}
     </section>

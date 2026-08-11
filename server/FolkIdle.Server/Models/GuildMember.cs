@@ -25,5 +25,7 @@ namespace FolkIdle.Server.Models
         // Leader, reassigned by GuildManagementEngine.LeaveGuildAsync when
         // the current leader departs a non-empty guild.
         public int Role { get; set; }
+
+        public long WeeklyContributionPoints { get; set; }
     }
 }

@@ -47,6 +47,7 @@ export const queryKeys = {
     ['market', 'listings', baseItemId, qualityTier, pageIndex] as const,
   mailbox: ['player', 'mailbox'] as const,
   guildLogistics: ['social', 'guild', 'logistics'] as const,
+  guildDepot: ['social', 'guild', 'depot'] as const,
   guildShardMatch: ['social', 'guild', 'shardMatch'] as const,
   codexRegions: ['meta', 'codex', 'regions'] as const,
   storefront: ['shop', 'storefront'] as const,
@@ -1038,4 +1039,33 @@ export interface AdminMailRequest {
 
 export function adminSendMail(req: AdminMailRequest): Promise<null> {
   return authedPost<null>('/api/v1/admin/mail', req);
+}
+
+export interface GuildDepotResponse {
+  Balances: Record<number, number>;
+  Leaderboard: GuildMemberInfo[];
+  ActiveBuffs: GuildActiveBuffInfo[];
+}
+
+export interface GuildMemberInfo {
+  PlayerId: number;
+  Name: string;
+  WeeklyContributionPoints: number;
+}
+
+export interface GuildActiveBuffInfo {
+  BuffType: string;
+  ExpiresAtEpoch: number;
+}
+
+export function fetchGuildDepot(): Promise<GuildDepotResponse> {
+  return authedGet<GuildDepotResponse>('/api/v1/guilds/depot');
+}
+
+export function donateToGuildDepot(materialId: number, quantity: number): Promise<void> {
+  return authedPost<void>('/api/v1/guilds/depot/donate', { MaterialId: materialId, Quantity: quantity }).then(() => {});
+}
+
+export function activateGuildBuff(buffType: string): Promise<void> {
+  return authedPost<void>('/api/v1/guilds/buffs/activate', { BuffType: buffType }).then(() => {});
 }

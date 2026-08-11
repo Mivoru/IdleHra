@@ -1203,6 +1203,24 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/guilds/depot" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleGuildDepot(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/guilds/depot/donate" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleGuildDepotDonate(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/guilds/buffs/activate" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleGuildBuffsActivate(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/achievements/snapshot" && context.Request.HttpMethod == "GET")
                     {
                         await HandleAchievementsSnapshot(context);
@@ -7694,5 +7712,143 @@ namespace FolkIdle.Server.Network
             public string? SenderName { get; set; }
             public string? MessageText { get; set; }
         }
-    }
+            private async Task HandleGuildDepot(HttpListenerContext context)
+        {
+            try
+            {
+                long requesterId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (requesterId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var member = await db.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == requesterId);
+                if (member == null)
+                {
+                    context.Response.StatusCode = 403;
+                    return;
+                }
+
+                var depotItems = await db.GuildDepotBalances.Where(d => d.GuildId == member.GuildId).ToListAsync();
+                var activeBuffs = await db.GuildActiveBuffs.Where(b => b.GuildId == member.GuildId && b.ExpiresAt > DateTime.UtcNow).ToListAsync();
+                var members = await db.GuildMembers
+                    .Where(m => m.GuildId == member.GuildId)
+                    .OrderByDescending(m => m.WeeklyContributionPoints)
+                    .Select(m => new { m.PlayerId, m.WeeklyContributionPoints })
+                    .ToListAsync();
+
+                var responseObj = new {
+                    balances = depotItems,
+                    buffs = activeBuffs,
+                    leaderboard = members
+                };
+
+                byte[] responseBytes = JsonSerializer.SerializeToUtf8Bytes(responseObj);
+                context.Response.ContentType = "application/json";
+                context.Response.StatusCode = 200;
+                await context.Response.OutputStream.WriteAsync(responseBytes, 0, responseBytes.Length);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error handling depot: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        private async Task HandleGuildDepotDonate(HttpListenerContext context)
+        {
+            try
+            {
+                long requesterId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (requesterId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var body = await reader.ReadToEndAsync();
+                var payload = JsonSerializer.Deserialize<JsonElement>(body);
+
+                string itemId = payload.GetProperty("itemId").GetString() ?? "";
+                int quantity = payload.GetProperty("quantity").GetInt32();
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var member = await db.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == requesterId);
+                if (member == null)
+                {
+                    context.Response.StatusCode = 403;
+                    return;
+                }
+
+                var engine = _serviceProvider.GetRequiredService<GuildContributionEngine>();
+                bool success = await engine.ContributeDepotMaterialAsync(requesterId, member.GuildId, itemId, quantity);
+
+                context.Response.StatusCode = success ? 200 : 400;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error handling depot donate: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        private async Task HandleGuildBuffsActivate(HttpListenerContext context)
+        {
+            try
+            {
+                long requesterId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (requesterId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var body = await reader.ReadToEndAsync();
+                var payload = JsonSerializer.Deserialize<JsonElement>(body);
+
+                string buffType = payload.GetProperty("buffType").GetString() ?? "";
+                int tier = payload.GetProperty("tier").GetInt32();
+                string itemId = payload.GetProperty("itemId").GetString() ?? "";
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var member = await db.GuildMembers.FirstOrDefaultAsync(m => m.PlayerId == requesterId);
+                if (member == null)
+                {
+                    context.Response.StatusCode = 403;
+                    return;
+                }
+
+                var engine = _serviceProvider.GetRequiredService<GuildContributionEngine>();
+                bool success = await engine.ActivateGuildBuffAsync(requesterId, member.GuildId, buffType, tier, itemId);
+
+                context.Response.StatusCode = success ? 200 : 400;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error handling buff activate: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+}
 }
