@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics.Tracing;
 using System.IO;
 using System.Linq;
@@ -973,7 +973,7 @@ namespace FolkIdle.Server.Tests
                 db.VillageInfrastructures.Add(new VillageInfrastructure
                 {
                     PlayerId = testPlayerId,
-                    BuildingId = VillageManagementEngine.QuarryBuildingId,
+                    BuildingId = VillageManagementEngine.MineBuildingId,
                     CurrentLevel = 0
                 });
                 db.CommodityRecords.AddRange(
@@ -989,14 +989,14 @@ namespace FolkIdle.Server.Tests
             // second request against a DIFFERENT building must be rejected
             // (not just a re-request against the same one), and must not
             // spend the player's wood/stone a second time.
-            await villageManagementEngine.ExecuteUpgradeBuildingAsync(testPlayerId, VillageManagementEngine.QuarryBuildingId);
+            await villageManagementEngine.ExecuteUpgradeBuildingAsync(testPlayerId, VillageManagementEngine.MineBuildingId);
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
 
             var lumberjack = await verifyDb.VillageInfrastructures.AsNoTracking()
                 .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.LumberjackBuildingId);
             var quarry = await verifyDb.VillageInfrastructures.AsNoTracking()
-                .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.QuarryBuildingId);
+                .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.MineBuildingId);
             var wood = await verifyDb.CommodityRecords.AsNoTracking()
                 .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "wood");
             var stone = await verifyDb.CommodityRecords.AsNoTracking()
@@ -1950,7 +1950,7 @@ namespace FolkIdle.Server.Tests
                 PlayerId = testPlayerId,
                 LastLogoutTimestamp = currentUnixTimestamp - elapsedOfflineSeconds,
                 ActiveActivityId = 0,
-                QuarryLevel = 10,
+                MineLevel = 10,
                 WarehouseLevel = 2,
                 InventorySpaceRemaining = 1000
             };
