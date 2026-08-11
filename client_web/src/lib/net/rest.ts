@@ -1067,6 +1067,11 @@ export function donateToGuildDepot(materialId: string | number, quantity: number
   return authedPost<void>('/api/v1/guilds/depot/donate', { itemId: String(materialId), quantity: quantity }).then(() => {});
 }
 
-export function activateGuildBuff(buffType: string): Promise<void> {
-  return authedPost<void>('/api/v1/guilds/buffs/activate', { BuffType: buffType }).then(() => {});
+export function activateGuildBuff(buffType: string, tier: number, path: 'common' | 'rare'): Promise<void> {
+  return authedPost<void>('/api/v1/guilds/buffs/activate', { buffType, tier, path }).then(() => {});
 }
+
+export interface GuildDepotByBaseId {
+  [baseId: string]: number;
+}
+
