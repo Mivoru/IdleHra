@@ -7801,7 +7801,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                var engine = _serviceProvider.GetRequiredService<GuildContributionEngine>();
+                var engine = new GuildContributionEngine(_serviceProvider, _playerSessionRegistry);
                 bool success = await engine.ContributeDepotMaterialAsync(requesterId, member.GuildId, itemId, quantity);
 
                 context.Response.StatusCode = success ? 200 : 400;
@@ -7845,7 +7845,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                var engine = _serviceProvider.GetRequiredService<GuildContributionEngine>();
+                var engine = new GuildContributionEngine(_serviceProvider, _playerSessionRegistry);
                 bool success = await engine.ActivateGuildBuffAsync(requesterId, member.GuildId, buffType, tier, path);
 
                 context.Response.StatusCode = success ? 200 : 400;

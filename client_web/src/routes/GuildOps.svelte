@@ -510,11 +510,11 @@
         </p>
 
         <h3>Donate Materials</h3>
-        <p class="dim tiny">Donujte materialy do depotu guildy. Vzacnejsi materialy daji vice bodu.</p>
+        <p class="dim tiny">Donate logs and ores to the guild depot. Rarer materials grant more contribution points!</p>
         <label>
           Material
           <select bind:value={depotMaterial}>
-            <option value={0}>Vyberte...</option>
+            <option value={0}>Choose...</option>
             {#each depositable.filter(r => BUFF_MATERIAL_IDS.has(r.baseId)) as row (row.definition!.Id)}
               <option value={row.baseId}>
                 {prettifyBaseId(row.baseId)} (x{row.quantity})
@@ -526,20 +526,20 @@
         <div class="row">
           <input type="number" min="1" max={depotMax || 1} bind:value={depotQuantity} />
           <button disabled={depotMaterial === 0 || depotMax === 0} onclick={deposit}>
-            Do depotu
+            To depot
           </button>
           <button disabled={depotMaterial === 0 || depotMax === 0} onclick={contributeStock}>
-            Do retezce
+            To chain
           </button>
           <button disabled={depotMaterial === 0 || donateMax === 0} onclick={handleDonate}>
-            Donovat
+            Donate
           </button>
         </div>
 
         <p class="dim tiny">
-          <strong>Do depotu</strong> plni pozadavky logistiky.
-          <strong>Do retezce</strong> krmí vyrobní bar.
-          <strong>Donovat</strong> pridava materialy do pokladny pro buffy a contribution pointy.
+          <strong>To depot</strong> fills the requirements above.
+          <strong>To chain</strong> feeds the logistics production bar instead.
+          <strong>Donate</strong> adds materials to the treasury for buffs and contribution points.
         </p>
 
         {#if depositable.length === 0}
@@ -566,7 +566,7 @@
               {#each (guildDepot.data.ActiveBuffs ?? []).filter(b => b.ExpiresAtEpoch * 1000 > Date.now()) as ab}
                 {@const buffInfo = BUFF_TYPES.find(b => b.type === ab.BuffType)}
                 <span class="active-buff-chip">
-                  {buffInfo?.label ?? ab.BuffType} T{ab.Tier} — do {new Date(ab.ExpiresAtEpoch * 1000).toLocaleTimeString()}
+                  {buffInfo?.label ?? ab.BuffType} T{ab.Tier} — until {new Date(ab.ExpiresAtEpoch * 1000).toLocaleTimeString()}
                 </span>
               {/each}
             </div>
@@ -579,9 +579,9 @@
               <button class="buff-header" onclick={() => toggleBuff(buff.type)}>
                 <span class="buff-title">{isOpen ? '▼' : '▶'} {buff.label}</span>
                 {#if active}
-                  <span class="good-text tiny">Aktivni T{active.Tier} do {new Date(active.ExpiresAtEpoch * 1000).toLocaleString()}</span>
+                  <span class="good-text tiny">Active T{active.Tier} until {new Date(active.ExpiresAtEpoch * 1000).toLocaleString()}</span>
                 {:else}
-                  <span class="dim tiny">Neaktivni</span>
+                  <span class="dim tiny">Inactive</span>
                 {/if}
               </button>
 
@@ -607,7 +607,7 @@
                         class="tiny-btn"
                         disabled={myRole < 1 || !canActivateTierPath(td, 'common')}
                         onclick={() => handleActivateBuff(buff.type, td.tier, 'common')}
-                      >Aktivovat (1h)</button>
+                      >Activate (1h)</button>
                     </div>
 
                     <div class="buff-path rare">
@@ -627,7 +627,7 @@
                         class="tiny-btn rare-btn"
                         disabled={myRole < 1 || !canActivateTierPath(td, 'rare')}
                         onclick={() => handleActivateBuff(buff.type, td.tier, 'rare')}
-                      >Aktivovat (9h)</button>
+                      >Activate (9h)</button>
                     </div>
                   </div>
                 {/each}
@@ -648,11 +648,11 @@
         {:else if guildDepot.data}
           <div class="prize-info">
             <h3> Weekly Prizes</h3>
-            <p class="dim tiny">Every week, <strong>50 % pokladny guildy</strong> is distributed to the top 3 material contributors:</p>
+            <p class="dim tiny">Every week, <strong>50% of the guild treasury</strong> is distributed to the top 3 material contributors:</p>
             <ul class="prize-list">
-              <li><span class="gold-text">1. misto</span> — 25 % pokladny</li>
-              <li><span class="silver-text">2. misto</span> — 15 % pokladny</li>
-              <li><span class="bronze-text">3. misto</span> — 10 % pokladny</li>
+              <li><span class="gold-text">1st place</span> — 25% of treasury</li>
+              <li><span class="silver-text">2nd place</span> — 15% of treasury</li>
+              <li><span class="bronze-text">3rd place</span> — 10% of treasury</li>
             </ul>
             <p class="dim tiny">Only material contributions count toward the leaderboard, not gold donations.</p>
           </div>
