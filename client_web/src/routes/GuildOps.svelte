@@ -309,10 +309,11 @@
 
   async function handleDonate() {
     if (!hasGuild) return pushLocalNotice('You are not in a guild.', 'info');
-    if (donateQuantity < 1) return pushLocalNotice('Quantity must be positive.', 'info');
+    if (depotQuantity < 1) return pushLocalNotice('Quantity must be positive.', 'info');
+    if (depotMaterial === 0) return;
     
     try {
-        await donateToGuildDepot(donateMaterial, Math.min(donateQuantity, donateMax));
+        await donateToGuildDepot(depotMaterial, Math.min(depotQuantity, depotMax));
         pushLocalNotice('Material donated for Weekly Contribution Points!', 'info');
         refreshDepotFull();
     } catch (e: any) {
@@ -515,7 +516,7 @@
           Material
           <select bind:value={depotMaterial}>
             <option value={0}>Choose...</option>
-            {#each depositable.filter(r => BUFF_MATERIAL_IDS.has(r.baseId)) as row (row.definition!.Id)}
+            {#each depositable as row (row.definition!.Id)}
               <option value={row.baseId}>
                 {prettifyBaseId(row.baseId)} (x{row.quantity})
               </option>
@@ -531,7 +532,7 @@
           <button disabled={depotMaterial === 0 || depotMax === 0} onclick={contributeStock}>
             To chain
           </button>
-          <button disabled={depotMaterial === 0 || donateMax === 0} onclick={handleDonate}>
+          <button disabled={depotMaterial === 0 || depotMax === 0 || !isDonatableMaterial(depotMaterial.toString())} onclick={handleDonate}>
             Donate
           </button>
         </div>
