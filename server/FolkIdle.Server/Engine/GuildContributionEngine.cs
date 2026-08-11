@@ -173,15 +173,13 @@ namespace FolkIdle.Server.Engine
                     var guild = await db_gold.GuildRecords.FromSqlRaw(guildQuery, guildId).SingleOrDefaultAsync();
                     if (guild == null) return false;
 
-                    // player.Gold handled by playerCommodity
-                    guild.TotalGoldContributed += quantity;
+                    // Add to treasury gold (separate from guild XP/tier system)
+                    guild.GuildTreasuryGold += quantity;
 
-                    int points = quantity / 10000;
-                    if (points < 1) points = 1;
-
-                    await db_gold.Database.ExecuteSqlRawAsync(
-                        "UPDATE \"GuildMembers\" SET \"WeeklyContributionPoints\" = \"WeeklyContributionPoints\" + {0} WHERE \"GuildId\" = {1} AND \"PlayerId\" = {2}",
-                        points, guildId, playerId);
+                    // Gold donations do NOT count toward weekly material contribution leaderboard
+                    // They are tracked separately via TotalGoldContributed for guild XP
+                    long goldExp = quantity / ContentRegistry.Balance.GuildContributionGoldToExpDivisor;
+                    if (goldExp > 0) await ApplyGuildExperienceAsync(db_gold, guildId, goldExp);
 
                     await db_gold.SaveChangesAsync();
                     await transaction_gold.CommitAsync();
@@ -256,47 +254,58 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        public async Task<bool> ActivateGuildBuffAsync(long playerId, long guildId, string buffType, int tier, string itemId)
+        // Buff tier material definitions - (commonWoodBaseId, rareWoodBaseId, commonOreBaseId, rareOreBaseId)
+        private static readonly (string CommonWood, string RareWood, string CommonOre, string RareOre)[] BuffTierMaterials = new[]
         {
+            ("birch_log",      "golden_birch_log",    "copper_ore",    "malachite_ore"),  // Tier 1 - Sunlit Plains
+            ("willow_log",     "golden_willow_log",   "iron_ore",      "hematite_ore"),   // Tier 2 - Whispering Woods
+            ("acacia_log",     "golden_acacia_log",   "sulfur_ore",    "obsidian_ore"),   // Tier 3 - Scorched Wasteland
+            ("frostpine_log",  "golden_frostpine_log","silver_ore",    "cobalt_ore"),     // Tier 4 - Frozen Peaks
+            ("ebon_log",       "golden_ebon_log",     "darksteel_ore", "astralite_ore"),  // Tier 5 - Shadow Citadel
+        };
+
+        private const int BuffMaterialCostPerType = 25_000; // 25k wood + 25k ore = 50k total
+
+        public async Task<bool> ActivateGuildBuffAsync(long playerId, long guildId, string buffType, int tier, string path)
+        {
+            // path = "common" or "rare"
+            // tier = 1-5
+            if (tier < 1 || tier > 5) return false;
+            if (path != "common" && path != "rare") return false;
+            
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
             using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
-                // Verify leader/officer
+                // Verify officer/leader
                 var memberQuery = "SELECT * FROM \"GuildMembers\" WHERE \"GuildId\" = {0} AND \"PlayerId\" = {1}";
                 var member = await db.GuildMembers.FromSqlRaw(memberQuery, guildId, playerId).SingleOrDefaultAsync();
-                if (member == null || member.Role == 0) // 0 = Member
-                {
-                    return false; // Unauthorized
-                }
+                if (member == null || member.Role == 0) return false; // Members cannot activate buffs
 
-                if (!ContentRegistry.TryGetItemDefinitionByBaseId(itemId, out var def)) return false;
-                if (def.RegionTier < tier)
-                {
-                    return false; // Invalid tier for this buff
-                }
+                var tierDef = BuffTierMaterials[tier - 1];
+                string woodId = path == "rare" ? tierDef.RareWood : tierDef.CommonWood;
+                string oreId  = path == "rare" ? tierDef.RareOre  : tierDef.CommonOre;
 
-                // Verify cost
-                int cost = 50000;
-                var depotQuery = "SELECT * FROM \"GuildDepotBalances\" WHERE \"GuildId\" = {0} AND \"ItemDefinitionId\" = {1} FOR UPDATE";
-                var depotRecord = await db.GuildDepotBalances.FromSqlRaw(depotQuery, guildId, def.Id).SingleOrDefaultAsync();
-                
-                if (depotRecord == null || depotRecord.Quantity < cost)
-                {
-                    return false; // Insufficient funds
-                }
+                // Check wood balance in depot
+                if (!ContentRegistry.TryGetItemDefinitionByBaseId(woodId, out var woodDef)) return false;
+                if (!ContentRegistry.TryGetItemDefinitionByBaseId(oreId,  out var oreDef))  return false;
+
+                var woodDepotQ = "SELECT * FROM \"GuildDepotBalances\" WHERE \"GuildId\" = {0} AND \"ItemDefinitionId\" = {1} FOR UPDATE";
+                var woodRecord = await db.GuildDepotBalances.FromSqlRaw(woodDepotQ, guildId, woodDef.Id).SingleOrDefaultAsync();
+                var oreRecord  = await db.GuildDepotBalances.FromSqlRaw(woodDepotQ, guildId, oreDef.Id).SingleOrDefaultAsync();
+
+                if (woodRecord == null || woodRecord.Quantity < BuffMaterialCostPerType) return false;
+                if (oreRecord  == null || oreRecord.Quantity  < BuffMaterialCostPerType) return false;
 
                 // Consume materials
-                depotRecord.Quantity -= cost;
+                woodRecord.Quantity -= BuffMaterialCostPerType;
+                oreRecord.Quantity  -= BuffMaterialCostPerType;
 
-                // Calculate duration
-                int dropWeight = ContentRegistry.GetMaterialDropWeight(itemId); // Will implement
-                // Base duration 1h for 90 weight. If 10 weight -> 9 hours. (90 / 10 = 9)
-                double multiplier = Math.Max(1.0, 90.0 / Math.Max(1, dropWeight));
-                TimeSpan duration = TimeSpan.FromHours(1 * multiplier);
+                // Duration: common = 1h, rare = 9h
+                TimeSpan duration = path == "rare" ? TimeSpan.FromHours(9) : TimeSpan.FromHours(1);
 
-                // Apply buff
+                // Apply/extend/upgrade buff
                 var buffQuery = "SELECT * FROM \"GuildActiveBuffs\" WHERE \"GuildId\" = {0} AND \"BuffType\" = {1} FOR UPDATE";
                 var activeBuff = await db.GuildActiveBuffs.FromSqlRaw(buffQuery, guildId, buffType).SingleOrDefaultAsync();
                 
@@ -304,16 +313,15 @@ namespace FolkIdle.Server.Engine
                 {
                     activeBuff = new GuildActiveBuff
                     {
-                        GuildId = guildId,
+                        GuildId  = guildId,
                         BuffType = buffType,
-                        Tier = tier,
+                        Tier     = tier,
                         ExpiresAt = DateTime.UtcNow.Add(duration)
                     };
                     db.GuildActiveBuffs.Add(activeBuff);
                 }
                 else
                 {
-                    // Extend or upgrade
                     if (tier > activeBuff.Tier)
                     {
                         activeBuff.Tier = tier;
@@ -321,21 +329,18 @@ namespace FolkIdle.Server.Engine
                     }
                     else if (tier == activeBuff.Tier)
                     {
-                        if (activeBuff.ExpiresAt < DateTime.UtcNow)
-                            activeBuff.ExpiresAt = DateTime.UtcNow.Add(duration);
-                        else
-                            activeBuff.ExpiresAt = activeBuff.ExpiresAt.Add(duration);
+                        activeBuff.ExpiresAt = activeBuff.ExpiresAt < DateTime.UtcNow
+                            ? DateTime.UtcNow.Add(duration)
+                            : activeBuff.ExpiresAt.Add(duration);
                     }
                     else
                     {
-                        return false; // Trying to downgrade buff
+                        return false; // Cannot downgrade buff tier
                     }
                 }
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
-
-                // Notify cache to pick up the buff change
                 GuildBonusesCache.MarkGuildDirty(guildId);
                 return true;
             }
@@ -347,5 +352,6 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-}
+
+    }
 }

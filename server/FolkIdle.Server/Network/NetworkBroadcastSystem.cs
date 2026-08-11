@@ -7744,11 +7744,17 @@ namespace FolkIdle.Server.Network
                     
                 var guildRecord = await db.GuildRecords.FirstOrDefaultAsync(g => g.Id == member.GuildId);
 
+                var depotByBaseId = depotItems
+                    .Select(d => new { BaseId = ContentRegistry.GetItemBaseId(d.ItemDefinitionId), d.Quantity })
+                    .Where(x => !string.IsNullOrEmpty(x.BaseId))
+                    .ToDictionary(x => x.BaseId, x => x.Quantity);
+
                 var responseObj = new {
                     Balances = depotItems,
+                    DepotByBaseId = depotByBaseId,
                     ActiveBuffs = activeBuffs,
                     Leaderboard = members,
-                    GuildGold = guildRecord?.TotalGoldContributed ?? 0,
+                    GuildGold = guildRecord?.GuildTreasuryGold ?? 0,
                     ExpiresAtEpoch = 0
                 };
 
@@ -7828,7 +7834,7 @@ namespace FolkIdle.Server.Network
 
                 string buffType = payload.GetProperty("buffType").GetString() ?? "";
                 int tier = payload.GetProperty("tier").GetInt32();
-                string itemId = payload.GetProperty("itemId").GetString() ?? "";
+                string path = payload.GetProperty("path").GetString() ?? "common"; // "common" or "rare"
 
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -7840,7 +7846,7 @@ namespace FolkIdle.Server.Network
                 }
 
                 var engine = _serviceProvider.GetRequiredService<GuildContributionEngine>();
-                bool success = await engine.ActivateGuildBuffAsync(requesterId, member.GuildId, buffType, tier, itemId);
+                bool success = await engine.ActivateGuildBuffAsync(requesterId, member.GuildId, buffType, tier, path);
 
                 context.Response.StatusCode = success ? 200 : 400;
             }

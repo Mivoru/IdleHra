@@ -312,10 +312,10 @@ namespace FolkIdle.Server.Engine
                         .Take(3)
                         .ToListAsync();
                         
-                    if (members.Count() > 0 && guild.TotalGoldContributed > 0)
+                    if (members.Count() > 0 && guild.GuildTreasuryGold > 0)
                     {
-                        long pool = guild.TotalGoldContributed / 2;
-                        guild.TotalGoldContributed -= pool;
+                        long pool = guild.GuildTreasuryGold / 2;
+                        guild.GuildTreasuryGold -= pool;
                         
                         long[] cuts = { (long)(pool * 0.25), (long)(pool * 0.15), (long)(pool * 0.10) };
                         

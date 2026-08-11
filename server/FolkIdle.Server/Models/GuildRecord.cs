@@ -17,6 +17,9 @@ namespace FolkIdle.Server.Models
         public string Name { get; set; } = string.Empty;
         
         public long TotalGoldContributed { get; set; }
+
+        // Treasury gold for buffs - separate from guild XP (TotalGoldContributed)
+        public long GuildTreasuryGold { get; set; }
         
         public int CurrentTier { get; set; }
 
