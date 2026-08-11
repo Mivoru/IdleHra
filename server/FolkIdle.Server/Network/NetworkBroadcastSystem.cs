@@ -7737,14 +7737,16 @@ namespace FolkIdle.Server.Network
                 var activeBuffs = await db.GuildActiveBuffs.Where(b => b.GuildId == member.GuildId && b.ExpiresAt > DateTime.UtcNow).ToListAsync();
                 var members = await db.GuildMembers
                     .Where(m => m.GuildId == member.GuildId)
-                    .OrderByDescending(m => m.WeeklyContributionPoints)
-                    .Select(m => new { m.PlayerId, m.WeeklyContributionPoints })
+                    .Join(db.PlayerRecords, m => m.PlayerId, p => p.Id, (m, p) => new { m, p })
+                    .OrderByDescending(x => x.m.WeeklyContributionPoints)
+                    .Select(x => new { PlayerId = x.m.PlayerId, Name = x.p.Username, WeeklyContributionPoints = x.m.WeeklyContributionPoints })
                     .ToListAsync();
 
                 var responseObj = new {
-                    balances = depotItems,
-                    buffs = activeBuffs,
-                    leaderboard = members
+                    Balances = depotItems,
+                    ActiveBuffs = activeBuffs,
+                    Leaderboard = members,
+                    ExpiresAtEpoch = 0
                 };
 
                 byte[] responseBytes = JsonSerializer.SerializeToUtf8Bytes(responseObj);

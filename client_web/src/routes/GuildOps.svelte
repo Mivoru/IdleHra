@@ -501,7 +501,7 @@
                   <div class="good-text tiny">Active until: {new Date(active.ExpiresAtEpoch * 1000).toLocaleString()}</div>
                 {:else}
                   <div class="dim tiny" style="margin-bottom: 0.5rem;">Inactive</div>
-                  <button class="tiny-btn" onclick={() => handleActivateBuff(buff.type)}>Activate (50k)</button>
+                  <button class="tiny-btn" disabled={myRole < 1} onclick={() => handleActivateBuff(buff.type)}>Activate (50k)</button>
                 {/if}
               </div>
             {/each}
@@ -530,7 +530,7 @@
             Material
             <select bind:value={donateMaterial}>
               <option value={0}>Choose...</option>
-              {#each depositable as row}
+              {#each depositable.filter(r => !r.definition!.FlatAttackPower && !r.definition!.FlatDefenseRating && r.definition!.BaseValueGold < 100 && r.baseId !== 'gold' && !r.baseId.includes('slime') && !r.baseId.includes('ear') && !r.baseId.includes('wing')) as row}
                 <option value={row.definition!.Id}>
                   {row.baseId} (x{row.quantity})
                 </option>
