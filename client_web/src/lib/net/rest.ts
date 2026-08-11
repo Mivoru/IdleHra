@@ -1045,6 +1045,7 @@ export interface GuildDepotResponse {
   Balances: Record<number, number>;
   Leaderboard: GuildMemberInfo[];
   ActiveBuffs: GuildActiveBuffInfo[];
+  GuildGold: number;
 }
 
 export interface GuildMemberInfo {

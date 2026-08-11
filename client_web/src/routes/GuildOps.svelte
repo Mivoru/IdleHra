@@ -492,6 +492,9 @@
         {#if guildDepot.isPending}
           <Skeleton />
         {:else if guildDepot.data}
+          <div class="good-text" style="margin-bottom: 1rem; font-size: 1.2rem;">
+            Gold: {guildDepot.data.GuildGold.toLocaleString()}
+          </div>
           <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
             {#each BUFF_TYPES as buff}
               {@const active = guildDepot.data.ActiveBuffs.find(b => b.BuffType === buff.type)}

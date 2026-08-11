@@ -7741,11 +7741,14 @@ namespace FolkIdle.Server.Network
                     .OrderByDescending(x => x.m.WeeklyContributionPoints)
                     .Select(x => new { PlayerId = x.m.PlayerId, Name = x.p.Username, WeeklyContributionPoints = x.m.WeeklyContributionPoints })
                     .ToListAsync();
+                    
+                var guildRecord = await db.GuildRecords.FirstOrDefaultAsync(g => g.Id == member.GuildId);
 
                 var responseObj = new {
                     Balances = depotItems,
                     ActiveBuffs = activeBuffs,
                     Leaderboard = members,
+                    GuildGold = guildRecord?.TotalGoldContributed ?? 0,
                     ExpiresAtEpoch = 0
                 };
 
