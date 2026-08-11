@@ -516,7 +516,13 @@
           Material
           <select bind:value={depotMaterial}>
             <option value={0}>Choose...</option>
-            {#each depositable as row (row.definition!.Id)}
+            {#each Array.from(BUFF_MATERIAL_IDS) as baseId}
+              {@const invItem = depositable.find(d => d.baseId === baseId)}
+              <option value={baseId}>
+                {prettifyBaseId(baseId)} (x{invItem?.quantity ?? 0})
+              </option>
+            {/each}
+            {#each depositable.filter(d => !BUFF_MATERIAL_IDS.has(d.baseId) && (d.definition?.Subtype === 'Log' || d.definition?.Subtype === 'Ore')) as row}
               <option value={row.baseId}>
                 {prettifyBaseId(row.baseId)} (x{row.quantity})
               </option>
