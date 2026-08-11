@@ -30,6 +30,7 @@
   import { loadContent, prettifyBaseId, type ContentRegistry } from '../lib/net/content';
   import Bar from '../lib/ui/Bar.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import Money from '../lib/ui/Money.svelte';
 
   const client = useQueryClient();
   const roster = createQuery(() => ({ queryKey: queryKeys.guildRoster, queryFn: fetchGuildRoster }));
@@ -307,6 +308,17 @@
     }
   }
 
+  async 
+  function isDonatableMaterial(baseId: string): boolean {
+    const valid = ['birch', 'willow', 'acacia', 'frostpine', 'ebon', 'copper', 'iron', 'cobalt', 'silver', 'darksteel', 'malachite', 'hematite', 'sulfur', 'obsidian', 'absidian', 'astralite'];
+    if (baseId.includes('magic_essence')) return true;
+    if (baseId.startsWith('mat_')) return false;
+    if (baseId.startsWith('eq_')) return false;
+    if (baseId.includes('axe') || baseId.includes('rod')) return false;
+    
+    return valid.some(v => baseId.includes(v)) && (baseId.includes('log') || baseId.includes('twig') || baseId.includes('ore') || baseId.includes('bar') || baseId.includes('chunk') || baseId.includes('crystal'));
+  }
+
   async function handleActivateBuff(buffType: string) {
     if (!hasGuild) return pushLocalNotice('You are not in a guild.', 'info');
     
@@ -492,8 +504,8 @@
         {#if guildDepot.isPending}
           <Skeleton />
         {:else if guildDepot.data}
-          <div class="good-text" style="margin-bottom: 1rem; font-size: 1.2rem;">
-            Gold: {guildDepot.data.GuildGold.toLocaleString()}
+          <div style="margin-bottom: 1rem; font-size: 1.2rem;">
+            <Money amount={guildDepot.data.GuildGold} icon />
           </div>
           <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
             {#each BUFF_TYPES as buff}
@@ -510,6 +522,18 @@
             {/each}
           </div>
 
+        {/if}
+      {/if}
+    </section>
+
+    <section class="panel">
+      <h2>Guild Contributions</h2>
+      {#if !hasGuild}
+        <p class="dim">Join a guild to use the contributions.</p>
+      {:else}
+        {#if guildDepot.isPending}
+          <Skeleton />
+        {:else if guildDepot.data}
           <h3>Weekly Leaderboard</h3>
           <p class="dim tiny">Top 3 contributors receive a cut of the guild's gold at the end of the week.</p>
           {#if guildDepot.data.Leaderboard.length === 0}
@@ -533,7 +557,7 @@
             Material
             <select bind:value={donateMaterial}>
               <option value={0}>Choose...</option>
-              {#each depositable.filter(r => !r.definition!.FlatAttackPower && !r.definition!.FlatDefenseRating && r.definition!.BaseValueGold < 100 && r.baseId !== 'gold' && !r.baseId.includes('slime') && !r.baseId.includes('ear') && !r.baseId.includes('wing')) as row}
+              {#each depositable.filter(r => isDonatableMaterial(r.baseId)) as row}
                 <option value={row.definition!.Id}>
                   {row.baseId} (x{row.quantity})
                 </option>
