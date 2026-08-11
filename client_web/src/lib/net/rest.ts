@@ -1063,8 +1063,8 @@ export function fetchGuildDepot(): Promise<GuildDepotResponse> {
   return authedGet<GuildDepotResponse>('/api/v1/guilds/depot');
 }
 
-export function donateToGuildDepot(materialId: number, quantity: number): Promise<void> {
-  return authedPost<void>('/api/v1/guilds/depot/donate', { MaterialId: materialId, Quantity: quantity }).then(() => {});
+export function donateToGuildDepot(materialId: string | number, quantity: number): Promise<void> {
+  return authedPost<void>('/api/v1/guilds/depot/donate', { itemId: String(materialId), quantity: quantity }).then(() => {});
 }
 
 export function activateGuildBuff(buffType: string): Promise<void> {

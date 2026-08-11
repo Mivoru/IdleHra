@@ -288,7 +288,7 @@
     }, 700);
   }
 
-  let donateMaterial = $state(0);
+  let donateMaterial = $state<string | number>(0);
   let donateQuantity = $state(1);
 
   const donateMax = $derived(
@@ -461,8 +461,9 @@
           Material
           <select bind:value={depotMaterial}>
             <option value={0}>Choose...</option>
+              <option value="gold">Gold</option>
             {#each depositable as row (row.definition!.Id)}
-              <option value={row.definition!.Id}>
+              <option value={row.baseId}>
                 {prettifyBaseId(row.baseId)} (x{row.quantity})
               </option>
             {/each}
@@ -556,8 +557,9 @@
             Material
             <select bind:value={donateMaterial}>
               <option value={0}>Choose...</option>
+              <option value="gold">Gold</option>
               {#each depositable.filter(r => isDonatableMaterial(r.baseId)) as row}
-                <option value={row.definition!.Id}>
+                <option value={row.baseId}>
                   {row.baseId} (x{row.quantity})
                 </option>
               {/each}
@@ -576,79 +578,7 @@
       {/if}
     </section>
 
-    <section class="panel">
-      <h2>Cross-shard war</h2>
-
-      {#if !hasGuild}
-        <p class="dim">Join a guild first.</p>
-      {:else}
-        <h3>Defence</h3>
-        <p class="dim small">
-          Volunteers your roster as the guild's defending side. It carries no
-          target and no amount - the server reads everything from your guild.
-        </p>
-        <button disabled={quarantined} onclick={defend}>Register as defender</button>
-
-        <h3>Battle</h3>
-        {#if matchId > 0}
-          <dl class="stats">
-            <div><dt>Match</dt><dd>#{matchId}</dd></div>
-            <div><dt>Turn</dt><dd>{turnCounter}</dd></div>
-          </dl>
-          <p class="dim small">
-            Damage swing last turn:
-            <span class={damageDelta >= 0 ? 'good-text' : 'bad-text'}>
-              {damageDelta >= 0 ? '+' : ''}{damageDelta.toLocaleString()}
-            </span>
-          </p>
-          <button onclick={takeTurn}>Take a turn</button>
-        {:else}
-          <p class="dim">
-            No battle running. This appears when your guild is matched against
-            another.
-          </p>
-        {/if}
-
-        <h3>Attacking another shard</h3>
-
-        {#if shardMatch.isPending}
-          <p class="dim">Checking for a match...</p>
-        {:else if !shardMatch.data}
-          <p class="dim">
-            Your guild is not in a cross-shard match. One appears here when
-            matchmaking pairs you with another guild.
-          </p>
-        {:else}
-          {@const match = shardMatch.data}
-          <dl class="stats">
-            <div><dt>Side</dt><dd>{match.IsAttacker ? 'Attacking' : 'Defending'}</dd></div>
-            <div><dt>Match MMR</dt><dd>{match.ActiveMatchMmr.toLocaleString()}</dd></div>
-          </dl>
-
-          {#if match.GlobalNodeRemainingHp > 0}
-            <div class="axis">
-              <span class="dim tiny">Global node</span>
-              <Bar
-                value={match.GlobalNodeRemainingHp}
-                max={Math.max(1, match.GlobalNodeRemainingHp)}
-                color="var(--rarity-10)"
-                label={match.GlobalNodeRemainingHp.toLocaleString()}
-              />
-            </div>
-          {/if}
-
-          <button disabled={quarantined || !matchUuid} onclick={attackShard}>Attack</button>
-
-          <p class="dim tiny">
-            The attack is aimed at the match id the server already has you
-            committed to, re-read every 30 seconds. Aiming at any other match
-            is refused by disconnecting you, which is why this button follows
-            the server rather than a value chosen here.
-          </p>
-        {/if}
-      {/if}
-    </section>
-
+    <!-- Cross-shard war hidden -->
     <section class="panel">
       <h2>Members</h2>
 
