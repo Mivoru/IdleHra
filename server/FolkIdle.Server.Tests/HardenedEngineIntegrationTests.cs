@@ -878,8 +878,8 @@ namespace FolkIdle.Server.Tests
                     CurrentLevel = 0
                 });
                 db.CommodityRecords.AddRange(
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "wood", Quantity = 1L },
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "stone", Quantity = 1L });
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "birch_log", Quantity = 1L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = 1L });
                 await db.SaveChangesAsync();
             }
 
@@ -891,9 +891,9 @@ namespace FolkIdle.Server.Tests
             var infrastructure = await verifyDb.VillageInfrastructures.AsNoTracking()
                 .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.LumberjackBuildingId);
             var unchangedWood = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "wood");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "birch_log");
             var unchangedStone = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "stone");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
 
             Assert.Equal(0, infrastructure.CurrentLevel);
             Assert.Equal(1L, unchangedWood.Quantity);
@@ -920,8 +920,8 @@ namespace FolkIdle.Server.Tests
                     CurrentLevel = 0
                 });
                 db.CommodityRecords.AddRange(
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "wood", Quantity = 10000L },
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "stone", Quantity = 10000L });
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "birch_log", Quantity = 10000L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = 10000L });
                 await db.SaveChangesAsync();
             }
 
@@ -935,9 +935,9 @@ namespace FolkIdle.Server.Tests
             var infrastructure = await verifyDb.VillageInfrastructures.AsNoTracking()
                 .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.LumberjackBuildingId);
             var updatedWood = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "wood");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "birch_log");
             var updatedStone = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "stone");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
 
             long expectedCost = VillageManagementEngine.CalculateProductionUpgradeCost(0);
 
@@ -977,8 +977,8 @@ namespace FolkIdle.Server.Tests
                     CurrentLevel = 0
                 });
                 db.CommodityRecords.AddRange(
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "wood", Quantity = 10000L },
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "stone", Quantity = 10000L });
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "birch_log", Quantity = 10000L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = 10000L });
                 await db.SaveChangesAsync();
             }
 
@@ -998,9 +998,9 @@ namespace FolkIdle.Server.Tests
             var quarry = await verifyDb.VillageInfrastructures.AsNoTracking()
                 .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.MineBuildingId);
             var wood = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "wood");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "birch_log");
             var stone = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "stone");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
 
             long expectedCost = VillageManagementEngine.CalculateProductionUpgradeCost(0);
 
@@ -1031,8 +1031,8 @@ namespace FolkIdle.Server.Tests
                     CurrentLevel = 0
                 });
                 db.CommodityRecords.AddRange(
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "wood", Quantity = 1L },
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "stone", Quantity = 1L });
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "birch_log", Quantity = 1L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = 1L });
                 await db.SaveChangesAsync();
             }
 
@@ -1044,9 +1044,9 @@ namespace FolkIdle.Server.Tests
             var infrastructure = await verifyDb.VillageInfrastructures.AsNoTracking()
                 .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.LumberjackBuildingId);
             var wood = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "wood");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "birch_log");
             var stone = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "stone");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
 
             Assert.Equal(0, infrastructure.CurrentLevel);
             Assert.Equal(0, infrastructure.UpgradeTargetLevel);
@@ -1972,7 +1972,7 @@ namespace FolkIdle.Server.Tests
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
             var stone = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "stone");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
 
             Assert.Equal(expectedStoneGain, stone.Quantity);
         }
@@ -10517,7 +10517,7 @@ namespace FolkIdle.Server.Tests
                 long goldRemaining = await db.CommodityRecords.AsNoTracking()
                     .Where(c => c.PlayerId == testPlayerId && c.ItemId == "gold")
                     .Select(c => c.Quantity).FirstAsync();
-                Assert.Equal(50_000_000L - AffixRegistry.CalculateRerollGoldCost(rarityTier, 0, rerollStatType: false), goldRemaining);
+                Assert.Equal(50_000_000L - AffixRegistry.CalculateRerollGoldCost(1, 0, rerollStatType: false), goldRemaining);
 
                 long diamondsRemaining = await db.CommodityRecords.AsNoTracking()
                     .Where(c => c.PlayerId == testPlayerId && c.ItemId == "premium_diamond")
@@ -11095,3 +11095,5 @@ namespace FolkIdle.Server.Tests
         }
     }
 }
+
+
