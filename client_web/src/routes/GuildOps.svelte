@@ -290,26 +290,13 @@
 
   let donateMaterial = $state<string | number>(0);
   let donateQuantity = $state(1);
-  let donateGoldQuantity = $state(1);
 
   const donateMax = $derived(
-    depositable.find((row: any) => row.definition!.Id === donateMaterial)?.quantity ?? 0,
+    donateMaterial === 'gold'
+      ? (snap?.Gold ?? 0)
+      : (depositable.find((row: any) => row.baseId === donateMaterial)?.quantity ?? 0),
   );
 
-    async function handleDonateGold() {
-    if (!hasGuild) return pushLocalNotice('You are not in a guild.', 'info');
-    if (donateGoldQuantity <= 0) return;
-    
-    try {
-      await donateToGuildDepot('gold', donateGoldQuantity);
-      pushLocalNotice('Gold donated successfully!', 'info');
-      donateGoldQuantity = 1;
-      client.invalidateQueries({ queryKey: queryKeys.inventory });
-      client.invalidateQueries({ queryKey: queryKeys.guildDepot });
-    } catch (err: any) {
-      pushLocalNotice(err.message || 'Donation failed.', 'error');
-    }
-  }
 
   async function handleDonate() {
     if (!hasGuild) return pushLocalNotice('You are not in a guild.', 'info');
@@ -324,14 +311,7 @@
     }
   }
 
-  function getMaterialName(itemId: string) {
-    if (!registry) return itemId;
-    const def = registry.definitions.find((d: any) => d.Id.toString() === itemId || d.BaseId === itemId);
-    return def ? def.BaseId : itemId;
-  }
-
-  function isDonatableMaterial(itemId: string): boolean {
-    const baseId = getMaterialName(itemId);
+  function isDonatableMaterial(baseId: string): boolean {
     const valid = ['birch', 'willow', 'acacia', 'frostpine', 'ebon', 'copper', 'iron', 'cobalt', 'silver', 'darksteel', 'malachite', 'hematite', 'sulfur', 'obsidian', 'absidian', 'astralite'];
     if (baseId.includes('magic_essence')) return true;
     if (baseId.startsWith('mat_')) return false;
@@ -407,7 +387,6 @@
       {/if}
     </section>
 
-    <!-- Raid hidden -->
     <section class="panel" style="display:none;">
       <h2>Raid</h2>
 
@@ -446,19 +425,101 @@
       </div>
     </section>
 
-        <section class="panel">
-      <h2>Guild Treasury & Contributions</h2>
+    <section class="panel">
+      <h2>Depot</h2>
+
+      {#if !hasGuild}
+        <p class="dim">Join a guild to use its depot.</p>
+      {:else}
+        <p class="dim small">
+          Per-material stock against what the guild needs. Depositing moves the
+          material out of your backpack permanently.
+        </p>
+
+        {#if logistics.isPending}
+          <Skeleton />
+        {:else if (logistics.data ?? []).length === 0}
+          <p class="dim">The depot has no requirements set.</p>
+        {:else}
+          <ul class="depot">
+            {#each logistics.data ?? [] as row (row.MaterialId)}
+              {@const required = Math.max(1, Number(row.TargetRequirement))}
+              {@const stock = Number(row.CurrentStock)}
+              {@const met = stock >= Number(row.TargetRequirement)}
+              <li>
+                <span class="mat">{materialName(row.MaterialId)}</span>
+                <Bar
+                  value={stock}
+                  max={required}
+                  color={met ? 'var(--good)' : 'var(--accent)'}
+                  label={`${stock.toLocaleString()} / ${Number(row.TargetRequirement).toLocaleString()}`}
+                />
+              </li>
+            {/each}
+          </ul>
+        {/if}
+
+        <h3>Contribute Gold</h3>
+        <div class="row">
+          <input type="number" min="1" step="100" bind:value={treasuryGold} />
+          <button disabled={!hasGuild || treasuryGold < 1} onclick={giveGold}>Contribute gold</button>
+        </div>
+        <p class="dim tiny">
+          Raises the guild's tier and your own contribution ranking on the roster.
+        </p>
+
+        <h3>Deposit</h3>
+
+        <label>
+          Material
+          <select bind:value={depotMaterial}>
+            <option value={0}>Choose...</option>
+              <option value="gold">Gold</option>
+            {#each depositable as row (row.definition!.Id)}
+              <option value={row.baseId}>
+                {prettifyBaseId(row.baseId)} (x{row.quantity})
+              </option>
+            {/each}
+          </select>
+        </label>
+
+        <div class="row">
+          <input type="number" min="1" max={depotMax || 1} bind:value={depotQuantity} />
+          <button disabled={depotMaterial === 0 || depotMax === 0} onclick={deposit}>
+            To depot
+          </button>
+          <button disabled={depotMaterial === 0 || depotMax === 0} onclick={contributeStock}>
+            To chain
+          </button>
+        </div>
+
+        <!-- These two buttons look interchangeable and are not. Saying so is
+             cheaper than a player wondering why one number moved and not the
+             other. -->
+        <p class="dim tiny">
+          <strong>To depot</strong> fills the requirements above.
+          <strong>To chain</strong> feeds the logistics production bar instead.
+          They are separate systems that happen to take the same materials.
+        </p>
+
+        {#if depositable.length === 0}
+          <p class="dim tiny">You are not carrying any stackable materials.</p>
+        {/if}
+      {/if}
+    </section>
+
+
+    <section class="panel">
+      <h2>Guild Treasury & Buffs</h2>
       {#if !hasGuild}
         <p class="dim">Join a guild to use the treasury.</p>
       {:else}
         {#if guildDepot.isPending}
-          <p class="dim small">Loading treasury data...</p>
+          <Skeleton />
         {:else if guildDepot.data}
           <div style="margin-bottom: 1rem; font-size: 1.2rem;">
             <Money amount={guildDepot.data.GuildGold ?? 0} icon />
           </div>
-
-          <h3>Active Buffs</h3>
           <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
             {#each BUFF_TYPES as buff}
               {@const active = (guildDepot.data.ActiveBuffs ?? []).find(b => b.BuffType === buff.type)}
@@ -474,39 +535,18 @@
             {/each}
           </div>
 
-          <h3>Contribute Gold</h3>
-          <div class="row">
-            <input type="number" min="1" max={snap?.Gold ?? 0} bind:value={donateGoldQuantity} />
-            <button disabled={donateGoldQuantity <= 0 || donateGoldQuantity > (snap?.Gold ?? 0)} onclick={handleDonateGold}>
-              Donate Gold
-            </button>
-          </div>
-          <p class="dim tiny">
-            Donated gold goes directly to the treasury to fund guild buffs.
-          </p>
+        {/if}
+      {/if}
+    </section>
 
-          <h3>Contribute Materials</h3>
-          <label>
-            Material
-            <select bind:value={donateMaterial}>
-              <option value={0}>Choose...</option>
-              {#each depositable.filter(r => isDonatableMaterial(r.baseId)) as row}
-                <option value={row.baseId}>
-                  {getLabel(row.baseId)} (x{row.quantity})
-                </option>
-              {/each}
-            </select>
-          </label>
-          <div class="row">
-            <input type="number" min="1" max={donateMax || 1} bind:value={donateQuantity} />
-            <button disabled={donateMaterial === 0 || donateMax === 0} onclick={handleDonate}>
-              Donate Material
-            </button>
-          </div>
-          <p class="dim tiny">
-            Higher rarity materials grant more contribution points!
-          </p>
-
+    <section class="panel">
+      <h2>Guild Contributions</h2>
+      {#if !hasGuild}
+        <p class="dim">Join a guild to use the contributions.</p>
+      {:else}
+        {#if guildDepot.isPending}
+          <Skeleton />
+        {:else if guildDepot.data}
           <h3>Weekly Leaderboard</h3>
           <p class="dim tiny">Top 3 contributors receive a cut of the guild's gold at the end of the week.</p>
           {#if (guildDepot.data.Leaderboard ?? []).length === 0}
@@ -524,13 +564,35 @@
               {/each}
             </ul>
           {/if}
+
+          <h3>Donate Materials</h3>
+          <label>
+            Material
+            <select bind:value={donateMaterial}>
+              <option value={0}>Choose...</option>
+              <option value="gold">Gold</option>
+              {#each depositable.filter(r => isDonatableMaterial(r.baseId)) as row}
+                <option value={row.baseId}>
+                  {prettifyBaseId(row.baseId)} (x{row.quantity})
+                </option>
+              {/each}
+            </select>
+          </label>
+          <div class="row">
+            <input type="number" min="1" max={donateMax || 1} bind:value={donateQuantity} />
+            <button disabled={donateMaterial === 0 || donateMax === 0} onclick={handleDonate}>
+              Donate
+            </button>
+          </div>
+          <p class="dim tiny">
+            Donated materials go to the treasury for buffs. Higher rarity materials grant more contribution points!
+          </p>
         {/if}
       {/if}
     </section>
 
     <!-- Cross-shard war hidden -->
     <section class="panel">
-      <h2>Members</h2>l">
       <h2>Members</h2>
 
       {#if roster.isPending}
