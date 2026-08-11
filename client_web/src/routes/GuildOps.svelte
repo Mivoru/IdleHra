@@ -308,7 +308,6 @@
     }
   }
 
-  async 
   function isDonatableMaterial(baseId: string): boolean {
     const valid = ['birch', 'willow', 'acacia', 'frostpine', 'ebon', 'copper', 'iron', 'cobalt', 'silver', 'darksteel', 'malachite', 'hematite', 'sulfur', 'obsidian', 'absidian', 'astralite'];
     if (baseId.includes('magic_essence')) return true;
