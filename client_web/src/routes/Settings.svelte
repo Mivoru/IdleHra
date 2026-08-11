@@ -8,7 +8,7 @@
   import { playerState, pushLocalNotice, commandResults, connectionStatus } from '../lib/stores/game';
   import { triggerGdprPurge } from '../lib/net/commands';
   import { submitSupportTicket, scrubTrace, fetchAdminStatus, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail } from '../lib/net/rest';
-  import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import { createQuery } from '@tanstack/svelte-query';
 
   const snap = $derived($playerState);
 
@@ -55,7 +55,6 @@
   // Admin / Dev Settings
   // ---------------------------------------------------------------------------
 
-  const queryClient = useQueryClient();
   const adminQuery = createQuery(() => ({
     queryKey: ['adminStatus'],
     queryFn: fetchAdminStatus,

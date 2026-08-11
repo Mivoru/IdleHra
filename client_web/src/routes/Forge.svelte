@@ -268,9 +268,6 @@
     }
   });
 
-  const REROLL_BASE_FEE = 100;
-  const REROLL_FEE_GROWTH = 1.35;
-
   function getRerollCost(regionTier: number): number {
     switch (regionTier) {
       case 1: return 1000;
