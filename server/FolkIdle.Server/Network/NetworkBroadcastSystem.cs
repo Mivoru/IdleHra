@@ -1019,6 +1019,31 @@ namespace FolkIdle.Server.Network
                     // relationship set or discover a target player's numeric
                     // Id from their username. Mirrors HandleMasterySnapshot's
                     // exact authenticated-GET shape.
+                    // Modul: conversations are read over REST, deliberately not
+                    // over the wire. Every packet is demultiplexed by exact
+                    // byte size and the state packet has about a byte of
+                    // headroom, so putting history on it would cost a layout
+                    // guard change and a protocol regeneration for something
+                    // that is a paged list - which is what HTTP is for, and
+                    // what the friends list and mailbox beside it already do.
+                    if (requestPath == "/api/v1/conversations/list" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleConversationList(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/conversations/history" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleConversationHistory(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/conversations/read" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleConversationMarkRead(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/friends/list" && context.Request.HttpMethod == "GET")
                     {
                         await HandleFriendsList(context);
@@ -3922,6 +3947,246 @@ namespace FolkIdle.Server.Network
         // joined against PlayerRecords for a real Username/Level to show
         // rather than a bare numeric Id. Read-only, matching every other
         // snapshot handler's transaction shape.
+        // ---------------------------------------------------------------
+        // Conversations. The durable half of private chat - see
+        // ConversationMessage. The WebSocket still delivers a whisper live;
+        // these three answer "what did we say", which it never could.
+        // ---------------------------------------------------------------
+
+        private sealed class ConversationSummaryResponse
+        {
+            public long PlayerId { get; set; }
+            public string Username { get; set; } = string.Empty;
+            public string LastMessage { get; set; } = string.Empty;
+            public long LastMessageAtEpochMs { get; set; }
+            public bool LastMessageWasMine { get; set; }
+            public int UnreadCount { get; set; }
+            public bool IsOnline { get; set; }
+        }
+
+        private sealed class ConversationMessageResponse
+        {
+            public long Id { get; set; }
+            public long SenderPlayerId { get; set; }
+            public bool Mine { get; set; }
+            public string MessageText { get; set; } = string.Empty;
+            public long SentAtEpochMs { get; set; }
+            public bool Read { get; set; }
+        }
+
+        /// <summary>
+        /// One row per person this player has exchanged messages with, newest
+        /// first, with the last line and an unread count.
+        /// </summary>
+        private async Task HandleConversationList(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                // Modul: the pair is stored sorted, so "my threads" is the rows
+                // where I am either end. The counterpart is then whichever end
+                // is not me - which is why sender and recipient are kept
+                // alongside the sorted pair rather than derived from it.
+                var mine = await db.ConversationMessages
+                    .AsNoTracking()
+                    .Where(m => m.LowPlayerId == playerId || m.HighPlayerId == playerId)
+                    .OrderByDescending(m => m.SentAtEpochMs)
+                    .ToListAsync();
+
+                var counterpartIds = mine
+                    .Select(m => m.LowPlayerId == playerId ? m.HighPlayerId : m.LowPlayerId)
+                    .Distinct()
+                    .ToList();
+
+                var names = await db.PlayerRecords
+                    .AsNoTracking()
+                    .Where(p => counterpartIds.Contains(p.Id))
+                    .ToDictionaryAsync(p => p.Id, p => p.Username);
+
+                await transaction.CommitAsync();
+
+                var summaries = new System.Collections.Generic.List<ConversationSummaryResponse>(counterpartIds.Count);
+                foreach (long other in counterpartIds)
+                {
+                    var thread = mine.Where(m => m.LowPlayerId == other || m.HighPlayerId == other).ToList();
+                    var latest = thread[0]; // already ordered newest first
+
+                    summaries.Add(new ConversationSummaryResponse
+                    {
+                        PlayerId = other,
+                        Username = names.TryGetValue(other, out string? name) ? name : "(unknown player)",
+                        LastMessage = latest.MessageText,
+                        LastMessageAtEpochMs = latest.SentAtEpochMs,
+                        LastMessageWasMine = latest.SenderPlayerId == playerId,
+                        // Unread means addressed TO me and not yet opened. A
+                        // message cannot be unread by the person who sent it.
+                        UnreadCount = thread.Count(m => m.RecipientPlayerId == playerId && m.ReadAtEpochMs == null),
+                        IsOnline = _connectedClients.ContainsKey(other)
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, summaries);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Conversation list error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        /// <summary>
+        /// One thread, oldest-last, capped. `withPlayerId` names the other
+        /// person; `before` pages backwards through time.
+        /// </summary>
+        private async Task HandleConversationHistory(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (!long.TryParse(context.Request.QueryString["withPlayerId"], out long otherPlayerId) || otherPlayerId <= 0)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                // Paging is by timestamp rather than offset: new messages
+                // arrive while a player scrolls, and an offset would then skip
+                // or repeat a line as the window shifts under it.
+                long before = long.TryParse(context.Request.QueryString["before"], out long b) && b > 0
+                    ? b
+                    : long.MaxValue;
+
+                const int PageSize = 50;
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                var (low, high) = ConversationMessage.PairKey(playerId, otherPlayerId);
+
+                var page = await db.ConversationMessages
+                    .AsNoTracking()
+                    .Where(m => m.LowPlayerId == low && m.HighPlayerId == high && m.SentAtEpochMs < before)
+                    .OrderByDescending(m => m.SentAtEpochMs)
+                    .Take(PageSize)
+                    .ToListAsync();
+
+                await transaction.CommitAsync();
+
+                // Returned oldest-first, which is the order a conversation is
+                // read in. The query runs newest-first because that is what the
+                // index serves and what paging needs.
+                page.Reverse();
+
+                var response = page.Select(m => new ConversationMessageResponse
+                {
+                    Id = m.Id,
+                    SenderPlayerId = m.SenderPlayerId,
+                    Mine = m.SenderPlayerId == playerId,
+                    MessageText = m.MessageText,
+                    SentAtEpochMs = m.SentAtEpochMs,
+                    Read = m.ReadAtEpochMs != null
+                }).ToList();
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Conversation history error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        /// <summary>Marks everything the caller has RECEIVED in one thread as read.</summary>
+        private async Task HandleConversationMarkRead(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var body = await reader.ReadToEndAsync();
+                var payload = JsonSerializer.Deserialize<JsonElement>(body);
+
+                if (!payload.TryGetProperty("withPlayerId", out var withProp)
+                    || !withProp.TryGetInt64(out long otherPlayerId)
+                    || otherPlayerId <= 0)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var (low, high) = ConversationMessage.PairKey(playerId, otherPlayerId);
+                long nowEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+                // Modul: RecipientPlayerId == playerId is what makes this safe
+                // to expose. The caller can only ever mark their own incoming
+                // messages read - naming somebody else's thread marks nothing,
+                // because no row in it is addressed to them.
+                await db.Database.ExecuteSqlRawAsync(
+                    "UPDATE conversation_messages SET \"ReadAtEpochMs\" = {0} " +
+                    "WHERE \"LowPlayerId\" = {1} AND \"HighPlayerId\" = {2} " +
+                    "AND \"RecipientPlayerId\" = {3} AND \"ReadAtEpochMs\" IS NULL",
+                    nowEpochMs, low, high, playerId);
+
+                context.Response.StatusCode = 200;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Conversation mark-read error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
         private async Task HandleFriendsList(HttpListenerContext context)
         {
             try

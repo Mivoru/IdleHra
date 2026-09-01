@@ -4,6 +4,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using FolkIdle.Server.Network;
+using FolkIdle.Server.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
 using FolkIdle.Server.Engine;
@@ -589,6 +591,45 @@ namespace FolkIdle.Server.Domain.Social
         // time a message reaches Redis it is already validated content
         // from a real sender, and the one authoritative block check
         // should live in exactly one place.
+        /// <summary>
+        /// Stores one private message as the durable half of a conversation.
+        /// </summary>
+        /// <remarks>
+        /// Failure here must NOT stop delivery. A message that arrives but is
+        /// not recorded is a worse outcome than one that is recorded but not
+        /// recorded twice - and the alternative, refusing to deliver because a
+        /// write failed, would turn a database hiccup into chat being down.
+        /// Logged and swallowed, matching how the rest of this engine treats a
+        /// broken transport.
+        /// </remarks>
+        private async Task PersistWhisperAsync(long senderPlayerId, long targetPlayerId, string messageText, long timestampEpochMs)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var (low, high) = ConversationMessage.PairKey(senderPlayerId, targetPlayerId);
+
+                db.ConversationMessages.Add(new ConversationMessage
+                {
+                    LowPlayerId = low,
+                    HighPlayerId = high,
+                    SenderPlayerId = senderPlayerId,
+                    RecipientPlayerId = targetPlayerId,
+                    MessageText = messageText,
+                    SentAtEpochMs = timestampEpochMs,
+                    ReadAtEpochMs = null
+                });
+
+                await db.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Whisper persistence failed for player {senderPlayerId}: {ex.Message}");
+            }
+        }
+
         public async Task<bool> PublishWhisperMessageAsync(long playerId, long targetPlayerId, string messageText)
         {
             string trimmed = messageText.Trim();
@@ -604,6 +645,28 @@ namespace FolkIdle.Server.Domain.Social
             }
 
             long timestampEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            // Modul: WRITE IT DOWN BEFORE TRYING TO DELIVER IT, 2026-09-01.
+            //
+            // Delivery is best-effort by design - Redis fan-out to whoever is
+            // connected - and it used to be the ONLY thing that happened. A
+            // whisper to a player who was offline reached the dispatch, found
+            // no session in the connected-client map and returned, so the
+            // sender saw it sent and the recipient never learned it existed.
+            // Persisting first makes the record the source of truth and the
+            // packet a live notification: an offline recipient now reads it in
+            // their conversation the next time they sign in.
+            //
+            // Ordered before the Redis branch on purpose, so it happens whether
+            // Redis is up, down, or absent - the loopback path below is exactly
+            // when a message would otherwise be most likely to vanish.
+            //
+            // The text reaching here has already been through
+            // ChatProfanityFilter at DispatchInboundChatRequest, which is the
+            // single choke point for inbound chat. Anything that ever writes to
+            // this table from somewhere else must filter first - the filter is
+            // not applied at this layer or at the database.
+            await PersistWhisperAsync(playerId, targetPlayerId, trimmed, timestampEpochMs);
 
             var redis = _serviceProvider.GetService<IConnectionMultiplexer>();
             if (redis == null || !redis.IsConnected)
