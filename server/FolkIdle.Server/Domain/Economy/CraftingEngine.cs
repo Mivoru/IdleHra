@@ -137,8 +137,28 @@ namespace FolkIdle.Server.Domain.Economy
         public static int GetMaxForgeTierForRegion(int regionTier)
             => ForgeSplicingEngine.MaxQualityTier;
 
-        public async Task ExecuteCraftingAsync(long playerId, int recipeResultItemId)
+        /// <summary>
+        /// The largest batch one craft request may ask for. Clamped HERE rather
+        /// than trusted from the client: batchSize multiplies both the material
+        /// cost and the items produced, so an unclamped value is a request to
+        /// mint arbitrary equipment in one call.
+        /// </summary>
+        public const int MaxCraftBatchSize = 10;
+
+        // Modul: batchSize, 2026-09-01. One call can now produce N units for N
+        // times the materials, so a player is not obliged to click ten times or
+        // leave a character assigned to a bench to get ten tools.
+        //
+        // The refund skill roll below deliberately stays ONE ROLL FOR THE WHOLE
+        // CALL. That keeps its existing "the craft was free" shape and is
+        // expected-value neutral against ten separate crafts - the same chance
+        // pays out ten times the materials instead of ten chances paying one
+        // each - so batching changes variance and not the economy.
+        public async Task ExecuteCraftingAsync(long playerId, int recipeResultItemId, int batchSize = 1)
         {
+            if (batchSize < 1) batchSize = 1;
+            if (batchSize > MaxCraftBatchSize) batchSize = MaxCraftBatchSize;
+
             if (!ContentRegistry.TryGetRecipe(recipeResultItemId, out var recipe))
             {
                 return;
@@ -177,7 +197,7 @@ namespace FolkIdle.Server.Domain.Economy
                 var gv = new GeneticVector(geneticVector);
                 byte race = gv.LocusRace.Dominant;
 
-                int quantityProduced = 1;
+                int quantityProduced = batchSize;
 
                 // Kobold passive: 10% chance to duplicate bar outcome in smelting (Prof 2)
                 if (recipe.ProfessionType == 2 && race == RaceIds.Kobold)
@@ -241,20 +261,29 @@ namespace FolkIdle.Server.Domain.Economy
                     && Random.Shared.NextDouble() * 100.0 < Engine.SkillTreeRegistry.GetBonusPercent(
                         Engine.SkillTreeRegistry.BoughCraft, craftLevel);
 
-                if (!materialsRefunded && recipe.Mat1Id > 0 && recipe.Mat1Count > 0)
+                // Modul: the cost scales with the batch and the whole thing is
+                // one transaction, so a batch a player cannot afford consumes
+                // NOTHING rather than partially completing. Ten units are ten
+                // units' materials or no deal - a half-paid batch would be the
+                // worse failure, because the player would have spent the
+                // materials and have nothing to show for the shortfall.
+                int mat1Required = recipe.Mat1Count * batchSize;
+                int mat2Required = recipe.Mat2Count * batchSize;
+
+                if (!materialsRefunded && recipe.Mat1Id > 0 && mat1Required > 0)
                 {
                     string mat1ItemId = ContentRegistry.GetItemBaseId(recipe.Mat1Id);
-                    if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, mat1ItemId, recipe.Mat1Count))
+                    if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, mat1ItemId, mat1Required))
                     {
                         await transaction.RollbackAsync();
                         return (false, 0);
                     }
                 }
 
-                if (!materialsRefunded && recipe.Mat2Id > 0 && recipe.Mat2Count > 0)
+                if (!materialsRefunded && recipe.Mat2Id > 0 && mat2Required > 0)
                 {
                     string mat2ItemId = ContentRegistry.GetItemBaseId(recipe.Mat2Id);
-                    if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, mat2ItemId, recipe.Mat2Count))
+                    if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, mat2ItemId, mat2Required))
                     {
                         await transaction.RollbackAsync();
                         return (false, 0);

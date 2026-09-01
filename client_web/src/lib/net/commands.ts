@@ -391,13 +391,36 @@ export function consumeTimeWarpCore(
 // request silently addresses a completely different recipe instead. Both
 // failure modes were reachable from one wrong line, and neither says anything.
 
-/** Crafting tree. `resultItemId` is ContentRegistry's ResultItemId. */
-export function startTreeCraft(resultItemId: number): CommandOutcome {
+/** The largest batch the server will honour - see CraftingEngine.MaxCraftBatchSize. */
+export const MAX_CRAFT_BATCH = 10;
+
+/**
+ * Crafting tree. `resultItemId` is ContentRegistry's ResultItemId.
+ *
+ * Modul: this produces `batchSize` units NOW for `batchSize` times the
+ * materials, and is a different act from putting a character to work. Assigning
+ * a character to a recipe crafts one unit per interval FOREVER while materials
+ * last, which is the right shape for idling and the wrong shape for "I want a
+ * pickaxe" - the screen offered only the second, so making one tool meant
+ * assigning a worker and then remembering to stop them.
+ *
+ * The batch rides DepositQuantity, an existing field the crafting opcode does
+ * not otherwise read, so this needs no wire change. The server clamps it
+ * regardless of what is sent here: batch multiplies cost AND output.
+ */
+export function startTreeCraft(resultItemId: number, batchSize = 1): CommandOutcome {
   if (!Number.isInteger(resultItemId) || resultItemId <= 0) {
     return refuse('Pick a recipe.');
   }
+  if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > MAX_CRAFT_BATCH) {
+    return refuse(`Craft between 1 and ${MAX_CRAFT_BATCH} at a time.`);
+  }
 
-  connection.send({ Command: CommandType.InitializeCrafting, TargetId: resultItemId });
+  connection.send({
+    Command: CommandType.InitializeCrafting,
+    TargetId: resultItemId,
+    DepositQuantity: batchSize,
+  });
   return OK;
 }
 

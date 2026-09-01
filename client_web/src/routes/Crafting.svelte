@@ -2,7 +2,7 @@
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { queryKeys, fetchRecipes, type CraftingRecipe } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
-  import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
+  import { assignCharacterActivity, startTreeCraft, MAX_CRAFT_BATCH, EMPTY_GUID } from '../lib/net/commands';
   import { craftingActivityId } from '../lib/ui/slots';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import { craftingProfessionName } from '../lib/ui/slots';
@@ -14,6 +14,50 @@
 
   let search = $state('');
   let affordableOnly = $state(false);
+
+  // Modul: CRAFT NOW vs PUT TO WORK are two different acts and the screen only
+  // ever offered the second. Assigning a character sets their activity and they
+  // craft one unit per interval FOREVER while materials last - right for
+  // idling, wrong for "I need a pickaxe", which is why making one tool meant
+  // assigning a worker and then remembering to stop them.
+  //
+  // Ticked, one press crafts ten for ten times the materials. The server
+  // clamps the batch either way; this box only decides what to ask for.
+  let craftTen = $state(false);
+  const batchSize = $derived(craftTen ? MAX_CRAFT_BATCH : 1);
+
+  function affordableUnits(recipe: CraftingRecipe): number {
+    const one = recipe.Mat1Id === 0 ? Infinity : Math.floor(recipe.Mat1CurrentStock / Math.max(1, recipe.Mat1Count));
+    const two = recipe.Mat2Id === 0 ? Infinity : Math.floor(recipe.Mat2CurrentStock / Math.max(1, recipe.Mat2Count));
+    const units = Math.min(one, two);
+    return Number.isFinite(units) ? units : MAX_CRAFT_BATCH;
+  }
+
+  function craftNow(recipe: CraftingRecipe) {
+    // Refuse here rather than letting the server take the materials for a
+    // batch it cannot complete. ExecuteCraftingAsync is one transaction and
+    // rolls back cleanly, but the player would see a press that did nothing.
+    const have = affordableUnits(recipe);
+    if (have < batchSize) {
+      return pushLocalNotice(
+        have < 1
+          ? `Not enough materials for ${prettifyBaseId(recipe.ResultBaseItemId)}.`
+          : `Enough for ${have}, not ${batchSize}.`,
+      );
+    }
+
+    const outcome = startTreeCraft(recipe.ResultItemId, batchSize);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+
+    pushLocalNotice(
+      `Crafting ${batchSize} x ${prettifyBaseId(recipe.ResultBaseItemId)}.`,
+      'info',
+    );
+    setTimeout(() => {
+      client.invalidateQueries({ queryKey: queryKeys.recipes });
+      client.invalidateQueries({ queryKey: queryKeys.inventory });
+    }, 800);
+  }
 
   const playerLevel = $derived(recipes.data?.PlayerLevel ?? 0);
 
@@ -139,7 +183,16 @@
         <input type="checkbox" bind:checked={affordableOnly} />
         Craftable only
       </label>
+      <label class="check">
+        <input type="checkbox" bind:checked={craftTen} />
+        Craft x{MAX_CRAFT_BATCH}
+      </label>
     </div>
+    <p class="dim tiny">
+      <strong>Craft</strong> makes them now and stops.
+      <strong>Put to work</strong> assigns a character to keep making them while
+      materials last.
+    </p>
 
     {#if recipes.isPending}
       <p class="dim">Loading recipes...</p>
@@ -152,6 +205,17 @@
           <li class:ready>
             <div class="line">
               <strong>{prettifyBaseId(recipe.ResultBaseItemId)}</strong>
+              <!-- Craft now sits FIRST because it is the one a player reaches
+                   for. Put to work is the idle assignment and keeps its place
+                   beside it rather than being replaced - they answer different
+                   questions and both are wanted. -->
+              <button
+                class="tiny-btn primary"
+                disabled={!isUnlocked(recipe) || affordableUnits(recipe) < batchSize}
+                onclick={() => craftNow(recipe)}
+              >
+                Craft{craftTen ? ` x${MAX_CRAFT_BATCH}` : ''}
+              </button>
               <button
                 class="tiny-btn"
                 disabled={!ready || workers.length === 0}
@@ -340,5 +404,14 @@
     font-size: 0.72rem;
     padding: 0.2rem 0.45rem;
     flex: none;
+  }
+
+  /* Craft now is the primary act on this row; Put to work sits beside it as
+     the idle alternative. Only the emphasis differs - both stay legible when
+     disabled, because "I cannot afford this" has to read as clearly as
+     "I can". */
+  .tiny-btn.primary {
+    border-color: currentColor;
+    font-weight: 600;
   }
 </style>

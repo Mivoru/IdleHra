@@ -2197,9 +2197,24 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         long pId = currentPayload.PlayerId;
                         int resultItemId = (int)cmd.TargetId;
-                        
+
+                        // Modul: the batch rides DepositQuantity, an existing
+                        // uint no other branch of this opcode reads. Adding a
+                        // BatchSize field would have meant a wire-struct change
+                        // - the packet is demultiplexed by exact byte size, so
+                        // the layout guard and the generated client protocol
+                        // both move - for one small integer that an unused
+                        // field already carries. 0 means a client that predates
+                        // this and gets the old behaviour of one.
+                        //
+                        // The value is CLAMPED IN THE ENGINE, not here.
+                        // batchSize multiplies both cost and output, so it is
+                        // exactly the kind of number a client must not be
+                        // trusted with.
+                        int batchSize = cmd.DepositQuantity > 0 ? (int)Math.Min(cmd.DepositQuantity, (uint)CraftingEngine.MaxCraftBatchSize) : 1;
+
                         SafeDispatchAsync("Crafting.Initialize", pId, async () => {
-                            await _craftingEngine.ExecuteCraftingAsync(pId, resultItemId);
+                            await _craftingEngine.ExecuteCraftingAsync(pId, resultItemId, batchSize);
                         });
                     }
                     // Modul: CommandType.CraftItem is RETIRED, along with the
