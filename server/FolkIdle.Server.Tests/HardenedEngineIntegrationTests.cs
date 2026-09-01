@@ -1937,11 +1937,30 @@ namespace FolkIdle.Server.Tests
             Assert.True(payload.IsDirty);
         }
 
+        // Modul: REWRITTEN for the production model of 2026-08-12, which
+        // removed the Quarry and stopped village output being a per-level rate
+        // in units-per-SECOND. Both are now per-HOUR and reset every five
+        // levels, matching the tier bands upgrades are priced in:
+        //
+        //     ore  per hour = (mineLevel % 5 + 1) * 100      (0 if level 0)
+        //     cap  per item = (warehouseLevel % 5 + 1) * 100 * 5
+        //     commodity     = GetTierMaterials(mineLevel).Ore
+        //
+        // The old version asserted a 0.08/second stone rate landing in
+        // copper_ore, and failed on the commodity name - it was one of four
+        // village tests that left CI red for three weeks after the rework.
+        //
+        // The expected numbers below are written out rather than recomputed
+        // from the engine's own formula, so this stays an oracle rather than a
+        // restatement. It still exercises the CAP branch, which is why the
+        // offline period is long enough for production to exceed storage.
         [Fact]
         public async Task Test_Village_OfflinePassiveIncome_Integration()
         {
             const long testPlayerId = 995000002L;
-            const long elapsedOfflineSeconds = 3600L; // 1 hour
+            const long elapsedOfflineSeconds = 86_400L; // 24 hours of real absence
+            const int mineLevel = 4;
+            const int warehouseLevel = 1;
 
             long currentUnixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
@@ -1950,18 +1969,31 @@ namespace FolkIdle.Server.Tests
                 PlayerId = testPlayerId,
                 LastLogoutTimestamp = currentUnixTimestamp - elapsedOfflineSeconds,
                 ActiveActivityId = 0,
-                MineLevel = 10,
-                WarehouseLevel = 2,
+                MineLevel = mineLevel,
+                WarehouseLevel = warehouseLevel,
                 InventorySpaceRemaining = 1000
             };
 
-            // Stone_Rate = 10 * 0.08 = 0.8/sec. Potential production over 1 hour
-            // (2880) exceeds the Warehouse cap (Level 2 = 2000), so this also
-            // exercises the cap-enforcement branch on the offline catch-up path.
-            const long maxStorage = 2000L;
-            const float stoneRatePerSecond = 10 * 0.08f;
-            long expectedStoneGain = Math.Min((long)(elapsedOfflineSeconds * stoneRatePerSecond), maxStorage);
-            Assert.Equal(2000L, expectedStoneGain);
+            // TWO caps apply and only one of them can be the thing under test.
+            // OfflineSimulationEngine first clamps the absence to 12 hours
+            // (MaxOfflineSeconds), so the 24 above earns as 12; the warehouse
+            // then clamps the result per item. These numbers are chosen so the
+            // WAREHOUSE is what binds, which is the branch this test exists
+            // for - an earlier draft used mine 10 / warehouse 2 and quietly
+            // measured the offline clamp instead, because 1,200 produced is
+            // under the 1,500 stored.
+            //
+            //   mine 4      -> (4 + 1) * 100  = 500 an hour
+            //   12 hours    -> 6,000 produced
+            //   warehouse 1 -> (1 + 1) * 100 * 5 = 1,000 stored
+            //
+            // So 5,000 of the 6,000 is lost to storage.
+            const long expectedOreGain = 1_000L;
+
+            // Which commodity a tier produces is asserted by
+            // Test_VillageManagementEngine_ProductionUpgradeCost_ScalesExponentially;
+            // this test is about the rate and the cap, so it reads the table.
+            string oreId = VillageManagementEngine.GetTierMaterials(mineLevel).Ore;
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
@@ -1971,10 +2003,18 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(currentUnixTimestamp, payload.LastLogoutTimestamp);
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
-            var stone = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
+            var ore = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == oreId);
 
-            Assert.Equal(expectedStoneGain, stone.Quantity);
+            Assert.Equal(expectedOreGain, ore.Quantity);
+
+            // The Quarry is gone. Nothing may produce stone any more - if a
+            // building starts writing it again that is a design change, not a
+            // silent regression.
+            Assert.False(
+                await verifyDb.CommodityRecords.AsNoTracking()
+                    .AnyAsync(c => c.PlayerId == testPlayerId && c.ItemId == "stone"),
+                "The Quarry was removed; no offline production should grant stone.");
         }
 
         private static IConnectionMultiplexer CreateOfflineRedisMultiplexer()
@@ -3119,7 +3159,15 @@ namespace FolkIdle.Server.Tests
                 LastLogoutTimestamp = lastLogoutTimestamp,
                 ActiveActivityId = 0,
                 LumberjackLevel = 1,
-                WarehouseLevel = 100,
+                // Modul: was 100, chosen when storage was level * a constant
+                // and a big number meant "cap is irrelevant here". The cap now
+                // RESETS every five levels like everything else -
+                // (warehouseLevel % 5 + 1) * 100 * 5 - so level 100 lands on
+                // the lowest band and stores 500, which would silently become
+                // the thing this test measured instead of the 12-hour cap it
+                // is actually about. Level 4 is the top of the first band,
+                // 2,500, comfortably above the 2,400 produced below.
+                WarehouseLevel = 4,
                 InventorySpaceRemaining = 20
             };
 
@@ -3149,11 +3197,23 @@ namespace FolkIdle.Server.Tests
             // the full 604800, which is the correct, intentional behavior
             // being verified here, not an oversight.
             const long cappedElapsedSeconds = 43200L;
-            long expectedWood = (long)(cappedElapsedSeconds * VillageManagementEngine.LumberjackWoodRatePerLevel);
+
+            // Modul: the yield formula and the commodity BOTH changed on
+            // 2026-08-12. Output is per HOUR and resets every five levels -
+            // (lumberjackLevel % 5 + 1) * 100 - and it is granted as that
+            // tier's LOG rather than the generic "wood" commodity, which is
+            // why this assertion used to fail on a null row rather than on a
+            // wrong number.
+            //
+            // Lumberjack 1 -> (1 + 1) * 100 = 200 an hour. Over the capped
+            // 12 hours that is 2,400, under the 2,500 the warehouse holds, so
+            // what is measured here stays the OFFLINE cap.
+            const long expectedWood = 2_400L;
+            string logId = VillageManagementEngine.GetTierMaterials(1).Log;
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
             var woodCommodity = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleOrDefaultAsync(c => c.PlayerId == testPlayerId && c.ItemId == VillageManagementEngine.WoodCommodityId);
+                .SingleOrDefaultAsync(c => c.PlayerId == testPlayerId && c.ItemId == logId);
 
             Assert.NotNull(woodCommodity);
             Assert.Equal(expectedWood, woodCommodity!.Quantity);
@@ -5826,24 +5886,55 @@ namespace FolkIdle.Server.Tests
 
         // Modul: Phase - Full-Stack Production Polish Phase 2, Part 2.2.
         // Asserts VillageManagementEngine.CalculateProductionUpgradeCost
-        // matches BaseCost * 1.5^currentLevel exactly, and that the
-        // level-to-level growth ratio is a constant 1.5x - the previous
-        // (currentLevel + 1)^1.8 polynomial curve's ratio would instead
-        // shrink toward 1.0 as currentLevel grew, which this test would
-        // catch as a ratio drifting away from 1.5.
+        // matches BaseCost * 1.5^n exactly, and that the level-to-level growth
+        // ratio is a constant 1.5x - the older (currentLevel + 1)^1.8
+        // polynomial curve's ratio would instead shrink toward 1.0 as
+        // currentLevel grew, which this test would catch as a ratio drifting
+        // away from 1.5.
+        //
+        // Modul: THE COST RESETS EVERY FIVE LEVELS, 2026-08-12. The exponent is
+        // `currentLevel % 5`, not `currentLevel`, because a building's level
+        // band is a TIER and each tier is paid for in that tier's own
+        // materials (GetTierMaterials clamps `currentLevel / 5` the same way).
+        // A continuous 1.5^currentLevel would have made the level-20 upgrade
+        // 100 * 1.5^20 - about 332,000 of a region-5 material - while the tier
+        // that gates it only just became reachable.
+        //
+        // This test asserted the continuous curve for three weeks after the
+        // engine stopped implementing it and was one of four failures that
+        // left CI red the entire time. The reset is now asserted directly
+        // rather than left to be inferred from the table above.
         [Fact]
         public void Test_VillageManagementEngine_ProductionUpgradeCost_ScalesExponentially()
         {
-            for (int level = 0; level <= 10; level++)
+            for (int level = 0; level <= 24; level++)
             {
-                long expected = (long)Math.Ceiling(100.0 * Math.Pow(1.5, level));
+                long expected = (long)Math.Ceiling(100.0 * Math.Pow(1.5, level % 5));
                 Assert.Equal(expected, VillageManagementEngine.CalculateProductionUpgradeCost(level));
             }
 
-            long costAtLevel5 = VillageManagementEngine.CalculateProductionUpgradeCost(5);
-            long costAtLevel6 = VillageManagementEngine.CalculateProductionUpgradeCost(6);
-            double ratio = costAtLevel6 / (double)costAtLevel5;
-            Assert.InRange(ratio, 1.49, 1.51);
+            // Inside a tier the ratio is the exponential the name promises.
+            long costAtLevel1 = VillageManagementEngine.CalculateProductionUpgradeCost(1);
+            long costAtLevel2 = VillageManagementEngine.CalculateProductionUpgradeCost(2);
+            Assert.InRange(costAtLevel2 / (double)costAtLevel1, 1.49, 1.51);
+
+            // Crossing a tier boundary drops back to the base cost, and the
+            // materials asked for change with it. Both halves of that rule are
+            // checked here so neither can move without the other being noticed.
+            long firstOfTier0 = VillageManagementEngine.CalculateProductionUpgradeCost(0);
+            long lastOfTier0 = VillageManagementEngine.CalculateProductionUpgradeCost(4);
+            long firstOfTier1 = VillageManagementEngine.CalculateProductionUpgradeCost(5);
+            Assert.Equal(firstOfTier0, firstOfTier1);
+            Assert.True(lastOfTier0 > firstOfTier1, "the last upgrade of a tier must cost more than the first of the next");
+            Assert.NotEqual(
+                VillageManagementEngine.GetTierMaterials(4),
+                VillageManagementEngine.GetTierMaterials(5));
+
+            // The top tier is clamped, so a level far past the table still
+            // resolves rather than walking off the end of it.
+            Assert.Equal(
+                VillageManagementEngine.GetTierMaterials(20),
+                VillageManagementEngine.GetTierMaterials(999));
         }
 
         // Modul: Phase - Full-Stack Production Polish Phase 2, Part 2.3.
@@ -7900,16 +7991,27 @@ namespace FolkIdle.Server.Tests
         {
             const long testPlayerId = 970007101L;
 
+            // Modul: read the materials from the engine's own tier table
+            // rather than naming them. Upgrades stopped costing a fixed
+            // raw_log/copper_ore pair on 2026-08-12 and now spend the TIER's
+            // log, ore and rare log (GetTierMaterials clamps currentLevel / 5);
+            // this test hardcoded raw_log and failed for three weeks on a
+            // material name while what it actually checks - that the unified
+            // path spends the backpack first and the stash for the remainder -
+            // never stopped working. Which materials a tier uses is asserted
+            // by Test_VillageManagementEngine_ProductionUpgradeCost_ScalesExponentially.
+            var tier0 = VillageManagementEngine.GetTierMaterials(0);
+
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
-                // Workshop level 0 -> 1 costs 100 raw_log + 100 copper_ore
-                // + 10 golden_birch_log. Backpack holds only part; the
-                // stash covers the remainder.
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "raw_log", Quantity = 60L });
-                db.VillageStashInstances.Add(new VillageStashInstance { PlayerId = testPlayerId, ItemId = "raw_log", Quantity = 60L });
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = 100L });
-                db.VillageStashInstances.Add(new VillageStashInstance { PlayerId = testPlayerId, ItemId = "golden_birch_log", Quantity = 10L });
+                // Workshop level 0 -> 1 costs 100 of the tier log + 100 of the
+                // tier ore + 10 of the tier rare log. The backpack holds only
+                // part of the log cost; the stash covers the remainder.
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = tier0.Log, Quantity = 60L });
+                db.VillageStashInstances.Add(new VillageStashInstance { PlayerId = testPlayerId, ItemId = tier0.Log, Quantity = 60L });
+                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = tier0.Ore, Quantity = 100L });
+                db.VillageStashInstances.Add(new VillageStashInstance { PlayerId = testPlayerId, ItemId = tier0.RareLog, Quantity = 10L });
                 // A production building already at the level-0 Town Hall
                 // ceiling (2) - its next upgrade must be rejected.
                 db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = testPlayerId, BuildingId = VillageManagementEngine.LumberjackBuildingId, CurrentLevel = 2 });
@@ -7928,11 +8030,13 @@ namespace FolkIdle.Server.Tests
                     .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.CraftingWorkshopBuildingId);
                 Assert.Equal(1, workshop.UpgradeTargetLevel);
 
-                var backpackLogs = await verifyDb.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "raw_log");
+                // The backpack is spent first and to zero, then 40 of the 60 in
+                // the stash covers the rest of the 100.
+                var backpackLogs = await verifyDb.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == tier0.Log);
                 Assert.Equal(0L, backpackLogs.Quantity);
-                Assert.Equal(20L, (await verifyDb.VillageStashInstances.AsNoTracking().SingleAsync(s => s.PlayerId == testPlayerId && s.ItemId == "raw_log")).Quantity);
+                Assert.Equal(20L, (await verifyDb.VillageStashInstances.AsNoTracking().SingleAsync(s => s.PlayerId == testPlayerId && s.ItemId == tier0.Log)).Quantity);
 
-                Assert.False(await verifyDb.VillageStashInstances.AsNoTracking().AnyAsync(s => s.PlayerId == testPlayerId && s.ItemId == "golden_birch_log"),
+                Assert.False(await verifyDb.VillageStashInstances.AsNoTracking().AnyAsync(s => s.PlayerId == testPlayerId && s.ItemId == tier0.RareLog),
                     "The fully-consumed rare log stash stack must be removed.");
             }
 
