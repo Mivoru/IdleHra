@@ -9,6 +9,11 @@ commit messages/PRs).
 Most sections below predate the web client and describe Unity work. The
 dated handoff immediately following is the live one.
 
+**For the NEXT block of work, see `docs/TASK_BOARD.md`** - seven scoped tasks
+with acceptance criteria, written 2026-09-01 against what the code actually
+does. This file remains the record of what happened and why; the board is what
+to do next.
+
 ---
 
 # HANDOFF 2026-09-01 - Tooling, and the guild donate panel that never worked (READ THIS FIRST)

@@ -160,6 +160,9 @@ changed a struct and did not regenerate", not as a flaky step.
   architecture, table-name overrides, known dead code.
 - `docs/architecture/LONG_GAME_SPEC.md` — cross-season progression. §6 is
   status, §7 says which balance is deliberately left alone.
+- **`docs/TASK_BOARD.md`** — the next block of work: seven scoped tasks with
+  acceptance criteria. Several are half-built already, so read the "what is
+  actually true" section of a task before estimating it.
 - `docs/FUTURE_PLANS.md` — ideas only, nothing committed.
 - `ops/oracle/README.md` — deployment, and the two firewalls that both must be
   open.

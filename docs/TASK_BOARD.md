@@ -1,0 +1,392 @@
+# FolkIdle Task Board
+
+Seven tasks, restated against what the code actually does as of 2026-09-01.
+Every "today" claim below was checked in the source or the live database rather
+than remembered — where a task turned out to be different from its one-line
+description, the difference is called out, because two of these are much smaller
+than they sound and two are much larger.
+
+Each task carries **Done when** criteria. A task with no way to tell it is
+finished is a mood, not a task.
+
+Ordering is a suggestion: 7 → 1 → 2 → 6 → 5 → 4 → 3, cheapest and most visible
+first, riskiest last.
+
+---
+
+## 7. Missing icons — and a list of everything without art
+
+**Smaller than it looks for tools, bigger than it looks overall.**
+
+### What is actually true
+
+**The tool art EXISTS.** `client/Assets/Images/SpritesWeb/Tools&Equipment/`
+holds `axes/`, `pickaxes/`, `fishing rods/` with per-wood art (`Birch axe.webp`,
+`Golden Birch axe.webp`, …). You did make them.
+
+They do not render because of a **lookup mismatch, not missing files**:
+
+- `generate-sprites.mjs:279` routes anything under those three directories into
+  `toolIcons[kind][tier]`, a kind-and-tier matrix.
+- That is emitted as `TOOL_ICONS` and reachable only through
+  `sprites.ts:89 toolIcon(kind, tier)`.
+- `ItemIcon.svelte:36` calls `itemIcon(baseItemId)`, which reads `ITEM_ICONS`
+  only (`sprites.ts:70`). A `_tool` base id is never in there.
+
+So the paper doll, the chest and the forge all fall back to initials for tools,
+while the Gathering screen — which asks by kind and tier — shows them fine.
+
+**The wider inventory: 209 of 330 items have no `ITEM_ICONS` entry.**
+215 `.webp` files exist against 159 sprite keys.
+
+| Group | Missing | Notes |
+|---|---|---|
+| tools | 33 | art exists; mapping bug above |
+| crafting materials | 70 | mostly `*_crafting_material`; several are now unspent legacy |
+| "other" | 95 | herbalism/alchemy/fishing materials, boss drops, `premium_diamond` |
+| logs & ores | 10 | **spent daily — the most visible gap** |
+| armour/jewellery | 1 | |
+
+The ten logs and ores with no art are the ones players handle constantly:
+`copper_ore`, `iron_ore`, `obsidian_ore`, `silver_ore` (all four catalogued only
+today, so they have never had art), `cobalt_ore`, `darksteel_ore`,
+`golden_willow_log`, `golden_acacia_log`, `golden_frostpine_log`,
+`golden_ebon_log`.
+
+### Scope
+
+1. Bridge tools into the by-base-id lookup. Either emit tool entries into
+   `ITEM_ICONS` keyed by base id as well as into `TOOL_ICONS`, or make
+   `itemIcon()` fall back to resolving a `_tool` id to (kind, tier). Prefer the
+   generator — one source, and `toolIcon()` keeps working untouched.
+2. Produce the missing-art list as a **generated artefact**, not a one-off:
+   extend `generate-sprites.mjs` to write `sprites.missing.txt` (or fail
+   `--check` in CI above a threshold), so the list cannot silently rot.
+3. Draw art for the ten logs/ores first. Everything else is a backlog to work
+   through by frequency-of-appearance, not alphabetically.
+4. Decide what to do about the ~70 `*_crafting_material` entries — several are
+   now legacy (see the ore canon in `NEXT_STEPS_BACKLOG.md`) and may deserve
+   deletion rather than art.
+
+### Done when
+
+- A crafted axe shows its art on the Character paper doll, the Chest and the
+  Forge, not initials.
+- `npm run generate:sprites` emits a machine-readable list of items with no art.
+- The ten logs/ores render art everywhere they appear.
+- The missing-art count is asserted somewhere, so it can only go down.
+
+### Risk
+
+Low. Generator and client only; no wire, no schema, no balance.
+
+---
+
+## 1. Verify the daily login
+
+**Verification, not construction — it is fully built.**
+
+### What is actually true
+
+`DailyLoginRewardEngine` has rotating weekly gold matrices
+(`GoldRewardMatrices`), a day-7 bonus of 100 diamonds
+(`PremiumDiamondsOnDay7Completion`), and streak state on
+`PlayerRecord.LastLoginTimestamp` / `LoginStreakDays`. `Progression.svelte:142`
+renders the seven days with collected / today / upcoming states and explains
+that rewards arrive on sign-in rather than being claimed.
+
+**The thing worth checking:** every account in the live database has
+`LoginStreakDays = 1`, including a level-74 account played across several weeks.
+That is *consistent with* legitimate resets — a missed day sets it back to 1,
+and this account was quarantined for most of August — so it is **evidence, not
+proof**. It is also exactly what a streak that never advances would look like.
+
+### Scope
+
+1. Settle the ambiguity with a test rather than by staring: drive
+   `DailyLoginRewardEngine` across a simulated day boundary and assert the
+   streak goes 1 → 2 → 3, resets to 1 after a skipped day, and pays diamonds
+   exactly once on day 7.
+2. Pin the **date key**. A streak turns on "what day is it", and a UTC-vs-local
+   disagreement is the classic way one becomes unwinnable for players in some
+   timezones. Whatever the rule is, assert it.
+3. Check the reward is idempotent within a day — two sign-ins must not pay
+   twice.
+4. Only if the test shows a real defect, fix it.
+
+### Done when
+
+- Tests cover advance, reset-after-gap, day-7 diamonds, and same-day
+  idempotence.
+- The date-key rule is written down where the engine is.
+- A real account observed advancing past streak 1, or a defect found and fixed.
+
+### Risk
+
+Low, and it pays real currency, so it is worth being certain.
+
+---
+
+## 2. UI polish and sound
+
+**Split this in two — one half is a live bug, the other is taste.**
+
+### The bug half: production has no audio at all
+
+Eleven real clips exist locally (`client/Assets/Resources/Audio/`, 4 KB–132 KB:
+`level_up.wav`, `loot_rare_dropped.wav`, `ui_button_click.wav`, …). They are
+tracked in **Git LFS** — and **git-lfs is not installed on the deploy box**, so
+what ships is 130-byte pointer stubs. The game is silent in production and
+always has been, while sounding fine on a developer machine.
+
+`exercise.mjs` already tolerates missing audio as expected 404s, which is why
+nothing has ever complained.
+
+Fix options, in order of preference:
+1. Stop shipping audio through LFS — the runtime needs 11 small files, and the
+   1 GB of LFS in this repo is source PNGs nothing serves (see the LFS item in
+   `NEXT_STEPS_BACKLOG.md`).
+2. Install git-lfs on the box and fetch only `client/Assets/Resources/Audio/`.
+
+### The taste half: modernisation
+
+Scope this deliberately rather than as "make it nicer". Candidates observed:
+- Panels are visually uniform; nothing signals which is the primary action on a
+  screen.
+- The buff tier rows were cropped until today — same class of bug likely exists
+  in other dense panels. Audit every panel at a **narrow** container width, not
+  just a narrow viewport; the panel grid means those are different things.
+- Sound design is a separate question from sound *delivery*: decide which
+  events deserve audio before adding more clips.
+
+### Done when
+
+- A `level_up.wav` actually plays on the live site.
+- Every panel is screenshotted at two container widths with no clipped content.
+- Any visual rework is described concretely enough that "done" is checkable.
+
+### Risk
+
+Low for the audio delivery. The polish half is unbounded unless scoped — write
+the specific list before starting.
+
+---
+
+## 6. Make the Wiki complete and readable
+
+### What is actually true
+
+`Wiki.svelte` is 435 lines with **eight sections**: Basics & Progression,
+Combat & Stats, Skill Tree, Items & Tiers, Map & Regions, Gathering & Crafting,
+Genetics & Breeding, Guilds & Social. Three sub-components add real data:
+`WikiItemDatabase`, `WikiDropChances` (a luck calculator), `WikiMonsterDrops`
+(live drop tables from `/api/v1/monsters/loot`).
+
+The game has **26 screens**. Systems with no Wiki section at all:
+
+- **The Village** — buildings, the Town Hall ceiling, what each upgrade does,
+  the tier materials. Nothing. This is the system players most recently could
+  not use.
+- **Tools** — that they are equipment, that they have eleven slots, what they
+  accelerate.
+- **The Long Game** — Book of Deeds, Seals, Hall of Ancestors, Inheritance,
+  what a season resets and what survives. Four systems, no page.
+- **The Market**, **Forge/fusion and affix rerolls**, **World Boss**,
+  **Mailbox**, **Chrono/Boosts**, **Daily login**, **Achievements**.
+
+### Scope
+
+1. Write the missing sections, weighted by what a confused player actually
+   opens the Wiki for. Village and the Long Game first.
+2. Make the data-driven parts do more of the work. `WikiMonsterDrops` already
+   reads live drop tables; the same trick suits recipes, village upgrade costs
+   and buff tiers, and data that reads itself cannot drift from the game.
+3. Readability pass: the sidebar-plus-page layout is sound; the pages are dense
+   prose. Tables, per-region breakdowns, and worked examples ("a tier-3 reroll
+   costs X, which is about N minutes of region-3 income").
+4. Search across all sections, not just the item database.
+
+### Done when
+
+- Every one of the 26 screens is either documented or explicitly listed as not
+  needing a page.
+- Village, tools and the Long Game have pages.
+- At least the village upgrade costs and buff tiers are generated from server
+  data rather than retyped.
+
+### Risk
+
+Low, but it is a lot of writing. Content generated from live data is the part
+that keeps paying.
+
+---
+
+## 5. Tutorial, hints, and teaching the game
+
+**Larger than it sounds. A tutorial exists but covers almost nothing.**
+
+### What is actually true
+
+`lib/stores/tutorial.ts` (111 lines) and `tutorialSteps.ts` (105 lines)
+implement a three-step first session, driven purely off the state packet:
+
+1. **Win a fight** — done when `CurrentLevel >= 2`
+2. **Equip a drop**
+3. **Stock the larder**
+
+Then `Completed`. The design is good — each step is "a fact on the wire that
+means it is done", which is why it needed no bespoke tracking. It simply stops
+after three steps.
+
+**Nothing teaches:** gathering, crafting (including the new Craft ×10), tools
+and their slots, the village and the Town Hall ceiling, region unlocking via
+bosses, the forge, affix rerolls, the market, guilds and buffs, breeding, the
+skill tree, deeds and Seals, the Hall of Ancestors, inheritance, the world boss,
+or conversations.
+
+### Scope
+
+1. **Extend the existing pattern rather than replacing it.** Keep "a step is a
+   predicate over the state packet"; it is testable without a browser and it is
+   why the current three work.
+2. Add a second tier: **discovery moments**. When a player first unlocks or
+   reaches a system, explain that system once. Region-2 unlock, first tool
+   crafted, first guild joined, Town Hall available, first child bred.
+3. Decide the **teaching surface**: modal, coach-mark on the real control, or a
+   dismissible panel. Coach-marks on the real control are the most effective and
+   the most work; pick knowingly.
+4. Persistence: which steps a player has seen must survive a reload, and a
+   season reset must not re-teach everything.
+5. Make it skippable and re-openable — an idle game is often replayed by people
+   who already know it.
+
+### Done when
+
+- Every major system has a first-encounter explanation.
+- Steps are predicates over the state packet, tested in a node runner.
+- `exercise.mjs` drives a new account through the whole onboarding chain.
+- Seen-state survives reload and behaves sanely across a season reset.
+
+### Risk
+
+Medium, and it is the task most likely to sprawl. Write the full step list
+before building any of it.
+
+---
+
+## 4. Breeding: make it understandable
+
+### What is actually true
+
+Breeding is *complete* — see `LONG_GAME_SPEC.md` sections 3 and 5. Two pairing
+modes (hero × hero, hero × villager), aptitudes, genetic loci, epic mutations,
+a village gene pool with arrivals and recruitment, cooldowns, and a two-tab
+Breeding screen. `exercise.mjs` drives it end to end.
+
+The problem is not that it does not work. It is that it is the most
+mechanically dense system in the game with the least explanation, and it
+interlocks with four others: the Village (the Inn produces the gene pool),
+Ancestors (the Hall culls at rollover), Inheritance, and the season reset.
+
+### Scope
+
+1. Write down the player-facing model first, in one page, before touching code:
+   what a child inherits, what a villager contributes, what survives a season,
+   what is lost. If that page is hard to write, the design is what needs work —
+   not the UI.
+2. Make the **preview** carry the explanation. The screen already quotes what a
+   child would inherit and what it costs; that is the natural teaching moment,
+   and expanding it beats a separate help page nobody opens.
+3. Surface the interlocks where they bite: on the Village screen say the Inn
+   feeds the gene pool; on Ancestors say what the rollover will cull.
+4. Name things consistently. "Aptitudes", "loci", "genes", "inheritance" and
+   "legacy" are currently distinct concepts with overlapping names.
+5. Only then consider mechanical simplification — and if any is proposed,
+   measure it against `LONG_GAME_SPEC.md` §7, which argues some of this
+   complexity is deliberate.
+
+### Done when
+
+- A one-page model exists and matches the code.
+- The Breeding screen explains a child's outcome without leaving the screen.
+- Village and Ancestors mention their breeding interlocks.
+- Terminology is consistent across screens, Wiki and tooltips.
+
+### Risk
+
+Medium. Mostly explanatory, but touching the mechanics risks the season-long
+progression the Long Game is built on. Do the writing first.
+
+---
+
+## 3. Delete the chrono bank
+
+**Much larger than it sounds. Do this last, and only if the answer to "should
+this exist" is genuinely no.**
+
+### What is actually true
+
+The chrono bank converts offline overflow into banked seconds a player spends to
+accelerate the game. Its surface:
+
+- **87 server files** mention `Chrono`.
+- Table `AccountChronoRegistry` / `account_chrono_registry` — 13 live rows —
+  holding `BankedChronoSeconds`, `ActiveSpeedMultiplier`,
+  `AccelerationTerminationEpoch`, `LastClockSyncEpoch`.
+- **Wire fields on `StateUpdatePacket`**: `BankedChronoSeconds`,
+  `IsChronoAccelerating`, `ActiveChronoLockExpirationTicks`.
+- A `ChronoAccelerationQueue` on `PlayerSessionRegistry`, drained by the tick.
+- Client: `Boosts.svelte` (the bank UI), `Store.svelte`, `VictoryCard.svelte`,
+  and `activateChronoBoost` in `commands.ts`.
+- `OfflineSimulationEngine` pushes overflow time into the bank — so deleting it
+  changes what happens to time beyond the 12-hour offline cap.
+
+### Decide before deleting
+
+Deletion is not free and not obviously right:
+- What happens to offline time past the cap once the bank is gone? Today it is
+  banked rather than discarded. Discarding it is a **balance change**, not a
+  cleanup.
+- Players hold banked seconds now. Deleting the table destroys a currency they
+  earned — the same class of problem as the stranded ores, and it needs the same
+  decision.
+- It is one of the few things diamonds and the Store are wired to.
+
+### Scope, if the answer is still delete
+
+1. Write down what replaces it for over-cap offline time.
+2. Client first — remove the Boosts bank UI and the Store hook, ship, confirm
+   nothing else calls it.
+3. Then the engine and the queue.
+4. Then the wire fields. Removing them **frees space on `StateUpdatePacket`**,
+   which is near its ~700-byte ceiling — a real benefit. Both layout-guard
+   constants and `npm run generate:protocol` move in the same commit.
+5. Migration last: decide compensation for banked seconds, then drop the table.
+6. `SeasonEraEngine` and `PlayerChronoRegistry` are already listed as dead code
+   in `CURRENT_IMPLEMENTATION_STATE.md` §9 — fold them into the same pass.
+
+### Done when
+
+- No `Chrono` symbol remains outside migration history.
+- `StateUpdatePacket` is smaller and the guard says so.
+- Over-cap offline time has a documented, deliberate behaviour.
+- Existing banked seconds were compensated or explicitly written off.
+
+### Risk
+
+**High.** Touches the wire, the tick, offline progression and the store, and
+carries a destructive migration. The single largest task here.
+
+---
+
+## Cross-cutting notes
+
+- **Two of these are already half-built** (tutorial, daily login) and one is
+  half-broken in a way nobody could see (audio in production). Check what exists
+  before estimating any of them.
+- Anything touching the wire — task 3 — costs a layout-guard change and a
+  protocol regeneration. Anything that can be REST instead should be.
+- The village, ore and equipment-slot traps in the 2026-09-01 handoff are the
+  same shape as several of these: a system that renders correctly while doing
+  nothing. Prefer `exercise.mjs` assertions over screenshots when closing any of
+  these out.
