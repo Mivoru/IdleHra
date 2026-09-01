@@ -766,6 +766,37 @@ await page.waitForTimeout(600);
           ? `thread with ${thread.Username}`
           : `${rows.length} thread(s), none carrying the sent text`,
       );
+
+      // Modul: and that the SCREEN shows it. The Whispers tab used to be one
+      // flat log of every whisper from everybody; it is a list of people now,
+      // and a list that renders while showing nothing is the exact failure
+      // this whole file exists to catch.
+      //
+      // Reloading first is the point: it proves the thread came from the
+      // server rather than from the in-memory log, which a reload wipes and
+      // which was previously the ONLY place a message existed.
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForTimeout(1500);
+      await dismissOfflineSummary(3000);
+      await page.getByRole('button', { name: /Show chat/i }).first().click();
+      await page.waitForTimeout(600);
+      await page.getByRole('button', { name: 'Whispers', exact: true }).first().click();
+      await page.waitForTimeout(1200);
+
+      const listed = page.locator('.thread', { hasText: 'michal' }).first();
+      const inList = (await listed.count()) > 0;
+      record('the whisper list survives a reload', inList, inList ? 'michal listed' : 'no thread rendered');
+
+      if (inList) {
+        await listed.click();
+        await page.waitForTimeout(1500);
+        const threadText = await page.locator('.thread-log').innerText().catch(() => '');
+        record(
+          'opening a conversation shows its history',
+          threadText.includes(stamp),
+          threadText.includes(stamp) ? 'the sent message is in the thread' : 'thread opened but the message is absent',
+        );
+      }
     }
   }
 

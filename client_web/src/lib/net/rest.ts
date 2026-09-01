@@ -21,6 +21,9 @@ export const queryKeys = {
   statistics: ['player', 'statistics'] as const,
   monsterLoot: (monsterId: number) => ['monsters', 'loot', monsterId] as const,
   friends: ['social', 'friends'] as const,
+  conversations: ['social', 'conversations'] as const,
+  conversationHistory: (withPlayerId: number) =>
+    ['social', 'conversations', withPlayerId] as const,
   onlineStats: ['stats', 'online'] as const,
   achievements: ['meta', 'achievements'] as const,
   villageNewcomers: ['village', 'newcomers'] as const,
@@ -169,6 +172,59 @@ export interface CraftingRecipeSnapshot {
 
 export function fetchRecipes(): Promise<CraftingRecipeSnapshot> {
   return authedGet<CraftingRecipeSnapshot>('/api/v1/crafting/recipes');
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/conversations/*
+//
+// Modul: the DURABLE half of private chat. The WebSocket still delivers a
+// whisper the moment it is sent; these read what was said, which it never
+// could - chat was Redis fan-out with nothing written down, so history did not
+// exist and a message to an offline player was dropped outright.
+//
+// Deliberately REST rather than wire: every packet is demultiplexed by exact
+// byte size and the state packet is near its ceiling, so a paged list belongs
+// on HTTP beside the friends list and the mailbox.
+// ---------------------------------------------------------------------------
+
+export interface ConversationSummary {
+  PlayerId: number;
+  Username: string;
+  LastMessage: string;
+  LastMessageAtEpochMs: number;
+  LastMessageWasMine: boolean;
+  UnreadCount: number;
+  IsOnline: boolean;
+}
+
+export interface ConversationMessage {
+  Id: number;
+  SenderPlayerId: number;
+  Mine: boolean;
+  MessageText: string;
+  SentAtEpochMs: number;
+  Read: boolean;
+}
+
+/** Everyone this player has exchanged messages with, newest thread first. */
+export function fetchConversations(): Promise<ConversationSummary[]> {
+  return authedGet<ConversationSummary[]>('/api/v1/conversations/list');
+}
+
+/** One thread, oldest-first. `before` pages backwards by timestamp. */
+export function fetchConversationHistory(
+  withPlayerId: number,
+  before?: number,
+): Promise<ConversationMessage[]> {
+  const suffix = before ? `&before=${before}` : '';
+  return authedGet<ConversationMessage[]>(
+    `/api/v1/conversations/history?withPlayerId=${withPlayerId}${suffix}`,
+  );
+}
+
+/** Marks everything RECEIVED in one thread as read. Only ever affects your own incoming rows. */
+export function markConversationRead(withPlayerId: number): Promise<void> {
+  return authedPost<void>('/api/v1/conversations/read', { withPlayerId }).then(() => {});
 }
 
 // ---------------------------------------------------------------------------

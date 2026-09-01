@@ -11,7 +11,15 @@
   import { addFriend, blockPlayer } from '../lib/net/commands';
   import ContextMenu from '../lib/ui/ContextMenu.svelte';
   import PlayerProfileModal from '../lib/ui/PlayerProfileModal.svelte';
-  import { queryKeys, fetchPlayerNames, resolvePlayer } from '../lib/net/rest';
+  import {
+    queryKeys,
+    fetchPlayerNames,
+    resolvePlayer,
+    fetchConversations,
+    fetchConversationHistory,
+    markConversationRead,
+  } from '../lib/net/rest';
+  import { useQueryClient } from '@tanstack/svelte-query';
 
   // Modul: ChatEngine's channel numbering. Whisper is send-only from this
   // screen's point of view - an incoming whisper arrives tagged as the
@@ -57,9 +65,102 @@
     contextMenuOpen = true;
   }
 
+  // ---------------------------------------------------------------------
+  // Conversations.
+  //
+  // Modul: the Whispers tab used to be ONE FLAT LOG filtered by channel, so
+  // every whisper from everybody sat intermixed and the only thing telling
+  // them apart was the name on each row. There was no thread, and after a
+  // reload there was nothing at all - chat was never written down.
+  //
+  // This is a list of PEOPLE, then that person's history. The live socket
+  // still delivers arrivals; these queries supply everything said before the
+  // page was open, which is the half that did not exist.
+  // ---------------------------------------------------------------------
+  const client = useQueryClient();
+
+  let openThreadWith = $state<number | null>(null);
+  let openThreadName = $state('');
+
+  const conversations = createQuery(() => ({
+    queryKey: queryKeys.conversations,
+    queryFn: fetchConversations,
+    enabled: active === WHISPER,
+    // Arrivals push into chatLog live, so this only has to catch what changed
+    // while the tab was closed - and the unread counts other sessions cleared.
+    refetchInterval: 30_000,
+  }));
+
+  const threadHistory = createQuery(() => ({
+    queryKey: queryKeys.conversationHistory(openThreadWith ?? 0),
+    queryFn: () => fetchConversationHistory(openThreadWith!),
+    enabled: openThreadWith !== null,
+  }));
+
+  const totalUnread = $derived(
+    (conversations.data ?? []).reduce((sum, c) => sum + c.UnreadCount, 0),
+  );
+
+  async function openThread(playerId: number, username: string) {
+    openThreadWith = playerId;
+    openThreadName = username;
+    whisperTarget = username;
+
+    // Clearing the badge is a write, so the list has to be refetched after it
+    // rather than trusted to be stale-but-right.
+    try {
+      await markConversationRead(playerId);
+      client.invalidateQueries({ queryKey: queryKeys.conversations });
+    } catch {
+      // A badge that stays lit is a cosmetic problem; refusing to open the
+      // thread because it could not be cleared would not be.
+    }
+  }
+
+  function closeThread() {
+    openThreadWith = null;
+    openThreadName = '';
+  }
+
+  // Modul: history from the server, PLUS anything that has arrived on the
+  // socket since it was fetched. Without the second half a message sent or
+  // received while the thread is open does not appear until a refetch, which
+  // reads as the message having failed.
+  const threadMessages = $derived.by(() => {
+    if (openThreadWith === null) return [];
+    const stored = (threadHistory.data ?? []).map((m) => ({
+      key: `s${m.Id}`,
+      mine: m.Mine,
+      text: m.MessageText,
+      atMs: m.SentAtEpochMs,
+    }));
+    const newest = stored.length > 0 ? stored[stored.length - 1].atMs : 0;
+
+    const live = $chatLog
+      .filter((m: ChatEntry) => m.channelType === WHISPER)
+      .filter((m: ChatEntry) =>
+        m.senderPlayerId === openThreadWith || m.senderPlayerId === connection.currentPlayerId)
+      .filter((m: ChatEntry) => m.atMs > newest)
+      .map((m: ChatEntry) => ({
+        key: `l${m.id}`,
+        mine: m.senderPlayerId === connection.currentPlayerId,
+        text: m.text,
+        atMs: m.atMs,
+      }));
+
+    return [...stored, ...live].sort((a, b) => a.atMs - b.atMs);
+  });
+
   function handleWhisper(username: string) {
     active = WHISPER;
     whisperTarget = username;
+    // Resolve the name to an id so the context menu lands in the THREAD
+    // rather than merely pre-filling a composer, which is all it used to do.
+    resolvePlayer(username)
+      .then((r) => openThread(r.PlayerId, username))
+      .catch(() => {
+        /* Unknown name - the composer still works and will report it on send. */
+      });
   }
 
   async function handleAddFriend(playerId: number) {
@@ -123,11 +224,30 @@
     resolveError = '';
 
     if (active === WHISPER) {
+      // An open thread already knows the id, so no name lookup is needed - and
+      // more importantly the message cannot land on a different person because
+      // the target box was edited after the thread was opened.
+      if (openThreadWith !== null) {
+        connection.sendChat(text, active, openThreadWith);
+        draft = '';
+        // The socket echo appears immediately via threadMessages; this settles
+        // the durable copy and moves the thread up the list.
+        setTimeout(() => {
+          client.invalidateQueries({ queryKey: queryKeys.conversations });
+          client.invalidateQueries({ queryKey: queryKeys.conversationHistory(openThreadWith!) });
+        }, 900);
+        return;
+      }
+
       if (!whisperTarget) return;
       try {
         const result = await resolvePlayer(whisperTarget);
         connection.sendChat(text, active, result.PlayerId);
         draft = '';
+        // Starting a conversation from the name box opens it, so the reply
+        // has somewhere to arrive.
+        await openThread(result.PlayerId, whisperTarget);
+        setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.conversations }), 900);
       } catch (e) {
         resolveError = 'Player not found.';
       }
@@ -153,10 +273,65 @@
       {#each CHANNELS as channel}
         <button class:active={active === channel.id} onclick={() => (active = channel.id)}>
           {channel.label}
+          <!-- The count sits on the tab because an unread whisper is otherwise
+               invisible from any other channel. -->
+          {#if channel.id === WHISPER && totalUnread > 0}
+            <span class="badge">{totalUnread}</span>
+          {/if}
         </button>
       {/each}
     </div>
 
+    {#if active === WHISPER}
+      {#if openThreadWith === null}
+        <!-- The conversation list. One row per person, newest thread first,
+             which is the order the server returns them in. -->
+        <ul class="threads">
+          {#each conversations.data ?? [] as convo (convo.PlayerId)}
+            <li>
+              <button class="thread" onclick={() => openThread(convo.PlayerId, convo.Username)}>
+                <span class="who-line">
+                  <span class="name">{convo.Username}</span>
+                  {#if convo.IsOnline}<span class="dot online" title="Online"></span>{/if}
+                  {#if convo.UnreadCount > 0}<span class="badge">{convo.UnreadCount}</span>{/if}
+                </span>
+                <span class="preview dim">
+                  {convo.LastMessageWasMine ? 'You: ' : ''}{convo.LastMessage}
+                </span>
+                <span class="time dim tiny">{timeOf(convo.LastMessageAtEpochMs)}</span>
+              </button>
+            </li>
+          {/each}
+        </ul>
+        {#if conversations.isPending}
+          <p class="dim empty">Loading conversations...</p>
+        {:else if (conversations.data ?? []).length === 0}
+          <p class="dim empty">
+            No conversations yet. Type a name below to start one, or use Whisper
+            from a player's name in any channel.
+          </p>
+        {/if}
+      {:else}
+        <div class="threadhead">
+          <button class="back" onclick={closeThread}>&larr; All</button>
+          <strong>{openThreadName}</strong>
+        </div>
+        <ul class="log thread-log">
+          {#each threadMessages as message (message.key)}
+            <li class:mine={message.mine}>
+              <span class="time dim">{timeOf(message.atMs)}</span>
+              <span class="who" class:self={message.mine}>{message.mine ? 'You' : openThreadName}</span>
+              <span class="text">{message.text}</span>
+            </li>
+          {/each}
+        </ul>
+        {#if threadHistory.isPending}
+          <p class="dim empty">Loading history...</p>
+        {:else if threadMessages.length === 0}
+          <p class="dim empty">Nothing said yet. Say something.</p>
+        {/if}
+      {/if}
+    {:else}
     <ul class="log">
       {#each visible as message (message.id)}
         <li>
@@ -185,10 +360,15 @@
         {#if active === ANNOUNCEMENT}High-rarity drops across the world show up here.{/if}
       </p>
     {/if}
+    {/if}
 
     {#if active !== ANNOUNCEMENT}
     <div class="composer">
-      {#if active === WHISPER}
+      <!-- Only when STARTING one. Inside a thread the recipient is already
+           decided, and leaving an editable name box there invites a message
+           addressed to whoever was typed last rather than to the person on
+           screen. -->
+      {#if active === WHISPER && openThreadWith === null}
         <input
           class="target"
           type="text"
@@ -197,12 +377,19 @@
         />
       {/if}
       <input
-        placeholder={active === GUILD ? 'Message your guild...' : 'Say something...'}
+        placeholder={active === GUILD
+          ? 'Message your guild...'
+          : active === WHISPER && openThreadWith !== null
+            ? `Message ${openThreadName}...`
+            : 'Say something...'}
         bind:value={draft}
         onkeydown={(e) => e.key === 'Enter' && send()}
         maxlength="128"
       />
-      <button onclick={send} disabled={!draft.trim() || (active === WHISPER && !whisperTarget.trim())}>
+      <button
+        onclick={send}
+        disabled={!draft.trim() || (active === WHISPER && openThreadWith === null && !whisperTarget.trim())}
+      >
         Send
       </button>
     </div>
@@ -293,6 +480,107 @@
     background: var(--bg-raised);
     border-color: var(--border);
     color: var(--text);
+  }
+
+  /* Modul: the channel log is newest-FIRST in the store and flipped visually
+     by column-reverse. A thread is read the other way round - it comes back
+     oldest-first, in the order it was said - so it opts out rather than being
+     re-sorted to suit a style rule. */
+  .thread-log {
+    flex-direction: column !important;
+    justify-content: flex-end;
+  }
+
+  .threads {
+    list-style: none;
+    margin: 0;
+    padding: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-height: 22rem;
+    overflow-y: auto;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .thread {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: 'who time' 'preview time';
+    gap: 0.1rem 0.5rem;
+    text-align: left;
+    padding: 0.45rem 0.55rem;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius);
+  }
+
+  .thread:hover {
+    border-color: var(--border);
+  }
+
+  .thread .who-line {
+    grid-area: who;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .thread .name {
+    font-weight: 600;
+  }
+
+  .thread .preview {
+    grid-area: preview;
+    /* One line. A preview that wraps turns the list into a log again, which is
+       the thing this replaced. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8rem;
+  }
+
+  .thread .time {
+    grid-area: time;
+    align-self: start;
+  }
+
+  .badge {
+    display: inline-block;
+    min-width: 1.1rem;
+    padding: 0 0.25rem;
+    border-radius: 999px;
+    background: var(--danger, #b34);
+    color: #fff;
+    font-size: 0.65rem;
+    line-height: 1.1rem;
+    text-align: center;
+  }
+
+  .dot.online {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 50%;
+    background: var(--ok, #4b8);
+    display: inline-block;
+  }
+
+  .threadhead {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.1rem;
+  }
+
+  .threadhead .back {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.15rem 0.4rem;
+    font-size: 0.75rem;
   }
 
   .log {
