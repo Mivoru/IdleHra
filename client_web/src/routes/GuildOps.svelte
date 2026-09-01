@@ -829,6 +829,11 @@
     padding: 1rem;
   }
 
+  /* overflow: hidden keeps the rounded corners clean - and is also why the
+     tier rows CROPPED instead of scrolling when they were too wide to fit.
+     Kept, because the rows wrap now and no longer overflow; if anything in
+     here ever does again, expect it to vanish silently rather than announce
+     itself. */
   .buff-block {
     border: 1px solid var(--border);
     border-radius: 4px;
@@ -860,13 +865,25 @@
     font-size: 0.9rem;
   }
 
+  /* Modul: WRAPS RATHER THAN OVERFLOWS. This was
+     `grid-template-columns: 4rem 1fr 1fr`, and a `1fr` track has a minimum of
+     min-content - so the two paths could never shrink below their longest
+     label ("Golden Frostpine Log" plus "0 / 25 000"). The row forced itself
+     wider than the panel and the rare column was clipped mid-word, which is
+     how expanding a buff produced a cropped window.
+
+     Flex with a basis instead of fixed tracks: the two paths sit side by side
+     when there is room for both and stack when there is not, at whatever width
+     the panel happens to be. No media query, because the panel's width depends
+     on the grid it sits in rather than on the viewport - a breakpoint would be
+     guessing at the wrong number. */
   .buff-tier-row {
-    display: grid;
-    grid-template-columns: 4rem 1fr 1fr;
+    display: flex;
+    flex-wrap: wrap;
     gap: 0.25rem;
     padding: 0.35rem 0.5rem;
     border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
-    align-items: start;
+    align-items: stretch;
     font-size: 0.75rem;
   }
 
@@ -876,10 +893,18 @@
 
   .tier-label {
     font-weight: 600;
+    /* Never shrinks and never wraps its own tier number away. */
+    flex: 0 0 3.75rem;
   }
 
+  /* 11rem is about what one path needs before its names start ellipsising, so
+     two of them fit side by side in a panel of roughly 26rem and stack below
+     that. min-width: 0 is load-bearing - a flex item defaults to min-content
+     and would refuse to shrink, which is the same trap the grid had. */
   .buff-path {
     display: flex;
+    flex: 1 1 11rem;
+    min-width: 0;
     flex-direction: column;
     gap: 0.15rem;
     padding: 0.25rem 0.4rem;
@@ -898,13 +923,20 @@
     gap: 0.25rem;
   }
 
+  /* The NAME is what gives way when space is tight - it ellipsises. The stock
+     figure beside it must not, because "0 / 25 000" truncated to "0 / 2" reads
+     as a different number rather than as a shortened one, which is exactly what
+     the cropped panel was showing. max-width is gone: the flex basis above
+     decides the width now, so a fixed cap only re-created the same clipping at
+     a different size. */
   .mat-name {
     color: var(--text-dim);
     font-size: 0.72rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 7rem;
+    min-width: 0;
+    flex: 1 1 auto;
   }
 
   .mat-name.rare-mat {
@@ -915,6 +947,8 @@
     font-size: 0.7rem;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
+    /* Holds its full width while the name beside it gives way. */
+    flex: 0 0 auto;
   }
 
   .mat-ok { color: var(--good); }
