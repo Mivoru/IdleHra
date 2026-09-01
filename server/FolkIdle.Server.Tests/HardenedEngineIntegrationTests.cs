@@ -1981,6 +1981,95 @@ namespace FolkIdle.Server.Tests
         // from the engine's own formula, so this stays an oracle rather than a
         // restatement. It still exercises the CAP branch, which is why the
         // offline period is long enough for production to exceed storage.
+        // Modul: A RESTRICTION HAS TO BE ACCOUNTABLE, 2026-09-01.
+        //
+        // PlayerRecords.IsQuarantined says only THAT an account is restricted.
+        // Four detectors and the admin ban tool all write it, so after the fact
+        // nobody could tell an anti-cheat flag from a moderator action, or say
+        // when either happened - the reason went to a telemetry stream that is
+        // never persisted and a console line that dies with the container.
+        //
+        // This pins the two properties that make the record worth having: the
+        // SOURCE is distinguishable, and lifting stamps rather than deletes, so
+        // "flagged in August, cleared in September" survives as history.
+        [Fact]
+        public async Task Test_AccountPenalty_RecordsSourceAndSurvivesBeingLifted()
+        {
+            const long testPlayerId = 995000600L;
+            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.AccountPenalties.AddRange(
+                    new AccountPenalty
+                    {
+                        PlayerId = testPlayerId,
+                        Source = PenaltySource.AntiCheat,
+                        ReasonCode = 54,
+                        DetailCode = 3,
+                        AppliedAtEpochMs = now - 1000,
+                        Note = "detector reason 54, detail 3"
+                    },
+                    new AccountPenalty
+                    {
+                        PlayerId = testPlayerId,
+                        Source = PenaltySource.Admin,
+                        AppliedAtEpochMs = now,
+                        AppliedBy = "Mivoru",
+                        Note = "manual review"
+                    });
+                await db.SaveChangesAsync();
+            }
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var history = await db.AccountPenalties.AsNoTracking()
+                    .Where(a => a.PlayerId == testPlayerId)
+                    .OrderByDescending(a => a.AppliedAtEpochMs)
+                    .ToListAsync();
+
+                Assert.Equal(2, history.Count);
+                // Newest first, which is the order the admin endpoint returns.
+                Assert.Equal(PenaltySource.Admin, history[0].Source);
+                Assert.Equal("Mivoru", history[0].AppliedBy);
+                Assert.Equal(PenaltySource.AntiCheat, history[1].Source);
+                Assert.Equal(54, history[1].ReasonCode);
+                // A detector has nobody to attribute to, and saying so is the
+                // difference between "automatic" and "somebody decided".
+                Assert.Null(history[1].AppliedBy);
+
+                Assert.Equal("anti-cheat", PenaltySource.Describe(PenaltySource.AntiCheat));
+                Assert.Equal("moderator", PenaltySource.Describe(PenaltySource.Admin));
+            }
+
+            // Lifting stamps every OPEN row and leaves the history in place.
+            long liftedAt = now + 5_000;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    "UPDATE account_penalties SET \"LiftedAtEpochMs\" = {0}, \"LiftedBy\" = {1} " +
+                    "WHERE \"PlayerId\" = {2} AND \"LiftedAtEpochMs\" IS NULL",
+                    liftedAt, "Mivoru", testPlayerId);
+            }
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var after = await db.AccountPenalties.AsNoTracking()
+                    .Where(a => a.PlayerId == testPlayerId)
+                    .ToListAsync();
+
+                Assert.Equal(2, after.Count);
+                Assert.All(after, a => Assert.Equal(liftedAt, a.LiftedAtEpochMs));
+                Assert.All(after, a => Assert.Equal("Mivoru", a.LiftedBy));
+            }
+        }
+
         // Modul: A PLAYER WITH NO BUILDING ROWS CAN STILL BUILD, 2026-09-01.
         //
         // ExecuteUpgradeBuildingAsync used to roll back and return when the

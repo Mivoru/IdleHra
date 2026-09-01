@@ -161,6 +161,27 @@ namespace FolkIdle.Server.Engine
                     {
                         player.IsQuarantined = true;
                         player.Quarantine_Active = true;
+
+                        // Modul: WRITE DOWN WHY, 2026-09-01. The reason used to
+                        // exist only in a TelemetryStreamer event that is never
+                        // persisted and a console line that dies with the
+                        // container - so a live quarantine could be seen but
+                        // never explained, and the account that reported this
+                        // had been restricted since before even the console
+                        // line existed. An automatic, effectively total
+                        // restriction that cannot be accounted for is one
+                        // nobody can defend or appeal.
+                        db.AccountPenalties.Add(new AccountPenalty
+                        {
+                            PlayerId = playerId,
+                            Source = PenaltySource.AntiCheat,
+                            ReasonCode = reasonCode,
+                            DetailCode = detailCode,
+                            AppliedAtEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                            AppliedBy = null,
+                            Note = $"detector reason {reasonCode}, detail {detailCode}"
+                        });
+
                         await db.SaveChangesAsync();
                     }
 

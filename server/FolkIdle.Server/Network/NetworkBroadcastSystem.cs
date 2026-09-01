@@ -7864,6 +7864,65 @@ namespace FolkIdle.Server.Network
                     return;
                 }
                 
+                // Modul: the whole point of the penalty table - a moderator can
+                // answer "why is this account restricted" from the admin
+                // screen, rather than by reading two booleans in a database
+                // console and guessing which of five writers set them.
+                if (requestPath == "/api/v1/admin/penalties" && context.Request.HttpMethod == "GET")
+                {
+                    var pq = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                    string who = pq["username"] ?? string.Empty;
+                    if (string.IsNullOrEmpty(who))
+                    {
+                        context.Response.StatusCode = 400;
+                        return;
+                    }
+
+                    var subject = await db.PlayerRecords.AsNoTracking()
+                        .FirstOrDefaultAsync(p => p.Username != null && p.Username.ToLower() == who.ToLower());
+                    if (subject == null)
+                    {
+                        context.Response.StatusCode = 404;
+                        return;
+                    }
+
+                    var history = await db.AccountPenalties.AsNoTracking()
+                        .Where(a => a.PlayerId == subject.Id)
+                        .OrderByDescending(a => a.AppliedAtEpochMs)
+                        .Take(50)
+                        .ToListAsync();
+
+                    var payload = new
+                    {
+                        subject.Id,
+                        subject.Username,
+                        Restricted = subject.IsQuarantined || subject.Quarantine_Active,
+                        // Modul: a restricted account with NO row predates this
+                        // table. Said plainly rather than rendered as an empty
+                        // history, because "we do not know" and "nothing
+                        // happened" are different answers and only one of them
+                        // is honest.
+                        ReasonKnown = history.Count > 0,
+                        Penalties = history.Select(a => new
+                        {
+                            a.Id,
+                            Source = PenaltySource.Describe(a.Source),
+                            a.ReasonCode,
+                            a.DetailCode,
+                            a.AppliedAtEpochMs,
+                            a.AppliedBy,
+                            a.Note,
+                            a.LiftedAtEpochMs,
+                            a.LiftedBy
+                        })
+                    };
+
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
+                    await JsonSerializer.SerializeAsync(context.Response.OutputStream, payload);
+                    return;
+                }
+
                 if (requestPath == "/api/v1/admin/ban" && context.Request.HttpMethod == "POST")
                 {
                     var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
@@ -7875,6 +7934,25 @@ namespace FolkIdle.Server.Network
                         {
                             target.IsQuarantined = true;
                             target.Quarantine_Active = true;
+
+                            // Modul: A MODERATOR BAN IS NOT AN ANTI-CHEAT FLAG,
+                            // 2026-09-01. Both write the same two booleans on
+                            // PlayerRecords, so after the fact they were
+                            // indistinguishable - "the detector caught you" and
+                            // "a human decided" read identically, which is
+                            // unfair to the player and useless to the
+                            // moderator. The row carries WHO, WHEN and WHICH.
+                            db.AccountPenalties.Add(new AccountPenalty
+                            {
+                                PlayerId = target.Id,
+                                Source = PenaltySource.Admin,
+                                ReasonCode = 0,
+                                DetailCode = 0,
+                                AppliedAtEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                                AppliedBy = player?.Username,
+                                Note = query["reason"]
+                            });
+
                             await db.SaveChangesAsync();
                             context.Response.StatusCode = 200;
                             return;
@@ -7895,6 +7973,26 @@ namespace FolkIdle.Server.Network
                         {
                             target.IsQuarantined = false;
                             target.Quarantine_Active = false;
+
+                            // Modul: AND UNFREEZE THEIR MARKET ORDERS. The
+                            // anti-cheat's shadow ban flags every open listing
+                            // (see AntiCheatTelemetryEngine), and lifting the
+                            // account flag did not clear them - so an unbanned
+                            // player was returned to a game where their
+                            // listings stayed dead, with nothing saying why.
+                            await db.Database.ExecuteSqlRawAsync(
+                                "UPDATE \"MarketOrderRecords\" SET \"IsQuarantined\" = FALSE WHERE \"SellerId\" = {0}",
+                                target.Id);
+
+                            // Stamped, not deleted - "flagged in August, cleared
+                            // in September" is the history that makes a second
+                            // flag readable.
+                            long liftedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                            await db.Database.ExecuteSqlRawAsync(
+                                "UPDATE account_penalties SET \"LiftedAtEpochMs\" = {0}, \"LiftedBy\" = {1} " +
+                                "WHERE \"PlayerId\" = {2} AND \"LiftedAtEpochMs\" IS NULL",
+                                liftedAt, (object?)player?.Username ?? System.DBNull.Value, target.Id);
+
                             await db.SaveChangesAsync();
                             context.Response.StatusCode = 200;
                             return;

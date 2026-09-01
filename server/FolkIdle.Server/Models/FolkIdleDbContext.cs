@@ -69,6 +69,10 @@ namespace FolkIdle.Server.Models
         public DbSet<PlayerSkillUnlock> PlayerSkillUnlocks { get; set; }
         public DbSet<PlayerRelationship> PlayerRelationships { get; set; }
 
+        // Modul: WHY an account is restricted - see AccountPenalty. The two
+        // booleans on PlayerRecords say only THAT it is.
+        public DbSet<AccountPenalty> AccountPenalties { get; set; }
+
         // Modul: private messages are durable now - see ConversationMessage.
         // Chat used to be Redis fan-out with nothing written down, which cost
         // both history and any whisper sent to an offline player.
@@ -139,6 +143,11 @@ namespace FolkIdle.Server.Models
             // read is "this conversation, newest first, paged"; the unread
             // index is on the RECIPIENT, because the badge asks "what is
             // waiting for ME" and never scans a thread to answer it.
+            // "Why is this player restricted" is answered by the newest row
+            // for them, so the index is by player and time.
+            modelBuilder.Entity<AccountPenalty>()
+                .HasIndex(a => new { a.PlayerId, a.AppliedAtEpochMs });
+
             modelBuilder.Entity<ConversationMessage>()
                 .HasIndex(c => new { c.LowPlayerId, c.HighPlayerId, c.SentAtEpochMs });
 
