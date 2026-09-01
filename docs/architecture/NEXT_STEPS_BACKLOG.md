@@ -75,28 +75,154 @@ driving it in a browser:
   `TryGetItemDefinitionByBaseId`, so an uncatalogued commodity is a 400 however
   much the player holds. The buttons now match the server's rule.
 
-## THERE ARE TWO MATERIAL NAMESPACES, and this is the fourth defect from it
+## THE MATERIAL NAMESPACES - the single most expensive idea in this codebase
 
-`DevFixtureSeeder` already documents this twice. It has now caused a fourth
-failure, so it belongs here rather than only in that file's comments.
+Six separate defects traced to this in one day. It belongs here rather than
+only in `DevFixtureSeeder`'s comments, where it was already written twice.
 
-Both live in one `CommodityRecords` table and are NOT interchangeable:
+Materials all live in one `CommodityRecords` table, keyed by a STRING, and
+several different string spaces were in play at once:
 
-| | Examples | Has `ItemDefinition`? | Spent by |
+| Space | Examples | In `items.json`? | Resolved by |
 |---|---|---|---|
-| gathering / commodity slugs | `copper_ore`, `iron_ore`, `raw_log`, `oak_log`, the village's wood/stone/iron | **No** - absent from `items.json` | Village upgrades, `CraftingEngine` |
-| catalogued items | the 326 in `items.json`, incl. 16 of the 20 region logs/ores | Yes | crafting recipes, the guild depot, the market |
+| gathering slugs | `raw_log`, `oak_log`, the village's `wood`/`stone` | No | `ContentRegistry.GetMaterialString` (ids 1-6) |
+| catalogued items | the region logs and ores, all equipment | Yes | `GetItemBaseId` / `TryGetItemDefinitionByBaseId` |
+| `*_crafting_material` | `copper_ore_crafting_material` | Yes, separate ids | recipe ingredients |
 
-Anything keyed on `ItemDefinitionId` silently rejects the first group, and the
-client's `registry.itemsByBaseId.get()` returns undefined for them - which is
-how a player holding 5,000 copper ore saw it listed as "x0". Before touching a
-material feature, check which namespace it needs and that the id exists there.
+Anything keyed on `ItemDefinitionId` silently rejects the first space, and the
+client's `registry.itemsByBaseId.get()` returns undefined for it - which is how
+a player holding 5,000 copper ore saw it listed as "x0".
+
+**ORE IS NOW ONE SPACE, as of 2026-09-01.** There is exactly one ore per region
+and everything uses it - mining pays it, the village spends it, tool recipes
+consume it, guild buffs take it:
+
+| Region | Common (90%) | Rare (10%) |
+|---|---|---|
+| 1 Sunlit Plains | `copper_ore` | `malachite_ore` |
+| 2 Whispering Woods | `iron_ore` | `hematite_ore` |
+| 3 Scorched Wasteland | `sulfur_ore` | `obsidian_ore` |
+| 4 Frozen Peaks | `silver_ore` | `cobalt_ore` |
+| 5 Shadow Citadel | `darksteel_ore` | `astralite_ore` |
+
+That pairing was always in the gathering loot tables and in the guild's
+`BuffTierMaterials`. It did not work because **four of the commons had no
+`items.json` entry when those tables were written**, so their loot rows were
+pointed at the `*_crafting_material` variants as stand-ins (ids 165, 111, 57,
+147). Sulfur and darksteel looked correct only because those two ores did
+already exist. So mining paid out `copper_ore_crafting_material` while the
+village charged `copper_ore` - the ore a player earned could never buy the
+thing it was for. Measured live: seven players holding 175 `copper_ore`
+between them, one holding 5,017 of the crafting-material name, which WAS their
+mining under a name nothing spends.
+
+The four ores are catalogued (438-441) and every table names them.
+
+**KNOWN, NOT MIGRATED:** existing balances of `copper_ore_crafting_material`,
+`iron_ore_crafting_material`, `obsidian_ore_crafting_material` and
+`silver_ore_crafting_material` are now unspendable - nothing consumes them any
+more. Sulfur and darksteel players are unaffected, having always earned the
+right name. Converting those balances is a one-off `UPDATE` and a decision, not
+a bug fix.
+
+Before touching a material feature, check which space it needs and that the id
+exists there. `EveryRecipeIngredientIsObtainableFromSomeSource` is the guard
+that catches half of this and it earned its keep on the day it was needed.
 
 **The fixture could not drive the guild depot at all.** It stocked the four
 gathering slugs and the village's three, none catalogued, so every material the
 account held answered 400 on the screen that exists for driving things by hand.
 It now also carries `birch_log`, `golden_birch_log`, `malachite_ore`,
 `willow_log` and `hematite_ore`.
+
+## Tools could be equipped but never SHOWN
+
+Reported as "I equip a tool and nothing appears in the slot". Equipping worked
+the whole time - `EquipItemAsync` resolved the slot and `WriteSlot` has handled
+all eleven since tools were added. What never happened was the snapshot saying
+so: the inventory endpoint recorded the eight combat slots and not the three
+tool ones, so an axe written to `EquippedAxeId` came back with
+`EquippedByCharacterSlot: -1`. The doll drew the slot empty AND the axe stayed
+in its own picker as available - worn and offered at once.
+
+**FolkIdle has ELEVEN equipment slots.** 0 Weapon, 1 Helmet, 2 Chest, 3 Gloves,
+4 Leggings, 5 Boots, 6 Amulet, 7 Ring, **8 Axe, 9 Pickaxe, 10 Rod**. Every list
+that stopped at eight has been a bug, and three more were found in the same
+sitting: `IsEquippedAnywhereAsync` (so one axe counted across the whole roster),
+`ReadSlot` (answering "empty" for slots its own writer can fill), and the
+fixture's equip switch. **Grep for `EquippedRingId`** - it is the last of the
+eight, so every truncated list ends there.
+
+A re-seed also renumbers `EquipmentInstances`, and a character slot still naming
+a deleted row is indistinguishable from equipping being broken: the item cannot
+appear in the snapshot, so the slot draws empty for ever. The fixture now drops
+slots pointing at nothing, across all eleven, before deciding whether the
+character is dressed.
+
+## The village could not be upgraded at all, for four separate reasons
+
+Reported as "I cannot even upgrade stuff", diagnosed against the live account.
+
+1. **No player could build anything.** `ExecuteUpgradeBuildingAsync` rolled back
+   when the player had no `VillageInfrastructures` row, and the ONLY place such
+   a row was ever created is `DevFixtureSeeder`. Real accounts are born with
+   none, so every building was permanently unupgradable - including the Town
+   Hall, which caps every other building, so the village was frozen behind a
+   building that could not be started. The seeded fixture had rows, so every
+   village test passed while no real player could upgrade anything. **The
+   fixture-shaped blind spot in its purest form.** A missing row now means "not
+   built yet" and is created at level 0, still paid for.
+2. **The cost was in a currency nobody earned** - see the ore section above.
+3. **Upgrading made buildings worse.** Production and storage were computed from
+   `level % 5`, so every fifth upgrade reset the building to its weakest band: a
+   Mine paid 500 ore an hour at level 4 and 100 at level 5; a Warehouse held
+   2,500 then 500. The cost reset too, so it read as a bargain until the output
+   collapsed. **Tiers govern COST and MATERIALS; output may only rise.** Pinned
+   by `Test_Village_UpgradingNeverReducesOutput`, which was verified by
+   reintroducing the `% 5` and watching it fail.
+4. **Every refusal was silent.** Each rejection rolled back and returned, and the
+   client's button is only disabled while another upgrade is in flight - so an
+   unaffordable or ceiling-blocked press did nothing at all. All five paths now
+   report a result code, and the Town Hall ceiling has its own
+   (`TownHallCeilingReached = 21`) rather than borrowing the one that talks
+   about item rarity.
+
+Gold now funds every non-structural upgrade, so the abundant currency shares the
+load with the scarce one. The offline path also stopped computing its own
+warehouse capacity, which disagreed with `CalculateWarehouseMaxStorage`.
+
+## Crafting was a job and only a job
+
+Assigning a character crafted one unit per interval FOREVER while materials
+lasted - right for idling, wrong for "I need a pickaxe", so making one tool
+meant assigning a worker and remembering to stop them.
+
+A one-shot path already existed and reached nothing: `startTreeCraft` ->
+`CommandType.InitializeCrafting` had zero callers on the client while the server
+handler was live. It is a Craft button now, beside Put to work rather than
+replacing it. `ExecuteCraftingAsync` takes a `batchSize` (clamped at 10 IN THE
+ENGINE - it multiplies cost and output, so it is not a number to trust a client
+with), and the batch rides `DepositQuantity`, an existing field this opcode does
+not read, so there was no wire change.
+
+## Private messages were never written down
+
+Chat was Redis Pub/Sub fan-out to whoever was connected, with the client holding
+200 lines in a store a reload wiped. So there was no history - and **a whisper
+to an OFFLINE player was silently DROPPED**, a bare `return` after the
+connected-client lookup missed.
+
+`conversation_messages` is the durable record; the packet stays the live
+delivery. The pair is stored SORTED so one thread has one key whoever spoke. The
+write sits inside `PublishWhisperMessageAsync` BEFORE the Redis branch, so it
+lands whether Redis is up, down or absent - and downstream of
+`DispatchInboundChatRequest`, the single choke point where `ChatProfanityFilter`
+runs. **Anything that ever writes that table from elsewhere must filter first**:
+the filter is applied at neither the engine layer nor the database.
+
+History is REST (`/api/v1/conversations/list|history|read`), deliberately not on
+the wire, and pages by timestamp rather than offset because messages arrive
+while a player scrolls. The Whispers tab is a list of people, then a thread.
 
 ## `exercise.mjs` had been dead for three weeks and nobody noticed
 
@@ -109,23 +235,52 @@ It is now 79/79, and the guild section asserts the donation rather than
 asserting the screen renders. **If a `go()` target times out, check
 `App.svelte`'s labels before suspecting the screen.**
 
+## The fixture stopped being repeatable, twice
+
+`exercise.mjs` buys an inheritance level every run, and those levels persist and
+escalate - so after enough runs the next purchase cost more than the fixture's
+fixed diamond grant could ever cover, and the script did not fail a check, it
+CRASHED on a disabled button with every later check unrun. The seeder resets the
+ladder now, on the same principle it already recomputes attributes: **a re-seed
+has to return the account to a known state or it is not a fixture, it is a save
+file.**
+
+Still true and NOT fixed: the village pool exhausts the same way. Every run
+marries a villager and the roster grows, so two checks fail on a well-used
+fixture. Re-seed before trusting a run.
+
 ## Open, and each is a decision rather than a defect
 
-1. **Four of the twenty `BUFF_MATERIAL_IDS` have no `ItemDefinition`** -
-   `copper_ore`, `iron_ore`, `obsidian_ore`, `silver_ore`. The server's own
-   `BuffTierMaterials` names the same four, so those tiers' common-ore path is
-   unreachable. Either catalogue them or repoint the tiers at ores that exist;
-   which ore is common vs rare per region is content design. `exercise.mjs`
-   pins the current behaviour and will fail loudly if they are catalogued.
-2. **The Guild War handlers are orphaned** - `defend`, `attackShard`,
-   `takeTurn`, `damageDelta` in `GuildOps.svelte` are the remaining four
-   `svelte-check` errors. The UI was hidden, not removed, and
-   `docs/FUTURE_PLANS.md` lists Guild Wars as planned, so deleting them is a
-   product call. Independently of it, **`shardMatch` still polls every 30
-   seconds for that hidden UI** - a live cost on every guild member's client.
-   Resolving this lets CI gate `svelte-check` at zero.
-3. **The "Contribute gold" input and button are rendered twice** in
-   `GuildOps.svelte`, around lines 471 and 526.
+1. **Orphaned `*_crafting_material` ore balances.** Now that one ore per region
+   is canon, existing stocks of `copper_ore_crafting_material`,
+   `iron_ore_crafting_material`, `obsidian_ore_crafting_material` and
+   `silver_ore_crafting_material` are unspendable - nothing consumes them.
+   Sulfur and darksteel players are unaffected. Converting the balances is a
+   one-off `UPDATE`; leaving them is defensible too, since the amounts are
+   small. A decision, not a fix.
+2. **Guild War is ON HOLD**, decided 2026-09-01. `defend`, `attackShard`,
+   `takeTurn` and `damageDelta` in `GuildOps.svelte` stay, and they are the four
+   remaining `svelte-check` errors - the CI baseline exists to hold them.
+   Independently of the hold, **`shardMatch` still polls every 30 seconds for a
+   panel behind `display:none`** - a live cost on every guild member's client,
+   worth killing either way. Resolving the hold lets CI gate at zero.
+3. **The Logistics section is inside the hidden Raid panel**, so the "To chain"
+   button in the visible Depot feeds a production bar players cannot see.
+4. **Receiving conversations is untested.** Both directions share one code path
+   and the schema records sender and recipient separately, but every message
+   driven so far was outgoing. A two-browser check would confirm the unread
+   badge and incoming rendering.
+5. **"Craft instantly" was deliberately not done.** The x10 button was the fix
+   for what felt broken; cutting `CraftingTimeMs` is a pacing decision worth
+   feeling first. Tool craft times are 5s/10s/15s/20s/25s by tier.
+6. **The village ceiling is now a real lever for the first time.**
+   `GetMaxBuildingLevelCeiling` is `2 + townHallLevel * 2` with the Town Hall
+   capped at 5, so 12 is the maximum for anything else. Nobody has ever felt
+   that curve, because nobody could build. Worth watching before tuning.
+7. **Git LFS**: 1,025 MB of source PNGs nothing at runtime uses, on a PUBLIC
+   repo, so every clone by anyone bills the owner. The sprites the game serves
+   are `.webp` and are NOT in LFS. Deploys do not fetch LFS at all - git-lfs is
+   not installed on the box, so the live `.wav` files are pointer stubs.
 
 ## Security
 

@@ -88,6 +88,7 @@ override and must be referenced unquoted or snake_case-quoted in raw SQL:
 | PlayerLifetimeAchievement      | player_lifetime_achievements    |
 | PlayerWorldBossAttempt         | player_world_boss_attempts      |
 | MonsterCodexEntry              | monster_codex_entries           |
+| ConversationMessage            | conversation_messages           |
 
 (`MentorshipAcademyAssignment` and `VillageResident`/`VillageInfrastructure`
 carry `[Table(...)]` overrides too, but to their default PascalCase names -
@@ -492,14 +493,24 @@ feature:
 `DevFixtureInvariantTests` now asserts the first of those. Suspect the
 fixture before the screen.
 
-**Which namespace a material belongs to is the question to ask first.** Both
-live in `CommodityRecords` and are not interchangeable: the gathering slugs
-(`copper_ore`, `raw_log`, the village's wood/stone/iron) have no `items.json`
-entry and therefore no `ItemDefinition`, while the catalogued materials do.
-Anything keyed on `ItemDefinitionId` silently rejects the former, and the web
-client's `registry.itemsByBaseId.get()` returns undefined for them - which
-renders a stack of 5,000 as "x0". See the 2026-09-01 handoff in
-`NEXT_STEPS_BACKLOG.md` for the four defects this has caused.
+**Which namespace a material belongs to is the question to ask first.** Several
+string spaces share one `CommodityRecords` table and are not interchangeable:
+the gathering slugs (`raw_log`, `oak_log`, the village's wood/stone) have no
+`items.json` entry and therefore no `ItemDefinition`; the catalogued materials
+do; and a third `*_crafting_material` space exists alongside both. Anything
+keyed on `ItemDefinitionId` silently rejects the first, and the web client's
+`registry.itemsByBaseId.get()` returns undefined for it - which renders a stack
+of 5,000 as "x0". Six defects in one day trace to this; see the 2026-09-01
+handoff in `NEXT_STEPS_BACKLOG.md`.
+
+**ORE is settled and is ONE space.** Exactly one ore per region, common and
+rare, and every system uses the same names - mining pays them, the village
+spends them, tool recipes consume them, guild buffs take them:
+`copper_ore`/`malachite_ore`, `iron_ore`/`hematite_ore`,
+`sulfur_ore`/`obsidian_ore`, `silver_ore`/`cobalt_ore`,
+`darksteel_ore`/`astralite_ore`. The authority is
+`VillageManagementEngine.TierMaterials`, matched by the gathering loot tables
+(90/10 weights) and `GuildContributionEngine.BuffTierMaterials`.
 
 **The stocked larder is load-bearing, not a convenience.** Auto-eat fires
 the moment HP crosses the threshold, and an empty larder stops the activity

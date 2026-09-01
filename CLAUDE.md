@@ -84,6 +84,21 @@ snake_case overrides — `characters`, `character_lineage_registry`,
 `docs/architecture/CURRENT_IMPLEMENTATION_STATE.md` §3. Getting this wrong
 throws a relation-does-not-exist at runtime, never at compile time.
 
+**There are ELEVEN equipment slots, not eight.** 0-7 are the combat slots and
+**8 Axe, 9 Pickaxe, 10 Rod** are tools. Every list that stopped at eight has
+been a bug — a worn tool rendering as an empty slot, one axe counting across
+the whole roster, a fixture that could not dress them. Grep for
+`EquippedRingId`: it is the last of the eight, so every truncated list ends
+there.
+
+**Check which material namespace a feature needs before writing code.** Several
+string spaces share one `CommodityRecords` table: gathering slugs (`raw_log`,
+`wood`) with no `items.json` entry, catalogued items, and a `*_crafting_material`
+space. Anything keyed on `ItemDefinitionId` silently rejects the first. ORE is
+settled — one per region, common and rare, listed in
+`VillageManagementEngine.TierMaterials` and matched by the gathering loot tables
+and the guild's buff tiers. Six defects in one day came from confusing these.
+
 **Do not edit multi-line C# initialisers by blind string replacement.** One
 such edit inserted a field into the middle of a four-term sum and silently
 re-parented three bonuses onto the wrong field. It compiled and every test
