@@ -48,19 +48,29 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void ARerollIsMinutesOfPlay()
         {
-            // Item rarity 8 in region 2 is roughly where the report came from.
-            long cost = AffixRegistry.CalculateRerollGoldCost(8, consecutiveAttempts: 0, rerollStatType: false);
+            // Modul: CalculateRerollGoldCost takes a REGION tier, 1-5, not the
+            // fourteen-step item rarity. This read 8 and 14 - "item rarity 8",
+            // per the comment it carried - and no region is either, so both
+            // calls fell through the cost table's default arm and priced
+            // everything at the same flat 10,000. That made a region-2 reroll
+            // read as 23.5 minutes of region-2 play and left this guard failing
+            // for three weeks while the live game charged 2,000 there, which is
+            // what the engine resolves from the item's own RegionTier.
+            //
+            // The gear that can be rerolled is RegionTier 1-5 in items.json, so
+            // an item and the region it drops in are the same number here.
+            long cost = AffixRegistry.CalculateRerollGoldCost(2, consecutiveAttempts: 0, rerollStatType: false);
             double minutes = MinutesOfPlay(cost, region: 2);
 
-            _output.WriteLine($"tier-8 reroll: {cost:N0}g = {minutes:F1} min of region-2 play");
+            _output.WriteLine($"region-2 reroll: {cost:N0}g = {minutes:F1} min of region-2 play");
             Assert.InRange(minutes, 0.1, 10.0);
 
             // And the top of the ladder, against the income of the region that
             // produces it. A hundred-attempt chase for a Legendary affix has to
             // stay inside an evening, not a month.
-            long topCost = AffixRegistry.CalculateRerollGoldCost(14, 0, false);
+            long topCost = AffixRegistry.CalculateRerollGoldCost(5, 0, false);
             double topChaseHours = topCost * 100.0 / GoldPerHour(5);
-            _output.WriteLine($"tier-14 reroll: {topCost:N0}g, 100 attempts = {topChaseHours:F1} h of region-5 play");
+            _output.WriteLine($"region-5 reroll: {topCost:N0}g, 100 attempts = {topChaseHours:F1} h of region-5 play");
             Assert.InRange(topChaseHours, 0.2, 8.0);
         }
 

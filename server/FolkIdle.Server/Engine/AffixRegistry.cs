@@ -574,10 +574,22 @@ namespace FolkIdle.Server.Engine
         private const double RerollStatTypeMultiplier = 1.0;
 
         // Hard ceiling so the curve cannot overflow or price a reroll beyond
-        // what any player could hold. With the streak flat this is only
-        // reachable by item tier alone, which tops out around 1.05M at tier 14.
+        // what any player could hold.
+        //
+        // Modul: this comment used to claim the ceiling was "only reachable by
+        // item tier alone, which tops out around 1.05M at tier 14", which
+        // describes a curve this function no longer has. The cost is a flat
+        // per-region table and the streak growth is 1.0, so the most a reroll
+        // can cost is the region-5 price of 10,000 - the ceiling is now
+        // unreachable by any path and exists purely as a guard. If an
+        // escalating curve comes back, this comment has to come back with it.
         public const long RerollGoldMaxCost = 100_000_000L;
 
+        // regionTier is 1-5, resolved from the item's own RegionTier by
+        // AffixRerollEngine.ResolveRegionTier. It is NOT the fourteen-step item
+        // rarity - every equippable piece in items.json is RegionTier 1-5, and
+        // the default arm below exists for the non-equippable content that
+        // reaches tier 10 and can never be rerolled anyway.
         public static long CalculateRerollGoldCost(int regionTier, int consecutiveAttempts, bool rerollStatType)
         {
             if (consecutiveAttempts < 0) consecutiveAttempts = 0;

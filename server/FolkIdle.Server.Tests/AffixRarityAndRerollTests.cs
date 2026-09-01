@@ -310,14 +310,24 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void WorstCaseEstimate_IsMonotonicAndDoesNotOverflow()
         {
-            long ten = AutoRerollPlanner.EstimateWorstCaseGoldCost(7, 10, false);
-            long twenty = AutoRerollPlanner.EstimateWorstCaseGoldCost(7, 20, false);
+            // Modul: the first argument is a REGION tier, 1-5, not the
+            // fourteen-step item rarity. These read 7 and 14, which no region
+            // has, so both fell through the cost table's default arm and this
+            // test was measuring the fallback rather than any real price.
+            long ten = AutoRerollPlanner.EstimateWorstCaseGoldCost(3, 10, false);
+            long twenty = AutoRerollPlanner.EstimateWorstCaseGoldCost(3, 20, false);
 
             Assert.True(twenty > ten);
             Assert.True(ten > 0);
 
+            // A dearer region costs more for the same run, which is the only
+            // thing the tier argument is supposed to do.
+            Assert.True(
+                AutoRerollPlanner.EstimateWorstCaseGoldCost(5, 10, false) > ten,
+                "region 5 must price a run above region 3");
+
             // The saturating branch must not run away.
-            long saturated = AutoRerollPlanner.EstimateWorstCaseGoldCost(14, AutoRerollPlanner.MaxAttemptsPerRequest, true);
+            long saturated = AutoRerollPlanner.EstimateWorstCaseGoldCost(5, AutoRerollPlanner.MaxAttemptsPerRequest, true);
             Assert.True(saturated > 0);
             Assert.True(saturated <= AffixRegistry.RerollGoldMaxCost * AutoRerollPlanner.MaxAttemptsPerRequest);
         }

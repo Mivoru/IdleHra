@@ -142,14 +142,27 @@ namespace FolkIdle.Server.Engine
         // Total gold an auto-reroll run would cost if it went the full distance,
         // so the UI can quote a worst case before the player commits. Uses the
         // same escalating curve the engine charges, summed over the run.
-        public static long EstimateWorstCaseGoldCost(int itemRarityTier, int attempts, bool rerollStatType)
+        //
+        // Modul: THE ARGUMENT IS A REGION TIER, 1-5. It was named
+        // itemRarityTier, which is a different fourteen-step scale, and the two
+        // were being passed to the same function from different places - this
+        // estimator with a rarity, AffixRerollEngine with the region it
+        // resolves from the item's BaseItemId. Nothing in the game shipped
+        // wrong, because only tests call this and the live charge always came
+        // from the engine, but the name is how the confusion spread into them:
+        // they asked what a "tier 14" reroll costs, and the cost table only
+        // defines 1-5, so every such call fell through the default arm and
+        // reported one flat price. Every equippable piece in items.json is
+        // RegionTier 1-5, so the table is complete for anything that can
+        // actually be rerolled.
+        public static long EstimateWorstCaseGoldCost(int regionTier, int attempts, bool rerollStatType)
         {
             attempts = ClampAttempts(attempts);
 
             long total = 0L;
             for (int i = 0; i < attempts; i++)
             {
-                long attemptCost = AffixRegistry.CalculateRerollGoldCost(itemRarityTier, i, rerollStatType);
+                long attemptCost = AffixRegistry.CalculateRerollGoldCost(regionTier, i, rerollStatType);
                 if (attemptCost >= AffixRegistry.RerollGoldMaxCost)
                 {
                     // Saturated - every further attempt costs the same, so the
