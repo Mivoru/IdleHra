@@ -1,0 +1,113 @@
+{
+  "$comment": [
+    "Shared project permissions. Tracked in git - see the .claude rule in",
+    ".gitignore. Machine-specific paths belong in settings.local.json, which",
+    "stays ignored. Keep entries GENERAL: an allowlist of one-off commands",
+    "with session temp paths and full commit messages baked in matches nothing",
+    "twice, which is what this file replaced."
+  ],
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build *)",
+      "Bash(dotnet test *)",
+      "Bash(dotnet run *)",
+      "Bash(dotnet ef *)",
+      "Bash(dotnet tool *)",
+      "Bash(dotnet build-server shutdown *)",
+      "Bash(dotnet --version)",
+      "PowerShell(dotnet *)",
+
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(npm ci *)",
+      "Bash(npm view *)",
+      "Bash(npm --version)",
+      "Bash(npx *)",
+      "Bash(node *)",
+
+      "Bash(docker compose *)",
+      "Bash(docker build *)",
+      "Bash(docker run *)",
+      "Bash(docker exec *)",
+      "Bash(docker start *)",
+      "Bash(docker stop *)",
+      "Bash(docker ps *)",
+      "Bash(docker logs *)",
+      "Bash(docker info *)",
+      "Bash(docker version *)",
+      "Bash(docker rm *)",
+      "Bash(docker rmi *)",
+      "PowerShell(docker *)",
+
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git show *)",
+      "Bash(git branch *)",
+      "Bash(git rev-list *)",
+      "Bash(git check-ignore *)",
+      "Bash(git worktree *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)",
+      "PowerShell(git *)",
+
+      "Bash(tasklist *)",
+      "Bash(taskkill //F //IM FolkIdle.Server.exe)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Stop-Process *)",
+      "PowerShell(Get-CimInstance *)",
+
+      "Bash(python ops/validate_content.py *)",
+      "Bash(python3 ops/validate_content.py *)",
+
+      "WebSearch",
+      "WebFetch(domain:folkidle.duckdns.org)",
+      "WebFetch(domain:92-5-0-94.sslip.io)",
+      "WebFetch(domain:svelte.dev)",
+      "WebFetch(domain:learn.microsoft.com)"
+    ]
+  },
+  "$hooksComment": [
+    "Scripts live in .claude/hooks/ and are Python because this machine has no",
+    "jq. Each one is pipe-tested in both directions - a hook that silently does",
+    "nothing is worse than no hook. The build guard deliberately carries no",
+    "'if' filter: an 'if' of Bash(dotnet *) would miss a compound command like",
+    "'cd server && dotnet build', and coverage matters more than the ~50ms."
+  ],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/guard_stale_build.py\"",
+            "timeout": 15,
+            "statusMessage": "Checking the server is not holding the build output..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/packet_struct_guard.py\"",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/validate_content.py\"",
+            "timeout": 90,
+            "statusMessage": "Validating GameData content..."
+          }
+        ]
+      }
+    ]
+  }
+}

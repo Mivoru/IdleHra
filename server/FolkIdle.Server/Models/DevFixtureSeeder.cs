@@ -170,6 +170,27 @@ namespace FolkIdle.Server.Models
             await UpsertCommodityAsync(db, playerId, VillageManagementEngine.StoneCommodityId, 50_000L);
             await UpsertCommodityAsync(db, playerId, VillageManagementEngine.IronOreCommodityId, 50_000L);
 
+            // Modul: THE GUILD DEPOT'S OWN MATERIALS, and this is the same
+            // two-namespace trap a third time, 2026-09-01.
+            //
+            // Guild donation is priced and stored by ITEM DEFINITION -
+            // GuildDepotBalances is keyed on ItemDefinitionId and the engine
+            // bails on TryGetItemDefinitionByBaseId - so it accepts only
+            // catalogued region logs and ores. The fixture stocked the four
+            // gathering slugs and the village's three, and NONE of those are
+            // catalogued, so the entire Donate Materials panel was undrivable
+            // on the account that exists for driving things by hand: every
+            // material it held answered 400.
+            //
+            // One common and one rare from each of the first two regions,
+            // which is enough to exercise both the buff set and the tier
+            // pricing without pretending the fixture has finished the game.
+            await UpsertCommodityAsync(db, playerId, "birch_log", 5_000L);
+            await UpsertCommodityAsync(db, playerId, "golden_birch_log", 1_000L);
+            await UpsertCommodityAsync(db, playerId, "malachite_ore", 5_000L);
+            await UpsertCommodityAsync(db, playerId, "willow_log", 5_000L);
+            await UpsertCommodityAsync(db, playerId, "hematite_ore", 1_000L);
+
             // And every material any recipe actually asks for, derived FROM the
             // recipe table rather than listed by hand - a hardcoded slug list
             // is precisely what went stale above, and it would go stale again

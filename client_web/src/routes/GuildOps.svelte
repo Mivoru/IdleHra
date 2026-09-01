@@ -19,7 +19,6 @@
   import {
     contributeToWarSupply,
     launchGuildRaid,
-    contributeGuildGold,
     depositGuildMaterial,
     contributeToGuildStock,
     registerGuildDefense,
@@ -182,16 +181,36 @@
         baseId: stack.ItemId,
         quantity: stack.Quantity,
       }))
-      .filter((row) => row.definition !== undefined)
+      // Modul: a stack with NO ItemDefinition is kept. Materials live in two
+      // namespaces - items.json defines 326 pieces of equipment and 16 of the
+      // 20 buff materials, while copper_ore, iron_ore, raw_log and oak_log are
+      // unified COMMODITY ids that ContentRegistry, CraftingEngine and the
+      // Village all use and items.json does not carry. Dropping the rows
+      // without a definition removed exactly those four from this panel, so a
+      // player holding 5,000 copper ore saw it listed as x0 with a dead
+      // button. Donation needs the base id only; just the two numeric-id APIs
+      // below need a definition, and those are gated separately.
       .sort((a, b) => a.baseId.localeCompare(b.baseId));
   });
 
-  let depotMaterial = $state(0);
+  // Modul: this holds a BASE ID, because that is what the <select> below puts
+  // in it - the options carry `value={baseId}`. It used to be typed as a number
+  // and looked up against `definition.Id`, so the comparison was number ===
+  // string and never matched: depotMax was permanently 0, and every button in
+  // this panel is disabled on `depotMax === 0`. Depositing, chaining and
+  // donating were all dead, which is why the live GuildDepotBalances and
+  // GuildContributionLedgers tables had no rows at all.
+  //
+  // The two APIs disagree about what a material is, so both forms are kept
+  // side by side rather than converted at each call site: donateToGuildDepot
+  // wants the base id, depositGuildMaterial/contributeToGuildStock want the
+  // numeric definition id and REFUSE a non-integer.
+  let depotMaterial = $state('');
   let depotQuantity = $state(1);
 
-  const depotMax = $derived(
-    depositable.find((row) => row.definition!.Id === depotMaterial)?.quantity ?? 0,
-  );
+  const depotRow = $derived(depositable.find((row) => row.baseId === depotMaterial));
+  const depotMax = $derived(depotRow?.quantity ?? 0);
+  const depotMaterialId = $derived(depotRow?.definition?.Id ?? 0);
 
   function refreshDepot() {
     setTimeout(() => {
@@ -202,7 +221,7 @@
 
   function deposit() {
     const outcome = depositGuildMaterial(
-      depotMaterial,
+      depotMaterialId,
       Math.min(depotQuantity, depotMax),
       hasGuild,
       itemDefinitionCount,
@@ -213,7 +232,7 @@
 
   function contributeStock() {
     const outcome = contributeToGuildStock(
-      depotMaterial,
+      depotMaterialId,
       Math.min(depotQuantity, depotMax),
       hasGuild,
     );
@@ -297,21 +316,17 @@
     }, 700);
   }
 
-  let donateMaterial = $state<string | number>(0);
-  let donateQuantity = $state(1);
-
-  const donateMax = $derived(
-    donateMaterial === 'gold'
-      ? (snap?.Gold ?? 0)
-      : (depositable.find((row: any) => row.baseId === donateMaterial)?.quantity ?? 0),
-  );
-
+  // Modul: a separate donateMaterial/donateQuantity/donateMax trio used to live
+  // here. It was orphaned when the two donate paths were merged - handleDonate
+  // reads the depot* state, so nothing ever read these - and a second copy of
+  // the same state is how the two halves of this panel disagreed in the first
+  // place. One material selection, one quantity.
 
   async function handleDonate() {
     if (!hasGuild) return pushLocalNotice('You are not in a guild.', 'info');
     if (depotQuantity < 1) return pushLocalNotice('Quantity must be positive.', 'info');
-    if (depotMaterial === 0) return;
-    
+    if (depotMaterial === '') return;
+
     try {
         await donateToGuildDepot(depotMaterial, Math.min(depotQuantity, depotMax));
         pushLocalNotice('Material donated for Weekly Contribution Points!', 'info');
@@ -321,7 +336,17 @@
     }
   }
 
-  // Only allow buff-related materials: logs and ores from the 5 regions
+  // Only allow buff-related materials: logs and ores from the 5 regions.
+  //
+  // Modul: FOUR of these twenty are not in items.json - copper_ore, iron_ore,
+  // obsidian_ore and silver_ore. They are real unified commodity ids (the
+  // Village and CraftingEngine both use them) but they have no ItemDefinition,
+  // and GuildDepotBalances is keyed on ItemDefinitionId, so the donate
+  // endpoint answers 400 for all four. The server's own BuffTierMaterials
+  // table has the same four, which makes the common-ore path of several buff
+  // tiers unreachable. Fixing it means either cataloguing those four or
+  // repointing the tiers at ores that exist - a content decision, recorded
+  // here rather than silently worked around.
   const BUFF_MATERIAL_IDS = new Set([
     'birch_log', 'golden_birch_log', 'copper_ore', 'malachite_ore',
     'willow_log', 'golden_willow_log', 'iron_ore', 'hematite_ore',
@@ -332,6 +357,18 @@
 
   function isDonatableMaterial(baseId: string): boolean {
     return BUFF_MATERIAL_IDS.has(baseId);
+  }
+
+  // Modul: logs and ores are identified by a BASE ID SUFFIX, which is how this
+  // codebase classifies items generally (see getArmourFamily, which reads a
+  // prefix). The previous version filtered on `definition.Subtype === 'Log'`,
+  // and ItemDefinition has no Subtype field at all - so every comparison was
+  // against undefined, the filter was permanently false, and the branch below
+  // it rendered zero options. The dropdown only ever showed the hardcoded
+  // BUFF_MATERIAL_IDS set, which is the opposite of what "allow all materials
+  // in the depot select" was meant to do.
+  function isLogOrOre(baseId: string): boolean {
+    return baseId.endsWith('_log') || baseId.endsWith('_ore');
   }
 
   // Buff tier definitions: [commonWood, rareWood, commonOre, rareOre] per tier
@@ -515,14 +552,14 @@
         <label>
           Material
           <select bind:value={depotMaterial}>
-            <option value={0}>Choose...</option>
+            <option value="">Choose...</option>
             {#each Array.from(BUFF_MATERIAL_IDS) as baseId}
               {@const invItem = depositable.find(d => d.baseId === baseId)}
               <option value={baseId}>
                 {prettifyBaseId(baseId)} (x{invItem?.quantity ?? 0})
               </option>
             {/each}
-            {#each depositable.filter(d => !BUFF_MATERIAL_IDS.has(d.baseId) && (d.definition?.Subtype === 'Log' || d.definition?.Subtype === 'Ore')) as row}
+            {#each depositable.filter(d => !BUFF_MATERIAL_IDS.has(d.baseId) && isLogOrOre(d.baseId)) as row}
               <option value={row.baseId}>
                 {prettifyBaseId(row.baseId)} (x{row.quantity})
               </option>
@@ -532,13 +569,24 @@
 
         <div class="row">
           <input type="number" min="1" max={depotMax || 1} bind:value={depotQuantity} />
-          <button disabled={depotMaterial === 0 || depotMax === 0} onclick={deposit}>
+          <!-- These two go through APIs that take a numeric definition id and
+               refuse anything else, so they need a catalogued item - not every
+               donatable commodity has one. Donate takes the base id and does
+               not. -->
+          <button disabled={depotMaterial === '' || depotMax === 0 || depotMaterialId === 0} onclick={deposit}>
             To depot
           </button>
-          <button disabled={depotMaterial === 0 || depotMax === 0} onclick={contributeStock}>
+          <button disabled={depotMaterial === '' || depotMax === 0 || depotMaterialId === 0} onclick={contributeStock}>
             To chain
           </button>
-          <button disabled={depotMaterial === 0 || depotMax === 0 || !isDonatableMaterial(depotMaterial.toString())} onclick={handleDonate}>
+          <!-- Modul: donating ALSO needs a catalogued item, even though the
+               endpoint takes a base id string. GuildDepotBalances is keyed on
+               ItemDefinitionId and the engine bails on
+               TryGetItemDefinitionByBaseId, so an uncatalogued commodity is a
+               400 no matter how much of it the player holds. Four of the
+               twenty BUFF_MATERIAL_IDS are uncatalogued - see the note by that
+               set. -->
+          <button disabled={depotMaterial === '' || depotMax === 0 || depotMaterialId === 0 || !isDonatableMaterial(depotMaterial)} onclick={handleDonate}>
             Donate
           </button>
         </div>
