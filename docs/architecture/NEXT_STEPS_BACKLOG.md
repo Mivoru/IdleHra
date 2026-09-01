@@ -11,7 +11,141 @@ dated handoff immediately following is the live one.
 
 ---
 
-# HANDOFF 2026-08-08 - The Long Game (READ THIS FIRST)
+# HANDOFF 2026-09-01 - Tooling, and the guild donate panel that never worked (READ THIS FIRST)
+
+Three weeks passed with no commits. Nothing was half-finished when work stopped
+at `4397a7f`; the tree was clean and deployed.
+
+## The repository now carries its own instructions
+
+There was no `CLAUDE.md`, no skills, no hooks and no agents, so every session
+re-derived the project by reading this 134 KB file. That is fixed:
+
+- **`CLAUDE.md`** holds the rules that actually bite - the stale-DLL build,
+  Docker before `dotnet test`, generated wire types, the snake_case table
+  overrides, why `npm run exercise` is the only verification that proves
+  gameplay. **`AGENTS.md` points at it rather than copying it**, so Antigravity
+  and any other tool read the same file. A copy would be the largest instance
+  of the drift this codebase keeps losing to.
+- **Four skills** in `.claude/skills/`: `run-stack`, `verify`, `add-command`,
+  `deploy`.
+- **Three hooks** in `.claude/hooks/` make rules mechanical instead of
+  remembered. `guard_stale_build` BLOCKS `dotnet build`/`dotnet test` while
+  `FolkIdle.Server.exe` holds the output directory - it caught a real one
+  within the hour. `packet_struct_guard` fires on wire-struct edits.
+  `validate_content` BLOCKS on bad `GameData` JSON. Both blocking hooks fail
+  OPEN: a guard with no workaround is worse than the trap it guards.
+- **A `client` CI job**, parallel to `test`, gating `build-and-push`. Its real
+  purpose is `generate-protocol.mjs --check` - the packet-drift check that
+  script's own comment says CI should run, and that had never been wired up.
+- **`.gitignore` was ignoring all of `**/.claude/`**, which silently made
+  project skills untrackable. Narrowed to the machine-local files.
+
+**A `wiring-auditor` subagent** exists in `.claude/agents/`. It walks command →
+handler → effect → persistence → wire → client call → screen → exercised and
+reports the first break. It was written for this project's dominant defect
+class and the bug below is exactly what it looks for.
+
+## The guild Donate Materials panel was dead in production
+
+Found while clearing lint, not while hunting bugs. **Every button in that panel
+was permanently disabled** - To depot, To chain and Donate alike.
+
+`depotMaterial` was `$state(0)`, a numeric item id, but the `<select>` binds
+`<option value={baseId}>` - strings. `depotMax` looked up
+`row.definition.Id === depotMaterial`, compared a number against a string,
+never matched, and stayed 0 forever. All three buttons carry `depotMax === 0`
+in their `disabled` expression.
+
+**The live database confirmed it before the fix was written.**
+`GuildDepotBalances`, `GuildContributionLedgers` and `GuildActiveBuffs` all held
+zero rows. The guild buff system shipped 2026-08-11 has never been activated by
+anyone, because the only way to fuel it could not be clicked. That reading came
+from the read-only Supabase MCP, which answers the question this document has
+asked since 2026-08-06 - "nothing is measured against real players" - and should
+be used that way again.
+
+Two more layers surfaced only by driving it in a browser, which is the point of
+driving it in a browser:
+
+- **The materials were filtered out of the panel entirely.** `depositable`
+  dropped any stack with no `ItemDefinition`. See the namespace trap below.
+- **Donating needs a catalogued item after all.** `GuildDepotBalances` is keyed
+  on `ItemDefinitionId` and the engine bails on
+  `TryGetItemDefinitionByBaseId`, so an uncatalogued commodity is a 400 however
+  much the player holds. The buttons now match the server's rule.
+
+## THERE ARE TWO MATERIAL NAMESPACES, and this is the fourth defect from it
+
+`DevFixtureSeeder` already documents this twice. It has now caused a fourth
+failure, so it belongs here rather than only in that file's comments.
+
+Both live in one `CommodityRecords` table and are NOT interchangeable:
+
+| | Examples | Has `ItemDefinition`? | Spent by |
+|---|---|---|---|
+| gathering / commodity slugs | `copper_ore`, `iron_ore`, `raw_log`, `oak_log`, the village's wood/stone/iron | **No** - absent from `items.json` | Village upgrades, `CraftingEngine` |
+| catalogued items | the 326 in `items.json`, incl. 16 of the 20 region logs/ores | Yes | crafting recipes, the guild depot, the market |
+
+Anything keyed on `ItemDefinitionId` silently rejects the first group, and the
+client's `registry.itemsByBaseId.get()` returns undefined for them - which is
+how a player holding 5,000 copper ore saw it listed as "x0". Before touching a
+material feature, check which namespace it needs and that the id exists there.
+
+**The fixture could not drive the guild depot at all.** It stocked the four
+gathering slugs and the village's three, none catalogued, so every material the
+account held answered 400 on the screen that exists for driving things by hand.
+It now also carries `birch_log`, `golden_birch_log`, `malachite_ore`,
+`willow_log` and `hematite_ore`.
+
+## `exercise.mjs` had been dead for three weeks and nobody noticed
+
+It died at `go('Social')`. That nav item became **'Friends'** when the menu was
+reorganised on 2026-08-10 and this script was not updated with it, so every run
+since then failed at navigation rather than at a check. The one verification
+that proves gameplay works had not run since.
+
+It is now 79/79, and the guild section asserts the donation rather than
+asserting the screen renders. **If a `go()` target times out, check
+`App.svelte`'s labels before suspecting the screen.**
+
+## Open, and each is a decision rather than a defect
+
+1. **Four of the twenty `BUFF_MATERIAL_IDS` have no `ItemDefinition`** -
+   `copper_ore`, `iron_ore`, `obsidian_ore`, `silver_ore`. The server's own
+   `BuffTierMaterials` names the same four, so those tiers' common-ore path is
+   unreachable. Either catalogue them or repoint the tiers at ores that exist;
+   which ore is common vs rare per region is content design. `exercise.mjs`
+   pins the current behaviour and will fail loudly if they are catalogued.
+2. **The Guild War handlers are orphaned** - `defend`, `attackShard`,
+   `takeTurn`, `damageDelta` in `GuildOps.svelte` are the remaining four
+   `svelte-check` errors. The UI was hidden, not removed, and
+   `docs/FUTURE_PLANS.md` lists Guild Wars as planned, so deleting them is a
+   product call. Independently of it, **`shardMatch` still polls every 30
+   seconds for that hidden UI** - a live cost on every guild member's client.
+   Resolving this lets CI gate `svelte-check` at zero.
+3. **The "Contribute gold" input and button are rendered twice** in
+   `GuildOps.svelte`, around lines 471 and 526.
+
+## Security
+
+**The Supabase Data API has been turned OFF.** The advisor flagged RLS disabled
+on all 61 tables, which exposed every row - `PlayerRecords`,
+`password_reset_tokens`, every gold and item table - to anyone with the anon
+key, a value that is public by design. That would have bypassed the entire
+`Serializable` + `FOR UPDATE` double-spend model by writing to the tables
+directly. This server talks to Postgres through Npgsql and never uses PostgREST,
+so switching the door off was the right fix and nothing in the game changed.
+RLS itself is still disabled; if the Data API is ever switched back on, enabling
+RLS is a prerequisite, not an option.
+
+**`svelte-check`'s baseline is 4, and the count is a weak guard.** It sat at 9
+for a long time and silently turned over into an entirely different 9. Read the
+error list, not the total.
+
+---
+
+# HANDOFF 2026-08-08 - The Long Game
 
 The design for all of it is `docs/architecture/LONG_GAME_SPEC.md`. It is
 agreed with the player and should not be re-litigated; read it before touching

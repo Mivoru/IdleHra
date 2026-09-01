@@ -29,6 +29,12 @@ do not let it drift into aspirational/planned content - that belongs in
   duplicating (`client/Assets/Resources/Audio/README.md` is the live
   reference for what plays when). The C# under `Assets/Scripts/` is history.
 - `docs/architecture/` - this documentation set (new as of this pass).
+- `CLAUDE.md` at the repository root - the operating rules an assistant loads
+  automatically. `AGENTS.md` is a POINTER to it, deliberately not a copy, so
+  other tools read the same file rather than a second one that drifts.
+  `.claude/` carries the project's skills, subagents and hooks; only
+  `settings.local.json` is git-ignored. The hooks enforce three rules
+  mechanically - see `CLAUDE.md`'s "What is enforced for you".
 
 ## 2. Core Tick Architecture
 
@@ -457,7 +463,7 @@ stocked larder. It is double-guarded - the flag alone does nothing unless
 flags it writes a known password.
 
 **A fixture that cannot do the thing you are testing is worse than no
-fixture**, and this one has failed that way four separate times. Each was
+fixture**, and this one has failed that way five separate times. Each was
 silent, and each cost a debugging session that started by suspecting the
 feature:
 
@@ -475,9 +481,25 @@ feature:
 - **Its village pool was one villager per sex**, and every `exercise.mjs` run
   marries one - so the second run had nobody left and the pairing step failed
   for want of a partner rather than for a defect.
+- **It held no CATALOGUED material**, 2026-09-01, which is the two-namespace
+  trap again. It stocked the four gathering slugs and the village's three, and
+  none of those have an `ItemDefinition`. The guild depot is keyed on
+  `ItemDefinitionId`, so every material the account carried answered 400 on the
+  Donate panel - undrivable on the account that exists for driving things by
+  hand. It now also stocks `birch_log`, `golden_birch_log`, `malachite_ore`,
+  `willow_log` and `hematite_ore`.
 
 `DevFixtureInvariantTests` now asserts the first of those. Suspect the
 fixture before the screen.
+
+**Which namespace a material belongs to is the question to ask first.** Both
+live in `CommodityRecords` and are not interchangeable: the gathering slugs
+(`copper_ore`, `raw_log`, the village's wood/stone/iron) have no `items.json`
+entry and therefore no `ItemDefinition`, while the catalogued materials do.
+Anything keyed on `ItemDefinitionId` silently rejects the former, and the web
+client's `registry.itemsByBaseId.get()` returns undefined for them - which
+renders a stack of 5,000 as "x0". See the 2026-09-01 handoff in
+`NEXT_STEPS_BACKLOG.md` for the four defects this has caused.
 
 **The stocked larder is load-bearing, not a convenience.** Auto-eat fires
 the moment HP crosses the threshold, and an empty larder stops the activity
