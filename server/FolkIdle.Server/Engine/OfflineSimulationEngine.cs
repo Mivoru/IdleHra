@@ -318,7 +318,25 @@ namespace FolkIdle.Server.Engine
             long woodEarned = Math.Min(elapsedSeconds * woodRatePerHour / 3600L, maxStoragePerItem);
             long oreEarned = Math.Min(elapsedSeconds * ironRatePerHour / 3600L, maxStoragePerItem);
 
-            bool anyMaterialProduction = woodEarned > 0 || oreEarned > 0;
+            // Modul: A SHARE OF THE YIELD IS THE TIER'S RARE MATERIAL,
+            // 2026-09-01, in the same 90/10 the gathering loot tables use for
+            // the same pairs. A Mine automates mining and should pay out what
+            // mining pays out.
+            //
+            // Split rather than added: the building's throughput is unchanged
+            // and a tenth of it simply arrives as the better material. Adding
+            // it on top would make a Mine strictly better than the activity it
+            // represents, which is a balance decision and not this fix.
+            //
+            // Computed as a share of the WHOLE window rather than rolled per
+            // unit - this path is analytic by design and a per-unit loop over
+            // twelve hours of production is exactly what it exists to avoid.
+            long rareWood = woodEarned * VillageManagementEngine.RareYieldPercent / 100L;
+            long rareOre = oreEarned * VillageManagementEngine.RareYieldPercent / 100L;
+            woodEarned -= rareWood;
+            oreEarned -= rareOre;
+
+            bool anyMaterialProduction = woodEarned > 0 || oreEarned > 0 || rareWood > 0 || rareOre > 0;
             if (!anyMaterialProduction && goldEarned <= 0)
             {
                 return;
@@ -334,6 +352,14 @@ namespace FolkIdle.Server.Engine
                 if (oreEarned > 0)
                 {
                     await GrantSingleCommodityProductionAsync(db, playerId, mineMats.Ore, oreEarned, maxStoragePerItem);
+                }
+                if (rareWood > 0)
+                {
+                    await GrantSingleCommodityProductionAsync(db, playerId, lumberjackMats.RareLog, rareWood, maxStoragePerItem);
+                }
+                if (rareOre > 0)
+                {
+                    await GrantSingleCommodityProductionAsync(db, playerId, mineMats.RareOre, rareOre, maxStoragePerItem);
                 }
 
                 if (goldEarned > 0)

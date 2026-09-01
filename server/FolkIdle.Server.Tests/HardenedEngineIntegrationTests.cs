@@ -2148,7 +2148,11 @@ namespace FolkIdle.Server.Tests
             //   warehouse 1 -> (1 + 1) * 100 * 5 = 1,000 stored
             //
             // So 5,000 of the 6,000 is lost to storage.
-            const long expectedOreGain = 1_000L;
+            // A tenth of the yield arrives as the tier's RARE ore, matching the
+            // 90/10 the gathering loot tables use for the same pair - so the
+            // 1,000 the warehouse permits splits 900 common / 100 rare.
+            const long expectedOreGain = 900L;
+            const long expectedRareOreGain = 100L;
 
             // Which commodity a tier produces is asserted by
             // Test_VillageManagementEngine_ProductionUpgradeCost_ScalesExponentially;
@@ -2167,6 +2171,13 @@ namespace FolkIdle.Server.Tests
                 .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == oreId);
 
             Assert.Equal(expectedOreGain, ore.Quantity);
+
+            string rareOreId = VillageManagementEngine.GetTierMaterials(mineLevel).RareOre;
+            long rareHeld = await verifyDb.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == testPlayerId && c.ItemId == rareOreId)
+                .Select(c => c.Quantity)
+                .SingleOrDefaultAsync();
+            Assert.Equal(expectedRareOreGain, rareHeld);
 
             // The Quarry is gone. Nothing may produce stone any more - if a
             // building starts writing it again that is a design change, not a
@@ -3368,7 +3379,10 @@ namespace FolkIdle.Server.Tests
             // Lumberjack 1 -> (1 + 1) * 100 = 200 an hour. Over the capped
             // 12 hours that is 2,400, under the 2,500 the warehouse holds, so
             // what is measured here stays the OFFLINE cap.
-            const long expectedWood = 2_400L;
+            // 2,400 produced over the capped twelve hours, a tenth of which
+            // arrives as the tier's rare log.
+            const long expectedWood = 2_160L;
+            const long expectedRareWood = 240L;
             string logId = VillageManagementEngine.GetTierMaterials(1).Log;
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
@@ -3377,6 +3391,13 @@ namespace FolkIdle.Server.Tests
 
             Assert.NotNull(woodCommodity);
             Assert.Equal(expectedWood, woodCommodity!.Quantity);
+
+            string rareLogId = VillageManagementEngine.GetTierMaterials(1).RareLog;
+            long rareLogHeld = await verifyDb.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == testPlayerId && c.ItemId == rareLogId)
+                .Select(c => c.Quantity)
+                .SingleOrDefaultAsync();
+            Assert.Equal(expectedRareWood, rareLogHeld);
         }
 
         [Fact]

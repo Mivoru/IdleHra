@@ -463,13 +463,29 @@ namespace FolkIdle.Server.Engine
             new LootTableEntry { ItemId = 364, Weight = 90 },  // index 85: ebon_log - Shadow Citadel (Woodcutting, common)
             new LootTableEntry { ItemId = 404, Weight = 10 },  // index 86: golden_ebon_log - Shadow Citadel (Woodcutting, rare)
             // --- Mining ---
-            new LootTableEntry { ItemId = 165, Weight = 90 },  // index 87: copper_ore - Sunlit Plains (Mining, common)
+            // Modul: FOUR OF THESE POINTED AT THE WRONG ITEM, 2026-09-01.
+            //
+            // copper/iron/obsidian/silver had no items.json entry when this
+            // table was written, so their rows were pointed at the
+            // *_crafting_material variants as stand-ins - 165, 111, 57, 147.
+            // Sulfur and darksteel look correct here only because those two
+            // ores did already exist.
+            //
+            // So mining paid out copper_ore_CRAFTING_MATERIAL while the village
+            // charged copper_ore, and the two are different CommodityRecords
+            // rows: the ore a player earned could never buy the thing it was
+            // supposed to buy. Measured live - one player holding 5,017 of the
+            // crafting-material name and 25 of the one the village wanted.
+            //
+            // The four ores were catalogued as 438-441 and these now name them.
+            // The 90/10 common/rare shape was always right and is untouched.
+            new LootTableEntry { ItemId = 438, Weight = 90 },  // index 87: copper_ore - Sunlit Plains (Mining, common)
             new LootTableEntry { ItemId = 271, Weight = 10 },  // index 88: malachite_ore - Sunlit Plains (Mining, rare)
-            new LootTableEntry { ItemId = 111, Weight = 90 },  // index 89: iron_ore - Whispering Woods (Mining, common)
+            new LootTableEntry { ItemId = 439, Weight = 90 },  // index 89: iron_ore - Whispering Woods (Mining, common)
             new LootTableEntry { ItemId = 295, Weight = 10 },  // index 90: hematite_ore - Whispering Woods (Mining, rare)
             new LootTableEntry { ItemId = 319, Weight = 90 },  // index 91: sulfur_ore - Scorched Wasteland (Mining, common)
-            new LootTableEntry { ItemId = 57, Weight = 10 },  // index 92: obsidian_ore - Scorched Wasteland (Mining, rare)
-            new LootTableEntry { ItemId = 147, Weight = 90 },  // index 93: silver_ore - Frozen Peaks (Mining, common)
+            new LootTableEntry { ItemId = 440, Weight = 10 },  // index 92: obsidian_ore - Scorched Wasteland (Mining, rare)
+            new LootTableEntry { ItemId = 441, Weight = 90 },  // index 93: silver_ore - Frozen Peaks (Mining, common)
             new LootTableEntry { ItemId = 344, Weight = 10 },  // index 94: cobalt_ore - Frozen Peaks (Mining, rare)
             new LootTableEntry { ItemId = 368, Weight = 90 },  // index 95: darksteel_ore - Shadow Citadel (Mining, common)
             new LootTableEntry { ItemId = 369, Weight = 10 },  // index 96: astralite_ore - Shadow Citadel (Mining, rare)
@@ -637,29 +653,29 @@ namespace FolkIdle.Server.Engine
             // into combat. Test_Gathering_ShareOfPlaytimeStaysInBand keeps it
             // honest - it computes both halves against the real registries and
             // fails if gathering stops mattering or starts dominating.
-            new RecipeDefinition { ResultItemId = 408, ProfessionType = 3, RequiredLevel = 1, Mat1Id = 267, Mat1Count = 20, Mat2Id = 165, Mat2Count = 10, CraftingTimeMs = 5000 }, // birch_axe_tool
+            new RecipeDefinition { ResultItemId = 408, ProfessionType = 3, RequiredLevel = 1, Mat1Id = 267, Mat1Count = 20, Mat2Id = 438, Mat2Count = 10, CraftingTimeMs = 5000 }, // birch_axe_tool
             new RecipeDefinition { ResultItemId = 409, ProfessionType = 3, RequiredLevel = 1, Mat1Id = 269, Mat1Count = 40, Mat2Id = 271, Mat2Count = 20, CraftingTimeMs = 5000 }, // golden_birch_axe_tool
-            new RecipeDefinition { ResultItemId = 410, ProfessionType = 3, RequiredLevel = 1, Mat1Id = 267, Mat1Count = 20, Mat2Id = 165, Mat2Count = 10, CraftingTimeMs = 5000 }, // birch_pickaxe_tool
+            new RecipeDefinition { ResultItemId = 410, ProfessionType = 3, RequiredLevel = 1, Mat1Id = 267, Mat1Count = 20, Mat2Id = 438, Mat2Count = 10, CraftingTimeMs = 5000 }, // birch_pickaxe_tool
             new RecipeDefinition { ResultItemId = 411, ProfessionType = 3, RequiredLevel = 1, Mat1Id = 269, Mat1Count = 40, Mat2Id = 271, Mat2Count = 20, CraftingTimeMs = 5000 }, // golden_birch_pickaxe_tool
-            new RecipeDefinition { ResultItemId = 412, ProfessionType = 3, RequiredLevel = 1, Mat1Id = 267, Mat1Count = 20, Mat2Id = 165, Mat2Count = 10, CraftingTimeMs = 5000 }, // birch_fishing_rod_tool
+            new RecipeDefinition { ResultItemId = 412, ProfessionType = 3, RequiredLevel = 1, Mat1Id = 267, Mat1Count = 20, Mat2Id = 438, Mat2Count = 10, CraftingTimeMs = 5000 }, // birch_fishing_rod_tool
             new RecipeDefinition { ResultItemId = 413, ProfessionType = 3, RequiredLevel = 1, Mat1Id = 269, Mat1Count = 40, Mat2Id = 271, Mat2Count = 20, CraftingTimeMs = 5000 }, // golden_birch_fishing_rod_tool
-            new RecipeDefinition { ResultItemId = 414, ProfessionType = 3, RequiredLevel = 20, Mat1Id = 291, Mat1Count = 136, Mat2Id = 111, Mat2Count = 68, CraftingTimeMs = 10000 }, // willow_axe_tool
+            new RecipeDefinition { ResultItemId = 414, ProfessionType = 3, RequiredLevel = 20, Mat1Id = 291, Mat1Count = 136, Mat2Id = 439, Mat2Count = 68, CraftingTimeMs = 10000 }, // willow_axe_tool
             new RecipeDefinition { ResultItemId = 415, ProfessionType = 3, RequiredLevel = 20, Mat1Id = 401, Mat1Count = 272, Mat2Id = 295, Mat2Count = 136, CraftingTimeMs = 10000 }, // whisper_willow_axe_tool
-            new RecipeDefinition { ResultItemId = 416, ProfessionType = 3, RequiredLevel = 20, Mat1Id = 291, Mat1Count = 136, Mat2Id = 111, Mat2Count = 68, CraftingTimeMs = 10000 }, // willow_pickaxe_tool
+            new RecipeDefinition { ResultItemId = 416, ProfessionType = 3, RequiredLevel = 20, Mat1Id = 291, Mat1Count = 136, Mat2Id = 439, Mat2Count = 68, CraftingTimeMs = 10000 }, // willow_pickaxe_tool
             new RecipeDefinition { ResultItemId = 417, ProfessionType = 3, RequiredLevel = 20, Mat1Id = 401, Mat1Count = 272, Mat2Id = 295, Mat2Count = 136, CraftingTimeMs = 10000 }, // whisper_willow_pickaxe_tool
-            new RecipeDefinition { ResultItemId = 418, ProfessionType = 3, RequiredLevel = 20, Mat1Id = 291, Mat1Count = 136, Mat2Id = 111, Mat2Count = 68, CraftingTimeMs = 10000 }, // willow_fishing_rod_tool
+            new RecipeDefinition { ResultItemId = 418, ProfessionType = 3, RequiredLevel = 20, Mat1Id = 291, Mat1Count = 136, Mat2Id = 439, Mat2Count = 68, CraftingTimeMs = 10000 }, // willow_fishing_rod_tool
             new RecipeDefinition { ResultItemId = 419, ProfessionType = 3, RequiredLevel = 20, Mat1Id = 401, Mat1Count = 272, Mat2Id = 295, Mat2Count = 136, CraftingTimeMs = 10000 }, // whisper_willow_fishing_rod_tool
             new RecipeDefinition { ResultItemId = 420, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 315, Mat1Count = 613, Mat2Id = 319, Mat2Count = 307, CraftingTimeMs = 15000 }, // acacia_axe_tool
-            new RecipeDefinition { ResultItemId = 421, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 402, Mat1Count = 1226, Mat2Id = 57, Mat2Count = 613, CraftingTimeMs = 15000 }, // ironwood_axe_tool
+            new RecipeDefinition { ResultItemId = 421, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 402, Mat1Count = 1226, Mat2Id = 440, Mat2Count = 613, CraftingTimeMs = 15000 }, // ironwood_axe_tool
             new RecipeDefinition { ResultItemId = 422, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 315, Mat1Count = 613, Mat2Id = 319, Mat2Count = 307, CraftingTimeMs = 15000 }, // acacia_pickaxe_tool
-            new RecipeDefinition { ResultItemId = 423, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 402, Mat1Count = 1226, Mat2Id = 57, Mat2Count = 613, CraftingTimeMs = 15000 }, // ironwood_pickaxe_tool
+            new RecipeDefinition { ResultItemId = 423, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 402, Mat1Count = 1226, Mat2Id = 440, Mat2Count = 613, CraftingTimeMs = 15000 }, // ironwood_pickaxe_tool
             new RecipeDefinition { ResultItemId = 424, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 315, Mat1Count = 613, Mat2Id = 319, Mat2Count = 307, CraftingTimeMs = 15000 }, // acacia_fishing_rod_tool
-            new RecipeDefinition { ResultItemId = 425, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 402, Mat1Count = 1226, Mat2Id = 57, Mat2Count = 613, CraftingTimeMs = 15000 }, // ironwood_fishing_rod_tool
-            new RecipeDefinition { ResultItemId = 426, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 340, Mat1Count = 4355, Mat2Id = 147, Mat2Count = 2177, CraftingTimeMs = 20000 }, // frostpine_axe_tool
+            new RecipeDefinition { ResultItemId = 425, ProfessionType = 3, RequiredLevel = 40, Mat1Id = 402, Mat1Count = 1226, Mat2Id = 440, Mat2Count = 613, CraftingTimeMs = 15000 }, // ironwood_fishing_rod_tool
+            new RecipeDefinition { ResultItemId = 426, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 340, Mat1Count = 4355, Mat2Id = 441, Mat2Count = 2177, CraftingTimeMs = 20000 }, // frostpine_axe_tool
             new RecipeDefinition { ResultItemId = 427, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 403, Mat1Count = 8710, Mat2Id = 344, Mat2Count = 4355, CraftingTimeMs = 20000 }, // glacier_pine_axe_tool
-            new RecipeDefinition { ResultItemId = 428, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 340, Mat1Count = 4355, Mat2Id = 147, Mat2Count = 2177, CraftingTimeMs = 20000 }, // frostpine_pickaxe_tool
+            new RecipeDefinition { ResultItemId = 428, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 340, Mat1Count = 4355, Mat2Id = 441, Mat2Count = 2177, CraftingTimeMs = 20000 }, // frostpine_pickaxe_tool
             new RecipeDefinition { ResultItemId = 429, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 403, Mat1Count = 8710, Mat2Id = 344, Mat2Count = 4355, CraftingTimeMs = 20000 }, // glacier_pine_pickaxe_tool
-            new RecipeDefinition { ResultItemId = 430, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 340, Mat1Count = 4355, Mat2Id = 147, Mat2Count = 2177, CraftingTimeMs = 20000 }, // frostpine_fishing_rod_tool
+            new RecipeDefinition { ResultItemId = 430, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 340, Mat1Count = 4355, Mat2Id = 441, Mat2Count = 2177, CraftingTimeMs = 20000 }, // frostpine_fishing_rod_tool
             new RecipeDefinition { ResultItemId = 431, ProfessionType = 3, RequiredLevel = 60, Mat1Id = 403, Mat1Count = 8710, Mat2Id = 344, Mat2Count = 4355, CraftingTimeMs = 20000 }, // glacier_pine_fishing_rod_tool
             new RecipeDefinition { ResultItemId = 432, ProfessionType = 3, RequiredLevel = 80, Mat1Id = 364, Mat1Count = 23287, Mat2Id = 368, Mat2Count = 11644, CraftingTimeMs = 25000 }, // ebon_axe_tool
             new RecipeDefinition { ResultItemId = 433, ProfessionType = 3, RequiredLevel = 80, Mat1Id = 404, Mat1Count = 46575, Mat2Id = 369, Mat2Count = 23287, CraftingTimeMs = 25000 }, // voidbark_axe_tool

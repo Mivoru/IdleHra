@@ -98,20 +98,52 @@ namespace FolkIdle.Server.Domain.Progression
         //
         // Logs were already correct: birch/willow/acacia/frostpine/ebon are all
         // catalogued and all obtainable. Only the ore column moves.
-        private static readonly (string Log, string Ore, string RareLog)[] TierMaterials = new[]
+        // Modul: ONE PAIR PER REGION, COMMON AND RARE, 2026-09-01.
+        //
+        // This is the same pairing the gathering loot tables and the guild's
+        // BuffTierMaterials already use, so the village is no longer the odd
+        // one out:
+        //
+        //   region 1  copper_ore    / malachite_ore
+        //   region 2  iron_ore      / hematite_ore
+        //   region 3  sulfur_ore    / obsidian_ore
+        //   region 4  silver_ore    / cobalt_ore
+        //   region 5  darksteel_ore / astralite_ore
+        //
+        // An earlier pass this same day moved the ore column to the RARE ores
+        // (malachite at tier 1) because the common ones looked unobtainable.
+        // They looked that way for a different reason: the mining loot table
+        // pointed copper/iron/obsidian/silver at the *_crafting_material
+        // variants, since those four had no items.json entry to point at. With
+        // that corrected the commons are what mining actually pays out, which
+        // is what a village should be built from - and the rares stay rare.
+        private static readonly (string Log, string Ore, string RareLog, string RareOre)[] TierMaterials = new[]
         {
-            ("birch_log", "malachite_ore", "golden_birch_log"),
-            ("willow_log", "hematite_ore", "golden_willow_log"),
-            ("acacia_log", "sulfur_ore", "golden_acacia_log"),
-            ("frostpine_log", "cobalt_ore", "golden_frostpine_log"),
-            ("ebon_log", "darksteel_ore", "golden_ebon_log"),
+            ("birch_log",     "copper_ore",    "golden_birch_log",     "malachite_ore"),
+            ("willow_log",    "iron_ore",      "golden_willow_log",    "hematite_ore"),
+            ("acacia_log",    "sulfur_ore",    "golden_acacia_log",    "obsidian_ore"),
+            ("frostpine_log", "silver_ore",    "golden_frostpine_log", "cobalt_ore"),
+            ("ebon_log",      "darksteel_ore", "golden_ebon_log",      "astralite_ore"),
         };
 
-        public static (string Log, string Ore, string RareLog) GetTierMaterials(int currentLevel)
+        public static (string Log, string Ore, string RareLog, string RareOre) GetTierMaterials(int currentLevel)
         {
             int tier = Math.Clamp(currentLevel / 5, 0, 4);
             return TierMaterials[tier];
         }
+
+        /// <summary>
+        /// How often a production building pays its tier's RARE material
+        /// instead of the common one, as a percentage.
+        /// </summary>
+        /// <remarks>
+        /// Modul: 10, matching the 90/10 weights the gathering loot tables use
+        /// for the same pairs. A Mine automates mining, so it should pay out
+        /// what mining pays out - a building whose yield table disagreed with
+        /// the activity it represents would be two descriptions of one idea,
+        /// and this codebase has lost enough to that already.
+        /// </remarks>
+        public const int RareYieldPercent = 10;
 
         public static long CalculateWarehouseMaxStorage(int warehouseLevel)
         {
