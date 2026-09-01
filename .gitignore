@@ -29,9 +29,20 @@ Thumbs.db
 chatHistory*.txt
 telemetry.bin
 
-# Target: Local AI tooling config (contains machine-local auth tokens/permissions)
+# Target: Local AI tooling config.
+# Modul: this used to ignore ALL of **/.claude/, which silently made project
+# skills and subagent definitions untrackable - they are shared team config and
+# belong in git. Only the machine-local halves are ignored now: settings.local
+# .json holds an accreted per-machine permission allowlist, and .mcp.json can
+# carry auth tokens.
 .mcp.json
-**/.claude/
+**/.claude/settings.local.json
+**/.claude/*.local.json
+
+# Modul: the retired Unity project carries ~800 KB of unity-mcp skills for an
+# editor nobody opens any more. Narrowing the rule above exposed them; they are
+# tooling for dead code and stay out of the repo.
+client/.claude/
 
 # Local dev server log
 server/FolkIdle.Server/server_dev.log
@@ -46,3 +57,7 @@ ops/oracle/.env
 # Modul: a vitest cache file rode in on a . Never tracked.
 node_modules/
 TestResults/
+
+# Python bytecode - ops/, server/ and .claude/hooks/ all carry .py files.
+__pycache__/
+*.pyc

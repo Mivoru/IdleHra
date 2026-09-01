@@ -57,9 +57,78 @@ jobs:
       - name: Run integration test suite
         run: dotnet test "${{ env.TEST_PROJECT_PATH }}" --no-build --configuration Release --verbosity normal
 
+  client:
+    name: Client Checks
+    runs-on: ubuntu-latest
+    # Runs alongside `test` rather than after it - neither needs the other, and
+    # serialising them would add several minutes for no signal.
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # The protocol check runs the SERVER to ask it for its own wire layout,
+      # so this job needs the .NET SDK as well as Node.
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: client_web/package-lock.json
+
+      - name: Install client dependencies
+        working-directory: client_web
+        run: npm ci
+
+      # THE gate this job exists for. protocol.generated.ts is generated from
+      # the server's own --dump-protocol and committed, so a fresh checkout
+      # builds without .NET. --check regenerates and diffs instead of writing:
+      # it fails if someone changed a packet struct and did not regenerate,
+      # which is this codebase's dominant bug class (two copies of one truth
+      # drifting apart) in the one place it can be caught mechanically.
+      - name: Verify generated protocol matches the server
+        working-directory: client_web
+        run: node scripts/generate-protocol.mjs --check
+
+      # svelte-check is NOT a hard gate yet. Four errors remain, all in
+      # GuildOps.svelte and all the same thing: defend, attackShard, takeTurn
+      # and damageDelta are the handlers of the Guild War UI, which was hidden
+      # rather than removed. They are dead only for as long as that feature
+      # stays hidden, and docs/FUTURE_PLANS.md lists Guild Wars as planned - so
+      # deleting them is a product decision, not a cleanup.
+      #
+      # This step fails only if the count GROWS. Resolve the Guild War question
+      # and this becomes a plain `npm run check`.
+      #
+      # A count is a weak guard and known to be weak: the baseline sat at 9 for
+      # a long time and silently turned over into an entirely different 9.
+      # Prefer fixing to raising the number.
+      - name: Type-check the client (baseline 4 errors)
+        working-directory: client_web
+        run: |
+          set -o pipefail
+          npm run check 2>&1 | tee /tmp/svelte-check.log || true
+          count=$(grep -c ' ERROR ' /tmp/svelte-check.log || true)
+          echo "svelte-check errors: $count (baseline 4)"
+          if [ "$count" -gt 4 ]; then
+            echo "::error::svelte-check regressed: $count errors, baseline is 4"
+            grep ' ERROR ' /tmp/svelte-check.log
+            exit 1
+          fi
+
+      - name: Build the client bundle
+        working-directory: client_web
+        run: npx vite build
+
   build-and-push:
     name: Build and Push Docker Image
-    needs: test
+    # Gated on the client checks too: a server image whose packet layout no
+    # longer matches the committed client protocol should not ship.
+    needs: [test, client]
     runs-on: ubuntu-latest
     permissions:
       contents: read
