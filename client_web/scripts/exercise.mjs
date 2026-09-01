@@ -319,7 +319,12 @@ await go('Market');
 }
 
 // --- social: friends ---------------------------------------------------------
-await go('Social');
+// Modul: this nav item is 'Friends'. It was 'Social' until the menu was
+// reorganised on 2026-08-10 and this script was not updated with it, so every
+// run since then died here - which is how the one verification that proves
+// gameplay works went three weeks without being run. If a go() target ever
+// times out, check App.svelte's labels before suspecting the screen.
+await go('Friends');
 {
   const text = await page.evaluate(() => document.body.innerText);
   record('social screen shows a friend list section', /Friend/i.test(text));
@@ -550,6 +555,104 @@ await go('Guild');
   const text = await page.evaluate(() => document.body.innerText);
   record('guild screen loads roster and depot', /Depot|Roster|Guild war/i.test(text));
   record('cross-shard section resolves', !text.includes('Checking for a match'), 'match query settled');
+
+  // Modul: the whole Donate Materials panel shipped DEAD and rendered
+  // perfectly while doing so. depotMaterial held a base-id string from the
+  // <select> while depotMax looked it up by numeric definition id, so the
+  // comparison never matched, depotMax was permanently 0, and all three
+  // buttons are disabled on `depotMax === 0`. The live database had zero rows
+  // in GuildDepotBalances and GuildContributionLedgers as a result.
+  //
+  // A render check cannot see any of that, which is exactly why it is checked
+  // here instead. The assertion is that the button ENABLES and the donation
+  // LANDS - not that the panel exists.
+  const materialSelect = page.locator('select').filter({ hasText: 'Choose...' }).first();
+
+  // The options carry base ids. Two kinds matter and they exercise different
+  // code: a BUFF_MATERIAL_IDS entry proves the enable path, and one that is
+  // NOT in that set proves the log/ore filter renders at all - it used to test
+  // `definition.Subtype`, a field ItemDefinition does not have, so the branch
+  // silently produced no options whatsoever.
+  const options = await materialSelect.locator('option').evaluateAll((els) =>
+    els.map((o) => ({ value: o.value, label: o.textContent.trim() })),
+  );
+  // The label carries the held quantity as "(xN)". Anything reading x0 is
+  // listed but not owned - the buff set is rendered unconditionally - so an
+  // option is only useful here if the fixture actually holds some.
+  const held = options.filter((o) => o.value && !/\(x0\)\s*$/.test(o.label));
+
+  // Modul: must be a CATALOGUED material. GuildDepotBalances is keyed on
+  // ItemDefinitionId, so a commodity with no items.json entry is a 400 however
+  // much of it the player holds - and four of the twenty buff materials
+  // (copper_ore, iron_ore, obsidian_ore, silver_ore) are exactly that. These
+  // two are catalogued and stocked by the fixture.
+  const buffOption = held.find((o) => o.value === 'birch_log' || o.value === 'malachite_ore');
+
+  // raw_log and oak_log are NOT in BUFF_MATERIAL_IDS, so they can only come
+  // from the second block - the one whose filter used to test a Subtype field
+  // ItemDefinition does not have, and therefore rendered nothing at all.
+  const plainLogOre = held.find((o) => o.value === 'raw_log' || o.value === 'oak_log');
+
+  record('donate dropdown offers a held buff material', Boolean(buffOption), buffOption?.label);
+  record(
+    'the log/ore filter lists materials outside the hardcoded buff set',
+    Boolean(plainLogOre),
+    plainLogOre ? plainLogOre.label : 'only the hardcoded buff set is listed',
+  );
+
+  // The uncatalogued side of the same rule, pinned rather than left implicit:
+  // the fixture holds 5,000 copper ore and the depot cannot store any of it,
+  // so the button must stay disabled instead of offering a 400. If copper_ore
+  // is ever given an ItemDefinition this check should fail and be updated -
+  // that is the point of it.
+  const uncatalogued = held.find((o) => o.value === 'copper_ore');
+  if (uncatalogued) {
+    await materialSelect.selectOption('copper_ore');
+    const donateBtn = page.getByRole('button', { name: 'Donate', exact: true }).first();
+    const off = await donateBtn.evaluate((b) => b.disabled);
+    record(
+      'a material the depot cannot store is not offered as donatable',
+      off,
+      off ? 'copper_ore has no ItemDefinition - correctly disabled' : 'enabled, and the server will refuse it',
+    );
+  }
+
+  if (buffOption) {
+    await materialSelect.selectOption(buffOption.value);
+
+    // Modul: read `.disabled` through evaluate rather than isDisabled(). The
+    // editability check is defined for inputs and selects and answers "not
+    // disabled" for anything else, which is how a greyed-out control once
+    // reported a broken feature as working.
+    const donate = page.getByRole('button', { name: 'Donate', exact: true }).first();
+    const stillDisabled = await donate.evaluate((b) => b.disabled);
+    record(
+      'choosing a material enables the Donate button',
+      !stillDisabled,
+      stillDisabled ? 'still disabled - depotMax did not resolve' : buffOption.value,
+    );
+
+    if (!stillDisabled) {
+      const before = await page.evaluate(() => document.body.innerText);
+      await donate.click();
+      // The donation is a REST round trip and the panel refetches on a timer,
+      // so wait for the outcome rather than a fixed delay.
+      await page
+        .waitForFunction(
+          (prev) => document.body.innerText !== prev,
+          before,
+          { timeout: 15000 },
+        )
+        .catch(() => {});
+      const after = await page.evaluate(() => document.body.innerText);
+      const failed = /Failed to donate|not in a guild|must be positive/i.test(after);
+      record(
+        'donating a material is accepted by the server',
+        /donated/i.test(after) && !failed,
+        failed ? after.match(/Failed to donate.*/i)?.[0] ?? 'refused' : 'contribution points granted',
+      );
+    }
+  }
 }
 
 // --- world boss --------------------------------------------------------------

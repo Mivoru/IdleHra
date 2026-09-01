@@ -181,7 +181,15 @@
         baseId: stack.ItemId,
         quantity: stack.Quantity,
       }))
-      .filter((row) => row.definition !== undefined)
+      // Modul: a stack with NO ItemDefinition is kept. Materials live in two
+      // namespaces - items.json defines 326 pieces of equipment and 16 of the
+      // 20 buff materials, while copper_ore, iron_ore, raw_log and oak_log are
+      // unified COMMODITY ids that ContentRegistry, CraftingEngine and the
+      // Village all use and items.json does not carry. Dropping the rows
+      // without a definition removed exactly those four from this panel, so a
+      // player holding 5,000 copper ore saw it listed as x0 with a dead
+      // button. Donation needs the base id only; just the two numeric-id APIs
+      // below need a definition, and those are gated separately.
       .sort((a, b) => a.baseId.localeCompare(b.baseId));
   });
 
@@ -328,7 +336,17 @@
     }
   }
 
-  // Only allow buff-related materials: logs and ores from the 5 regions
+  // Only allow buff-related materials: logs and ores from the 5 regions.
+  //
+  // Modul: FOUR of these twenty are not in items.json - copper_ore, iron_ore,
+  // obsidian_ore and silver_ore. They are real unified commodity ids (the
+  // Village and CraftingEngine both use them) but they have no ItemDefinition,
+  // and GuildDepotBalances is keyed on ItemDefinitionId, so the donate
+  // endpoint answers 400 for all four. The server's own BuffTierMaterials
+  // table has the same four, which makes the common-ore path of several buff
+  // tiers unreachable. Fixing it means either cataloguing those four or
+  // repointing the tiers at ores that exist - a content decision, recorded
+  // here rather than silently worked around.
   const BUFF_MATERIAL_IDS = new Set([
     'birch_log', 'golden_birch_log', 'copper_ore', 'malachite_ore',
     'willow_log', 'golden_willow_log', 'iron_ore', 'hematite_ore',
@@ -551,13 +569,24 @@
 
         <div class="row">
           <input type="number" min="1" max={depotMax || 1} bind:value={depotQuantity} />
-          <button disabled={depotMaterial === '' || depotMax === 0} onclick={deposit}>
+          <!-- These two go through APIs that take a numeric definition id and
+               refuse anything else, so they need a catalogued item - not every
+               donatable commodity has one. Donate takes the base id and does
+               not. -->
+          <button disabled={depotMaterial === '' || depotMax === 0 || depotMaterialId === 0} onclick={deposit}>
             To depot
           </button>
-          <button disabled={depotMaterial === '' || depotMax === 0} onclick={contributeStock}>
+          <button disabled={depotMaterial === '' || depotMax === 0 || depotMaterialId === 0} onclick={contributeStock}>
             To chain
           </button>
-          <button disabled={depotMaterial === '' || depotMax === 0 || !isDonatableMaterial(depotMaterial)} onclick={handleDonate}>
+          <!-- Modul: donating ALSO needs a catalogued item, even though the
+               endpoint takes a base id string. GuildDepotBalances is keyed on
+               ItemDefinitionId and the engine bails on
+               TryGetItemDefinitionByBaseId, so an uncatalogued commodity is a
+               400 no matter how much of it the player holds. Four of the
+               twenty BUFF_MATERIAL_IDS are uncatalogued - see the note by that
+               set. -->
+          <button disabled={depotMaterial === '' || depotMax === 0 || depotMaterialId === 0 || !isDonatableMaterial(depotMaterial)} onclick={handleDonate}>
             Donate
           </button>
         </div>
