@@ -466,6 +466,16 @@
       {/if}
     </section>
 
+    <!-- Modul: GUILD WAR IS ON HOLD, not removed - decided 2026-09-01, and
+         docs/FUTURE_PLANS.md still lists it as planned. The panel is hidden
+         rather than deleted so the handlers keep a caller; they are also the
+         four remaining svelte-check errors, and that is the trade being made
+         knowingly.
+
+         NOTE the Logistics section below is inside this hidden panel too, so
+         the "To chain" button in the visible Depot feeds a production bar
+         players cannot see. That is a real inconsistency, not part of the
+         hold - see the 2026-09-01 handoff. -->
     <section class="panel" style="display:none;">
       <h2>Raid</h2>
 
@@ -483,14 +493,13 @@
 
       <button disabled={!hasGuild} onclick={raid}>Launch raid</button>
 
-      <h3>Treasury</h3>
-      <div class="row">
-        <input type="number" min="1" step="100" bind:value={treasuryGold} />
-        <button disabled={!hasGuild || treasuryGold < 1} onclick={giveGold}>Contribute gold</button>
-      </div>
-      <p class="dim tiny">
-        Raises the guild's tier and your own contribution ranking on the roster.
-      </p>
+      <!-- The Treasury block that stood here was a second copy of the
+           Contribute gold control, superseded by the one in the Depot panel
+           below. Both were bound to the same treasuryGold state and called the
+           same giveGold, so they were never out of step - but only this one was
+           inside display:none, which is the only reason players never saw two.
+           Removed rather than left as the kind of duplicate that gets edited on
+           one side. -->
 
       <h3>Logistics</h3>
       <div class="axis">
