@@ -583,9 +583,9 @@ await go('Guild');
 
   // Modul: must be a CATALOGUED material. GuildDepotBalances is keyed on
   // ItemDefinitionId, so a commodity with no items.json entry is a 400 however
-  // much of it the player holds - and four of the twenty buff materials
-  // (copper_ore, iron_ore, obsidian_ore, silver_ore) are exactly that. These
-  // two are catalogued and stocked by the fixture.
+  // much of it the player holds. Four of the twenty buff materials used to be
+  // exactly that; copper_ore, iron_ore, obsidian_ore and silver_ore were
+  // catalogued on 2026-09-01 and all twenty are donatable now.
   const buffOption = held.find((o) => o.value === 'birch_log' || o.value === 'malachite_ore');
 
   // raw_log and oak_log are NOT in BUFF_MATERIAL_IDS, so they can only come
@@ -600,20 +600,22 @@ await go('Guild');
     plainLogOre ? plainLogOre.label : 'only the hardcoded buff set is listed',
   );
 
-  // The uncatalogued side of the same rule, pinned rather than left implicit:
-  // the fixture holds 5,000 copper ore and the depot cannot store any of it,
-  // so the button must stay disabled instead of offering a 400. If copper_ore
-  // is ever given an ItemDefinition this check should fail and be updated -
-  // that is the point of it.
-  const uncatalogued = held.find((o) => o.value === 'copper_ore');
+  // The uncatalogued side of the same rule, pinned rather than left implicit.
+  // raw_log and oak_log are gathering slugs the Village spends and items.json
+  // does not carry, so the depot cannot store them and the button must stay
+  // disabled rather than offering a 400. This check used to watch copper_ore
+  // and fired correctly the moment copper_ore was catalogued, which is what it
+  // is for - if these two ever gain an ItemDefinition, expect it to fail again
+  // and move it to whatever is still uncatalogued.
+  const uncatalogued = held.find((o) => o.value === 'raw_log' || o.value === 'oak_log');
   if (uncatalogued) {
-    await materialSelect.selectOption('copper_ore');
+    await materialSelect.selectOption(uncatalogued.value);
     const donateBtn = page.getByRole('button', { name: 'Donate', exact: true }).first();
     const off = await donateBtn.evaluate((b) => b.disabled);
     record(
       'a material the depot cannot store is not offered as donatable',
       off,
-      off ? 'copper_ore has no ItemDefinition - correctly disabled' : 'enabled, and the server will refuse it',
+      off ? `${uncatalogued.value} has no ItemDefinition - correctly disabled` : "enabled, and the server will refuse it",
     );
   }
 
@@ -696,6 +698,22 @@ await go('Character');
   // could carry neither.
   const toolSlots = await page.locator('.tools .gearslot').count();
   record('the doll has the three tool slots', toolSlots === 3, `${toolSlots} tool slots`);
+
+  // Modul: a WORN TOOL HAS TO SHOW. Counting the slots proved only that three
+  // buttons render, and for as long as tools have existed all three rendered
+  // EMPTY however many were equipped: the inventory snapshot recorded the
+  // eight combat slots and never the tool ones, so an axe written to
+  // EquippedAxeId came back as EquippedByCharacterSlot -1. The doll drew
+  // nothing and the axe stayed in its own picker as available, which is what
+  // "I equip a tool and nothing appears in the slot" was.
+  //
+  // The fixture equips an axe on the main character, so this is checkable
+  // without equipping anything first - and it fails loudly if that snapshot
+  // ever stops reporting the tool slots again.
+  const axeSlot = page.locator('.tools .gearslot').first();
+  const axeFilled = await axeSlot.evaluate((el) => el.classList.contains('filled'));
+  const axeText = (await axeSlot.innerText()).replace(/\s+/g, ' ').trim();
+  record('a worn tool shows in its slot', axeFilled, axeFilled ? axeText : 'slot rendered empty');
 
   const gearSlot = page.locator('.gearslot').first();
   const hasDoll = (await gearSlot.count()) > 0;

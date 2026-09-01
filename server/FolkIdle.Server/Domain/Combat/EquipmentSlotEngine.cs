@@ -141,6 +141,14 @@ namespace FolkIdle.Server.Domain.Combat
             SlotBoots => character.EquippedBootsId,
             SlotAmulet => character.EquippedAmuletId,
             SlotRing => character.EquippedRingId,
+            // Modul: completed to match WriteSlot, which has handled the three
+            // tool slots all along. A reader that silently answers "empty" for
+            // a slot its writer can fill is the shape of the bug that made a
+            // worn tool invisible; this one has no callers today, which is the
+            // only reason it did not cause a second one.
+            SlotAxe => character.EquippedAxeId,
+            SlotPickaxe => character.EquippedPickaxeId,
+            SlotRod => character.EquippedRodId,
             _ => null
         };
 
@@ -188,7 +196,15 @@ namespace FolkIdle.Server.Domain.Combat
                     c.EquippedLeggingsId == itemInstanceId ||
                     c.EquippedBootsId == itemInstanceId ||
                     c.EquippedAmuletId == itemInstanceId ||
-                    c.EquippedRingId == itemInstanceId));
+                    c.EquippedRingId == itemInstanceId ||
+                    // Modul: the three tool slots were missing from this test,
+                    // so the "one physical item cannot be worn by two
+                    // characters at once" rule this method exists to enforce
+                    // did not cover tools at all - a single axe could be worn
+                    // by the whole roster and count its bonus three times.
+                    c.EquippedAxeId == itemInstanceId ||
+                    c.EquippedPickaxeId == itemInstanceId ||
+                    c.EquippedRodId == itemInstanceId));
         }
 
         // Three-item variant for ForgeSplicingEngine, which locks a target and

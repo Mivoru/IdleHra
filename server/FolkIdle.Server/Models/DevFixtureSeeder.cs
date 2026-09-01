@@ -559,7 +559,15 @@ namespace FolkIdle.Server.Models
             // fixture dresses the jewellery slots instead, which is what the
             // catalogue has actually authored all along.
             "eq_hunter_amulet_amulet_slot_base",
-            "eq_iron_signet_ring_1/2_slot_base"
+            "eq_iron_signet_ring_1/2_slot_base",
+            // Modul: THE THREE TOOL SLOTS, which this fixture has never
+            // dressed. They are gear like anything else - the doll draws them,
+            // gathering reads them - so an account meant for driving the game
+            // by hand needs them filled, and the switch below silently logged
+            // "resolved to no equip slot" for a tool even if one appeared here.
+            "birch_axe_tool",
+            "birch_pickaxe_tool",
+            "birch_fishing_rod_tool"
         };
 
         /// <summary>
@@ -586,12 +594,50 @@ namespace FolkIdle.Server.Models
 
             if (mainCharacter == null) return;
 
+            // Modul: DROP SLOTS THAT POINT AT NOTHING before deciding whether
+            // this character is already dressed. A re-seed can delete and
+            // recreate EquipmentInstances, and a slot still naming a deleted
+            // row leaves the character wearing an item the inventory snapshot
+            // cannot return - the Character screen then draws that slot empty
+            // for ever, which is indistinguishable from equipping being broken.
+            // Observed as EquippedAxeId 126 surviving a re-seed that renumbered
+            // every instance from 289 up.
+            //
+            // All ELEVEN slots, not the eight combat ones. Every list in this
+            // codebase that stopped at eight has been a bug.
+            var liveInstanceIds = await db.EquipmentInstances
+                .AsNoTracking()
+                .Where(e => e.PlayerId == playerId)
+                .Select(e => e.Id)
+                .ToListAsync();
+            var liveIds = new HashSet<long>(liveInstanceIds);
+
+            long? KeepIfLive(long? id) => id.HasValue && liveIds.Contains(id.Value) ? id : null;
+
+            mainCharacter.EquippedWeaponId = KeepIfLive(mainCharacter.EquippedWeaponId);
+            mainCharacter.EquippedHelmetId = KeepIfLive(mainCharacter.EquippedHelmetId);
+            mainCharacter.EquippedChestId = KeepIfLive(mainCharacter.EquippedChestId);
+            mainCharacter.EquippedGlovesId = KeepIfLive(mainCharacter.EquippedGlovesId);
+            mainCharacter.EquippedLeggingsId = KeepIfLive(mainCharacter.EquippedLeggingsId);
+            mainCharacter.EquippedBootsId = KeepIfLive(mainCharacter.EquippedBootsId);
+            mainCharacter.EquippedAmuletId = KeepIfLive(mainCharacter.EquippedAmuletId);
+            mainCharacter.EquippedRingId = KeepIfLive(mainCharacter.EquippedRingId);
+            mainCharacter.EquippedAxeId = KeepIfLive(mainCharacter.EquippedAxeId);
+            mainCharacter.EquippedPickaxeId = KeepIfLive(mainCharacter.EquippedPickaxeId);
+            mainCharacter.EquippedRodId = KeepIfLive(mainCharacter.EquippedRodId);
+
             // Already kitted out - leave it alone so a session's own equip
-            // changes survive a re-seed.
+            // changes survive a re-seed. The tool slots are part of the test:
+            // a character wearing armour but no tools is not finished, and
+            // that is exactly the state every account was left in before the
+            // loadout below learned to carry them.
             bool alreadyEquipped = mainCharacter.EquippedWeaponId.HasValue
-                || mainCharacter.EquippedChestId.HasValue
-                || mainCharacter.EquippedAmuletId.HasValue;
-            if (alreadyEquipped) return;
+                && mainCharacter.EquippedAxeId.HasValue;
+            if (alreadyEquipped)
+            {
+                await db.SaveChangesAsync();
+                return;
+            }
 
             foreach (string baseItemId in FixtureLoadout.Concat(FixtureSpares))
             {
@@ -680,6 +726,9 @@ namespace FolkIdle.Server.Models
                     case EquipmentSlotEngine.SlotBoots: mainCharacter.EquippedBootsId = instance.Id; break;
                     case EquipmentSlotEngine.SlotAmulet: mainCharacter.EquippedAmuletId = instance.Id; break;
                     case EquipmentSlotEngine.SlotRing: mainCharacter.EquippedRingId = instance.Id; break;
+                    case EquipmentSlotEngine.SlotAxe: mainCharacter.EquippedAxeId = instance.Id; break;
+                    case EquipmentSlotEngine.SlotPickaxe: mainCharacter.EquippedPickaxeId = instance.Id; break;
+                    case EquipmentSlotEngine.SlotRod: mainCharacter.EquippedRodId = instance.Id; break;
                     default:
                         Console.WriteLine($"Dev seed: '{baseItemId}' resolved to no equip slot.");
                         break;

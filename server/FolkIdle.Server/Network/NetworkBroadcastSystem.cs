@@ -4324,6 +4324,19 @@ namespace FolkIdle.Server.Network
                     RecordWorn(rosterCharacter.EquippedBootsId, EquipmentSlotEngine.SlotBoots);
                     RecordWorn(rosterCharacter.EquippedAmuletId, EquipmentSlotEngine.SlotAmulet);
                     RecordWorn(rosterCharacter.EquippedRingId, EquipmentSlotEngine.SlotRing);
+
+                    // Modul: THE THREE TOOL SLOTS, missing here since tools
+                    // were added. This is the whole of "I equip a tool and
+                    // nothing appears in the slot": the equip SUCCEEDS and
+                    // EquippedAxeId is written, but this snapshot is the only
+                    // thing the Character screen reads to decide what a slot
+                    // holds. Unrecorded meant EquippedByCharacterSlot came back
+                    // -1, so the doll drew the slot empty AND the tool stayed
+                    // in its own picker as available - the item was worn and
+                    // offered at the same time.
+                    RecordWorn(rosterCharacter.EquippedAxeId, EquipmentSlotEngine.SlotAxe);
+                    RecordWorn(rosterCharacter.EquippedPickaxeId, EquipmentSlotEngine.SlotPickaxe);
+                    RecordWorn(rosterCharacter.EquippedRodId, EquipmentSlotEngine.SlotRod);
                 }
 
                 var response = new PlayerInventorySnapshotResponse

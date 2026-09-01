@@ -2606,5 +2606,37 @@
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "voidbark_fishing_rod_tool"
+  },
+  {
+    "Id": 438,
+    "RegionTier": 1,
+    "BaseValueGold": 5,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "copper_ore"
+  },
+  {
+    "Id": 439,
+    "RegionTier": 2,
+    "BaseValueGold": 20,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "iron_ore"
+  },
+  {
+    "Id": 440,
+    "RegionTier": 3,
+    "BaseValueGold": 80,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "obsidian_ore"
+  },
+  {
+    "Id": 441,
+    "RegionTier": 4,
+    "BaseValueGold": 320,
+    "FlatAttackPower": 0,
+    "FlatDefenseRating": 0,
+    "BaseId": "silver_ore"
   }
 ]
