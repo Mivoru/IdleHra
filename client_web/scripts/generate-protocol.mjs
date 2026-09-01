@@ -67,11 +67,20 @@ function dumpSchema() {
     }
   }
 
-  return execFileSync(
+  // Modul: `dotnet run` BUILDS first and prints its build diagnostics to
+  // stdout, ahead of the JSON. Locally that never shows, because a prebuilt
+  // DLL is nearly always present and the branch above wins - so this fallback
+  // sat broken until CI, which starts from a clean checkout with no bin/, ran
+  // it for the first time and died on `Unexpected token 'C'` (a compiler
+  // warning path). The schema is taken from the first brace onward rather than
+  // from the first byte.
+  const output = execFileSync(
     'dotnet',
     ['run', '--project', serverProject, '--no-launch-profile', '--', '--dump-protocol'],
     { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 },
   );
+  const firstBrace = output.indexOf('{');
+  return firstBrace > 0 ? output.slice(firstBrace) : output;
 }
 
 // Kind -> TypeScript type. Every integer field becomes `number`, including the

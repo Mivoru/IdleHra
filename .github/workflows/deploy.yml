@@ -90,6 +90,13 @@ jobs:
       # it fails if someone changed a packet struct and did not regenerate,
       # which is this codebase's dominant bug class (two copies of one truth
       # drifting apart) in the one place it can be caught mechanically.
+      # Build the server first so the check reads the compiled DLL, which is
+      # both an order of magnitude faster than `dotnet run` and the same path
+      # every developer takes locally. The `dotnet run` fallback works again
+      # as of this commit, but CI should not be the only thing exercising it.
+      - name: Build the server (for --dump-protocol)
+        run: dotnet build server/FolkIdle.Server/FolkIdle.Server.csproj --configuration Release
+
       - name: Verify generated protocol matches the server
         working-directory: client_web
         run: node scripts/generate-protocol.mjs --check
