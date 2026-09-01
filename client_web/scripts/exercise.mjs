@@ -63,6 +63,27 @@ const dismissToasts = async () => {
 // a balance pass that makes a monster lethal can break the combat step in
 // production while every local test still passes.
 const BASE = process.env.FOLKIDLE_E2E_BASE ?? 'http://localhost:5173/';
+
+// Modul: the API is a DIFFERENT ORIGIN from the page in development - Vite
+// serves the client on 5173 and the server answers on 8080 - so a relative
+// fetch from inside the page hits Vite and comes back as index.html, which
+// surfaces as "Unexpected token '<'" rather than as a 404. In production both
+// halves sit behind one Caddy origin and this collapses to the same host,
+// which is why the client itself never needs it (see lib/net/config.ts, the
+// one place the client's address is written down - this is the harness, not
+// the client).
+const API_BASE = process.env.FOLKIDLE_E2E_API ?? 'http://localhost:8080';
+
+/** The app's own bearer token, so checks can read the API as the signed-in player. */
+const authToken = () =>
+  page.evaluate(() => sessionStorage.getItem('folkidle.token') ?? localStorage.getItem('folkidle.token'));
+
+async function apiGet(path) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { Authorization: `Bearer ${await authToken()}` },
+  });
+  return res.ok ? res.json() : null;
+}
 await page.goto(BASE, { waitUntil: 'networkidle' });
 
 // --- sign in as the stocked fixture -----------------------------------------
@@ -530,6 +551,47 @@ await go('Crafting');
     /Crafting takes time and needs a character/i.test(text),
   );
 
+  // Modul: CRAFT NOW is the other half, added 2026-09-01. Assigning a
+  // character crafts one unit per interval forever while materials last, which
+  // is right for idling and wrong for "I need a pickaxe" - so making one tool
+  // meant assigning a worker and then remembering to stop them. The batch box
+  // multiplies both the cost and the output.
+  //
+  // Counted off the inventory rather than read off a toast: a batch of ten has
+  // to produce ten EquipmentInstances, and only counting them proves the
+  // multiplier reached the engine rather than just the label.
+  const countEquipment = async () => {
+    const body = await apiGet('/api/v1/player/inventory');
+    return body ? (body.Equipment ?? []).length : -1;
+  };
+
+  const batchBox = page.getByRole('checkbox').filter({ hasNot: page.locator('nothing') }).last();
+  const craftBtn = page.getByRole('button', { name: /^Craft(\s|$|\sx)/ }).first();
+  const canCraft = (await craftBtn.count()) > 0;
+  record('the crafting screen offers a direct Craft button', canCraft);
+
+  if (canCraft) {
+    // Tick "Craft x10" by its label so this does not depend on checkbox order.
+    const tenLabel = page.locator('label.check', { hasText: /Craft x10/i }).locator('input');
+    if ((await tenLabel.count()) > 0) await tenLabel.check().catch(() => {});
+    await page.waitForTimeout(300);
+
+    const enabled = page.getByRole('button', { name: /^Craft x10$/ }).and(page.locator('button:not([disabled])')).first();
+    if ((await enabled.count()) > 0) {
+      const before = await countEquipment();
+      await enabled.click();
+      await page.waitForTimeout(2500);
+      const after = await countEquipment();
+      record(
+        'a x10 craft produces ten items in one press',
+        before >= 0 && after - before === 10,
+        `${before} -> ${after}`,
+      );
+    } else {
+      record('a x10 craft produces ten items in one press', true, 'no recipe affordable at x10 - skipped');
+    }
+  }
+
   // Enabled only when the chest holds the recipe's materials, which a fresh
   // fixture may not - a disabled button is a correct answer, not a stall.
   const work = page.getByRole('button', { name: /Put to work/i }).first();
@@ -657,6 +719,65 @@ await go('Guild');
   }
 }
 
+// --- private messages persist -------------------------------------------------
+//
+// Modul: chat used to be written down NOWHERE. Every channel was Redis fan-out
+// to whoever happened to be connected, and the client kept the last 200 lines
+// in a store a page reload wiped. Two things followed, and the second was a
+// defect rather than a gap: there was no history, and a whisper to an OFFLINE
+// player was silently dropped - the dispatch looked the recipient up in the
+// connected-client map and returned, so the sender saw it sent and the
+// recipient never learned it existed.
+//
+// This asserts the durable half. The message is sent through the real UI, then
+// read back through the conversations endpoint - if persistence regresses, the
+// send still LOOKS fine and only this check notices.
+// Chat is the floating dock, not a nav tab - see the round-trip check above.
+await page.getByRole('button', { name: /Show chat/i }).first().click();
+await page.waitForTimeout(600);
+{
+  const stamp = `e2e-${Date.now()}`;
+  const whisperTab = page.getByRole('button', { name: 'Whispers', exact: true });
+  const hasWhispers = (await whisperTab.count()) > 0;
+  record('chat offers a whispers channel', hasWhispers);
+
+  if (hasWhispers) {
+    await whisperTab.first().click();
+    await page.waitForTimeout(400);
+
+    // The recipient is resolved by NAME to a player id before the message is
+    // sent, so this needs a real second account - the local database has one.
+    const target = page.getByPlaceholder(/who|player|name/i).first();
+    const composer = page.getByPlaceholder(/Say something|Message|whisper/i).last();
+
+    if ((await target.count()) > 0 && (await composer.count()) > 0) {
+      await target.fill('michal');
+      await composer.fill(stamp);
+      await composer.press('Enter');
+      await page.waitForTimeout(1500);
+
+      // Read back with the app's own token rather than a second login.
+      const rows = (await apiGet('/api/v1/conversations/list')) ?? [];
+      const thread = rows.find((r) => r.LastMessage === stamp);
+      record(
+        'a private message is written down, not just broadcast',
+        Boolean(thread),
+        thread
+          ? `thread with ${thread.Username}`
+          : `${rows.length} thread(s), none carrying the sent text`,
+      );
+    }
+  }
+
+  // Modul: SHUT THE DOCK. It is a floating overlay, so leaving it open makes
+  // its handle intercept pointer events for every check that follows - the
+  // paper doll's slots then fail with "subtree intercepts pointer events",
+  // which reads as equipment being broken rather than as this block being
+  // untidy. The round-trip check above closes it for the same reason.
+  await page.getByRole('button', { name: /Hide chat/i }).first().click().catch(() => {});
+  await page.waitForTimeout(400);
+}
+
 // --- world boss --------------------------------------------------------------
 await go('World Boss');
 {
@@ -707,13 +828,34 @@ await go('Character');
   // nothing and the axe stayed in its own picker as available, which is what
   // "I equip a tool and nothing appears in the slot" was.
   //
-  // The fixture equips an axe on the main character, so this is checkable
-  // without equipping anything first - and it fails loudly if that snapshot
-  // ever stops reporting the tool slots again.
+  // Modul: EQUIPS ONE HERE rather than trusting the fixture to have done it.
+  // Which character occupies a playable slot is not stable across runs - the
+  // Hall of Ancestors step below FIELDS somebody, and that carries into the
+  // next run - so asserting on a pre-equipped tool made this check depend on
+  // the previous run's tail. Driving the equip makes it self-contained, and it
+  // is also the exact act that was reported broken.
   const axeSlot = page.locator('.tools .gearslot').first();
+  await axeSlot.click();
+  await page.waitForTimeout(500);
+
+  const toolPick = page.locator('.picker button', { hasText: /Axe|Wear|Equip/i }).first();
+  const pickable = (await toolPick.count()) > 0;
+
+  if (pickable) {
+    await toolPick.click();
+    await page.waitForTimeout(1600);
+  }
+  // Close the picker so its overlay does not sit over the slots being read.
+  await page.getByRole('button', { name: 'Close', exact: true }).first().click().catch(() => {});
+  await page.waitForTimeout(400);
+
   const axeFilled = await axeSlot.evaluate((el) => el.classList.contains('filled'));
   const axeText = (await axeSlot.innerText()).replace(/\s+/g, ' ').trim();
-  record('a worn tool shows in its slot', axeFilled, axeFilled ? axeText : 'slot rendered empty');
+  record(
+    'equipping a tool fills its slot',
+    axeFilled,
+    axeFilled ? axeText : pickable ? 'equipped, but the slot still rendered empty' : 'no tool available to equip',
+  );
 
   const gearSlot = page.locator('.gearslot').first();
   const hasDoll = (await gearSlot.count()) > 0;

@@ -103,6 +103,26 @@ namespace FolkIdle.Server.Models
             player.PremiumDiamonds = Diamonds;
             player.AvailableSkillPoints = PlayerLevel;
 
+            // Modul: RESET THE INHERITANCE LADDER, 2026-09-01, for the same
+            // reason the attributes above are recomputed rather than
+            // incremented - a re-seed has to return this account to a known
+            // state or it is not a fixture, it is a save file.
+            //
+            // Inheritance levels persist and each one costs more than the last.
+            // exercise.mjs buys one every run, so after enough runs the ladder
+            // sat at its cap and the next purchase cost more than the fixed
+            // diamond grant above could ever cover - at which point the script
+            // did not fail a check, it CRASHED on a disabled button and every
+            // check after it went unrun. A verification that cannot be run
+            // twice is most of the way to no verification at all.
+            var inheritance = await db.PlayerInheritanceStats
+                .Where(s => s.PlayerId == player.Id)
+                .ToListAsync();
+            foreach (var stat in inheritance)
+            {
+                stat.Level = 0;
+            }
+
             // A fixture account must never arrive quarantined - an automated
             // session that drove the client hard enough to trip the anti-cheat
             // heuristic once would otherwise be unusable forever after.
