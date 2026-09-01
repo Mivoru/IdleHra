@@ -160,7 +160,23 @@ namespace FolkIdle.Server.Network
         // refusal for a fixable reason was indistinguishable from a broken
         // button.
         ForgeLevelTooLow = 19,
-        ItemsNotIdentical = 20
+        ItemsNotIdentical = 20,
+
+        // Modul: the Town Hall caps every other building at 2 + level * 2, and
+        // hitting that cap used to roll the transaction back in silence. The
+        // player pressed Upgrade and nothing happened - no toast, no reason -
+        // which is exactly how "I cannot upgrade anything" was reported.
+        //
+        // Its own code rather than MaxTierReached, because that one says "this
+        // piece is already at the highest rarity there is" and sending it here
+        // would answer a question about a building with a sentence about an
+        // item. A refusal has to say what to DO, and here the answer is
+        // "raise the Town Hall".
+        //
+        // Adding an enum value does not resize the packet - the field is one
+        // byte and stays one byte - so no layout guard or protocol
+        // regeneration is involved.
+        TownHallCeilingReached = 21
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

@@ -1384,13 +1384,22 @@ export function villageCostLabel(costKind: CostKind, currentLevel: number): stri
   const materials = villageMaterialCost(currentLevel).toLocaleString();
   const tier = Math.floor(currentLevel / 5);
   
+  // Modul: THESE MUST MATCH VillageManagementEngine.TierMaterials. This is a
+  // display copy of a server-side table and there is no generator keeping them
+  // together, so it is the kind of thing that goes quietly wrong - it already
+  // did. The ore column read Copper / Iron / Silver, the legacy gathering
+  // slugs, which is what the village used to charge and what no player could
+  // obtain; the server now charges the catalogued ores and this says so.
   const tierLogs = ["Birch Log", "Willow Log", "Acacia Log", "Frostpine Log", "Ebon Log"];
-  const tierOres = ["Copper Ore", "Iron Ore", "Sulfur Ore", "Silver Ore", "Darksteel Ore"];
-  
+  const tierOres = ["Malachite Ore", "Hematite Ore", "Sulfur Ore", "Cobalt Ore", "Darksteel Ore"];
+
   const logName = tier < tierLogs.length ? tierLogs[tier] : "Ebon Log";
   const oreName = tier < tierOres.length ? tierOres[tier] : "Darksteel Ore";
-  
-  if (costKind === 'production' || costKind === 'structural') return `${materials} ${logName} + ${materials} ${oreName}`;
+
+  // Structural buildings (Town Hall, Crafting Workshop) are the only ones that
+  // cost no gold - everything else does now, so the label says so rather than
+  // quoting a price the server will not charge.
+  if (costKind === 'structural') return `${materials} ${logName} + ${materials} ${oreName}`;
   return `${villageGoldCost(currentLevel).toLocaleString()}g + ${materials} ${logName} + ${materials} ${oreName}`;
 }
 

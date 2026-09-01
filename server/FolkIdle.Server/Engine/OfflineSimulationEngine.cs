@@ -291,17 +291,29 @@ namespace FolkIdle.Server.Engine
             long goldRatePerHour = VillageManagementEngine.GetTownHallGoldRatePerHour(townHallLevel);
             long goldEarned = elapsedSeconds * goldRatePerHour / 3600L;
 
-            int lumberjackTierLevel = lumberjackLevel % 5;
-            long woodRatePerHour = lumberjackLevel > 0 ? (lumberjackTierLevel + 1) * 100L : 0;
-            
-            int mineTierLevel = mineLevel % 5;
-            long ironRatePerHour = mineLevel > 0 ? (mineTierLevel + 1) * 100L : 0;
-            
+            // Modul: OUTPUT ONLY EVER GOES UP, 2026-09-01.
+            //
+            // These read `level % 5`, so every fifth upgrade RESET the building
+            // to its weakest band: a Mine went from 500 ore an hour at level 4
+            // to 100 at level 5, and a Warehouse from 2,500 storage to 500.
+            // Upgrading made the building worse, and the cost reset alongside
+            // it - so it read as a bargain right up until the output halved.
+            //
+            // The tier idea was sound and is kept, but it belongs to the COST
+            // and the MATERIALS, which still band by five (see
+            // CalculateProductionUpgradeCost and GetTierMaterials). What a
+            // building produces is not a thing an upgrade may reduce.
+            long woodRatePerHour = lumberjackLevel > 0 ? (lumberjackLevel + 1) * 100L : 0;
+            long ironRatePerHour = mineLevel > 0 ? (mineLevel + 1) * 100L : 0;
+
             var lumberjackMats = VillageManagementEngine.GetTierMaterials(lumberjackLevel);
             var mineMats = VillageManagementEngine.GetTierMaterials(mineLevel);
 
-            int warehouseTierLevel = warehouseLevel % 5;
-            long maxStoragePerItem = warehouseLevel > 0 ? ((warehouseTierLevel + 1) * 100L) * 5L : 0;
+            // One formula for storage, asked of the authority that owns it -
+            // this used to compute its own (warehouseLevel % 5 + 1) * 500 while
+            // CalculateWarehouseMaxStorage said level * 1000, so the offline
+            // path and the live path disagreed about how much a warehouse holds.
+            long maxStoragePerItem = VillageManagementEngine.CalculateWarehouseMaxStorage(warehouseLevel);
 
             long woodEarned = Math.Min(elapsedSeconds * woodRatePerHour / 3600L, maxStoragePerItem);
             long oreEarned = Math.Min(elapsedSeconds * ironRatePerHour / 3600L, maxStoragePerItem);

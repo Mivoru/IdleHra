@@ -77,12 +77,33 @@ namespace FolkIdle.Server.Domain.Progression
         public const float MineIronRatePerLevel = 0.05f;
         public const long WarehouseCapacityPerLevel = 1000L;
 
+        // Modul: THE ORES ARE THE ONES PLAYERS ACTUALLY EARN, 2026-09-01.
+        //
+        // These read copper_ore / iron_ore / silver_ore before now - the legacy
+        // six-slug gathering namespace (GetMaterialString) - while drops and
+        // gathering pay out the CATALOGUED region ores in items.json. The two
+        // are different CommodityRecords rows, so the village was priced in a
+        // currency nothing in the game produces at any scale.
+        //
+        // Measured on the live account that reported this: 152,968 birch_log
+        // and 629 malachite_ore against TWENTY-FIVE copper_ore, with a level
+        // 0->1 upgrade costing 100. Not one building could be upgraded, ever,
+        // and no amount of play would have changed that.
+        //
+        // Copper is the worst case of the trap: it exists as copper_ore (this
+        // table, before now), copper_ore_crafting_material (recipes) and
+        // malachite_ore (the region-1 ore drops give). Three names, one idea.
+        // The catalogued ore is the real content - it has a RegionTier, a gold
+        // value and a drop table - so that is what the village charges.
+        //
+        // Logs were already correct: birch/willow/acacia/frostpine/ebon are all
+        // catalogued and all obtainable. Only the ore column moves.
         private static readonly (string Log, string Ore, string RareLog)[] TierMaterials = new[]
         {
-            ("birch_log", "copper_ore", "golden_birch_log"),
-            ("willow_log", "iron_ore", "golden_willow_log"),
+            ("birch_log", "malachite_ore", "golden_birch_log"),
+            ("willow_log", "hematite_ore", "golden_willow_log"),
             ("acacia_log", "sulfur_ore", "golden_acacia_log"),
-            ("frostpine_log", "silver_ore", "golden_frostpine_log"),
+            ("frostpine_log", "cobalt_ore", "golden_frostpine_log"),
             ("ebon_log", "darksteel_ore", "golden_ebon_log"),
         };
 
@@ -110,6 +131,23 @@ namespace FolkIdle.Server.Domain.Progression
         {
             _serviceProvider = serviceProvider;
             _playerRegistry = playerRegistry;
+        }
+
+        /// <summary>
+        /// Tells the player WHY an upgrade did not happen.
+        /// </summary>
+        /// <remarks>
+        /// Modul: every refusal in ExecuteUpgradeBuildingAsync used to roll the
+        /// transaction back and return, saying nothing to anybody. The client's
+        /// button is only disabled while another upgrade is in flight, so a
+        /// player pressing an unaffordable or ceiling-blocked upgrade got no
+        /// toast, no error and no change - the press simply did nothing, which
+        /// is indistinguishable from the feature being broken and is exactly
+        /// how it was reported.
+        /// </remarks>
+        private void Reject(long playerId, FolkIdle.Server.Network.CommandResultCode code)
+        {
+            _playerRegistry?.EnqueueCommandResult(playerId, (byte)code);
         }
 
         /// <summary>
@@ -235,10 +273,35 @@ namespace FolkIdle.Server.Domain.Progression
                     .FromSqlRaw("SELECT * FROM \"VillageInfrastructures\" WHERE \"PlayerId\" = {0} AND \"BuildingId\" = {1} FOR UPDATE", playerId, (int)targetBuildingId)
                     .SingleOrDefaultAsync();
 
+                // Modul: THE FIRST UPGRADE BUILDS IT, 2026-09-01.
+                //
+                // This used to roll back and return when a player had no row
+                // for the building, and the ONLY place a VillageInfrastructure
+                // row was ever created was DevFixtureSeeder. Real accounts were
+                // therefore born with no rows at all, and every building they
+                // had never somehow acquired a row was permanently
+                // unupgradable - silently, because the rollback said nothing.
+                //
+                // That included the TOWN HALL, which gates the level ceiling of
+                // every other building, so the whole village was frozen behind
+                // a building that could not be started. Measured on the live
+                // account that reported it: rows for Forge and Inn only, both
+                // at the level-0 Town Hall ceiling of 2, nothing else buildable
+                // and no way to raise the cap.
+                //
+                // A missing row now means "not built yet" rather than "does not
+                // exist": it is created at level 0 inside this same transaction
+                // and the upgrade proceeds to level 1. The row still has to be
+                // paid for and still has to clear the ceiling.
                 if (infrastructure == null)
                 {
-                    await transaction.RollbackAsync();
-                    return;
+                    infrastructure = new VillageInfrastructure
+                    {
+                        PlayerId = playerId,
+                        BuildingId = (int)targetBuildingId,
+                        CurrentLevel = 0
+                    };
+                    db.VillageInfrastructures.Add(infrastructure);
                 }
 
                 // Modul: Deferred Part 5 Implementation, Part 3. Town Hall
@@ -250,6 +313,7 @@ namespace FolkIdle.Server.Domain.Progression
                 if (isStructuralBuilding && infrastructure.CurrentLevel >= MaxStructuralBuildingLevel)
                 {
                     await transaction.RollbackAsync();
+                    Reject(playerId, FolkIdle.Server.Network.CommandResultCode.MaxTierReached);
                     return;
                 }
 
@@ -265,6 +329,7 @@ namespace FolkIdle.Server.Domain.Progression
                     {
                         await transaction.RollbackAsync();
                         Console.WriteLine($"Village upgrade rejected: building {targetBuildingId} at level {infrastructure.CurrentLevel} exceeds the Town Hall ceiling.");
+                        Reject(playerId, FolkIdle.Server.Network.CommandResultCode.TownHallCeilingReached);
                         return;
                     }
                 }
@@ -283,6 +348,7 @@ namespace FolkIdle.Server.Domain.Progression
                     !await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, tierMats.Ore, cost))
                 {
                     await transaction.RollbackAsync();
+                    Reject(playerId, FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
                     return;
                 }
 
@@ -292,12 +358,27 @@ namespace FolkIdle.Server.Domain.Progression
                     if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, tierMats.RareLog, rareLogCost))
                     {
                         await transaction.RollbackAsync();
+                        Reject(playerId, FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
                         return;
                     }
                 }
-                else if (!isStructuralBuilding && !isProductionBuilding)
+                // Modul: GOLD IS PART OF EVERY UPGRADE NOW, 2026-09-01.
+                //
+                // It used to fund only the four service buildings, which left
+                // the production half priced in ore alone - and ore is the
+                // scarce half of the economy while gold is the abundant one.
+                // The account that reported the village as unupgradable was
+                // sitting on ELEVEN MILLION gold with no sink for it and 25 ore.
+                //
+                // Charging both means an upgrade is paid for out of the thing a
+                // player has too much of AND the thing they have to go and get,
+                // rather than gating everything on the scarcer one alone.
+                // Structural buildings keep their rare-log component above
+                // instead; they are the ones the whole village is gated behind
+                // and doubling their price would deepen the very wall this
+                // change exists to remove.
+                if (!isStructuralBuilding)
                 {
-                    // Service buildings (Forge, Inn, Breeding, Academy) ALSO cost gold
                     long goldCost = CalculateUpgradeCost(infrastructure.CurrentLevel);
                     var goldRecord = await db.CommodityRecords
                         .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
@@ -306,6 +387,7 @@ namespace FolkIdle.Server.Domain.Progression
                     if (goldRecord == null || goldRecord.Quantity < goldCost)
                     {
                         await transaction.RollbackAsync();
+                        Reject(playerId, FolkIdle.Server.Network.CommandResultCode.InsufficientGold);
                         return;
                     }
                     goldRecord.Quantity -= goldCost;

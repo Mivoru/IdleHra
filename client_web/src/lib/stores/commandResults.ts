@@ -54,6 +54,7 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   // broken button - which is how it was reported.
   19: 'Your Forge is too low a level to produce that rarity. Upgrade it in your village.',
   20: 'Fusion needs three copies of the SAME item - same piece, same rarity.',
+  21: 'Raise the Town Hall first - it caps how far every other building can go.',
 };
 
 export const COMMAND_RESULT_SUCCESS = 0;

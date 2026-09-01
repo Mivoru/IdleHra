@@ -878,8 +878,8 @@ namespace FolkIdle.Server.Tests
                     CurrentLevel = 0
                 });
                 db.CommodityRecords.AddRange(
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "birch_log", Quantity = 1L },
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = 1L });
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = VillageManagementEngine.GetTierMaterials(0).Log, Quantity = 1L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = VillageManagementEngine.GetTierMaterials(0).Ore, Quantity = 1L });
                 await db.SaveChangesAsync();
             }
 
@@ -891,9 +891,9 @@ namespace FolkIdle.Server.Tests
             var infrastructure = await verifyDb.VillageInfrastructures.AsNoTracking()
                 .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.LumberjackBuildingId);
             var unchangedWood = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "birch_log");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == VillageManagementEngine.GetTierMaterials(0).Log);
             var unchangedStone = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == VillageManagementEngine.GetTierMaterials(0).Ore);
 
             Assert.Equal(0, infrastructure.CurrentLevel);
             Assert.Equal(1L, unchangedWood.Quantity);
@@ -919,9 +919,19 @@ namespace FolkIdle.Server.Tests
                     BuildingId = VillageManagementEngine.LumberjackBuildingId,
                     CurrentLevel = 0
                 });
+                // Modul: the tier materials are read from the ENGINE rather
+                // than named here. The ore column moved from the legacy
+                // gathering slugs (copper_ore) to the catalogued ores players
+                // actually earn (malachite_ore) on 2026-09-01, and a test that
+                // hardcodes a material name fails on the rename while what it
+                // checks - that the cost is deducted and the upgrade queued -
+                // never stopped working. Gold is seeded because every
+                // non-structural upgrade now costs some.
+                var tier0 = VillageManagementEngine.GetTierMaterials(0);
                 db.CommodityRecords.AddRange(
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "birch_log", Quantity = 10000L },
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = 10000L });
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = tier0.Log, Quantity = 10000L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = tier0.Ore, Quantity = 10000L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 1_000_000L });
                 await db.SaveChangesAsync();
             }
 
@@ -935,9 +945,9 @@ namespace FolkIdle.Server.Tests
             var infrastructure = await verifyDb.VillageInfrastructures.AsNoTracking()
                 .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.LumberjackBuildingId);
             var updatedWood = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "birch_log");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == VillageManagementEngine.GetTierMaterials(0).Log);
             var updatedStone = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == VillageManagementEngine.GetTierMaterials(0).Ore);
 
             long expectedCost = VillageManagementEngine.CalculateProductionUpgradeCost(0);
 
@@ -976,9 +986,19 @@ namespace FolkIdle.Server.Tests
                     BuildingId = VillageManagementEngine.MineBuildingId,
                     CurrentLevel = 0
                 });
+                // Modul: the tier materials are read from the ENGINE rather
+                // than named here. The ore column moved from the legacy
+                // gathering slugs (copper_ore) to the catalogued ores players
+                // actually earn (malachite_ore) on 2026-09-01, and a test that
+                // hardcodes a material name fails on the rename while what it
+                // checks - that the cost is deducted and the upgrade queued -
+                // never stopped working. Gold is seeded because every
+                // non-structural upgrade now costs some.
+                var tier0 = VillageManagementEngine.GetTierMaterials(0);
                 db.CommodityRecords.AddRange(
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "birch_log", Quantity = 10000L },
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = 10000L });
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = tier0.Log, Quantity = 10000L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = tier0.Ore, Quantity = 10000L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 1_000_000L });
                 await db.SaveChangesAsync();
             }
 
@@ -998,9 +1018,9 @@ namespace FolkIdle.Server.Tests
             var quarry = await verifyDb.VillageInfrastructures.AsNoTracking()
                 .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.MineBuildingId);
             var wood = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "birch_log");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == VillageManagementEngine.GetTierMaterials(0).Log);
             var stone = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == VillageManagementEngine.GetTierMaterials(0).Ore);
 
             long expectedCost = VillageManagementEngine.CalculateProductionUpgradeCost(0);
 
@@ -1031,8 +1051,8 @@ namespace FolkIdle.Server.Tests
                     CurrentLevel = 0
                 });
                 db.CommodityRecords.AddRange(
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "birch_log", Quantity = 1L },
-                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "copper_ore", Quantity = 1L });
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = VillageManagementEngine.GetTierMaterials(0).Log, Quantity = 1L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = VillageManagementEngine.GetTierMaterials(0).Ore, Quantity = 1L });
                 await db.SaveChangesAsync();
             }
 
@@ -1044,9 +1064,9 @@ namespace FolkIdle.Server.Tests
             var infrastructure = await verifyDb.VillageInfrastructures.AsNoTracking()
                 .SingleAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.LumberjackBuildingId);
             var wood = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "birch_log");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == VillageManagementEngine.GetTierMaterials(0).Log);
             var stone = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == VillageManagementEngine.GetTierMaterials(0).Ore);
 
             Assert.Equal(0, infrastructure.CurrentLevel);
             Assert.Equal(0, infrastructure.UpgradeTargetLevel);
@@ -1601,8 +1621,15 @@ namespace FolkIdle.Server.Tests
 
                 Assert.Equal(expectedLootRolls, granted);
 
+                // Modul: GetMaterialString, NOT GetItemBaseId. Analytical loot
+                // resolves its ids through the six-slug gathering namespace, so
+                // loot table id 1 lands in "copper_ore" - which is a different
+                // thing from the catalogue's item id 1
+                // (gold_ore_crafting_material) and a different thing again from
+                // the village's tier ore. Three namespaces, one number; this
+                // line names the one the granting path actually writes.
                 var commodity = await verifyDb.CommodityRecords.AsNoTracking()
-                    .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "copper_ore");
+                    .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == ContentRegistry.GetMaterialString(1));
                 Assert.Equal(expectedLootRolls, commodity.Quantity);
             }
         }
@@ -1954,6 +1981,139 @@ namespace FolkIdle.Server.Tests
         // from the engine's own formula, so this stays an oracle rather than a
         // restatement. It still exercises the CAP branch, which is why the
         // offline period is long enough for production to exceed storage.
+        // Modul: A PLAYER WITH NO BUILDING ROWS CAN STILL BUILD, 2026-09-01.
+        //
+        // ExecuteUpgradeBuildingAsync used to roll back and return when the
+        // player had no VillageInfrastructures row, and the only place such a
+        // row was ever created was DevFixtureSeeder. Real accounts are born
+        // with none, so every building was permanently unupgradable - including
+        // the Town Hall, which caps every other building, so the whole village
+        // was frozen behind a building that could not be started. Silently, at
+        // that: the rollback told nobody.
+        //
+        // This is the fixture-shaped blind spot in its purest form. The seeded
+        // account had rows, so every existing village test passed while no real
+        // player could upgrade anything at all.
+        [Fact]
+        public async Task Test_VillageUpgrade_FirstUpgradeCreatesTheBuilding()
+        {
+            // Modul: far away from 995000009, whose test derives a DIFFERENT
+            // player id per loop iteration (base + mineLevel) and so quietly
+            // owns 995000010-995000021. Sharing one of those made this pass
+            // alone and fail in the suite, which is the worst way for a test to
+            // be wrong.
+            const long testPlayerId = 995000500L;
+            var tier0 = VillageManagementEngine.GetTierMaterials(0);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                // Deliberately NO VillageInfrastructures rows - this is what a
+                // real account looks like.
+                db.CommodityRecords.AddRange(
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = tier0.Log, Quantity = 10_000L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = tier0.Ore, Quantity = 10_000L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 1_000_000L });
+                await db.SaveChangesAsync();
+            }
+
+            var engine = new VillageManagementEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await engine.ExecuteUpgradeBuildingAsync(testPlayerId, VillageManagementEngine.TownHallBuildingId);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var townHall = await verifyDb.VillageInfrastructures.AsNoTracking()
+                .SingleOrDefaultAsync(v => v.PlayerId == testPlayerId && v.BuildingId == VillageManagementEngine.TownHallBuildingId);
+
+            Assert.True(townHall != null, "The first upgrade of a building a player does not have must create it.");
+            Assert.Equal(1, townHall!.UpgradeTargetLevel);
+
+            // And it was paid for - a building conjured for free would be a
+            // worse bug than the one this replaces.
+            long expectedCost = VillageManagementEngine.CalculateProductionUpgradeCost(0);
+            long remainingOre = await verifyDb.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == testPlayerId && c.ItemId == tier0.Ore)
+                .Select(c => c.Quantity)
+                .SingleAsync();
+            Assert.Equal(10_000L - expectedCost, remainingOre);
+        }
+
+        // Modul: AN UPGRADE MAY NEVER MAKE A BUILDING WORSE, 2026-09-01.
+        //
+        // Production rate and warehouse capacity were computed from
+        // `level % 5`, so every fifth upgrade reset the building to its weakest
+        // band: a Mine paid 500 ore an hour at level 4 and 100 at level 5, and
+        // a Warehouse held 2,500 then 500. The cost reset alongside it, so the
+        // upgrade looked like a bargain right up until the output collapsed.
+        //
+        // The tier idea is kept for the COST and the MATERIALS. This pins the
+        // half that must never band: what the building gives. Written as a
+        // sweep across a tier boundary rather than two sampled levels, because
+        // the failure was invisible anywhere except at the boundary.
+        [Fact]
+        public async Task Test_Village_UpgradingNeverReducesOutput()
+        {
+            // Reserves 995000010-995000021: the loop below derives one player
+            // per level as base + mineLevel.
+            const long testPlayerId = 995000009L;
+            const long oneHour = 3600L;
+
+            long previousOre = -1;
+            for (int mineLevel = 1; mineLevel <= 12; mineLevel++)
+            {
+                long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                var payload = new TickStatePayload
+                {
+                    PlayerId = testPlayerId + mineLevel,
+                    LastLogoutTimestamp = now - oneHour,
+                    ActiveActivityId = 0,
+                    MineLevel = (byte)mineLevel,
+                    // High enough that STORAGE never becomes the thing measured -
+                    // this test is about the rate.
+                    WarehouseLevel = 60,
+                    InventorySpaceRemaining = 1000
+                };
+
+                await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                {
+                    db.PlayerRecords.Add(new PlayerRecord
+                    {
+                        Id = testPlayerId + mineLevel,
+                        PlayerGuid = Guid.NewGuid(),
+                        AuthenticatorToken = Guid.NewGuid()
+                    });
+                    await db.SaveChangesAsync();
+                    await OfflineSimulationEngine.ExtrapolateOfflineProgressAsync(db, payload, now);
+                }
+
+                string oreId = VillageManagementEngine.GetTierMaterials(mineLevel).Ore;
+                await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+                long produced = await verifyDb.CommodityRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == testPlayerId + mineLevel && c.ItemId == oreId)
+                    .Select(c => c.Quantity)
+                    .SingleOrDefaultAsync();
+
+                Assert.True(
+                    produced > previousOre,
+                    $"Mine level {mineLevel} produced {produced} an hour, level {mineLevel - 1} produced {previousOre}. " +
+                    "An upgrade must never reduce output - see the % 5 reset this guards against.");
+                previousOre = produced;
+            }
+
+            // Storage is the same rule, and had the same defect.
+            for (int warehouseLevel = 1; warehouseLevel <= 12; warehouseLevel++)
+            {
+                Assert.True(
+                    VillageManagementEngine.CalculateWarehouseMaxStorage(warehouseLevel)
+                        > VillageManagementEngine.CalculateWarehouseMaxStorage(warehouseLevel - 1),
+                    $"Warehouse level {warehouseLevel} must hold more than level {warehouseLevel - 1}.");
+            }
+        }
+
         [Fact]
         public async Task Test_Village_OfflinePassiveIncome_Integration()
         {
@@ -3290,7 +3450,7 @@ namespace FolkIdle.Server.Tests
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid(), IsQuarantined = false, Quarantine_Active = false });
-                db.MarketOrderRecords.Add(new MarketOrderRecord { SellerId = testPlayerId, Price = 100, Status = 0, OrderType = "SELL", BaseItemId = "copper_ore", QualityTier = 0 });
+                db.MarketOrderRecords.Add(new MarketOrderRecord { SellerId = testPlayerId, Price = 100, Status = 0, OrderType = "SELL", BaseItemId = VillageManagementEngine.GetTierMaterials(0).Ore, QualityTier = 0 });
                 await db.SaveChangesAsync();
             }
 
