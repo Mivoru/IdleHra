@@ -300,11 +300,20 @@
             what to point that loop at next.
           </p>
 
+          <!-- Modul: THE LARDER IS FIRST, and "the fourth monster" was wrong.
+               This list used to open with Fight and put the larder third,
+               saying it was the fourth monster of a region that would kill an
+               unfed character. Measured on a brand-new account: the FIRST
+               monster kills it, at 29 seconds, with Field Mouse still on 264
+               of its 465 HP. Onboarding made the same mistake and made it
+               fatal - see docs/onboarding_steps.md section 2 - and a wiki that
+               still taught the old order would have been the surviving copy of
+               it. -->
           <h3 id="the-loop">The core loop</h3>
           <ol class="steps">
+            <li><strong>Fill the larder first.</strong> Fish, then load the catch into Auto-Eat. It heals you mid-fight, and without it the very first monster kills you before you can kill it.</li>
             <li><strong>Fight.</strong> Kills pay experience, gold and — 15% of the time — a piece of equipment.</li>
             <li><strong>Wear what drops.</strong> Nearly all of your power is gear, not levels. A level gives a Warrior no health at all.</li>
-            <li><strong>Fill the larder.</strong> Auto-eat heals you mid-fight. Without it the fourth monster of a region will kill you.</li>
             <li><strong>Gather.</strong> Logs and ore build the village; the village unlocks characters, breeding and offline income.</li>
             <li><strong>Beat the boss.</strong> Each region's boss opens the next region — and the gear of that region, which you may not wear before it.</li>
           </ol>

@@ -408,6 +408,24 @@ body {
   overflow-x: hidden;
 }
 
+/* Modul: ROOM TO SCROLL CLEAR OF THE CHAT HANDLE.
+
+   ChatDock is `position: fixed; right: 1rem; bottom: 1rem`, so it floats over
+   the bottom-right corner and, being out of flow, reserves no space for
+   itself. A control that happens to sit in that corner is covered - the handle
+   takes the click.
+
+   Measured, that is usually harmless: the page scrolls, so the control moves
+   out from under the dock and the four pairs overlap-check.mjs reports at the
+   default scroll offset are all freely reachable. What is NOT harmless is a
+   control at the very END of a screen's content, where there is nothing left
+   to scroll: it stays under the handle permanently. This padding is what makes
+   that case impossible rather than accidental. Sized to the handle (about
+   2rem) plus its 1rem offset plus a thumb's worth of margin. */
+body {
+  padding-bottom: 4.5rem;
+}
+
 img,
 canvas,
 svg {

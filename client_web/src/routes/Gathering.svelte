@@ -459,13 +459,30 @@
     /* Modul: the first column was 2.4rem - sized for "T1", not for
        "Whispering Woods". A two-word location name overflowed it and drew on
        top of the rate and the xp beside it. It is the widest column now, and
-       the row's own height grows when a name wraps. */
-    grid-template-columns: minmax(7rem, 1.4fr) auto auto minmax(5rem, auto);
+       the row's own height grows when a name wraps.
+
+       Modul: the floors are minmax(0, ...) rather than 7rem and 5rem, because
+       those two minimums plus the three gaps came to more than a narrow panel
+       has. At the 900px breakpoint this panel is 245px wide and the row wanted
+       254, so it hung 9px past the edge and the Gather button was sliced -
+       found by clipping-check.mjs, which is the whole reason that script
+       exists. A `fr` track still takes its proportional share of whatever
+       space there is, so the name keeps the widest column and keeps wrapping
+       inside it; it simply no longer demands a width the panel cannot give.
+       The children carry min-width: 0 because a grid item's default
+       min-width:auto refuses to shrink below its content and would reinstate
+       the floor. */
+    grid-template-columns: minmax(0, 1.4fr) auto auto auto;
     gap: 0.5rem;
     align-items: center;
     font-size: 0.82rem;
     border-bottom: 1px solid var(--border);
     padding-bottom: 0.25rem;
+  }
+
+  .nodes li > * {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .nodes li.current {

@@ -50,6 +50,10 @@ server/FolkIdle.Server/server_dev.log
 # Test artefacts
 client_web/smoke-*.png
 client_web/screens-*.png
+# Modul: the geometry checkers drop a screenshot beside every finding, which is
+# how you look at one - they are evidence for a run, not repository content.
+client_web/clipping-*.png
+client_web/wiki-*.png
 
 # Oracle box runtime secrets - DB password and the JWT signing key.
 ops/oracle/.env

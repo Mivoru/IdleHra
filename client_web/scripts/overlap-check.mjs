@@ -8,36 +8,20 @@
 // Overlap is judged on the INTERSECTION AREA relative to the smaller box, so a
 // one-pixel rounding touch is ignored and a control genuinely buried under
 // another is not.
-import { chromium } from 'playwright';
-
-const SCREENS = [
-  'Map', 'Combat', 'Gathering', 'World Boss', 'Boosts',
-  'Character', 'Chest', 'Auto-Eat', 'Crafting', 'Forge',
-  'Market', 'Social', 'Guild', 'Mail',
-  'Village', 'Skill Tree', 'Progress', 'Inheritance', 'Codex',
-  'Breeding', 'Ancestors', 'Store', 'Settings',
-];
+// Modul: the screen list is SHARED now (scripts/screens.mjs). This file kept
+// its own copy, which had drifted its own way: it still said 'Social' where the
+// nav says 'Friends', and it never visited Leaderboards or Wiki at all.
+import { SCREENS, assertMatchesNav, go, open, signIn } from './screens.mjs';
 
 const OVERLAP_RATIO = 0.18;   // ignore hairline touches
 const MIN_AREA = 120;         // ignore slivers
 
-const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } });
+const { browser, page } = await open({ width: 1500, height: 1000 });
+await signIn(page);
 
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
-await page.getByRole('button', { name: 'Sign in' }).click();
-await page.locator('input[type="email"]').fill('dev@folkidle.local');
-await page.locator('input[type="password"]').fill('FolkIdleDev123!');
-await page.getByRole('button', { name: 'Sign in', exact: true }).last().click();
-await page.waitForSelector('text=Combat', { timeout: 20000 });
-{
-  const deadline = Date.now() + 6000;
-  while (Date.now() < deadline) {
-    const c = page.getByRole('button', { name: 'Continue', exact: true });
-    if ((await c.count()) > 0) { await c.first().click(); break; }
-    await page.waitForTimeout(250);
-  }
-}
+const navCheck = await assertMatchesNav(page);
+if (navCheck.missing.length > 0) console.log(`FAIL nav has no button for: ${navCheck.missing.join(', ')}`);
+if (navCheck.unvisited.length > 0) console.log(`note: not visited: ${navCheck.unvisited.join(', ')}`);
 
 // Modul: "COVERED", NOT "RECTANGLES INTERSECT".
 //
@@ -105,7 +89,23 @@ const findOverlaps = () =>
         blockedCount++;
         blockedBy = owner;
       }
-      if (blockedCount >= 2) {
+      // Modul: A FLOATING DOCK IS NOT AN OVERLAP DEFECT, and reporting it as
+      // one is how a real overlap gets lost in the noise.
+      //
+      // ChatDock is position:fixed in the bottom-right corner, so at any given
+      // scroll offset it is sitting on top of SOMETHING - it reported "Kept",
+      // "Bin", "Go" and a skill node, and all four were measured as freely
+      // reachable by scrolling a little (app.css reserves the bottom padding
+      // that guarantees it). Four permanent false positives on a check with
+      // four findings is the whole signal.
+      //
+      // Anything else fixed and floating belongs here too, but it is matched by
+      // POSITION rather than by class name so a rename cannot silently
+      // reinstate the noise.
+      const coveredByFixedOverlay =
+        blockedBy && getComputedStyle(blockedBy.parentElement ?? blockedBy).position === 'fixed';
+
+      if (blockedCount >= 2 && !coveredByFixedOverlay) {
         hits.push(`${name(el)} is covered by ${name(blockedBy)} (${blockedCount}/5 probes)`);
       }
     }

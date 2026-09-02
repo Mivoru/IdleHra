@@ -124,16 +124,64 @@ timeout never reports.
 
 Production now reads **25/25 screens clean**.
 
+## The clipping audit became a script, and found one
+
+Task 2b was "look at every panel for cropped content", which does not scale to
+25 screens and does not run again next month. It is `npm run check:clipping`
+now: every screen at 1500 / 900 / 390px, reporting content wider than its box
+in a container that cannot scroll. **0 findings.**
+
+Three exclusions carry the whole signal-to-noise ratio, and each was learned by
+getting it wrong first: `overflow-x: auto` is a deliberate scroller (CLAUDE.md
+asks for those); `text-overflow: ellipsis` announces its own truncation with a
+visible "..." and the Chest does it 724 times on a phone, correctly; and SVG
+reports `clientWidth` in another coordinate system, which made the Skill Tree's
+labels look like 91px overflows in 29px boxes.
+
+The real one: **Gathering's node rows** hung 9px past their panel at the 900px
+breakpoint, slicing the Gather button, because `minmax(7rem, 1.4fr)` plus
+`minmax(5rem, auto)` plus three gaps demand more than a 245px panel has. The
+floors are `minmax(0, ...)` now - a `fr` track still takes its proportional
+share, so the name column stays widest and keeps wrapping, without demanding a
+width the panel cannot give.
+
+`overlap-check.mjs` reads 0 as well. Its four findings were all the fixed
+ChatDock sitting on whatever occupies the bottom-right corner at the current
+scroll offset; each was measured freely reachable by scrolling, so a fixed
+overlay no longer counts as an overlap. Four permanent false positives on a
+check with four findings is the entire signal. `app.css` now reserves
+`padding-bottom` so a control at the very END of a screen - where there is
+nothing left to scroll - can still be brought clear.
+
+## Three checkers, one rotting list
+
+`SCREENS` was copied into smoke-screens, overlap-check and the new clipping
+check, and every copy rotted its own way. It lives once now in
+`scripts/screens.mjs`, along with the sign-in, a hamburger-aware `go()` and
+`assertMatchesNav`, which makes the nav itself the authority instead of the
+file. The shared sign-in also stopped waiting on a visible `text=Combat`: below
+the mobile breakpoint that button exists but never becomes visible, so every
+narrow-viewport run died on a 25-second timeout that named a locator and said
+nothing about the breakpoint.
+
+## The Wiki was finally opened, and taught the old order
+
+Fifteen pages, no console errors, and the layout holds. But its **core loop**
+still opened with "Fight", put the larder third, and said it was the *fourth*
+monster of a region that kills an unfed character. That is the closed entrance
+again, preserved in the one place a player goes to look things up. Corrected to
+match: larder first, and it is the FIRST monster.
+
 ## State at hand-off
 
-537/537 server, 294/294 client, **94/94 `npm run exercise`**, `svelte-check` at
-the documented 4 errors (the pre-existing `GuildOps.svelte` ones) and 16
-warnings.
+537/537 server, 294/294 client, **99/99 `npm run exercise`**, 25/25
+`smoke:screens` against both localhost and production, 0 clipping findings,
+0 overlaps, and `svelte-check` at the documented 4 errors (the pre-existing
+`GuildOps.svelte` ones) and 16 warnings.
 
-Still open, and each is a decision rather than a defect: the panel-clipping
-sweep does not cover all 26 screens; the Wiki passes its tests but nobody has
-opened it in a browser; the 40 legacy `*_crafting_material` entries are
-classified and deliberately undeleted (`docs/crafting_material_audit.md`).
+One thing is still open, and it is a decision rather than a defect: the 40
+legacy `*_crafting_material` entries are classified and deliberately undeleted
+(`docs/crafting_material_audit.md`).
 
 ---
 

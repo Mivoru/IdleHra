@@ -23,14 +23,15 @@ bodies — several of them still describe the world as it was on 2026-09-01.
 |---|---|---|
 | 7 | Missing icons | **Done.** Tools reach `ITEM_ICONS` by base id; `sprites.missing.txt` + a budget ratchet; all ten "missing" ores/logs turned out to have real art. |
 | 1 | Verify the daily login | **Done.** No defect. Date key is UTC `floor(unix/86400)`; 7 new tests, mutation-checked. |
-| 2 | Audio + panel clipping | **Audio done** (LFS was shipping 130-byte stubs; two guards added). **Clipping audit incomplete** — see below. |
-| 6 | Wiki | **Mostly done, unverified by hand.** New: `WikiVillage`, `WikiRecipes`, `WikiGuildBuffs`, `WikiScreenIndex`, `wikiData.ts`, `wiki.test.ts`. |
+| 2 | Audio + panel clipping | **Done.** Audio: LFS was shipping 130-byte stubs; production now serves 35 KB of real WAV. Clipping: automated as `npm run check:clipping`, 0 findings across 25 screens × 3 widths. |
+| 6 | Wiki | **Done.** Opened in a browser: 15 pages, no console errors. Its core loop taught the old, wrong order and said the *fourth* monster kills an unfed character - fixed. |
 | 5 | Tutorial | **Done.** Discovery moments, seen-state, re-openable list, 64 tests, and `exercise.mjs` now drives a real new account. Doing that found the entrance defect below. |
 | 4 | Breeding | **Done.** `docs/breeding_model.md`, explaining preview, interlocks, terminology canon. Found and fixed a real server defect. |
 | 3 | Delete the chrono bank | **Done, not deployed.** See §8b of `CURRENT_IMPLEMENTATION_STATE.md`. |
 
 **Verification at hand-off:** 537/537 server tests, 294/294 client tests,
-**94/94 `npm run exercise`**, `svelte-check` at 4 errors — the four pre-existing
+**99/99 `npm run exercise`**, 25/25 `smoke:screens` (local and production),
+0 clipping findings, 0 overlaps, `svelte-check` at 4 errors — the four pre-existing
 `GuildOps.svelte` ones — and 16 warnings. Server builds clean. Nothing
 committed, nothing deployed.
 
@@ -93,19 +94,47 @@ runs on an explicit `--seed-dev`, so two-per-sex lasted about two runs.
 fixture is an admin so the console error never appeared until a new account
 drove the client. Tolerated in the exercise alongside the deliberate 404.
 
+### Task 2b, finished by automating it
+
+Eyeballing 26 screens does not scale and does not run again next month, so the
+sweep became a script: **`npm run check:clipping`** walks all 25 screens at
+1500 / 900 / 390px and reports content wider than its box in a container that
+cannot scroll. It reads **0 findings**.
+
+Getting there needed three refinements, each of which is the difference between
+a signal and 700 lines of noise:
+
+- a box with `overflow-x: auto` is a **deliberate scroller**, not a clip — CLAUDE.md
+  actually asks for those on wide content;
+- `text-overflow: ellipsis` **says** it truncated, with a visible "…". The Chest's
+  item list does it 724 times on a phone and is right every time. What is hunted
+  is the silent slice;
+- SVG reports `clientWidth` in a different coordinate system, so the Skill Tree's
+  labels read as overflowing by 91px in a 29px box. Arithmetic, not a defect.
+
+It found one real bug: **Gathering's node rows** hung 9px past their panel at
+900px, slicing the Gather button, because `minmax(7rem, …)` + `minmax(5rem, …)`
++ three gaps demand more than a 245px panel has. The floors are `minmax(0, …)`
+now, so a `fr` track still takes its proportional share without demanding a
+width the panel cannot give.
+
+`overlap-check.mjs` also reads 0 now. Its four findings were all the fixed
+ChatDock covering whatever sits in the bottom-right corner at the current
+scroll offset — measured reachable by scrolling, so a floating overlay is no
+longer counted. `app.css` reserves `padding-bottom` so content at the very END
+of a screen, where there is nothing left to scroll, can still clear it.
+
+### The three checkers shared one rotting list
+
+`SCREENS` lived in three files and each copy rotted separately. It is
+`scripts/screens.mjs` once now, with the sign-in, the hamburger-aware `go()` and
+`assertMatchesNav`, which makes the nav the authority rather than the file.
+
 ### What is genuinely left
 
-1. **Task 2b: the panel-clipping audit is incomplete.** Village's building rows
-   were found genuinely broken and fixed (`white-space: nowrap` on an `auto`
-   grid track forced the row 151px past the panel, cutting the cost mid-word);
-   `Combat`, `Forge`, `ItemBrowser`, `ItemIcon` and three `Wiki*` panels were
-   also touched. The sweep did **not** cover every one of the 26 screens, and
-   `Boosts`/`Store` were deliberately skipped because the chrono deletion was
-   rewriting them at the time. Re-run the sweep across all screens.
-2. **Task 6: the Wiki was not opened in a browser.** Its tests pass and it
-   typechecks, but no one has looked at it.
-3. **The 40 legacy `*_crafting_material` entries** — see
-   `docs/crafting_material_audit.md`. Classified, deliberately not deleted.
+1. **The 40 legacy `*_crafting_material` entries** — see
+   `docs/crafting_material_audit.md`. Classified, deliberately not deleted;
+   deleting them is a product decision, not a cleanup.
 
 ---
 

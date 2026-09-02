@@ -17,6 +17,7 @@
     "smoke:screens": "node scripts/smoke-screens.mjs",
     "check:mobile": "node scripts/mobile-check.mjs",
     "check:overlap": "node scripts/overlap-check.mjs",
+    "check:clipping": "node scripts/clipping-check.mjs",
     "cap:add:android": "cap add android",
     "cap:add:ios": "cap add ios",
     "sync": "npm run build && cap sync",
