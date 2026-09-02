@@ -146,15 +146,20 @@ GitHub credentials on the box and no token anywhere:
     ssh folkidle-server "cd ~/folkidle && git config receive.denyCurrentBranch updateInstead"
 
     # then, from the development machine, every deploy
-    git push ssh://folkidle-server/home/ubuntu/folkidle main
+    git push --no-verify ssh://folkidle-server/home/ubuntu/folkidle main
 
 `updateInstead` refuses if the box's working tree is dirty, which is a feature -
 `git stash` there first and the local change is recoverable. It has carried a
 local edit to the *root* `docker-compose.yml` (not this one) before now.
 
-The git-lfs warning the push prints is expected and harmless: the box has no
-git-lfs, which is exactly why the runtime audio is exempt from it (see **Git
-LFS** above).
+`--no-verify` skips git-lfs's pre-push hook, which would otherwise abort the
+whole push with `git-lfs-authenticate: command not found` the moment the range
+contains a changed `*.png`. The box has no git-lfs and never has: it holds
+pointer stubs for the source sprites under `client/Assets/Images/Sprites`, which
+are never served. What the client actually renders is the `*.webp` under
+`SpritesWeb`, and those are **not** LFS-tracked - verify with `head -c 4` on one
+if a deploy ever comes up with missing art. This is also why the runtime audio
+is exempt from LFS (see **Git LFS** above).
 
 ## Bring it up
 

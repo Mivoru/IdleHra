@@ -52,7 +52,7 @@ Push to the box over SSH instead:
 ssh folkidle-server "cd ~/folkidle && git config receive.denyCurrentBranch updateInstead"
 
 # every deploy, from the machine that has the commit
-git push ssh://folkidle-server/home/ubuntu/folkidle main
+git push --no-verify ssh://folkidle-server/home/ubuntu/folkidle main
 ssh folkidle-server "cd ~/folkidle/ops/oracle && docker compose up -d --build"
 ```
 
