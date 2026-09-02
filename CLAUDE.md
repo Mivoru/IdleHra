@@ -43,7 +43,16 @@ npm run check          # svelte-check
 npm run build          # regenerates protocol + sprites, then checks, then builds
 npm run exercise       # THE verification — see below
 npm run smoke:screens  # weaker: proves screens render
+npm run check:clipping # content cut off, 25 screens × 3 widths
+npm run check:overlap  # controls buried under other controls
 ```
+
+All four read `FOLKIDLE_E2E_BASE`, but only **`smoke:screens` is safe to aim at
+production** — it signs in as a throwaway guest and only navigates. `exercise`
+*spends* (items, villagers, affix rerolls) and the two geometry checks sign in
+as the dev fixture, which does not exist in production; those three are dev-box
+tools. All four share the screen list in `client_web/scripts/screens.mjs` — add
+a destination there, once.
 
 Dev fixture login: `dev@folkidle.local` / `FolkIdleDev123!`. If never seeded:
 
