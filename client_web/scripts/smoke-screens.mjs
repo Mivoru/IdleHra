@@ -16,11 +16,25 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 
 const errors = [];
 page.on('console', (m) => {
+  // Modul: a 403 is the server SAYING NO CORRECTLY, not a broken screen.
+  // Settings asks /api/v1/admin/status whether this account may see the admin
+  // tools, because there is no other way to find out; an ordinary account - and
+  // the guest this script signs in as is always one - is told no, and the
+  // browser logs that refusal as a console error regardless. It failed Settings
+  // on production while Settings worked perfectly.
+  if (m.type() === 'error' && /status of 403/.test(m.text())) return;
   if (m.type() === 'error') errors.push(`console: ${m.text()}`);
 });
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 
-await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
+// Modul: FOLKIDLE_E2E_BASE, like exercise.mjs. This was hardcoded to
+// localhost, and the deploy skill tells you to point it at production with
+// exactly that variable - so the post-deploy check silently smoke-tested the
+// developer's own dev server and reported a pass for a box it had never
+// opened. A verification that cannot be aimed is worse than none, because it
+// is believed.
+const BASE = process.env.FOLKIDLE_E2E_BASE ?? 'http://localhost:5173/';
+await page.goto(BASE, { waitUntil: 'networkidle' });
 await page.getByRole('button', { name: 'Play as guest' }).click();
 await page.waitForSelector('text=Combat', { timeout: 20000 });
 await page.waitForFunction(
@@ -28,17 +42,51 @@ await page.waitForFunction(
   { timeout: 20000 },
 );
 
-// Every destination in the header, by its visible label.
+// Every destination in the header, by its visible label, in the header's own
+// order and grouping.
+//
+// Modul: THIS LIST WENT STALE AND THE SCRIPT COULD NOT SAY SO. It still asked
+// for 'Larder' (the nav has said 'Auto-Eat' for a long time), 'Social' (it is
+// 'Friends'), 'Chat' (chat became a dock, not a screen) and 'Bank' (the chrono
+// bank, deleted 2026-09-02) - while never visiting Map, Leaderboards,
+// Ancestors, Inheritance, Skill Tree or Wiki at all. A missing label fails
+// loudly, which is fine; a screen nobody visits is the silent half, and six of
+// them were going unchecked. The check below asserts the list matches the nav.
 const SCREENS = [
-  'Combat', 'Gathering', 'World Boss', 'Boosts',
-  'Character', 'Chest', 'Larder', 'Crafting', 'Forge', 'Bank', 'Mail',
-  'Market', 'Chat', 'Social', 'Guild',
-  'Village', 'Progress', 'Codex', 'Breeding', 'Store', 'Settings',
+  'Map', 'Combat', 'Gathering', 'World Boss', 'Boosts',
+  'Character', 'Chest', 'Auto-Eat', 'Crafting', 'Forge',
+  'Market', 'Friends', 'Guild', 'Mail', 'Leaderboards',
+  'Breeding', 'Ancestors', 'Inheritance',
+  'Village', 'Skill Tree', 'Progress', 'Codex', 'Store', 'Settings',
+  'Wiki',
 ];
 
-let failures = 0;
+// Modul: the list is checked against the nav rather than trusted. Renaming a
+// destination used to leave this file asking for a button that no longer
+// exists, which surfaces thirty seconds later as a click timeout that says
+// nothing about the rename - and adding one left it unvisited forever, which
+// says nothing at all.
+const navLabels = await page.evaluate(() =>
+  [...document.querySelectorAll('header button')]
+    .map((b) => b.textContent.trim())
+    .filter((t) => t.length > 0),
+);
+const missing = SCREENS.filter((s) => !navLabels.includes(s));
+const unvisited = navLabels.filter((n) => !SCREENS.includes(n));
+if (unvisited.length > 0) {
+  console.log(`note: nav buttons this script does not visit: ${unvisited.join(', ')}`);
+}
+
+// A label with no button is counted and SKIPPED rather than clicked: clicking
+// it waits the full thirty seconds and then throws a timeout that names the
+// locator instead of the rename, which is how this failure used to present.
+let failures = missing.length;
+for (const label of missing) {
+  console.log(`FAIL ${label} - the nav has no button with this label (renamed or removed?)`);
+}
 
 for (const label of SCREENS) {
+  if (missing.includes(label)) continue;
   const before = errors.length;
   await page.getByRole('button', { name: label, exact: true }).first().click();
   // Long enough for a query to resolve and a $effect to run - a crash on

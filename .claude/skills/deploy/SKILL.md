@@ -42,10 +42,28 @@ curl -s -o /dev/null -w "%{http_code}\n" https://folkidle.duckdns.org/api/v1/<en
 
 ## Ship
 
+**`git pull` on the box does not work** — the repo is private and the box has no
+GitHub credentials (no helper, no deploy key). It fails with `could not read
+Username for 'https://github.com'`, which reads like a dead network and is not.
+Push to the box over SSH instead:
+
 ```bash
-ssh folkidle-server
-cd ~/folkidle && git pull
-cd ops/oracle
+# once, on the box
+ssh folkidle-server "cd ~/folkidle && git config receive.denyCurrentBranch updateInstead"
+
+# every deploy, from the machine that has the commit
+git push ssh://folkidle-server/home/ubuntu/folkidle main
+ssh folkidle-server "cd ~/folkidle/ops/oracle && docker compose up -d --build"
+```
+
+`updateInstead` refuses a dirty working tree on the box — `git stash` there
+first, and say so, because it has held a local edit to the root
+`docker-compose.yml` before. The git-lfs warning on push is expected.
+
+The stack itself:
+
+```bash
+cd ~/folkidle/ops/oracle
 docker compose up -d --build
 ```
 
@@ -68,7 +86,13 @@ $env:FOLKIDLE_E2E_BASE='https://folkidle.duckdns.org/'; npm run smoke:screens
 ```
 
 Use `smoke:screens`, not `exercise` — `exercise` spends items, marries
-villagers and rerolls affixes on whatever account it signs into.
+villagers and rerolls affixes on whatever account it signs into. `smoke:screens`
+signs in as a guest and only navigates.
+
+`FOLKIDLE_E2E_BASE` genuinely aims it as of 2026-09-02; before that the script
+hardcoded localhost and ignored the variable, so this post-deploy step had been
+smoke-testing the developer's own dev server and reporting a pass for a box it
+had never opened.
 
 ## Things that look like a dead server but are not
 

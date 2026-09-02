@@ -131,11 +131,35 @@ the `VITE_FOLKIDLE_SERVER` build arg in `docker-compose.yml`, and
 server address into the bundle**. A static build has no runtime configuration;
 changing the hostname is a rebuild, not a restart.
 
+## Getting the code onto the box
+
+**`git pull` on the box does not work, and has not since it was re-provisioned.**
+The repository is private and the box has no GitHub credentials at all - no
+credential helper, no `~/.git-credentials`, no deploy key. `git pull` fails with
+`could not read Username for 'https://github.com'`, which looks like a network
+problem and is not one.
+
+Push to it over SSH instead, from a machine that has the commit. This needs no
+GitHub credentials on the box and no token anywhere:
+
+    # once, on the box - lets a push update the checked-out branch
+    ssh folkidle-server "cd ~/folkidle && git config receive.denyCurrentBranch updateInstead"
+
+    # then, from the development machine, every deploy
+    git push ssh://folkidle-server/home/ubuntu/folkidle main
+
+`updateInstead` refuses if the box's working tree is dirty, which is a feature -
+`git stash` there first and the local change is recoverable. It has carried a
+local edit to the *root* `docker-compose.yml` (not this one) before now.
+
+The git-lfs warning the push prints is expected and harmless: the box has no
+git-lfs, which is exactly why the runtime audio is exempt from it (see **Git
+LFS** above).
+
 ## Bring it up
 
     ssh folkidle-server
-    cd ~/folkidle && git pull
-    cd ops/oracle
+    cd ~/folkidle/ops/oracle
     cp .env.example .env        # if it does not exist yet
     $EDITOR .env                # DB connection string, JWT_SECRET_KEY, mail
     docker compose up -d --build

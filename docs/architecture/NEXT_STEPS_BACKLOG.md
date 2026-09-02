@@ -99,6 +99,31 @@ the top-up only runs on an explicit `--seed-dev` and nothing calls it between
 runs, so two-per-sex lasted about two passes and the pool had measured empty
 with twenty elders standing in it.
 
+## Deploying found two more things, both in the verification itself
+
+**`git pull` on the Oracle box does not work and had not for some time.** The
+repository is private and the box carries no GitHub credentials at all - no
+helper, no `~/.git-credentials`, no deploy key - so it fails with `could not
+read Username for 'https://github.com'`, which reads like a dead network. The
+route that works needs no credentials on the box: set
+`receive.denyCurrentBranch=updateInstead` there once, then
+`git push ssh://folkidle-server/home/ubuntu/folkidle main` from a machine that
+has the commit. Written up in `ops/oracle/README.md` and the deploy skill.
+
+**`smoke:screens` hardcoded localhost and ignored `FOLKIDLE_E2E_BASE`** - the
+exact variable the deploy skill tells you to set to aim it at production. The
+post-deploy check had therefore been smoke-testing the developer's own dev
+server and reporting a pass for a box it had never opened. It honours the
+variable now, and its screen list - which had gone stale in both directions -
+is checked against the nav rather than trusted: it was still asking for
+`Larder` (now `Auto-Eat`), `Social` (now `Friends`), `Chat` (a dock, not a
+screen) and `Bank` (the chrono bank, deleted in this very release), while never
+visiting Map, Leaderboards, Ancestors, Inheritance, Skill Tree or Wiki at all.
+Six screens had been going unchecked, silently, which is the half a click
+timeout never reports.
+
+Production now reads **25/25 screens clean**.
+
 ## State at hand-off
 
 537/537 server, 294/294 client, **94/94 `npm run exercise`**, `svelte-check` at
