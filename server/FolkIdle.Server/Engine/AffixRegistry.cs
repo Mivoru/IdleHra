@@ -539,8 +539,12 @@ namespace FolkIdle.Server.Engine
         // 7,050 at tier 14. A tier-8 roll is under three minutes of region-2
         // income and a hundred-attempt chase is about four hours - an endgame
         // pursuit rather than a wall.
-        public const long RerollGoldBase = 100L;
-        private const double RerollGoldItemTierGrowth = 1.35;
+        // Modul: the old `100 * 1.35^(itemTier-1)` reroll curve was replaced by
+        // the flat per-region table in CalculateRerollGoldCost below, and its
+        // two constants were left behind unreferenced. They were not harmless:
+        // the client's mirror test was still comparing against them, so the one
+        // guard on the reroll price spent its life throwing instead of
+        // checking. A retired formula's constants have to retire with it.
 
         // Modul: THE STREAK MULTIPLIER IS GONE, and it had to go the moment the
         // reroll started rolling rarity at random.

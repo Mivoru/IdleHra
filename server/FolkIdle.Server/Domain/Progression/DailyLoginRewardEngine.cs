@@ -49,6 +49,22 @@ namespace FolkIdle.Server.Domain.Progression
         // number as a second magic constant.
         internal const int PremiumDiamondsOnDay7Completion = 100;
 
+        // Modul: THE DATE KEY, and the only definition of it. A "day" is the
+        // UTC day number - floor(unix epoch seconds / 86400) - never the
+        // server's local day and never the player's. A streak keyed on a
+        // local calendar rolls at a different instant for every pod and for
+        // every timezone, which is the classic way a login streak becomes
+        // unwinnable for a whole hemisphere while looking fine to whoever
+        // wrote it; here everyone on earth crosses the same boundary at the
+        // same second, midnight UTC. "Consecutive" is therefore an exact
+        // key + 1 - a login 25 hours after the last one can still be
+        // consecutive (23:00 then 00:00), and one 23 hours after it can
+        // still be the same day. That is deliberate: the rule is the
+        // calendar boundary, not an elapsed-time window, because an elapsed
+        // window would drift the qualifying hour later every day until the
+        // player fell out of it. DailyLoginStreakTests pins the boundary.
+        internal static long ToDateKey(long epochSeconds) => epochSeconds / 86400L;
+
         // Exposed for tests: which matrix is active for a given UTC date
         // key (epoch-seconds / 86400). Deterministic, server-clock-derived,
         // cycles A-B-C weekly.
@@ -81,7 +97,19 @@ namespace FolkIdle.Server.Domain.Progression
             public static readonly LoginRewardResult NotGranted = new LoginRewardResult(false, 0, 0L, 0);
         }
 
-        public static async Task<LoginRewardResult> TryGrantLoginRewardAsync(RetryingDbContextOptions retryingDbOptions, Guid accountId)
+        public static Task<LoginRewardResult> TryGrantLoginRewardAsync(RetryingDbContextOptions retryingDbOptions, Guid accountId)
+        {
+            return TryGrantLoginRewardAsync(retryingDbOptions, accountId, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        }
+
+        // Modul: the clock is a parameter (test-only, via InternalsVisibleTo)
+        // for one reason - a streak is only correct across day boundaries,
+        // and with DateTimeOffset.UtcNow read inside the transaction the
+        // only way to observe day 2 was to wait until tomorrow. The
+        // production overload above is the sole caller that supplies a real
+        // clock, so there is no path by which a client can choose what day
+        // it is.
+        internal static async Task<LoginRewardResult> TryGrantLoginRewardAsync(RetryingDbContextOptions retryingDbOptions, Guid accountId, long nowEpoch)
         {
             await using var context = new FolkIdleDbContext(retryingDbOptions.Options);
             var strategy = context.Database.CreateExecutionStrategy();
@@ -103,9 +131,8 @@ namespace FolkIdle.Server.Domain.Progression
                         return LoginRewardResult.NotGranted;
                     }
 
-                    long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                    long todayDateKey = nowEpoch / 86400L;
-                    long lastLoginDateKey = player.LastLoginTimestamp / 86400L;
+                    long todayDateKey = ToDateKey(nowEpoch);
+                    long lastLoginDateKey = ToDateKey(player.LastLoginTimestamp);
                     bool hasEverLoggedIn = player.LastLoginTimestamp > 0;
 
                     if (hasEverLoggedIn && lastLoginDateKey == todayDateKey)
@@ -141,15 +168,6 @@ namespace FolkIdle.Server.Domain.Progression
                     if (diamondReward > 0)
                     {
                         player.PremiumDiamonds += diamondReward;
-                    }
-
-                    // Modul: the chrono bank had NO source at all - see
-                    // ChronoGrantRules. The seventh day is the day the streak
-                    // exists to reach, so it is the day that pays time.
-                    if (newStreakDay == 7)
-                    {
-                        player.BankedChronoSeconds = ChronoGrantRules.AddCapped(
-                            player.BankedChronoSeconds, ChronoGrantRules.LoginStreakDaySevenSeconds);
                     }
 
                     await context.SaveChangesAsync();

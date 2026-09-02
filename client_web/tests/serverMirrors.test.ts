@@ -42,17 +42,56 @@ function num(source: string, pattern: RegExp, what: string): number {
   return Number(match[1]);
 }
 
+/** The source from `marker` onward, so a pattern cannot match a different
+ *  switch elsewhere in the same file. */
+function after(source: string, marker: string, what: string): string {
+  const at = source.indexOf(marker);
+  if (at < 0) throw new Error(`could not find ${what} - the pattern needs updating, not deleting`);
+  return source.slice(at, at + 1200);
+}
+
+/** Every `key -> value` pair `pattern` finds, as numbers. */
+function table(source: string, pattern: RegExp): Map<number, number> {
+  const out = new Map<number, number>();
+  for (const m of source.matchAll(pattern)) out.set(Number(m[1]), Number(m[2]));
+  if (out.size === 0) throw new Error('matched no table rows - the pattern needs updating, not deleting');
+  return out;
+}
+
 describe('the numbers the client mirrors still match the server', () => {
-  it('reroll: base fee and growth per item tier', () => {
+  // Modul: THIS TEST USED TO GUARD A FORMULA NEITHER SIDE HAD ANY MORE.
+  //
+  // It compared a client `REROLL_BASE_FEE`/`REROLL_FEE_GROWTH` pair against the
+  // server's `RerollGoldBase`/`RerollGoldItemTierGrowth`, i.e. the old
+  // `100 * 1.35^(itemTier-1)` curve. That curve is gone: the server charges a
+  // flat per-REGION table now, and the client had already followed it. So the
+  // client constants did not exist, the test threw its own "pattern needs
+  // updating" error on every run, and the two server constants sat unreferenced
+  // - a guard that fails constantly guards nothing, because the failure stops
+  // being information.
+  //
+  // The repair is to compare what both sides ACTUALLY use: the five-entry
+  // region table, entry by entry. Note the two are keyed on regionTier (1-5,
+  // via AffixRerollEngine.ResolveRegionTier), NOT on the fourteen-step item
+  // rarity - the names in the old constants were the misleading part.
+  it('reroll: the per-region gold table', () => {
     const affixes = read(serverRoot, 'Engine', 'AffixRegistry.cs');
     const forge = read(clientRoot, 'routes', 'Forge.svelte');
 
-    expect(num(forge, /REROLL_BASE_FEE = (\d+)/, 'client reroll base')).toBe(
-      num(affixes, /RerollGoldBase = (\d+)L/, 'server reroll base'),
-    );
-    expect(num(forge, /REROLL_FEE_GROWTH = ([\d.]+)/, 'client reroll growth')).toBe(
-      num(affixes, /RerollGoldItemTierGrowth = ([\d.]+)/, 'server reroll growth'),
-    );
+    // Both tables are sliced out of their own function first. Bare
+    // `N => NNNNL` and `case N: return NNNN` shapes appear in other switches in
+    // both files, and a mirror test that matches the wrong switch is worse than
+    // no mirror test.
+    const serverBody = after(affixes, 'public static long CalculateRerollGoldCost', 'server reroll function');
+    const clientBody = after(forge, 'function getRerollCost', 'client reroll function');
+
+    const serverTable = table(serverBody, /(\d) => (\d+)L/g);
+    const clientTable = table(clientBody, /case (\d): return (\d+);/g);
+
+    expect([...clientTable.keys()].sort()).toEqual([1, 2, 3, 4, 5]);
+    for (const tier of [1, 2, 3, 4, 5]) {
+      expect(clientTable.get(tier), `region ${tier} reroll price`).toBe(serverTable.get(tier));
+    }
   });
 
   it('fusion: base fee and growth per quality tier', () => {

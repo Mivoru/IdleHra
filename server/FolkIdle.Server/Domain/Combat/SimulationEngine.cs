@@ -84,7 +84,6 @@ namespace FolkIdle.Server.Domain.Combat
         private readonly LarderEngine? _larderEngine;
         private readonly WorldBossEngine _worldBossEngine;
         private readonly GuildWarEngine _guildWarEngine;
-        private readonly ChronoCoreEngine _chronoCoreEngine;
         private readonly LegacyStoreEngine _legacyStoreEngine;
         private readonly GuildLogisticsDepotEngine _guildLogisticsDepotEngine;
         private readonly GuildCombatSimulationEngine _guildCombatSimulationEngine;
@@ -142,7 +141,7 @@ namespace FolkIdle.Server.Domain.Combat
 
         public static int ActiveGlobalEventId { get; private set; }
 
-        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageManagementEngine villageManagementEngine, GuildWarEngine guildWarEngine, ChronoCoreEngine chronoCoreEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null, InheritanceEngine? inheritanceEngine = null, SkillTreeEngine? skillTreeEngine = null, HallOfAncestorsEngine? hallOfAncestorsEngine = null)
+        public SimulationEngine(LootTableEngine lootEngine, StateCheckpointManager checkpointManager, NetworkBroadcastSystem networkSystem, ForgeSplicingEngine forgeEngine, MarketOrderBookEngine marketEngine, PlayerSessionRegistry playerRegistry, GuildContributionEngine guildEngine, MarketEscrowEngine escrowEngine, MailboxAndBankEngine mailboxEngine, AffixRerollEngine rerollEngine, BreedingEngine breedingEngine, GuildLogisticsEngine guildLogisticsEngine, CraftingEngine craftingEngine, WorldBossEngine worldBossEngine, VillageManagementEngine villageManagementEngine, GuildWarEngine guildWarEngine, LegacyStoreEngine legacyStoreEngine, GuildLogisticsDepotEngine guildLogisticsDepotEngine, GuildCombatSimulationEngine guildCombatSimulationEngine, AntiCheatTelemetryEngine antiCheatTelemetryEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, CompliancePurgeEngine compliancePurgeEngine, BillingVerificationEngine billingVerificationEngine, StackExchange.Redis.IConnectionMultiplexer redis, Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> contextFactory, GuildRaidEngine? guildRaidEngine = null, EquipmentSlotEngine? equipmentSlotEngine = null, RelationshipEngine? relationshipEngine = null, LarderEngine? larderEngine = null, InheritanceEngine? inheritanceEngine = null, SkillTreeEngine? skillTreeEngine = null, HallOfAncestorsEngine? hallOfAncestorsEngine = null)
         {
             _lootEngine = lootEngine;
             _checkpointManager = checkpointManager;
@@ -163,7 +162,6 @@ namespace FolkIdle.Server.Domain.Combat
             _hallOfAncestorsEngine = hallOfAncestorsEngine;
             _worldBossEngine = worldBossEngine;
             _guildWarEngine = guildWarEngine;
-            _chronoCoreEngine = chronoCoreEngine;
             _legacyStoreEngine = legacyStoreEngine;
             _guildLogisticsDepotEngine = guildLogisticsDepotEngine;
             _guildCombatSimulationEngine = guildCombatSimulationEngine;
@@ -619,16 +617,6 @@ namespace FolkIdle.Server.Domain.Combat
         // skills it reported on. See SkillTreeRegistry - they were replaced by a
         // passive tree because, measured, they were +90% damage for clicking
         // every three seconds in a game whose premise is not clicking.
-
-        private static uint ResolveChronoEngineStatus(ref TickStatePayload payload)
-        {
-            if (payload.IsChronoAccelerating && (payload.SpeedMultiplier == 2 || payload.SpeedMultiplier == 4))
-            {
-                return 2U;
-            }
-
-            return payload.BankedChronoSeconds > 0.0 ? 1U : 0U;
-        }
 
         private static unsafe int ReadActiveStatusModifier(ref StatusEffectBuffer buffer, int index)
         {
@@ -1354,58 +1342,6 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                while (_playerRegistry.ChronoAccelerationQueue.TryDequeue(out var chronoNotif))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, chronoNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        double newBanked = currentPayload.BankedChronoSeconds + chronoNotif.SecondsToAdd;
-                        if (newBanked > ChronoBufferEngine.MaxBankedChronoSeconds) newBanked = ChronoBufferEngine.MaxBankedChronoSeconds;
-                        currentPayload.BankedChronoSeconds = newBanked;
-                        currentPayload.IsDirty = true;
-                    }
-                    else if (chronoNotif.SecondsToAdd > 0.0)
-                    {
-                        // Modul: chrono grant rescue, 2026-08-01.
-                        //
-                        // ChronoCoreEngine consumes the core and COMMITS before
-                        // posting here, so dropping this notification means the
-                        // player paid an item and received nothing. Unlike the
-                        // snapshot-style notifications around it - which merely
-                        // mirror a value the database already holds - this one
-                        // carries a DELTA, and a dropped delta is destroyed
-                        // value rather than a stale display.
-                        //
-                        // Latent rather than live today: command 24 is the only
-                        // producer and no Chrono Core item exists in the
-                        // catalogue yet, so this cannot currently fire. Fixed
-                        // now because it becomes live the moment that content is
-                        // authored, and nothing about authoring an item would
-                        // prompt anyone to re-examine this drain.
-                        long chronoPlayerId = chronoNotif.PlayerId;
-                        double chronoSeconds = chronoNotif.SecondsToAdd;
-
-                        SafeDispatchAsync("Chrono.GrantRescue", 0L, async () =>
-                        {
-                            await using var chronoDb = await _contextFactory.CreateDbContextAsync();
-
-                            var chronoOwner = await chronoDb.PlayerRecords
-                                .FirstOrDefaultAsync(p => p.Id == chronoPlayerId);
-
-                            if (chronoOwner == null) return;
-
-                            double rescued = chronoOwner.BankedChronoSeconds + chronoSeconds;
-                            if (rescued > ChronoBufferEngine.MaxBankedChronoSeconds)
-                            {
-                                rescued = ChronoBufferEngine.MaxBankedChronoSeconds;
-                            }
-
-                            chronoOwner.BankedChronoSeconds = rescued;
-                            await chronoDb.SaveChangesAsync();
-                        });
-                    }
-                }
-
                 while (_playerRegistry.LegacyStoreUpdateQueue.TryDequeue(out var legacyNotif))
                 {
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, legacyNotif.PlayerId);
@@ -1785,11 +1721,15 @@ namespace FolkIdle.Server.Domain.Combat
                     }
 
                     bool isInternalCommand = cmd.Command == CommandType.ReloadState;
-                    bool isChronoManipulationCommand = cmd.Command == CommandType.ActivateChronoBoost ||
-                        cmd.Command == CommandType.ConsumeTimeWarpCore;
 
                     // Epoch interception gate: reject commands from desynchronized clients.
-                    if (!isInternalCommand && !isChronoManipulationCommand && !ClientCommandValidator.ValidateEpochSynchronization(ref currentPayload, ref cmd))
+                    //
+                    // Modul: commands 47 and 48 used to be exempt here, because
+                    // for those two LogicEpochCounter carried UNIX seconds
+                    // rather than the save-generation counter. Both commands are
+                    // gone, so the exemption is too - and with it the only place
+                    // where that field meant two different things.
+                    if (!isInternalCommand && !ClientCommandValidator.ValidateEpochSynchronization(ref currentPayload, ref cmd))
                     {
                         TerminateSessionForSecurity(routingPlayerId);
                         continue;
@@ -2563,39 +2503,6 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         // Deliberately empty.
                     }
-                    else if (cmd.Command == CommandType.ActivateChronoBoost)
-                    {
-                        uint bankedSeconds = (uint)ChronoBufferEngine.ClampBankedSeconds(currentPayload.BankedChronoSeconds);
-                        if (!ClientCommandValidator.ValidateChronoManipulation(ref currentPayload, ref cmd, bankedSeconds))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        ActivateChronoAcceleration(ref currentPayload, (int)cmd.RequestedSpeedMultiplier);
-                    }
-                    else if (cmd.Command == CommandType.ConsumeTimeWarpCore)
-                    {
-                        uint bankedSeconds = (uint)ChronoBufferEngine.ClampBankedSeconds(currentPayload.BankedChronoSeconds);
-                        if (!ClientCommandValidator.ValidateChronoManipulation(ref currentPayload, ref cmd, bankedSeconds))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        uint requestedSeconds = cmd.ChronoWarpDurationSeconds != 0 ? cmd.ChronoWarpDurationSeconds : cmd.ChronoSecondsRequested;
-                        uint remainingBuffTicks = 0U;
-                        int potencyModifierPct = 0;
-                        if (_liveSessionContexts.TryGetValue(currentPayload.PlayerId, out var chronoSessionContext))
-                        {
-                            remainingBuffTicks = chronoSessionContext.ActiveStatusEffects.RemainingBuffDurationTicks;
-                            potencyModifierPct = ReadActiveStatusModifier(ref chronoSessionContext.ActiveStatusEffects, 1);
-                        }
-
-                        ExecuteInstantTimeWarp(ref currentPayload, requestedSeconds, cmd.ChronoTargetSlot, remainingBuffTicks, potencyModifierPct);
-                        
-                        _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = routingPlayerId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
-                    }
                     else if (cmd.Command == CommandType.RegisterGuildDefense)
                     {
                         if (!ClientCommandValidator.ValidateGuildWarAction(ref currentPayload, ref cmd))
@@ -2794,22 +2701,6 @@ namespace FolkIdle.Server.Domain.Combat
                             _playerRegistry.StateReloadQueue.Enqueue(reloaded);
                         });
                     }
-                    else if (cmd.Command == CommandType.ConsumeChronoCore)
-                    {
-                        if (!ClientCommandValidator.ValidateChronoCommands(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        long chronoCoreItemId = cmd.TargetId;
-
-                        SafeDispatchAsync("Chrono.ConsumeCore", pId, async () => {
-                            await _chronoCoreEngine.ConsumeChronoCoreAsync(pId, chronoCoreItemId);
-                        });
-                    }
                     else if (cmd.Command == CommandType.PurchaseLegacyUnlocks)
                     {
                         if (!ClientCommandValidator.ValidateLegacyStoreRequest(ref currentPayload, ref cmd))
@@ -2954,7 +2845,7 @@ namespace FolkIdle.Server.Domain.Combat
                             }
                         });
                     }
-                    else if (cmd.Command == CommandType.ToggleChronoAcceleration)
+                    else if (cmd.Command == CommandType.SetSimulationSpeed)
                     {
                         int requestedMultiplier = (int)cmd.TargetId;
                         if (requestedMultiplier == 1 || requestedMultiplier == 2 || requestedMultiplier == 4)
@@ -3474,14 +3365,10 @@ namespace FolkIdle.Server.Domain.Combat
                                 DraugrMasteryLevel = currentPayload.DraugrMasteryLevel,
                                 VillagePopulation = currentPayload.VillagePopulation,
                                 AccumulatedTimeBankMs = currentPayload.AccumulatedTimeBankMs,
-                                BankedChronoSeconds = currentPayload.BankedChronoSeconds,
                                 LogicEpochCounter = (uint)(currentPayload.LogicEpochCounter & 0xFFFFFFFF),
                                 PremiumCurrencyBalance = (uint)currentPayload.PremiumCurrency,
                                 LegacyShardBalance = currentPayload.LegacyShardBalance,
-                                IsChronoAccelerating = currentPayload.IsChronoAccelerating ? (byte)1 : (byte)0,
                                 CurrentSimulationSpeedMultiplier = (byte)Math.Clamp(currentPayload.SpeedMultiplier, 1, 4),
-                                VisualBankedChronoSeconds = (uint)ChronoBufferEngine.ClampBankedSeconds(currentPayload.BankedChronoSeconds),
-                                ActiveChronoLockExpirationTicks = (ulong)Math.Max(0L, currentPayload.ActiveChronoLockExpirationTicks),
                                 GlobalNodeRemainingHp = currentPayload.GlobalNodeRemainingHp <= 0L
                                     ? 0U
                                     : (currentPayload.GlobalNodeRemainingHp > uint.MaxValue ? uint.MaxValue : (uint)currentPayload.GlobalNodeRemainingHp),
@@ -3927,460 +3814,19 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
-        private static void ActivateChronoAcceleration(ref TickStatePayload payload, int multiplier)
-        {
-            // Modul: 1 MEANS STOP, and it used to mean nothing.
-            //
-            // Acceleration could be turned on from the Boosts screen and not
-            // turned off from it: this method returned early for anything that
-            // was not 2 or 4, so a "1x" was silently discarded, and the only
-            // real off-switch was ToggleChronoAcceleration - wired to the STORE
-            // screen. A player who started a boost on one screen had to find
-            // another to stop it, or wait for the bank to drain.
-            if (multiplier == 1)
-            {
-                payload.SpeedMultiplier = 1;
-                payload.IsChronoAccelerating = false;
-                payload.ActiveChronoSpeedMultiplier = 1.0;
-                payload.ActiveChronoLockExpirationTicks = 0L;
-                payload.IsDirty = true;
-                return;
-            }
-
-            if (multiplier != 2 && multiplier != 4)
-            {
-                return;
-            }
-
-            int bankedSeconds = ChronoBufferEngine.ClampBankedSeconds(payload.BankedChronoSeconds);
-            if (bankedSeconds <= 0)
-            {
-                payload.SpeedMultiplier = 1;
-                payload.IsChronoAccelerating = false;
-                payload.ActiveChronoSpeedMultiplier = 1.0;
-                payload.ActiveChronoLockExpirationTicks = 0L;
-                return;
-            }
-
-            payload.SpeedMultiplier = multiplier;
-            payload.IsChronoAccelerating = true;
-            payload.ActiveChronoSpeedMultiplier = multiplier;
-            long now = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            payload.ActiveChronoLockExpirationTicks = now + (long)System.Math.Floor(bankedSeconds / (double)(multiplier - 1));
-            payload.IsDirty = true;
-        }
-
-        private static void ExecuteInstantTimeWarp(ref TickStatePayload payload, uint requestedSeconds, uint targetSlot, uint remainingBuffTicks, int potencyModifierPct)
-        {
-            int bankedSeconds = ChronoBufferEngine.ClampBankedSeconds(payload.BankedChronoSeconds);
-            int warpSeconds = (int)System.Math.Min(requestedSeconds, (uint)bankedSeconds);
-            if (warpSeconds <= 0)
-            {
-                return;
-            }
-
-            payload.BankedChronoSeconds = System.Math.Max(0.0, payload.BankedChronoSeconds - warpSeconds);
-            if (payload.BankedChronoSeconds <= 0.0)
-            {
-                payload.SpeedMultiplier = 1;
-                payload.IsChronoAccelerating = false;
-                payload.ActiveChronoSpeedMultiplier = 1.0;
-                payload.ActiveChronoLockExpirationTicks = 0L;
-            }
-
-            long totalTicks = (long)warpSeconds * 10L;
-            if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out var gatheringNode))
-            {
-                ApplyGatheringWarp(ref payload, gatheringNode, totalTicks, warpSeconds, remainingBuffTicks, potencyModifierPct);
-            }
-            else
-            {
-                ApplyCombatWarp(ref payload, totalTicks, targetSlot, warpSeconds, remainingBuffTicks, potencyModifierPct);
-            }
-
-            payload.IsDirty = true;
-        }
-
-        private static void ApplyGatheringWarp(ref TickStatePayload payload, GatheringNodeDefinition gatheringNode, long totalTicks, int warpSeconds, uint remainingBuffTicks, int potencyModifierPct)
-        {
-            int masteryLevel = GetMasteryLevel(ref payload, gatheringNode.ProfessionType);
-
-            // Modul: THE WARP PATH IGNORED YOUR TOOLS.
-            //
-            // The live tick a few thousand lines down resolves the tool that
-            // matches the job - axe for woodcutting, pickaxe for mining, rod
-            // for fishing - and runs it through GatheringToolEngine, which is
-            // where the +10% to +200% speed ladder lives. This path subtracted
-            // CachedCurrentToolTier, the FORGE BUILDING'S LEVEL, and applied no
-            // speed bonus at all.
-            //
-            // So a player with a full set of Voidbark tools gathered at their
-            // forge level while offline or warping, and every hour away threw
-            // away the entire reason to craft tools. Same shape as the food
-            // heal above and the three damage models before it: the live tick
-            // learned something and the projection beside it did not.
-            int villageProductionLevel = gatheringNode.ProfessionType switch
-            {
-                0 => payload.LumberjackLevel,
-                1 => payload.MineLevel,
-                _ => 0
-            };
-            int toolTier = gatheringNode.ProfessionType switch
-            {
-                0 => payload.AxeToolTier,
-                1 => payload.PickaxeToolTier,
-                _ => payload.RodToolTier
-            };
-            // Modul: Harvest, the Insight bough, rides the affix parameter -
-            // it is the same currency (a flat percent off the tick threshold)
-            // and giving it a parameter of its own would be two knobs where
-            // the engine already has one.
-            int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(
-                gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel,
-                payload.ToolGatherSpeedPct
-                + SkillTreeRegistry.GetBonusTenthsOfPercent(
-                    SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
-                // Modul: Skill, the bloodline's gathering and crafting aptitude.
-                + (int)BreedingAptitudes.BonusPercentFor(payload.Aptitude_Skill));
-            // Modul: Logistics achievement family's stackable claim reward
-            // (Phase: Full-Stack Production Polish, Part 2.3) - a flat
-            // percent reduction in the tick threshold, i.e. a gathering
-            // speed boost. Applied multiplicatively after the additive
-            // mastery/tool reductions above, matching how percentage
-            // bonuses are layered everywhere else in this codebase (see
-            // e.g. RaceMasteryResolver's own bonuses).
-            if (payload.CachedLogisticsGatheringSpeedBonusPct > 0)
-            {
-                requiredTicks -= (requiredTicks * payload.CachedLogisticsGatheringSpeedBonusPct) / 100;
-            }
-            if (requiredTicks < 2) requiredTicks = 2;
-
-            long progressedTicks = payload.GatheringProgressTicks + totalTicks;
-            long completedCycles = progressedTicks / requiredTicks;
-            payload.GatheringProgressTicks = (int)(progressedTicks % requiredTicks);
-            payload.RequiredProgressTicks = requiredTicks;
-
-            if (completedCycles <= 0)
-            {
-                return;
-            }
-
-            payload.HarvestLoopCount += completedCycles;
-
-            double integratedBuffMultiplier = CalculateIntegratedBuffMultiplier(warpSeconds, remainingBuffTicks, potencyModifierPct);
-            long masteryXp = (long)Math.Floor(completedCycles * gatheringNode.BaseMasteryXpReward * integratedBuffMultiplier);
-            ApplyBulkMasteryXp(ref payload, gatheringNode.ProfessionType, masteryXp);
-            AddSeasonalXp(ref payload, ClampLongToInt(masteryXp));
-
-            long expectedDrops = CalculateExpectedWarpDrops(ref payload, completedCycles, gatheringNode.ProfessionType, integratedBuffMultiplier);
-            ConsumeInventorySlots(ref payload, expectedDrops);
-        }
-
-        private static void ApplyCombatWarp(ref TickStatePayload payload, long totalTicks, uint targetSlot, int warpSeconds, uint remainingBuffTicks, int potencyModifierPct)
-        {
-            if (payload.ActiveActivityId <= 0 || ContentRegistry.Monsters.Length == 0)
-            {
-                return;
-            }
-
-            int monsterId = payload.CurrentMonsterId > 0 ? payload.CurrentMonsterId : (payload.ActiveActivityId > ContentRegistry.Monsters.Length ? 1 : (int)payload.ActiveActivityId);
-            if (monsterId <= 0 || monsterId > ContentRegistry.Monsters.Length)
-            {
-                monsterId = 1;
-            }
-
-            var monster = ContentRegistry.Monsters[monsterId - 1];
-            long ticksPerKill = EstimateTicksPerKill(ref payload, monsterId);
-            if (ticksPerKill == long.MaxValue)
-            {
-                // Cannot hurt it at all - warping past a monster the character
-                // cannot kill must bank nothing rather than divide by it.
-                return;
-            }
-
-            long completedKills = totalTicks / ticksPerKill;
-            payload.CombatTargetTickAccumulator = (int)(totalTicks % ticksPerKill);
-
-            if (completedKills <= 0)
-            {
-                return;
-            }
-
-            int warpActiveRaceId = payload.Slot1_CharacterId != System.Guid.Empty ? (int)(payload.Slot1_GeneticVector & 0xFF) : 0;
-            int warpActiveAgePhase = payload.Slot1_CharacterId != System.Guid.Empty ? payload.Slot1_AgePhase : 1;
-            var warpCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, warpActiveAgePhase, payload.CompletedAreaFlags, warpActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
-
-            // Modul: expected incoming damage over this warp period, mirroring
-            // the live tick's monster crit formula (5% base + 0.5% per region
-            // tier, 1.5x crit multiplier reduced by Vodnik's CritMitigationPct)
-            // and the offline-projection's food-depletion model. If available
-            // Food1-3 stock cannot sustain the full warp period, completedKills
-            // is scaled down to whatever was actually survivable.
-            if (warpSeconds > 0)
-            {
-                int warpMonsterRegionTier = ContentRegistry.GetMonsterRegionTier(monsterId);
-                float warpMonsterCritChance = 0.05f + (warpMonsterRegionTier * 0.005f);
-                float warpMitigatedCritMult = Math.Max(1.0f, 1.5f - (warpCombatStats.CritMitigationPct / 100f));
-                float warpExpectedCritMultiplier = 1.0f + warpMonsterCritChance * (warpMitigatedCritMult - 1.0f);
-
-                long warpRawIncomingMilliDamage = (long)(BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, monsterId) * 1000 * warpExpectedCritMultiplier);
-                long warpNetIncomingMilliDamage = CombatDamageModel.Mitigate(
-                    warpRawIncomingMilliDamage,
-                    warpCombatStats.FlatPhysicalArmor,
-                    CombatDamageModel.PlayerArmourHalvingConstant(warpMonsterRegionTier));
-
-                double warpMonsterAttacksPerSecond = monster.AttackIntervalMs > 0 ? 1000.0 / monster.AttackIntervalMs : 0.0;
-                double warpExpectedIncomingMilliDps = warpNetIncomingMilliDamage * warpMonsterAttacksPerSecond;
-
-                if (warpExpectedIncomingMilliDps > 0.0)
-                {
-                    // Modul: the player's own max-HP pool is a "free" absorption
-                    // buffer before any food is ever needed, mirroring the live
-                    // tick's Auto-Eat threshold trigger - without this, a
-                    // character with no food stocked would be treated as unable
-                    // to survive any combat time at all.
-                    int warpLineageId = payload.SelectedLineageId;
-                    if (warpLineageId < 0 || warpLineageId >= ProgressionEngine.Lineages.Length) warpLineageId = 0;
-                    var warpLineage = ProgressionEngine.Lineages[warpLineageId];
-                    long warpBaseMilliHp = 100000L;
-                    long warpEffectiveMilliHp = warpBaseMilliHp + (warpBaseMilliHp * warpLineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (warpCombatStats.MaxHp * 1000L);
-
-                    double warpTotalIncomingMilliDamage = warpExpectedIncomingMilliDps * warpSeconds;
-                    long warpTotalFoodUnits = payload.Food1_Count + payload.Food2_Count + payload.Food3_Count;
-                    double warpTotalHealCapacityMilliHp = warpEffectiveMilliHp + ((double)warpTotalFoodUnits * 50000);
-
-                    if (warpTotalIncomingMilliDamage > warpTotalHealCapacityMilliHp)
-                    {
-                        double survivableSeconds = warpTotalHealCapacityMilliHp / warpExpectedIncomingMilliDps;
-                        if (survivableSeconds < 0.0) survivableSeconds = 0.0;
-
-                        double survivableFraction = survivableSeconds / warpSeconds;
-                        completedKills = (long)(completedKills * survivableFraction);
-
-                        ConsumeFoodStock(ref payload, warpTotalFoodUnits);
-                    }
-                    else
-                    {
-                        long warpFoodUnitsConsumed = (long)Math.Ceiling(warpTotalIncomingMilliDamage / 50000.0);
-                        ConsumeFoodStock(ref payload, warpFoodUnitsConsumed);
-                    }
-                }
-            }
-
-            if (completedKills <= 0)
-            {
-                payload.CurrentMonsterId = monsterId;
-                payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, monsterId, payload.Skill_FirstBlood) * 1000L;
-                return;
-            }
-
-            int finalXpMultiplier = GlobalEngineState.GlobalXpMultiplier;
-            if (payload.CurrentLevel < 50 && payload.CachedMentorCount > 0)
-            {
-                finalXpMultiplier += payload.CachedMentorCount * 5;
-            }
-
-            finalXpMultiplier += RaceMasteryResolver.GetHumanXpBonusPct(payload.HumanMasteryLevel);
-            finalXpMultiplier += LegacyPerkResolver.GetXpBonusPct(payload.CachedLegacyPerks);
-            finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
-            finalXpMultiplier += (int)SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchXpGain, payload.Skill_XpGain);
-            finalXpMultiplier += FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Exp") * 2;
-
-            // Modul: the mentorship XP bonus was multiplied in here. Nothing
-            // raises it any more - the feature is gone - so the branch went
-            // with it rather than sitting as a permanently false condition.
-
-            double integratedBuffMultiplier = CalculateIntegratedBuffMultiplier(warpSeconds, remainingBuffTicks, potencyModifierPct);
-            long xpGain = (long)Math.Floor(completedKills * monster.BaseXpReward * finalXpMultiplier * integratedBuffMultiplier / 100.0);
-
-            ApplyBulkExperience(ref payload, xpGain, warpActiveRaceId);
-            AddSeasonalXp(ref payload, ClampLongToInt(xpGain));
-
-            long goldReward = completedKills * monster.BaseGoldReward * GlobalEngineState.GlobalGoldDropMultiplier / 100L;
-
-            // Modul 13.4.3: Human's innate +5% Gold acquisition passive, mirrored
-            // for the offline warp path.
-            goldReward = (long)(goldReward * (1.0f + warpCombatStats.GoldAcquisitionMultiplierPct / 100f));
-            goldReward = (long)(goldReward * (1.0f + LegacyPerkResolver.GetGoldBonusPct(payload.CachedLegacyPerks) / 100f));
-            goldReward = (long)(goldReward * (1.0f + FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Gold") * 0.02f));
-                // Modul: inheritance. A permanent, season-crossing multiplier.
-                goldReward = (long)(goldReward * (1.0f + InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100f));
-
-                // Modul: Trophy Hunter, the Giantslayer bough - bosses pay
-                // more. ONLY bosses: the branch is about the fights that are
-                // events, and a flat gold bonus on every field mouse would be
-                // a different node on a different limb.
-                if (payload.Skill_TrophyHunter > 0
-                    && RaceUnlockRegistry.GetRegionForBossMonsterId(monster.Id) > 0)
-                {
-                    goldReward = (long)(goldReward * (1.0f + SkillTreeRegistry.GetBonusPercent(
-                        SkillTreeRegistry.BoughTrophyHunter, payload.Skill_TrophyHunter) / 100f));
-                }
-
-            if (goldReward > 0)
-            {
-                payload.AddGold(goldReward);
-                payload.RedisPendingGoldDelta += goldReward;
-                payload.RequiresRedisFlush = true;
-            }
-
-            long expectedDrops = CalculateExpectedCombatWarpDrops(ref payload, completedKills, integratedBuffMultiplier);
-            ConsumeInventorySlots(ref payload, expectedDrops);
-
-            // Modul: equipment drop requests, safely bounded by kill count and
-            // available inventory space, mirroring OfflineSimulationEngine's
-            // identical safeguard against flooding CombatLootEngine's queue.
-            int warpEquipmentDropsToGrant = (int)Math.Min(completedKills, MaxWarpEquipmentDropsPerResolve);
-            for (int i = 0; i < warpEquipmentDropsToGrant; i++)
-            {
-                CombatLootEngine.DropRequestQueue.Enqueue(new CombatLootDropRequest
-                {
-                    PlayerId = payload.PlayerId,
-                    MonsterId = monsterId,
-                    LootLuckPct = warpCombatStats.LootLuckPct + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck) + (FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "DropRate") * 2.0f),
-                    MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(
-                        SkillTreeRegistry.BoughPlenty, payload.Skill_Plenty)
-                });
-            }
-
-            payload.CurrentMonsterId = monsterId;
-            payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, monsterId, payload.Skill_FirstBlood) * 1000L;
-        }
-
-        // Modul: drains Food1-3 in a fixed order, mirroring
-        // OfflineSimulationEngine.ConsumeFoodStock's identical logic for the
-        // instant-warp path.
-        private static void ConsumeFoodStock(ref TickStatePayload payload, long unitsToConsume)
-        {
-            if (unitsToConsume <= 0) return;
-
-            long fromSlot1 = Math.Min(unitsToConsume, payload.Food1_Count);
-            payload.Food1_Count -= (int)fromSlot1;
-            unitsToConsume -= fromSlot1;
-            if (unitsToConsume <= 0) return;
-
-            long fromSlot2 = Math.Min(unitsToConsume, payload.Food2_Count);
-            payload.Food2_Count -= (int)fromSlot2;
-            unitsToConsume -= fromSlot2;
-            if (unitsToConsume <= 0) return;
-
-            long fromSlot3 = Math.Min(unitsToConsume, payload.Food3_Count);
-            payload.Food3_Count -= (int)fromSlot3;
-        }
-
-        private static double CalculateIntegratedBuffMultiplier(int warpSeconds, uint remainingBuffTicks, int potencyModifierPct)
-        {
-            if (warpSeconds <= 0 || remainingBuffTicks == 0 || potencyModifierPct <= 0)
-            {
-                return 1.0;
-            }
-
-            double buffSeconds = Math.Min(warpSeconds, remainingBuffTicks / 10.0);
-            double baseSeconds = Math.Max(0.0, warpSeconds - buffSeconds);
-            double boostedMultiplier = 1.0 + Math.Min(500, potencyModifierPct) / 100.0;
-            return ((buffSeconds * boostedMultiplier) + baseSeconds) / warpSeconds;
-        }
-
-        /// <summary>
-        /// Expected TICKS to kill this monster, for the instant-warp path.
-        ///
-        /// This was a fourth-hand damage model:
-        /// `15000 + ln(STR + 1) * 1000 + level * 750`, with a fixed 15-tick
-        /// cadence. It read no equipment whatsoever - a warp with a Legendary
-        /// weapon killed at exactly the speed of a warp bare-handed - subtracted
-        /// no armour, applied no hit roll, and its log-decayed STR term matches
-        /// nothing else in the codebase, where STR is worth a flat `str * 2`
-        /// melee damage.
-        ///
-        /// Now it asks CombatDamageModel, like the live tick and the offline
-        /// projection do. Returning ticks rather than attacks also drops the
-        /// hardcoded 1.5 s cadence, so attack-speed bonuses finally apply to a
-        /// warp.
-        /// </summary>
-        private static long EstimateTicksPerKill(ref TickStatePayload payload, int monsterId)
-        {
-            if (monsterId < 1 || monsterId > ContentRegistry.Monsters.Length) return long.MaxValue;
-
-            var monster = ContentRegistry.Monsters[monsterId - 1];
-
-            int lineageId = payload.SelectedLineageId;
-            if (lineageId < 0 || lineageId >= ProgressionEngine.Lineages.Length) lineageId = 0;
-            var lineage = ProgressionEngine.Lineages[lineageId];
-
-            int activeAgePhase = payload.Slot1_CharacterId != System.Guid.Empty ? payload.Slot1_AgePhase : 1;
-            int activeRaceId = payload.Slot1_CharacterId != System.Guid.Empty ? (int)(payload.Slot1_GeneticVector & 0xFF) : 0;
-
-            var stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
-
-            long rawMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in stats, lineage.DamageScalePerLevelPct, payload.CurrentLevel, (InheritanceRegistry.GetBonusPct(payload.Inherit_Damage) + (FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Damage") * 2)));
-            double secondsPerKill = CombatDamageModel.ExpectedSecondsPerKill(in stats, in monster, rawMilliAttack, payload.CachedCodexDamageMultiplier);
-
-            if (double.IsInfinity(secondsPerKill) || secondsPerKill <= 0.0) return long.MaxValue;
-
-            double ticks = secondsPerKill * 10.0;
-            if (ticks >= long.MaxValue) return long.MaxValue;
-            return System.Math.Max(1L, (long)System.Math.Ceiling(ticks));
-        }
-
-        private static long CalculateExpectedWarpDrops(ref TickStatePayload payload, long completedCycles, int professionType, double integratedBuffMultiplier)
-        {
-            int warpGatherActiveAgePhase = 1;
-            int warpGatherActiveRaceId = 0;
-            if (payload.Slot1_CharacterId != System.Guid.Empty)
-            {
-                warpGatherActiveAgePhase = payload.Slot1_AgePhase;
-                warpGatherActiveRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
-            }
-            var warpGatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, warpGatherActiveAgePhase, payload.CompletedAreaFlags, warpGatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
-
-            int monolithLevel = professionType == 0 ? payload.CachedWoodcuttingMonolithLevel : payload.CachedMiningMonolithLevel;
-            double yieldBonusPct = System.Math.Min(monolithLevel, 50);
-            double decayedLuckPct = payload.LCK <= 0 ? 0.0 : System.Math.Log(payload.LCK + 1.0) * 2.5;
-            double raceMasteryYieldBonusPct;
-            if (professionType == 1)
-            {
-                // Modul 13.4.3: Kobold's innate baseline (not mastery-scaled) added
-                // alongside the mastery-scaled bonus.
-                raceMasteryYieldBonusPct = RaceMasteryResolver.GetKoboldOreDuplicationBonusPct(payload.KoboldMasteryLevel) + warpGatherCombatStats.MiningOreDuplicationBonusPct;
-            }
-            else
-            {
-                raceMasteryYieldBonusPct = RaceMasteryResolver.GetMoosleuteDoubleHarvestBonusPct(payload.MoosleuteMasteryLevel) + warpGatherCombatStats.WoodcuttingYieldBonusPct;
-            }
-            double multiplier = GlobalEngineState.GlobalDropMultiplier + yieldBonusPct + decayedLuckPct + raceMasteryYieldBonusPct;
-            if (ActiveGlobalEventId == 1)
-            {
-                multiplier += 20.0;
-            }
-
-            // Modul 13.4.3: LocusYield mirrors the live-tick gathering block's
-            // +4 percentage points per point bonus for the offline warp path.
-            multiplier += payload.LocusYield * 4.0;
-
-            // Modul 13.4.3: CombatStats.LootLuckPct multiplicatively scales the
-            // whole warp yield multiplier, matching the live-tick gathering
-            // block and FinalChance = BaseChance * (1 + LootLuckPct / 100.0).
-            double warpLootLuckFactor = 1.0 + (warpGatherCombatStats.LootLuckPct / 100.0);
-
-            return (long)System.Math.Floor(completedCycles * System.Math.Max(0.0, multiplier) * integratedBuffMultiplier * warpLootLuckFactor / 100.0);
-        }
-
-        private static long CalculateExpectedCombatWarpDrops(ref TickStatePayload payload, long completedKills, double integratedBuffMultiplier)
-        {
-            double decayedLuckPct = payload.LCK <= 0 ? 0.0 : System.Math.Log(payload.LCK + 1.0) * 2.5;
-            double multiplier = GlobalEngineState.GlobalDropMultiplier + decayedLuckPct;
-            return (long)System.Math.Floor(completedKills * System.Math.Max(0.0, multiplier) * integratedBuffMultiplier / 100.0);
-        }
-
-        private static void ConsumeInventorySlots(ref TickStatePayload payload, long expectedDrops)
-        {
-            // Modul: the backpack is gone - storage is one unlimited village
-            // chest. Kept as a no-op rather than deleted so the two warp
-            // resolvers still read as "this is where slots used to be spent",
-            // and so nothing can quietly start draining the counter again.
-            _ = payload;
-            _ = expectedDrops;
-        }
+        // Modul: the instant time-warp subsystem lived here and is gone with
+        // the chrono bank that funded it - ActivateChronoAcceleration,
+        // ExecuteInstantTimeWarp, ApplyGatheringWarp, ApplyCombatWarp and the
+        // six helpers only they called (ConsumeFoodStock,
+        // CalculateIntegratedBuffMultiplier, EstimateTicksPerKill,
+        // CalculateExpectedWarpDrops, CalculateExpectedCombatWarpDrops,
+        // ConsumeInventorySlots). All of it was reachable only from commands 47
+        // and 48, which no longer exist.
+        //
+        // Deleted rather than left unreferenced on purpose: this codebase has
+        // twice shipped a "dead code" list naming files that turned out to be
+        // already deleted, and an orphaned analytic projection of the tick is
+        // exactly the thing that drifts silently from the tick it mirrors.
 
         internal static void ApplyBulkMasteryXp(ref TickStatePayload payload, int professionType, long masteryXp)
         {
@@ -4851,20 +4297,7 @@ namespace FolkIdle.Server.Domain.Combat
 
             if (payload.SpeedMultiplier <= 0) payload.SpeedMultiplier = 1;
 
-            bool validChronoSpeed = payload.SpeedMultiplier == 2 || payload.SpeedMultiplier == 4;
             long now = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            bool chronoAccelerating = payload.IsChronoAccelerating &&
-                validChronoSpeed &&
-                payload.BankedChronoSeconds > 0.0 &&
-                (payload.ActiveChronoLockExpirationTicks == 0L || payload.ActiveChronoLockExpirationTicks > now);
-
-            if (payload.IsChronoAccelerating && !chronoAccelerating)
-            {
-                payload.SpeedMultiplier = 1;
-                payload.IsChronoAccelerating = false;
-                payload.ActiveChronoSpeedMultiplier = 1.0;
-                payload.ActiveChronoLockExpirationTicks = 0L;
-            }
 
             // All register operations are on unmanaged value-type fields — 0 allocations.
             int extraIterations = payload.SpeedMultiplier > 4 ? 3 : payload.SpeedMultiplier - 1;
@@ -4897,28 +4330,14 @@ namespace FolkIdle.Server.Domain.Combat
             ProcessPassiveVillageTick(ref payload, TickIntervalSeconds, now);
             ProcessAllSlotSubTicks(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
 
-            if (chronoAccelerating)
-            {
-                for (int i = 0; i < extraIterations; i++)
-                {
-                    ProcessPassiveVillageTick(ref payload, TickIntervalSeconds, now);
-                    ProcessAllSlotSubTicks(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
-                }
-
-                payload.BankedChronoSeconds -= (payload.SpeedMultiplier - 1) * TickIntervalSeconds;
-                if (payload.BankedChronoSeconds <= 0.0)
-                {
-                    payload.BankedChronoSeconds = 0.0;
-                    payload.SpeedMultiplier = 1;
-                    payload.IsChronoAccelerating = false;
-                    payload.ActiveChronoSpeedMultiplier = 1.0;
-                    payload.ActiveChronoLockExpirationTicks = 0L;
-                }
-
-                payload.IsDirty = true;
-                return;
-            }
-
+            // Modul: the chrono-funded 2x/4x branch used to sit here, running the
+            // whole sub-tick body N times for free and charging the bank. It is
+            // gone with the bank. What remains below is the OTHER acceleration
+            // path, which is unrelated and must not be confused with it: it pays
+            // for every extra iteration out of AccumulatedTimeBankMs at 100ms
+            // each, so it can only ever replay time the server already owed the
+            // player. SpeedMultiplier belongs to that path, not to chrono.
+            //
             // Extra iterations (i > 0)
             for (int i = 0; i < extraIterations; i++)
             {
@@ -6502,18 +5921,6 @@ namespace FolkIdle.Server.Domain.Combat
                     payload.LastVictoryXp = victoryXpEarned;
                     payload.LastVictoryTick++;
 
-                    // Modul: and two hours into the chrono bank - the third of
-                    // the three things that fill it, and the only one paid at
-                    // the moment a player has just done something hard. See
-                    // ChronoGrantRules; before it, nothing filled the bank at
-                    // all and both its buttons were permanently disabled.
-                    //
-                    // Written on the payload rather than through the grant
-                    // queue: this IS the tick, holding the live payload, so
-                    // posting a notification to itself would only add a frame
-                    // of delay and a way to drop the grant.
-                    payload.BankedChronoSeconds = ChronoGrantRules.AddCapped(
-                        payload.BankedChronoSeconds, ChronoGrantRules.FirstBossClearSeconds);
                     payload.IsDirty = true;
                 }
 

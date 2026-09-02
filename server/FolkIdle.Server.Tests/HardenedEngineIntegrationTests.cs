@@ -1690,38 +1690,6 @@ namespace FolkIdle.Server.Tests
             Assert.True(wellFedPayload.Food1_Count < 100000);
         }
 
-        [Fact]
-        public void Test_Chrono_ActiveTimeAcceleration()
-        {
-            const long testPlayerId = 980000001L;
-            const int gatheringActivityId = 1001;   // Woodcutting node 1 (band 1000)
-
-            var simulationEngine = CreateTestSimulationEngine();
-
-            var payload = new TickStatePayload
-            {
-                PlayerId = testPlayerId,
-                ActiveActivityId = gatheringActivityId,
-                GatheringProgressTicks = 0,
-                WoodcuttingMasteryLevel = 0,
-                CachedCurrentToolTier = 0,
-                InventorySpaceRemaining = 1000,
-                SpeedMultiplier = 2,
-                IsChronoAccelerating = true,
-                BankedChronoSeconds = 3600.0,
-                ActiveChronoLockExpirationTicks = DateTimeOffset.UtcNow.AddHours(1).ToUnixTimeSeconds()
-            };
-
-            // A single 100ms frame at 2x Chrono speed must run the sub-tick body
-            // twice, so the gathering action counter (a plain, RNG-free progress
-            // tick) should advance by exactly double the normal per-frame rate.
-            simulationEngine.ProcessTick(ref payload);
-
-            Assert.Equal(2, payload.GatheringProgressTicks);
-            Assert.Equal(2, payload.SpeedMultiplier);
-            Assert.True(payload.BankedChronoSeconds < 3600.0);
-        }
-
         private SimulationEngine CreateTestSimulationEngine()
         {
             var serviceProvider = _fixture.ServiceProvider;
@@ -1743,7 +1711,6 @@ namespace FolkIdle.Server.Tests
             var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
             var guildWarEngine = new GuildWarEngine(serviceProvider);
-            var chronoCoreEngine = new ChronoCoreEngine(serviceProvider, playerRegistry);
             var legacyStoreEngine = new LegacyStoreEngine(serviceProvider, playerRegistry);
             var guildLogisticsDepotEngine = new GuildLogisticsDepotEngine(serviceProvider, playerRegistry);
             var guildCombatSimulationEngine = new GuildCombatSimulationEngine(serviceProvider, playerRegistry);
@@ -1751,7 +1718,7 @@ namespace FolkIdle.Server.Tests
             return new SimulationEngine(
                 lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                villageManagementEngine, guildWarEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
         }
 
@@ -2697,7 +2664,7 @@ namespace FolkIdle.Server.Tests
         // deduction and cooldown rejection live inside SimulationEngine.
         // EngineLoop's CommandQueue.TryDequeue dispatch, which only runs on
         // the background engine thread, not via the single-payload ProcessTick
-        // helper the lighter chrono test above uses.
+        // helper the lighter tests above use.
         private (SimulationEngine SimulationEngine, NetworkBroadcastSystem NetworkSystem) CreateLiveSimulationEngine(string uriPrefix)
         {
             var serviceProvider = _fixture.ServiceProvider;
@@ -2719,7 +2686,6 @@ namespace FolkIdle.Server.Tests
             var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
             var guildWarEngine = new GuildWarEngine(serviceProvider);
-            var chronoCoreEngine = new ChronoCoreEngine(serviceProvider, playerRegistry);
             var legacyStoreEngine = new LegacyStoreEngine(serviceProvider, playerRegistry);
             var guildLogisticsDepotEngine = new GuildLogisticsDepotEngine(serviceProvider, playerRegistry);
             var guildCombatSimulationEngine = new GuildCombatSimulationEngine(serviceProvider, playerRegistry);
@@ -2730,7 +2696,7 @@ namespace FolkIdle.Server.Tests
             var simulationEngine = new SimulationEngine(
                 lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                villageManagementEngine, guildWarEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, antiCheatTelemetryEngine, null!, null!, null!, null!, contextFactory);
 
             return (simulationEngine, networkSystem);
@@ -2748,39 +2714,6 @@ namespace FolkIdle.Server.Tests
         // SkillTreeRegistry: measured, that rotation was +90% damage for
         // clicking every three seconds, so it was replaced by a passive tree
         // rather than rebalanced. SkillTreeTests prices what took its place.
-
-        [Fact]
-        public async Task Test_ChronoCore_ConcurrentConsumption_SerializesViaForUpdateLock()
-        {
-            const long testPlayerId = 970000001L;
-            const long chronoCoreItemId = 500L;
-
-            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = chronoCoreItemId.ToString(), Quantity = 1 });
-                await db.SaveChangesAsync();
-            }
-
-            var chronoCoreEngine = new ChronoCoreEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
-
-            // Fire concurrent consumption attempts against a single-unit stock;
-            // the FOR UPDATE lock inside ConsumeChronoCoreAsync must serialize
-            // these so exactly one succeeds and the stock never goes negative.
-            var tasks = new Task[8];
-            for (int i = 0; i < tasks.Length; i++)
-            {
-                tasks[i] = chronoCoreEngine.ConsumeChronoCoreAsync(testPlayerId, chronoCoreItemId);
-            }
-            await Task.WhenAll(tasks);
-
-            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
-            var core = await verifyDb.CommodityRecords.AsNoTracking()
-                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == chronoCoreItemId.ToString());
-
-            Assert.Equal(0L, core.Quantity);
-            Assert.Single(_fixture.PlayerRegistry.ChronoAccelerationQueue.Where(n => n.PlayerId == testPlayerId));
-        }
 
         // Modul: Play Mode audit fix. SeasonalRotationEngine had zero test
         // coverage despite being the single highest-blast-radius operation
@@ -4836,7 +4769,6 @@ namespace FolkIdle.Server.Tests
             var worldBossEngine = new WorldBossEngine(_fixture.ServiceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, playerRegistry);
             var guildWarEngine = new GuildWarEngine(_fixture.ServiceProvider);
-            var chronoCoreEngine = new ChronoCoreEngine(_fixture.ServiceProvider, playerRegistry);
             var legacyStoreEngine = new LegacyStoreEngine(_fixture.ServiceProvider, playerRegistry);
             var guildLogisticsDepotEngine = new GuildLogisticsDepotEngine(_fixture.ServiceProvider, playerRegistry);
             var guildCombatSimulationEngine = new GuildCombatSimulationEngine(_fixture.ServiceProvider, playerRegistry);
@@ -4844,7 +4776,7 @@ namespace FolkIdle.Server.Tests
             var simulationEngine = new SimulationEngine(
                 lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                villageManagementEngine, guildWarEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
 
             var managementEngine = new GuildManagementEngine(retryingDbOptions, playerRegistry);
@@ -5499,21 +5431,6 @@ namespace FolkIdle.Server.Tests
         // GDD-specified amount (~27.8 hours instead of ~3.8 hours at 48
         // hours offline). Asserts the corrected formula matches the GDD
         // exactly and no longer produces an inflated value.
-        [Fact]
-        public void Test_ChronoBufferEngine_FortyEightHoursOffline_BanksLogarithmicDecayWithoutThresholdInflation()
-        {
-            long fortyEightHoursSeconds = 48L * 3600L;
-            int banked = ChronoBufferEngine.CalculateOfflineBankedSeconds(fortyEightHoursSeconds);
-
-            long excess = fortyEightHoursSeconds - ChronoBufferEngine.OfflineThresholdSeconds;
-            int expected = (int)Math.Floor(Math.Log(excess + 1.0) * 1200.0);
-
-            Assert.Equal(expected, banked);
-            Assert.InRange(banked, (int)(3.7 * 3600), (int)(3.9 * 3600));
-            Assert.True(banked < ChronoBufferEngine.OfflineThresholdSeconds,
-                "Banked seconds must never reach the full threshold offset the old buggy formula additively granted.");
-        }
-
         // Modul: Phase 4 Production Stabilization - Part 2. A Transcendent
         // (tier 13) item must be rejected before any gold is deducted or
         // sacrifices are consumed - proves the cap check runs ahead of
@@ -8645,7 +8562,6 @@ namespace FolkIdle.Server.Tests
             var worldBossEngine = new WorldBossEngine(_fixture.ServiceProvider, playerRegistry);
             var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, playerRegistry);
             var guildWarEngine = new GuildWarEngine(_fixture.ServiceProvider);
-            var chronoCoreEngine = new ChronoCoreEngine(_fixture.ServiceProvider, playerRegistry);
             var legacyStoreEngine = new LegacyStoreEngine(_fixture.ServiceProvider, playerRegistry);
             var guildLogisticsDepotEngine = new GuildLogisticsDepotEngine(_fixture.ServiceProvider, playerRegistry);
             var guildCombatSimulationEngine = new GuildCombatSimulationEngine(_fixture.ServiceProvider, playerRegistry);
@@ -8653,7 +8569,7 @@ namespace FolkIdle.Server.Tests
             return new SimulationEngine(
                 lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
                 escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageManagementEngine, guildWarEngine, chronoCoreEngine, legacyStoreEngine,
+                villageManagementEngine, guildWarEngine, legacyStoreEngine,
                 guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
         }
 

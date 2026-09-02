@@ -130,7 +130,10 @@
   const gold = $derived(Number($playerState?.Gold ?? 0));
 
   // Modul: THE REROLL PRICE, SHOWN. Mirrors
-  // AffixRegistry.CalculateRerollGoldCost - 100 * 1.35^(itemTier-1).
+  // AffixRegistry.CalculateRerollGoldCost - a flat per-REGION table, see
+  // getRerollCost below. This comment used to describe a `100 * 1.35^(itemTier
+  // - 1)` curve the server had already dropped, which is how the mirror test
+  // ended up guarding constants nobody used.
   //
   // Reported from play alongside the price itself being too high: "it does not
   // even say what it costs". It did not. A player pressed a button, gold left,

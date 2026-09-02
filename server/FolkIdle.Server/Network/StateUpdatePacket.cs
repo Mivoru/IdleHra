@@ -314,8 +314,6 @@ namespace FolkIdle.Server.Network
         
         public int VillagePopulation;
         public long AccumulatedTimeBankMs;
-        public double BankedChronoSeconds;
-        public byte IsChronoAccelerating;
         public int AutoEatThreshold;
         public int STR;
         public int DEX;
@@ -527,8 +525,6 @@ namespace FolkIdle.Server.Network
         public uint TotalItemsCraftedCount;
         public uint ActiveStatusEffectModifierBitmask;
         public uint RemainingBuffDurationTicks;
-        public uint VisualBankedChronoSeconds;
-        public ulong ActiveChronoLockExpirationTicks;
         public uint GlobalNodeRemainingHp;
         public uint NetworkDiagnosticsToken;
         public long Gold;

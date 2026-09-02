@@ -10,6 +10,10 @@
 // two is worth a test here.
 import type { StateUpdate } from '../net/protocol.generated';
 
+// Modul: these numbers are IDENTITY, not order. The order is the order of
+// STEPS below, and it changed on 2026-09-02 without these moving: a step's
+// number appears in no storage and on no wire, so renumbering them would be
+// churn that could only introduce a mismatch.
 export const TutorialStep = {
   Inactive: 0,
   WinAFight: 1,
@@ -24,27 +28,35 @@ export type TutorialStepValue = (typeof TutorialStep)[keyof typeof TutorialStep]
 
 
 
-/** Each step, and the fact on the wire that means it is done. */
+/**
+ * Each step, and the fact on the wire that means it is done.
+ *
+ * Modul: THE LARDER COMES FIRST, and this order is a hard dependency rather
+ * than a preference. Measured on a brand-new account against the live server
+ * on 2026-09-02:
+ *
+ *   naked, empty larder : dead at 29 s, Field Mouse still on 264 of its 465 HP
+ *   after 60 s fishing  : dead at 65 s, Field Mouse down to 73 - closer, still lost
+ *   a properly stocked larder is what turns that into a win
+ *
+ * The pacing model agrees and always did: the test that pins the opening kill
+ * at about seventy-five seconds, ProgressionRateTests
+ * .TheFirstMonsterTakesAboutSeventyFiveSeconds, hands its simulated character
+ * a million bites of food, and its own comment says that without them "the
+ * character dies in about thirty seconds". Region 1's attack was deliberately
+ * left un-tripled for the same reason. So the balance is right GIVEN food, and
+ * nothing here needs retuning.
+ *
+ * What was wrong was that onboarding asked for a kill first. The steps block
+ * each other in order, so a new player was told to fight, could not win, and
+ * never saw the food advice at all - it was step three, behind two steps that
+ * a fight has to complete. The game's entrance was closed, and closed in a way
+ * that looked like the player being bad at it.
+ *
+ * Equipment moves to last because that is also its real position: a weapon
+ * comes off a corpse, so it cannot precede the kill that drops it.
+ */
 const STEPS = [
-  {
-    step: TutorialStep.WinAFight,
-    /** Level 2 is the first thing that cannot happen without a kill. */
-    done: (s: StateUpdate) => s.CurrentLevel >= 2,
-    screen: 'combat' as const,
-    title: 'Pick a fight',
-    body:
-      'Open Combat and press Fight on Field Mouse. Your character keeps fighting on its own, ' +
-      'even after you close the page.',
-  },
-  {
-    step: TutorialStep.EquipADrop,
-    done: (s: StateUpdate) => Number(s.EquippedWeaponId) > 0,
-    screen: 'character' as const,
-    title: 'Put something on',
-    body:
-      'Monsters drop equipment. Open Character and click a slot to wear it - gear is where ' +
-      'nearly all of your power comes from, not levels.',
-  },
   {
     step: TutorialStep.StockTheLarder,
     // Modul: ALL THREE SLOTS. This read Food1_Count alone, so a player whose
@@ -56,8 +68,27 @@ const STEPS = [
     screen: 'larder' as const,
     title: 'Fill the larder',
     body:
-      'Fish, then load the food into Auto-Eat. It heals you mid-fight, and without it the ' +
-      'fourth monster of a region will kill you.',
+      'Start by fishing, then load the catch into Auto-Eat. It heals you mid-fight, and ' +
+      'without it the very first monster will kill you before you can kill it.',
+  },
+  {
+    step: TutorialStep.WinAFight,
+    /** Level 2 is the first thing that cannot happen without a kill. */
+    done: (s: StateUpdate) => s.CurrentLevel >= 2,
+    screen: 'combat' as const,
+    title: 'Pick a fight',
+    body:
+      'Now open Combat and press Fight on Field Mouse. Your character keeps fighting on its ' +
+      'own, even after you close the page.',
+  },
+  {
+    step: TutorialStep.EquipADrop,
+    done: (s: StateUpdate) => Number(s.EquippedWeaponId) > 0,
+    screen: 'character' as const,
+    title: 'Put something on',
+    body:
+      'Monsters drop equipment. Open Character and click a slot to wear it - gear is where ' +
+      'nearly all of your power comes from, not levels.',
   },
 ] as const;
 

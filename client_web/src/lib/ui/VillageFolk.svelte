@@ -54,10 +54,16 @@
 <section class="panel folk">
   <header>
     <div>
-      <h3>The village</h3>
+      <h3>The gene pool</h3>
+      <!-- Modul: THIS SENTENCE WAS WRONG, and wrong in the direction that makes
+           the mechanic look absolute. A child CAN beat the better parent - by
+           one, on a 25% drift roll or a 5% epic - it just cannot do more than
+           that, so a closed line climbs at about +0.15 a generation. Outside
+           blood is what makes it a road rather than a crawl. -->
       <p class="dim small">
-        Outside blood. Breeding never exceeds the best value already in a pair,
-        so a line only climbs by marrying somebody new in.
+        Outside blood. A child copies each aptitude whole from one parent and
+        can only beat the better of them by one, so a closed line barely climbs
+        &mdash; marrying somebody new in is what raises it.
       </p>
     </div>
     {#if data}
@@ -73,9 +79,19 @@
     <p class="warn-line">The village roster could not be loaded.</p>
   {:else if data}
     <p class="dim tiny">
-      Someone new every {hours(data.IntervalSeconds)} while there is room — the
-      Inn (level {data.InnLevel}) sets both how often they come and how good
-      they are, up to {APTITUDE_VILLAGE_CEILING}.
+      A <strong>newcomer</strong> every {hours(data.IntervalSeconds)} while there
+      is room — the Inn (level {data.InnLevel}) sets how often they come, how
+      many fit, and how high their aptitudes roll, up to
+      {APTITUDE_VILLAGE_CEILING}. A full village stops the clock entirely.
+    </p>
+    <!-- Modul: the interlock, said where it bites. Marrying happens on the
+         Breeding screen and needs the Breeding Grounds; this panel is where a
+         player looks at a 4/3/9/2 and has to decide. -->
+    <p class="dim tiny">
+      Marry one in on the Breeding screen: a level-50 adult hero of the same
+      race and the opposite sex. Everybody marries <strong>once</strong> and is
+      then an <strong>elder</strong>. None of them survives the season, so blood
+      you do not marry in is blood you lose.
     </p>
 
     {#if data.Newcomers.length === 0}

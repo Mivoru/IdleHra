@@ -36,3 +36,25 @@
 *.fbx  filter=lfs diff=lfs merge=lfs -text
 *.ttf  filter=lfs diff=lfs merge=lfs -text
 *.otf  filter=lfs diff=lfs merge=lfs -text
+
+# Modul: THE RUNTIME AUDIO IS NOT AN LFS ASSET, and shipping it as one made the
+# game silent in production for its entire life.
+#
+# The eleven clips in client/Assets/Resources/Audio are the only audio the game
+# serves: FolkIdle.Server.csproj links them into the publish output and
+# NetworkBroadcastSystem answers /audio/<name>.wav with them. The Oracle box
+# builds the image from a `git pull` of this repository and git-lfs is NOT
+# installed there, so the checkout produced 130-byte pointer stubs, the build
+# copied those stubs, and the server served them as audio/wav. The browser's
+# decodeAudioData rejected them, audio.ts recorded a miss, and nothing anywhere
+# logged a word. GitHub Actions checks out without LFS too, so CI could not see
+# it either.
+#
+# 367 KB of small WAVs is not what LFS is for. The ~1 GB that is - the 2048px
+# source PNGs under client/Assets/Images/Sprites - stays in LFS above; those
+# are never served, the browser gets the WebP resamples.
+#
+# This rule is LAST because git-attributes is last-match-wins: it overrides the
+# blanket *.wav rule for this one directory only. If music ever arrives it will
+# be large, will live somewhere else, and can go back into LFS on its own rule.
+client/Assets/Resources/Audio/*.wav !filter binary

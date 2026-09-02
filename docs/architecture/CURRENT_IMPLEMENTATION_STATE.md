@@ -50,10 +50,10 @@ and mutates fields in place.
 
 Any engine method that needs to touch the database runs off the tick thread
 (`Task.Run`, or a background polling cron) and reports results back to the
-tick thread via one of the 24 `ConcurrentQueue<T>` members exposed on
+tick thread via one of the 35 `ConcurrentQueue<T>` members exposed on
 `PlayerSessionRegistry` (`Engine/PlayerSessionRegistry.cs`) - e.g.
 `MarketMatchQueue`, `ForgeUpgradeQueue`, `QuarantineNotificationQueue`,
-`ChronoAccelerationQueue`. The tick loop drains these queues every frame
+`CombatLootDropQueue`. The tick loop drains these queues every frame
 with zero-allocation `TryDequeue` calls and folds the results into the live
 `TickStatePayload`. `PlayerSessionRegistry` also tracks a simple
 `ConcurrentDictionary<long, bool> _onlinePlayers` used by `IsPlayerOnline`
@@ -68,7 +68,7 @@ touched in this pass despite a request to make it "stateless".
 
 Postgres via EF Core (Npgsql), `IsolationLevel.Serializable` transactions
 combined with explicit `FOR UPDATE` row locks are the standard pattern for
-every DB-mutating engine method (see e.g. `ChronoCoreEngine.ConsumeChronoCoreAsync`,
+every DB-mutating engine method (see e.g.
 `MarketOrderBookEngine.PlaceLimitOrderAsync`,
 `AntiCheatTelemetryEngine.RequestShadowBan`).
 
@@ -215,14 +215,62 @@ sandboxes: `Test_E2E_ClosedLoopVerification` used to fail with a WebSocket
 503 in sandboxed dev environments where the `HttpListener`-based WS endpoint
 could not bind/serve correctly.
 
+## 8b. The chrono bank was deleted (2026-09-02)
+
+The chrono bank, Time Warp, chrono cores and the 2x/4x chrono acceleration are
+**gone**. What was removed, and the three things that are easy to get wrong if
+you meet a stale reference to any of it:
+
+**Opcode 8 survived, renamed.** `ToggleChronoAcceleration` is now
+`SetSimulationSpeed` (same value - renaming an enum member does not move an
+opcode). It never touched the bank: it sets `SpeedMultiplier`, and the tick pays
+for every extra iteration out of `AccumulatedTimeBankMs` at 100ms each. That
+path is unrelated to chrono and still works, so `SpeedMultiplier`,
+`AccumulatedTimeBankMs` and `CurrentSimulationSpeedMultiplier` all remain.
+Opcodes **24, 47 and 48 are retired gaps** and must never be reused.
+
+**Over-cap offline time was already discarded before this.**
+`OfflineSimulationEngine.BankOverflowSeconds` had been a no-op for a long time;
+deleting the bank changed nothing about offline balance. Time past the cap is
+dropped at the `Math.Min` in `SimulateOfflineProgress`, which now says so.
+
+**The packet got smaller.** `StateUpdatePacket` 800 -> **779** bytes,
+`ClientCommandPacket` 359 -> **339**. Four state fields went
+(`BankedChronoSeconds`, `IsChronoAccelerating`, `VisualBankedChronoSeconds`,
+`ActiveChronoLockExpirationTicks` - the first and third were two copies of one
+number, read by two different screens) plus four command fields. Both pins in
+`NetworkPacketLayoutGuard` moved in the same commit as
+`npm run generate:protocol`. The ceiling is 832, asserted by
+`Test_StateUpdatePacket_StructuralSizeIsStrictlyUnder832Bytes` - not the ~700
+some older notes claim.
+
+**Players were compensated 1:1 into `AccumulatedTimeBankSeconds`**, by
+`20260902180220_DeleteChronoBank`. A banked chrono second bought exactly one
+extra simulated second, and the surviving speed toggle buys exactly one extra
+simulated second per 1000ms banked, so the conversion is at par and needed no
+exchange rate. Nine accounts were paid; four unattributable rows totalling 1,823
+seconds were written off deliberately and recorded in the migration. `Down()`
+restores the schema but never the balances - do not run it against a database
+that has served `Up()`.
+
 ## 9. Known Dead Code (not yet removed)
 
-- `Engine/SeasonEraEngine.cs` - an orphaned duplicate of the live
-  `Engine/SeasonalRotationEngine.cs` with a different (stale) Legacy Shard
-  formula. Not instantiated anywhere in `Program.cs`. Reactivation hazard
-  if anyone wires it up by mistake, thinking it is the live path.
-- `Engine/PlayerChronoRegistry.cs` plus a second, unused
-  `ChronoBufferEngine.ProcessLoginHandshake` overload - zero callers.
+- ~~`Engine/SeasonEraEngine.cs`~~ - **gone. This entry was stale.** The file
+  does not exist; the only three references to the name left in the repo are
+  documentation lines, one of which was this one. `NEXT_STEPS_BACKLOG.md`
+  already recorded the deletion and this section contradicted it.
+- ~~`Engine/PlayerChronoRegistry.cs` plus a second, unused
+  `ChronoBufferEngine.ProcessLoginHandshake` overload~~ - **also stale on both
+  counts.** The file does not exist (its table was dropped by
+  `20260716203252_DropPlayerChronoRegistry`), and there is exactly one
+  `ProcessLoginHandshake`, which *is* called, from
+  `Domain/Shared/StateCheckpointManager.cs:1315`.
+
+  Modul: both entries above were checked against the tree on 2026-09-02 and
+  found to describe code that had already been removed. A dead-code list that
+  names files which no longer exist is worse than no list - it sends the next
+  reader hunting for phantoms, and it cost exactly that during the chrono
+  deletion pass. Verify an entry here before acting on it.
 - `Engine/ForgeSplicingEngine.cs` line ~165: `int.TryParse(targetItem.BaseItemId, out int baseId)`
   is effectively dead - `BaseItemId` is always a descriptive slug string
   (e.g. `gilded_sabatons_boots_armor_slot_base`, from

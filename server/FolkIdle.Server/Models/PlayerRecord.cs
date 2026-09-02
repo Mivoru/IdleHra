@@ -79,8 +79,6 @@ namespace FolkIdle.Server.Models
         public bool Quarantine_Active { get; set; }
         public bool IsQuarantined { get; set; }
         public long LogicEpochCounter { get; set; }
-        public double BankedChronoSeconds { get; set; }
-        public bool IsChronoAccelerating { get; set; }
 
         // Modul 16/21: persistent character attribute base values. Never
         // modified directly except by level-up growth (RaceAttributeGrowth) -

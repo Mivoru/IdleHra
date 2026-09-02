@@ -79,21 +79,25 @@
   }
   .controls {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
   }
   .controls input, .controls select {
     padding: 0.5rem;
-    background: var(--bg-deep);
+    background: rgba(0, 0, 0, 0.12);
     border: 1px solid var(--border);
     color: var(--text);
     border-radius: 4px;
   }
   .controls input {
-    flex: 1;
+    flex: 1 1 8rem;
+    min-width: 0;
   }
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    /* min() so a card can never be wider than the column it sits in - the
+       wiki's content column narrows independently of the viewport. */
+    grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
     gap: 0.75rem;
     max-height: 500px;
     overflow-y: auto;
@@ -104,7 +108,7 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem;
-    background: var(--bg-deep);
+    background: rgba(0, 0, 0, 0.12);
     border: 1px solid var(--border);
     border-radius: 6px;
   }
@@ -113,10 +117,12 @@
     flex-direction: column;
     min-width: 0;
   }
+  /* Modul: this was nowrap + ellipsis, which quietly truncated a third of the
+     catalogue's names ("Transcendent Platelegs" became "Transcendent Plat…").
+     An item database whose answer is cut off is not an answer; the card is a
+     grid cell and there is nothing wrong with two lines. */
   .info strong {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-wrap: anywhere;
   }
   .stats {
     display: flex;
@@ -132,4 +138,10 @@
   .dmg { color: #f87171; }
   .def { color: #60a5fa; }
   .gold { color: #fbbf24; }
+  .dim {
+    color: var(--text-dim);
+  }
+  .tiny {
+    font-size: 0.72rem;
+  }
 </style>

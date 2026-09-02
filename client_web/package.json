@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "generate:protocol": "node scripts/generate-protocol.mjs",
     "generate:sprites": "node scripts/generate-sprites.mjs",
+    "check:sprites": "node scripts/generate-sprites.mjs --check",
     "exercise": "node scripts/exercise.mjs",
     "smoke:screens": "node scripts/smoke-screens.mjs",
     "check:mobile": "node scripts/mobile-check.mjs",

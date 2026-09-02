@@ -32,7 +32,7 @@ export interface AuthHandshake {
   PlatformSignature: number;
 }
 
-/** ClientCommandPacket - 359 bytes on the binary wire. */
+/** ClientCommandPacket - 339 bytes on the binary wire. */
 export interface ClientCommand {
   readonly type: typeof PacketType.ClientCommand;
   Command: number;
@@ -67,7 +67,6 @@ export interface ClientCommand {
   ComplianceReserved0: number;
   ComplianceReserved1: number;
   ComplianceReserved2: number;
-  ChronoSecondsRequested: number;
   TargetSlotIndex: number;
   RawTransactionReceipt: string;
   TargetProductIdHash: number;
@@ -79,9 +78,6 @@ export interface ClientCommand {
   ConsumableItemId: number;
   ConsumableSlotTarget: number;
   TargetMilestoneIndex: number;
-  ChronoWarpDurationSeconds: number;
-  ChronoTargetSlot: number;
-  RequestedSpeedMultiplier: number | string;
   TargetMatchUuid: string;
   TelemetryEventCount: number;
   NetworkDiagnosticsToken: number;
@@ -91,7 +87,7 @@ export interface ClientCommand {
   RerollStopAffixIndex: number;
 }
 
-/** StateUpdatePacket - 800 bytes on the binary wire. */
+/** StateUpdatePacket - 779 bytes on the binary wire. */
 export interface StateUpdate {
   readonly type: typeof PacketType.StateUpdate;
   PlayerId: number;
@@ -144,8 +140,6 @@ export interface StateUpdate {
   DraugrMasteryLevel: number;
   VillagePopulation: number;
   AccumulatedTimeBankMs: number;
-  BankedChronoSeconds: number | string;
-  IsChronoAccelerating: number;
   AutoEatThreshold: number;
   STR: number;
   DEX: number;
@@ -235,8 +229,6 @@ export interface StateUpdate {
   TotalItemsCraftedCount: number;
   ActiveStatusEffectModifierBitmask: number;
   RemainingBuffDurationTicks: number;
-  VisualBankedChronoSeconds: number;
-  ActiveChronoLockExpirationTicks: number;
   GlobalNodeRemainingHp: number;
   NetworkDiagnosticsToken: number;
   Gold: number;
@@ -360,7 +352,7 @@ export const CommandType = {
   ContributeToGuild: 5,
   Logout: 6,
   Login: 7,
-  ToggleChronoAcceleration: 8,
+  SetSimulationSpeed: 8,
   MarketListItem: 9,
   MarketBuyItem: 10,
   ClaimMailItem: 11,
@@ -374,7 +366,6 @@ export const CommandType = {
   UpgradeTool: 21,
   AssignMentor: 22,
   ContributeToWarSupply: 23,
-  ConsumeChronoCore: 24,
   PurchaseLegacyUnlocks: 25,
   DepositGuildMaterial: 26,
   ExecuteCombatTurn: 27,
@@ -394,8 +385,6 @@ export const CommandType = {
   InitiateNodeMigration: 44,
   ConsumeConsumableAsset: 45,
   ClaimBattlePassReward: 46,
-  ActivateChronoBoost: 47,
-  ConsumeTimeWarpCore: 48,
   RegisterGuildDefense: 49,
   SubmitShardAttack: 50,
   ReportTelemetryBurst: 51,
@@ -430,8 +419,8 @@ export type CommandTypeName = keyof typeof CommandType;
 /** Binary wire sizes, kept for tests that assert the binary path is untouched. */
 export const PACKET_BYTE_SIZE = {
   AuthHandshake: 530,
-  ClientCommand: 359,
-  StateUpdate: 800,
+  ClientCommand: 339,
+  StateUpdate: 779,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
   ResponseLootDrop: 22,

@@ -28,7 +28,22 @@ RUN dotnet publish "FolkIdle.Server.csproj" -c Release -o /app/publish /p:UseApp
 
 # The clips have to be IN the image, and a glob that silently matches nothing
 # is what hid this for months. Fail the build instead.
-RUN ls /app/publish/Audio/*.wav > /dev/null 2>&1 || (echo 'BUILD FAILED: no audio clips in the publish output.' && exit 1)
+#
+# EXISTENCE IS NOT ENOUGH, which the first version of this line assumed. The
+# clips were tracked in Git LFS and git-lfs is not installed on the deploy box,
+# so the box's checkout held 130-byte pointer stubs: files, matching the glob,
+# copied into the image, served with Content-Type audio/wav, and rejected by
+# the browser's decodeAudioData without a sound or a log line. `ls` passed the
+# whole time. So check the CONTENT - a RIFF header and a plausible size - and
+# not merely the name. (.gitattributes now keeps these out of LFS; this is the
+# guard for the day someone puts them back.)
+RUN set -e; \
+    ls /app/publish/Audio/*.wav > /dev/null 2>&1 || { echo 'BUILD FAILED: no audio clips in the publish output.'; exit 1; }; \
+    for clip in /app/publish/Audio/*.wav; do \
+      head -c 4 "$clip" | grep -q RIFF || { echo "BUILD FAILED: $clip is not a WAV - probably a Git LFS pointer stub."; exit 1; }; \
+      [ "$(wc -c < "$clip")" -ge 1024 ] || { echo "BUILD FAILED: $clip is implausibly small."; exit 1; }; \
+    done; \
+    echo "Audio: $(ls /app/publish/Audio/*.wav | wc -l) real clips in the publish output."
 
 # Stage 2: Runtime Environment
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final

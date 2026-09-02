@@ -38,9 +38,13 @@
 <section class="panel apt">
   <header>
     <h3>Bloodline</h3>
+    <!-- Modul: "these survive the season" was true of the aptitudes and not of
+         the people carrying them - the rollover culls the Hall to its cap and
+         deletes the rest. An aptitude survives on an ancestor or not at all. -->
     <p class="dim small">
-      What your line has bred into itself. These survive the season - levels and
-      gear do not.
+      The four <strong>aptitudes</strong> your line has bred into itself, on the
+      character you are playing. Levels and gear do not survive the season;
+      these do, on whichever ancestors carry through the Hall's cull.
     </p>
   </header>
 

@@ -22,6 +22,7 @@
   import { raceName } from '../lib/ui/races';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import AptitudePanel from '../lib/ui/AptitudePanel.svelte';
+  import ChildPreview from '../lib/ui/ChildPreview.svelte';
 
   const client = useQueryClient();
   const roster = createQuery(() => ({ queryKey: queryKeys.breedingRoster, queryFn: fetchBreedingRoster }));
@@ -37,11 +38,11 @@
 
   // Modul: TWO PAIRINGS, and the village one first.
   //
-  // A child takes each aptitude from ONE parent, so it can never exceed the
-  // best value already in the pair - crossing your own characters converges on
-  // what you already have. The village is the only thing that puts a number
-  // into a bloodline that was not in it, which is why it is the default tab
-  // and why the roster pairing is the one that needs explaining.
+  // A child COPIES each aptitude whole from one parent and can only beat the
+  // better of the two by one, on a drift or epic roll - so crossing your own
+  // characters converges on what you already have, at about +0.15 a generation.
+  // The village is the only thing that puts a genuinely new number into a
+  // bloodline, which is why it is the default tab.
   let mode = $state<'village' | 'roster'>('village');
 
   // --- breeding -------------------------------------------------------------
@@ -75,11 +76,43 @@
       agePhaseName(candidate.AgePhase),
       `gen ${candidate.GenerationIndex}`,
     ];
+    if (candidate.Level < 50) marks.push('needs 50');
+    if (candidate.AgePhase < 1) marks.push('still a child');
     if (candidate.IsEpicMutation) marks.push('epic');
     if (candidate.IsInbred) marks.push('inbred');
-    if (cooling) marks.push(`cooling ${candidate.BreedingCooldownEndEpoch - nowSeconds}s`);
-    return `${candidate.CharacterId.slice(0, 8)} - ${marks.join(', ')}`;
+    if (cooling) marks.push(`resting ${candidate.BreedingCooldownEndEpoch - nowSeconds}s`);
+    // Modul: SEX AND RACE, which this label never carried.
+    //
+    // The engine refuses a same-sex pair and a mixed-race pair, but the roster
+    // preview endpoint checks only the race - so choosing a woman as the
+    // paternal parent produced an ELIGIBLE preview, a priced button, and a
+    // transaction the server rolled back in silence. The label now says which
+    // is which, and the warning below catches the pairing before it is sent.
+    const who = `${raceName(candidate.LocusRaceDominant)} ${candidate.IsFemale ? 'woman' : 'man'}`;
+    return `${who} ${candidate.CharacterId.slice(0, 8)} - ${marks.join(', ')}`;
   }
+
+  const paternalPick = $derived((roster.data ?? []).find((c) => c.CharacterId === paternalId));
+  const maternalPick = $derived((roster.data ?? []).find((c) => c.CharacterId === maternalId));
+
+  /**
+   * The one refusal the roster preview does not make for us. Mirrors
+   * ExecuteBreedingAsync's `if (pChar.IsFemale || !mChar.IsFemale)`.
+   */
+  const rosterSexProblem = $derived(
+    paternalPick && paternalPick.IsFemale
+      ? 'The paternal parent has to be a man.'
+      : maternalPick && !maternalPick.IsFemale
+        ? 'The maternal parent has to be a woman.'
+        : '',
+  );
+
+  /** What the price is charged against: the higher of the two generations. */
+  const rosterGeneration = $derived(
+    paternalPick && maternalPick
+      ? Math.max(paternalPick.GenerationIndex, maternalPick.GenerationIndex)
+      : null,
+  );
 
   function breed() {
     const outcome = executeBreeding(paternalId, maternalId, breedingLevel);
@@ -164,6 +197,8 @@
         return 'They have already married into your line. Everyone marries once.';
       case 'same_sex':
         return 'A pair needs one of each.';
+      case 'sex_roles_swapped':
+        return 'Swap them over - the paternal side has to be the man.';
       case 'race_mismatch':
         return 'The two are of different races.';
       default:
@@ -220,6 +255,20 @@
   <section class="panel">
     <h2>Breeding lab</h2>
 
+    <!-- Modul: WHERE THIS SITS. Breeding interlocks with four other systems and
+         none of them were named here, so a player could work the screen without
+         ever learning that the Inn stocks the partner list or that a child has
+         to be fielded from the Hall before it can grow up. Three sentences,
+         because the alternative is a help page nobody opens. -->
+    <p class="interlocks dim tiny">
+      The <strong>Inn</strong> stocks your village with newcomers to marry, and
+      sets how good they are. A child joins the
+      <strong>Hall of Ancestors</strong>, where you field it and mark whether it
+      carries. When the season turns, levels, gear, gold and the whole village
+      are taken back &mdash; the Hall and the <strong>aptitudes</strong> bred
+      into it are what survive.
+    </p>
+
     {#if breedingLevel === 0}
       <p class="warn">
         You have no Breeding Grounds. The server rejects breeding without them
@@ -247,13 +296,14 @@
     </div>
 
     {#if mode === 'village'}
-      <!-- Modul: THE STANDARD PAIR. A child takes each aptitude from one
-           parent, so it can never beat the best number already in the pair.
-           Marrying outside is the only way a bloodline climbs. -->
+      <!-- Modul: THE STANDARD PAIR. A child copies each aptitude whole from one
+           parent and can only beat the better of them by one, on a lucky roll -
+           so marrying outside is what actually raises a bloodline. -->
       <p class="dim small">
-        A hero of yours and somebody new. Only the hero needs level 50. A
-        villager marries <strong>once</strong> and becomes an elder, so spend
-        a good one carefully.
+        A hero of yours and a <strong>newcomer</strong> from the village. Only
+        the hero needs to be an adult at level 50. A newcomer brings nothing but
+        their race, their sex and their four aptitudes &mdash; and they marry
+        <strong>once</strong>, becoming an elder, so spend a good one carefully.
       </p>
 
       <label>
@@ -296,25 +346,11 @@
           </p>
         {/if}
 
-        <h3>What the child would inherit</h3>
-        <ul class="apts">
-          {#each p.Aptitudes as apt (apt.AptitudeName)}
-            <li>
-              <span class="name">{apt.AptitudeName}</span>
-              <span class="band" class:up={apt.PredictedMax > Math.max(apt.ParentHero, apt.ParentPartner)}>
-                {apt.PredictedMin}&ndash;{apt.PredictedMax}
-              </span>
-              <span class="dim tiny">
-                you {apt.ParentHero} &middot; them {apt.ParentPartner}
-              </span>
-            </li>
-          {/each}
-        </ul>
-        <p class="dim tiny">
-          Each aptitude comes from one parent, weighted by who is stronger in
-          it, then drifts by one. Cross two different specialists and the child
-          is good at both.
-        </p>
+        <ChildPreview
+          preview={p}
+          mode="village"
+          generation={hero ? hero.GenerationIndex : null}
+        />
       {/if}
 
       <button
@@ -329,10 +365,17 @@
         Marry
       </button>
     {:else}
+      <!-- Modul: THIS BLURB USED TO BE WRONG, and wrong in the direction that
+           makes the mechanic look pointless. It said a child "cannot beat a
+           number the pair does not already have" - but the drift roll adds +1 a
+           quarter of the time and an epic adds another, which is the entire
+           reason a bloodline climbs at all. What is true is that the climb is
+           SLOW, about +0.15 a generation, which is why the village exists. -->
       <p class="dim small">
-        Two of your own characters produce a third. Generation and inbreeding
-        carry forward, so pairing close relatives has a real cost - and neither
-        child can beat a number the pair does not already have.
+        Two of your own characters produce a third. A child copies each aptitude
+        whole from one parent and can only beat the better of them by one, on a
+        lucky roll &mdash; so crossing your own line refines it, and marrying
+        the village is what raises it. Close relatives are allowed but degraded.
       </p>
 
       <label>
@@ -355,6 +398,10 @@
         </select>
       </label>
 
+      {#if rosterSexProblem}
+        <p class="warn">{rosterSexProblem}</p>
+      {/if}
+
       {#if preview.data}
         {@const p = preview.data}
         {#if !p.IsEligible}
@@ -363,40 +410,11 @@
           <p class="cost" class:short={!p.HasSufficientGold}>
             Costs {p.BreedingCostGold.toLocaleString()}g
             {#if !p.HasSufficientGold}&middot; not enough gold{/if}
-            {#if p.IsInbredRisk}&middot; <span class="risk">inbreeding risk</span>{/if}
+            {#if p.IsInbredRisk}&middot; <span class="risk">related pair</span>{/if}
           </p>
         {/if}
 
-        <h3>What the child would inherit</h3>
-        <ul class="apts">
-          {#each p.Aptitudes as apt (apt.AptitudeName)}
-            <li>
-              <span class="name">{apt.AptitudeName}</span>
-              <span class="band" class:up={apt.PredictedMax > Math.max(apt.ParentHero, apt.ParentPartner)}>
-                {apt.PredictedMin}&ndash;{apt.PredictedMax}
-              </span>
-              <span class="dim tiny">
-                {apt.ParentHero} x {apt.ParentPartner}
-              </span>
-            </li>
-          {/each}
-        </ul>
-
-        <h3>Predicted genes</h3>
-        <ul class="loci">
-          {#each p.Loci as locus (locus.LocusName)}
-            <li>
-              <span class="name">{locus.LocusName}</span>
-              <span class="dim tiny">
-                {locus.ParentPaternalDominant} x {locus.ParentMaternalDominant}
-                &rarr; {locus.PredictedMinDominant}-{locus.PredictedMaxDominant}
-                {#if locus.MutationChancePct > 0}
-                  &middot; {locus.MutationChancePct.toFixed(1)}% mutation
-                {/if}
-              </span>
-            </li>
-          {/each}
-        </ul>
+        <ChildPreview preview={p} mode="roster" generation={rosterGeneration} />
       {/if}
 
       <button
@@ -404,6 +422,7 @@
         disabled={breedingLevel === 0 ||
           paternalId === '' ||
           maternalId === '' ||
+          rosterSexProblem !== '' ||
           (preview.data ? !preview.data.IsEligible || !preview.data.HasSufficientGold : false)}
       >
         Breed
@@ -559,52 +578,16 @@
     border-color: var(--brass, var(--border));
   }
 
-  .apts {
-    list-style: none;
+  /* Modul: the aptitude and gene lists moved into ui/ChildPreview.svelte with
+     their styles, so both tabs get the same explained preview from one place.
+     What is left here is the frame around it. */
+
+  .interlocks {
     margin: 0 0 0.7rem;
-    padding: 0;
-    display: grid;
-    gap: 0.25rem;
-  }
-
-  .apts li {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    align-items: baseline;
-    gap: 0.5rem;
-    font-size: 0.82rem;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.22rem;
-  }
-
-  .band {
-    font-variant-numeric: tabular-nums;
-    font-weight: 700;
-  }
-
-  /* The only outcome that moves a bloodline: a number neither parent had. */
-  .band.up {
-    color: var(--brass-lit, inherit);
-  }
-
-  .loci {
-    list-style: none;
-    margin: 0 0 0.7rem;
-    padding: 0;
-    display: grid;
-    gap: 0.25rem;
-  }
-
-  .loci li {
-    display: grid;
-    gap: 0.05rem;
-    font-size: 0.82rem;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.22rem;
-  }
-
-  .name {
-    font-weight: 600;
+    padding: 0.5rem 0.6rem;
+    background: var(--bg);
+    border-radius: var(--radius);
+    line-height: 1.4;
   }
 
   .stats {

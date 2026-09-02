@@ -113,6 +113,16 @@
       <!-- Town Hall gates every other building's ceiling, which is why it is
            listed first rather than in id order. -->
       <p class="dim tiny">Town Hall level caps every other building.</p>
+      <!-- Modul: THE INTERLOCK, said where it bites.
+           The village is rebuilt from nothing every season and the reason to
+           bother is that THIS season's Inn decides what blood you can marry
+           into THIS season's line - which was written down in the server and
+           nowhere a player could read it. See docs/breeding_model.md. -->
+      <p class="dim tiny">
+        The <strong>Inn</strong> is what feeds the gene pool above: arrivals,
+        capacity and how high a newcomer's aptitudes can roll all come off its
+        level. Buildings survive the season; the people in the village do not.
+      </p>
     </section>
 
     <!-- Modul: your villagers ARE your characters. This panel used to read a
@@ -126,9 +136,17 @@
          permanent thing that deserves its own decision rather than inheriting
          a button that happened to be here. -->
     <section class="panel">
-      <h2>Villagers</h2>
+      <!-- Modul: RENAMED FROM "Villagers" - it was the same word as the gene
+           pool panel directly above it, on the same screen, for a different
+           concept. These are the old identity-less production slots; the people
+           you marry are NEWCOMERS and ELDERS. One word, one meaning; see
+           docs/breeding_model.md section 0. -->
+      <h2>Work slots</h2>
+      <p class="dim tiny">
+        Production slots, not people. Nobody here can be married into your line.
+      </p>
       {#if (statistics.data?.Villagers ?? []).length === 0}
-        <p class="dim">No villagers yet.</p>
+        <p class="dim">No work slots in use.</p>
       {:else}
         <ul class="villagers">
           {#each statistics.data?.Villagers ?? [] as villager (villager.SlotIndex)}
@@ -165,8 +183,14 @@
     line-height: 1.25;
   }
 
+  /* Modul: WRAPS AT THE PLUS SIGNS. This was `white-space: nowrap`, and the
+     `auto` grid track holding it could therefore never be narrower than
+     "2 690g + 100 Willow Log + 100 Hematite Ore". The row forced itself 151px
+     wider than the panel, so the price of an upgrade was cut off mid-word
+     ("100 Willow L") and painted over the panel beside it. A cost that reads
+     as a smaller number than it is, is worse than a cost on two lines. */
   .cost {
-    white-space: nowrap;
+    overflow-wrap: break-word;
   }
 
   .grid {
@@ -264,6 +288,44 @@
     grid-template-columns: auto 1fr auto;
   }
 
+  /* Modul: THE COST TAKES ITS OWN LINE RATHER THAN SQUEEZING THE NAME.
+     As a grid of `1fr auto auto` the cost column could never be narrower than
+     its own content, so "2 690g + 100 Willow Log + 100 Hematite Ore" pushed
+     the row 151px past the panel - where it was cut off mid-word and painted
+     over the panel beside it. Letting the cost merely WRAP fixed the clipping
+     and replaced it with a second defect: the auto track still claimed most of
+     the row, and the description beside it came out one word, sometimes one
+     syllable, per line.
+
+     Flex with a basis instead of fixed tracks. Name and cost sit side by side
+     while both fit and the cost drops to its own line when they do not, at
+     whatever width the panel happens to be - the panel's width comes from the
+     grid it sits in, not from the viewport, so a breakpoint would be guessing
+     at the wrong number. min-width: 0 is load-bearing: a flex item defaults to
+     min-content and would refuse to shrink, which is the trap the grid had. */
+  .buildings li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.5rem;
+  }
+
+  .buildings li .name {
+    flex: 1 1 11rem;
+  }
+
+  .buildings li .lvl {
+    flex: none;
+  }
+
+  .buildings li .cost {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+
+  .buildings li button {
+    flex: none;
+  }
+
   /* Modul: EVERY UPGRADE BUTTON THE SAME SIZE.
      Each `li` is its own grid, so its `1fr` column is sized by that row's own
      content - and the cost text differs per building ("100 logs + 100 ore"
@@ -272,10 +334,15 @@
      the list read as nine buttons of nine sizes.
 
      Pinned to a fixed width and left-aligned instead: the control is the same
-     control on every row, so it should be the same shape. */
+     control on every row, so it should be the same shape.
+
+     `min()` rather than a flat 11rem: a fixed width is also a floor on the
+     column's min-content, so in a panel squeezed to one grid track the button
+     alone kept the row wider than the panel. It gives way before the row
+     does, and only then. */
   .buildings li button {
     justify-self: start;
-    width: 11rem;
+    width: min(11rem, 100%);
   }
 
   .slots select {
@@ -315,10 +382,17 @@
     object-fit: contain;
   }
 
+  /* Modul: NOT `white-space: nowrap` - this span WRAPS A PARAGRAPH.
+     `.name` holds the building name AND the `.what` block that explains what
+     upgrading it does. nowrap is inherited, so that whole sentence was laid
+     out on one line and `overflow: hidden` then cut it off: "Raises the level
+     ceiling every other building i". 512px of the explanation was invisible on
+     every row, and the explanation is the only reason the row is there.
+     A second, shorter use of `.name` is the "Slot 3" label in Work slots,
+     which never needed truncating either. */
   .name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    min-width: 0;
+    overflow-wrap: break-word;
   }
 
   .lvl {

@@ -99,6 +99,35 @@
       {/if}
     </header>
 
+    <!-- Modul: WHAT THE ROLLOVER ACTUALLY DOES, said before it does it.
+         The screen showed which rows would be let go but never what "let go"
+         means (the character is deleted), what the ranking is, or what else
+         the season takes - so the one decision the cap exists to create was
+         being made without its terms. Written as prose rather than a list
+         because exercise.mjs counts `.panel li` to find roster rows.
+         Vocabulary is docs/breeding_model.md section 0. -->
+    <div class="rollover">
+      <p class="dim tiny">
+        <strong>What carries:</strong> these ancestors &mdash; their aptitudes,
+        genes, generation and epic mark &mdash; plus your village
+        <em>buildings</em>, race masteries, diamonds and everything diamonds
+        bought.
+      </p>
+      <p class="dim tiny">
+        <strong>What the season takes:</strong> every level (all back to 1, all
+        adult), all gear, all gold and materials, the skill tree, and the whole
+        village gene pool &mdash; newcomers and elders alike. Next season's Inn
+        deals a new hand.
+      </p>
+      <p class="dim tiny">
+        <strong>What the cull deletes:</strong> anybody past the
+        {data?.Cap ?? 10} slots, permanently. Your first character always stays;
+        then whoever you marked <em>Keep</em>; then the highest aptitude total,
+        epic before ordinary, later generation before earlier. Marking more than
+        the cap is allowed &mdash; the same ranking settles it.
+      </p>
+    </div>
+
     {#if hall.isPending}
       <Skeleton rows={4} />
     {:else if hall.isError}
@@ -117,6 +146,18 @@
       {:else}
         <p class="dim tiny">All four extra slots bought - {data.MaxCap} is the ceiling.</p>
       {/if}
+
+      <!-- Modul: FIELDING IS ALSO HOW A CHILD GROWS UP, and nothing said so.
+           ProcessAgeSlot only ages the three played slots and a newborn is put
+           at the END of the roster, so a bred child sits at AgePhase 0 forever
+           until it is fielded here - and "level 50 and an Adult" is two gates,
+           not one. This is the single most surprising thing in the system. -->
+      <p class="dim tiny">
+        Fielding is also how a bred child grows up: only the played slots age,
+        so a child on the bench stays a child. Give a fielded one about an hour
+        of play to reach Adult, then level 50, and it can be a parent itself.
+        How many slots you may use is set by the Town Hall.
+      </p>
 
       {#each generations as generation (generation)}
         <h3>{generation === 0 ? 'The founders' : `Generation ${generation}`}</h3>
@@ -243,6 +284,26 @@
   .tally.full {
     border-color: var(--warn);
     color: var(--warn);
+  }
+
+  /* Modul: prose, not a fixed-column grid. This panel is one full-width track
+     but the terms have to stay readable at any container width, and a dense
+     three-column table of "carries / taken / deleted" is exactly the shape that
+     shipped cropped elsewhere. Paragraphs wrap; columns do not. */
+  .rollover {
+    display: grid;
+    gap: 0.3rem;
+    margin-top: 0.6rem;
+    padding: 0.5rem 0.6rem;
+    background: var(--bg);
+    border-radius: var(--radius);
+  }
+
+  .rollover p {
+    margin: 0;
+    line-height: 1.4;
+    max-width: 78ch;
+    overflow-wrap: anywhere;
   }
 
   .buy {

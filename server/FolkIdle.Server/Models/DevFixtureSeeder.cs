@@ -488,12 +488,20 @@ namespace FolkIdle.Server.Models
 
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-            // TWO OF EACH SEX, not one. Every exercise run marries somebody,
-            // and marrying makes them an elder - so a standing pool of one was
-            // consumed by the second run and the village pairing step then
-            // failed for want of a partner rather than for a defect. A fixture
-            // that survives one pass is not re-runnable.
-            const int StandingPoolPerSex = 2;
+            // SIX OF EACH SEX, not one and not two. Every exercise run marries
+            // somebody, and marrying makes them an elder - so a standing pool
+            // of one was consumed by the second run and the village pairing
+            // step then failed for want of a partner rather than for a defect.
+            // A fixture that survives one pass is not re-runnable.
+            //
+            // Two was still not enough, because this top-up only runs on an
+            // explicit --seed-dev and nothing calls it between exercise runs:
+            // the pool measured empty with twenty elders standing in it, and
+            // three checks had been failing on a working game for long enough
+            // that the failure looked like the baseline. A villager is four
+            // integers and a row; the pool is sized so one re-seed outlasts a
+            // working session rather than two passes of the script.
+            const int StandingPoolPerSex = 6;
 
             foreach (bool isFemale in new[] { false, true })
             {

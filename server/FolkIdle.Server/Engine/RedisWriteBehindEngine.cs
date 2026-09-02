@@ -178,8 +178,6 @@ namespace FolkIdle.Server.Engine
             player.LastLogoutTimestamp = ReadLong(entries, "last_logout_ts", player.LastLogoutTimestamp);
             player.AccumulatedTimeBankSeconds = ReadInt(entries, "accumulated_time_bank_seconds", player.AccumulatedTimeBankSeconds);
             player.LogicEpochCounter = Math.Max(player.LogicEpochCounter, ReadLong(entries, "logic_epoch_counter", player.LogicEpochCounter));
-            player.BankedChronoSeconds = ReadDouble(entries, "banked_chrono_seconds", player.BankedChronoSeconds);
-            player.IsChronoAccelerating = ReadInt(entries, "is_chrono_accelerating", player.IsChronoAccelerating ? 1 : 0) != 0;
             bool isQuarantined = ReadInt(entries, "is_quarantined", player.IsQuarantined ? 1 : 0) != 0;
             player.IsQuarantined = isQuarantined;
             if (isQuarantined)

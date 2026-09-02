@@ -42,7 +42,8 @@
   import { HALT_REASON_SHORT } from './lib/ui/slots';
   import { initLanguage, loadTranslations } from './lib/ui/i18n';
   import { unlockAudio, play } from './lib/ui/audio';
-  import { tutorialPrompt, skipTutorial } from './lib/stores/tutorial';
+  import OnboardingCoach from './lib/ui/OnboardingCoach.svelte';
+  import { coachTargetScreen } from './lib/stores/tutorial';
 
   initLanguage();
   void loadTranslations();
@@ -218,8 +219,14 @@
             <span class="group-name">{group.name}</span>
             <div class="group-buttons">
               {#each group.screens as item}
+                <!-- Modul: THE COACH-MARK. The onboarding panel does not float a
+                     bubble next to this button, it makes the button itself
+                     pulse - same "look here", none of the positioning maths
+                     that clips at a narrow width. -->
                 <button
                   class:active={screen === item.key}
+                  class:coachmark={$coachTargetScreen === item.key}
+                  data-nav={item.key}
                   onclick={() => {
                     screen = item.key;
                     navOpen = false;
@@ -331,17 +338,14 @@
     <!-- Modul: A BANNER THAT DOES SOMETHING.
          The old one printed "Step 1 of 3" and a sentence, and its only button
          went to Settings to turn itself off - so the one action it offered was
-         to make it go away. It now names the step, says WHY the step matters,
-         and its main button takes the player to the screen where the thing is
-         done. Pointing is the whole job. -->
-    {#if $tutorialPrompt}
-      <div class="tutorial" role="status">
-        <strong>{$tutorialPrompt.index} / {$tutorialPrompt.total} &middot; {$tutorialPrompt.title}</strong>
-        <span>{$tutorialPrompt.body}</span>
-        <button class="gilded" onclick={() => (screen = $tutorialPrompt.screen)}>Take me there</button>
-        <button onclick={skipTutorial}>Skip</button>
-      </div>
-    {/if}
+         to make it go away. It names the step, says WHY the step matters, and
+         its main button takes the player to the screen where the thing is
+         done. Pointing is the whole job.
+         It is now ONE surface for both onboarding tiers - the three
+         first-session steps and the seventeen discovery moments - because a
+         second, differently-shaped hint box would teach the player that hints
+         come in kinds. -->
+    <OnboardingCoach />
 
     <OfflineSummary />
     <!-- Modul: the two moments the game never marked - a first boss
@@ -490,21 +494,27 @@
     color: var(--danger);
   }
 
-  .tutorial {
-    position: fixed;
-    left: 50%;
-    bottom: 1rem;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    padding: 0.55rem 0.9rem;
-    background: var(--bg-raised);
-    border: 1px solid var(--accent);
-    border-radius: 999px;
-    font-size: 0.85rem;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-    z-index: 40;
+  /* Modul: the coach-mark on the real control. Outline rather than a border
+     or a size change, so nothing in the nav reflows while it pulses - a
+     tutorial that moves the button it is pointing at is worse than none.
+     Reduced-motion drops the animation and keeps the ring, matching how the
+     rest of the client treats that setting. */
+  nav button.coachmark {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+    color: var(--text);
+    animation: coachpulse 1.6s ease-in-out infinite;
+  }
+
+  @keyframes coachpulse {
+    0%, 100% { outline-color: var(--accent); }
+    50% { outline-color: transparent; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    nav button.coachmark {
+      animation: none;
+    }
   }
 
   .banner {

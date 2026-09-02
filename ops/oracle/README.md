@@ -31,6 +31,56 @@ three blocks is a contract, not a style choice.
 its whole content registry from the former. Routing them to static files would
 give a client that loads and then knows about no items or monsters at all.
 
+## Audio is NOT a Git LFS asset any more — keep it that way
+
+**This box has no `git lfs`, and that is fine, because nothing it serves needs
+it.** It did not used to be fine.
+
+The serving chain is short and entirely inside this repository:
+
+    client/Assets/Resources/Audio/*.wav        11 clips, 4 KB - 132 KB
+      -> FolkIdle.Server.csproj links them to  Audio/<name>.wav in the publish output
+      -> NetworkBroadcastSystem answers        GET /audio/<name>.wav  (and /audio, a manifest)
+      -> the Caddyfile's @api matcher proxies  /audio, /audio/*  to app:8080
+      -> client_web/src/lib/ui/audio.ts        fetches, decodes, plays
+
+Every link in that chain was correct from the day it was written, and the game
+was still silent in production for its entire life. The clips were tracked in
+**Git LFS**; `git pull` on this box, with no git-lfs installed, wrote 130-byte
+pointer stubs in their place. The build copied the stubs, the server served
+them as `audio/wav`, `decodeAudioData` rejected them, and `audio.ts` recorded a
+miss and carried on — a missing clip is survivable by design, so nothing logged
+anything. `exercise.mjs` counts absent clips as expected 404s, so it did not
+complain either.
+
+**Fixed on 2026-09-02 by taking the runtime audio out of LFS**, not by
+installing git-lfs here. The last rule in `.gitattributes` un-sets the LFS
+filter for `client/Assets/Resources/Audio/*.wav`, and the eleven clips are now
+ordinary git blobs. 367 KB does not need LFS; the ~1 GB that does — the 2048px
+source PNGs under `client/Assets/Images/Sprites` — stays in LFS and is never
+served (the browser gets the WebP resamples under `SpritesWeb`).
+
+**So: do not put `*.wav` back into LFS, and do not "fix" a silent game by
+installing git-lfs here.** Two guards will stop you if you try:
+
+- `ops/validate_audio.py`, run by the `test` job in
+  `.github/workflows/deploy.yml`. That checkout is not LFS-enabled either, so
+  CI sees exactly what this box would `git pull` — a pointer stub fails the
+  pipeline before an image is ever built.
+- `server/Dockerfile` re-checks the **publish output**: each `Audio/*.wav` must
+  start with `RIFF` and be at least 1 KB. It used to only check that the files
+  existed, which a 130-byte stub passes.
+
+Verify after a deploy. A size in the hundreds is the stub coming back:
+
+    # 200 audio/wav 35324 - use GET, not -I. Every method-gated route on this
+    # listener answers HEAD with 400, /audio is not special in that.
+    curl -s -o /tmp/c.wav -w '%{http_code} %{content_type} %{size_download}\n' \
+      https://folkidle.duckdns.org/audio/level_up.wav
+    head -c 4 /tmp/c.wav        # RIFF, not "vers" (an LFS pointer starts "version https://")
+
+    curl -s https://folkidle.duckdns.org/audio        # the manifest, 11 files
+
 ## Ports: TWO firewalls, and both must be open
 
 The instance's own iptables **and** Oracle's cloud Security List. Opening one

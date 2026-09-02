@@ -61,7 +61,6 @@ namespace FolkIdle.Server.Models
         public DbSet<PlayerLifetimeAchievement> PlayerLifetimeAchievements { get; set; }
         public DbSet<PlayerProductionRegistry> PlayerProductionRegistries { get; set; }
         public DbSet<PlayerChroniclePass> PlayerChroniclePasses { get; set; }
-        public DbSet<AccountChronoRegistry> AccountChronoRegistries { get; set; }
         public DbSet<GuildMatchmakingSnapshot> GuildMatchmakingSnapshots { get; set; }
         public DbSet<GuildDefenseRoster> GuildDefenseRosters { get; set; }
         public DbSet<AccountAnalyticsLog> AccountAnalyticsLogs { get; set; }
@@ -177,15 +176,6 @@ namespace FolkIdle.Server.Models
                 .Property(p => p.ClaimedMilestonesBitmask)
                 .HasConversion<long>()
                 .HasColumnType("bigint");
-
-            modelBuilder.Entity<AccountChronoRegistry>()
-                .ToTable("account_chrono_registry", table =>
-                {
-                    table.HasCheckConstraint("CK_account_chrono_registry_BankedChronoSeconds", "\"BankedChronoSeconds\" >= 0 AND \"BankedChronoSeconds\" <= 604800");
-                    table.HasCheckConstraint("CK_account_chrono_registry_ActiveSpeedMultiplier", "\"ActiveSpeedMultiplier\" IN (1.0, 2.0, 4.0)");
-                });
-            modelBuilder.Entity<AccountChronoRegistry>()
-                .HasKey(c => c.AccountId);
 
             modelBuilder.Entity<GuildMatchmakingSnapshot>()
                 .HasKey(m => m.MatchUuid);

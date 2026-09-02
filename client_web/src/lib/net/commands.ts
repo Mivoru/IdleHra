@@ -279,100 +279,6 @@ export function consumeConsumable(
 }
 
 // ---------------------------------------------------------------------------
-// Chrono bank - AND THE ONE PLACE LogicEpochCounter MEANS SOMETHING ELSE
-// ---------------------------------------------------------------------------
-
-// Modul: READ THIS BEFORE TOUCHING EITHER FUNCTION BELOW.
-//
-// `LogicEpochCounter` carries TWO DIFFERENT QUANTITIES on this wire, and which
-// one is expected depends on the command:
-//
-//   every other command - the save-generation counter echoed back from the
-//     last StateUpdate (payload.LogicEpochCounter, which advances by one per
-//     checkpoint flush). ValidateEpochSynchronization allows +-5 drift.
-//
-//   ActivateChronoBoost and ConsumeTimeWarpCore - UNIX EPOCH SECONDS, compared
-//     against DateTimeOffset.UtcNow with +-5 SECONDS of tolerance.
-//
-// SimulationEngine skips ValidateEpochSynchronization for exactly these two
-// (`!isChronoManipulationCommand`), which is what makes the reuse possible and
-// what makes it invisible. GameConnection.send stamps the counter on every
-// command, so these two MUST override it - sending the generation counter
-// where a timestamp belongs fails the drift check and kills the session.
-//
-// Note this uses the SERVER-corrected clock. A browser whose clock is more
-// than five seconds off would otherwise be permanently unable to use its own
-// banked time, with no way to tell why.
-
-/** ChronoBufferEngine.MaxBankedChronoSeconds - seven days. */
-export const MAX_BANKED_CHRONO_SECONDS = 604800;
-
-/** The only two multipliers ValidateChronoManipulation accepts. */
-export const CHRONO_MULTIPLIERS = [2, 4] as const;
-
-/**
- * Starts an acceleration, or stops one with `multiplier = 1`.
- *
- * Modul: 1 USED TO BE A DISCONNECT. ValidateChronoManipulation rejected
- * anything but 2 or 4, and a rejection on that path is
- * TerminateSessionForSecurity - so asking to turn the boost off would have
- * kicked the player. Acceleration was startable here and stoppable only from
- * the Store screen.
- */
-export function activateChronoBoost(
-  multiplier: number,
-  bankedSeconds: number,
-  quarantined: boolean,
-): CommandOutcome {
-  if (quarantined) return refuse('Your account is restricted.');
-
-  const isStop = multiplier === 1;
-  if (!isStop && !CHRONO_MULTIPLIERS.includes(multiplier as 2 | 4)) {
-    return refuse('Only 2x and 4x are available.');
-  }
-  // An empty bank blocks starting, never stopping - running dry is exactly
-  // when a player most wants the stop to land.
-  if (!isStop && bankedSeconds <= 0) {
-    return refuse('You have no banked time to spend.');
-  }
-
-  connection.send({
-    Command: CommandType.ActivateChronoBoost,
-    RequestedSpeedMultiplier: multiplier,
-    LogicEpochCounter: Math.floor(connection.serverNowMs() / 1000),
-  });
-  return OK;
-}
-
-export function consumeTimeWarpCore(
-  seconds: number,
-  bankedSeconds: number,
-  quarantined: boolean,
-  targetSlot = 0,
-): CommandOutcome {
-  if (quarantined) return refuse('Your account is restricted.');
-
-  const requested = Math.trunc(seconds);
-  if (!Number.isFinite(requested) || requested <= 0) {
-    return refuse('Choose how much time to spend.');
-  }
-  if (requested > bankedSeconds) {
-    return refuse('You do not have that much banked time.');
-  }
-  if (requested > MAX_BANKED_CHRONO_SECONDS) {
-    return refuse('Seven days is the most that can be spent at once.');
-  }
-
-  connection.send({
-    Command: CommandType.ConsumeTimeWarpCore,
-    ChronoWarpDurationSeconds: requested,
-    ChronoTargetSlot: Math.max(0, Math.trunc(targetSlot)),
-    LogicEpochCounter: Math.floor(connection.serverNowMs() / 1000),
-  });
-  return OK;
-}
-
-// ---------------------------------------------------------------------------
 // Crafting - TWO SEPARATE SYSTEMS WITH CONFUSABLE NAMES
 // ---------------------------------------------------------------------------
 
@@ -1333,14 +1239,23 @@ export const BUILDINGS: readonly {
     name: 'Inn',
     stateField: 'InnLevel',
     costKind: 'service',
-    what: 'Houses villagers, who work the production buildings.',
+    // Modul: THIS SAID THE WRONG THING ENTIRELY. "Houses villagers, who work
+    // the production buildings" describes the old identity-less work-slot
+    // table, not the gene pool. The Inn is the single lever behind breeding:
+    // it sets the arrival interval (48h - 2h a level, floor 24h), the village's
+    // capacity (6 + level, cap 16) AND how good a newcomer's aptitudes roll
+    // (2 + random up to the level, ceiling 20). See VillagerArrivalRules and
+    // BreedingAptitudes.RollVillager.
+    what: 'Newcomers arrive sooner, the village holds more of them, and their aptitudes roll higher - up to 20. This is the whole of your gene pool.',
   },
   {
     id: 3,
     name: 'Breeding Grounds',
     stateField: 'BreedingLevel',
     costKind: 'service',
-    what: 'Lets you breed characters for better attributes and rarer races.',
+    // Breeding refuses a mixed-race pair outright, so it cannot make a race
+    // rarer - the old blurb promised something the engine forbids.
+    what: 'Required to breed at all. Pairs a level-50 adult hero with a newcomer or with another of your own.',
   },
   {
     id: 5,
@@ -1581,20 +1496,16 @@ export function purchaseLegacyUnlock(unlockId: number): CommandOutcome {
 }
 
 /**
- * Mirrors ValidateChronoCommands: TargetId must be positive, fifteen other
- * fields must be zero, and a QUARANTINED account is rejected outright.
+ * The requested multiplier rides on TargetId. 1 turns acceleration off.
+ *
+ * Modul: was toggleChronoAcceleration, and it never had anything to do with the
+ * chrono bank - the server pays for every extra tick out of
+ * AccumulatedTimeBankMs, so this can only replay time already owed. Renamed
+ * with opcode 8 itself when the bank was deleted.
  */
-export function consumeChronoCore(itemId: number, quarantined: boolean): CommandOutcome {
-  if (quarantined) return refuse('Your account is restricted.');
-  if (!Number.isInteger(itemId) || itemId <= 0) return refuse('Pick a chrono core.');
-  connection.send({ Command: CommandType.ConsumeChronoCore, TargetId: itemId });
-  return OK;
-}
-
-/** The requested multiplier rides on TargetId. 1 turns acceleration off. */
-export function toggleChronoAcceleration(multiplier: number): CommandOutcome {
+export function setSimulationSpeed(multiplier: number): CommandOutcome {
   if (!Number.isInteger(multiplier) || multiplier < 1) return refuse('Multiplier must be at least 1.');
-  connection.send({ Command: CommandType.ToggleChronoAcceleration, TargetId: multiplier });
+  connection.send({ Command: CommandType.SetSimulationSpeed, TargetId: multiplier });
   return OK;
 }
 

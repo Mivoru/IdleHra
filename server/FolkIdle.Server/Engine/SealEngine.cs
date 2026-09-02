@@ -49,12 +49,6 @@ namespace FolkIdle.Server.Engine
                 player.SealsEarnedMask = DeedRegistry.WithSeal(player.SealsEarnedMask, chapter.Index);
                 player.AvailableSkillPoints += DeedRegistry.SkillPointsPerSeal;
 
-                // Modul: and four hours of banked time - one of the three
-                // things that fill the chrono bank at all. See ChronoGrantRules
-                // for why it had none before.
-                player.BankedChronoSeconds = ChronoGrantRules.AddCapped(
-                    player.BankedChronoSeconds, ChronoGrantRules.SealSeconds);
-
                 newlyAwarded |= 1 << (chapter.Index - 1);
             }
 

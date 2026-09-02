@@ -24,8 +24,6 @@ const {
   claimMailItem,
   attackWorldBoss,
   consumeConsumable,
-  activateChronoBoost,
-  consumeTimeWarpCore,
   depositGuildMaterial,
   contributeToGuildStock,
   registerGuildDefense,
@@ -156,59 +154,6 @@ describe('consumables', () => {
 
   it('allows exactly at the cap, matching the server comparison', () => {
     expect(consumeConsumable(77, MAX_BUFF_TICKS).ok).toBe(true);
-  });
-});
-
-describe('chrono - where LogicEpochCounter means something else', () => {
-  // GameConnection.send stamps LogicEpochCounter with the save-generation
-  // counter, because ValidateEpochSynchronization demands an echo of it. These
-  // two commands are EXEMPT from that check server-side and are measured
-  // against the wall clock instead, within five seconds. Sending the
-  // generation counter here fails that drift check and kills the session.
-  it('stamps UNIX SECONDS from the server-corrected clock', () => {
-    activateChronoBoost(2, 3600, false);
-    expect(sent[0].LogicEpochCounter).toBe(1_700_000_000);
-  });
-
-  it('accepts 2x and 4x to start, and 1x to STOP', () => {
-    // Modul: 1 used to be refused here and REJECTED server-side, where a
-    // rejection is TerminateSessionForSecurity - so asking to turn your own
-    // boost off got you kicked as an attacker, and the only working off-switch
-    // was on the Store screen. It is a stop now.
-    expect(activateChronoBoost(3, 3600, false).ok).toBe(false);
-    expect(sent).toHaveLength(0);
-
-    expect(activateChronoBoost(1, 3600, false).ok).toBe(true);
-    expect(activateChronoBoost(4, 3600, false).ok).toBe(true);
-  });
-
-  it('refuses a boost with an empty bank, but still allows stopping one', () => {
-    expect(activateChronoBoost(2, 0, false).ok).toBe(false);
-    expect(sent).toHaveLength(0);
-
-    // The bank running dry is the common way a boost ends, so this is exactly
-    // when the stop most needs to go through.
-    expect(activateChronoBoost(1, 0, false).ok).toBe(true);
-  });
-
-  it('refuses either command for a quarantined account', () => {
-    expect(activateChronoBoost(2, 3600, true).ok).toBe(false);
-    expect(consumeTimeWarpCore(60, 3600, true).ok).toBe(false);
-    expect(sent).toHaveLength(0);
-  });
-
-  it('refuses spending more than the bank holds', () => {
-    expect(consumeTimeWarpCore(3601, 3600, false).ok).toBe(false);
-    expect(sent).toHaveLength(0);
-  });
-
-  it('puts the warp on ChronoWarpDurationSeconds and stamps the clock too', () => {
-    consumeTimeWarpCore(600, 3600, false);
-    expect(sent[0]).toMatchObject({
-      Command: CommandType.ConsumeTimeWarpCore,
-      ChronoWarpDurationSeconds: 600,
-      LogicEpochCounter: 1_700_000_000,
-    });
   });
 });
 

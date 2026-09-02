@@ -14,71 +14,191 @@ first, riskiest last.
 
 ---
 
+## Status at the end of the 2026-09-02 pass
+
+Everything below was worked in one session. Read this table before the task
+bodies — several of them still describe the world as it was on 2026-09-01.
+
+| # | Task | State |
+|---|---|---|
+| 7 | Missing icons | **Done.** Tools reach `ITEM_ICONS` by base id; `sprites.missing.txt` + a budget ratchet; all ten "missing" ores/logs turned out to have real art. |
+| 1 | Verify the daily login | **Done.** No defect. Date key is UTC `floor(unix/86400)`; 7 new tests, mutation-checked. |
+| 2 | Audio + panel clipping | **Audio done** (LFS was shipping 130-byte stubs; two guards added). **Clipping audit incomplete** — see below. |
+| 6 | Wiki | **Mostly done, unverified by hand.** New: `WikiVillage`, `WikiRecipes`, `WikiGuildBuffs`, `WikiScreenIndex`, `wikiData.ts`, `wiki.test.ts`. |
+| 5 | Tutorial | **Done.** Discovery moments, seen-state, re-openable list, 64 tests, and `exercise.mjs` now drives a real new account. Doing that found the entrance defect below. |
+| 4 | Breeding | **Done.** `docs/breeding_model.md`, explaining preview, interlocks, terminology canon. Found and fixed a real server defect. |
+| 3 | Delete the chrono bank | **Done, not deployed.** See §8b of `CURRENT_IMPLEMENTATION_STATE.md`. |
+
+**Verification at hand-off:** 537/537 server tests, 294/294 client tests,
+**94/94 `npm run exercise`**, `svelte-check` at 4 errors — the four pre-existing
+`GuildOps.svelte` ones — and 16 warnings. Server builds clean. Nothing
+committed, nothing deployed.
+
+---
+
+## The 2026-09-02 evening pass: running the exercise
+
+The item at the top of the list below was "run `npm run exercise`". It had
+never been run against this session's work. Running it found four things, and
+only the last is a game defect — but it is the worst kind.
+
+### The game's entrance was closed
+
+**A brand-new player who followed onboarding step 1 died and the tutorial never
+moved again.** Measured against the live server:
+
+| start | outcome |
+|---|---|
+| naked, empty larder | dead at **29 s**, Field Mouse still on **264 of its 465 HP** |
+| after 60 s of fishing | dead at **65 s**, mouse down to **73** — closer, still a loss |
+
+The character has 100 HP; the mouse deals 8 every 2 s and has more than twice
+the health the player can chew through. Tier one blocks in order, so with step 1
+unreachable the food advice — step 3 — was never shown to the only people who
+needed it.
+
+**The balance was not at fault and was not touched.**
+`ProgressionRateTests.TheFirstMonsterTakesAboutSeventyFiveSeconds` passes, and
+passes because it hands its simulated character a million bites of food; its own
+comment says that without them "the character dies in about thirty seconds",
+which is within four seconds of what a real account does. The model was always
+right *given food*. **Fixed by reordering tier one to larder → fight → gear**,
+which is the true dependency; see `docs/onboarding_steps.md` §2. Guarded by
+`tutorial.test.ts` and by the exercise driving a real new account through
+fishing and stocking.
+
+### The exercise had been quietly rotting
+
+Three checks failed on a working game, because the script consumed the state its
+own later steps needed and so could only ever pass on a fresh fixture:
+
+- **Ancestors "Keep"** — marking is a flag nothing clears, so each run marked one
+  more until all 23 read "Kept" and the check failed permanently. Now a round
+  trip that asserts both directions and puts the flag back.
+- **Doll "Wear"** — the picker lists the piece already worn and sorts it first,
+  so the script re-equipped what was on and read no change. Now picks a
+  different item.
+- **Village / breeding** — "Send on" ate the last unmarried villager that the
+  marriage step needed. It now holds the last one back, and an exhausted pool
+  is reported honestly: the assertion is that a greyed-out option *states a
+  reason*, not that the reason is one I enumerated (the first attempt failed on
+  "(both women)").
+
+`DevFixtureSeeder`'s standing villager pool went 2 → 6 per sex: the top-up only
+runs on an explicit `--seed-dev`, so two-per-sex lasted about two runs.
+
+### One thing the fixture was hiding
+
+`/api/v1/admin/status` 403s for an ordinary account — correct, but the dev
+fixture is an admin so the console error never appeared until a new account
+drove the client. Tolerated in the exercise alongside the deliberate 404.
+
+### What is genuinely left
+
+1. **Task 2b: the panel-clipping audit is incomplete.** Village's building rows
+   were found genuinely broken and fixed (`white-space: nowrap` on an `auto`
+   grid track forced the row 151px past the panel, cutting the cost mid-word);
+   `Combat`, `Forge`, `ItemBrowser`, `ItemIcon` and three `Wiki*` panels were
+   also touched. The sweep did **not** cover every one of the 26 screens, and
+   `Boosts`/`Store` were deliberately skipped because the chrono deletion was
+   rewriting them at the time. Re-run the sweep across all screens.
+2. **Task 6: the Wiki was not opened in a browser.** Its tests pass and it
+   typechecks, but no one has looked at it.
+3. **The 40 legacy `*_crafting_material` entries** — see
+   `docs/crafting_material_audit.md`. Classified, deliberately not deleted.
+
+---
+
 ## 7. Missing icons — and a list of everything without art
 
-**Smaller than it looks for tools, bigger than it looks overall.**
+**DONE, 2026-09-02.** What follows is what was actually true and what changed;
+the remaining art backlog is now a generated file rather than a paragraph.
 
-### What is actually true
+### What was wrong
 
-**The tool art EXISTS.** `client/Assets/Images/SpritesWeb/Tools&Equipment/`
-holds `axes/`, `pickaxes/`, `fishing rods/` with per-wood art (`Birch axe.webp`,
-`Golden Birch axe.webp`, …). You did make them.
+**The tool art existed.** `client/Assets/Images/SpritesWeb/Tools&Equipment/`
+holds `axes/`, `pickaxes/`, `fishing rods/` with per-wood art. All 33 tools
+rendered as two-letter initials on the paper doll, the Chest and the Forge
+because `generate-sprites.mjs` routed those three directories into
+`toolIcons[kind][tier]` only — a matrix reachable through `toolIcon(kind, tier)`
+and nowhere else — while `ItemIcon.svelte` asks `itemIcon(baseItemId)`, which
+reads `ITEM_ICONS`. Fixed in the generator: the same path is now emitted under
+the item's own BaseId as well, and `toolIcon()` is untouched. The BaseId shape
+is `<wood>_<axe|pickaxe|fishing_rod>_tool`, and the wood token is **`acacia`
+where the art file says "Acatia"** — the one place a slug() of the filename
+would silently produce a non-item.
 
-They do not render because of a **lookup mismatch, not missing files**:
+**The generator was reading a stale catalogue.** It parsed
+`client/Assets/StreamingAssets/GameData/items.json`, a retired-Unity copy that
+is 111 items adrift from `server/GameData/items.json`: it still carries the
+whole legacy equipment line and the five `_helper_offhand_base` pieces the
+catalogue cut removed, and it lacks `copper_ore` / `iron_ore` / `obsidian_ore` /
+`silver_ore` entirely. Now reads the server's. This changed no mapping — the
+generated file diffed clean — but every coverage number before this was
+measured against a catalogue no player sees.
 
-- `generate-sprites.mjs:279` routes anything under those three directories into
-  `toolIcons[kind][tier]`, a kind-and-tier matrix.
-- That is emitted as `TOOL_ICONS` and reachable only through
-  `sprites.ts:89 toolIcon(kind, tier)`.
-- `ItemIcon.svelte:36` calls `itemIcon(baseItemId)`, which reads `ITEM_ICONS`
-  only (`sprites.ts:70`). A `_tool` base id is never in there.
+**Four logs and one ore had art pointed at their dead twin.** `golden_willow_log`,
+`golden_acacia_log`, `golden_frostpine_log`, `golden_ebon_log` are the live rare
+woodcutting drops (loot table indices 80/82/84/86, `TierMaterials`,
+`GuildContributionEngine`). The art named exactly after them —
+`Golden Willow log.webp` and friends — was aliased to `whispering_willow_log` /
+`ironwood_log` / `glacier_pine_log` / `void_bark_log`, an older duplicate family
+that appears in **no** C# file. The alias table now takes a list, and each of
+those files maps to both ids: the live one so it renders, the legacy one because
+players can still be holding it. `Absidian.webp` likewise now serves the live
+`obsidian_ore` as well as `obsidian_ore_crafting_material`.
 
-So the paper doll, the chest and the forge all fall back to initials for tools,
-while the Gathering screen — which asks by kind and tier — shows them fine.
+**One equipment piece was drawn and never shown.** `brawler_pelt.webp` is a
+wolf's head worn as a hood; the noun table filed `pelt` under *chest*, where it
+collided with `brawler_harness.webp` for the Frost Brawler set's single chest
+slot. One overwrote the other and `eq_brawler_pelt_helmet_armor_slot_base` — a
+BaseId that names its slot outright — got nothing. `pelt` is a helmet now, and
+every one of the 75 equipment pieces has art.
 
-**The wider inventory: 209 of 330 items have no `ITEM_ICONS` entry.**
-215 `.webp` files exist against 159 sprite keys.
+### What shipped
 
-| Group | Missing | Notes |
-|---|---|---|
-| tools | 33 | art exists; mapping bug above |
-| crafting materials | 70 | mostly `*_crafting_material`; several are now unspent legacy |
-| "other" | 95 | herbalism/alchemy/fishing materials, boss drops, `premium_diamond` |
-| logs & ores | 10 | **spent daily — the most visible gap** |
-| armour/jewellery | 1 | |
+- `ITEM_ICONS` went from **121 to 165** of 330 items; missing art from **209 to
+  165**. All 75 equipment pieces now have art.
+- `client_web/src/lib/ui/sprites.missing.txt` — generated, sorted, grouped,
+  committed. `MISSING_ART_BUDGET` in the generator asserts the count and carries
+  a comment saying it may only fall.
+- `node scripts/generate-sprites.mjs --check` (npm: `check:sprites`) fails on a
+  stale generated file OR on the count rising, and runs in CI beside the
+  protocol check.
+- `client_web/scripts/draw-placeholder-ores.mjs` draws the five ores that had no
+  art at all — `copper_ore`, `iron_ore`, `silver_ore`, `cobalt_ore`,
+  `darksteel_ore` — as faceted nuggets into
+  `client/Assets/Images/SpritesWeb/Generated/`. Deterministic; Chromium's canvas
+  is the WebP encoder because the repo has none and Playwright was already here.
+  Delete a placeholder when real art lands: the walk visits `Generated/` before
+  `Locations/`, so a hand-drawn file of the same name wins on its own.
+- The auto-matcher now prefers an **exact** BaseId filename match over a prefix
+  one, which is what lets a file called `copper_ore.webp` land on `copper_ore`
+  rather than being thrown out as ambiguous with `copper_ore_crafting_material`.
 
-The ten logs and ores with no art are the ones players handle constantly:
-`copper_ore`, `iron_ore`, `obsidian_ore`, `silver_ore` (all four catalogued only
-today, so they have never had art), `cobalt_ore`, `darksteel_ore`,
-`golden_willow_log`, `golden_acacia_log`, `golden_frostpine_log`,
-`golden_ebon_log`.
+### The `*_crafting_material` question — answered
 
-### Scope
+**All 50 of them are unreachable.** Not "several are legacy": zero of the 50 can
+be obtained or spent. Traced through `_lootSegments`, which is the only thing
+that makes a `_lootEntries` index reachable — the nine-ore Mining table at
+indices 61-76 and the coal entry at 21 are orphaned, keyed to activity ids
+201-205 that moved to 2001-2005 — and through `_recipes`, which was cut to the
+30 tool recipes and consumes none of them.
 
-1. Bridge tools into the by-base-id lookup. Either emit tool entries into
-   `ITEM_ICONS` keyed by base id as well as into `TOOL_ICONS`, or make
-   `itemIcon()` fall back to resolving a `_tool` id to (kind, tier). Prefer the
-   generator — one source, and `toolIcon()` keeps working untouched.
-2. Produce the missing-art list as a **generated artefact**, not a one-off:
-   extend `generate-sprites.mjs` to write `sprites.missing.txt` (or fail
-   `--check` in CI above a threshold), so the list cannot silently rot.
-3. Draw art for the ten logs/ores first. Everything else is a backlog to work
-   through by frequency-of-appearance, not alphabetically.
-4. Decide what to do about the ~70 `*_crafting_material` entries — several are
-   now legacy (see the ore canon in `NEXT_STEPS_BACKLOG.md`) and may deserve
-   deletion rather than art.
+Deleting them is still a product decision and was **not** taken. Two things
+argue for care: live inventories hold them (one account was measured with 5,017
+`copper_ore_crafting_material`), and `copper_ore_crafting_material`,
+`iron_bar_crafting_material` and `silver_bar_crafting_material` currently carry
+the only bar/ingot artwork in the game. They stay listed in
+`sprites.missing.txt` like anything else; nobody should commission art for them.
 
-### Done when
+### Still open
 
-- A crafted axe shows its art on the Character paper doll, the Chest and the
-  Forge, not initials.
-- `npm run generate:sprites` emits a machine-readable list of items with no art.
-- The ten logs/ores render art everywhere they appear.
-- The missing-art count is asserted somewhere, so it can only go down.
-
-### Risk
-
-Low. Generator and client only; no wire, no schema, no balance.
+- 165 items have no art: 46 crafting materials (all legacy, per above), 46
+  gathering and profession materials, 3 consumables and 70 uncategorised (boss
+  drops, `premium_diamond`, alchemy reagents). Work it by frequency of
+  appearance, not alphabetically. The full list is in `sprites.missing.txt`.
+- The five generated ores are placeholders, not painted art.
 
 ---
 
@@ -320,6 +440,28 @@ progression the Long Game is built on. Do the writing first.
 ---
 
 ## 3. Delete the chrono bank
+
+**DONE, 2026-09-02 — but read this first, because four of the claims below
+turned out to be wrong.** The full record is §8b of
+`CURRENT_IMPLEMENTATION_STATE.md`. In short:
+
+- **"Deleting it is a balance change" — no.** `BankOverflowSeconds` was already
+  a no-op; over-cap offline time was already discarded.
+- **"One of the few things diamonds and the Store are wired to" — no.** There
+  was no diamond price, no gold price and no exchange rate anywhere.
+- **"87 server files" / "~700-byte ceiling" / three wire fields** — really 22
+  hand-editable source files, a ceiling of 832, and **four** state fields
+  (`VisualBankedChronoSeconds` was a second copy of `BankedChronoSeconds`, and
+  the two were read by two different screens).
+- **`PlayerChronoRegistry` and `SeasonEraEngine` did not exist.** §9 of
+  `CURRENT_IMPLEMENTATION_STATE.md` had been wrong for months; corrected.
+
+Outcome: `StateUpdatePacket` 800 → **779**, `ClientCommandPacket` 359 → **339**,
+opcode 8 kept but renamed `SetSimulationSpeed` (it was never chrono), opcodes
+24/47/48 retired as gaps, and nine accounts compensated 1:1 into
+`AccumulatedTimeBankSeconds` by `20260902180220_DeleteChronoBank`.
+
+The original task text follows, for the reasoning it records.
 
 **Much larger than it sounds. Do this last, and only if the answer to "should
 this exist" is genuinely no.**

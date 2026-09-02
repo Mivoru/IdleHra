@@ -22,7 +22,7 @@ namespace FolkIdle.Server.Network
         // stop min rarity (1), stop affix index (1). Both guards move in
         // the same commit - the client copy silently drifted once before
         // and threw on every startup.
-        public const int ExpectedClientCommandSize = 359;
+        public const int ExpectedClientCommandSize = 339;
 
         // Modul: Full-Stack Expansion, Part 1. 680 -> 689: the Leggings
         // equipment slot added EquippedLeggingsId (8 bytes) +
@@ -148,7 +148,7 @@ namespace FolkIdle.Server.Network
         // carries no combat event at all - the client infers every hit from a
         // health difference - so without these two a crit looked exactly like
         // an ordinary swing and a wand looked exactly like a sword.
-        public const int ExpectedStateUpdateSize = 800;
+        public const int ExpectedStateUpdateSize = 779;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

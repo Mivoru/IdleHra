@@ -44,7 +44,7 @@ namespace FolkIdle.Server.Benchmark
                 long targetPlayerId = random.Next(1, 2501);
                 var packet = new ClientCommandPacket
                 {
-                    Command = random.Next(2) == 0 ? CommandType.ChangeActivity : CommandType.ToggleChronoAcceleration,
+                    Command = random.Next(2) == 0 ? CommandType.ChangeActivity : CommandType.SetSimulationSpeed,
                     TargetId = 1
                 };
                 engine.InjectBenchmarkCommand(targetPlayerId, packet);

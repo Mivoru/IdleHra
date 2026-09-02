@@ -1,11 +1,10 @@
 <script lang="ts">
-  // Modul: temporary power - consumables, the buffs they leave behind, and the
-  // chrono bank that converts offline time into progress.
+  // Modul: temporary power - consumables and the buffs they leave behind.
   //
-  // One screen rather than three because they are one decision: everything
-  // here is a resource you spend now for an advantage that expires. Splitting
-  // them would hide the fact that a potion's duration and the chrono lock are
-  // both timers competing for the same session.
+  // One screen rather than two because they are one decision: everything here
+  // is a resource you spend now for an advantage that expires. The chrono bank
+  // was the third panel and is gone; what remains is the half that was never
+  // about buying time.
   //
   // None of this existed in the web client before the 2026-08-02 audit - eight
   // real consumables, both potion slots, the buff timer and a seven-day time
@@ -16,10 +15,6 @@
   import { loadContent, consumableKind, prettifyBaseId, type ContentRegistry } from '../lib/net/content';
   import {
     consumeConsumable,
-    activateChronoBoost,
-    consumeTimeWarpCore,
-    CHRONO_MULTIPLIERS,
-    MAX_BANKED_CHRONO_SECONDS,
     MAX_BUFF_TICKS,
   } from '../lib/net/commands';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
@@ -117,49 +112,6 @@
   // reading this as seconds is how a two-hour cap looks like twelve minutes.
   const buffSeconds = $derived(Math.round(buffTicks / 10));
 
-  // ---------------------------------------------------------------------------
-  // Chrono bank
-  // ---------------------------------------------------------------------------
-
-  const banked = $derived(Number(snap?.BankedChronoSeconds ?? 0));
-  const accelerating = $derived((snap?.IsChronoAccelerating ?? 0) !== 0);
-  const quarantined = $derived((snap?.Quarantine_Active ?? 0) !== 0);
-  const lockTicks = $derived(snap?.ActiveChronoLockExpirationTicks ?? 0);
-
-  let warpMinutes = $state(10);
-
-  function bankLabel(seconds: number): string {
-    if (seconds <= 0) return 'empty';
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    if (h >= 24) return `${Math.floor(h / 24)}d ${h % 24}h`;
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  }
-
-  function boost(multiplier: number) {
-    const outcome = activateChronoBoost(multiplier, banked, quarantined);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-    play('windowOpen');
-  }
-
-  // Modul: YOU CAN TURN IT OFF NOW. Acceleration could be started here and
-  // stopped only from the Store screen - and sending 1x used to be a
-  // DISCONNECT, because the validator treated any multiplier that was not 2 or
-  // 4 as tampering.
-  function stopBoost() {
-    const outcome = activateChronoBoost(1, banked, quarantined);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-    play('windowOpen');
-  }
-
-  function warp() {
-    const seconds = Math.round(warpMinutes * 60);
-    const outcome = consumeTimeWarpCore(seconds, banked, quarantined);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-    play('levelUp');
-  }
-
-  const bankPct = $derived(Math.min(1, banked / MAX_BANKED_CHRONO_SECONDS));
 </script>
 
 <div class="grid">
@@ -242,80 +194,6 @@
     {/if}
   </section>
 
-  <section class="panel">
-    <h2>Chrono bank</h2>
-    <!-- Modul: THIS PANEL USED TO LIE, THREE WAYS. It said the bank fills on
-         its own, that offline time lands in it, and that login rewards and the
-         season pass grant it. None of that happened: the only thing that could
-         add time was a "chrono core" item that was never authored, so the bank
-         was zero for every player who has ever played and both buttons below
-         were permanently disabled. It is now fed by the three rewards named
-         here - see ChronoGrantRules. -->
-    <p class="dim small">
-      Banked time, earned rather than waited for: a seventh day of your login
-      streak, each chapter of the Book of Deeds, and the first time you put down
-      a region boss. Caps at seven days.
-    </p>
-
-    <div class="bar">
-      <div class="bar-fill chrono" style="width: {bankPct * 100}%"></div>
-      <span class="bar-label">{bankLabel(banked)}</span>
-    </div>
-
-    {#if quarantined}
-      <p class="warn">Your account is restricted, so nothing here can be spent.</p>
-    {:else}
-      <h3>Acceleration</h3>
-      <p class="dim tiny">
-        Runs the simulation faster while the bank drains. Only 2x and 4x exist -
-        the server rejects any other multiplier.
-      </p>
-      <div class="row">
-        {#each CHRONO_MULTIPLIERS as multiplier}
-          <button disabled={banked <= 0} onclick={() => boost(multiplier)}>{multiplier}x</button>
-        {/each}
-        {#if accelerating}
-          <button class="stop" onclick={stopBoost}>Stop</button>
-          <span class="on">accelerating</span>
-        {/if}
-      </div>
-
-      {#if lockTicks > 0}
-        <p class="dim tiny">Locked for another {Math.round(lockTicks / 10)}s.</p>
-      {/if}
-
-      <h3>Time warp</h3>
-      <!-- Modul: time warp is NOT how offline progress is collected.
-           It used to look like it, because offline catch-up was capped at
-           twenty actions and everything past that was pushed into this bank -
-           so a night away left the card near-empty and the bank full, and
-           warping felt mandatory. Offline now runs in full for every
-           character and applies itself on login. What lands here is only
-           time no character could use, plus whatever login rewards and the
-           season pass grant. -->
-      <p class="dim tiny">
-        Replays banked time at once. What you farmed while away is already
-        yours and is shown when you sign in - this bank is separate, and holds
-        only what the three rewards above paid.
-      </p>
-      <div class="row">
-        <label>
-          Minutes
-          <input type="number" min="1" max={Math.floor(banked / 60) || 1} bind:value={warpMinutes} />
-        </label>
-        <button disabled={banked <= 0} onclick={warp}>Warp</button>
-      </div>
-      <p class="dim tiny">
-        {#if banked <= 0}
-          Nothing banked. Time banks only when a character was idle while you
-          were away, so an empty bank means everyone was working.
-        {:else}
-          Costs {Math.round(warpMinutes * 60).toLocaleString()}s of the
-          {banked.toLocaleString()}s banked.
-        {/if}
-      </p>
-    {/if}
-  </section>
 </div>
 
 <style>
@@ -442,40 +320,8 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .stop {
-    border-color: var(--warn);
-    color: var(--warn);
-  }
-
-  .chrono {
-    background: linear-gradient(90deg, var(--rarity-13), var(--accent));
-  }
-
   .bar-fill.over {
     background: var(--danger);
-  }
-
-  .row {
-    display: flex;
-    align-items: flex-end;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  .on {
-    font-size: 0.72rem;
-    color: var(--rarity-13);
-  }
-
-  label {
-    display: grid;
-    gap: 0.2rem;
-    font-size: 0.72rem;
-    color: var(--text-dim);
-  }
-
-  input[type='number'] {
-    width: 6rem;
   }
 
   .tiny-btn {

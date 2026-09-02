@@ -231,7 +231,11 @@ namespace FolkIdle.Server.Engine
                 }
 
                 // 2. Multiplier verification
-                if (payload.SpeedMultiplier > 1 && payload.AccumulatedTimeBankMs < 100 && payload.BankedChronoSeconds <= 0.0)
+                // Modul: this used to also require BankedChronoSeconds <= 0,
+                // because a chrono-accelerated player legitimately ran above 1x
+                // with an empty time bank. With chrono gone there is only one
+                // way to be fast, so an empty bank at speed is the cheat.
+                if (payload.SpeedMultiplier > 1 && payload.AccumulatedTimeBankMs < 100)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent 
                     { 
@@ -245,34 +249,6 @@ namespace FolkIdle.Server.Engine
                 }
 
                 payload.LastCommandTimestamp = currentTick;
-            }
-
-            return true;
-        }
-
-        public static bool ValidateChronoCommands(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet)
-        {
-            if (packet.Command != FolkIdle.Server.Network.CommandType.ConsumeChronoCore)
-            {
-                return true;
-            }
-
-            if (packet.TargetId <= 0 || packet.SecondaryId < 0 || packet.TertiaryId < 0 || packet.LimitPrice < 0 || packet.QualityTier < 0)
-            {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 24, Value2 = 1, Timestamp = Environment.TickCount64 });
-                return false;
-            }
-
-            if (packet.SecondaryId != 0 || packet.TertiaryId != 0 || packet.LimitPrice != 0 || packet.IsBuy != 0 || packet.QualityTier != 0 || packet.TargetUnlockId != 0 || packet.RequestedSlotIndex != 0 || packet.MaterialId != 0 || packet.DepositQuantity != 0 || packet.MatchId != 0 || packet.ClientPredictedTurnCounter != 0 || packet.TargetPlayerId != 0 || packet.MentorshipRole != 0 || packet.TargetBuildingId != 0 || packet.TargetVillagerSlot != 0)
-            {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 24, Value2 = 2, Timestamp = Environment.TickCount64 });
-                return false;
-            }
-
-            if (payload.Quarantine_Active)
-            {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 24, Value2 = 3, Timestamp = Environment.TickCount64 });
-                return false;
             }
 
             return true;
@@ -1284,73 +1260,6 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
-        public static bool ValidateChronoRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet, uint authoritativeBankBalance)
-        {
-            return ValidateChronoManipulation(ref payload, ref packet, authoritativeBankBalance);
-        }
-
-        public static bool ValidateChronoManipulation(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet, uint authoritativeBankBalance)
-        {
-            if (packet.Command != FolkIdle.Server.Network.CommandType.ActivateChronoBoost &&
-                packet.Command != FolkIdle.Server.Network.CommandType.ConsumeTimeWarpCore)
-            {
-                return true;
-            }
-
-            if (payload.IsQuarantined || payload.Quarantine_Active)
-            {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = (byte)packet.Command, Value2 = 1, Timestamp = Environment.TickCount64 });
-                return false;
-            }
-
-            long serverEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            long drift = Math.Abs(serverEpoch - packet.LogicEpochCounter);
-            if (packet.LogicEpochCounter <= 0 || drift > 5L)
-            {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = (byte)packet.Command, Value2 = 2, Timestamp = Environment.TickCount64 });
-                return false;
-            }
-
-            if (packet.Command == FolkIdle.Server.Network.CommandType.ActivateChronoBoost)
-            {
-                // Modul: 1 MEANS STOP, and it must not be a disconnect.
-                //
-                // This rejected anything but 2 or 4, and a rejection here is
-                // TerminateSessionForSecurity - so a client asking to TURN THE
-                // BOOST OFF would have been kicked as an attacker. Acceleration
-                // was therefore startable from the Boosts screen and stoppable
-                // only from the Store one.
-                bool isStopRequest = packet.RequestedSpeedMultiplier == 1.0;
-
-                if (!isStopRequest
-                    && packet.RequestedSpeedMultiplier != 2.0
-                    && packet.RequestedSpeedMultiplier != 4.0)
-                {
-                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = (byte)packet.Command, Value2 = 3, Timestamp = Environment.TickCount64 });
-                    return false;
-                }
-
-                // An empty bank blocks STARTING a boost, never stopping one -
-                // the bank running dry is exactly when a player most wants the
-                // stop to go through.
-                if (!isStopRequest && authoritativeBankBalance == 0)
-                {
-                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = (byte)packet.Command, Value2 = 4, Timestamp = Environment.TickCount64 });
-                    return false;
-                }
-
-                return true;
-            }
-
-            uint requestedWarpSeconds = packet.ChronoWarpDurationSeconds != 0 ? packet.ChronoWarpDurationSeconds : packet.ChronoSecondsRequested;
-            if (requestedWarpSeconds == 0 || requestedWarpSeconds > authoritativeBankBalance || requestedWarpSeconds > ChronoBufferEngine.MaxBankedChronoSeconds)
-            {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = (byte)packet.Command, Value2 = 5, Timestamp = Environment.TickCount64 });
-                return false;
-            }
-
-            return true;
-        }
         public static bool ValidateLeaderboardQuery(long playerId, int skip, int take)
         {
             if (skip < 0 || skip > 10000)

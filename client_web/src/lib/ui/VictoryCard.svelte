@@ -90,11 +90,6 @@
           </li>
         {/if}
 
-        <!-- Modul: the chrono grant is one of only three things that fill the
-             bank, and it is paid right here. A reward the player is not told
-             about is a reward that did not happen. -->
-        <li>Two hours of <strong>banked time</strong>, for the Chrono bank.</li>
-
         <li class="dim">
           Anything it dropped is in your Chest, and counts toward the Book of
           Deeds.

@@ -269,8 +269,6 @@ namespace FolkIdle.Server.Domain.Shared
                         player.LarderSlot3Count = state.Food3_Count;
                         player.AutoEatThresholdPct = state.AutoEatThreshold;
                         player.LogicEpochCounter = state.LogicEpochCounter + 1;
-                        player.BankedChronoSeconds = state.BankedChronoSeconds;
-                        player.IsChronoAccelerating = state.IsChronoAccelerating;
                         // Modul: THE CHECKPOINT NO LONGER WRITES THE
                         // QUARANTINE FLAGS.
                         //
@@ -326,7 +324,6 @@ namespace FolkIdle.Server.Domain.Shared
                         player.LarderSlot3Count = state.Food3_Count;
                         player.AutoEatThresholdPct = state.AutoEatThreshold;
                         await ApplyPendingGoldDeltaAsync(dbContext, state);
-                        await UpsertAccountChronoRegistryAsync(dbContext, state);
                         await UpsertChroniclePassAsync(dbContext, state);
                         await UpsertLifetimeAchievementsAsync(dbContext, player, state);
                         await QuestEngine.UpsertDailyQuestProgressAsync(dbContext, state);
@@ -342,15 +339,12 @@ namespace FolkIdle.Server.Domain.Shared
                             LastLogoutTimestamp = state.LastLogoutTimestamp,
                             AccumulatedTimeBankSeconds = (int)(state.AccumulatedTimeBankMs / 1000L),
                             LogicEpochCounter = state.LogicEpochCounter + 1,
-                            BankedChronoSeconds = state.BankedChronoSeconds,
-                            IsChronoAccelerating = state.IsChronoAccelerating,
                             // A row being created for the first time cannot
                             // already be quarantined, and the flags have one
                             // writer now - see above.
                             Quarantine_Active = false,
                             IsQuarantined = false
                         });
-                        await UpsertAccountChronoRegistryAsync(dbContext, state);
                         await UpsertChroniclePassAsync(dbContext, state);
                     }
 
@@ -368,10 +362,8 @@ namespace FolkIdle.Server.Domain.Shared
 
         public async Task<TickStatePayload> LoadPlayerState(long playerId)
         {
-            // Modul: login-time state hydration - retry-configured so both
-            // this method's LoadOrUpdateAccountChronoRegistryAsync call
-            // (which opens its own Serializable transaction) and every
-            // other read below transparently survive a transient failure
+            // Modul: login-time state hydration - retry-configured so every
+            // read below transparently survives a transient failure
             // or Serializable conflict during a concurrent login burst
             // (cold-boot recovery, many logins at once) instead of failing
             // the session outright.
@@ -764,10 +756,6 @@ namespace FolkIdle.Server.Domain.Shared
                 .FirstOrDefaultAsync(p => p.PlayerId == playerId);
 
             long currentUnixTs = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            var accountChrono = await LoadOrUpdateAccountChronoRegistryAsync(dbContext, player, currentUnixTs);
-            bool chronoAccelerationActive = accountChrono.BankedChronoSeconds > 0 &&
-                accountChrono.ActiveSpeedMultiplier > 1.0 &&
-                accountChrono.AccelerationTerminationEpoch > currentUnixTs;
 
             (float codexYieldMultiplier, float codexDamageMultiplier) = await CodexEngine.CalculateActiveMultipliersAsync(playerId, dbContext);
 
@@ -847,7 +835,7 @@ namespace FolkIdle.Server.Domain.Shared
                 CachedCodexYieldMultiplier = codexYieldMultiplier,
                 CachedCodexDamageMultiplier = codexDamageMultiplier,
                 PlayerId = player.Id,
-                AccountId = accountChrono.AccountId,
+                AccountId = ResolveAccountId(player.Id, player.PlayerGuid),
                 CurrentLevel = player.CurrentLevel,
                 CurrentXp = player.CurrentXp,
                 SelectedLineageId = player.SelectedLineageId,
@@ -895,7 +883,7 @@ namespace FolkIdle.Server.Domain.Shared
                 PlayerHp = 100000,
                 CurrentGold = loadedGold,
                 PremiumCurrency = player.PremiumDiamonds,
-                SpeedMultiplier = chronoAccelerationActive ? (int)accountChrono.ActiveSpeedMultiplier : 1,
+                SpeedMultiplier = 1,
                 GuildId = player.GuildId,
                 ActiveGuildWarId = activeGuildWarId,
                 ActiveCrossShardMatchId = activeCrossShardMatchId,
@@ -975,10 +963,6 @@ namespace FolkIdle.Server.Domain.Shared
                 CachedAffixTotals = equippedAffixTotals,
                 CachedSetIds = equippedSetIds,
                 LogicEpochCounter = player.LogicEpochCounter,
-                BankedChronoSeconds = accountChrono.BankedChronoSeconds,
-                IsChronoAccelerating = chronoAccelerationActive,
-                ActiveChronoSpeedMultiplier = chronoAccelerationActive ? accountChrono.ActiveSpeedMultiplier : 1.0,
-                ActiveChronoLockExpirationTicks = chronoAccelerationActive ? accountChrono.AccelerationTerminationEpoch : 0L,
                 LegacyShardBalance = (int)shardTotal,
                 CitizenMultiSlotsUnlocked = unlockedSlots,
                 GuildLogisticsCurrentStock = guildLogisticsStock,
@@ -1278,90 +1262,6 @@ namespace FolkIdle.Server.Domain.Shared
             if (gold.Quantity < 0L) gold.Quantity = 0L;
         }
 
-        private static async Task<AccountChronoRegistry> LoadOrUpdateAccountChronoRegistryAsync(FolkIdleDbContext dbContext, PlayerRecord player, long currentUnixTimestamp)
-        {
-            Guid accountId = ResolveAccountId(player.Id, player.PlayerGuid);
-
-            var strategy = dbContext.Database.CreateExecutionStrategy();
-            return await strategy.ExecuteAsync(async () =>
-            {
-                // player was loaded by the caller before this retry boundary
-                // and is mutated below - ChangeTracker.Clear() would detach
-                // it (dropping those mutations from the next SaveChangesAsync)
-                // unless it is re-attached immediately after clearing.
-                dbContext.ChangeTracker.Clear();
-                dbContext.Attach(player);
-
-                await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-
-                var registry = await dbContext.AccountChronoRegistries
-                    .FromSqlRaw("SELECT * FROM account_chrono_registry WHERE \"AccountId\" = {0} FOR UPDATE", accountId)
-                    .FirstOrDefaultAsync();
-
-                if (registry == null)
-                {
-                    registry = new AccountChronoRegistry
-                    {
-                        AccountId = accountId,
-                        BankedChronoSeconds = ChronoBufferEngine.ClampBankedSeconds(player.BankedChronoSeconds),
-                        ActiveSpeedMultiplier = 1.0,
-                        AccelerationTerminationEpoch = 0L,
-                        LastClockSyncEpoch = currentUnixTimestamp
-                    };
-                    dbContext.AccountChronoRegistries.Add(registry);
-                }
-                else
-                {
-                    ChronoBufferEngine.ProcessLoginHandshake(registry, currentUnixTimestamp);
-                    if (registry.AccelerationTerminationEpoch <= currentUnixTimestamp || registry.BankedChronoSeconds <= 0)
-                    {
-                        registry.ActiveSpeedMultiplier = 1.0;
-                        registry.AccelerationTerminationEpoch = 0L;
-                    }
-                }
-
-                player.BankedChronoSeconds = registry.BankedChronoSeconds;
-                player.IsChronoAccelerating = registry.ActiveSpeedMultiplier > 1.0 && registry.AccelerationTerminationEpoch > currentUnixTimestamp;
-
-                await dbContext.SaveChangesAsync();
-                await transaction.CommitAsync();
-                return registry;
-            });
-        }
-
-        private static async Task UpsertAccountChronoRegistryAsync(FolkIdleDbContext dbContext, TickStatePayload state)
-        {
-            Guid accountId = state.AccountId == Guid.Empty ? ResolveAccountId(state.PlayerId, Guid.Empty) : state.AccountId;
-            var registry = await dbContext.AccountChronoRegistries
-                .FromSqlRaw("SELECT * FROM account_chrono_registry WHERE \"AccountId\" = {0} FOR UPDATE", accountId)
-                .FirstOrDefaultAsync();
-
-            int bankedSeconds = ChronoBufferEngine.ClampBankedSeconds(state.BankedChronoSeconds);
-            double speedMultiplier = state.IsChronoAccelerating && (state.SpeedMultiplier == 2 || state.SpeedMultiplier == 4)
-                ? state.SpeedMultiplier
-                : 1.0;
-            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            long terminationEpoch = speedMultiplier > 1.0 ? Math.Max(now, state.ActiveChronoLockExpirationTicks) : 0L;
-
-            if (registry == null)
-            {
-                dbContext.AccountChronoRegistries.Add(new AccountChronoRegistry
-                {
-                    AccountId = accountId,
-                    BankedChronoSeconds = bankedSeconds,
-                    ActiveSpeedMultiplier = speedMultiplier,
-                    AccelerationTerminationEpoch = terminationEpoch,
-                    LastClockSyncEpoch = now
-                });
-                return;
-            }
-
-            registry.BankedChronoSeconds = bankedSeconds;
-            registry.ActiveSpeedMultiplier = speedMultiplier;
-            registry.AccelerationTerminationEpoch = terminationEpoch;
-            registry.LastClockSyncEpoch = now;
-        }
-
         private static async Task UpsertChroniclePassAsync(FolkIdleDbContext dbContext, TickStatePayload state)
         {
             var pass = await dbContext.PlayerChroniclePasses
@@ -1513,8 +1413,6 @@ namespace FolkIdle.Server.Domain.Shared
                         player.ActiveDefensivePotionId = state.ActiveDefensivePotionId;
                         player.DefensivePotionDurationMs = state.DefensivePotionDurationMs;
                         player.LogicEpochCounter = state.LogicEpochCounter + 1;
-                        player.BankedChronoSeconds = state.BankedChronoSeconds;
-                        player.IsChronoAccelerating = state.IsChronoAccelerating;
                         // Not written here either - one writer, see the
                         // main flush path above.
                         player.IsQuarantined = state.IsQuarantined;
@@ -1539,7 +1437,6 @@ namespace FolkIdle.Server.Domain.Shared
                         player.ActiveFoodExpiresEpoch = state.FoodBuffDurationMs > 0 ? consumableFlushEpoch + state.FoodBuffDurationMs / 1000L : 0L;
                         player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
                         player.PremiumDiamonds = state.PremiumCurrency;
-                        await UpsertAccountChronoRegistryAsync(dbContext, state);
                         await UpsertChroniclePassAsync(dbContext, state);
 
                         if (state.Slot1_CharacterId != System.Guid.Empty)

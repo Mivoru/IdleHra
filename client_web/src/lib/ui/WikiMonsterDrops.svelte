@@ -89,4 +89,10 @@
     padding: 0 0.2rem;
     margin-left: 0.3rem;
   }
+  .dim {
+    color: var(--text-dim);
+  }
+  .tiny {
+    font-size: 0.72rem;
+  }
 </style>

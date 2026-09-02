@@ -7,6 +7,16 @@ Keeping one folder rather than a second copy is why the two clients could never
 disagree about what a level-up sounds like — and now that the Unity client is
 retired, this is simply where the game's sound lives.
 
+**These files are ORDINARY GIT BLOBS, and must stay that way.** They were
+tracked in Git LFS until 2026-09-02; git-lfs is not installed on the Oracle
+deploy box, so its checkout held 130-byte pointer stubs, the server served
+those as `audio/wav`, `decodeAudioData` rejected them and the fallback below
+swallowed it. **The game was silent in production for its entire life and
+nothing logged a word.** The last rule in `.gitattributes` un-sets the LFS
+filter for this directory; `ops/validate_audio.py` (run by CI) and a check in
+`server/Dockerfile` both fail if a clip ever comes back as a pointer stub. See
+`ops/oracle/README.md`.
+
 The extension **is** part of the name for the web client, unlike Unity's
 `Resources.Load`. Everything below is `.wav`.
 

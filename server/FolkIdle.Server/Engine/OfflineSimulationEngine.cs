@@ -127,6 +127,19 @@ namespace FolkIdle.Server.Engine
 
             // Modul 13: Vodnik Mastery extends the universal offline cap.
             long effectiveMaxOfflineSeconds = RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(payload.VodnikMasteryLevel, MaxOfflineSeconds);
+
+            // Modul: TIME BEYOND THE CAP IS DISCARDED, DELIBERATELY. This Min is
+            // where it goes, and nothing downstream ever sees rawDeltaSeconds
+            // again.
+            //
+            // It reads like a loss and is not. Offline catch-up runs in FULL for
+            // every character up to the cap - the player already has the gold,
+            // the XP and the drops for those hours. The overflow used to be
+            // pushed into the chrono bank, which paid for the same hours twice;
+            // that was made a no-op long before the bank was deleted, so
+            // removing the bank changed nothing here. If a reward for being away
+            // longer than the cap is ever wanted, this is the line to change,
+            // and it is a balance decision rather than a cleanup.
             long elapsedSeconds = Math.Min(effectiveMaxOfflineSeconds, rawDeltaSeconds);
 
             // Modul: Scholar, the Insight crown - everything earned while away
@@ -219,15 +232,7 @@ namespace FolkIdle.Server.Engine
                         }
                         else if (slotIndex == 0)
                         {
-                            // Only slot 1 banks unusable time. Banking once per
-                            // idle slot would triple a player's chrono reserve
-                            // for the crime of owning characters.
-                            BankOverflowSeconds(ref payload, elapsedSeconds);
                         }
-                    }
-                    else if (slotIndex == 0)
-                    {
-                        BankOverflowSeconds(ref payload, elapsedSeconds);
                     }
 
                     int slotGold = ClampToInt(payload.CurrentGold - slotGoldBefore);
@@ -450,8 +455,6 @@ namespace FolkIdle.Server.Engine
 
             long allowedActions = (long)Math.Min(totalActionsDouble, MaxOfflineGatherActions);
             double usedSeconds = allowedActions * actionIntervalSeconds;
-            double overflowSeconds = elapsedSeconds - usedSeconds;
-            BankOverflowSeconds(ref payload, (long)overflowSeconds);
 
             long masteryXpGained = allowedActions * node.BaseMasteryXpReward;
             ApplyGatheringMasteryXp(ref payload, node.ProfessionType, masteryXpGained);
@@ -595,8 +598,6 @@ namespace FolkIdle.Server.Engine
                     effectiveElapsedSeconds = totalHealCapacityMilliHp / expectedIncomingMilliDps;
                     if (effectiveElapsedSeconds < 0.0) effectiveElapsedSeconds = 0.0;
 
-                    double overflowSeconds = elapsedSeconds - effectiveElapsedSeconds;
-                    BankOverflowSeconds(ref payload, (long)overflowSeconds);
 
                     ConsumeFoodStock(ref payload, totalFoodUnits);
                 }
@@ -726,27 +727,6 @@ namespace FolkIdle.Server.Engine
         {
             if (xpGained <= 0) return;
             Domain.Combat.SimulationEngine.ApplyBulkMasteryXp(ref payload, professionType, xpGained);
-        }
-
-        // Modul: OFFLINE TIME IS NO LONGER BANKED.
-        //
-        // The chrono bank existed because offline catch-up was capped at twenty
-        // actions - everything past that was pushed in here as "overflow", and
-        // Time Warp was how a player got it back. Catch-up now runs in full for
-        // every character, so banking on top of that pays for the same hours
-        // twice: the player already has the gold, the XP and the drops.
-        //
-        // The bank itself stays - it is a real mechanic with a real screen, and
-        // it is the right shape for a reward. What fills it is login streaks
-        // and season pass tiers, not simply having been away.
-        //
-        // Kept as a no-op with its callers intact rather than deleted: the two
-        // call sites are the "this character could not use its time" branches,
-        // and they are exactly where a future reward hook belongs.
-        private static void BankOverflowSeconds(ref TickStatePayload payload, long seconds)
-        {
-            _ = payload;
-            _ = seconds;
         }
 
         // Isolated so it can be tested directly against a hand-built loot table,

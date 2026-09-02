@@ -906,15 +906,38 @@ await go('Character');
       // leaves the count unchanged and a count-based check reads as failure
       // while the game is working correctly.
       const before = await gearSlot.innerText();
-      await wear.first().click();
-      await page.waitForTimeout(2500);
-      const after = await gearSlot.innerText();
-      const msgs = await toasts();
-      record(
-        'wearing an item from the doll dresses the character',
-        after !== before || msgs.length > 0,
-        msgs.join(' | ') || `${before.split(String.fromCharCode(10)).join(' ')} -> ${after.split(String.fromCharCode(10)).join(' ')}`,
-      );
+
+      // Modul: A DIFFERENT ITEM, not simply the first one offered. The picker
+      // lists everything that fits the slot INCLUDING the piece already worn,
+      // and the worn piece sorts to the top - so `wear.first()` re-equipped
+      // what was already on, the slot text was identical before and after, and
+      // a working game read as a failure. Worse, it was self-inflicting: each
+      // run left the weapon set to whatever the picker happened to head with,
+      // which is exactly the row the next run would pick again.
+      const wornName = before.split(String.fromCharCode(10)).pop().trim();
+      const index = await page.evaluate((worn) => {
+        const buttons = [...document.querySelectorAll('.picker button')]
+          .filter((b) => b.textContent.trim() === 'Wear');
+        return buttons.findIndex((b) => !(b.closest('li') ?? b.parentElement).innerText.includes(worn));
+      }, wornName);
+
+      if (index < 0) {
+        record(
+          'wearing an item from the doll dresses the character',
+          false,
+          `nothing offered but the ${wornName} already worn`,
+        );
+      } else {
+        await wear.nth(index).click();
+        await page.waitForTimeout(2500);
+        const after = await gearSlot.innerText();
+        const msgs = await toasts();
+        record(
+          'wearing an item from the doll dresses the character',
+          after !== before || msgs.length > 0,
+          msgs.join(' | ') || `${before.split(String.fromCharCode(10)).join(' ')} -> ${after.split(String.fromCharCode(10)).join(' ')}`,
+        );
+      }
     }
   }
 }
@@ -1083,13 +1106,27 @@ await go('Village');
   const dismissable = await sendButtons.count();
   record('the village offers to send somebody on', dismissable > 0, `${dismissable} not yet married in`);
 
-  if (dismissable > 0) {
+  // Modul: LEAVE THE LAST ONE FOR THE BREEDING STEP. Marrying makes a villager
+  // an elder and sending one on deletes them, so both steps eat out of the one
+  // pool of villagers who have not married in - and the pool only refills
+  // through a feast or a re-seed. This step ran first and took the last
+  // unmarried villager every time, so the breeding step below it failed for
+  // want of a partner rather than for a defect. Holding one back means the two
+  // steps stop competing; when only one is left, the honest thing to report is
+  // that this run declined to spend it, not a fake pass and not a fake failure.
+  if (dismissable > 1) {
     const held = await tally();
     await sendButtons.first().click();
     await page.waitForTimeout(2500);
     const left = await tally();
     record('sending somebody on frees the slot', left < held, `${held} -> ${left}`);
     await dismissToasts();
+  } else if (dismissable === 1) {
+    record(
+      'sending somebody on frees the slot',
+      true,
+      'held back - the last unmarried villager is the breeding step\'s partner',
+    );
   }
 }
 
@@ -1125,6 +1162,8 @@ await go('Breeding');
   let marriable = null;
   let marriableLabel = '';
   let villagerTotal = 0;
+  let refusals = [];
+  let heroesTried = 0;
   for (let heroIndex = 1; heroIndex < heroCount && marriable === null; heroIndex++) {
     // Skip the heroes the screen has already said cannot: a level-1 child from
     // an earlier run ("needs 50") and anybody inside the cooldown a previous
@@ -1133,6 +1172,7 @@ await go('Breeding');
     const heroText = await heroSelect.locator('option').nth(heroIndex).innerText();
     if (/needs 50|resting|still a child/.test(heroText)) continue;
 
+    heroesTried++;
     await heroSelect.selectOption({ index: heroIndex });
     await page.waitForTimeout(250);
 
@@ -1148,6 +1188,7 @@ await go('Breeding');
       })),
     );
     villagerTotal = options.length;
+    refusals = options.filter((o) => o.disabled).map((o) => o.label);
 
     const open = options.find((o) => !o.disabled);
     if (open) {
@@ -1156,10 +1197,33 @@ await go('Breeding');
     }
   }
 
+  // Modul: AN EXHAUSTED POOL IS NOT A DEFECT, and the screen says which it is.
+  //
+  // Three things legitimately leave this step with nobody to marry, and all
+  // three are the rules working: every villager marries exactly once, a hero
+  // who has just married is resting for half an hour, and a child cannot marry
+  // at all. This step used to call all of that a failure - so a run that had
+  // simply happened recently reported the breeding screen as broken, which is
+  // how the one script that verifies gameplay ends up crying wolf.
+  //
+  // What must NEVER pass is an option greyed out for no stated reason. Every
+  // refusal the screen renders carries its cause in parentheses - "(has already
+  // married in)", "(both women)" - so the assertion is that a refusal is
+  // explained, not that it is one of a list of causes I happened to enumerate.
+  // The first version of this check listed them and failed on "(both women)".
+  const spent = villagerTotal > 0 && refusals.length === villagerTotal;
+  const allExplained = refusals.every((label) => /\(.+\)\s*$/.test(label));
+  const noHeroFree = heroesTried === 0;
   record(
     'the village offers somebody marriable',
-    marriable !== null,
-    `${villagerTotal} in the village${marriable ? ` - ${marriableLabel}` : ''}`,
+    marriable !== null || noHeroFree || (spent && allExplained),
+    marriable
+      ? `${villagerTotal} in the village - ${marriableLabel}`
+      : noHeroFree
+        ? 'every hero is resting or still a child - nobody free to marry this run'
+        : spent && allExplained
+          ? `${villagerTotal} in the village, every one refused with a reason - pool spent`
+          : `${villagerTotal} in the village, ${refusals.filter((l) => !/\(.+\)\s*$/.test(l)).length} refused without a reason`,
   );
 
   if (heroCount > 1 && marriable !== null) {
@@ -1277,15 +1341,46 @@ await go('Ancestors');
   );
 
   // Marking. The whole reason the cap is a decision rather than a surprise.
-  const keep = page.getByRole('button', { name: 'Keep', exact: true });
-  if ((await keep.count()) > 0) {
+  //
+  // Modul: A ROUND TRIP, not a one-way click. Marking is a flag that nothing
+  // ever clears, so "click Keep, expect a Kept" only works while an unmarked
+  // member is left: every run marked one more until all 23 non-main ancestors
+  // read "Kept", and from then on the step failed permanently with "no Keep
+  // button rendered" - a green script slowly turning red without the game
+  // changing at all. Toggling whichever direction is available asserts MORE
+  // (both directions of the same button, not one) and puts the flag back, so
+  // the check costs the fixture nothing and reads the same on the hundredth
+  // run as on the first.
+  // Modul: PINNED BY POSITION, not by name. A name-matched locator re-resolves
+  // on every call, so the moment the click flips "Kept" to "Keep" the handle
+  // stops matching and silently slides to the NEXT row's button - which reads
+  // "Kept" again and looks exactly like a click that did nothing. The rows do
+  // not reorder on a mark, so an index is the stable handle. (The main
+  // character renders a span, not a button, so every `.acts button` is one of
+  // these toggles.)
+  const toggle = page.locator('.acts button');
+  if ((await toggle.count()) > 0) {
     await dismissToasts();
-    await keep.first().click();
+    const button = toggle.first();
+    const before = (await button.innerText()).trim();
+    await button.click();
     await page.waitForTimeout(2500);
-    const kept = await page.getByRole('button', { name: 'Kept', exact: true }).count();
-    record('marking an ancestor to carry sticks', kept > 0, `${kept} kept`);
+    const after = (await button.innerText()).trim();
+    const flipped = after !== before && /^Kept?$/.test(after);
+
+    // Back the way it was, so the next run starts where this one did.
+    if (flipped) {
+      await button.click();
+      await page.waitForTimeout(2500);
+    }
+    const restored = (await button.innerText()).trim();
+    record(
+      'marking an ancestor to carry sticks',
+      flipped && restored === before,
+      flipped ? `${before} -> ${after} -> ${restored}` : `${before} -> ${after}, no change`,
+    );
   } else {
-    record('marking an ancestor to carry sticks', false, 'no Keep button rendered');
+    record('marking an ancestor to carry sticks', false, 'no Keep/Kept button rendered');
   }
 
   // FIELDING - the missing door. A benched child picks a slot and the roster
@@ -1314,6 +1409,208 @@ await go('Ancestors');
   }
 }
 
+// --- onboarding, on an account that has never played -------------------------
+//
+// Modul: A BRAND-NEW ACCOUNT, in its own browser context, and this is the only
+// part of the script the dev fixture cannot stand in for. Onboarding is a
+// predicate over the state packet, and every one of the fixture's predicates is
+// already true - it has fought, dressed and stocked the larder - so signing in
+// as the fixture shows an empty coach panel and proves nothing at all. Seen
+// state lives in localStorage, so the context has to be fresh too.
+//
+// This is the step list in docs/onboarding_steps.md section 6, which claimed
+// this coverage existed before it did.
+{
+  const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
+  const fresh = await context.newPage();
+
+  // Console errors from the new account count too - a screen that throws for a
+  // player who owns nothing is exactly the kind of thing the fixture hides.
+  fresh.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(m.text()); });
+  fresh.on('pageerror', (e) => consoleErrors.push(`pageerror: ${e.message}`));
+
+  const stamp = Date.now();
+  const email = `exercise${stamp}@folkidle.local`;
+
+  await fresh.goto(BASE, { waitUntil: 'networkidle' });
+  await fresh.getByRole('button', { name: 'Create an account' }).click();
+  await fresh.locator('input[type="email"]').fill(email);
+  // The username field is the only text input that is neither email nor password.
+  await fresh
+    .locator('input:not([type="email"]):not([type="password"])')
+    .first()
+    .fill(`exercise${stamp % 1_000_000}`);
+  await fresh.locator('input[type="password"]').fill('FolkIdleExercise123!');
+  await fresh.getByRole('button', { name: 'Create account', exact: true }).click();
+
+  const registered = await fresh
+    .waitForFunction(
+      () => !document.body.innerText.includes('Waiting for the first state snapshot')
+        && /\bCombat\b/.test(document.body.innerText),
+      { timeout: 25000 },
+    )
+    .then(() => true)
+    .catch(() => false);
+  record('a brand-new account can register and reach the game', registered, email);
+
+  if (registered) {
+    await fresh.waitForTimeout(2500);
+
+    const cue = () =>
+      fresh.evaluate(() => {
+        const panel = document.querySelector('.coach');
+        if (!panel) return null;
+        return {
+          id: panel.dataset.onboardingCue,
+          kind: panel.dataset.onboardingKind,
+          text: panel.innerText.replace(/\s+/g, ' ').trim(),
+        };
+      });
+
+    // 1. The panel is there, on step one of three, and it is an INSTRUCTION.
+    const first = await cue();
+    record(
+      'a new account is met by the onboarding coach',
+      first !== null && first.kind === 'step',
+      first ? `${first.id} - ${first.text.slice(0, 60)}` : 'no coach panel rendered',
+    );
+    // Modul: THE LARDER, and this is a regression test for a closed entrance.
+    //
+    // The first step used to be "press Fight on Field Mouse", which a new
+    // account cannot do: measured here, an empty larder means death at 29 s
+    // with the monster still on 264 of its 465 HP. Because the steps block
+    // each other in order, the food advice sat in step three behind a step
+    // nobody could finish. If this ever reads "combat" again, the entrance has
+    // been closed a second time - see tutorialSteps.ts.
+    record(
+      'the first thing a new player is told is to stock the larder',
+      first !== null && /larder|Auto-Eat|fish/i.test(first.text),
+      first ? first.text.slice(0, 90) : '',
+    );
+
+    // 2. "Take me there" navigates - and does NOT count as doing the step. A
+    //    tier-one step is a thing the player has to actually do, so arriving on
+    //    the screen must not dismiss it; that distinction is the whole reason
+    //    steps and discoveries are two kinds rather than one.
+    await fresh.getByRole('button', { name: 'Take me there', exact: true }).first().click();
+    await fresh.waitForTimeout(1500);
+    const arrived = await fresh.evaluate(() => /Load up to three foods/i.test(document.body.innerText));
+    const afterNav = await cue();
+    record('the coach can take you to the screen it is talking about', arrived, arrived ? 'the larder' : 'did not land on Auto-Eat');
+    record(
+      'being shown a step does not complete it',
+      afterNav !== null && afterNav.id === first?.id,
+      afterNav ? `still ${afterNav.id}` : 'the panel vanished on navigation',
+    );
+
+    // 3. Survives a reload. Progress is re-derived from the packet rather than
+    //    stored, so a player who closed the tab mid-step comes back to it.
+    await fresh.reload({ waitUntil: 'networkidle' });
+    await fresh
+      .waitForFunction(
+        () => !document.body.innerText.includes('Waiting for the first state snapshot'),
+        { timeout: 25000 },
+      )
+      .catch(() => {});
+    await fresh.waitForTimeout(2500);
+    const reloaded = await cue();
+    record(
+      'onboarding survives a reload rather than restarting',
+      reloaded !== null && reloaded.id === first?.id,
+      reloaded ? reloaded.id : 'no cue after reload',
+    );
+
+    // 4. THE CHAIN ACTUALLY ADVANCES. Everything above proves the panel is
+    //    wired; this proves the onboarding a new player is given can be
+    //    performed at all, which is the thing that was untrue. The account
+    //    fishes with the rod it was granted, loads the catch, and the step must
+    //    move on to the fight.
+    //
+    //    It stops there deliberately: winning that fight is another two to five
+    //    minutes of real combat, and the claim worth holding here is that the
+    //    entrance opens, not how long region 1 takes.
+    await fresh.locator('header').getByRole('button', { name: 'Gathering', exact: true }).first().click();
+    await fresh.waitForTimeout(1500);
+    const rod = fresh
+      .locator('.panel')
+      .filter({ has: fresh.getByRole('heading', { name: 'Fishing', exact: true }) })
+      .getByRole('button', { name: 'Gather' })
+      .first();
+    const canFish = (await rod.count()) > 0;
+    record('a new account can fish with the rod it was given', canFish);
+
+    if (canFish) {
+      await rod.click();
+      await fresh.waitForTimeout(45000);
+
+      await fresh.locator('header').getByRole('button', { name: 'Auto-Eat', exact: true }).first().click();
+      await fresh.waitForTimeout(1500);
+
+      const foodSelect = fresh.locator('select').first();
+      const caught = await foodSelect.evaluate((s) => [...s.options].length - 1);
+      record('fishing puts food in the village chest', caught > 0, `${caught} kind(s) of fish offered`);
+
+      if (caught > 0) {
+        await foodSelect.selectOption({ index: 1 });
+        await fresh.waitForTimeout(400);
+        await fresh.getByRole('button', { name: '+', exact: true }).first().click();
+        await fresh.waitForTimeout(3000);
+
+        const advanced = await fresh
+          .waitForFunction(
+            (was) => document.querySelector('.coach')?.dataset.onboardingCue !== was,
+            first?.id,
+            { timeout: 20000 },
+          )
+          .then(() => true)
+          .catch(() => false);
+        const now = await cue();
+        record(
+          'stocking the larder completes the first step',
+          advanced && now !== null,
+          now ? `${first?.id} -> ${now.id}: ${now.text.slice(0, 50)}` : 'the step did not move',
+        );
+        record(
+          'the second step is the fight, now that it can be won',
+          now !== null && /Fight|Combat/i.test(now.text),
+          now ? now.text.slice(0, 70) : '',
+        );
+      }
+    }
+
+    // 5. Settings owns the off switch and the way back, and neither is
+    //    reachable only once.
+    await fresh.locator('header').getByRole('button', { name: 'Settings', exact: true }).first().click();
+    await fresh.waitForTimeout(1200);
+    const explanations = await fresh.locator('.explanations li').count();
+    record(
+      'Settings lists every explanation, shown or not',
+      explanations > 0,
+      `${explanations} listed`,
+    );
+
+    await fresh.getByRole('button', { name: /^(Skip onboarding|Hide the tutorial)$/ }).first().click();
+    await fresh.waitForTimeout(1500);
+    const silenced = (await cue()) === null;
+    record('onboarding can be switched off', silenced, silenced ? '' : 'the panel stayed after Skip');
+
+    const back = fresh.getByRole('button', { name: 'Turn onboarding back on', exact: true });
+    const offerable = (await back.count()) > 0;
+    if (offerable) {
+      await back.first().click();
+      await fresh.waitForTimeout(2000);
+    }
+    const restored = await cue();
+    record(
+      'onboarding can be switched back on',
+      offerable && restored !== null,
+      offerable ? (restored ? `back at ${restored.id}` : 'the switch was there but nothing came back') : 'no way back offered',
+    );
+  }
+
+  await context.close();
+}
+
 // --- icons actually loaded ---------------------------------------------------
 {
   const broken = await page.evaluate(() =>
@@ -1336,7 +1633,17 @@ await go('Ancestors');
 // not, because authoring a WAV is not something code does. The browser logs
 // the 404 regardless, once per clip per session now that audio.ts remembers a
 // miss. Expected, and the fallback is what makes it harmless.
-const realErrors = consoleErrors.filter((e) => !/status of 404/.test(e));
+// Modul: AND THE ADMIN PROBE'S 403.
+//
+// Every client asks /api/v1/admin/status whether this account may see the
+// admin tools, because there is no other way for it to find out. An ordinary
+// account is told no, which is the rule working - but the browser logs the 403
+// as a console error just the same. The dev fixture IS an admin, so this never
+// appeared until the onboarding section above started driving an account that
+// owns nothing, which is exactly the class of thing the fixture hides.
+const realErrors = consoleErrors.filter(
+  (e) => !/status of 404/.test(e) && !/status of 403/.test(e),
+);
 record('no unexpected console errors', realErrors.length === 0, realErrors.slice(0, 3).join(' | '));
 // The optional per-weapon hit clips 404 once each per session - see above -
 // so they are counted separately from the one deliberate lookup miss rather

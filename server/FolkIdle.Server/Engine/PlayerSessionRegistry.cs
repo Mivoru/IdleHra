@@ -257,12 +257,6 @@ namespace FolkIdle.Server.Engine
         public long PlayerId;
     }
 
-    public struct ChronoAccelerationNotification
-    {
-        public long PlayerId;
-        public double SecondsToAdd;
-    }
-
     // Modul: cross-shard guild war. Carries the result of a shard attack back
     // to the tick thread. The mesh call is a network round trip and used to run
     // synchronously inside the 10 Hz loop, blocking every player's simulation
@@ -382,7 +376,6 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<InfrastructureUpdateNotification> InfrastructureUpdateQueue { get; } = new();
         public ConcurrentQueue<MentorshipUpdateNotification> MentorshipUpdateQueue { get; } = new();
         public ConcurrentQueue<QuarantineNotification> QuarantineNotificationQueue { get; } = new();
-        public ConcurrentQueue<ChronoAccelerationNotification> ChronoAccelerationQueue { get; } = new();
         public ConcurrentQueue<ShardAttackResultNotification> ShardAttackResultQueue { get; } = new();
         public ConcurrentQueue<LegacyStoreUpdateNotification> LegacyStoreUpdateQueue { get; } = new();
         public ConcurrentQueue<GuildLogisticsDepotUpdateNotification> GuildLogisticsDepotUpdateQueue { get; } = new();

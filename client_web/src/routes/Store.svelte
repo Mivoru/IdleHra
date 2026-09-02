@@ -4,8 +4,7 @@
   import { queryKeys, fetchStoreCatalog, fetchStorefront } from '../lib/net/rest';
   import Money from '../lib/ui/Money.svelte';
   import {
-    consumeChronoCore,
-    toggleChronoAcceleration,
+    setSimulationSpeed,
   } from '../lib/net/commands';
   import { prettifyBaseId } from '../lib/net/content';
   import { purchase, purchaseUnavailableReason } from '../lib/net/billing';
@@ -54,7 +53,6 @@
   }
 
   const snap = $derived($playerState);
-  const quarantined = $derived(snap ? snap.Quarantine_Active !== 0 : false);
 
   // --- legacy shop ----------------------------------------------------------
   // Modul: LegacyPerksBitmask packs three prestige perks at byte offsets
@@ -64,16 +62,9 @@
 
 
 
-  // --- chrono bank ----------------------------------------------------------
-  let coreItemId = $state(0);
-
-  function useCore() {
-    const outcome = consumeChronoCore(coreItemId, quarantined);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
-  }
-
+  // --- simulation speed -----------------------------------------------------
   function setSpeed(value: number) {
-    const outcome = toggleChronoAcceleration(value);
+    const outcome = setSimulationSpeed(value);
     if (!outcome.ok) pushLocalNotice(outcome.reason);
   }
 </script>
@@ -175,18 +166,15 @@
          The guild war used to pay victory TOKENS into a guild depot whose only
          destination was this shop. It pays diamonds and shards to the members
          directly now - see GuildWarEngine.DistributeVictoryTokensAsync. -->
+    <!-- Modul: this was the Chrono bank panel. The bank is gone; the speed
+         control is not, because it was never part of it - the server pays for
+         every extra tick out of AccumulatedTimeBankMs, the time it already owes
+         you for ticks it missed. So this can only ever catch you up, never run
+         you ahead, and the old copy claiming "banked seconds pay for the rest"
+         described the deleted system. -->
     <section class="panel">
-      <h2>Chrono bank</h2>
+      <h2>Simulation speed</h2>
 
-      <dl class="stats">
-        <div><dt>Banked</dt><dd>{snap.VisualBankedChronoSeconds.toLocaleString()}s</dd></div>
-        <div>
-          <dt>Accelerating</dt>
-          <dd>{snap.IsChronoAccelerating ? `${snap.CurrentSimulationSpeedMultiplier}x` : 'no'}</dd>
-        </div>
-      </dl>
-
-      <h3>Speed</h3>
       <div class="speeds">
         {#each [1, 2, 3, 4] as value}
           <button
@@ -197,16 +185,10 @@
           </button>
         {/each}
       </div>
-      <p class="dim tiny">1x turns acceleration off. Banked seconds pay for the rest.</p>
-
-      <h3>Consume a chrono core</h3>
-      <div class="row">
-        <input type="number" min="1" placeholder="Item id" bind:value={coreItemId} />
-        <button disabled={quarantined || coreItemId < 1} onclick={useCore}>Consume</button>
-      </div>
-      {#if quarantined}
-        <p class="dim tiny">A restricted account cannot consume cores.</p>
-      {/if}
+      <p class="dim tiny">
+        Runs the simulation faster to catch up time the server owes you while it
+        lasts, then returns to 1x on its own. 1x turns it off.
+      </p>
     </section>
   </div>
 {/if}
@@ -308,29 +290,6 @@
     font-weight: 700;
   }
 
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.5rem;
-    margin: 0 0 0.5rem;
-  }
-
-  .stats div {
-    display: grid;
-    gap: 0.1rem;
-  }
-
-  dt {
-    font-size: 0.7rem;
-    color: var(--text-dim);
-  }
-
-  dd {
-    margin: 0;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
-
   .speeds {
     display: flex;
     gap: 0.3rem;
@@ -339,22 +298,6 @@
   .speeds button.active {
     border-color: var(--accent);
     color: var(--accent);
-  }
-
-  .row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 0.4rem;
-  }
-
-  input {
-    font: inherit;
-    color: inherit;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.4rem 0.5rem;
-    width: 100%;
   }
 
   .tiny-btn {

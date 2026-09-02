@@ -635,13 +635,40 @@
     border-color: var(--accent);
   }
 
+  /* Modul: THE NAME MUST NOT BE THE ONLY THING THAT GIVES WAY.
+     This was `grid-template-columns: auto 1fr auto auto` over a portrait, the
+     name, the health, the XP and - on an unbeaten monster - a fifth "first
+     clear" tag that landed in an implicit column nobody sized.
+
+     `.name` carries `overflow: hidden`, and a grid item whose overflow is not
+     visible has an automatic minimum size of ZERO. So the 1fr track was the
+     one thing in the row allowed to shrink, and it did - all the way. In a
+     panel narrowed by its own grid (three 20rem columns at a 1060px window)
+     every monster read "Field Mo...", and every boss row - the one with the
+     extra tag - showed a portrait, a health figure and NO NAME AT ALL.
+
+     Flex with a basis instead of fixed tracks: when the row runs out of room
+     the STATS drop to a second line and the name keeps its width, which is the
+     opposite of what the grid chose. Not a media query, because the panel's
+     width comes from the grid it sits in rather than from the viewport. */
   .row {
-    display: grid;
-    grid-template-columns: auto 1fr auto auto;
-    gap: 0.6rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.6rem;
     align-items: center;
     text-align: left;
     font-size: 0.85rem;
+  }
+
+  /* The portrait, the health, the XP and the first-clear tag hold their size;
+     a truncated "27 000 HP" reads as a different number rather than a
+     shortened one. */
+  .row > :not(.name) {
+    flex: none;
+  }
+
+  .row > span:not(.name) {
+    white-space: nowrap;
   }
 
   /* The portrait sits beside the health bar rather than above it, so the
@@ -658,6 +685,10 @@
   }
 
   .name {
+    /* 7rem is about what the longest monster name needs before it starts
+       ellipsising; below that the stats wrap away rather than the name. */
+    flex: 1 1 7rem;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

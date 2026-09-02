@@ -65,6 +65,7 @@
     </p>
   </div>
 
+  <div class="scroll">
   <table class="chance-table">
     <thead>
       <tr>
@@ -87,6 +88,7 @@
       {/each}
     </tbody>
   </table>
+  </div>
 </div>
 
 <style>
@@ -94,7 +96,7 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    background: var(--bg-deep);
+    background: rgba(0, 0, 0, 0.12);
     padding: 1.5rem;
     border-radius: var(--radius, 8px);
     border: 1px solid var(--border);
@@ -111,8 +113,16 @@
     margin-left: 0.5rem;
   }
 
+  /* Modul: the table is three dense numeric columns and cannot be made to
+     wrap, so it scrolls inside its own box rather than pushing the panel
+     sideways at a narrow CONTAINER width. */
+  .scroll {
+    overflow-x: auto;
+  }
+
   .chance-table {
     width: 100%;
+    min-width: 24rem;
     border-collapse: collapse;
     font-size: 0.9rem;
   }
@@ -142,5 +152,11 @@
     font-weight: 600;
     font-size: 0.8rem;
     background: rgba(0,0,0,0.2);
+  }
+  .dim {
+    color: var(--text-dim);
+  }
+  .small {
+    font-size: 0.85rem;
   }
 </style>

@@ -35,6 +35,15 @@ jobs:
       - name: Validate content data
         run: python3 ops/validate_content.py --path server/GameData
 
+      # The audio the server actually serves. This checkout is deliberately
+      # NOT lfs-enabled, which makes it an exact stand-in for the Oracle box:
+      # git-lfs is not installed there either, so if *.wav is ever tracked in
+      # LFS again both places get 130-byte pointer stubs and both would ship a
+      # silent game. That is not hypothetical - it is what production did from
+      # the day audio was added until 2026-09-02. See ops/validate_audio.py.
+      - name: Validate audio clips are real audio
+        run: python3 ops/validate_audio.py
+
       - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
@@ -100,6 +109,16 @@ jobs:
       - name: Verify generated protocol matches the server
         working-directory: client_web
         run: node scripts/generate-protocol.mjs --check
+
+      # The same contract for artwork, plus a ratchet the protocol check does
+      # not need. --check fails if sprites.generated.ts or sprites.missing.txt
+      # is stale (someone added art or an item and did not regenerate) AND if
+      # the number of catalogued items with no artwork has RISEN above
+      # MISSING_ART_BUDGET. Two thirds of the catalogue is art-less; the budget
+      # is what stops that quietly becoming three quarters.
+      - name: Verify sprite coverage did not regress
+        working-directory: client_web
+        run: node scripts/generate-sprites.mjs --check
 
       # svelte-check is NOT a hard gate yet. Four errors remain, all in
       # GuildOps.svelte and all the same thing: defend, attackShard, takeTurn

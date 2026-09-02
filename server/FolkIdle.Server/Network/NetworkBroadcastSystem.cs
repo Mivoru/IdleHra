@@ -3721,6 +3721,21 @@ namespace FolkIdle.Server.Network
                 {
                     response.IneligibleReason = "parent_on_cooldown";
                 }
+                // Modul: BreedingEngine refuses `pChar.IsFemale || !mChar.IsFemale`,
+                // which is stricter than "not the same sex" - it also refuses an
+                // opposite-sex pair whose ROLES are swapped. The preview used to
+                // check race but not sex at all, so picking a woman as Paternal
+                // returned an eligible, priced preview and then silently rolled
+                // back server-side. Mirror the engine's condition exactly; the
+                // two must refuse the same pairs or the preview lies again.
+                else if (pChar.IsFemale == mChar.IsFemale)
+                {
+                    response.IneligibleReason = "same_sex";
+                }
+                else if (pChar.IsFemale)
+                {
+                    response.IneligibleReason = "sex_roles_swapped";
+                }
                 else if (pVec.LocusRace.Dominant != mVec.LocusRace.Dominant)
                 {
                     response.IneligibleReason = "race_mismatch";

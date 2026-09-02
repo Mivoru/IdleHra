@@ -30,8 +30,33 @@ const repoRoot = join(here, '..', '..');
 // not processed yet would be mapped to a URL the server cannot serve - a 404
 // that looks like a missing icon rather than a stale build step.
 const spriteRoot = join(repoRoot, 'client', 'Assets', 'Images', 'SpritesWeb');
-const gameData = join(repoRoot, 'client', 'Assets', 'StreamingAssets', 'GameData');
+// Modul: THE SERVER'S CONTENT, not the retired Unity copy.
+//
+// This used to read client/Assets/StreamingAssets/GameData, which is a Unity
+// leftover and is now 111 items STALE - it still carries the whole legacy
+// equipment line and the five `_helper_offhand_base` pieces that the catalogue
+// cut removed, and it lacks copper/iron/obsidian/silver_ore entirely. The
+// client gets its catalogue from the server at runtime, so anything measured
+// against the Unity copy is measured against a catalogue no player ever sees.
+// Switching the source changed no mapping (verified by diffing the generated
+// file); what it changes is that the coverage report below is now honest.
+const gameData = join(repoRoot, 'server', 'GameData');
 const outFile = join(here, '..', 'src', 'lib', 'ui', 'sprites.generated.ts');
+const missingFile = join(here, '..', 'src', 'lib', 'ui', 'sprites.missing.txt');
+
+/** `--check` regenerates into memory and diffs, the way generate-protocol does. */
+const checkOnly = process.argv.includes('--check');
+
+/** How many catalogued items are allowed to have no artwork.
+ *
+ * Modul: THIS NUMBER MAY ONLY GO DOWN. It is not a target, it is a ratchet -
+ * the point is that adding an item without art, or breaking an alias so a
+ * mapping silently stops resolving, fails CI instead of quietly making the
+ * game uglier. Lower it whenever art lands; never raise it to make a build
+ * pass. The per-item breakdown lives in the committed sprites.missing.txt, so
+ * a change to this number always comes with a reviewable list of which items
+ * moved. */
+const MISSING_ART_BUDGET = 165;
 
 // ---------------------------------------------------------------------------
 // Alias tables
@@ -57,20 +82,42 @@ const RACE_NAME_TO_ID = {
   Bes: 6,
 };
 
-/** Sprite basename (exactly as on disk) -> item BaseId. */
+/** Sprite basename (exactly as on disk) -> item BaseId, or several BaseIds.
+ *
+ * Modul: A LIST IS FOR A DUPLICATED ITEM, NEVER FOR TWO DIFFERENT THINGS.
+ *
+ * Four logs and two ores exist TWICE in items.json under two naming schemes:
+ * the rare region-2 log is both `whispering_willow_log` (id 293) and
+ * `golden_willow_log` (id 401), same RegionTier, same BaseValueGold. Only the
+ * second is live - VillageManagementEngine.TierMaterials, the woodcutting loot
+ * tables and GuildContributionEngine all name the `golden_*` ids, and the
+ * older family appears in no C# file at all - but players can still be holding
+ * the older one in an inventory row written before the rename. So the art goes
+ * on both ids. Anything else would be two items sharing one picture, which is
+ * the lie this whole file exists to avoid. */
 const MATERIAL_ALIASES = {
+  // Modul: THE INGOT ART IS THE ORE, DELIBERATELY.
+  //
+  // `Copper.webp`, `Iron bar.webp`, `Cobalt bar.webp`, `Silver bar.webp` and
+  // `Darksteel bar.webp` are drawn as ingots and are the intended icons for the
+  // ORE commodities. There is no smelting step in this game - you never forge
+  // an ore into a bar - so an ingot is simply how a refined metal is pictured,
+  // and it reads better at inventory size than a lump of rock would. Do not
+  // "fix" this by drawing ore nuggets: that was tried, and it invents a
+  // distinction the mechanics do not have.
+  //
   // Region 01 - from the Unity builder
   'Birch Tree': 'birch_trees_woodcutting_material',
-  Copper: 'copper_ore_crafting_material',
+  Copper: ['copper_ore_crafting_material', 'copper_ore'],
   Malachite: 'malachite_ore',
   'Viper Venom Elixir': 'mat_viper_venom',
 
   // Region 02
-  'Golden Willow log': 'whispering_willow_log',
+  'Golden Willow log': ['golden_willow_log', 'whispering_willow_log'],
   'Golden Willow twig': 'whispering_willow_twig',
   'Willow tree': 'willow_logs_woodcutting_material',
   Hematite: 'hematite_ore',
-  'Iron bar': 'iron_bar_crafting_material',
+  'Iron bar': ['iron_bar_crafting_material', 'iron_ore'],
 
   // Region 03 - "Acatia" is the art's spelling of acacia, and the "Golden"
   // variant of each tree is the upgraded species, matching the log/twig pairs
@@ -78,22 +125,24 @@ const MATERIAL_ALIASES = {
   // acacia->ironwood, frostpine->glacier_pine, ebon->void_bark).
   'Acatia log': 'acacia_log',
   'Acatia twig': 'acacia_twig',
-  'Golden Acatia log': 'ironwood_log',
+  'Golden Acatia log': ['golden_acacia_log', 'ironwood_log'],
   'Golden Acatia twig': 'ironwood_twig',
-  Absidian: 'obsidian_ore_crafting_material',
+  Absidian: ['obsidian_ore', 'obsidian_ore_crafting_material'],
   'volcanic sulfur': 'sulfur_ore',
   'Bear stew': 'bear_stew_food_consumable',
 
   // Region 04
-  'Golden Frostpine log': 'glacier_pine_log',
+  'Golden Frostpine log': ['golden_frostpine_log', 'glacier_pine_log'],
   'Golden Frostpine twig': 'glacier_pine_twig',
-  'Silver bar': 'silver_bar_crafting_material',
+  'Silver bar': ['silver_bar_crafting_material', 'silver_ore'],
+  'Cobalt bar': 'cobalt_ore',
   'yeti meat platter': 'yeti_platter_food_consumable',
 
   // Region 05
-  'Golden Ebon log': 'void_bark_log',
+  'Golden Ebon log': ['golden_ebon_log', 'void_bark_log'],
   'Golden Ebon twig': 'void_bark_twig',
   'Astralite crystals': 'astralite_ore',
+  'Darksteel bar': 'darksteel_ore',
 
   // Weapons whose art name differs from the item noun. Each target was
   // confirmed to be the ONLY weapon of its kind for that set/material, so
@@ -137,8 +186,6 @@ const DELIBERATELY_UNMAPPED = {
   'Cobalt&Silver ore': 'combined-ore node art, not a single item',
   DarksteelAstralite: 'combined-ore node art, not a single item',
   'Ebon tree': 'no ebon woodcutting_material exists in items.json',
-  'Cobalt bar': 'no cobalt bar exists in items.json',
-  'Darksteel bar': 'no darksteel bar exists in items.json',
   'Defensive Shield Potion': 'no matching potion; the four real ones are named differently',
   'vampiric lifesteal potion': 'no matching potion; the four real ones are named differently',
   'resistance potion': 'no matching potion; the four real ones are named differently',
@@ -166,12 +213,21 @@ const SLOT_BY_PIECE_NOUN = {
   // helmet
   helm: 'helmet', hood: 'helmet', cowl: 'helmet', circlet: 'helmet',
   greathelm: 'helmet', visor: 'helmet', crown: 'helmet',
+  // A PELT IS A HELMET HERE, and it was filed as a chest piece.
+  //
+  // brawler_pelt.webp is a wolf's head worn as a hood, and items.json agrees:
+  // `eq_brawler_pelt_helmet_armor_slot_base` names the slot outright. Under
+  // 'chest' it collided with brawler_harness.webp - both resolved to the set's
+  // one chest piece, one overwrote the other, and the helmet the art was drawn
+  // for got no icon at all. The Frost Brawler set is the only one with either
+  // noun, so this is an identification rather than a rule.
+  pelt: 'helmet',
   // gloves
   gauntlets: 'gloves', wraps: 'gloves', mitts: 'gloves', claws: 'gloves',
   grips: 'gloves', fists: 'gloves', gloves: 'gloves', bracers: 'gloves',
   // chest
   cuirass: 'chest', shroud: 'chest', vest: 'chest', robe: 'chest',
-  harness: 'chest', pelt: 'chest', carapace: 'chest', body: 'chest',
+  harness: 'chest', carapace: 'chest', body: 'chest',
   hauberk: 'chest', bulwark_chest: 'chest',
   // boots
   boots: 'boots', sabatons: 'boots', treads: 'boots', stompers: 'boots',
@@ -192,20 +248,33 @@ const SLOT_BY_PIECE_NOUN = {
  * ASSUMPTION, stated because it is one: CachedCurrentToolTier is written from
  * ForgeLevel server-side and its range is not documented anywhere, so the
  * index is clamped to this list rather than trusted. A tier past the end shows
- * the last icon instead of nothing. */
+ * the last icon instead of nothing.
+ *
+ * `art` is the wood as the FILENAME spells it, `id` as items.json spells it -
+ * and they differ in exactly one place, because the art says "Acatia" and the
+ * catalogue says "acacia". That single letter is why this is a table of pairs
+ * rather than a slug() call: a normalizer would produce `acatia_axe_tool`,
+ * which is not an item, and the tool would go on rendering as initials with
+ * nothing anywhere saying why. */
 const TOOL_WOOD_ORDER = [
-  'Normal',
-  'Birch',
-  'Golden Birch',
-  'Willow',
-  'Whisper Willow',
-  'Acatia',
-  'Ironwood',
-  'Frostpine',
-  'Glacier pine',
-  'Ebon',
-  'Voidbark',
+  { art: 'Normal', id: 'normal' },
+  { art: 'Birch', id: 'birch' },
+  { art: 'Golden Birch', id: 'golden_birch' },
+  { art: 'Willow', id: 'willow' },
+  { art: 'Whisper Willow', id: 'whisper_willow' },
+  { art: 'Acatia', id: 'acacia' },
+  { art: 'Ironwood', id: 'ironwood' },
+  { art: 'Frostpine', id: 'frostpine' },
+  { art: 'Glacier pine', id: 'glacier_pine' },
+  { art: 'Ebon', id: 'ebon' },
+  { art: 'Voidbark', id: 'voidbark' },
 ];
+
+/** Tool kind -> the token items.json uses in the BaseId.
+ *
+ * The shape is `<wood>_<kind>_tool`, e.g. `golden_birch_fishing_rod_tool`. Note
+ * that the rod's token is two words where the client's kind is one. */
+const TOOL_KIND_ID_TOKEN = { axe: 'axe', pickaxe: 'pickaxe', rod: 'fishing_rod' };
 
 // ---------------------------------------------------------------------------
 
@@ -281,9 +350,31 @@ for (const file of files) {
   if (toolDir) {
     const kind = TOOL_DIRS[toolDir];
     const wood = name.replace(/\s*(axe|pickaxe|fishing rod)$/i, '').trim();
-    const tier = TOOL_WOOD_ORDER.indexOf(wood);
-    if (tier < 0) problems.push(`tool sprite "${name}" has an unknown wood tier "${wood}"`);
-    else toolIcons[kind][tier] = file;
+    const tier = TOOL_WOOD_ORDER.findIndex((w) => w.art === wood);
+    if (tier < 0) {
+      problems.push(`tool sprite "${name}" has an unknown wood tier "${wood}"`);
+      continue;
+    }
+    toolIcons[kind][tier] = file;
+
+    // Modul: A TOOL IS ALSO AN ITEM, AND ONLY ONE LOOKUP KNEW THAT.
+    //
+    // The (kind, tier) matrix above is what the Gathering screen asks for -
+    // "show me the axe I am holding" - and it worked. But the paper doll, the
+    // chest and the forge all draw through ItemIcon.svelte, which asks
+    // itemIcon(baseItemId) and reads ITEM_ICONS only. A `_tool` BaseId was
+    // never in that table, so all 33 crafted tools rendered as two-letter
+    // initials in every place except the one screen that asks by tier.
+    //
+    // Emitting the same path under both keys fixes it in the one place the
+    // truth is derived, rather than teaching itemIcon() to reverse-engineer a
+    // (kind, tier) out of a string - toolIcon() is untouched by this.
+    const baseId = `${TOOL_WOOD_ORDER[tier].id}_${TOOL_KIND_ID_TOKEN[kind]}_tool`;
+    if (!itemIds.has(baseId)) {
+      problems.push(`tool sprite "${name}" implies BaseId "${baseId}", which is not in items.json`);
+      continue;
+    }
+    itemIcons[baseId] = file;
     continue;
   }
 
@@ -294,8 +385,10 @@ for (const file of files) {
   // --- items: explicit alias first, then an EXACT-only auto match ----------
   const alias = MATERIAL_ALIASES[name];
   if (alias) {
-    if (!itemIds.has(alias)) problems.push(`alias "${name}" -> "${alias}" no longer exists in items.json`);
-    else itemIcons[alias] = file;
+    for (const target of Array.isArray(alias) ? alias : [alias]) {
+      if (!itemIds.has(target)) problems.push(`alias "${name}" -> "${target}" no longer exists in items.json`);
+      else itemIcons[target] = file;
+    }
     continue;
   }
 
@@ -344,10 +437,23 @@ for (const file of files) {
   }
 
   const s = slug(name);
-  const candidates = items.filter((i) => {
+  const loose = items.filter((i) => {
     const b = slug(i.BaseId);
     return b === s || b === `eq_${s}` || b.startsWith(`${s}_`) || b.startsWith(`eq_${s}_`);
   });
+
+  // AN EXACT BaseId MATCH BEATS A PREFIX ONE, and is not ambiguous with it.
+  //
+  // The prefix arm exists because most art is named for the material and the
+  // item id adds a category suffix ("Iron bar" -> iron_bar_crafting_material).
+  // But `copper_ore.webp` matches BOTH `copper_ore` and its legacy twin
+  // `copper_ore_crafting_material`, so the ambiguity rule threw away a sprite
+  // whose filename is character-for-character the item's own id. A file named
+  // exactly after an item is the strongest signal in this whole script - there
+  // is nothing to guess - so it wins outright and the prefix arm is only
+  // consulted when nothing matched exactly.
+  const exact = loose.filter((i) => slug(i.BaseId) === s);
+  const candidates = exact.length > 0 ? exact : loose;
 
   if (candidates.length === 1) itemIcons[candidates[0].BaseId] = file;
   else unmatched.push(`${file}${candidates.length > 1 ? ` (ambiguous: ${candidates.map((c) => c.BaseId).join(', ')})` : ''}`);
@@ -377,14 +483,135 @@ lines.push(`/** Indexed by tool tier; a tier past the end clamps to the last ent
 lines.push(`export const TOOL_ICONS: Readonly<Record<'axe' | 'pickaxe' | 'rod', readonly string[]>> = ${JSON.stringify(toolIcons, null, 2)};\n`);
 lines.push(`export const CURRENCY_ICONS: Readonly<{ gold?: string; diamond?: string }> = ${JSON.stringify(misc, null, 2)};\n`);
 
-writeFileSync(outFile, lines.join('\n'), 'utf8');
+// ---------------------------------------------------------------------------
+// The coverage report
+// ---------------------------------------------------------------------------
+//
+// Modul: THE GAP HAS TO BE A COMMITTED FILE, not a number in a console line.
+//
+// Two thirds of the catalogue has no artwork. That was known, in the sense
+// that someone had counted it once by hand and written the count in a
+// document - which is exactly how it stopped being true. A generated,
+// committed, sorted list means the diff of any content change says which items
+// gained or lost art, and MISSING_ART_BUDGET means the total cannot drift
+// upwards without somebody editing the number and being asked why.
+//
+// Grouped by the BaseId's own shape rather than by anything semantic: the
+// suffix is what the content file actually guarantees, and a category derived
+// from a guess would put items in the wrong bucket and make the list less
+// trustworthy than no list.
 
-console.log(`wrote ${outFile}`);
-console.log(
-  `  ${Object.keys(monsterIcons).length} monsters, ${Object.keys(itemIcons).length} items, ` +
-    `${Object.keys(raceIcons).length} races, ${Object.values(toolIcons).flat().filter(Boolean).length} tools`,
-);
-if (unmatched.length > 0) {
-  console.log(`  ${unmatched.length} sprite(s) matched no single item and were skipped:`);
-  for (const u of unmatched) console.log('    ' + u);
+/** BaseId -> the bucket it is reported under. Order is the reporting order. */
+function categoryOf(baseId) {
+  if (/_tool$/.test(baseId)) return 'tools';
+  if (/_(log|twig)$/.test(baseId) || /_ore$/.test(baseId)) return 'logs & ores';
+  if (/_crafting_material$/.test(baseId)) return 'crafting materials';
+  if (/^eq_/.test(baseId) || /_slot_base$/.test(baseId)) return 'equipment';
+  if (/_consumable$/.test(baseId)) return 'consumables';
+  if (/_material$/.test(baseId)) return 'gathering & profession materials';
+  return 'other';
+}
+
+const CATEGORY_ORDER = [
+  'logs & ores',
+  'tools',
+  'equipment',
+  'crafting materials',
+  'gathering & profession materials',
+  'consumables',
+  'other',
+];
+
+const missingByCategory = new Map(CATEGORY_ORDER.map((c) => [c, []]));
+for (const item of items) {
+  if (itemIcons[item.BaseId]) continue;
+  const bucket = missingByCategory.get(categoryOf(item.BaseId));
+  bucket.push(item.BaseId);
+}
+const missingCount = [...missingByCategory.values()].reduce((n, v) => n + v.length, 0);
+
+const missingReport = [
+  '# GENERATED by client_web/scripts/generate-sprites.mjs - do not edit.',
+  '#',
+  '# Every catalogued item (server/GameData/items.json) with no entry in',
+  '# ITEM_ICONS, i.e. every item that renders as two initials instead of a',
+  '# picture. Sorted and grouped so the diff is readable; the count is asserted',
+  '# against MISSING_ART_BUDGET in the generator, and that budget may only fall.',
+  '#',
+  '# To clear an entry: add art under client/Assets/Images/SpritesWeb/ named',
+  '# exactly after the BaseId (an exact filename match wins outright), or add an',
+  '# explicitly verified alias to MATERIAL_ALIASES. Then lower the budget.',
+  '',
+  `total ${missingCount} of ${items.length} catalogued items have no artwork`,
+  '',
+];
+for (const category of CATEGORY_ORDER) {
+  const ids = missingByCategory.get(category);
+  if (ids.length === 0) continue;
+  missingReport.push(`## ${category} (${ids.length})`);
+  for (const id of [...ids].sort()) missingReport.push(id);
+  missingReport.push('');
+}
+const missingText = missingReport.join('\n');
+
+// ---------------------------------------------------------------------------
+
+const generatedText = lines.join('\n');
+
+if (checkOnly) {
+  // Modul: --check is the CI gate, and it checks TWO different things.
+  //
+  // The drift half is the same contract generate-protocol.mjs enforces: the
+  // committed file must be what this script would write, or someone edited art
+  // or content and did not regenerate. The budget half is the ratchet - it
+  // catches the opposite failure, where the generator is perfectly up to date
+  // and the game simply got uglier.
+  const failures = [];
+  for (const [path, expected] of [[outFile, generatedText], [missingFile, missingText]]) {
+    let actual = null;
+    try {
+      actual = readFileSync(path, 'utf8');
+    } catch {
+      failures.push(`${path} does not exist - run: npm run generate:sprites`);
+      continue;
+    }
+    if (actual !== expected) failures.push(`${path} is stale - run: npm run generate:sprites`);
+  }
+  if (missingCount > MISSING_ART_BUDGET) {
+    failures.push(
+      `${missingCount} items have no artwork, budget is ${MISSING_ART_BUDGET}. ` +
+        'This number may only go down: something either added art-less items or broke a mapping. ' +
+        'See src/lib/ui/sprites.missing.txt for which ones.',
+    );
+  }
+  if (failures.length > 0) {
+    console.error('sprite check failed:');
+    for (const f of failures) console.error('  ' + f);
+    process.exit(1);
+  }
+  console.log(
+    `sprite check ok: ${Object.keys(itemIcons).length} items with art, ` +
+      `${missingCount} without (budget ${MISSING_ART_BUDGET})`,
+  );
+} else {
+  writeFileSync(outFile, generatedText, 'utf8');
+  writeFileSync(missingFile, missingText, 'utf8');
+
+  console.log(`wrote ${outFile}`);
+  console.log(
+    `  ${Object.keys(monsterIcons).length} monsters, ${Object.keys(itemIcons).length} items, ` +
+      `${Object.keys(raceIcons).length} races, ${Object.values(toolIcons).flat().filter(Boolean).length} tools`,
+  );
+  console.log(`wrote ${missingFile}`);
+  console.log(`  ${missingCount} of ${items.length} items have no artwork (budget ${MISSING_ART_BUDGET})`);
+  if (missingCount > MISSING_ART_BUDGET) {
+    console.error(
+      `  ERROR: that is above the budget of ${MISSING_ART_BUDGET}, which may only go down.`,
+    );
+    process.exit(1);
+  }
+  if (unmatched.length > 0) {
+    console.log(`  ${unmatched.length} sprite(s) matched no single item and were skipped:`);
+    for (const u of unmatched) console.log('    ' + u);
+  }
 }

@@ -2,7 +2,9 @@
   import { onMount } from 'svelte';
   import { language, setLanguage, translations, loadTranslations, coverage, LANGUAGES, t } from '../lib/ui/i18n';
   import { volume, muted, unlockAudio, play, preloadAll, CLIPS, type ClipName } from '../lib/ui/audio';
-  import { tutorialPrompt, skipTutorial, unskipTutorial } from '../lib/stores/tutorial';
+  import { tutorialPrompt, skipTutorial, unskipTutorial, onboardingDismissed } from '../lib/stores/tutorial';
+  import { DISCOVERY_MOMENTS } from '../lib/stores/tutorialDiscoveries';
+  import { seenExplanations, forgetSeen, forgetAllSeen } from '../lib/stores/tutorialSeen';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
   import { playerState, pushLocalNotice, commandResults, connectionStatus } from '../lib/stores/game';
@@ -48,6 +50,15 @@
   function showAgain() {
     unskipTutorial();
   }
+
+  // Modul: RE-OPENABLE, because an idle game gets replayed by people who
+  // already know it - and by people who dismissed something on the way past
+  // and then wanted it. Every explanation in the game is listed here with its
+  // full text, so nothing is reachable exactly once.
+  const explanations = $derived(
+    DISCOVERY_MOMENTS.map((moment) => ({ ...moment, seen: $seenExplanations.has(moment.id) })),
+  );
+  const seenCount = $derived(explanations.filter((e) => e.seen).length);
 
   const clipNames = Object.keys(CLIPS) as ClipName[];
 
@@ -281,8 +292,35 @@
       <p class="dim">
         Nothing outstanding - you have fought, dressed and stocked the larder.
       </p>
-      <button onclick={showAgain}>Show it again</button>
+      {#if $onboardingDismissed}
+        <button onclick={showAgain}>Turn onboarding back on</button>
+      {:else}
+        <button onclick={skip}>Skip onboarding</button>
+      {/if}
     {/if}
+
+    <h3>Explanations</h3>
+    <p class="dim small">
+      Each of these is shown once, the first time you reach the system it
+      describes. {seenCount} of {explanations.length} shown so far.
+    </p>
+    <ul class="explanations">
+      {#each explanations as moment (moment.id)}
+        <li>
+          <div class="ex-head">
+            <strong>{moment.title}</strong>
+            <span class="dim tiny">{moment.system}</span>
+            {#if moment.seen}
+              <button class="tiny-btn" onclick={() => forgetSeen(moment.id)}>Show again</button>
+            {:else}
+              <span class="dim tiny">not yet shown</span>
+            {/if}
+          </div>
+          <p class="dim small">{moment.body}</p>
+        </li>
+      {/each}
+    </ul>
+    <button onclick={forgetAllSeen}>Reset all explanations</button>
 
     <h3>Accessibility</h3>
     <p class="dim small">
@@ -359,6 +397,7 @@
     <section class="panel">
       <header class="head">
         <h2>Support</h2>
+      </header>
     <p class="dim small">
       Sends a short diagnostic bundle with your message. Bearer tokens, email
       addresses and long opaque ids are stripped in your browser before
@@ -529,6 +568,34 @@
   .tiny-btn {
     font-size: 0.7rem;
     padding: 0.2rem 0.45rem;
+  }
+
+  /* Modul: wraps rather than truncates. The guild buff tiers on the Guild
+     screen were cropped by a row that assumed it had the width, and this list
+     is the same shape - a label, a tag and a button on one line. */
+  .explanations {
+    list-style: none;
+    margin: 0 0 0.6rem;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .explanations li {
+    border-top: 1px solid var(--border);
+    padding-top: 0.4rem;
+  }
+
+  .ex-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .explanations p {
+    margin: 0.15rem 0 0;
+    overflow-wrap: anywhere;
   }
 
   .stats {

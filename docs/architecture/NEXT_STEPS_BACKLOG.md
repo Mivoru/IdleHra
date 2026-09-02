@@ -16,7 +16,103 @@ to do next.
 
 ---
 
-# HANDOFF 2026-09-01 - Tooling, and the guild donate panel that never worked (READ THIS FIRST)
+# HANDOFF 2026-09-02 - The game had no entrance (READ THIS FIRST)
+
+Two sessions landed in one commit: the seven task-board tasks, and then the
+verification pass that was the top open item on that board. Read
+`docs/TASK_BOARD.md` for the per-task state; this is the one finding that
+changes how the game plays.
+
+## A new player could not get in, and had not been able to for some time
+
+Onboarding's first instruction was "open Combat and press Fight on Field
+Mouse". Driven against the live server on a **brand-new registration**:
+
+| start | outcome |
+|---|---|
+| naked, empty larder | dead at **29 s**, Field Mouse still on **264 of its 465 HP** |
+| after 60 s of fishing (16 perch) | dead at **65 s**, mouse down to **73** - closer, still a loss |
+| a properly stocked larder | the fight is won, at about the 75 s the model predicts |
+
+The character has 100 HP and the mouse deals 8 every 2 s; it out-damages the
+player better than two to one, and the monster resets on death, so no number of
+retries wins. Tier one **blocks in order**, so step 1 could never be completed
+and the food advice - step 3, behind two steps that a kill has to finish - was
+never shown to the only people who needed it. The tutorial's own first
+instruction killed the player and then said nothing more, forever.
+
+**The balance was not at fault and was not touched.** `ProgressionRateTests`
+`.TheFirstMonsterTakesAboutSeventyFiveSeconds` passes, and passes because
+`FreshPayload` hands its simulated character 1,000,000 bites of food; its own
+comment says that without them "the character dies in about thirty seconds",
+which is within four seconds of what a real account does. Region 1's attack was
+deliberately left un-tripled for the same reason ("The whole ladder was raised
+threefold", below). The model was always right *given food*. Onboarding was what
+failed to deliver the food.
+
+**Fixed by reordering tier one to larder -> fight -> gear**, which is the true
+dependency: you cannot win the first fight without food, and you cannot wear a
+drop before the kill that drops it. Client-only; no content or balance number
+moved. See `docs/onboarding_steps.md` section 2.
+
+Guarded two ways, because a test alone would not have caught it: `tutorial.test.ts`
+("starts with the larder, because the first fight cannot be won without it"), and
+`exercise.mjs`, which now registers a real account, fishes with the granted rod,
+stocks the larder and asserts the step advances.
+
+## Why nothing caught it: the fixture is the wrong witness
+
+`dev@folkidle.local` is level 40, geared, stocked and an admin. It has already
+done everything onboarding asks, so the coach panel is empty for it and every
+tier-one predicate reads true - signing in as the fixture proves nothing about
+onboarding at all. It also masked `/api/v1/admin/status` answering **403** to
+ordinary accounts, which is correct behaviour whose console error simply never
+appeared until a non-admin drove the client.
+
+This is now a load-bearing rule in `CLAUDE.md`.
+
+## `exercise.mjs` had been rotting, quietly
+
+Three checks were failing on a working game because the script **consumed the
+fixture state its own later steps needed**, so it could only ever pass on a
+fresh fixture and had been degrading run by run:
+
+- **Ancestors "Keep"** - marking is a flag nothing clears. Each run marked one
+  more member until all 23 non-main ancestors read "Kept" and the check failed
+  permanently with "no Keep button rendered". Now a **round trip** that asserts
+  both directions of the same button and puts the flag back, so the hundredth
+  run reads like the first.
+- **Doll "Wear"** - the picker lists the piece already worn and sorts it first,
+  so `wear.first()` re-equipped what was already on, the slot text was identical
+  before and after, and a working game read as a failure. Now picks an item
+  whose row does not name the worn one.
+- **Village / breeding** - "Send on" ran first and ate the last villager who had
+  not married in, which is exactly the villager the breeding step then needed.
+  It holds the last one back now. An exhausted pool is reported honestly, and
+  the assertion became "a greyed-out option **states a reason**" rather than a
+  list of reasons I enumerated - the first attempt at that failed on
+  "(both women)".
+
+`DevFixtureSeeder`'s standing villager pool went **2 -> 6 per sex**. The comment
+there already said "a fixture that survives one pass is not re-runnable", but
+the top-up only runs on an explicit `--seed-dev` and nothing calls it between
+runs, so two-per-sex lasted about two passes and the pool had measured empty
+with twenty elders standing in it.
+
+## State at hand-off
+
+537/537 server, 294/294 client, **94/94 `npm run exercise`**, `svelte-check` at
+the documented 4 errors (the pre-existing `GuildOps.svelte` ones) and 16
+warnings.
+
+Still open, and each is a decision rather than a defect: the panel-clipping
+sweep does not cover all 26 screens; the Wiki passes its tests but nobody has
+opened it in a browser; the 40 legacy `*_crafting_material` entries are
+classified and deliberately undeleted (`docs/crafting_material_audit.md`).
+
+---
+
+# HANDOFF 2026-09-01 - Tooling, and the guild donate panel that never worked
 
 Three weeks passed with no commits. Nothing was half-finished when work stopped
 at `4397a7f`; the tree was clean and deployed.

@@ -153,16 +153,34 @@
     min-width: 0;
   }
 
+  /* Modul: WRAPS ON THE PANEL'S WIDTH, NOT THE WINDOW'S.
+     This was `minmax(8rem, 2fr) repeat(3, minmax(6rem, 1fr))` - a 26rem
+     minimum - with a `@media (max-width: 560px)` rule underneath to stack it
+     on a phone. The media query asks the wrong question: every screen lays its
+     panels out with `repeat(auto-fit, minmax(19..21rem, 1fr))`, so this
+     browser sits in a ~19rem column on a 1440px desktop as readily as on a
+     handset. On the Forge at a two-column width the four controls, the count
+     and the whole item list ran 116px past the panel's right edge and were cut
+     off at the window.
+
+     Flex with a basis instead: the row breaks when the CONTAINER runs out,
+     whatever the viewport is doing. Same fix as the guild buff tiers.
+     min-width: 0 is load-bearing - a flex item defaults to min-content and a
+     <select> insists on fitting its longest option ("Ultra Rare+"). */
   .controls {
-    display: grid;
-    grid-template-columns: minmax(8rem, 2fr) repeat(3, minmax(6rem, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 0.35rem;
   }
 
-  .controls input,
-  .controls select {
+  .controls input {
+    flex: 1 1 12rem;
     min-width: 0;
-    width: 100%;
+  }
+
+  .controls select {
+    flex: 1 1 6.5rem;
+    min-width: 0;
   }
 
   .count {
@@ -217,17 +235,5 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  /* Modul: the controls stack on a phone rather than squeezing four inputs
-     onto a 360px row, where each ends up too narrow to read its own label. */
-  @media (max-width: 560px) {
-    .controls {
-      grid-template-columns: 1fr 1fr;
-    }
-
-    .controls input {
-      grid-column: 1 / -1;
-    }
   }
 </style>

@@ -17,7 +17,12 @@ namespace FolkIdle.Server.Network
         ContributeToGuild = 5,
         Logout = 6,
         Login = 7,
-        ToggleChronoAcceleration = 8,
+        // Modul: was ToggleChronoAcceleration. It never touched the chrono
+        // bank - it sets SpeedMultiplier, which is paid for out of
+        // AccumulatedTimeBankMs. Renamed when the bank was deleted so the
+        // name stops implying a system that no longer exists. Value unchanged;
+        // renaming a member does not move an opcode.
+        SetSimulationSpeed = 8,
         MarketListItem = 9,
         MarketBuyItem = 10,
         ClaimMailItem = 11,
@@ -37,7 +42,7 @@ namespace FolkIdle.Server.Network
         UpgradeTool = 21,
         AssignMentor = 22,
         ContributeToWarSupply = 23,
-        ConsumeChronoCore = 24,
+        // 24 retired with the chrono bank - left as a gap, never reused.
         PurchaseLegacyUnlocks = 25,
         DepositGuildMaterial = 26,
         ExecuteCombatTurn = 27,
@@ -57,8 +62,7 @@ namespace FolkIdle.Server.Network
         InitiateNodeMigration = 44,
         ConsumeConsumableAsset = 45,
         ClaimBattlePassReward = 46,
-        ActivateChronoBoost = 47,
-        ConsumeTimeWarpCore = 48,
+        // 47 and 48 retired with the chrono bank - gaps, never reused.
         RegisterGuildDefense = 49,
         SubmitShardAttack = 50,
         ReportTelemetryBurst = 51,
@@ -231,7 +235,6 @@ namespace FolkIdle.Server.Network
         public byte ComplianceReserved0;
         public byte ComplianceReserved1;
         public byte ComplianceReserved2;
-        public uint ChronoSecondsRequested;
         public uint TargetSlotIndex;
         public fixed byte RawTransactionReceipt[64];
         public uint TargetProductIdHash;
@@ -243,9 +246,6 @@ namespace FolkIdle.Server.Network
         public uint ConsumableItemId;
         public uint ConsumableSlotTarget;
         public uint TargetMilestoneIndex;
-        public uint ChronoWarpDurationSeconds;
-        public uint ChronoTargetSlot;
-        public double RequestedSpeedMultiplier;
         public System.Guid TargetMatchUuid;
         public uint TelemetryEventCount;
         public uint NetworkDiagnosticsToken;

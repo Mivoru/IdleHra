@@ -642,11 +642,6 @@ namespace FolkIdle.Server.Engine
         public int VodnikMasteryLevel;
         public int MoosleuteMasteryLevel;
         public long LogicEpochCounter;
-        // Chrono-buffer: unmanaged registers — operated on 100% allocation-free on hot-path.
-        public double BankedChronoSeconds;
-        public bool IsChronoAccelerating;
-        public double ActiveChronoSpeedMultiplier;
-        public long ActiveChronoLockExpirationTicks;
         public int LegacyShardBalance;
         public int CitizenMultiSlotsUnlocked;
         public long GuildLogisticsCurrentStock;

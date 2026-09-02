@@ -52,34 +52,6 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("AccountAnalyticsLogs");
                 });
 
-            modelBuilder.Entity("FolkIdle.Server.Models.AccountChronoRegistry", b =>
-                {
-                    b.Property<Guid>("AccountId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<long>("AccelerationTerminationEpoch")
-                        .HasColumnType("bigint");
-
-                    b.Property<double>("ActiveSpeedMultiplier")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("BankedChronoSeconds")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("LastClockSyncEpoch")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("AccountId");
-
-                    b.ToTable("account_chrono_registry", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_account_chrono_registry_ActiveSpeedMultiplier", "\"ActiveSpeedMultiplier\" IN (1.0, 2.0, 4.0)");
-
-                            t.HasCheckConstraint("CK_account_chrono_registry_BankedChronoSeconds", "\"BankedChronoSeconds\" >= 0 AND \"BankedChronoSeconds\" <= 604800");
-                        });
-                });
-
             modelBuilder.Entity("FolkIdle.Server.Models.AccountPenalty", b =>
                 {
                     b.Property<long>("Id")
@@ -1465,9 +1437,6 @@ namespace FolkIdle.Server.Migrations
                     b.Property<int>("AvailableSkillPoints")
                         .HasColumnType("integer");
 
-                    b.Property<double>("BankedChronoSeconds")
-                        .HasColumnType("double precision");
-
                     b.Property<int>("BaseConstitution")
                         .HasColumnType("integer");
 
@@ -1521,9 +1490,6 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<int>("HerbalismMasteryXp")
                         .HasColumnType("integer");
-
-                    b.Property<bool>("IsChronoAccelerating")
-                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsQuarantined")
                         .HasColumnType("boolean");

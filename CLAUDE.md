@@ -109,6 +109,21 @@ silently lacked a building, a lineage row and character sexes before now, none
 of which log anything. `DevFixtureInvariantTests` is where that suspicion gets
 written down.
 
+**The fixture cannot verify the new-player experience, by construction.** It is
+level 40, geared, stocked and an *admin* — so it has already done everything
+onboarding asks and is allowed everything the client asks about. It hid a closed
+entrance for as long as it existed: a brand-new account that followed
+onboarding's own first instruction died to the first monster in the game and the
+tutorial stalled there forever. Anything a new player meets has to be checked by
+registering one; `exercise.mjs` does that in its own browser context at the end.
+
+**A check that spends fixture state passes once and fails forever.** Three
+`exercise.mjs` steps had been red on a working game for a long time because they
+marked a flag nothing clears, re-equipped the item already worn, or consumed the
+last villager a later step needed. Make a check round-trip and restore what it
+touched. The villager pool refills only on an explicit `--seed-dev`, which is
+idempotent — re-seed when the breeding or village steps report a spent pool.
+
 **Don't touch the monster ladder or the balance curve casually.** Both are
 measured by tests that print their tables (`ProgressionRateTests`,
 `GatheringShareTests`, `MonsterLadderTests`), and the reasoning behind every

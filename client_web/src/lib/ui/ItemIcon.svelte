@@ -67,9 +67,19 @@
 </span>
 
 <style>
+  /* Modul: ONE CELL, EXPLICITLY THE WHOLE TILE.
+     Without these two tracks the single implicit row and column are `auto`,
+     which makes them indefinite - so the `height: 100%` on the img below has
+     nothing to resolve against and falls back to intrinsic sizing. A sprite
+     taller than it is wide (`birch wand.webp`, 470x512) then came out 25.7px
+     inside a 23.6px tile and `overflow: hidden` quietly shaved 2px off the top
+     and bottom of the artwork, on every small icon in the Chest, the Market
+     and the drop tables. `object-fit: contain` was already asking for a
+     letterbox; it just needed a box with a known height. */
   .icon {
     position: relative;
     display: inline-grid;
+    grid-template: 100% / 100%;
     place-items: center;
     flex: none;
     border: 1px solid var(--rarity);
