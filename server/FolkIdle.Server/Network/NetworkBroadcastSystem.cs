@@ -1276,6 +1276,15 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: the player's own answer to "may we email you".
+                    // Opt-in: PlayerRecord.EmailNotificationsConsented starts
+                    // false for every account and only this route sets it.
+                    if (requestPath == "/api/v1/player/email-consent")
+                    {
+                        await HandleEmailConsent(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/achievements/state" && context.Request.HttpMethod == "GET")
                     {
                         await HandleAchievementsState(context);
@@ -2901,6 +2910,116 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Player metadata error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class EmailConsentResponse
+        {
+            public bool Consented { get; set; }
+            /// <summary>
+            /// Whether the account has an address to send to at all. A guest
+            /// has none, and the toggle says so instead of pretending it works.
+            /// </summary>
+            public bool HasEmailAddress { get; set; }
+        }
+
+        /// <summary>
+        /// Reads (GET) or sets (POST) whether this player wants notification
+        /// email. Opt-in: the column starts false for every account and this is
+        /// the only route that writes it.
+        /// </summary>
+        /// <remarks>
+        /// Modul: separate from the settings the client keeps for itself,
+        /// because this one is a PERMISSION rather than a preference. It has to
+        /// be stored where the sender can read it - a background job on the
+        /// server decides to mail somebody hours after they closed the tab, so
+        /// a consent flag living in the browser would be a consent flag nobody
+        /// asks.
+        /// </remarks>
+        private async Task HandleEmailConsent(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var player = await db.PlayerRecords.SingleOrDefaultAsync(p => p.Id == playerId);
+                if (player == null)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (context.Request.HttpMethod == "POST")
+                {
+                    using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                    string body = await reader.ReadToEndAsync();
+
+                    bool consent;
+                    try
+                    {
+                        using var parsed = JsonDocument.Parse(body);
+                        if (!parsed.RootElement.TryGetProperty("Consented", out var flag)
+                            || (flag.ValueKind != JsonValueKind.True && flag.ValueKind != JsonValueKind.False))
+                        {
+                            context.Response.StatusCode = 400;
+                            context.Response.Close();
+                            return;
+                        }
+                        consent = flag.GetBoolean();
+                    }
+                    catch (System.Text.Json.JsonException)
+                    {
+                        context.Response.StatusCode = 400;
+                        context.Response.Close();
+                        return;
+                    }
+
+                    // Consenting with no address on the account would arm a
+                    // notifier that can never send. Refused, so the client can
+                    // say why rather than showing a toggle that does nothing.
+                    if (consent && string.IsNullOrWhiteSpace(player.Email))
+                    {
+                        context.Response.StatusCode = 409;
+                        context.Response.Close();
+                        return;
+                    }
+
+                    player.EmailNotificationsConsented = consent;
+
+                    // Withdrawing consent clears the once-per-absence marker as
+                    // well, so opting back in later is not silently blocked by
+                    // a send that happened before the player opted out.
+                    if (!consent) player.OfflineCapEmailSentEpoch = 0L;
+
+                    await db.SaveChangesAsync();
+                }
+
+                var response = new EmailConsentResponse
+                {
+                    Consented = player.EmailNotificationsConsented,
+                    HasEmailAddress = !string.IsNullOrWhiteSpace(player.Email)
+                };
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Email consent error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

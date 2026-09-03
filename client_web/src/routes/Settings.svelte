@@ -9,14 +9,53 @@
   import { CommandType } from '../lib/net/protocol.generated';
   import { playerState, pushLocalNotice, commandResults, connectionStatus } from '../lib/stores/game';
   import { triggerGdprPurge } from '../lib/net/commands';
-  import { submitSupportTicket, scrubTrace, fetchAdminStatus, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail } from '../lib/net/rest';
+  import { submitSupportTicket, scrubTrace, fetchAdminStatus, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail, fetchEmailConsent, setEmailConsent } from '../lib/net/rest';
   import { createQuery } from '@tanstack/svelte-query';
 
   const snap = $derived($playerState);
 
   onMount(() => {
     void loadTranslations();
+    void loadEmailConsent();
   });
+
+  // Modul: email is a PERMISSION, not a preference, so it is stored on the
+  // account rather than in this browser - a background job decides to mail
+  // somebody hours after the tab closed, and a flag in localStorage would be a
+  // flag nobody can ask. Off for every account until the player turns it on.
+  let emailConsent = $state(false);
+  let emailAddressOnAccount = $state(false);
+  let emailBusy = $state(false);
+  let emailError = $state('');
+
+  async function loadEmailConsent() {
+    try {
+      const state = await fetchEmailConsent();
+      emailConsent = state.Consented;
+      emailAddressOnAccount = state.HasEmailAddress;
+    } catch {
+      // A guest has no account row to read; the toggle stays off and says why.
+      emailAddressOnAccount = false;
+    }
+  }
+
+  async function toggleEmailConsent(next: boolean) {
+    emailBusy = true;
+    emailError = '';
+    try {
+      const state = await setEmailConsent(next);
+      if (state) {
+        emailConsent = state.Consented;
+        emailAddressOnAccount = state.HasEmailAddress;
+      } else {
+        emailError = 'That did not save. Try again in a moment.';
+      }
+    } catch {
+      emailError = 'That did not save. Try again in a moment.';
+    } finally {
+      emailBusy = false;
+    }
+  }
 
   function pickLanguage(code: (typeof LANGUAGES)[number]['code'], wireId: number) {
     setLanguage(code);
@@ -321,6 +360,36 @@
       {/each}
     </ul>
     <button onclick={forgetAllSeen}>Reset all explanations</button>
+
+    <h3>Email</h3>
+    <p class="dim small">
+      FolkIdle simulates 12 hours of work while you are away. We can email you
+      once when that runs out, so you know your characters have stopped earning
+      and there is progress waiting to be collected.
+    </p>
+    {#if emailAddressOnAccount}
+      <label class="row">
+        <input
+          type="checkbox"
+          checked={emailConsent}
+          disabled={emailBusy}
+          onchange={(e) => toggleEmailConsent(e.currentTarget.checked)}
+        />
+        <span>Email me when my offline progress has stopped</span>
+      </label>
+      <p class="dim small">
+        One message per absence, never more. You can turn this off here at any
+        time, and we will not email you about anything else.
+      </p>
+    {:else}
+      <p class="dim small">
+        This needs an account with an email address - a guest session has none.
+        Sign up with an email to turn it on.
+      </p>
+    {/if}
+    {#if emailError}
+      <p class="small" style="color: var(--bad)">{emailError}</p>
+    {/if}
 
     <h3>Accessibility</h3>
     <p class="dim small">

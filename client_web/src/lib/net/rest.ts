@@ -109,6 +109,27 @@ export function fetchInventory(): Promise<InventorySnapshot> {
 }
 
 // ---------------------------------------------------------------------------
+// /api/v1/player/email-consent
+// ---------------------------------------------------------------------------
+
+/** Whether this player has asked to receive notification email, and whether
+ *  the account has an address to send to at all (a guest does not). */
+export interface EmailConsent {
+  Consented: boolean;
+  HasEmailAddress: boolean;
+}
+
+export function fetchEmailConsent(): Promise<EmailConsent> {
+  return authedGet<EmailConsent>('/api/v1/player/email-consent');
+}
+
+/** Opt in or out. The server refuses consent on an account with no address,
+ *  rather than arming a notifier that could never send. */
+export function setEmailConsent(consented: boolean): Promise<EmailConsent | null> {
+  return authedPost<EmailConsent>('/api/v1/player/email-consent', { Consented: consented });
+}
+
+// ---------------------------------------------------------------------------
 // /api/v1/player/statistics
 // ---------------------------------------------------------------------------
 

@@ -60,6 +60,25 @@ namespace FolkIdle.Server.Models
 
         public long LastLogoutTimestamp { get; set; }
 
+        // Modul: OPT-IN, AND FALSE IS THE ONLY SAFE DEFAULT.
+        //
+        // Nothing may be emailed to a player who has not asked for it, so this
+        // starts false for every existing account and every new one - the
+        // migration that adds it does NOT backfill true, and a player who never
+        // opens Settings is never written to. Toggled from Settings through
+        // /api/v1/player/email-consent.
+        //
+        // Password resets are unaffected and deliberately do not consult this:
+        // that mail is a reply to an action the account owner just took, not a
+        // notification we decided to send.
+        public bool EmailNotificationsConsented { get; set; }
+
+        // The epoch second of the last "your offline progress has stopped"
+        // mail. Compared against LastLogoutTimestamp rather than against now,
+        // so each new absence is eligible exactly once and a player who stays
+        // away for a week is told once rather than daily.
+        public long OfflineCapEmailSentEpoch { get; set; }
+
         // Modul: daily login reward tracking (DailyLoginRewardEngine).
         // LastLoginTimestamp is the epoch second of the last login that was
         // actually credited a reward - compared against the current UTC day

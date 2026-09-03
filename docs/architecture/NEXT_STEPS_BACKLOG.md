@@ -92,11 +92,61 @@ was hiding it. Equipment requests from offline now skip the material roll.
   Field Mouse every ~143 seconds - 301 kills in twelve hours - and never reaches
   the cap. Both new tests were mutation-checked against the un-fixed engine.
 
+## And the cap that is left is now something players are told about
+
+With the 500-drop cap gone, the only cap remaining is the one that was always
+meant to be there: the **twelve-hour offline earning window**
+(`OfflineSimulationEngine.MaxOfflineSeconds`, eighteen hours with Vodnik mastery
+25). Time past it is discarded, deliberately - so there is a real moment, known
+server-side, after which being away earns nothing.
+
+`OfflineCapNotifier` mails a player once when they reach it. Three rules it does
+not bend, because this is the only thing the server sends to a person rather
+than to a client:
+
+- **Opt-in.** `PlayerRecord.EmailNotificationsConsented` starts false for every
+  account, the migration does not backfill it true, and the only thing that
+  writes it is the player's own toggle in Settings.
+- **Once per absence.** `OfflineCapEmailSentEpoch` is compared against
+  `LastLogoutTimestamp`, not against now, so a player away for a week is told
+  once rather than nightly. Opting out clears the marker so opting back in later
+  is not silently blocked.
+- **A refused send is not recorded.** With no provider configured the registered
+  `IEmailSender` is `DisabledEmailSender`, which returns false; the player then
+  stays eligible, so an outage delays the mail rather than cancelling it.
+
+Consent lives on the account rather than in `localStorage` on purpose: a
+background job decides to mail somebody hours after the tab closed, and a
+consent flag in a browser is one nobody can ask. `/api/v1/player/email-consent`
+GETs and POSTs it, and refuses consent (409) on an account with no address, so
+a guest is told why instead of being shown a toggle that does nothing.
+
+## MIGRATIONS DO NOT RUN ON APP START LOCALLY
+
+`CLAUDE.md` says they do. They run on the **container entrypoint** in
+production (`--migrate && exec ...`, see `ops/oracle/docker-compose.yml`), which
+is why deploys are fine - but `run-dev.ps1` starts the server with no arguments
+and `Program.cs` only migrates under an explicit `--migrate`.
+
+The failure this produces looks nothing like a migration problem: the server
+starts, `/gamedata` answers **200**, and then signing in hangs forever with no
+shell, because the first query touching the changed table fails on a column that
+does not exist. After adding a migration, run it by hand:
+
+```powershell
+$env:FOLKIDLE_DB_CONN='Host=localhost;Database=folkidle_dev;Username=postgres;Password=postgres'
+dotnet run --project server/FolkIdle.Server/FolkIdle.Server.csproj --migrate
+```
+
 ## Still open here
 
 - The offline "drops" summary counts materials only. Equipment is rolled later on
   the loot engine's own thread, so the number is not knowable at projection time;
   it used to report the REQUEST count, which overstated the truth twentyfold.
+- The notifier's copy is written for the twelve-hour window and names eighteen
+  hours correctly for Vodnik, but it is **English only** - the game ships four
+  languages and this mail ignores `LocalizationMatrix`.
+- Nothing tells a player the mail exists other than the Settings toggle itself.
 
 ---
 

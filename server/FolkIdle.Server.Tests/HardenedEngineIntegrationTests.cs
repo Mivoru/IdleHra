@@ -6124,6 +6124,103 @@ namespace FolkIdle.Server.Tests
                 VillageManagementEngine.GetTierMaterials(999));
         }
 
+        /// <summary>Records what it was asked to send, and can refuse.</summary>
+        private sealed class RecordingEmailSender : IEmailSender
+        {
+            public readonly List<string> Sent = new();
+            public bool Deliver = true;
+
+            public Task<bool> SendAsync(string toAddress, string subject, string body)
+            {
+                if (Deliver) Sent.Add(toAddress);
+                return Task.FromResult(Deliver);
+            }
+        }
+
+        // Modul: EMAIL IS THE ONE THING THIS SERVER SENDS TO A PERSON RATHER
+        // THAN TO A CLIENT, so the rules around it are asserted rather than
+        // trusted: opt-in only, once per absence, and never recorded as sent
+        // when the provider refused.
+        [Fact]
+        public async Task Test_OfflineCapNotifier_MailsOnlyConsentingPlayersAndOnlyOncePerAbsence()
+        {
+            const long consentingId = 970007331L;
+            const long silentId = 970007332L;
+            const long refusedId = 970007333L;
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            // Well past the twelve-hour earning window.
+            long longAgo = now - (OfflineSimulationEngine.MaxOfflineSeconds + 3600L);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.AddRange(
+                    new PlayerRecord
+                    {
+                        Id = consentingId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(),
+                        Email = "consenting@folkidle.test", EmailNotificationsConsented = true,
+                        LastLogoutTimestamp = longAgo
+                    },
+                    // Same situation, never opted in. Must never be written to.
+                    new PlayerRecord
+                    {
+                        Id = silentId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(),
+                        Email = "silent@folkidle.test", EmailNotificationsConsented = false,
+                        LastLogoutTimestamp = longAgo
+                    },
+                    new PlayerRecord
+                    {
+                        Id = refusedId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(),
+                        Email = "refused@folkidle.test", EmailNotificationsConsented = true,
+                        LastLogoutTimestamp = longAgo
+                    });
+                await db.SaveChangesAsync();
+            }
+
+            var notifier = new OfflineCapNotifier(_fixture.ServiceProvider);
+
+            // A provider that refuses must leave the player eligible - an
+            // outage should delay the mail, not cancel it.
+            var refusing = new RecordingEmailSender { Deliver = false };
+            await notifier.RunOnceAsync(now, refusing);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var stillEligible = await db.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == refusedId);
+                Assert.Equal(0L, stillEligible.OfflineCapEmailSentEpoch);
+            }
+
+            var sender = new RecordingEmailSender();
+            await notifier.RunOnceAsync(now, sender);
+
+            Assert.Contains("consenting@folkidle.test", sender.Sent);
+            Assert.DoesNotContain("silent@folkidle.test", sender.Sent);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var mailed = await db.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == consentingId);
+                Assert.True(mailed.OfflineCapEmailSentEpoch > 0);
+
+                var never = await db.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == silentId);
+                Assert.Equal(0L, never.OfflineCapEmailSentEpoch);
+            }
+
+            // Same absence, a later pass: nobody is told twice.
+            var second = new RecordingEmailSender();
+            await notifier.RunOnceAsync(now + 7200L, second);
+            Assert.DoesNotContain("consenting@folkidle.test", second.Sent);
+
+            // A NEW absence makes them eligible again.
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var player = await db.PlayerRecords.SingleAsync(p => p.Id == consentingId);
+                player.LastLogoutTimestamp = now + 7200L;
+                await db.SaveChangesAsync();
+            }
+
+            var third = new RecordingEmailSender();
+            await notifier.RunOnceAsync(now + 7200L + OfflineSimulationEngine.MaxOfflineSeconds + 60L, third);
+            Assert.Contains("consenting@folkidle.test", third.Sent);
+        }
+
         // Modul: OFFLINE LOOT MUST ROLL ON THE SAME ODDS AS ONLINE LOOT.
         //
         // Rarity is decided by CombatLootEngine.RollTier(lootLuckPct) and by

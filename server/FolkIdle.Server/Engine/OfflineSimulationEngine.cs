@@ -16,7 +16,10 @@ namespace FolkIdle.Server.Engine
     {
         // Hard cap on analytically-projected offline time: Modul 11 formula
         // T_elapsed = Math.Min(43200, T_current - T_last_checkpoint).
-        private const long MaxOfflineSeconds = 43200L;
+        // Modul: public because OfflineCapNotifier mails players when they
+        // reach it, and a second copy of "twelve hours" living in the notifier
+        // is exactly the drift that made offline loot worse than online loot.
+        public const long MaxOfflineSeconds = 43200L;
 
         private readonly struct LootProjection
         {

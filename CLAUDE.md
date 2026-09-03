@@ -204,5 +204,16 @@ docker compose logs -f app
 ```
 
 **Vite inlines the server address into the bundle**, so changing the hostname
-is a rebuild, not a restart. Migrations run themselves on app start and some
-are not additive.
+is a rebuild, not a restart.
+
+**Migrations run on the container ENTRYPOINT (`--migrate && exec ...`), not on
+app start** — so deploys apply them, and `run-dev.ps1` does not. After adding a
+migration, apply it locally by hand or the next sign-in hangs with no shell
+while `/gamedata` still answers 200:
+
+```powershell
+$env:FOLKIDLE_DB_CONN='Host=localhost;Database=folkidle_dev;Username=postgres;Password=postgres'
+dotnet run --project server/FolkIdle.Server/FolkIdle.Server.csproj --migrate
+```
+
+Some migrations are not additive.

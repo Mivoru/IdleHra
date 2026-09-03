@@ -491,8 +491,15 @@ var codexSvc = new CodexEngine(serviceProvider, playerRegistry);
 var achSvc = new AchievementEngine(serviceProvider, playerRegistry);
 var ecoTelemetrySvc = new EcoTelemetryEngine(serviceProvider);
 var seasonEraSvc = new SeasonalRotationEngine(serviceProvider);
+// Modul: mails a player, once per absence, when their offline earning window
+// has run out - and only if they opted in from Settings. Safe to start
+// unconditionally: with no mail provider configured the registered IEmailSender
+// is the disabled one, which refuses every send, and a refused send is not
+// recorded as delivered.
+var offlineCapNotifier = new OfflineCapNotifier(serviceProvider);
 codexSvc.StartCron();
 combatLootEngine.StartCron();
+offlineCapNotifier.StartCron();
 achSvc.StartCron();
 ecoTelemetrySvc.StartCron();
 seasonEraSvc.StartCron();
