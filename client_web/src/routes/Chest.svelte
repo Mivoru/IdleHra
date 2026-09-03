@@ -23,6 +23,7 @@
     sellFromChest,
     discardFromChest,
     bulkClearChest,
+    fetchChestSettings,
     type InventoryEquipment,
     type InventoryStack,
   } from '../lib/net/rest';
@@ -171,10 +172,26 @@
   // player could not dig their way out one click at a time, and nothing in the
   // game suggested they would ever need to.
   //
-  // The server caps the sweep at Epic (see VillageChestEngine's
-  // MaxSweepableQualityTier): Legendary and above is never clearable in bulk,
-  // because there is no undo and those are the drops the whole loop is for.
-  const MAX_SWEEP_TIER = 6;
+  // Modul: THE CEILING COMES FROM THE SERVER, and this was a hardcoded 6.
+  //
+  // The server refuses anything above VillageChestEngine.MaxSweepableQualityTier
+  // - Legendary and above is never clearable in bulk, because there is no undo
+  // and those are the drops the whole loop is for. A constant here would be a
+  // second copy of that rule, and two copies of one truth is this codebase's
+  // dominant bug class: raise the server's cap and this dropdown silently keeps
+  // offering the old range, lower it and every option past the new cap becomes
+  // a button that 400s with nothing on screen saying why.
+  //
+  // The fallback is the SAFE direction. If the fetch fails the dropdown offers
+  // Normal only, so the worst outcome of not knowing the ceiling is a sweep
+  // that takes too little.
+  const chestSettings = createQuery(() => ({
+    queryKey: queryKeys.chestSettings,
+    queryFn: fetchChestSettings,
+    staleTime: Infinity,
+  }));
+
+  const maxSweepTier = $derived(chestSettings.data?.MaxSweepableQualityTier ?? 1);
 
   // Collapsed by default: a chest that is not yet full does not need this, and
   // it sits above the list everyone came here to read.
@@ -361,7 +378,7 @@
           <label>
             Everything up to
             <select bind:value={sweepTier} aria-label="Clear pieces up to this rarity">
-              {#each Array(MAX_SWEEP_TIER) as _, i}
+              {#each Array(maxSweepTier) as _, i}
                 <option value={i + 1}>{rarityName(i + 1)}</option>
               {/each}
             </select>
