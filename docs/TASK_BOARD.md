@@ -12,9 +12,15 @@ finished is a mood, not a task.
 Ordering is a suggestion: 7 → 1 → 2 → 6 → 5 → 4 → 3, cheapest and most visible
 first, riskiest last.
 
-**Tasks 1-7 are all done (see the status table below). The one OPEN item is
-task 8, combat readability, added 2026-09-03 — it is immediately after this
-paragraph.**
+**Tasks 1-7 are all done (see the status table below). The OPEN items are 8, 9
+and 10, added 2026-09-03/04 from player reports, and they are immediately after
+this paragraph:**
+
+| # | Open task | Shape |
+|---|---|---|
+| 8 | Combat is not readable as a fight | Diagnose first — the feedback layer is already wired |
+| 9 | Rarity barely does anything | **Confirmed by arithmetic**, not a feel report. Balance risk. |
+| 10 | World boss rework | Server half is sound; the interaction is the gap |
 
 ---
 
@@ -99,6 +105,140 @@ starting — "more entertaining" is unbounded. A concrete starting list:
 Low to change, **medium to scope**. The trap is spending the effort on new
 animation and never answering (1) — the player would still be looking at a
 static monster bar, now with more going on around it.
+
+---
+
+## OPEN — 9. Rarity barely does anything, and the numbers agree
+
+**Reported 2026-09-04, by the player:**
+
+> "There isn't much difference between them, and the biggest difference is in
+> tiers and not the 14 rarities. I think we should boost that."
+
+**Checked in the source, and the instinct is right — more right than reported.**
+This is not a feel problem, it is arithmetic.
+
+### What an item's quality tier actually controls
+
+**One thing: how many affixes it rolls.** And `CombatLootEngine.GetAffixCount`
+buckets the fourteen tiers into **five** values:
+
+| Quality tiers | Affixes |
+|---|---|
+| 1-3 — Normal, Common, Uncommon | 1 |
+| 4-6 — Rare, Ultra Rare, Epic | 2 |
+| 7-9 — Legendary, Mythic, Relic | 3 |
+| 10-12 — Ancient, Divine, Demonic | 4 |
+| 13-14 — Godly, Transcendent | 5 |
+
+So **9 of the 14 tiers are mechanically identical to a neighbour.** A Normal
+and an Uncommon are the same item with different coloured text. So are Godly
+and Transcendent — the top of the ladder, where it should matter most.
+
+### What it does NOT control — the part worth reading
+
+- **Base power.** `FlatAttackPower` / `FlatDefenseRating` come from
+  `items.json` per BASE ITEM and are read straight into
+  `EquipmentSlotEngine.ComputeEquippedTotalsAsync`. Quality tier contributes
+  **zero**. Weapon base attack by region: **12 / 36 / 108 / 324 / 972** — an
+  **81x** spread that quality tier plays no part in. That is precisely the
+  "the biggest difference is in tiers" the player described.
+- **Affix magnitude.** `AffixRegistry.CalculateMagnitude` takes `regionTier`
+  and the per-affix `AffixRarity`. Not the item's tier.
+- **Affix rarity odds.** `RollAffixRarity()` takes **no arguments** and rolls a
+  fixed weight table. A Transcendent's affixes roll from the same table as a
+  Normal's.
+
+**`AffixRegistry.RollAffixes` accepts an `itemRarityTier` parameter and never
+references it in the body.** It is a dead parameter — checked, it appears only
+in the signature. That is a strong hint the influence was intended and never
+wired, which is this codebase's most-repeated defect shape.
+
+### Do not "just multiply the numbers"
+
+`AffixRegistry.CalculateMagnitude` carries a long comment about a previous pass
+here: affixes grew *linearly* against gear that grew *geometrically*, so rarity
+stopped mattering exactly at depth. Whatever is done must keep affix growth on
+the same curve as the gear it sits on, or it re-creates that bug in the other
+direction. Read that comment first.
+
+### Candidate directions, cheapest first
+
+1. **Give each of the 14 tiers its own affix count**, or a fractional
+   equivalent (e.g. guaranteed count plus a probabilistic extra), so no two
+   tiers are identical.
+2. **Wire the dead `itemRarityTier`** into `RollAffixRarity` so a higher-tier
+   item biases toward better affix *rarities* — magnitude, not just count.
+   This is likely the largest felt change per line altered.
+3. **Let quality tier scale base power**, e.g. a multiplier on
+   `FlatAttackPower`. Biggest impact, biggest balance risk: it interacts with
+   the monster ladder and the XP curve, both of which are pinned by tests.
+
+### Done when
+
+- No two adjacent quality tiers are mechanically identical.
+- A table is printed showing expected item power at each of the 14 tiers, at
+  region 1 and region 5, before and after — the same way `ProgressionRateTests`
+  and `GatheringShareTests` print theirs.
+- `MonsterLadderTests`, `ProgressionRateTests` and `GatheringShareTests` still
+  pass, or their movement is explained deliberately.
+
+### Risk
+
+**Medium-high.** This is the balance curve, and CLAUDE.md says not to touch it
+casually. Option 1 is contained; option 3 is a progression change and needs the
+measured tables above before it ships.
+
+---
+
+## OPEN — 10. World boss rework: make the fight a fight
+
+**Requested 2026-09-04:** rework the world boss, possibly with minigames, to
+make it more engaging.
+
+### What it is today
+
+A button. `WorldBoss.svelte` renders the boss, a shared HP bar and three
+attempt pips; `WorldBossEngine.MaxAttemptsPerEncounter` is **3**. Each attempt
+posts one `clientPredictedDamage` figure and the server applies it. There is no
+fight — there are three presses of **Attack**, and the only skill expressed is
+having stocked the larder beforehand.
+
+Everything around it is real and working: a server-authoritative HP pool shared
+across players, per-player damage attribution (`_playerDamageMap`), an event
+window, and a defeat path. **The content is fine; the interaction is the gap.**
+
+### Constraints any design must respect
+
+- **The client cannot be trusted with damage.** `clientPredictedDamage` is
+  already capped at `MaxClientPredictedDamage` (100,000,000) because it comes
+  from the client. Any minigame that turns player *input* into *damage* is an
+  exploit surface — the score must be validated or bounded server-side, or the
+  minigame decides its own reward.
+- **This is an idle game.** The anti-cheat has already banned players for
+  clicking too regularly, and the four active skills were removed after being
+  measured at "+90% damage for clicking every three seconds" — see
+  `SkillTreeRegistry`. A minigame that rewards *reflexes* fights the genre and
+  the existing balance philosophy. Prefer decisions over dexterity: a
+  weak-point choice, a timing/ordering puzzle, a resource commitment.
+- **Three attempts per encounter is a small budget** for anything with a
+  learning curve. Either the minigame is short enough to fit three tries, or
+  the attempt budget is part of the redesign.
+
+### Done when
+
+- A player can describe what they *did* in the fight, not just that they
+  pressed Attack three times.
+- No client-supplied score converts to damage without a server-side bound.
+- Damage attribution and the shared HP pool still work with more than one
+  player attacking (that is what `_playerDamageMap` is for).
+- `exercise.mjs` drives the new interaction, not just the Attack button.
+
+### Risk
+
+**Medium.** The server half is sound and should mostly survive. The risk is
+scope and genre fit — write the specific design down before building, and check
+it against the "this is an idle game" constraint above.
 
 ---
 
