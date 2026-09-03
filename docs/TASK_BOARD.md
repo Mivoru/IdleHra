@@ -12,6 +12,94 @@ finished is a mood, not a task.
 Ordering is a suggestion: 7 → 1 → 2 → 6 → 5 → 4 → 3, cheapest and most visible
 first, riskiest last.
 
+**Tasks 1-7 are all done (see the status table below). The one OPEN item is
+task 8, combat readability, added 2026-09-03 — it is immediately after this
+paragraph.**
+
+---
+
+## OPEN — 8. Combat is not readable as a fight
+
+**Reported 2026-09-03, by the player, unprompted:**
+
+> "I can't properly see the fight against the monster. I see his picture, name
+> and health bar, but I don't see the health bar moving or effects of my hits.
+> I just see my health bar moving."
+
+Not investigated yet — noted the same day and deliberately left. What follows
+is the symptom and a map of what already exists, so whoever picks this up does
+not rebuild machinery that is already there.
+
+### The important half of the report
+
+**"I just see MY health bar moving."** Both bars are built the same way, from
+the same interpolated snapshot, in the same component — so one moving and the
+other not is a real asymmetry and is the thread to pull first. It is much more
+specific than "combat feels flat" and should not be folded into the polish half
+below.
+
+### What already exists — do not rewrite these
+
+| Piece | Where |
+|---|---|
+| Monster HP smoothing | `net/interpolation.ts` — `CurrentMonsterHp` **is** in `INTERPOLATED_FIELD_NAMES` |
+| The monster bar | `routes/Combat.svelte` ~line 303, `value={visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp}` |
+| Floating damage numbers | `ui/FloatingDamage.svelte`, fed by `stores/damage.ts` |
+| Hit sparks, per weapon family, crit-aware | `ui/HitSpark.svelte`, fed by `hitSparks` in `stores/game.ts` |
+| Crit + weapon on the wire | `StateUpdatePacket.LastHitWasCrit`, `EquippedWeaponKind` |
+| Death / victory cards | `ui/DeathCard.svelte`, `ui/VictoryCard.svelte` |
+
+So the feedback layer is **wired**, which makes this a "why is the wired thing
+not visible" question rather than a "build it" question. That distinction is
+the whole reason this task is worth reading before starting.
+
+### Candidate causes, in the order worth checking
+
+1. **The denominator, not the numerator.** The bar's max is
+   `shownMaxHp(activeMonster)`. A boss carries 5x its authored HP until first
+   clear (`BossFirstClearRules`). If the max is wrong the bar can look frozen
+   near-full while the number under it changes.
+2. **The fight may genuinely be one packet long.** `interpolation.ts` records
+   a *measured* 1637 ms mean between monster-HP changes. A geared character on
+   an early monster can take it from full to zero between two snapshots — there
+   is nothing to animate, and that is a *pacing* finding, not a rendering one.
+3. **Main-thread starvation.** The recorded trap "keying an effect on the
+   damage array starves the main thread" is in this exact area. Until
+   2026-09-03 the Combat screen also sat behind 3.2 MB inventory refetches;
+   that is fixed, so **re-check the symptom on the current build before
+   assuming it is still present**.
+4. **`observedMaxPlayerHp` has no monster equivalent.** Max HP is not on the
+   wire for either; the player bar derives a session high-water mark. Check
+   whether the monster bar has an honest denominator at all.
+
+### The half the player actually asked for
+
+Death animations for monsters, and more motion during a fight. Scope it before
+starting — "more entertaining" is unbounded. A concrete starting list:
+
+- A death animation, since the monster currently just vanishes and is replaced.
+- A hit reaction on the monster sprite (shake, flash) — the sparks exist but
+  the sprite itself never acknowledges a hit.
+- Attack telegraph or wind-up, so a 1.6 s swing reads as an action rather than
+  a number changing.
+
+### Done when
+
+- The **asymmetry is explained** — a written cause for why the player's bar
+  moved and the monster's did not, not just a change that makes it move.
+- Monster HP is observably animating in a real fight, verified the way
+  `interpolation.ts` was: a MutationObserver on the bar against the live
+  cadence, not by eye.
+- A monster death is visually distinct from a monster being swapped out.
+- `npm run exercise` still green; any new effect is checked at 390 px with
+  `check:clipping` and `check:overlap`.
+
+### Risk
+
+Low to change, **medium to scope**. The trap is spending the effort on new
+animation and never answering (1) — the player would still be looking at a
+static monster bar, now with more going on around it.
+
 ---
 
 ## Status at the end of the 2026-09-02 pass
