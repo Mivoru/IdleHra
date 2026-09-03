@@ -54,6 +54,18 @@
   );
   let selectedSlot = $state(1);
 
+  // Modul: the paper doll used to show slot 1's Accuracy/Armor/Block under
+  // EVERY tab - StateUpdate's three combat rating fields are the ACTIVE
+  // character's only (see slots.ts's comment on why tools have no wire
+  // field, same reason). Switching to slot 2 or 3 changed the gear on screen
+  // but the numbers next to it kept describing whoever was actually fighting.
+  // /api/v1/player/inventory now carries each character's own rating,
+  // computed from that character's own gear - this looks it up by slot
+  // rather than trusting the wire for anyone but the active character.
+  const selectedCombatStats = $derived(
+    inventory.data?.RosterCombatStats?.find((s) => s.SlotIndex === selectedSlot - 1) ?? null,
+  );
+
   const activeSets = $derived.by(() => {
     const counts = new Map<string, number>();
     for (const item of inventory.data?.Equipment ?? []) {
@@ -319,20 +331,29 @@
       </dl>
 
       <!-- Modul: these three are the server-COMPUTED values actually used in
-           that tick's combat resolution, not a client reconstruction from raw
-           DEX/CON - so what is shown can never drift from what the server
-           rolled against. -->
-      <h3>Combat rating</h3>
+           combat resolution, not a client reconstruction from raw DEX/CON -
+           so what is shown can never drift from what the server rolled
+           against. For the ACTIVE slot they still fall back to StateUpdate
+           (the 10Hz field), so the panel is never blank while /inventory is
+           still loading; for slot 2/3 there is no wire field at all, only
+           the REST snapshot's per-character RosterCombatStats. -->
+      <h3>Combat rating (Slot {selected.slot})</h3>
       <dl class="stats">
-        <div><dt>Accuracy</dt><dd>{snap.PlayerAccuracyRating.toLocaleString()}</dd></div>
-        <div><dt>Armor</dt><dd>{snap.PlayerArmorRating.toLocaleString()}</dd></div>
+        <div>
+          <dt>Accuracy</dt>
+          <dd>{(selectedCombatStats?.Accuracy ?? snap.PlayerAccuracyRating).toLocaleString()}</dd>
+        </div>
+        <div>
+          <dt>Armor</dt>
+          <dd>{(selectedCombatStats?.Armor ?? snap.PlayerArmorRating).toLocaleString()}</dd>
+        </div>
         <div>
           <dt>Block</dt>
-          <dd>
-            {typeof snap.PlayerBlockStrengthPct === 'number'
-              ? `${snap.PlayerBlockStrengthPct.toFixed(1)}%`
-              : String(snap.PlayerBlockStrengthPct)}
-          </dd>
+          <dd
+            >{(selectedCombatStats?.BlockPct ??
+              (typeof snap.PlayerBlockStrengthPct === 'number' ? snap.PlayerBlockStrengthPct : 0)
+            ).toFixed(1)}%</dd
+          >
         </div>
         <div><dt>Skill pts</dt><dd>{snap.AvailableSkillPoints}</dd></div>
       </dl>

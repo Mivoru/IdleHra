@@ -6124,6 +6124,198 @@ namespace FolkIdle.Server.Tests
                 VillageManagementEngine.GetTierMaterials(999));
         }
 
+        // Modul: A COMBAT RATING BELONGS TO A CHARACTER, NOT TO AN ACCOUNT.
+        //
+        // StateUpdatePacket carries PlayerAccuracyRating/PlayerArmorRating/
+        // PlayerBlockStrengthPct for the ACTIVE character only - deliberately,
+        // because gear changes on a button press and does not belong on a 10Hz
+        // packet. The Character screen read those three fields under every
+        // paper-doll tab, so switching to slot 2 changed the gear on screen and
+        // left the numbers beside it describing whoever was actually fighting.
+        // Reported as "I click between slots 1-3 and their stats are the same
+        // except the set bonuses" - the set bonuses being the one part of that
+        // panel already computed per character.
+        //
+        // This pins the engine half: the same account, the same attributes, two
+        // characters, and the one wearing armour has to come out ahead. STR/DEX/
+        // CON/LCK are genuinely account-wide (PlayerRecord.BaseStrength and
+        // friends) and are asserted to stay equal, so a future "fix" that makes
+        // attributes per-character has to come here and say so on purpose.
+        [Fact]
+        public async Task Test_EquipmentSlotEngine_CombatStatsAreComputedPerCharacterNotPerAccount()
+        {
+            const long testPlayerId = 970007311L;
+            var armouredId = Guid.NewGuid();
+            var barefootId = Guid.NewGuid();
+            const string chestBaseId = "eq_magus_vestments_chest_armor_slot_base";
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = armouredId,
+                    AuthenticatorToken = Guid.NewGuid(),
+                    BaseStrength = 20,
+                    BaseDexterity = 20,
+                    BaseConstitution = 20,
+                    BaseLuck = 10
+                });
+
+                var chest = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = chestBaseId, QualityTier = 1 };
+                db.EquipmentInstances.Add(chest);
+                await db.SaveChangesAsync();
+
+                db.CharacterRecords.Add(new CharacterRecord
+                {
+                    Id = armouredId,
+                    PlayerId = testPlayerId,
+                    SlotIndex = 0,
+                    EquippedChestId = chest.Id
+                });
+                // Same account, same attributes, nothing worn.
+                db.CharacterRecords.Add(new CharacterRecord
+                {
+                    Id = barefootId,
+                    PlayerId = testPlayerId,
+                    SlotIndex = 1
+                });
+                await db.SaveChangesAsync();
+            }
+
+            await using var statsDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var player = await statsDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+            var armoured = await statsDb.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == armouredId);
+            var barefoot = await statsDb.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == barefootId);
+
+            var armouredStats = await EquipmentSlotEngine.ComputeCharacterCombatStatsAsync(
+                statsDb, player, armoured, 0, 0, 0, 0);
+            var barefootStats = await EquipmentSlotEngine.ComputeCharacterCombatStatsAsync(
+                statsDb, player, barefoot, 0, 0, 0, 0);
+
+            Assert.True(
+                armouredStats.FlatPhysicalArmor > barefootStats.FlatPhysicalArmor,
+                $"the character wearing a 72-defense chest must out-armour the naked one, " +
+                $"got {armouredStats.FlatPhysicalArmor} vs {barefootStats.FlatPhysicalArmor} - " +
+                "this is the bug where every slot reported the active character's numbers");
+        }
+
+        // Modul: THE TWO STRUCTURAL BUILDINGS NEVER LEFT TIER 0.
+        //
+        // GetTierMaterials bands every five levels, which is right for a
+        // building that keeps climbing - a production or service building
+        // reaches level 12 under a maxed Town Hall, so it walks tiers 0/1/2.
+        //
+        // Town Hall and the Crafting Workshop hard-cap at
+        // MaxStructuralBuildingLevel (5), so their CurrentLevel is only ever
+        // 0-4 when an upgrade is priced, and `currentLevel / 5` is therefore
+        // ALWAYS 0. The two buildings that gate the entire village - Town Hall
+        // raises every other building's ceiling and unlocks character slots 2
+        // and 3, the Workshop feeds crafted-item rarity - could be taken to
+        // their cap on the first region's copper_ore and birch_log alone. It
+        // was reported as "upgrades are too easy, I am on Town Hall 5 and have
+        // never once used a tier-2 material", and that is exactly what the
+        // arithmetic did.
+        //
+        // One tier per TWO structural levels, so the five levels span tiers
+        // 0,0,1,1,2. A tier per level was the other candidate and was rejected
+        // deliberately: it prices the last Town Hall level in region-5
+        // materials, and Town Hall 5 is what unlocks the third character slot -
+        // that re-paces the game rather than fixing this bug. See the engine.
+        // The level-3 case below is the actual regression guard - it is the one
+        // that USED to pass on tier-0 materials.
+        [Fact]
+        public async Task Test_VillageManagementEngine_StructuralUpgradesWalkOneMaterialTierPerTwoLevels()
+        {
+            // The mapping itself, named outright rather than derived from the
+            // same expression the engine uses - a test that recomputes the
+            // thing it is checking proves only that arithmetic is repeatable.
+            var expectedByStructuralLevel = new[]
+            {
+                ("birch_log", "copper_ore"),     // level 0 -> 1
+                ("birch_log", "copper_ore"),     // level 1 -> 2
+                ("willow_log", "iron_ore"),      // level 2 -> 3, unlocks slot 2
+                ("willow_log", "iron_ore"),      // level 3 -> 4
+                ("acacia_log", "sulfur_ore"),    // level 4 -> 5, unlocks slot 3
+            };
+            Assert.Equal(VillageManagementEngine.MaxStructuralBuildingLevel, expectedByStructuralLevel.Length);
+
+            for (int level = 0; level < VillageManagementEngine.MaxStructuralBuildingLevel; level++)
+            {
+                var mats = VillageManagementEngine.GetTierMaterials((level / 2) * 5);
+                Assert.Equal(expectedByStructuralLevel[level].Item1, mats.Log);
+                Assert.Equal(expectedByStructuralLevel[level].Item2, mats.Ore);
+            }
+
+            // The ladder has to actually climb - the whole bug was that it did
+            // not. First and last structural level must not share a tier.
+            Assert.NotEqual(
+                expectedByStructuralLevel[0],
+                expectedByStructuralLevel[VillageManagementEngine.MaxStructuralBuildingLevel - 1]);
+
+            // A production building must NOT have moved: it still bands every
+            // five levels, because its ceiling really does reach 12.
+            Assert.Equal(
+                VillageManagementEngine.GetTierMaterials(0),
+                VillageManagementEngine.GetTierMaterials(3));
+
+            // --- and now against the engine, which is what actually prices an
+            // upgrade. A level-3 Town Hall is the case that regressed.
+            const long tierZeroPlayerId = 970007301L;
+            const long tierThreePlayerId = 970007302L;
+            var tier0 = VillageManagementEngine.GetTierMaterials(0);
+            var tier3 = VillageManagementEngine.GetTierMaterials((3 / 2) * 5);
+            long costAtLevel3 = VillageManagementEngine.CalculateProductionUpgradeCost(3);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                // Holding a mountain of the FIRST region's materials, and
+                // nothing else. This used to buy a Town Hall level.
+                db.PlayerRecords.Add(new PlayerRecord { Id = tierZeroPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.CommodityRecords.AddRange(
+                    new CommodityRecord { PlayerId = tierZeroPlayerId, ItemId = tier0.Log, Quantity = 1_000_000L },
+                    new CommodityRecord { PlayerId = tierZeroPlayerId, ItemId = tier0.Ore, Quantity = 1_000_000L },
+                    new CommodityRecord { PlayerId = tierZeroPlayerId, ItemId = "gold", Quantity = 10_000_000L });
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = tierZeroPlayerId, BuildingId = VillageManagementEngine.TownHallBuildingId, CurrentLevel = 3 });
+
+                // The same upgrade, held in the materials it now actually costs.
+                db.PlayerRecords.Add(new PlayerRecord { Id = tierThreePlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.CommodityRecords.AddRange(
+                    new CommodityRecord { PlayerId = tierThreePlayerId, ItemId = tier3.Log, Quantity = 1_000_000L },
+                    new CommodityRecord { PlayerId = tierThreePlayerId, ItemId = tier3.Ore, Quantity = 1_000_000L },
+                    new CommodityRecord { PlayerId = tierThreePlayerId, ItemId = "gold", Quantity = 10_000_000L });
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = tierThreePlayerId, BuildingId = VillageManagementEngine.TownHallBuildingId, CurrentLevel = 3 });
+
+                await db.SaveChangesAsync();
+            }
+
+            var engine = new VillageManagementEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await engine.ExecuteUpgradeBuildingAsync(tierZeroPlayerId, VillageManagementEngine.TownHallBuildingId);
+            await engine.ExecuteUpgradeBuildingAsync(tierThreePlayerId, VillageManagementEngine.TownHallBuildingId);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            var refused = await verifyDb.VillageInfrastructures.AsNoTracking()
+                .SingleAsync(v => v.PlayerId == tierZeroPlayerId && v.BuildingId == VillageManagementEngine.TownHallBuildingId);
+            Assert.Equal(0, refused.UpgradeTargetLevel);
+
+            long untouchedTier0Ore = await verifyDb.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == tierZeroPlayerId && c.ItemId == tier0.Ore)
+                .Select(c => c.Quantity)
+                .SingleAsync();
+            Assert.Equal(1_000_000L, untouchedTier0Ore);
+
+            var accepted = await verifyDb.VillageInfrastructures.AsNoTracking()
+                .SingleAsync(v => v.PlayerId == tierThreePlayerId && v.BuildingId == VillageManagementEngine.TownHallBuildingId);
+            Assert.Equal(4, accepted.UpgradeTargetLevel);
+
+            long spentTier3Ore = await verifyDb.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == tierThreePlayerId && c.ItemId == tier3.Ore)
+                .Select(c => c.Quantity)
+                .SingleAsync();
+            Assert.Equal(1_000_000L - costAtLevel3, spentTier3Ore);
+        }
+
         // Modul: Phase - Full-Stack Production Polish Phase 2, Part 2.3.
         // Measures ForgeSplicingEngine's real gold deduction for two
         // different target QualityTiers, holding both sacrifices at

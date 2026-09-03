@@ -85,11 +85,23 @@ export interface InventoryStack {
   Quantity: number;
 }
 
+/** Combat rating for ONE roster character, computed server-side from that
+ *  character's own gear. StateUpdate's PlayerAccuracyRating/PlayerArmorRating/
+ *  PlayerBlockStrengthPct are the ACTIVE character's only - this is the only
+ *  place slot 2 and slot 3's own numbers exist at all. */
+export interface RosterCombatStats {
+  SlotIndex: number;
+  Accuracy: number;
+  Armor: number;
+  BlockPct: number;
+}
+
 export interface InventorySnapshot {
   BackpackSlotsUsed: number;
   MaxStackQuantity: number;
   Equipment: InventoryEquipment[];
   Stacks: InventoryStack[];
+  RosterCombatStats: RosterCombatStats[];
 }
 
 export function fetchInventory(): Promise<InventorySnapshot> {

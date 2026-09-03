@@ -1526,12 +1526,25 @@ namespace FolkIdle.Server.Network
             public long Quantity { get; set; }
         }
 
+        // Modul: paper-doll combat rating, per roster character. See
+        // EquipmentSlotEngine.ComputeCharacterCombatStatsAsync for why this
+        // could not simply be read off StateUpdate - that packet is the
+        // active character's only.
+        private sealed class RosterCombatStatsResponse
+        {
+            public int SlotIndex { get; set; }
+            public long Accuracy { get; set; }
+            public long Armor { get; set; }
+            public double BlockPct { get; set; }
+        }
+
         private sealed class PlayerInventorySnapshotResponse
         {
             public int BackpackSlotsUsed { get; set; }
             public long MaxStackQuantity { get; set; }
             public System.Collections.Generic.List<InventoryEquipmentResponse> Equipment { get; set; } = new();
             public System.Collections.Generic.List<InventoryStackResponse> Stacks { get; set; } = new();
+            public System.Collections.Generic.List<RosterCombatStatsResponse> RosterCombatStats { get; set; } = new();
         }
 
         // Modul: Crafting Tree screen. CurrentStock is the UNIFIED
@@ -4569,6 +4582,70 @@ namespace FolkIdle.Server.Network
                     .Where(v => v.PlayerId == playerId)
                     .ToListAsync();
 
+                // Modul: TWO DIFFERENT QUESTIONS, TWO DIFFERENT QUERIES.
+                //
+                // "Who wears this item" must consider EVERY character the player
+                // owns, including the benched ones past slot 2. A benched
+                // character really does keep its EquippedWeaponId - measured: a
+                // SlotIndex 4 character on the dev fixture holds a weapon and an
+                // axe - so narrowing this to the playable three would report
+                // those items as free, offer them in the picker, and let one
+                // EquipmentInstance end up worn by two characters at once the
+                // moment that ancestor is fielded.
+                //
+                // "What is this character's combat rating" is only ever asked
+                // about the three PLAYABLE slots, which is what the paper doll
+                // has tabs for - and computing it walks the gear of every row it
+                // is given, so handing it the whole lineage would cost 20+
+                // needless stat computations per inventory fetch on a long-played
+                // account.
+                // Two queries rather than one filtered in memory: the worn-item
+                // pass needs no lineage at all, and joining it for a whole
+                // lineage - 29 rows on the dev fixture, more on a long-played
+                // account - to read race off three of them is work this endpoint
+                // does on every inventory refresh.
+                var allCharacters = await db.CharacterRecords
+                    .AsNoTracking()
+                    .Where(c => c.PlayerId == playerId)
+                    .ToListAsync();
+
+                var rosterCharacters = await db.CharacterRecords
+                    .AsNoTracking()
+                    .Include(c => c.Lineage)
+                    .Where(c => c.PlayerId == playerId
+                        && c.SlotIndex >= 0
+                        && c.SlotIndex < CharacterSlotEngine.MaxCharacterSlots)
+                    .OrderBy(c => c.SlotIndex)
+                    .ThenBy(c => c.Id)
+                    .ToListAsync();
+
+                // Modul: paper-doll combat rating, per character. STR/DEX/CON/
+                // LCK, potions, area completions and race mastery are all
+                // account-wide (see PlayerRecord/PlayerRaceMastery) - only age
+                // phase, race/genetics and gear differ per roster slot - so
+                // these are fetched once here rather than once per character.
+                var raceMasteries = await db.PlayerRaceMasteries
+                    .AsNoTracking()
+                    .Where(m => m.PlayerId == playerId)
+                    .ToListAsync();
+                int humanMastery = 0, vilaMastery = 0, draugrMastery = 0;
+                for (int i = 0; i < raceMasteries.Count; i++)
+                {
+                    if (raceMasteries[i].RaceId == RaceIds.Human) humanMastery = raceMasteries[i].MasteryLevel;
+                    else if (raceMasteries[i].RaceId == RaceIds.Vila) vilaMastery = raceMasteries[i].MasteryLevel;
+                    else if (raceMasteries[i].RaceId == RaceIds.Draugr) draugrMastery = raceMasteries[i].MasteryLevel;
+                }
+                var completedRegionIds = await db.PlayerRegionCompletions
+                    .AsNoTracking()
+                    .Where(r => r.PlayerId == playerId)
+                    .Select(r => r.RegionId)
+                    .ToListAsync();
+                int completedAreaFlags = 0;
+                for (int i = 0; i < completedRegionIds.Count; i++)
+                {
+                    completedAreaFlags |= 1 << completedRegionIds[i];
+                }
+
                 await transaction.CommitAsync();
 
                 // Modul: per-character equipment. "Is this item equipped" is an
@@ -4587,7 +4664,7 @@ namespace FolkIdle.Server.Network
                 // have to map the Guid back anyway.
                 var wornItemSlotIndices = new Dictionary<long, int>();
                 var wornItemEquipSlots = new Dictionary<long, int>();
-                foreach (var rosterCharacter in await db.CharacterRecords.AsNoTracking().Where(c => c.PlayerId == playerId).ToListAsync())
+                foreach (var rosterCharacter in allCharacters)
                 {
                     void RecordWorn(long? itemId, int equipSlotIndex)
                     {
@@ -4619,6 +4696,24 @@ namespace FolkIdle.Server.Network
                     RecordWorn(rosterCharacter.EquippedRodId, EquipmentSlotEngine.SlotRod);
                 }
 
+                var rosterCombatStats = new System.Collections.Generic.List<RosterCombatStatsResponse>();
+                if (player != null)
+                {
+                    foreach (var rosterCharacter in rosterCharacters)
+                    {
+                        CombatStats stats = await EquipmentSlotEngine.ComputeCharacterCombatStatsAsync(
+                            db, player, rosterCharacter, humanMastery, vilaMastery, draugrMastery, completedAreaFlags);
+
+                        rosterCombatStats.Add(new RosterCombatStatsResponse
+                        {
+                            SlotIndex = rosterCharacter.SlotIndex,
+                            Accuracy = stats.AccuracyRating,
+                            Armor = stats.FlatPhysicalArmor,
+                            BlockPct = stats.BlockStrengthPct
+                        });
+                    }
+                }
+
                 var response = new PlayerInventorySnapshotResponse
                 {
                     BackpackSlotsUsed = equipment.Count,
@@ -4627,7 +4722,8 @@ namespace FolkIdle.Server.Network
                     // Inventory screen rendered as "stacks cap at 9999". There
                     // is no cap any more, so 0 is the agreed "unbounded"
                     // sentinel and the client suppresses the line entirely.
-                    MaxStackQuantity = 0L
+                    MaxStackQuantity = 0L,
+                    RosterCombatStats = rosterCombatStats
                 };
 
                 for (int i = 0; i < equipment.Count; i++)

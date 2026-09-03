@@ -372,8 +372,43 @@ namespace FolkIdle.Server.Domain.Progression
                 // service buildings (Forge/Inn/Breeding/Academy) use.
                 bool isProductionBuilding = targetBuildingId == LumberjackBuildingId || targetBuildingId == MineBuildingId || targetBuildingId == WarehouseBuildingId;
                 long cost = CalculateProductionUpgradeCost(infrastructure.CurrentLevel);
-                
-                var tierMats = GetTierMaterials(infrastructure.CurrentLevel);
+
+                // Modul: STRUCTURAL BUILDINGS NEVER LEFT TIER 0.
+                //
+                // GetTierMaterials(currentLevel) clamps currentLevel / 5, which is
+                // right for a building whose level keeps climbing past 5 (a
+                // production/service building's ceiling reaches 12 at a maxed
+                // Town Hall) - level bands 0-4/5-9/10-12 walk tiers 0/1/2 exactly
+                // as CalculateProductionUpgradeCost's own "resets every five
+                // levels" comment describes.
+                //
+                // Town Hall and the Crafting Workshop are DIFFERENT: they hard-cap
+                // at MaxStructuralBuildingLevel (5), so infrastructure.CurrentLevel
+                // is only ever 0-4 for every upgrade either one will ever make -
+                // currentLevel / 5 is therefore always 0, and the two buildings
+                // that gate the whole village (Town Hall raises every other
+                // building's ceiling; the Workshop feeds crafted-item rarity)
+                // could be maxed on copper_ore/birch_log alone. A level-5 Town
+                // Hall unlocking the third character slot had never once asked
+                // for anything past the cheapest region's materials.
+                //
+                // ONE TIER PER TWO LEVELS, so the five structural levels span
+                // tiers 0,0,1,1,2 - reusing the same clamped table by passing
+                // (currentLevel / 2) * 5.
+                //
+                // A tier PER level was the other candidate and is deliberately
+                // not what this does. It would price the final Town Hall level
+                // in ebon_log/darksteel_ore, and Town Hall 5 is what unlocks the
+                // THIRD CHARACTER SLOT and raises every other building's ceiling
+                // to 12 - so the third character would become an endgame reward
+                // gated behind region 5, which is a re-pacing of the game rather
+                // than a fix to this bug. The comment on BaseUpgradeCost records
+                // a pass that deliberately CUT village costs because a wall had
+                // formed here; this is the smallest change that makes the tier
+                // ladder real without rebuilding that wall.
+                var tierMats = isStructuralBuilding
+                    ? GetTierMaterials((infrastructure.CurrentLevel / 2) * 5)
+                    : GetTierMaterials(infrastructure.CurrentLevel);
 
                 // ALL buildings consume tiered logs and ores now
                 if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, tierMats.Log, cost) ||

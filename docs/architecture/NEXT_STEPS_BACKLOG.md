@@ -16,6 +16,116 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-03 - Two bugs that made gear and the village look decorative
+
+Both were reported from play, not found by a checker, and both are the same
+shape as this codebase's usual worst defect: the screen renders perfectly while
+the number on it describes something else.
+
+## The paper doll showed slot 1's combat rating under every tab
+
+Reported as "I click between slots 1-3 and their stats are identical except the
+set bonuses". Exactly right, and the set bonuses were the tell: they are the one
+part of that panel already computed per character, from the inventory snapshot.
+
+`Character.svelte` read `snap.PlayerAccuracyRating` / `PlayerArmorRating` /
+`PlayerBlockStrengthPct` straight off `StateUpdate`, and **that packet carries
+the ACTIVE character's combat rating only** - deliberately, for the same reason
+the three tool slots have no wire field: gear changes on a button press, not at
+10Hz. So switching tabs changed the gear on screen and left the numbers beside
+it describing whoever was actually fighting.
+
+`/api/v1/player/inventory` now also carries `RosterCombatStats`, one entry per
+playable slot, computed by `EquipmentSlotEngine.ComputeCharacterCombatStatsAsync`
+from that character's own gear. That method is the reusable half of
+`GuildWarSnapshotEngine.BuildMemberCombatStatsAsync`, which had been doing this
+correctly for guild war all along - for the account's first character only.
+
+**STR/DEX/CON/LCK and skill points are genuinely account-wide** and still read
+identical across tabs. They live on `PlayerRecord.BaseStrength` and friends;
+`CharacterRecord` has no attributes at all. That half of the report was not a
+bug, and the new test says so out loud so nobody "fixes" it later.
+
+### The trap inside the fix
+
+The first version narrowed the roster query to three characters and used it for
+BOTH questions the handler asks. That was wrong, and the live database said so:
+
+```
+PlayerId | SlotIndex | weap | axe
+       1 |         0 |    1 |   1
+       1 |         4 |    1 |   1     <- benched, and still holding gear
+```
+
+**A benched character past slot 2 really does keep its `EquippedWeaponId`.**
+Narrowing the worn-item map would have reported those items as free, offered
+them in the picker, and let one `EquipmentInstance` be worn by two characters
+the moment that ancestor was fielded. The handler now runs two queries on
+purpose: every character for "who wears this", the three playable slots for
+"what is this character's rating".
+
+Also worth writing down, because it was assumed and was false: **`CharacterRecord
+.IsLockedInEscrow` is false for every character row** (167/167 locally). It is an
+equipment-escrow flag. What actually bounds the canonical roster query in
+`StateCheckpointManager` is `OrderBy(SlotIndex).Take(3)`, not that filter.
+
+## Town Hall and the Crafting Workshop never left material tier 0
+
+Reported as "upgrades are too easy, I am on Town Hall 5 and have never once used
+a tier-2 material". Measured and true, for a reason that is pure arithmetic.
+
+`GetTierMaterials` bands every five levels (`currentLevel / 5`), which is right
+for a building that keeps climbing - production and service buildings reach 12
+under a maxed Town Hall, so they walk tiers 0/1/2. But the two STRUCTURAL
+buildings hard-cap at `MaxStructuralBuildingLevel` (5), so their `CurrentLevel`
+is only ever 0-4 when an upgrade is priced, and `currentLevel / 5` is therefore
+**always 0**. The two buildings that gate the whole village - Town Hall raises
+every other building's ceiling and unlocks character slots 2 and 3, the Workshop
+feeds crafted-item rarity - could be taken to their cap on region 1's
+`copper_ore` and `birch_log` alone.
+
+Structural buildings now walk **one tier per two levels** (tiers 0,0,1,1,2), so a
+maxed Town Hall costs region-3 materials.
+
+**One tier per LEVEL was the other candidate and was deliberately not taken.** It
+prices the last Town Hall level in `ebon_log`/`darksteel_ore`, and Town Hall 5 is
+what unlocks the third character slot - so the third character would become an
+endgame reward gated behind region 5. That is a re-pacing of the game, not a fix
+to this bug, and `BaseUpgradeCost`'s own comment records a pass that deliberately
+CUT village costs because a wall had formed in exactly this place.
+
+Note that the two formulas are now a matched pair only for non-structural
+buildings: `CalculateProductionUpgradeCost` still resets on `currentLevel % 5`,
+and the comment on `Test_VillageManagementEngine_ProductionUpgradeCost_
+ScalesExponentially` describing that pairing is about those buildings.
+
+**Nobody already at Town Hall 5 pays anything back** - this only bites a village
+still being built, or a fresh season.
+
+## What is still open here
+
+- **Quantity, not just tier, is the other "too easy" lever.** A structural
+  upgrade costs 100/150/225/338/506 units, and an established account measured
+  152,968 `birch_log`. Raising the tier makes the ladder real; it does not by
+  itself make the numbers demanding. Untouched deliberately - that is a balance
+  decision, and `ProgressionRateTests`/`GatheringShareTests` are where it would
+  have to be argued.
+- The Character panel falls back to the wire packet when `RosterCombatStats` has
+  not loaded yet. Correct for slot 1, briefly wrong for slots 2 and 3.
+- **`exercise.mjs`'s "the market pages rather than dumping the book" is flaky.**
+  It failed once in three runs here and passed either side of that, unchanged.
+  Both it and the check above it read ONE `innerText` snapshot taken right after
+  navigation; the earlier check accepts `"Loading the market"` as a pass, this
+  one requires `Page N of M`, so a slow market load fails only the second. The
+  snapshot wants a `waitForFunction` on the listing having rendered, not a
+  wider regex - a wider regex would make it assert nothing.
+- Two `exercise.mjs` runs without an intervening `--seed-dev` do not compare:
+  the second run reported 93 checks against the first's 99, because steps that
+  spend fixture state stop being reachable. Re-seed between runs before reading
+  anything into a changed total.
+
+---
+
 # HANDOFF 2026-09-02 - The game had no entrance (READ THIS FIRST)
 
 Two sessions landed in one commit: the seven task-board tasks, and then the

@@ -686,6 +686,55 @@ namespace FolkIdle.Server.Domain.Combat
             return (totals, setIds);
         }
 
+        // Modul: paper-doll combat rating, per roster character. Mirrors
+        // GuildWarSnapshotEngine.BuildMemberCombatStatsAsync's race/age/
+        // genetics/gear resolution, but for a CALLER-SUPPLIED character
+        // instead of always the account's first one, and taking the
+        // account-wide mastery/completion inputs already fetched once by the
+        // caller rather than re-querying them per roster slot.
+        //
+        // Before this, PlayerAccuracyRating/PlayerArmorRating/
+        // PlayerBlockStrengthPct on StateUpdate were the ONLY combat rating
+        // numbers anywhere - and that packet is deliberately the ACTIVE
+        // character's only (see StateUpdatePacket's own comment on why gear
+        // stays off the hot path for slots 2/3). The Character screen showed
+        // those three numbers unchanged under every paper-doll tab, which
+        // reads as "your gear does nothing" the moment two characters wear
+        // different weapons.
+        public static async Task<CombatStats> ComputeCharacterCombatStatsAsync(
+            FolkIdleDbContext db,
+            PlayerRecord player,
+            CharacterRecord character,
+            int humanMastery,
+            int vilaMastery,
+            int draugrMastery,
+            int completedAreaFlags)
+        {
+            int activeAgePhase = character.AgePhase;
+            int activeRaceId = 0;
+            bool isEpicMutation = false;
+            int locusSpeed = 0;
+            int locusCrit = 0;
+
+            if (character.Lineage != null)
+            {
+                activeRaceId = (int)(character.Lineage.GeneticVector & 0xFF);
+                isEpicMutation = character.Lineage.IsEpicMutation;
+                var geneVec = new GeneticVector(character.Lineage.GeneticVector);
+                locusSpeed = geneVec.LocusSpeed.Dominant;
+                locusCrit = geneVec.LocusCrit.Dominant;
+            }
+
+            (EquippedAffixTotals totals, EquippedSetIds setIds) = await ComputeEquippedTotalsAsync(db, character);
+
+            return StatsCalculator.Calculate(
+                player.BaseStrength, player.BaseDexterity, player.BaseConstitution, player.BaseLuck,
+                player.ActiveOffensivePotionId, player.ActiveDefensivePotionId,
+                activeAgePhase, completedAreaFlags, activeRaceId,
+                humanMastery, vilaMastery, draugrMastery,
+                totals, isEpicMutation, locusSpeed, locusCrit, setIds);
+        }
+
         // Modul: Affix System Unification. Reads GDD affix ids
         // (AffixRegistry, Module 14 section 1.3) and folds each into the stat
         // it actually belongs to.
