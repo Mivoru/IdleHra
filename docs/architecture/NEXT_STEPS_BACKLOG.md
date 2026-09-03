@@ -16,6 +16,90 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-03 (b) - Offline loot was a worse game than online loot
+
+Reported as "when I am offline almost nothing good drops for equipment". True,
+for two independent reasons, and the second is the larger one.
+
+## Offline rolled rarity with up to 73 points less luck
+
+`CombatLootEngine.RollTier(lootLuckPct)` decides rarity and nothing else does -
+tiers 2-14 scale by `1 + luck/100` while Normal keeps a flat weight - so that
+one figure IS the drop table. The live tick summed six terms into it. The
+offline path summed **two**, and passed no `BonusRarityTiers` at all:
+
+| source | live | offline |
+|---|---|---|
+| gear/affix luck, inheritance | yes | yes |
+| Fortune root (loot rarity skill), cap +10 | yes | **no** |
+| Rarity bough, cap +8 | yes | **no** |
+| guild DropRate buff (tier x2), cap +10 | yes | **no** |
+| Fortune breeding aptitude, cap +45 | yes | **no** |
+| Golden Fleece (+2 tiers every 100th kill) | yes | **no** |
+
+Measured against the real weight table, at a zero-gear baseline that is Normal
+**50.8% offline against 37.4% online**, and Rare-or-better 11.0% against 14.0%.
+Every point a player had spent on rarity stopped existing when they closed the
+tab.
+
+The live copy of that sum already carried a comment begging for it to be kept
+contiguous, because an edit had once slid a term out of it. That is the same
+failure twice, and a comment cannot fix it. **The sum now exists once**, in
+`CombatLootDropRequest.Build`, which both paths call.
+
+## Offline equipment was capped at 500 rolls - worth 25 pieces, ever
+
+`equipmentDropsToGrant = Math.Min(totalKills, 500)`. Equipment drops at **5% a
+kill**, so that cap is 25 pieces however long the player was away, while the
+materials beside it were capped at 200,000 and were effectively uncapped. Hence
+"materials fine, gear nothing".
+
+| kill time | kills in 12h | pieces online | offline | share |
+|---|---|---|---|---|
+| 15s | 2,880 | 144 | 25 | **17%** |
+| 30s | 1,440 | 72 | 25 | **35%** |
+| 60s | 720 | 36 | 25 | 69% |
+
+The cap was not arbitrary: every request cost its own scope, SERIALIZABLE
+transaction and commit, and thousands of those on one login is real load. So the
+fix is not to raise it - `CombatLootDropRequest.Kills` lets ONE request carry the
+whole window, and the loot engine rolls it inside a single transaction. The rate
+is now the online rate at one transaction per catch-up instead of thousands.
+`MaxOfflineKillsPerSlot` (200,000) replaces it as a runaway guard only; the
+twelve-hour window cannot reach it.
+
+Two struct fields were chosen so that `default` preserves live behaviour, which
+is load-bearing: `CombatLootDropRequest` is a **struct with no field
+initialisers** and the live tick does not set them. `Kills` reads 0 as 1 (0 as
+"no kills" would switch off every drop in the game), and the material flag is
+named `SkipMaterialRoll` rather than `RollMaterials` for the same reason.
+
+Also fixed here: offline material rolls ignored `GlobalEngineState
+.GlobalDropMultiplier`, so an admin's double-drop event paid double only to
+players who sat and watched it.
+
+Also found: offline was granting materials TWICE - once from its own bulk
+projection and again from each of the (up to 500) equipment requests. The cap
+was hiding it. Equipment requests from offline now skip the material roll.
+
+## Two notes for anyone testing this
+
+- **The canonical monster ladder is ids 91-115.** Ids 1-90 are legacy rows that
+  resolve to no fight at all: a payload with `ActiveActivityId = 1` runs a full
+  offline window and earns zero XP, zero gold and zero kills, silently.
+- A test that asserts "offline is not capped at 500" has to produce **more than
+  500 kills**, or it passes against the bug. A bare level-40 statline kills a
+  Field Mouse every ~143 seconds - 301 kills in twelve hours - and never reaches
+  the cap. Both new tests were mutation-checked against the un-fixed engine.
+
+## Still open here
+
+- The offline "drops" summary counts materials only. Equipment is rolled later on
+  the loot engine's own thread, so the number is not knowable at projection time;
+  it used to report the REQUEST count, which overstated the truth twentyfold.
+
+---
+
 # HANDOFF 2026-09-03 - Two bugs that made gear and the village look decorative
 
 Both were reported from play, not found by a checker, and both are the same

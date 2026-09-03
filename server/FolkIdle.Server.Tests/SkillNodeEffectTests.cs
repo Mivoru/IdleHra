@@ -113,8 +113,19 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void LootLuckAndMaterialQuantityAreNotSpliced()
         {
+            // Modul: the sum MOVED. It used to be written out in the live
+            // tick's enqueue block, with a second, shorter copy of it in
+            // OfflineSimulationEngine - and the copies drifted, which is what
+            // made offline drops measurably worse than online ones. Both paths
+            // build their request through CombatLootDropRequest.Build now, so
+            // that is where the splice can happen and where this must look.
+            //
+            // Test_CombatLootDropRequest_LuckSumCarriesEveryRaritySource asserts
+            // the same rule behaviourally, which is the stronger check; this one
+            // stays because it catches a splice by READING, without needing the
+            // spliced term to be one a test happened to think of.
             string source = System.IO.File.ReadAllText(
-                System.IO.Path.Combine(RepoRoot(), "FolkIdle.Server", "Domain", "Combat", "SimulationEngine.cs"));
+                System.IO.Path.Combine(RepoRoot(), "FolkIdle.Server", "Engine", "CombatLootEngine.cs"));
 
             int at = source.IndexOf("MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(", StringComparison.Ordinal);
             Assert.True(at > 0, "the loot request no longer sets MaterialQuantityPct - update this test");

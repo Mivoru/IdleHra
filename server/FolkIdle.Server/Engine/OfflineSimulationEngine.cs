@@ -89,7 +89,14 @@ namespace FolkIdle.Server.Engine
         // and is per slot.
         private const int MaxOfflineGatherActions = 200_000;
         private const int MaxOfflineLootRolls = 200_000;
-        private const int MaxOfflineEquipmentDropsPerSlot = 500;
+        // Modul: a RUNAWAY GUARD, not a balance cap. It replaces
+        // MaxOfflineEquipmentDropsPerSlot (500), which WAS a balance cap by
+        // accident and cost players most of their offline gear.
+        //
+        // The offline window is capped at twelve hours, so even a one-second
+        // kill cannot reach this number; it exists so that a corrupt kill-time
+        // estimate cannot ask the loot engine for an unbounded loop.
+        private const long MaxOfflineKillsPerSlot = 200_000L;
 
         private static bool SlotHoldsCharacter(ref TickStatePayload payload, int slotIndex)
         {
@@ -630,23 +637,66 @@ namespace FolkIdle.Server.Engine
                 payload.RequiresRedisFlush = true;
             }
 
-            // Modul: equipment drop requests, safely bounded by kill count and
-            // available inventory space (reserved by the caller in
-            // ExtrapolateOfflineProgressAsync) so a long-offline player cannot
-            // flood CombatLootEngine's queue/transactions in a single login.
-            int equipmentDropsToGrant = (int)Math.Min(totalKills, MaxOfflineEquipmentDropsPerSlot);
-            for (int i = 0; i < equipmentDropsToGrant; i++)
+            // Modul: OFFLINE EQUIPMENT NOW ROLLS EXACTLY AS ONLINE DOES.
+            //
+            // This used to enqueue ONE REQUEST PER KILL, capped at 500, each
+            // costing its own scope, SERIALIZABLE transaction and commit. The
+            // cap was there for that cost - but equipment drops at 5% a kill,
+            // so 500 requests is 25 pieces however long you were away. A twelve
+            // hour window at fifteen seconds a kill earns 144 pieces online and
+            // paid 25, and the materials beside them were uncapped, which is
+            // precisely the reported "offline drops me nothing good".
+            //
+            // One request now carries the whole window and the loot engine
+            // rolls it inside a single transaction, so the rate is the online
+            // rate and the cost is one transaction rather than thousands.
+            long killsToRoll = Math.Min(totalKills, MaxOfflineKillsPerSlot);
+
+            // Golden Fleece across the window. The counter advances on every
+            // kill whether or not the crown is taken - matching the live tick,
+            // whose comment explains that taking it must not hand over a
+            // hundred-kill head start - and only pays tiers if it is.
+            long fleeceCounter = payload.KillsSinceFleece + killsToRoll;
+            long fleeceProcs = fleeceCounter / Domain.Combat.SimulationEngine.GoldenFleeceKillInterval;
+            payload.KillsSinceFleece = (int)(fleeceCounter % Domain.Combat.SimulationEngine.GoldenFleeceKillInterval);
+
+            long fleeceKills = payload.Skill_GoldenFleece > 0 ? fleeceProcs : 0L;
+            long plainKills = killsToRoll - fleeceKills;
+
+            // Materials are skipped on these requests because this method's own
+            // projection below already grants the window's materials in bulk.
+            // Rolling them here as well was a double grant, hidden by the cap.
+            if (plainKills > 0)
             {
-                CombatLootEngine.DropRequestQueue.Enqueue(new CombatLootDropRequest
-                {
-                    PlayerId = payload.PlayerId,
-                    MonsterId = fallbackId,
-                    LootLuckPct = combatStats.LootLuckPct + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck)
-                });
+                CombatLootEngine.DropRequestQueue.Enqueue(CombatLootDropRequest.Build(
+                    in payload, in combatStats, fallbackId,
+                    kills: (int)plainKills, bonusRarityTiers: 0, skipMaterialRoll: true));
+            }
+            if (fleeceKills > 0)
+            {
+                CombatLootEngine.DropRequestQueue.Enqueue(CombatLootDropRequest.Build(
+                    in payload, in combatStats, fallbackId,
+                    kills: (int)fleeceKills,
+                    bonusRarityTiers: Domain.Combat.SimulationEngine.GoldenFleeceBonusTiers,
+                    skipMaterialRoll: true));
             }
 
-            int lootRolls = (int)(totalKillsDouble * payload.CachedCodexYieldMultiplier);
-            return new LootProjection(true, activeMonster.LootTableId, lootRolls, equipmentDropsToGrant, combatStats.LootLuckPct);
+            // Modul: the global drop multiplier reaches offline play too. The
+            // live tick scales its loot rolls by GlobalEngineState
+            // .GlobalDropMultiplier (100 = normal, raised by an admin for an
+            // event); this path ignored it, so a double-drop weekend paid
+            // double only to players who sat and watched.
+            int lootRolls = (int)(totalKillsDouble
+                * payload.CachedCodexYieldMultiplier
+                * (GlobalEngineState.GlobalDropMultiplier / 100.0));
+
+            // Modul: the equipment component of this count is 0, not a guess.
+            // Equipment is rolled later, on CombatLootEngine's own thread, so
+            // nothing here knows how many pieces fell. It used to report the
+            // REQUEST count, which overstated the truth twentyfold - a 5% roll
+            // reported as a drop. The summary counts what this method actually
+            // granted; the gear arrives in the chest either way.
+            return new LootProjection(true, activeMonster.LootTableId, lootRolls, 0, combatStats.LootLuckPct);
         }
 
         // Modul: drains Food1-3 in a fixed order (mirrors the live tick's

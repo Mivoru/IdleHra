@@ -203,6 +203,87 @@ namespace FolkIdle.Server.Engine
         // than counted here, because the count belongs to the tick that did
         // the killing and this engine runs off that thread.
         public int BonusRarityTiers;
+
+        // Modul: HOW MANY KILLS THIS REQUEST STANDS FOR.
+        //
+        // The live tick enqueues one request per kill and leaves this at its
+        // default. Offline catch-up cannot: it resolves thousands of kills at
+        // once, and every request costs a scope, a SERIALIZABLE transaction and
+        // a commit - which is why offline used to cap equipment at 500 requests
+        // and hand players a fraction of the gear they had earned. One request
+        // carrying N kills rolls N times inside ONE transaction instead.
+        //
+        // ZERO MEANS ONE. This is a struct with no field initialisers, so
+        // `new CombatLootDropRequest { ... }` leaves this at 0 - and the live
+        // tick's initialiser does not set it. Reading 0 as "no kills" would
+        // silently switch off every drop in the game.
+        public int Kills;
+
+        // Modul: named for the SKIP, not the roll, for the same reason - a
+        // `RollMaterials` bool would default to false and silently stop the
+        // live tick paying materials at all.
+        //
+        // Offline sets this. Its materials come from
+        // OfflineSimulationEngine's own bulk projection, which is uncapped and
+        // already models the whole window; letting the equipment request roll
+        // them a second time is a double grant, and it was one - bounded only
+        // by the 500-request cap that also hid it.
+        public bool SkipMaterialRoll;
+
+        /// <summary>
+        /// Builds a drop request from a payload and its combat stats. THE ONLY
+        /// place loot luck is composed.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE OFFLINE COPY OF THIS SUM WAS NEVER UPDATED, AND IT COST
+        /// PLAYERS EVERY RARITY BONUS THEY OWNED.
+        ///
+        /// Rarity is decided by RollTier(lootLuckPct) and nothing else, so this
+        /// sum IS the drop table. The live tick added six terms to it; the
+        /// offline path added two, and passed no BonusRarityTiers at all. A
+        /// fully-invested player was rolling with up to 73 points less luck
+        /// while away, and Golden Fleece never fired offline - which is exactly
+        /// the "nothing good ever drops when I am offline" this replaces.
+        ///
+        /// The live sum already carried a comment begging for it to be kept
+        /// contiguous, because an edit had once slid a term out of it. That is
+        /// the same failure twice, and a comment cannot fix it: the sum has to
+        /// exist once. Both callers now build their request here.
+        /// </remarks>
+        public static CombatLootDropRequest Build(
+            in TickStatePayload payload,
+            in CombatStats combatStats,
+            int monsterId,
+            int kills,
+            int bonusRarityTiers,
+            bool skipMaterialRoll)
+        {
+            return new CombatLootDropRequest
+            {
+                PlayerId = payload.PlayerId,
+                MonsterId = monsterId,
+                Kills = kills,
+                BonusRarityTiers = bonusRarityTiers,
+                SkipMaterialRoll = skipMaterialRoll,
+
+                // Everything that shifts WHAT falls, summed into one figure.
+                // Keep this sum contiguous.
+                LootLuckPct = combatStats.LootLuckPct
+                    + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck)
+                    + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity)
+                    + (GuildBonusesCache.GetBuffTier(payload.GuildId, "DropRate") * 2.0f)
+                    // Rarity, the Fortune bough - the same currency as the
+                    // root, so it simply adds.
+                    + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughRarity, payload.Skill_Rarity)
+                    // Fortune, the bloodline's luck aptitude.
+                    + BreedingAptitudes.BonusPercentFor(payload.Aptitude_Fortune),
+
+                // Plenty changes HOW MUCH of a material falls, which is a
+                // different question from what falls, and has its own field.
+                MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(
+                    SkillTreeRegistry.BoughPlenty, payload.Skill_Plenty),
+            };
+        }
     }
 
     // Modul 03/10/11/12: rolls and persists combat-kill equipment/diamond
@@ -314,7 +395,10 @@ namespace FolkIdle.Server.Engine
                 {
                     await ProcessMonsterLootDropAsync(
                         request.PlayerId, request.MonsterId, request.LootLuckPct,
-                        request.MaterialQuantityPct, request.BonusRarityTiers);
+                        request.MaterialQuantityPct, request.BonusRarityTiers,
+                        // Zero means one - see CombatLootDropRequest.Kills.
+                        request.Kills <= 0 ? 1 : request.Kills,
+                        request.SkipMaterialRoll);
                 }
 
                 while (GatheringGrantQueue.TryDequeue(out var gathered))
@@ -403,7 +487,7 @@ namespace FolkIdle.Server.Engine
 
         private async Task ProcessMonsterLootDropAsync(
             long playerId, int monsterId, float lootLuckPct, float materialQuantityPct,
-            int bonusRarityTiers)
+            int bonusRarityTiers, int kills, bool skipMaterialRoll)
         {
             int monsterRegion = ContentRegistry.GetMonsterRegionTier(monsterId);
             if (monsterRegion < 1) monsterRegion = 1;
@@ -456,33 +540,41 @@ namespace FolkIdle.Server.Engine
                 // - while the other 95% becomes chest material the player can
                 // actually use. The session never stops.
 
-                // Roll 1: Crafting Materials, quantity bounded by the loot
-                // table entry's authored [MinQuantity, MaxQuantity] range.
-                if (Random.Shared.NextDouble() < MaterialDropChance)
+                // Modul: ONE ITERATION PER KILL, all inside the one transaction
+                // this method already opens. `kills` is 1 for the live tick, so
+                // it walks this exactly once and behaves as it always has; the
+                // offline catch-up passes its whole window and gets the same
+                // rolls it would have got online, rather than the first 500.
+                for (int kill = 0; kill < kills; kill++)
                 {
-                    int monsterLootTableId = GetMonsterLootTableId(monsterId);
-                    LootTableEntry[] lootTable = ContentRegistry.GetLootTable(monsterLootTableId).ToArray();
-                    if (lootTable.Length > 0)
+                    // Roll 1: Crafting Materials, quantity bounded by the loot
+                    // table entry's authored [MinQuantity, MaxQuantity] range.
+                    if (!skipMaterialRoll && Random.Shared.NextDouble() < MaterialDropChance)
                     {
-                        await GrantMaterialDropAsync(dbContext, playerId, monsterId, lootTable, materialQuantityPct);
+                        int monsterLootTableId = GetMonsterLootTableId(monsterId);
+                        LootTableEntry[] lootTable = ContentRegistry.GetLootTable(monsterLootTableId).ToArray();
+                        if (lootTable.Length > 0)
+                        {
+                            await GrantMaterialDropAsync(dbContext, playerId, monsterId, lootTable, materialQuantityPct);
+                        }
                     }
-                }
 
-                // Roll 2: equipment, from THIS monster's table. Independent of
-                // the materials roll above, so a kill can pay both, either or
-                // neither.
-                TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
-                    EquipmentDropChance, bonusRarityTiers);
-
-                // Regional bosses always drop one piece on top of that, which
-                // is the whole of what makes a boss kill worth walking to. It
-                // comes from the boss's own table, so - unlike the armour-only
-                // roll this replaces - what a boss guarantees is whatever that
-                // boss is authored to carry.
-                if (isRegionalBoss)
-                {
+                    // Roll 2: equipment, from THIS monster's table. Independent of
+                    // the materials roll above, so a kill can pay both, either or
+                    // neither.
                     TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
-                        1.0, bonusRarityTiers);
+                        EquipmentDropChance, bonusRarityTiers);
+
+                    // Regional bosses always drop one piece on top of that, which
+                    // is the whole of what makes a boss kill worth walking to. It
+                    // comes from the boss's own table, so - unlike the armour-only
+                    // roll this replaces - what a boss guarantees is whatever that
+                    // boss is authored to carry.
+                    if (isRegionalBoss)
+                    {
+                        TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
+                            1.0, bonusRarityTiers);
+                    }
                 }
 
                 await dbContext.SaveChangesAsync();

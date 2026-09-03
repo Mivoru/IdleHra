@@ -6039,37 +6039,18 @@ namespace FolkIdle.Server.Domain.Combat
                 // queue (mirroring CodexEngine.KillEventQueue) rather than
                 // calling an instance method directly - CombatLootEngine's own
                 // background poll loop performs the actual DB insert.
-                CombatLootEngine.DropRequestQueue.Enqueue(new CombatLootDropRequest
-                {
-                    PlayerId = payload.PlayerId,
-                    MonsterId = payload.CurrentMonsterId,
-                    // Modul: everything that shifts WHAT falls, summed into one
-                    // luck figure.
-                    //
-                    // These four lines were briefly split apart by an edit that
-                    // inserted MaterialQuantityPct into the middle of the sum,
-                    // which silently moved the Fortune root, the Rarity bough
-                    // and the luck aptitude out of loot luck and into material
-                    // quantity. It compiled and every test passed, because both
-                    // fields are floats and nothing asserted which one they fed
-                    // - so three bonuses quietly did the wrong job. Keep this
-                    // sum contiguous.
-                    LootLuckPct = combatStats.LootLuckPct
-                        + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck)
-                        + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity) + (FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "DropRate") * 2.0f)
-                        // Rarity, the Fortune bough - the same currency as the
-                        // root, so it simply adds.
-                        + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughRarity, payload.Skill_Rarity)
-                        // Fortune, the bloodline's luck aptitude.
-                        + BreedingAptitudes.BonusPercentFor(payload.Aptitude_Fortune),
-
-                    // Plenty changes HOW MUCH of a material falls, which is a
-                    // different question from what falls, and has its own field.
-                    MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(
-                        SkillTreeRegistry.BoughPlenty, payload.Skill_Plenty),
-
-                    BonusRarityTiers = fleeceTiers
-                });
+                // Modul: the luck sum used to be written out here, and a second,
+                // shorter copy of it lived in OfflineSimulationEngine. The two
+                // drifted, which is why offline drops were measurably worse -
+                // see CombatLootDropRequest.Build, which is now the only place
+                // either path composes one.
+                CombatLootEngine.DropRequestQueue.Enqueue(CombatLootDropRequest.Build(
+                    in payload,
+                    in combatStats,
+                    payload.CurrentMonsterId,
+                    kills: 1,
+                    bonusRarityTiers: fleeceTiers,
+                    skipMaterialRoll: false));
 
                 var lootTable = ContentRegistry.GetLootTable(activeMonster.LootTableId);
                 if (lootTable.Length > 0 && payload.InventorySpaceRemaining > 0)

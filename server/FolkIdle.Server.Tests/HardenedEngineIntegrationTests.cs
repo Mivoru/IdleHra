@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics.Tracing;
 using System.IO;
 using System.Linq;
@@ -6124,6 +6124,155 @@ namespace FolkIdle.Server.Tests
                 VillageManagementEngine.GetTierMaterials(999));
         }
 
+        // Modul: OFFLINE LOOT MUST ROLL ON THE SAME ODDS AS ONLINE LOOT.
+        //
+        // Rarity is decided by CombatLootEngine.RollTier(lootLuckPct) and by
+        // nothing else, so the luck figure on a drop request IS the drop table.
+        // The live tick summed six terms into it; the offline path summed two,
+        // and passed no BonusRarityTiers at all - so every point a player had
+        // spent on loot rarity, their guild's drop buff, their bloodline's
+        // Fortune and the Golden Fleece crown all stopped existing the moment
+        // they closed the tab.
+        //
+        // Both paths build the request through CombatLootDropRequest.Build now.
+        // This pins the sum's CONTENTS: each source has to move the number, or
+        // it has silently dropped out of the sum again - which is exactly the
+        // failure this replaces, and it had already happened once before to the
+        // live copy (see the "keep this sum contiguous" comment it carried).
+        [Fact]
+        public void Test_CombatLootDropRequest_LuckSumCarriesEveryRaritySource()
+        {
+            var bare = new TickStatePayload { PlayerId = 1L };
+            var stats = new CombatStats { LootLuckPct = 7f };
+
+            float baseline = CombatLootDropRequest.Build(
+                in bare, in stats, monsterId: 1, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false).LootLuckPct;
+
+            // Gear luck reaches the request at all.
+            Assert.Equal(7f, baseline, 3);
+
+            // Every source below was missing from the offline sum. Each must
+            // raise the figure on its own.
+            var withRoot = new TickStatePayload { PlayerId = 1L, Skill_LootRarity = 10 };
+            var withBough = new TickStatePayload { PlayerId = 1L, Skill_Rarity = 8 };
+            var withFortune = new TickStatePayload { PlayerId = 1L, Aptitude_Fortune = 50 };
+
+            foreach (var (name, payload) in new[]
+            {
+                ("Fortune root (loot rarity skill)", withRoot),
+                ("Rarity bough", withBough),
+                ("Fortune breeding aptitude", withFortune),
+            })
+            {
+                var p = payload;
+                float withSource = CombatLootDropRequest.Build(
+                    in p, in stats, monsterId: 1, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false).LootLuckPct;
+                Assert.True(withSource > baseline,
+                    $"{name} does not reach LootLuckPct - it has fallen out of the sum, which is the offline-drops bug again");
+            }
+
+            // Plenty is a DIFFERENT question - how much of a material falls,
+            // not what falls - and must not be folded into loot luck. An edit
+            // once did exactly that.
+            var withPlenty = new TickStatePayload { PlayerId = 1L, Skill_Plenty = 8 };
+            var plentyRequest = CombatLootDropRequest.Build(
+                in withPlenty, in stats, monsterId: 1, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false);
+            Assert.Equal(baseline, plentyRequest.LootLuckPct, 3);
+            Assert.True(plentyRequest.MaterialQuantityPct > 0f, "Plenty must reach MaterialQuantityPct");
+
+            // Zero kills means one kill - the struct has no field initialisers,
+            // so the live tick's request would otherwise roll nothing at all.
+            var raw = new CombatLootDropRequest();
+            Assert.Equal(0, raw.Kills);
+            Assert.False(raw.SkipMaterialRoll);
+        }
+
+        // Modul: and the same thing end to end - an offline catch-up must ask
+        // for every kill it simulated, not the first 500, and must ask with the
+        // player's real luck. 500 requests at a 5% equipment chance is 25 pieces
+        // however long the player was away; twelve hours at fifteen seconds a
+        // kill earns 144 online.
+        [Fact]
+        public async Task Test_OfflineProgression_EquipmentRollsAreUncappedAndCarryFullLuck()
+        {
+            const long testPlayerId = 970007321L;
+            const long twelveHours = 43200L;
+            // Field Mouse. The canonical ladder is ids 91-115 - the lower ids
+            // are legacy rows that resolve to no fight at all, which is worth
+            // knowing before writing any offline combat test.
+            const int monsterId = 91;
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            while (CombatLootEngine.DropRequestQueue.TryDequeue(out _)) { }
+
+            var payload = new TickStatePayload
+            {
+                PlayerId = testPlayerId,
+                LastLogoutTimestamp = now - twelveHours,
+                ActiveActivityId = monsterId,
+                CurrentLevel = 40,
+                SelectedLineageId = 0,
+                InventorySpaceRemaining = 100000,
+                // A real level-40 statline (the dev fixture's), or the
+                // character cannot out-damage the monster's armour and the
+                // projection resolves to no kills at all.
+                STR = 78,
+                DEX = 78,
+                CON = 78,
+                LCK = 39,
+                // And a weapon. Bare-handed, this character kills a Field
+                // Mouse every five minutes and the window never reaches the
+                // old cap at all - which would make the assertion below pass
+                // for the wrong reason.
+                // Endgame weapon power against region 1's weakest monster, so
+                // the window produces FAR more than 500 kills. That matters:
+                // at a lower attack this scenario resolves ~300 kills, the old
+                // 500 cap would never have bound, and the assertion below would
+                // pass against the very bug it exists to catch.
+                CachedAffixTotals = new EquippedAffixTotals { FlatAttack = 5000 },
+                // Enough food that combat is not cut short - the point here is
+                // the drop accounting, not the survival model.
+                Food1_ItemId = 1,
+                Food1_Count = 1_000_000,
+                // The bonuses offline used to discard.
+                Skill_LootRarity = 10,
+                Skill_Rarity = 8,
+                Aptitude_Fortune = 50,
+            };
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                payload = await OfflineSimulationEngine.ExtrapolateOfflineProgressAsync(db, payload, now);
+            }
+
+            long totalKillsRequested = 0;
+            float luck = 0f;
+            int requests = 0;
+            while (CombatLootEngine.DropRequestQueue.TryDequeue(out var request))
+            {
+                if (request.PlayerId != testPlayerId) continue;
+                totalKillsRequested += request.Kills;
+                luck = Math.Max(luck, request.LootLuckPct);
+                requests++;
+                Assert.True(request.SkipMaterialRoll,
+                    "offline materials come from the bulk projection - rolling them here too is a double grant");
+            }
+
+            Assert.True(requests > 0,
+                $"an offline combat window granted no equipment rolls at all - " +
+                $"xp={payload.CurrentXp} gold={payload.CurrentGold} elapsed={payload.OfflineElapsedSeconds} " +
+                $"monsters={ContentRegistry.Monsters.Length}");
+            Assert.True(totalKillsRequested > 500,
+                $"offline asked for {totalKillsRequested} kills of equipment rolls - the 500 cap is back, " +
+                "and it is worth about 25 pieces however long the player was away");
+
+            // 10 (Fortune root) + 8 (Rarity bough) + 45 (Fortune aptitude) on
+            // top of whatever gear gives. Well clear of the two-term sum that
+            // shipped before, which would land at 0 here.
+            Assert.True(luck >= 60f,
+                $"offline rolled with {luck}% loot luck - the rarity bonuses have fallen out of the sum again");
+        }
+
         // Modul: A COMBAT RATING BELONGS TO A CHARACTER, NOT TO AN ACCOUNT.
         //
         // StateUpdatePacket carries PlayerAccuracyRating/PlayerArmorRating/
@@ -8714,7 +8863,7 @@ namespace FolkIdle.Server.Tests
             // both statistically certain to have hit at least once each.
             for (int i = 0; i < 400; i++)
             {
-                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0 })!;
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false })!;
             }
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
@@ -11267,7 +11416,7 @@ namespace FolkIdle.Server.Tests
 
             for (int i = 0; i < 200; i++)
             {
-                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0 })!;
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false })!;
             }
 
             int publishedCount = 0;
