@@ -235,12 +235,29 @@
   // That field is a ZERO-BASED character slot; this screen numbers slots from
   // one, which is exactly the kind of off-by-one that silently dresses the
   // wrong character.
-  function wornBy(slotOneBased: number, equipSlotIndex: number): InventoryEquipment | null {
+  //
+  // Modul: INDEXED ONCE, not scanned per slot.
+  //
+  // This walked the whole equipment list on every call, and the paper doll
+  // calls it for eleven slots on each of three characters - 33 full scans per
+  // render. On an account with 17,836 pieces that is nearly 600,000 iterations
+  // to fill eleven boxes, redone every time the snapshot changes.
+  //
+  // One pass builds the map instead. Keyed on "character slot : equipment
+  // slot" because both are small integers and the pair is what identifies a
+  // box on the doll; a nested Map would be two lookups and an allocation per
+  // character for no gain at this size.
+  const wornByIndex = $derived.by(() => {
+    const index = new Map<string, InventoryEquipment>();
     for (const item of inventory.data?.Equipment ?? []) {
-      if (item.EquippedByCharacterSlot !== slotOneBased - 1) continue;
-      if (item.EquippedInSlotIndex === equipSlotIndex) return item;
+      if (item.EquippedByCharacterSlot < 0) continue;
+      index.set(`${item.EquippedByCharacterSlot}:${item.EquippedInSlotIndex}`, item);
     }
-    return null;
+    return index;
+  });
+
+  function wornBy(slotOneBased: number, equipSlotIndex: number): InventoryEquipment | null {
+    return wornByIndex.get(`${slotOneBased - 1}:${equipSlotIndex}`) ?? null;
   }
 
   // Which slot the picker is open on, or -1 for closed.

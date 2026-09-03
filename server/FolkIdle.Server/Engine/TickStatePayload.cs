@@ -25,6 +25,18 @@ namespace FolkIdle.Server.Engine
         public int CurrentProgressTicks;
         public int RequiredProgressTicks;
         public int InventorySpaceRemaining;
+
+        // Modul: the player's auto-salvage floor, mirrored from
+        // PlayerRecord.AutoSalvageBelowTier at hydration.
+        //
+        // Here rather than read per kill because CombatLootEngine runs off the
+        // tick thread and has no payload access - the same reason LootLuckPct
+        // and BonusRarityTiers ride CombatLootDropRequest. A drop at or below
+        // this tier is sold on the way in instead of becoming a row; 0 is off,
+        // and off is the default. See PlayerRecord.AutoSalvageBelowTier for why
+        // the chest needed a drain at all.
+        public int AutoSalvageBelowTier;
+
         public bool IsDirty;
         public int TicksSinceLastFlush;
         public int CurrentLevel;

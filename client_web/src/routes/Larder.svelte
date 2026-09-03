@@ -4,10 +4,12 @@
   import { playerState } from '../lib/stores/game';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
-  import { queryKeys, fetchInventory } from '../lib/net/rest';
+  import { queryKeys, fetchMaterials } from '../lib/net/rest';
   import { loadContent, prettifyBaseId, isFood, type ContentRegistry } from '../lib/net/content';
 
-  const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
+  // Modul: MATERIALS ONLY - this screen reads Stacks and nothing else, and was
+  // downloading the whole equipment list to count fish. See fetchMaterials.
+  const inventory = createQuery(() => ({ queryKey: queryKeys.materials, queryFn: fetchMaterials }));
 
   let registry = $state<ContentRegistry | null>(null);
   onMount(async () => {

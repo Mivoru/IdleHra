@@ -22,9 +22,12 @@
     fetchInventory,
     sellFromChest,
     discardFromChest,
+    bulkClearChest,
     type InventoryEquipment,
     type InventoryStack,
   } from '../lib/net/rest';
+  import { invalidateOwnedItems } from '../lib/net/queryClient';
+  import VirtualList from '../lib/ui/VirtualList.svelte';
   import { prettifyBaseId, isFood, consumableKind } from '../lib/net/content';
   import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { pushLocalNotice } from '../lib/stores/game';
@@ -73,20 +76,34 @@
   let search = $state('');
   let minRarity = $state(0);
 
-  const matchesSearch = (label: string) =>
-    search.trim() === '' || label.toLowerCase().includes(search.trim().toLowerCase());
+  // Modul: the needle is lowercased ONCE, not once per item.
+  //
+  // This was `search.trim().toLowerCase()` inside the predicate, so it ran per
+  // row - 17,836 times per keystroke on the worst-affected account, to produce
+  // the same string every time. Same for the haystack: it was being built with
+  // a template literal and two function calls per row, per pass, and there are
+  // two passes (filter, then sort).
+  const needle = $derived(search.trim().toLowerCase());
 
-  const visibleEquipment = $derived(
-    filter === 'materials' || filter === 'food'
-      ? []
-      : equipment.filter(
-          (e) =>
-            (filter === 'all' ||
-              (filter === 'weapons' ? isWeapon(e.BaseItemId) : !isWeapon(e.BaseItemId))) &&
-            e.QualityTier >= minRarity &&
-            matchesSearch(`${prettifyBaseId(e.BaseItemId)} ${rarityName(e.QualityTier)}`),
-        ),
-  );
+  const visibleEquipment = $derived.by(() => {
+    if (filter === 'materials' || filter === 'food') return [];
+
+    const wantWeapons = filter === 'weapons';
+    const byKind = filter === 'all';
+
+    return equipment.filter((e) => {
+      // Cheapest tests first. The rarity floor is an integer compare and
+      // rejects most of a chest at any setting above Normal; the search, which
+      // allocates, is asked last and only of what survives.
+      if (e.QualityTier < minRarity) return false;
+      if (!byKind && isWeapon(e.BaseItemId) !== wantWeapons) return false;
+      if (needle === '') return true;
+
+      return `${prettifyBaseId(e.BaseItemId)} ${rarityName(e.QualityTier)}`
+        .toLowerCase()
+        .includes(needle);
+    });
+  });
 
   const visibleMaterials = $derived(
     filter === 'equipment' || filter === 'weapons'
@@ -96,7 +113,7 @@
           // than showing every stack unfiltered - they have no rarity, so
           // "Rare and up" cannot honestly include them.
           if (minRarity > 0) return false;
-          if (!matchesSearch(prettifyBaseId(m.ItemId))) return false;
+          if (needle !== '' && !prettifyBaseId(m.ItemId).toLowerCase().includes(needle)) return false;
           const food = isFood(m.ItemId) || consumableKind(m.ItemId) !== null;
           if (filter === 'food') return food;
           if (filter === 'materials') return !food;
@@ -107,19 +124,110 @@
   // Best first. The chest is where a player looks after being away, and a list
   // sorted by anything else buries the one Legendary under four hundred
   // Normals - the same reasoning the session loot feed uses.
+  //
+  // Modul: the tie-break compares BASE IDS, not prettified names. It used to
+  // call prettifyBaseId inside the comparator, which is O(n log n) calls -
+  // about 240,000 on a 17,836-item chest, for an ordering the player cannot
+  // tell apart from this one, because prettifying only strips a structural
+  // suffix and title-cases what is left.
   const sortedEquipment = $derived(
-    [...visibleEquipment].sort((a, b) => b.QualityTier - a.QualityTier || a.BaseItemId.localeCompare(b.BaseItemId)),
+    [...visibleEquipment].sort(
+      (a, b) => b.QualityTier - a.QualityTier || a.BaseItemId.localeCompare(b.BaseItemId),
+    ),
   );
 
-  const counts = $derived({
-    equipment: equipment.length,
-    weapons: equipment.filter((e) => isWeapon(e.BaseItemId)).length,
-    materials: materials.filter((m) => !(isFood(m.ItemId) || consumableKind(m.ItemId) !== null)).length,
-    food: materials.filter((m) => isFood(m.ItemId) || consumableKind(m.ItemId) !== null).length,
+  // Modul: ONE PASS, not four. This was four separate `.filter().length`
+  // calls over the same two arrays - and two of them ran isFood and
+  // consumableKind on every material, twice. Small in absolute terms next to
+  // the equipment list, but it is in the same reactive statement, so it ran on
+  // every keystroke alongside everything else.
+  const counts = $derived.by(() => {
+    let weapons = 0;
+    for (const e of equipment) if (isWeapon(e.BaseItemId)) weapons++;
+
+    let food = 0;
+    for (const m of materials) {
+      if (isFood(m.ItemId) || consumableKind(m.ItemId) !== null) food++;
+    }
+
+    return {
+      equipment: equipment.length,
+      weapons,
+      materials: materials.length - food,
+      food,
+    };
   });
 
+  // ---------------------------------------------------------------------------
+  // Bulk cleanup
+  // ---------------------------------------------------------------------------
+
+  // Modul: THE ONLY DRAIN THIS CHEST HAS EVER HAD.
+  //
+  // Equipment lands on 15% of kills and nothing removed it but the per-item
+  // Sell button below. One live account reached 17,836 pieces - about fifty
+  // hours of play - at which point this screen was too slow to open, so the
+  // cleanup tool and the thing that needed cleaning were the same screen. A
+  // player could not dig their way out one click at a time, and nothing in the
+  // game suggested they would ever need to.
+  //
+  // The server caps the sweep at Epic (see VillageChestEngine's
+  // MaxSweepableQualityTier): Legendary and above is never clearable in bulk,
+  // because there is no undo and those are the drops the whole loop is for.
+  const MAX_SWEEP_TIER = 6;
+
+  // Collapsed by default: a chest that is not yet full does not need this, and
+  // it sits above the list everyone came here to read.
+  let sweepOpen = $state(false);
+  let sweepTier = $state(1);
+  let sweeping = $state(false);
+  let confirmingSweep = $state<'sell' | 'bin' | null>(null);
+
+  // What the sweep would actually take, counted from the same list on screen -
+  // so the number in the button is the number that disappears. Excludes worn
+  // pieces for the same reason the server does.
+  const sweepCount = $derived(
+    equipment.filter((e) => e.QualityTier <= sweepTier && !e.IsEquipped).length,
+  );
+
+  async function sweep(sell: boolean) {
+    confirmingSweep = null;
+    sweeping = true;
+    try {
+      const result = await bulkClearChest(sweepTier, sell);
+      if (!result || result.Success === false) {
+        pushLocalNotice('Could not clear the chest.');
+        return;
+      }
+
+      const kept =
+        result.SkippedWornCount > 0
+          ? ` ${result.SkippedWornCount} kept - they are being worn.`
+          : '';
+
+      if (sell) {
+        play('lootDropped');
+        pushLocalNotice(
+          `Sold ${result.RemovedCount.toLocaleString()} pieces for ${result.GoldGained.toLocaleString()}g.${kept}`,
+          'info',
+        );
+      } else {
+        pushLocalNotice(`Binned ${result.RemovedCount.toLocaleString()} pieces.${kept}`, 'info');
+      }
+
+      refresh();
+    } catch {
+      pushLocalNotice('Could not reach the server.');
+    } finally {
+      sweeping = false;
+    }
+  }
+
   function refresh() {
-    client.invalidateQueries({ queryKey: queryKeys.inventory });
+    // Both, always - see invalidateOwnedItems. Selling from the chest changes
+    // the material stacks as well as the equipment list, and the two now come
+    // from two routes.
+    invalidateOwnedItems(client);
   }
 
   async function act(
@@ -216,16 +324,119 @@
       </select>
     </div>
 
+    <!-- Modul: THE DRAIN. Loot lands on 15% of kills and, until this, the only
+         way anything left the chest was one click on one item - so the table
+         grew forever and the screen that would have cleared it became the
+         screen too slow to open. A cleanup tool that cannot keep up with the
+         mess is not a cleanup tool. -->
+    <!-- Modul: A PLAIN {#if}, NOT A <details>, AND THAT IS THE FIX FOR A REAL
+         BUG rather than a style preference.
+         This was a <details>/<summary>, relying on the browser to hide the
+         content while closed. It did not: `npm run check:overlap` at 390px
+         reported "Bin them all is covered by Unequip", and measuring it showed
+         the collapsed panel's buttons still had live 93x35 boxes sitting on top
+         of the equipment list - so a player tapping a list row could hit
+         "Bin them all" instead. The details element measured 37px tall while
+         its own content measured 126px and overflowed it.
+         Wrapping the content in a div did not help either: the wrapper still
+         computed to `display: block`, because the hiding rule this depends on
+         is a UA detail that varies by engine (older builds use `display: none`
+         on the children, newer ones a `::details-content` pseudo) and an author
+         rule on a child can defeat the first form entirely.
+         An {#if} does not depend on any of that. When collapsed the controls
+         are NOT IN THE DOM, so they cannot be measured, hit, tabbed to or
+         reported by the overlap audit - which is the actual requirement. -->
+    <section class="sweep">
+      <button
+        class="sweeptoggle"
+        aria-expanded={sweepOpen}
+        onclick={() => (sweepOpen = !sweepOpen)}
+      >
+        {sweepOpen ? '▾' : '▸'} Clear out the junk
+      </button>
+
+      {#if sweepOpen}
+      <div class="sweepbody">
+        <div class="sweeprow">
+          <label>
+            Everything up to
+            <select bind:value={sweepTier} aria-label="Clear pieces up to this rarity">
+              {#each Array(MAX_SWEEP_TIER) as _, i}
+                <option value={i + 1}>{rarityName(i + 1)}</option>
+              {/each}
+            </select>
+          </label>
+
+          <span class="dim tiny">
+            {sweepCount.toLocaleString()}
+            {sweepCount === 1 ? 'piece' : 'pieces'}
+          </span>
+        </div>
+
+        {#if confirmingSweep === null}
+          <div class="sweepbtns">
+            <button disabled={sweeping || sweepCount === 0} onclick={() => (confirmingSweep = 'sell')}>
+              Sell them all
+            </button>
+            <button
+              class="danger"
+              disabled={sweeping || sweepCount === 0}
+              onclick={() => (confirmingSweep = 'bin')}
+            >
+              Bin them all
+            </button>
+          </div>
+        {:else}
+          <!-- Modul: both halves confirm, unlike the per-item buttons where only
+               Bin does. One click here moves thousands of items at once and
+               there is no undo for either - a mis-clicked Sell is not recoverable
+               just because it paid. -->
+          <p class="confirm">
+            {confirmingSweep === 'sell' ? 'Sell' : 'Permanently bin'}
+            {sweepCount.toLocaleString()}
+            {sweepCount === 1 ? 'piece' : 'pieces'} up to {rarityName(sweepTier)}? Worn gear is kept.
+          </p>
+          <div class="sweepbtns">
+            <button
+              class:danger={confirmingSweep === 'bin'}
+              disabled={sweeping}
+              onclick={() => sweep(confirmingSweep === 'sell')}
+            >
+              {sweeping ? 'Working...' : 'Yes, do it'}
+            </button>
+            <button disabled={sweeping} onclick={() => (confirmingSweep = null)}>Cancel</button>
+          </div>
+        {/if}
+
+        <p class="dim tiny">
+          Legendary and above is never cleared this way - use the per-item
+          buttons for those. Set an automatic floor in Settings to stop the junk
+          arriving in the first place.
+        </p>
+      </div>
+      {/if}
+    </section>
+
     {#if inventory.isPending}
       <Skeleton rows={5} variant="row" />
     {:else if sortedEquipment.length === 0 && visibleMaterials.length === 0}
       <p class="dim">Nothing here.</p>
     {:else}
       {#if sortedEquipment.length > 0}
-        <h3>Equipment</h3>
-        <ul class="rows">
-          {#each sortedEquipment as item (item.Id)}
-            <li>
+        <h3>
+          Equipment
+          <span class="dim tiny">
+            {sortedEquipment.length.toLocaleString()} shown
+          </span>
+        </h3>
+
+        <!-- Modul: WINDOWED. This was a plain {#each} over every piece the
+             player owns, inside a box 26rem tall - 17,836 rows on the
+             worst-affected account, each one an icon and six buttons, roughly
+             180,000 DOM nodes to display about twenty. See ui/VirtualList. -->
+        <VirtualList items={sortedEquipment} rowHeight={34} label="Equipment in the chest">
+          {#snippet row(item: InventoryEquipment)}
+            <div class="row">
               <ItemIcon
                 baseItemId={item.BaseItemId}
                 name={prettifyBaseId(item.BaseItemId)}
@@ -291,9 +502,9 @@
                   Bin
                 </button>
               {/if}
-            </li>
-          {/each}
-        </ul>
+            </div>
+          {/snippet}
+        </VirtualList>
       {/if}
 
       {#if visibleMaterials.length > 0}
@@ -434,6 +645,10 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Still the MATERIALS list. Materials are one row per item id - 63 of them
+     on the live database, bounded by the catalogue rather than by playtime -
+     so there is nothing to window and a plain list is the right shape. The
+     equipment list is the unbounded one, and it is a VirtualList now. */
   .rows {
     list-style: none;
     margin: 0;
@@ -447,7 +662,8 @@
   /* Flex, not a shared grid template: an equipment row carries six children
      and a material row four, and one template would misalign whichever it was
      not written for. */
-  .rows li {
+  .rows li,
+  .row {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -455,6 +671,66 @@
     background: var(--bg-raised);
     border-radius: var(--radius);
     font-size: 0.85rem;
+  }
+
+  /* Modul: the virtual list positions rows by arithmetic, so this has to be
+     exactly the rowHeight passed to it (34px) - box-sizing included, since the
+     padding above is inside it. A row that renders taller overlaps its
+     neighbour instead of pushing it down. */
+  .row {
+    box-sizing: border-box;
+    height: 100%;
+  }
+
+  .sweep {
+    margin: 0.5rem 0 0.9rem;
+    padding: 0.5rem 0.6rem;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .sweeptoggle {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+
+  .sweeprow {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin: 0.6rem 0 0.5rem;
+    font-size: 0.82rem;
+  }
+
+  .sweeprow label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .sweepbtns {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .sweepbtns button {
+    font-size: 0.78rem;
+  }
+
+  .confirm {
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
   }
 
   .name {

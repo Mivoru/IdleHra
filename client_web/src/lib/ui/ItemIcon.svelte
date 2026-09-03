@@ -13,8 +13,14 @@
 
   import { itemIcon, initialsFor } from './sprites';
   import { rarityColor, rarityName, shouldGlow } from './rarity';
-  import { loadContent, type ContentRegistry } from '../net/content';
-  import { onMount } from 'svelte';
+  // Modul: the SHARED registry, not a per-instance load.
+  //
+  // This component used to call loadContent() from its own onMount and hold
+  // its own $state copy. That is one mount callback, one await and one
+  // reactive write PER ICON - and a chest with 17,836 items renders 17,836 of
+  // them, all racing the same three fetches on a cold cache. See
+  // net/registry.svelte.ts.
+  import { contentRegistry } from '../net/registry.svelte';
 
   interface Props {
     baseItemId: string;
@@ -28,15 +34,12 @@
 
   const { baseItemId, name, qualityTier = 0, size = 'md', quantity }: Props = $props();
 
-  let registry = $state<ContentRegistry | null>(null);
-  onMount(async () => {
-    registry = await loadContent().catch(() => null);
-  });
-
   const url = $derived(itemIcon(baseItemId));
   const color = $derived(rarityColor(qualityTier));
   const glow = $derived(shouldGlow(qualityTier));
-  const regionTier = $derived(registry?.itemsByBaseId.get(baseItemId)?.RegionTier ?? 0);
+  const regionTier = $derived(
+    contentRegistry.current?.itemsByBaseId.get(baseItemId)?.RegionTier ?? 0,
+  );
 
   // The title carries the rarity WORD, so the tier is never colour-only.
   const title = $derived(

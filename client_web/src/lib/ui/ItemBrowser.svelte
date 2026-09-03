@@ -14,6 +14,7 @@
    * shared so the two screens cannot drift apart again.
    */
   import ItemIcon from './ItemIcon.svelte';
+  import VirtualList from './VirtualList.svelte';
   import { rarityColor, rarityName, MAX_QUALITY_TIER } from './rarity';
   import { EQUIPMENT_SLOTS, resolveSlotIndex } from './slots';
   import { prettifyBaseId } from '../net/content';
@@ -43,14 +44,30 @@
   let minRarity = $state(0);
   let sortBy = $state<'rarity' | 'name' | 'slot'>('rarity');
 
+  // Modul: memoised, because the sort comparator calls it.
+  //
+  // This was a linear `EQUIPMENT_SLOTS.find` on every call, and the "sort by
+  // kind" comparator calls it twice per comparison - O(n log n) scans of the
+  // slot table. With 17,836 items that is roughly half a million array walks
+  // for one sort. The answer depends only on the base id, of which there are
+  // about 75 in the whole catalogue, so the cache cannot grow unbounded.
+  const slotLabels = new Map<string, string>();
+
   const slotLabel = (baseId: string) => {
+    const memo = slotLabels.get(baseId);
+    if (memo !== undefined) return memo;
+
     const index = resolveSlotIndex(baseId);
-    return EQUIPMENT_SLOTS.find((s) => s.index === index)?.label ?? 'Other';
+    const label = EQUIPMENT_SLOTS.find((s) => s.index === index)?.label ?? 'Other';
+    slotLabels.set(baseId, label);
+    return label;
   };
 
   const shown = $derived.by(() => {
     const needle = search.trim().toLowerCase();
     const list = items.filter((item) => {
+      // Integer compares first, string work last - the search allocates a
+      // haystack per row and most rows are rejected before it is asked.
       if (minRarity > 0 && item.QualityTier < minRarity) return false;
       if (slotFilter >= 0 && resolveSlotIndex(item.BaseItemId) !== slotFilter) return false;
       if (needle) {
@@ -74,6 +91,12 @@
     for (const item of items) seen.add(resolveSlotIndex(item.BaseItemId));
     return EQUIPMENT_SLOTS.filter((s) => seen.has(s.index));
   });
+
+  // Modul: the virtual list needs one number in pixels, and the rows are two
+  // sizes. Kept next to the CSS that produces them - a mismatch here does not
+  // error, it silently overlaps or gaps the rows, which is the kind of bug
+  // that gets reported as "the list looks weird sometimes".
+  const rowHeight = $derived(compact ? 34 : 44);
 </script>
 
 <div class="browser" class:compact>
@@ -115,34 +138,41 @@
   {:else if shown.length === 0}
     <p class="dim">Nothing matches that filter.</p>
   {:else}
-    <ul class="items">
-      {#each shown as item (item.Id)}
-        <li>
-          <button
-            class="row"
-            class:selected={item.Id === selectedId}
-            onclick={() => onselect?.(item)}
-          >
-            <ItemIcon
-              baseItemId={item.BaseItemId}
-              name={prettifyBaseId(item.BaseItemId)}
-              qualityTier={item.QualityTier}
-              size={compact ? 'sm' : 'md'}
-            />
-            <span class="text">
-              <span class="name">{prettifyBaseId(item.BaseItemId)}</span>
-              <span class="meta dim tiny">
-                {slotLabel(item.BaseItemId)}
-                &middot;
-                <span class="rar" style="color: {rarityColor(item.QualityTier)}">
-                  {rarityName(item.QualityTier)}
-                </span>
+    <!-- Modul: WINDOWED. This was a plain {#each} over everything the player
+         carries, in a box 22rem tall. The Forge's "show all" and the market's
+         sell form both feed it the whole chest, which reached 17,836 pieces on
+         one live account. See VirtualList. -->
+    <VirtualList
+      items={shown}
+      {rowHeight}
+      maxHeight={compact ? '14rem' : '22rem'}
+      label="Your items"
+    >
+      {#snippet row(item: Item)}
+        <button
+          class="row"
+          class:selected={item.Id === selectedId}
+          onclick={() => onselect?.(item)}
+        >
+          <ItemIcon
+            baseItemId={item.BaseItemId}
+            name={prettifyBaseId(item.BaseItemId)}
+            qualityTier={item.QualityTier}
+            size={compact ? 'sm' : 'md'}
+          />
+          <span class="text">
+            <span class="name">{prettifyBaseId(item.BaseItemId)}</span>
+            <span class="meta dim tiny">
+              {slotLabel(item.BaseItemId)}
+              &middot;
+              <span class="rar" style="color: {rarityColor(item.QualityTier)}">
+                {rarityName(item.QualityTier)}
               </span>
             </span>
-          </button>
-        </li>
-      {/each}
-    </ul>
+          </span>
+        </button>
+      {/snippet}
+    </VirtualList>
   {/if}
 </div>
 
@@ -187,25 +217,18 @@
     margin: 0;
   }
 
-  .items {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 0.25rem;
-    max-height: 22rem;
-    overflow-y: auto;
-  }
-
-  .compact .items {
-    max-height: 14rem;
-  }
-
+  /* Modul: these two heights ARE the `rowHeight` the virtual list is given -
+     44px normally, 34px compact - because it positions rows arithmetically
+     rather than by measuring them. Change one and change the other, or the
+     rows overlap. box-sizing is load-bearing for the same reason: the padding
+     has to be inside the number. */
   .row {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     width: 100%;
+    height: 44px;
+    box-sizing: border-box;
     padding: 0.3rem 0.4rem;
     background: transparent;
     border: 1px solid transparent;
@@ -214,6 +237,10 @@
     cursor: pointer;
     color: inherit;
     font: inherit;
+  }
+
+  .compact .row {
+    height: 34px;
   }
 
   .row:hover {

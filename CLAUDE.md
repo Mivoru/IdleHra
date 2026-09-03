@@ -100,6 +100,33 @@ the whole roster, a fixture that could not dress them. Grep for
 `EquippedRingId`: it is the last of the eight, so every truncated list ends
 there.
 
+**Two gold paths, and mixing them pays the player twice.** Gold earned where no
+database row was written (combat, auto-salvage) goes on the payload's
+`CurrentGold` *and* `RedisPendingGoldDelta`, and the checkpoint banks it. Gold
+earned where an engine already credited `CommodityRecords["gold"]` (any chest
+sale) must move `CurrentGold` **only** — the checkpoint applies the pending
+delta as an *increment* to the row that engine just credited, so banking it
+again double-pays one checkpoint later, where nothing connects the two.
+`AutoSalvageQueue` does the first, `ChestSaleGoldQueue` the second; both say so
+at their struct.
+
+**A list of owned items must be windowed.** `EquipmentInstances` grows with
+playtime and had reached **17,836 rows on one live account**. `VirtualList`
+renders only what is visible; its `rowHeight` is a **contract**, not a hint —
+it positions by arithmetic, so a row that renders taller than the number passed
+in overlaps its neighbour instead of pushing it down. `/api/v1/player/materials`
+exists so the screens that only want stacks (63 rows) stop pulling the 3.2 MB
+equipment blob; `invalidateOwnedItems` invalidates both keys, and a call site
+that remembers one is a stale screen.
+
+**Do not trust `<details>` to hide its own content.** An author `display` rule
+on a direct child defeats the UA rule that hides a closed panel, and engines
+differ on whether that rule even exists (newer ones use a `::details-content`
+pseudo). The chest's collapsed sweep panel kept live, clickable buttons sitting
+on top of the item list; `npm run check:overlap` found it and measuring
+confirmed a 93x35 box on a panel reporting `open === false`. Use `{#if}` so the
+controls are genuinely absent.
+
 **Check which material namespace a feature needs before writing code.** Several
 string spaces share one `CommodityRecords` table: gathering slugs (`raw_log`,
 `wood`) with no `items.json` entry, catalogued items, and a `*_crafting_material`

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import { invalidateOwnedItems } from '../lib/net/queryClient';
   import { queryKeys, fetchRecipes, type CraftingRecipe } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
   import { assignCharacterActivity, startTreeCraft, MAX_CRAFT_BATCH, EMPTY_GUID } from '../lib/net/commands';
@@ -55,7 +56,7 @@
     );
     setTimeout(() => {
       client.invalidateQueries({ queryKey: queryKeys.recipes });
-      client.invalidateQueries({ queryKey: queryKeys.inventory });
+      invalidateOwnedItems(client);
     }, 800);
   }
 
@@ -144,7 +145,7 @@
     pushLocalNotice(`Slot ${worker} is now making ${prettifyBaseId(recipe.ResultBaseItemId)}.`, 'info');
     setTimeout(() => {
       client.invalidateQueries({ queryKey: queryKeys.recipes });
-      client.invalidateQueries({ queryKey: queryKeys.inventory });
+      invalidateOwnedItems(client);
     }, 800);
   }
 </script>

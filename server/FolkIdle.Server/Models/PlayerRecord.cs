@@ -79,6 +79,37 @@ namespace FolkIdle.Server.Models
         // away for a week is told once rather than daily.
         public long OfflineCapEmailSentEpoch { get; set; }
 
+        // Modul: THE CHEST HAD NO DRAIN, AND THAT IS WHAT MADE IT SLOW.
+        //
+        // CombatLootEngine rolls an equipment drop on 15% of kills and writes
+        // one EquipmentInstances row per drop. Nothing anywhere removed one
+        // except a player clicking Sell on a single item - so the table only
+        // ever grew. Measured on the live database: one account at 17,836 rows,
+        // ~50 hours of play, against 3 rows for a fresh account. That is a
+        // 3.2 MB inventory snapshot, 17,836 JsonNode.Parse calls per fetch and
+        // ~180,000 DOM nodes in a list box 26rem tall, and it made the game
+        // visibly lag.
+        //
+        // The trap in it: the ONLY cleanup the game offered was that per-item
+        // Sell button, on the very screen the volume had made unusable. The
+        // player could not dig themselves out.
+        //
+        // This is the drain at the source. A drop at or below this quality tier
+        // never becomes a row at all - it is sold on the way in and the player
+        // is credited the same gold the chest would have paid (see
+        // VillageChestEngine.ValueEquipment, one valuation shared, so salvaging
+        // and selling can never become two economies).
+        //
+        // ZERO IS OFF, and zero is the default for every existing and new
+        // account - quality tier 1 is a real item a new player wants, so the
+        // safe default is to change nothing until the player asks. Opt-in, the
+        // same reasoning as EmailNotificationsConsented above.
+        //
+        // Capped at AutoSalvageMaxTier when written (see the chest settings
+        // route): a player who set this to 14 would silently salvage every
+        // Legendary in the game, which is not a setting, it is a trap.
+        public int AutoSalvageBelowTier { get; set; }
+
         // Modul: daily login reward tracking (DailyLoginRewardEngine).
         // LastLoginTimestamp is the epoch second of the last login that was
         // actually credited a reward - compared against the current UTC day

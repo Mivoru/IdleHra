@@ -219,6 +219,19 @@ namespace FolkIdle.Server.Engine
         // silently switch off every drop in the game.
         public int Kills;
 
+        // Modul: THE CHEST'S DRAIN, carried per request.
+        //
+        // A drop at or below this quality tier is sold on the way in rather
+        // than written as an EquipmentInstances row. Here beside LootLuckPct
+        // for exactly the same reason: this engine runs off the tick thread and
+        // cannot read the payload, so anything the roll depends on has to ride
+        // the request.
+        //
+        // ZERO IS OFF, and unlike Kills above that is the honest default - a
+        // request built without it salvages nothing, which is the behaviour
+        // every drop had before this field existed.
+        public int AutoSalvageBelowTier;
+
         // Modul: named for the SKIP, not the roll, for the same reason - a
         // `RollMaterials` bool would default to false and silently stop the
         // live tick paying materials at all.
@@ -265,6 +278,7 @@ namespace FolkIdle.Server.Engine
                 Kills = kills,
                 BonusRarityTiers = bonusRarityTiers,
                 SkipMaterialRoll = skipMaterialRoll,
+                AutoSalvageBelowTier = payload.AutoSalvageBelowTier,
 
                 // Everything that shifts WHAT falls, summed into one figure.
                 // Keep this sum contiguous.
@@ -398,7 +412,8 @@ namespace FolkIdle.Server.Engine
                         request.MaterialQuantityPct, request.BonusRarityTiers,
                         // Zero means one - see CombatLootDropRequest.Kills.
                         request.Kills <= 0 ? 1 : request.Kills,
-                        request.SkipMaterialRoll);
+                        request.SkipMaterialRoll,
+                        request.AutoSalvageBelowTier);
                 }
 
                 while (GatheringGrantQueue.TryDequeue(out var gathered))
@@ -487,7 +502,7 @@ namespace FolkIdle.Server.Engine
 
         private async Task ProcessMonsterLootDropAsync(
             long playerId, int monsterId, float lootLuckPct, float materialQuantityPct,
-            int bonusRarityTiers, int kills, bool skipMaterialRoll)
+            int bonusRarityTiers, int kills, bool skipMaterialRoll, int autoSalvageBelowTier)
         {
             int monsterRegion = ContentRegistry.GetMonsterRegionTier(monsterId);
             if (monsterRegion < 1) monsterRegion = 1;
@@ -540,6 +555,12 @@ namespace FolkIdle.Server.Engine
                 // - while the other 95% becomes chest material the player can
                 // actually use. The session never stops.
 
+                // What auto-salvage turned into gold across this whole request.
+                // Accumulated rather than credited per roll: an offline catch-up
+                // walks thousands of kills here, and paying each one separately
+                // would be thousands of notifications for one number.
+                SalvageTally salvage = default;
+
                 // Modul: ONE ITERATION PER KILL, all inside the one transaction
                 // this method already opens. `kills` is 1 for the live tick, so
                 // it walks this exactly once and behaves as it always has; the
@@ -562,8 +583,8 @@ namespace FolkIdle.Server.Engine
                     // Roll 2: equipment, from THIS monster's table. Independent of
                     // the materials roll above, so a kill can pay both, either or
                     // neither.
-                    TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
-                        EquipmentDropChance, bonusRarityTiers);
+                    salvage.Add(TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
+                        EquipmentDropChance, bonusRarityTiers, autoSalvageBelowTier));
 
                     // Regional bosses always drop one piece on top of that, which
                     // is the whole of what makes a boss kill worth walking to. It
@@ -572,27 +593,58 @@ namespace FolkIdle.Server.Engine
                     // boss is authored to carry.
                     if (isRegionalBoss)
                     {
-                        TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
-                            1.0, bonusRarityTiers);
+                        salvage.Add(TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
+                            1.0, bonusRarityTiers, autoSalvageBelowTier));
                     }
                 }
 
                 await dbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // Modul: inventory census. Counted after the commit, on the
-                // same context, so it reflects everything this kill granted.
-                // Two cheap COUNT queries once per kill - the alternative was a
-                // counter that made the game unplayable after 20 kills.
-                int occupiedSlots = await CountOccupiedBackpackSlotsAsync(dbContext, playerId);
-
+                // Modul: THE CENSUS IS GONE, and it was pure waste on the
+                // hottest path in the game.
+                //
+                // This used to call CountOccupiedBackpackSlotsAsync here - two
+                // COUNTs over EquipmentInstances and CommodityRecords plus a
+                // roster read, ONCE PER KILL - and hand the answer to the tick
+                // thread as OccupiedSlots. The tick thread then threw it away:
+                // SimulationEngine's CombatLootDropQueue drain has assigned
+                // `InventorySpaceRemaining = InventoryCapacity` unconditionally
+                // since the backpack was retired, because the chest is
+                // unbounded and there is no capacity left to run out of. Its
+                // own comment says so.
+                //
+                // So every kill paid for a count of a table that had grown to
+                // 17,836 rows on the worst-affected account, to produce a number
+                // that was overwritten before it was read. The notification
+                // still goes - it is what clears an InventoryFull halt left over
+                // from before the backpack was removed - it simply no longer
+                // carries a census nobody wanted.
                 _playerRegistry.CombatLootDropQueue.Enqueue(new CombatLootDropNotification
                 {
                     PlayerId = playerId,
                     ConsumedInventorySlot = true,
-                    HasSlotCensus = true,
-                    OccupiedSlots = occupiedSlots
+                    HasSlotCensus = false,
+                    OccupiedSlots = 0
                 });
+
+                // Modul: auto-salvage pays through the tick thread, not the
+                // database. CommodityRecords["gold"] is the authoritative
+                // balance, but a LIVE player's session holds unbanked gold in
+                // TickStatePayload and the checkpoint applies it as an
+                // INCREMENT - so crediting the row here as well would double-pay
+                // the moment the next checkpoint landed. A kill always has an
+                // online player, so the payload channel is always the right one,
+                // and it is the same one combat gold itself uses.
+                if (salvage.Gold > 0L)
+                {
+                    _playerRegistry.AutoSalvageQueue.Enqueue(new AutoSalvageNotification
+                    {
+                        PlayerId = playerId,
+                        GoldGained = salvage.Gold,
+                        ItemsSalvaged = salvage.Count
+                    });
+                }
 
                 for (int i = 0; i < _pendingDrops.Count; i++)
                 {
@@ -687,6 +739,24 @@ namespace FolkIdle.Server.Engine
             }
         }
 
+        /// <summary>
+        /// What one request's auto-salvaged drops came to. A count as well as a
+        /// sum, because the client says "salvaged 14 drops for 2,300g" and a
+        /// bare number of gold does not explain where it came from.
+        /// </summary>
+        private struct SalvageTally
+        {
+            public long Gold;
+            public int Count;
+
+            public void Add(long gold)
+            {
+                if (gold <= 0L) return;
+                Gold += gold;
+                Count++;
+            }
+        }
+
         // Modul: one equipment roll against the monster's authored table.
         // On success, picks uniformly from what THIS monster drops, rolls the
         // rarity tier and creates the EquipmentInstance.
@@ -695,17 +765,22 @@ namespace FolkIdle.Server.Engine
         // synchronous and the single SaveChangesAsync happens once for the whole
         // kill in the caller, so the four awaits this replaces each cost a state
         // machine to return an already-completed task.
-        private void TryRollEquipment(
+        //
+        // Returns the GOLD this roll salvaged, or 0 when it dropped nothing or
+        // the piece was kept. Zero is not "nothing happened" - the caller adds
+        // it to a tally and only a positive number is ever paid.
+        private long TryRollEquipment(
             FolkIdleDbContext dbContext, long playerId, int monsterId, int monsterRegion,
-            float lootLuckPct, double dropChance, int bonusRarityTiers = 0)
+            float lootLuckPct, double dropChance, int bonusRarityTiers = 0,
+            int autoSalvageBelowTier = 0)
         {
-            if (Random.Shared.NextDouble() >= dropChance) return;
+            if (Random.Shared.NextDouble() >= dropChance) return 0L;
 
             ReadOnlySpan<int> table = EquipmentDropTable.GetDrops(monsterId);
-            if (table.Length == 0) return;
+            if (table.Length == 0) return 0L;
 
             int chosenItemId = table[Random.Shared.Next(table.Length)];
-            if (chosenItemId == 0) return;
+            if (chosenItemId == 0) return 0L;
 
             int tier = RarityTier.RollTier(lootLuckPct);
 
@@ -720,18 +795,39 @@ namespace FolkIdle.Server.Engine
             }
             string baseItemId = ContentRegistry.GetItemBaseId(chosenItemId);
 
-            // Modul: NOTHING IS EVER DESTROYED ON THE WAY IN.
+            // Modul: NOTHING IS DESTROYED ON THE WAY IN UNLESS THE PLAYER ASKED.
             //
             // An earlier version of this scrapped anything below a rarity
-            // threshold into material. That was wrong, and wrong in a way the
-            // player would have felt immediately: the forge upgrades a piece by
-            // consuming two others, so a low-tier drop is not junk - it is the
-            // fuel for raising a better one. Auto-scrapping it destroys the
-            // upgrade path to save a slot that no longer needs saving.
+            // threshold into material, unconditionally. That was wrong, and
+            // wrong in a way the player would have felt immediately: the forge
+            // upgrades a piece by consuming two others, so a low-tier drop is
+            // not junk - it is the fuel for raising a better one. Auto-scrapping
+            // it destroys the upgrade path without being asked.
             //
-            // Every piece is stored. Whether it is worth keeping is the
-            // player's call, made in the chest with a sell or a bin, not the
-            // server's made silently at 3am.
+            // What changed is WHO DECIDES, not that it happens. Leaving it
+            // entirely to the player was also wrong, for a reason that only
+            // showed up with time: the chest had no drain at all, so the table
+            // grew forever - 17,836 rows on the worst-affected live account -
+            // until the inventory screen that would have let them clean it up
+            // was itself too slow to open. That is not a choice, it is a trap.
+            //
+            // So the threshold is back, as a SETTING, defaulting to off. At or
+            // below it the piece is sold for the same gold the chest would have
+            // paid; above it, every word of the paragraph above still holds and
+            // the piece is stored untouched. See
+            // PlayerRecord.AutoSalvageBelowTier.
+            //
+            // Salvaged BEFORE the affix payload is built and before the drop is
+            // published: rolling affixes onto a piece that is about to be sold
+            // is work for nobody, and announcing a drop the player never
+            // received would be a lie in the loot feed.
+            if (autoSalvageBelowTier > 0 && tier <= autoSalvageBelowTier)
+            {
+                // Same valuation as a manual chest sale - one function, so
+                // salvaging and selling can never drift into two economies.
+                return VillageChestEngine.ValueEquipment(baseItemId, tier);
+            }
+
             string affixPayload = BuildAffixPayload(tier, monsterRegion, baseItemId);
 
             // Modul: EquipmentInstances, NOT the bank.
@@ -775,6 +871,9 @@ namespace FolkIdle.Server.Engine
                     $"{PlayerNameResolver.GetCachedOrFallback(playerId)} found a {RarityTier.GetName(tier)} {Readable(baseItemId)} " +
                     $"from {ContentRegistry.GetMonsterName(monsterId)}. Congratulations!");
             }
+
+            // The piece was kept, so there is nothing to pay for.
+            return 0L;
         }
 
         /// <summary>

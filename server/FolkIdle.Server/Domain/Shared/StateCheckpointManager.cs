@@ -880,6 +880,15 @@ namespace FolkIdle.Server.Domain.Shared
                 Food3_ItemId = player.LarderSlot3ItemId,
                 Food3_Count = player.LarderSlot3Count,
                 AutoEatThreshold = player.AutoEatThresholdPct > 0 ? player.AutoEatThresholdPct : AutoEatDefaults.ThresholdPct,
+
+                // Modul: the auto-salvage floor, so the loot engine can read it
+                // off the payload instead of querying per kill. Clamped on the
+                // way in as well as on the way out of the settings route: a row
+                // written before the cap existed, or by hand, must not be able
+                // to salvage a player's Legendaries.
+                AutoSalvageBelowTier = System.Math.Clamp(
+                    player.AutoSalvageBelowTier, 0, Engine.VillageChestEngine.MaxSweepableQualityTier),
+
                 PlayerHp = 100000,
                 CurrentGold = loadedGold,
                 PremiumCurrency = player.PremiumDiamonds,

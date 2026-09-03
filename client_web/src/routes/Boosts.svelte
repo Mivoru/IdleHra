@@ -11,7 +11,7 @@
   // bank were all unreachable.
 
   import { createQuery } from '@tanstack/svelte-query';
-  import { queryKeys, fetchInventory } from '../lib/net/rest';
+  import { queryKeys, fetchMaterials } from '../lib/net/rest';
   import { loadContent, consumableKind, prettifyBaseId, type ContentRegistry } from '../lib/net/content';
   import {
     consumeConsumable,
@@ -22,7 +22,11 @@
   import Skeleton from '../lib/ui/Skeleton.svelte';
 
   const snap = $derived($playerState);
-  const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
+  // Modul: MATERIALS ONLY. This reads `inventory.data.Stacks` and nothing
+  // else, but was fetching the full snapshot to get there - and on a
+  // long-played account that snapshot carries 17,836 equipment rows and 3.2 MB
+  // against the 63 stack rows this screen wants. See fetchMaterials.
+  const inventory = createQuery(() => ({ queryKey: queryKeys.materials, queryFn: fetchMaterials }));
 
   let registry = $state<ContentRegistry | null>(null);
   $effect(() => {

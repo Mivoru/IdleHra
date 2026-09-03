@@ -16,6 +16,109 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-03 (c) - The chest had no drain, and that is what made it lag
+
+Reported as "it's starting to lag because of the amount of items I have".
+Correct, and measurable. The live database:
+
+| Player | EquipmentInstances rows |
+|---|---|
+| **8** | **17,836** |
+| 7 | 49 |
+| 6 | 26 |
+| everyone else | 3 |
+
+**The database was never the problem.** `select * from "EquipmentInstances"
+where "PlayerId"=8` runs in **5.3 ms**. The cost was on both sides of it.
+
+## Why it grew: a 15% drop rate against no removal at all
+
+`CombatLootEngine.EquipmentDropChance` is 0.150 and every drop writes a row.
+The only removal anywhere in the game was the per-item Sell button on the chest
+screen. `CombatLootEngine`'s own comment said so plainly - *"The chest grows;
+the player sells or bins what they do not want."*
+
+The trap in that: **the only cleanup tool was on the screen the volume had made
+unusable.** A player could not dig out one click at a time, and nothing warned
+them they would ever need to. ~50 hours of play reaches 17,836 rows.
+
+## What it cost
+
+- **Payload.** `/api/v1/player/inventory` returned every row: **3.2 MB of
+  JSON**, built by calling `JsonNode.Parse` once per row. `/api/v1/forge/inventory`
+  did the identical thing again.
+- **Render.** `Chest.svelte` was `{#each equipment}` with no window, inside a
+  `max-height: 26rem` box - ~180,000 DOM nodes to show about twenty.
+  `ItemBrowser.svelte` (Forge, Market) was the same.
+- **Four multipliers.** `ItemIcon` called `loadContent()` from its own
+  `onMount`, *per icon*, and `content.ts` cached the resolved value rather than
+  the in-flight promise - so a cold cache meant tens of thousands of concurrent
+  fetches for three files. `prettifyBaseId` (regex + split + join, uncached) ran
+  ~4x per item per render and inside a sort comparator. `Character.svelte`'s
+  `wornBy` linear-scanned all rows 33 times per render. Larder, Boosts and the
+  guild depot each downloaded the whole 3.2 MB to read `Stacks`, which is **63
+  rows**.
+- **Per kill, for nothing.** `CountOccupiedBackpackSlotsAsync` ran two COUNTs
+  and a roster read inside a Serializable transaction on **every kill**, to
+  produce a number `SimulationEngine`'s drain overwrote with `InventoryCapacity`
+  unconditionally, because the backpack was retired.
+
+## What changed
+
+Rendering and payload:
+
+- `lib/ui/VirtualList.svelte` - a uniform-row windowed list. Used by the chest
+  and the item browser. **Rows must match the `rowHeight` passed in**; it
+  positions by arithmetic, not measurement, and a taller row overlaps rather
+  than pushes.
+- `/api/v1/player/materials` - stacks only, two queries, no JSON parsing.
+  Larder, Boosts and the guild depot use it. `invalidateOwnedItems`
+  (`net/queryClient`) invalidates both keys, because they answer from the same
+  tables and a call site that remembers one is a stale screen.
+- Memoised `prettifyBaseId` and `ItemBrowser`'s `slotLabel`; `loadContent`
+  caches the promise; `net/registry.svelte.ts` is one shared reactive registry
+  so `ItemIcon` no longer loads content per instance; `wornBy` is a Map.
+
+The drain (this is the part that stops it coming back):
+
+- **Bulk sweep.** `/api/v1/chest/bulk-sell` and `/bulk-discard` clear a whole
+  rarity band in ONE transaction - `VillageChestEngine.RemoveEquipmentUpToTierAsync`.
+  Measured: **1,472 items in 131 ms**, gold exact, worn items skipped.
+- **Auto-salvage.** `PlayerRecord.AutoSalvageBelowTier`, off by default, set in
+  Settings. A drop at or below it is sold on the way in and never becomes a row,
+  for the same gold a chest sale pays (one `ValueEquipment`, so the two cannot
+  become two economies). Crafted and market items are deliberately untouched -
+  those were asked for.
+- Both are capped at **Epic (6)** by `VillageChestEngine.MaxSweepableQualityTier`.
+  Legendary and above is never sweepable and never auto-salvaged; there is no
+  undo. A request above the cap is **refused, not clamped** - clamping hands the
+  player a destructive setting they did not choose.
+
+## Standing traps this added
+
+- **Two gold paths that must not be confused.** `AutoSalvageQueue` wrote no row,
+  so its drain adds to `CurrentGold` *and* `RedisPendingGoldDelta` (the combat
+  idiom). `ChestSaleGoldQueue` follows an engine that ALREADY credited
+  `CommodityRecords["gold"]`, so its drain moves `CurrentGold` only and must
+  leave the pending delta alone - the checkpoint applies that as an increment
+  and would pay the sale twice, one checkpoint later, where nothing connects the
+  two. Both are commented at the struct.
+- `AutoSalvageBelowTier` is hydrated onto `TickStatePayload` at login, so the
+  settings route posts to `ChestSettingsQueue` as well as writing the row -
+  otherwise the toggle does nothing until the next sign-in.
+
+## A real bug found on the way
+
+`VillageChestEngine.RemoveEquipmentAsync`'s worn-item guard listed the **eight
+combat slots and stopped at `EquippedRingId`** - so a worn **axe, pickaxe or
+rod could be sold or binned out from under the character wearing it**, leaving
+exactly the dangling pointer `ClearDanglingEquipReferencesAsync` exists to heal.
+The eleven-slot truncation again; see CLAUDE.md. Both the single and bulk paths
+now go through `LoadWornEquipmentIdsAsync`, which is the one place the slot list
+is written down.
+
+---
+
 # HANDOFF 2026-09-03 (b) - Offline loot was a worse game than online loot
 
 Reported as "when I am offline almost nothing good drops for equipment". True,

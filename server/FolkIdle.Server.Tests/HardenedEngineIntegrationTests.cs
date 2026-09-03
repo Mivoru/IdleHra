@@ -8960,7 +8960,11 @@ namespace FolkIdle.Server.Tests
             // both statistically certain to have hit at least once each.
             for (int i = 0; i < 400; i++)
             {
-                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false })!;
+                // The trailing 0 is autoSalvageBelowTier: OFF, so every drop this rolls
+                // becomes a row and the assertions below still count what they always
+                // counted. Auto-salvage has its own coverage; switching it on here would
+                // silently turn these into tests of the salvage path instead.
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0 })!;
             }
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
@@ -11513,7 +11517,11 @@ namespace FolkIdle.Server.Tests
 
             for (int i = 0; i < 200; i++)
             {
-                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false })!;
+                // The trailing 0 is autoSalvageBelowTier: OFF, so every drop this rolls
+                // becomes a row and the assertions below still count what they always
+                // counted. Auto-salvage has its own coverage; switching it on here would
+                // silently turn these into tests of the salvage path instead.
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0 })!;
             }
 
             int publishedCount = 0;

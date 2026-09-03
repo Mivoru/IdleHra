@@ -11,7 +11,7 @@
     donateToGuildDepot,
     activateGuildBuff,
     fetchGuildShardMatch,
-    fetchInventory,
+    fetchMaterials,
     kickGuildMember,
     promoteGuildMember,
     demoteGuildMember,
@@ -26,6 +26,7 @@
     submitShardAttack,
   } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
+  import { invalidateOwnedItems } from '../lib/net/queryClient';
   import { loadContent, prettifyBaseId, type ContentRegistry } from '../lib/net/content';
   import Bar from '../lib/ui/Bar.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
@@ -96,7 +97,7 @@
       pushLocalNotice('Gold contributed to treasury!', 'info');
       setTimeout(() => {
         client.invalidateQueries({ queryKey: queryKeys.guildDepot });
-        client.invalidateQueries({ queryKey: queryKeys.inventory });
+        invalidateOwnedItems(client);
       }, 700);
     } catch (e: any) {
       pushLocalNotice(e.message || 'Failed to contribute gold.', 'info');
@@ -163,7 +164,9 @@
     enabled: hasGuild,
   }));
 
-  const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
+  // Modul: MATERIALS ONLY. The depot takes stackable materials; the equipment
+  // half of the snapshot was never read on this screen. See fetchMaterials.
+  const inventory = createQuery(() => ({ queryKey: queryKeys.materials, queryFn: fetchMaterials }));
 
   let registry = $state<ContentRegistry | null>(null);
   $effect(() => {
@@ -215,7 +218,7 @@
   function refreshDepot() {
     setTimeout(() => {
       client.invalidateQueries({ queryKey: queryKeys.guildLogistics });
-      client.invalidateQueries({ queryKey: queryKeys.inventory });
+      invalidateOwnedItems(client);
     }, 700);
   }
 
@@ -312,7 +315,7 @@
   function refreshDepotFull() {
     setTimeout(() => {
       client.invalidateQueries({ queryKey: queryKeys.guildDepot });
-      client.invalidateQueries({ queryKey: queryKeys.inventory });
+      invalidateOwnedItems(client);
     }, 700);
   }
 

@@ -18,6 +18,9 @@ import { authedGet, authedPost } from './auth';
 // kept producing.
 export const queryKeys = {
   inventory: ['player', 'inventory'] as const,
+  /** The stackable half only - see `fetchMaterials` for why it is separate. */
+  materials: ['player', 'materials'] as const,
+  chestSettings: ['player', 'chestSettings'] as const,
   statistics: ['player', 'statistics'] as const,
   monsterLoot: (monsterId: number) => ['monsters', 'loot', monsterId] as const,
   friends: ['social', 'friends'] as const,
@@ -106,6 +109,81 @@ export interface InventorySnapshot {
 
 export function fetchInventory(): Promise<InventorySnapshot> {
   return authedGet<InventorySnapshot>('/api/v1/player/inventory');
+}
+
+/** Just the stackable half of the chest - see `fetchMaterials`. */
+export interface MaterialsSnapshot {
+  Stacks: InventoryStack[];
+}
+
+/**
+ * The material stacks and nothing else.
+ *
+ * Modul: THE LARDER WAS DOWNLOADING MEGABYTES TO COUNT FISH.
+ *
+ * `fetchInventory` answers three questions in one blob - equipment, stacks and
+ * per-character combat ratings - and three screens (Larder, Boosts, the guild
+ * deposit) read only `Stacks`, which is 63 rows on the live database. They were
+ * pulling the equipment list to get there, and on a long-played account that
+ * list is 17,836 rows and 3.2 MB. Every command result invalidates the query,
+ * so it was not once per visit either.
+ *
+ * A separate key as well as a separate route, deliberately: sharing
+ * `queryKeys.inventory` would make the two overwrite each other's cache entry
+ * with differently-shaped data. Both are invalidated by the same events, which
+ * is what `invalidateOwnedItems` (net/queryClient) is for - a screen that invalidates
+ * one and reads the other is the drift this centralisation exists to stop.
+ */
+export function fetchMaterials(): Promise<MaterialsSnapshot> {
+  return authedGet<MaterialsSnapshot>('/api/v1/player/materials');
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/chest - bulk cleanup and the auto-salvage setting
+// ---------------------------------------------------------------------------
+
+export interface ChestBulkResult {
+  Success: boolean;
+  RemovedCount: number;
+  GoldGained: number;
+  /** Pieces inside the band that were kept because a character wears them. */
+  SkippedWornCount: number;
+}
+
+/**
+ * Sells or bins every carried piece at or below a rarity, in one call.
+ *
+ * Modul: the chest had no drain. Loot lands on 15% of kills and the only
+ * removal the game offered was a per-item button - so the table grew without
+ * bound until the screen that would have cleared it was too slow to open. The
+ * per-item endpoint cannot be the remedy: seventeen thousand round trips is
+ * not a remedy.
+ */
+export function bulkClearChest(
+  maxQualityTier: number,
+  sell: boolean,
+): Promise<ChestBulkResult | null> {
+  return authedPost<ChestBulkResult>(
+    sell ? '/api/v1/chest/bulk-sell' : '/api/v1/chest/bulk-discard',
+    { maxQualityTier },
+  );
+}
+
+export interface ChestSettings {
+  /** 0 is off. A drop at or below this tier is sold on the way in. */
+  AutoSalvageBelowTier: number;
+  /** The server's own ceiling, so the dropdown cannot offer what it refuses. */
+  MaxSweepableQualityTier: number;
+}
+
+export function fetchChestSettings(): Promise<ChestSettings> {
+  return authedGet<ChestSettings>('/api/v1/chest/settings');
+}
+
+export function saveChestSettings(autoSalvageBelowTier: number): Promise<ChestSettings | null> {
+  return authedPost<ChestSettings>('/api/v1/chest/settings', {
+    AutoSalvageBelowTier: autoSalvageBelowTier,
+  });
 }
 
 // ---------------------------------------------------------------------------

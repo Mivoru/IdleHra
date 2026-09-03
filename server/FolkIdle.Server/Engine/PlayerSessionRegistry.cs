@@ -16,6 +16,61 @@ namespace FolkIdle.Server.Engine
         public long? NewEquipmentInstanceId; 
     }
 
+    // Modul: auto-salvage proceeds, from the loot worker back to the tick.
+    //
+    // CombatLootEngine drains its request queue on a background poll loop and
+    // has no ref access to the live TickStatePayload, so gold it earns on the
+    // player's behalf has to come home the same way ForgeUpgradeNotification
+    // and MarketMatchNotification do.
+    //
+    // It carries the COUNT as well as the gold because the client shows
+    // "salvaged 14 drops for 2,300g" - the count is what tells the player the
+    // setting is doing something, and a sum alone would look like combat gold.
+    public struct AutoSalvageNotification
+    {
+        public long PlayerId;
+        public long GoldGained;
+        public int ItemsSalvaged;
+    }
+
+    // Modul: proceeds of a chest sale, correcting a LIVE session's displayed
+    // gold.
+    //
+    // THE OPPOSITE OF AutoSalvageNotification, and the difference is the whole
+    // reason there are two of these rather than one:
+    //
+    //   AutoSalvage - the loot worker wrote NO row. The tick thread adds the
+    //     gold to CurrentGold *and* to RedisPendingGoldDelta, and the next
+    //     checkpoint banks it. This is how combat gold has always worked.
+    //
+    //   ChestSale - VillageChestEngine already wrote CommodityRecords["gold"]
+    //     inside its own transaction. The tick thread must move CurrentGold so
+    //     the number on screen is true, and must NOT touch
+    //     RedisPendingGoldDelta - the checkpoint applies that as an INCREMENT
+    //     to the row the engine has already credited, so adding it here pays
+    //     the player twice.
+    //
+    // Getting that backwards is a duplication bug that only shows up one
+    // checkpoint later, which is why it is written down rather than inferred.
+    public struct ChestSaleGoldNotification
+    {
+        public long PlayerId;
+        public long GoldGained;
+    }
+
+    // Modul: a settings change that the tick thread's payload has to learn
+    // about immediately.
+    //
+    // TickStatePayload.AutoSalvageBelowTier is hydrated at login, so a player
+    // who changes the setting mid-session would otherwise see it take effect at
+    // their next sign-in - i.e. a toggle that appears to do nothing, which is
+    // the exact failure mode half this project's bug reports have been.
+    public struct ChestSettingsNotification
+    {
+        public long PlayerId;
+        public int AutoSalvageBelowTier;
+    }
+
     public struct AchievementClaimRequest
     {
         public long PlayerId;
@@ -358,6 +413,17 @@ namespace FolkIdle.Server.Engine
     {
         private readonly ConcurrentDictionary<long, bool> _onlinePlayers = new();
         public ConcurrentQueue<MarketMatchNotification> MarketMatchQueue { get; } = new();
+
+        // Modul: the chest's drain, reporting what it earned. See
+        // AutoSalvageNotification.
+        public ConcurrentQueue<AutoSalvageNotification> AutoSalvageQueue { get; } = new();
+
+        // Modul: a chest sale's proceeds, and a chest settings change. Both
+        // originate on an HTTP thread, which owns no payload. Read
+        // ChestSaleGoldNotification's comment before touching the drain - it
+        // does NOT bank the delta, and AutoSalvageQueue's does.
+        public ConcurrentQueue<ChestSaleGoldNotification> ChestSaleGoldQueue { get; } = new();
+        public ConcurrentQueue<ChestSettingsNotification> ChestSettingsQueue { get; } = new();
         public ConcurrentQueue<AchievementClaimRequest> AchievementClaimQueue { get; } = new();
         public ConcurrentQueue<ForgeUpgradeNotification> ForgeUpgradeQueue { get; } = new();
         public ConcurrentQueue<EquipmentSlotUpdateNotification> EquipmentSlotUpdateQueue { get; } = new();

@@ -3,6 +3,26 @@
 // own invalidation bug.
 
 import { QueryClient } from '@tanstack/svelte-query';
+import { queryKeys } from './rest';
+
+/**
+ * Invalidate everything that describes what the player owns.
+ *
+ * Modul: the chest is served by TWO routes now - the full snapshot and a
+ * stacks-only one for the screens that read nothing else (see
+ * `fetchMaterials`). They answer from the same tables, so anything that
+ * changes what the player owns invalidates BOTH, and the one thing worse than
+ * refetching too much is a screen showing a count the server stopped agreeing
+ * with an hour ago.
+ *
+ * Centralised for the reason `queryKeys` itself is: a call site that remembers
+ * one key and forgets the other is a stale screen with no error anywhere, and
+ * there are a dozen such call sites.
+ */
+export function invalidateOwnedItems(client: QueryClient): void {
+  client.invalidateQueries({ queryKey: queryKeys.inventory });
+  client.invalidateQueries({ queryKey: queryKeys.materials });
+}
 
 export const queryClient = new QueryClient({
   defaultOptions: {

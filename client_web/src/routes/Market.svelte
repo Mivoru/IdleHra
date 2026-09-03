@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import { invalidateOwnedItems } from '../lib/net/queryClient';
   import {
     queryKeys,
     fetchInventory,
@@ -171,7 +172,7 @@
       return;
     }
     sellInstanceId = 0;
-    setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.inventory }), 600);
+    setTimeout(() => invalidateOwnedItems(client), 600);
   }
 
   function buy(orderId: number) {
@@ -181,7 +182,7 @@
       return;
     }
     setTimeout(() => {
-      client.invalidateQueries({ queryKey: queryKeys.inventory });
+      invalidateOwnedItems(client);
       listings.refetch();
     }, 600);
   }
@@ -234,7 +235,7 @@
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
 
     pushLocalNotice('Order placed. It rests until something matches it.', 'info');
-    setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.inventory }), 700);
+    setTimeout(() => invalidateOwnedItems(client), 700);
   }
 </script>
 

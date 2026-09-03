@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import { invalidateOwnedItems } from '../lib/net/queryClient';
   import { queryKeys, fetchForge, type ForgeEquipment } from '../lib/net/rest';
   import { prettifyBaseId, loadContent, type ContentRegistry } from '../lib/net/content';
   import { executeForgeFusion, rerollAffix, REROLL_OPERATIONS } from '../lib/net/commands';
@@ -44,7 +45,7 @@
 
   function invalidate() {
     client.invalidateQueries({ queryKey: queryKeys.forge });
-    client.invalidateQueries({ queryKey: queryKeys.inventory });
+    invalidateOwnedItems(client);
   }
 
   let lastSeenResultId = 0;

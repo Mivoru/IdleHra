@@ -6,6 +6,7 @@
   // sitting somewhere the player had no way to look.
 
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import { invalidateOwnedItems } from '../lib/net/queryClient';
   import { queryKeys, fetchMailbox, type MailboxEntry } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
   import { claimMailItem } from '../lib/net/commands';
@@ -42,7 +43,7 @@
     // simulation tick that applies it.
     setTimeout(() => {
       client.invalidateQueries({ queryKey: queryKeys.mailbox });
-      client.invalidateQueries({ queryKey: queryKeys.inventory });
+      invalidateOwnedItems(client);
     }, 600);
   }
 
@@ -60,7 +61,7 @@
     play('lootDropped');
     setTimeout(() => {
       client.invalidateQueries({ queryKey: queryKeys.mailbox });
-      client.invalidateQueries({ queryKey: queryKeys.inventory });
+      invalidateOwnedItems(client);
     }, claimable.length * 250 + 800);
   }
 

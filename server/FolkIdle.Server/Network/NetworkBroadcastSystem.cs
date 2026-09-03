@@ -923,6 +923,28 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: the chest's drain. One call clears a whole rarity
+                    // band; the per-item routes above cannot, and seventeen
+                    // thousand calls to them is not an alternative. See
+                    // HandleChestBulkAction.
+                    if (requestPath == "/api/v1/chest/bulk-sell" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleChestBulkAction(context, sell: true);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/chest/bulk-discard" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleChestBulkAction(context, sell: false);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/chest/settings")
+                    {
+                        await HandleChestSettings(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/guild/shard-match" && context.Request.HttpMethod == "GET")
                     {
                         await HandleGuildShardMatch(context);
@@ -1104,6 +1126,16 @@ namespace FolkIdle.Server.Network
                     // recipes consume). Nothing anywhere exposed the village
                     // stash, the full commodity list, or which items are
                     // currently equipped, so no inventory screen was possible.
+                    // Modul: the stackable half only, for the screens that read
+                    // nothing else. See HandlePlayerMaterialsSnapshot - the
+                    // route below serves 3.2 MB on a long-played account and
+                    // three screens were fetching all of it to count fish.
+                    if (requestPath == "/api/v1/player/materials" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandlePlayerMaterialsSnapshot(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/player/inventory" && context.Request.HttpMethod == "GET")
                     {
                         await HandlePlayerInventorySnapshot(context);
@@ -2359,6 +2391,223 @@ namespace FolkIdle.Server.Network
             public bool Success { get; set; }
             public long GoldGained { get; set; }
             public string Reason { get; set; } = string.Empty;
+        }
+
+        private sealed class ChestBulkActionResponse
+        {
+            public bool Success { get; set; }
+            public int RemovedCount { get; set; }
+            public long GoldGained { get; set; }
+            /// <summary>
+            /// Pieces inside the chosen rarity band that were spared because a
+            /// character is wearing them. Reported so the count the player sees
+            /// afterwards adds up - "it said 4,102 and 3 are still there" is a
+            /// bug report, and this is the sentence that prevents it.
+            /// </summary>
+            public int SkippedWornCount { get; set; }
+        }
+
+        private sealed class ChestSettingsResponse
+        {
+            public int AutoSalvageBelowTier { get; set; }
+            /// <summary>
+            /// The ceiling the server will accept, published so the client
+            /// builds its dropdown from the server's rule rather than a second
+            /// copy of it that can drift. Legendary and above is never
+            /// sweepable - see VillageChestEngine.MaxSweepableQualityTier.
+            /// </summary>
+            public int MaxSweepableQualityTier { get; set; }
+        }
+
+        /// <summary>
+        /// Sells or bins EVERY carried piece at or below a rarity, in one call.
+        ///
+        /// Modul: the chest had no drain. Loot arrives on 15% of kills and the
+        /// only removal the game offered was a per-item button - so one live
+        /// account reached 17,836 EquipmentInstances rows, at which point the
+        /// inventory screen that would have let them clear it was itself too
+        /// slow to open. The remedy cannot be the same per-item call in a loop;
+        /// seventeen thousand round trips is not a remedy.
+        ///
+        /// The tier is validated here as well as in the engine. A client that
+        /// sent 14 would otherwise sweep away every Legendary the player owns,
+        /// and there is no undo for that.
+        /// </summary>
+        private async Task HandleChestBulkAction(HttpListenerContext context, bool sell)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = JsonSerializer.Deserialize<JsonElement>(await reader.ReadToEndAsync());
+
+                if (!payload.TryGetProperty("maxQualityTier", out var tierElement)
+                    || tierElement.ValueKind != JsonValueKind.Number)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                int maxQualityTier = tierElement.GetInt32();
+                if (maxQualityTier < 1 || maxQualityTier > VillageChestEngine.MaxSweepableQualityTier)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var outcome = await VillageChestEngine.RemoveEquipmentUpToTierAsync(
+                    db, playerId, maxQualityTier, sell);
+
+                // Modul: THE GOLD HAS TO REACH THE LIVE SESSION, and it must
+                // not be banked twice on the way.
+                //
+                // The engine already credited CommodityRecords["gold"], the
+                // authoritative row. But a player doing this is logged in - it
+                // is a button on a screen - and their session holds a separate
+                // unbanked CurrentGold that the wire reports and the checkpoint
+                // later applies to that row AS AN INCREMENT. So the payload
+                // needs its displayed total corrected, and its pending delta
+                // left strictly alone: adding to RedisPendingGoldDelta here
+                // would credit the row a second time at the next checkpoint.
+                //
+                // That asymmetry is the whole reason this is a different queue
+                // from AutoSalvageQueue, which does the exact opposite - see
+                // ChestSaleGoldNotification.
+                if (outcome.GoldGained > 0L)
+                {
+                    _playerSessionRegistry?.ChestSaleGoldQueue.Enqueue(new ChestSaleGoldNotification
+                    {
+                        PlayerId = playerId,
+                        GoldGained = outcome.GoldGained
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new ChestBulkActionResponse
+                {
+                    Success = true,
+                    RemovedCount = outcome.RemovedCount,
+                    GoldGained = outcome.GoldGained,
+                    SkippedWornCount = outcome.SkippedWornCount
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Chest bulk action error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        /// <summary>
+        /// Reads (GET) or sets (POST) the auto-salvage floor.
+        ///
+        /// Opt-in and off by default, the same shape as email consent: quality
+        /// tier 1 is a real item a new player wants, so changing nothing until
+        /// the player asks is the only safe default.
+        /// </summary>
+        private async Task HandleChestSettings(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var player = await db.PlayerRecords.SingleOrDefaultAsync(p => p.Id == playerId);
+                if (player == null)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (context.Request.HttpMethod == "POST")
+                {
+                    using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                    string body = await reader.ReadToEndAsync();
+
+                    int tier;
+                    try
+                    {
+                        using var parsed = JsonDocument.Parse(body);
+                        if (!parsed.RootElement.TryGetProperty("AutoSalvageBelowTier", out var tierElement)
+                            || tierElement.ValueKind != JsonValueKind.Number)
+                        {
+                            context.Response.StatusCode = 400;
+                            context.Response.Close();
+                            return;
+                        }
+                        tier = tierElement.GetInt32();
+                    }
+                    catch (System.Text.Json.JsonException)
+                    {
+                        context.Response.StatusCode = 400;
+                        context.Response.Close();
+                        return;
+                    }
+
+                    // Refused rather than clamped. Clamping a 14 down to 6 would
+                    // silently give the player a setting they did not choose,
+                    // and this one destroys items.
+                    if (tier < 0 || tier > VillageChestEngine.MaxSweepableQualityTier)
+                    {
+                        context.Response.StatusCode = 400;
+                        context.Response.Close();
+                        return;
+                    }
+
+                    player.AutoSalvageBelowTier = tier;
+                    await db.SaveChangesAsync();
+
+                    // The loot engine reads this off the live payload (see
+                    // TickStatePayload.AutoSalvageBelowTier), which is hydrated
+                    // at login - so without this the setting would not take
+                    // effect until the player signed out and back in, and would
+                    // look like a toggle that does nothing.
+                    _playerSessionRegistry?.ChestSettingsQueue.Enqueue(new ChestSettingsNotification
+                    {
+                        PlayerId = playerId,
+                        AutoSalvageBelowTier = tier
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new ChestSettingsResponse
+                {
+                    AutoSalvageBelowTier = player.AutoSalvageBelowTier,
+                    MaxSweepableQualityTier = VillageChestEngine.MaxSweepableQualityTier
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Chest settings error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
         }
 
         /// <summary>
@@ -4921,6 +5170,102 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Player inventory snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class PlayerMaterialsSnapshotResponse
+        {
+            public System.Collections.Generic.List<InventoryStackResponse> Stacks { get; set; } = new();
+        }
+
+        /// <summary>
+        /// The stackable half of the chest, and nothing else.
+        ///
+        /// Modul: THE LARDER WAS DOWNLOADING THREE MEGABYTES TO COUNT FISH.
+        ///
+        /// /api/v1/player/inventory answers one question with one blob:
+        /// equipment, material stacks and per-character combat ratings
+        /// together. Three screens - the Larder, Boosts and the guild deposit -
+        /// read ONLY `Stacks`, which is 63 rows on the live database. They were
+        /// paying for the equipment list to get there, and on the
+        /// worst-affected account that list is 17,836 rows and 3.2 MB, parsed
+        /// row by row through JsonNode on the way out. Every command result
+        /// invalidates the query, so it was not once per visit either.
+        ///
+        /// Two queries and no JSON parsing at all. The equipment blob still
+        /// exists for the screens that genuinely need it - the chest, the
+        /// market's sell form and the paper doll.
+        ///
+        /// Shares InventoryStackResponse with the big snapshot deliberately:
+        /// the two must never disagree about what a stack is, and the summing
+        /// rule below is the same one, for the same reason (see that type's
+        /// comment on why the backpack/stash split is not exposed).
+        /// </summary>
+        private async Task HandlePlayerMaterialsSnapshot(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var commodities = await db.CommodityRecords
+                    .AsNoTracking()
+                    .Where(c => c.PlayerId == playerId)
+                    .Select(c => new { c.ItemId, c.Quantity })
+                    .ToListAsync();
+
+                var stash = await db.VillageStashInstances
+                    .AsNoTracking()
+                    .Where(v => v.PlayerId == playerId)
+                    .Select(v => new { v.ItemId, v.Quantity })
+                    .ToListAsync();
+
+                var stacksByItemId = new System.Collections.Generic.Dictionary<string, InventoryStackResponse>(
+                    commodities.Count + stash.Count);
+
+                for (int i = 0; i < commodities.Count; i++)
+                {
+                    var row = commodities[i];
+                    if (!stacksByItemId.TryGetValue(row.ItemId, out var stack))
+                    {
+                        stack = new InventoryStackResponse { ItemId = row.ItemId };
+                        stacksByItemId[row.ItemId] = stack;
+                    }
+                    stack.Quantity += row.Quantity;
+                }
+
+                for (int i = 0; i < stash.Count; i++)
+                {
+                    var row = stash[i];
+                    if (!stacksByItemId.TryGetValue(row.ItemId, out var stack))
+                    {
+                        stack = new InventoryStackResponse { ItemId = row.ItemId };
+                        stacksByItemId[row.ItemId] = stack;
+                    }
+                    stack.Quantity += row.Quantity;
+                }
+
+                var response = new PlayerMaterialsSnapshotResponse();
+                response.Stacks.AddRange(stacksByItemId.Values);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Player materials snapshot error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

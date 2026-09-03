@@ -84,6 +84,31 @@ async function apiGet(path) {
   });
   return res.ok ? res.json() : null;
 }
+
+async function apiPost(path, body) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${await authToken()}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  return res.ok ? res.json() : null;
+}
+
+/** The status alone, for the checks whose whole point is that a call is REFUSED. */
+async function apiPostStatus(path, body) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${await authToken()}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  return res.status;
+}
 await page.goto(BASE, { waitUntil: 'networkidle' });
 
 // --- sign in as the stocked fixture -----------------------------------------
@@ -984,6 +1009,171 @@ await go('Chest');
     (await page.getByRole('button', { name: 'Reroll', exact: true }).count()) > 0,
     'every equipment row links to the Forge',
   );
+
+  // Modul: THE CHEST'S ONLY DRAIN.
+  //
+  // Equipment lands on 15% of kills and nothing removed it but the per-item
+  // Sell button - so the table grew for as long as the account was played. One
+  // live account reached 17,836 rows, at which point this screen was too slow
+  // to open and the cleanup tool and the mess were the same screen.
+  //
+  // DELIBERATELY NOT PRESSED. A sweep sells thousands of items and there is no
+  // way to put them back, so running it here would be a check that passes once
+  // and leaves the fixture stripped for every run after - the exact trap
+  // CLAUDE.md records. What is asserted is that the control exists, is
+  // reachable, and quotes a count that AGREES WITH THE API about what it would
+  // take; the destructive half is covered by the server's own path.
+  const sweep = page.locator('section.sweep');
+  record('the chest offers a bulk clear-out', (await sweep.count()) > 0);
+
+  if ((await sweep.count()) > 0) {
+    await sweep.locator('.sweeptoggle').click();
+    await page.waitForTimeout(400);
+
+    const settings = await apiGet('/api/v1/chest/settings');
+    record(
+      'the server publishes its own sweep ceiling',
+      settings !== null && settings.MaxSweepableQualityTier >= 1,
+      settings ? `up to tier ${settings.MaxSweepableQualityTier}` : 'no settings',
+    );
+
+    // The count in the panel has to be the count that disappears. A button that
+    // says "0 pieces" over a chest full of junk is worse than no button - it
+    // reads as "there is nothing to clean up".
+    //
+    // Modul: WHAT IS ASSERTED HERE IS DELIBERATELY NOT "panel === API", and the
+    // reason took three failing runs to pin down.
+    //
+    // The panel renders from TanStack's cache, staleTime 30 seconds, and
+    // nothing on this screen triggers a refetch. Meanwhile the fixture has been
+    // fighting for minutes and equipment lands on 15% of kills. So the panel is
+    // legitimately behind a live API reading, and it DRIFTS FURTHER the longer
+    // you look: measured at -1, then -8 after forty seconds of polling for
+    // agreement. Remounting does not help - a query inside its staleTime serves
+    // the cache without refetching, which is the entire point of the staleTime.
+    // An exact live comparison is not assertable from outside the cache, and
+    // every attempt at one is a flaky check, which this project has learned is
+    // worse than no check.
+    //
+    // These three ARE exact, and hold no matter how stale the panel is, because
+    // drops only ever ADD to the chest:
+    //
+    //   - it never exceeds the live count. Over-counting is the dangerous
+    //     direction: a panel that forgot to exclude worn gear would sit ABOVE
+    //     the API and be caught here.
+    //   - it is not zero while the chest demonstrably holds junk. "Nothing to
+    //     clean up" over a full chest is the failure this whole panel exists to
+    //     prevent.
+    //   - raising the rarity never lowers it. A dead or mis-wired dropdown -
+    //     the count not moving, or moving the wrong way - is caught by this and
+    //     by nothing else.
+    const tier = Number(await sweep.locator('select').inputValue());
+    const sweepable = (snapshot, upTo) =>
+      (snapshot?.Equipment ?? []).filter((e) => e.QualityTier <= upTo && !e.IsEquipped).length;
+
+    const readPanel = async () => {
+      const text = await sweep.innerText();
+      const digits = (text.match(/([\d\s, ]+)\s+piece/) ?? [])[1];
+      return Number((digits ?? '').replace(/\D/g, ''));
+    };
+
+    const shown = await readPanel();
+    const live = sweepable(await apiGet('/api/v1/player/inventory'), tier);
+
+    record(
+      'the sweep never offers to take more than the player owns',
+      shown <= live,
+      `panel says ${shown}, live count ${live} at tier ${tier}`,
+    );
+
+    record(
+      'the sweep sees the junk that is actually there',
+      live === 0 || shown > 0,
+      `panel says ${shown} with ${live} sweepable`,
+    );
+
+    // Raising the floor can only widen the band, so the count must not fall.
+    // Compared against the panel's OWN earlier reading, not against the API, so
+    // the cache cannot make this flaky either.
+    await sweep.locator('select').selectOption(String(settings.MaxSweepableQualityTier));
+    await page.waitForTimeout(400);
+    const widened = await readPanel();
+
+    record(
+      'raising the rarity floor widens what the sweep would take',
+      widened >= shown,
+      `tier ${tier} -> ${settings.MaxSweepableQualityTier}: ${shown} -> ${widened}`,
+    );
+
+    await sweep.locator('select').selectOption(String(tier));
+
+    // Both halves confirm before doing anything, because both are irreversible
+    // across thousands of items. A one-click bulk destroy is the finding.
+    await page.getByRole('button', { name: 'Bin them all' }).click();
+    await page.waitForTimeout(300);
+    const confirming = await sweep.innerText();
+    record(
+      'a bulk bin asks before destroying anything',
+      /Permanently bin/i.test(confirming) && (await page.getByRole('button', { name: 'Cancel' }).count()) > 0,
+    );
+    await page.getByRole('button', { name: 'Cancel' }).click();
+  }
+}
+
+// --- auto-salvage: the drain at the source -----------------------------------
+//
+// Modul: the bulk sweep clears a backlog; this stops one forming. A drop at or
+// below the chosen rarity is sold on the way in and never becomes a row.
+//
+// Round-trips deliberately - reads the current value, changes it, reads it
+// back, and puts it back the way it was. A check that leaves a setting altered
+// is a check that changes the next run's fixture, and this particular setting
+// silently destroys loot.
+{
+  const before = await apiGet('/api/v1/chest/settings');
+  record(
+    'the auto-salvage setting is readable',
+    before !== null && typeof before.AutoSalvageBelowTier === 'number',
+  );
+
+  if (before !== null) {
+    const target = before.AutoSalvageBelowTier === 2 ? 1 : 2;
+
+    const saved = await apiPost('/api/v1/chest/settings', { AutoSalvageBelowTier: target });
+    record(
+      'the auto-salvage floor can be changed',
+      saved !== null && saved.AutoSalvageBelowTier === target,
+      `set to ${target}, server says ${saved?.AutoSalvageBelowTier}`,
+    );
+
+    const readBack = await apiGet('/api/v1/chest/settings');
+    record(
+      'the new floor is what the server reads back',
+      readBack !== null && readBack.AutoSalvageBelowTier === target,
+    );
+
+    // Above the ceiling is REFUSED, not clamped. Clamping would hand the player
+    // a destructive setting they did not choose.
+    const tooHigh = await apiPostStatus('/api/v1/chest/settings', {
+      AutoSalvageBelowTier: before.MaxSweepableQualityTier + 1,
+    });
+    record(
+      'a floor above the ceiling is refused, not clamped',
+      tooHigh === 400,
+      `HTTP ${tooHigh}`,
+    );
+
+    // Put it back. See above - this is the restore half of the round trip.
+    await apiPost('/api/v1/chest/settings', {
+      AutoSalvageBelowTier: before.AutoSalvageBelowTier,
+    });
+    const restored = await apiGet('/api/v1/chest/settings');
+    record(
+      'the auto-salvage check restores what it changed',
+      restored !== null && restored.AutoSalvageBelowTier === before.AutoSalvageBelowTier,
+      `back to ${restored?.AutoSalvageBelowTier}`,
+    );
+  }
 }
 
 // --- inheritance: the only thing a season leaves behind ----------------------

@@ -133,9 +133,35 @@ async function fetchJson<T>(fileName: string): Promise<T> {
 
 let cached: ContentRegistry | null = null;
 
+// Modul: THE PROMISE IS CACHED, NOT JUST THE VALUE.
+//
+// This used to check `cached !== null` and nothing else. That guard only
+// closes once the first call has RESOLVED, so every caller that arrives while
+// the fetches are still in flight starts three fetches of its own. Ordinarily
+// harmless - a handful of screens - but ItemIcon calls this from onMount, once
+// per icon, and the chest mounts one icon per item. On a cold cache with
+// 17,836 items that is over fifty thousand concurrent requests for three
+// files, queued through a browser connection pool six deep.
+//
+// Caching the in-flight promise makes every concurrent caller await the same
+// three fetches. Cleared on failure so a network blip is retried rather than
+// remembered forever - `cached` is set only on success, and this is set to
+// null in the same breath.
+let inFlight: Promise<ContentRegistry> | null = null;
+
 export async function loadContent(): Promise<ContentRegistry> {
   if (cached !== null) return cached;
+  if (inFlight !== null) return inFlight;
 
+  inFlight = loadContentUncached().catch((error) => {
+    inFlight = null;
+    throw error;
+  });
+
+  return inFlight;
+}
+
+async function loadContentUncached(): Promise<ContentRegistry> {
   const [monsterList, itemList, gatheringNodes] = await Promise.all([
     fetchJson<MonsterDefinition[]>('monsters.json'),
     fetchJson<ItemDefinition[]>('items.json'),
@@ -226,8 +252,29 @@ const STRUCTURAL_SUFFIXES: readonly RegExp[] = [
   /_base$/,
 ];
 
-/** Turns "eq_linen_buckler_helper_offhand_base" into "Linen Buckler". */
+/**
+ * Turns "eq_linen_buckler_helper_offhand_base" into "Linen Buckler".
+ *
+ * Modul: MEMOISED, because this is called far more than it looks.
+ *
+ * It is a regex sweep over 22 suffixes plus a split/map/join - perhaps a
+ * microsecond, which is nothing until you count the calls. The chest calls it
+ * inside a filter predicate, inside a sort comparator, and twice more per row
+ * while rendering; the item browser does the same. On an account with 17,836
+ * pieces that is hundreds of thousands of calls and hundreds of thousands of
+ * throwaway strings per keystroke in the search box.
+ *
+ * The answer is a pure function of the input and the input space is the item
+ * catalogue - about 75 base ids - so the cache is bounded by content, not by
+ * how long the session has run. No eviction is needed and none is offered:
+ * adding one would be a policy for a map that cannot grow.
+ */
+const prettifiedBaseIds = new Map<string, string>();
+
 export function prettifyBaseId(baseId: string): string {
+  const memo = prettifiedBaseIds.get(baseId);
+  if (memo !== undefined) return memo;
+
   let stem = baseId.replace(/^eq_/, '');
 
   for (const suffix of STRUCTURAL_SUFFIXES) {
@@ -238,11 +285,14 @@ export function prettifyBaseId(baseId: string): string {
     }
   }
 
-  return stem
+  const pretty = stem
     .split('_')
     .filter((part) => part.length > 0)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+
+  prettifiedBaseIds.set(baseId, pretty);
+  return pretty;
 }
 
 export function itemName(registry: ContentRegistry | null, itemId: number): string {

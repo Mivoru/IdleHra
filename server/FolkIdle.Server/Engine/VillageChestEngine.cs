@@ -99,16 +99,16 @@ namespace FolkIdle.Server.Engine
                 // authority - and the failure here would be a player's equipped
                 // weapon vanishing mid-fight, with the character silently
                 // pointing at a row that no longer exists.
-                bool worn = await db.CharacterRecords.AnyAsync(c =>
-                    c.PlayerId == playerId &&
-                    (c.EquippedWeaponId == equipmentId ||
-                     c.EquippedHelmetId == equipmentId ||
-                     c.EquippedChestId == equipmentId ||
-                     c.EquippedGlovesId == equipmentId ||
-                     c.EquippedLeggingsId == equipmentId ||
-                     c.EquippedBootsId == equipmentId ||
-                     c.EquippedAmuletId == equipmentId ||
-                     c.EquippedRingId == equipmentId));
+                //
+                // Modul: ELEVEN SLOTS. This list stopped at EquippedRingId, the
+                // last of the eight combat slots, so the three TOOL slots were
+                // not consulted at all - a worn axe, pickaxe or rod could be
+                // sold or binned out from under the character wearing it, which
+                // is exactly the dangling-pointer state
+                // EquipmentSlotEngine.ClearDanglingEquipReferencesAsync exists
+                // to heal. Same truncation the project has hit repeatedly; see
+                // CLAUDE.md, and grep EquippedRingId for the rest.
+                bool worn = await IsWornByAnyCharacterAsync(db, playerId, equipmentId);
 
                 if (worn)
                 {
@@ -208,6 +208,196 @@ namespace FolkIdle.Server.Engine
             {
                 await transaction.RollbackAsync();
                 return (ChestActionResult.NotFound, 0L);
+            }
+        }
+
+        /// <summary>
+        /// Every equipment instance any of this player's characters is wearing,
+        /// across ALL ELEVEN SLOTS - the eight combat slots and the three tools.
+        ///
+        /// One query, and one place the slot list is written down, because the
+        /// slot list is the thing this codebase keeps truncating: every list
+        /// that stopped at EquippedRingId (the last of the eight) has been a
+        /// bug. Callers that need "is this one item worn" and callers that need
+        /// "which of these thousands are worn" both come here, so the two can
+        /// never answer differently.
+        ///
+        /// Benched characters count. A character past the three playable slots
+        /// keeps its equipped ids, and salvaging what an ancestor is holding
+        /// would break that row the moment they are fielded again - the same
+        /// reasoning /api/v1/player/inventory's worn-item pass records.
+        /// </summary>
+        public static async Task<System.Collections.Generic.HashSet<long>> LoadWornEquipmentIdsAsync(
+            FolkIdleDbContext db, long playerId)
+        {
+            var rows = await db.CharacterRecords
+                .AsNoTracking()
+                .Where(c => c.PlayerId == playerId)
+                .Select(c => new
+                {
+                    c.EquippedWeaponId,
+                    c.EquippedHelmetId,
+                    c.EquippedChestId,
+                    c.EquippedGlovesId,
+                    c.EquippedLeggingsId,
+                    c.EquippedBootsId,
+                    c.EquippedAmuletId,
+                    c.EquippedRingId,
+                    c.EquippedAxeId,
+                    c.EquippedPickaxeId,
+                    c.EquippedRodId
+                })
+                .ToListAsync();
+
+            var worn = new System.Collections.Generic.HashSet<long>();
+            foreach (var row in rows)
+            {
+                void Note(long? id) { if (id.HasValue && id.Value > 0L) worn.Add(id.Value); }
+
+                Note(row.EquippedWeaponId);
+                Note(row.EquippedHelmetId);
+                Note(row.EquippedChestId);
+                Note(row.EquippedGlovesId);
+                Note(row.EquippedLeggingsId);
+                Note(row.EquippedBootsId);
+                Note(row.EquippedAmuletId);
+                Note(row.EquippedRingId);
+                Note(row.EquippedAxeId);
+                Note(row.EquippedPickaxeId);
+                Note(row.EquippedRodId);
+            }
+
+            return worn;
+        }
+
+        private static async Task<bool> IsWornByAnyCharacterAsync(
+            FolkIdleDbContext db, long playerId, long equipmentId)
+        {
+            var worn = await LoadWornEquipmentIdsAsync(db, playerId);
+            return worn.Contains(equipmentId);
+        }
+
+        /// <summary>
+        /// The highest rarity a player may point the bulk tools or auto-salvage
+        /// at. Legendary (7) and above is never sweepable in bulk and never
+        /// auto-salvaged: those are the drops the whole loop is for, and a
+        /// mis-set threshold that ate them would be unrecoverable.
+        ///
+        /// Six still drains almost everything - Normal through Epic is over
+        /// 99% of all drops by weight (see the client's RARITY_DROP_SHARE,
+        /// which publishes the same table CombatLootEngine rolls against).
+        /// </summary>
+        public const int MaxSweepableQualityTier = 6;
+
+        public readonly struct BulkRemovalOutcome
+        {
+            public int RemovedCount { get; init; }
+            public long GoldGained { get; init; }
+            public int SkippedWornCount { get; init; }
+        }
+
+        /// <summary>
+        /// Sells or bins EVERY carried piece at or below a quality tier, in one
+        /// transaction.
+        ///
+        /// Modul: this is the drain the chest never had. Loot arrives on 15% of
+        /// kills and the only removal in the game was a per-item button, so the
+        /// table grew without bound - one live account reached 17,836 rows and
+        /// the inventory screen that would have let them clean it up was the
+        /// screen the volume had made too slow to use. A per-item API cannot
+        /// fix that: seventeen thousand round trips is not a remedy.
+        ///
+        /// Deliberately NOT expressed through RemoveEquipmentAsync in a loop.
+        /// That method opens a Serializable transaction and re-reads the worn
+        /// set per call; seventeen thousand of those is hours of work and
+        /// seventeen thousand chances to half-finish. This reads the worn set
+        /// once, values the batch in memory against the same ValueEquipment
+        /// every single sale uses, and deletes with one statement - so the
+        /// operation either happens or does not.
+        ///
+        /// The DELETE repeats the SELECT's predicate rather than listing the
+        /// ids it just read: inside one Serializable transaction the two see
+        /// the same rows, and an id list of seventeen thousand parameters is a
+        /// statement no driver should be asked to plan.
+        /// </summary>
+        public static async Task<BulkRemovalOutcome> RemoveEquipmentUpToTierAsync(
+            FolkIdleDbContext db, long playerId, int maxQualityTier, bool sell)
+        {
+            if (maxQualityTier < 1 || maxQualityTier > MaxSweepableQualityTier)
+            {
+                return new BulkRemovalOutcome();
+            }
+
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try
+            {
+                var worn = await LoadWornEquipmentIdsAsync(db, playerId);
+
+                // Long[] rather than the HashSet: Npgsql maps an array
+                // parameter to `<> ALL(...)`, which is one predicate the
+                // planner can use, instead of expanding to a chain of
+                // inequalities that grows with the roster.
+                long[] wornIds = worn.Count == 0 ? new long[] { 0L } : System.Linq.Enumerable.ToArray(worn);
+
+                // Counted with the SAME tier predicate as the sweep, not as
+                // `worn.Count`: a player wearing a Legendary sword has an item
+                // this sweep was never going to touch, and reporting it as
+                // "kept back because it is worn" would explain a decision the
+                // threshold had already made.
+                int skippedWorn = await db.EquipmentInstances
+                    .AsNoTracking()
+                    .CountAsync(e => e.PlayerId == playerId
+                        && e.QualityTier <= maxQualityTier
+                        && wornIds.Contains(e.Id));
+
+                var doomed = await db.EquipmentInstances
+                    .AsNoTracking()
+                    .Where(e => e.PlayerId == playerId
+                        && e.QualityTier <= maxQualityTier
+                        && !wornIds.Contains(e.Id))
+                    .Select(e => new { e.BaseItemId, e.QualityTier })
+                    .ToListAsync();
+
+                if (doomed.Count == 0)
+                {
+                    await transaction.RollbackAsync();
+                    return new BulkRemovalOutcome { SkippedWornCount = skippedWorn };
+                }
+
+                long gold = 0L;
+                if (sell)
+                {
+                    for (int i = 0; i < doomed.Count; i++)
+                    {
+                        gold += ValueEquipment(doomed[i].BaseItemId, doomed[i].QualityTier);
+                    }
+                }
+
+                int removed = await db.EquipmentInstances
+                    .Where(e => e.PlayerId == playerId
+                        && e.QualityTier <= maxQualityTier
+                        && !wornIds.Contains(e.Id))
+                    .ExecuteDeleteAsync();
+
+                if (gold > 0)
+                {
+                    await CreditGoldAsync(db, playerId, gold);
+                    await db.SaveChangesAsync();
+                }
+
+                await transaction.CommitAsync();
+
+                return new BulkRemovalOutcome
+                {
+                    RemovedCount = removed,
+                    GoldGained = gold,
+                    SkippedWornCount = skippedWorn
+                };
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return new BulkRemovalOutcome();
             }
         }
 
