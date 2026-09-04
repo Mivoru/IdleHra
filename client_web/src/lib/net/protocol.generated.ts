@@ -19,6 +19,7 @@ export const PacketType = {
   RequestChatMessage: "RequestChatMessage",
   ResponseChatMessage: "ResponseChatMessage",
   ResponseLootDrop: "ResponseLootDrop",
+  ResponseCombatEvent: "ResponseCombatEvent",
 } as const;
 
 export type PacketTypeName = (typeof PacketType)[keyof typeof PacketType];
@@ -87,7 +88,7 @@ export interface ClientCommand {
   RerollStopAffixIndex: number;
 }
 
-/** StateUpdatePacket - 779 bytes on the binary wire. */
+/** StateUpdatePacket - 787 bytes on the binary wire. */
 export interface StateUpdate {
   readonly type: typeof PacketType.StateUpdate;
   PlayerId: number;
@@ -106,6 +107,8 @@ export interface StateUpdate {
   CurrentMonsterId: number;
   CurrentMonsterHp: number;
   PlayerHp: number;
+  CurrentMonsterMaxHp: number;
+  PlayerMaxHp: number;
   Quarantine_Active: number;
   CurrentLevel: number;
   CurrentXp: number;
@@ -334,6 +337,18 @@ export interface ResponseLootDrop {
   DropKind: number;
 }
 
+/** ResponseCombatEventPacket - 26 bytes on the binary wire. */
+export interface ResponseCombatEvent {
+  readonly type: typeof PacketType.ResponseCombatEvent;
+  PlayerId: number;
+  MonsterId: number;
+  Amount: number;
+  MonsterHpAfter: number;
+  Sequence: number;
+  EventKind: number;
+  Flags: number;
+}
+
 /** Fields a client fills in; everything omitted defaults to zero server-side. */
 export type AuthHandshakeDraft = Partial<Omit<AuthHandshake, 'type'>>;
 export type ClientCommandDraft = Partial<Omit<ClientCommand, 'type'>>;
@@ -341,6 +356,7 @@ export type StateUpdateDraft = Partial<Omit<StateUpdate, 'type'>>;
 export type RequestChatMessageDraft = Partial<Omit<RequestChatMessage, 'type'>>;
 export type ResponseChatMessageDraft = Partial<Omit<ResponseChatMessage, 'type'>>;
 export type ResponseLootDropDraft = Partial<Omit<ResponseLootDrop, 'type'>>;
+export type ResponseCombatEventDraft = Partial<Omit<ResponseCombatEvent, 'type'>>;
 
 /** The command opcodes. Numbering has deliberate gaps - see CommandType in C#. */
 export const CommandType = {
@@ -420,10 +436,11 @@ export type CommandTypeName = keyof typeof CommandType;
 export const PACKET_BYTE_SIZE = {
   AuthHandshake: 530,
   ClientCommand: 339,
-  StateUpdate: 779,
+  StateUpdate: 787,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
   ResponseLootDrop: 22,
+  ResponseCombatEvent: 26,
 } as const;
 
 /** Server-computed challenge answers. See tests/antiCheat.test.ts. */

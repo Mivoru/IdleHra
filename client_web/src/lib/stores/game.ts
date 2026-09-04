@@ -16,6 +16,7 @@ import {
   type InterpolatedFields,
 } from '../net/interpolation';
 import { DamageFeed, type DamageEvent } from './damage';
+import { pushCombatEvent, resetCombatLog } from './combatLog';
 import { CommandResultFeed, COMMAND_RESULT_SUCCESS, type CommandResultEntry } from './commandResults';
 import { queryClient } from '../net/queryClient';
 import { play, playHit, playWithFallback } from '../ui/audio';
@@ -28,7 +29,7 @@ import {
   achievementName,
   type AchievementToast,
 } from './achievementToasts';
-import type { StateUpdate, ResponseChatMessage, ResponseLootDrop } from '../net/protocol.generated';
+import type { StateUpdate, ResponseChatMessage, ResponseLootDrop, ResponseCombatEvent } from '../net/protocol.generated';
 
 // ---------------------------------------------------------------------------
 // Connection
@@ -422,6 +423,9 @@ export function startSession(token: string): void {
   // A different account has a different maximum; carrying the old one over
   // would scale the new player's bar against a stranger's health.
   observedMaxPlayerHp.set(1);
+  // A new session numbers its events from scratch, so a carried-over sequence
+  // high-water mark would swallow every line until the server caught up to it.
+  resetCombatLog();
   lastCraftedCount = -1;
   lastLevel = 0;
   lastMonsterHp = 0;
@@ -697,6 +701,12 @@ export function startSession(token: string): void {
       }
 
       startPump();
+    },
+
+    // Modul: the fight log's only source. See stores/combatLog.ts for why it
+    // is a server event and not another inference from CurrentMonsterHp.
+    onCombatEvent: (packet: ResponseCombatEvent) => {
+      pushCombatEvent(packet);
     },
 
     onLootDrop: (packet: ResponseLootDrop) => {

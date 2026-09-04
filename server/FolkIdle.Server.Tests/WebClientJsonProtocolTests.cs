@@ -32,7 +32,7 @@ namespace FolkIdle.Server.Tests
     // Deliberately fixture-free: pure encoding, no Postgres, no Redis.
     public class WebClientJsonProtocolTests
     {
-        // The six packets this wire carries. Restated here rather than read
+        // The seven packets this wire carries. Restated here rather than read
         // out of PacketJsonCodec, for the same reason as the field lists: a
         // seventh packet type added to the protocol and forgotten by the
         // codec must fail a test, not silently become unsendable.
@@ -44,6 +44,7 @@ namespace FolkIdle.Server.Tests
             yield return new object[] { typeof(RequestChatMessagePacket) };
             yield return new object[] { typeof(ResponseChatMessagePacket) };
             yield return new object[] { typeof(ResponseLootDropPacket) };
+            yield return new object[] { typeof(ResponseCombatEventPacket) };
         }
 
         // ---------- the contract ----------
@@ -174,7 +175,7 @@ namespace FolkIdle.Server.Tests
         }
 
         // The cross-check between this file's independently-restated list of
-        // the six packet types and the codec's own registry. Adding a seventh
+        // the packet types and the codec's own registry. Adding an eighth
         // packet to either side without the other fails here, which is the
         // only reason both lists exist rather than one reading the other.
         [Fact]
@@ -193,14 +194,14 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void DiscriminatorsAreDistinctAcrossAllSixPacketTypes()
+        public void DiscriminatorsAreDistinctAcrossEveryPacketType()
         {
             string[] discriminators = AllPacketTypes()
                 .Select(row => PacketJsonCodec.DiscriminatorFor((Type)row[0]))
                 .ToArray();
 
-            Assert.Equal(6, discriminators.Length);
-            Assert.Equal(6, discriminators.Distinct(StringComparer.Ordinal).Count());
+            Assert.Equal(7, discriminators.Length);
+            Assert.Equal(7, discriminators.Distinct(StringComparer.Ordinal).Count());
             Assert.All(discriminators, value => Assert.False(string.IsNullOrWhiteSpace(value)));
         }
 

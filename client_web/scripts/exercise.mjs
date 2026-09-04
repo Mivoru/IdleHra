@@ -279,6 +279,56 @@ await page.waitForTimeout(4000);
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r(null))));
   const frameMs = Date.now() - started;
   record('the page stays responsive during combat', frameMs < 400, `${frameMs}ms to the next frame`);
+
+  // Modul: THE FIGHT LOG HAS TO FILL, not merely render.
+  //
+  // A panel that draws perfectly and never receives anything is this project's
+  // worst-shipped defect shape, and this one is more exposed to it than most:
+  // it is fed by a dedicated server packet (ResponseCombatEventPacket) rather
+  // than by the snapshot every other screen reads, so the whole feed can be
+  // dead while the screen looks finished.
+  //
+  // It exists because the snapshot stream CANNOT describe a fast fight -
+  // measured 2026-09-04, a geared character killed an early monster every
+  // ~1400ms against snapshots every ~1090ms, so CurrentMonsterHp took one
+  // single value across 27 of them and there was nothing to animate or infer.
+  const logLines = await page.evaluate(() => {
+    const list = document.querySelector('.fightlog');
+    return list ? [...list.querySelectorAll('li')].map((li) => li.textContent.trim()) : null;
+  });
+  record('the fight log renders', logLines !== null);
+  record(
+    'the fight log fills from the server feed',
+    (logLines?.length ?? 0) > 0,
+    `${logLines?.length ?? 0} lines`,
+  );
+  // Both directions of the fight, so a feed that only reports one half is
+  // still a failure. The player's own swing and the monster's reply are
+  // resolved in different branches of the tick and published separately.
+  record(
+    'the log reports both sides of the fight',
+    (logLines ?? []).some((l) => /^(Critical! )?You (hit|miss)/.test(l))
+      && (logLines ?? []).some((l) => /(hits|misses) you/.test(l)),
+    (logLines ?? [])[0] ?? '',
+  );
+
+  // Modul: the bar's maximum comes from the SERVER now. The client used to
+  // compute it as `MaxHp * 5` for an unbeaten boss, which ignores First Blood
+  // softening the penalty, and scaled the player's own bar against a session
+  // high-water mark of the largest PlayerHp ever seen - caught reading
+  // "2320 / 2320" while PlayerHp was 3701.
+  const barsHonest = await page.evaluate(() => {
+    const bars = [...document.querySelectorAll('.hpblock [role="progressbar"]')];
+    return bars.map((b) => ({
+      now: Number(b.getAttribute('aria-valuenow')),
+      max: Number(b.getAttribute('aria-valuemax')),
+    }));
+  });
+  record(
+    'no health bar reports more health than its maximum',
+    barsHonest.length > 0 && barsHonest.every((b) => b.max > 0 && b.now <= b.max),
+    JSON.stringify(barsHonest),
+  );
 }
 
 // --- forge: fusion and reroll ------------------------------------------------

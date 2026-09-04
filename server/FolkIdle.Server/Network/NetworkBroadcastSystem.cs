@@ -355,6 +355,7 @@ namespace FolkIdle.Server.Network
             SubscribeToSessionEviction();
             _chatEngine.Subscribe();
             Task.Run(LootDropDispatchLoopAsync);
+            Task.Run(CombatEventDispatchLoopAsync);
         }
 
         // Modul: Loot Event Feed. Drains PlayerSessionRegistry.OutboundLootDropQueue
@@ -410,6 +411,58 @@ namespace FolkIdle.Server.Network
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Loot drop dispatch failed for player {drop.PlayerId}: {ex.Message}");
+                }
+            }
+        }
+
+        // Modul: Combat Event Feed. Drains Domain.Combat.CombatEventFeed and
+        // pushes each resolved blow to the socket of the player it belongs to.
+        //
+        // The same shape as the loot loop directly above, for the same reasons,
+        // with one difference worth knowing: combat events are produced by the
+        // 10Hz simulation tick itself rather than by a 3-second cron, so the
+        // idle sleep is shorter. At 50ms a burst of events resolved in one tick
+        // would be delivered over several hundred milliseconds and arrive
+        // visibly after the health change they explain.
+        //
+        // The queue is bounded and drops when full (see CombatEventFeed), so a
+        // client that cannot keep up costs the simulation nothing.
+        private readonly byte[] _combatEventDispatchBuffer = new byte[Marshal.SizeOf<ResponseCombatEventPacket>()];
+
+        private async Task CombatEventDispatchLoopAsync()
+        {
+            while (_isRunning)
+            {
+                if (!Domain.Combat.CombatEventFeed.TryDequeue(out ResponseCombatEventPacket combatEvent))
+                {
+                    await Task.Delay(20);
+                    continue;
+                }
+
+                if (!_connectedClients.TryGetValue(combatEvent.PlayerId, out var session) || session.Socket.State != WebSocketState.Open)
+                {
+                    // Nobody is watching. The blow already happened and is
+                    // already reflected in the authoritative state; only the
+                    // on-screen line is lost.
+                    continue;
+                }
+
+                try
+                {
+                    if (session.UseJsonProtocol)
+                    {
+                        byte[] json = PacketJsonCodec.SerializeToUtf8(ref combatEvent);
+                        await session.SendAsync(new ArraySegment<byte>(json), WebSocketMessageType.Text, true, CancellationToken.None);
+                    }
+                    else
+                    {
+                        MemoryMarshal.Write(_combatEventDispatchBuffer, in combatEvent);
+                        await session.SendAsync(new ArraySegment<byte>(_combatEventDispatchBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Combat event dispatch failed for player {combatEvent.PlayerId}: {ex.Message}");
                 }
             }
         }

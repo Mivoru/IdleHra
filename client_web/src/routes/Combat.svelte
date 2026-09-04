@@ -22,6 +22,13 @@
   import Burst from '../lib/ui/Burst.svelte';
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
   import SessionLoot from '../lib/ui/SessionLoot.svelte';
+  import {
+    combatLog,
+    describeCombatLine,
+    killPulse,
+    CombatEventKind,
+    CombatEventFlag,
+  } from '../lib/stores/combatLog';
 
   const snap = $derived($playerState);
 
@@ -73,6 +80,31 @@
     return () => clearTimeout(handle);
   });
 
+  // Modul: A MONSTER USED TO SIMPLY VANISH AND BE REPLACED.
+  //
+  // On a fast fight the death is the only moment there IS. Measured
+  // 2026-09-04: a geared character kills an early monster inside a single
+  // snapshot, so the health bar never animates and the target just becomes a
+  // different one - which reads as the screen glitching rather than as a
+  // victory. The server now says outright that a kill happened
+  // (ResponseCombatEventPacket, KindKill), which is the only signal that can
+  // arrive in time to animate it.
+  //
+  // Keyed on a kill COUNTER, not on the monster id: two Field Mice in a row
+  // are the same id, and a value that does not change cannot restart an
+  // animation.
+  let dying = $state(false);
+
+  $effect(() => {
+    // Read so the effect re-runs on each kill; the value itself is not used.
+    void $killPulse;
+    if ($killPulse === 0) return;
+
+    dying = true;
+    const handle = setTimeout(() => (dying = false), 480);
+    return () => clearTimeout(handle);
+  });
+
   const FIRST_CLEAR_HP = 5;
   const defeatedMask = $derived(snap?.DefeatedRegionBossMask ?? 0);
 
@@ -87,9 +119,36 @@
     return region > 0 && (defeatedMask & (1 << (region - 1))) === 0;
   }
 
+  // Modul: THE SERVER SAYS WHAT THE BAR'S MAXIMUM IS. This used to be
+  // `monster.MaxHp * FIRST_CLEAR_HP` computed here, which was a hand-copy of
+  // BossFirstClearRules and wrong twice: First Blood softens the first-clear
+  // penalty (about 3.4x rather than 5x at level 8) and endgame regions scale
+  // authored health on top. A bar whose maximum is too large sits part-empty
+  // and barely moves, which is one of the two halves of "I can't see the
+  // fight".
+  //
+  // The monster LIST below still uses the local rule, because there is no
+  // snapshot for a monster the player is not fighting - and being approximate
+  // about a monster you have not met is fine in a way that being wrong about
+  // the one in front of you is not.
+  const serverMonsterMaxHp = $derived(snap?.CurrentMonsterMaxHp ?? 0);
+
   function shownMaxHp(monster: { Id: number; MaxHp: number }): number {
     return isFirstClearPending(monster.Id) ? monster.MaxHp * FIRST_CLEAR_HP : monster.MaxHp;
   }
+
+  /** The active monster's true maximum, from the server, with the local rule
+   *  as a fallback for the frame before the first snapshot lands. */
+  function activeMaxHp(monster: { Id: number; MaxHp: number }): number {
+    return serverMonsterMaxHp > 0 ? serverMonsterMaxHp : shownMaxHp(monster);
+  }
+
+  // Modul: and the player's own maximum, which was a SESSION HIGH-WATER MARK
+  // of the largest PlayerHp ever seen. A measured trace caught the bar reading
+  // "2320 / 2320" while PlayerHp was 3701: the mark starts at whatever the
+  // first snapshot happened to show and only ever grows. observedMaxPlayerHp
+  // is kept as the fallback for the same reason as above.
+  const playerMaxHp = $derived((snap?.PlayerMaxHp ?? 0) > 0 ? (snap?.PlayerMaxHp ?? 1) : $observedMaxPlayerHp);
 
   // predecessor's boss is still standing (CommandResultCode.RegionLocked), so
   // the list has to say which those are. Offering a Fight button that is
@@ -275,9 +334,9 @@
         <span class="dim">Your health</span>
         <Bar
           value={visual?.PlayerHp ?? snap.PlayerHp}
-          max={$observedMaxPlayerHp}
+          max={playerMaxHp}
           color="var(--good)"
-          label={`${Math.round(visual?.PlayerHp ?? snap.PlayerHp)} / ${$observedMaxPlayerHp}`}
+          label={`${Math.round(visual?.PlayerHp ?? snap.PlayerHp).toLocaleString()} / ${playerMaxHp.toLocaleString()}`}
         />
       </div>
 
@@ -289,7 +348,7 @@
                only ever plays once. -->
           {#key hitPulse}
             <span class="hit-shake">
-              <span class="struckwrap" class:struck>
+              <span class="struckwrap" class:struck class:dying>
                 <MonsterPortrait monsterId={activeMonster.Id} name={activeMonster.Name} size="lg" />
                 <!-- Modul: the mark the blow leaves, drawn over the portrait it
                      landed on. Shape depends on the weapon family, brightness on
@@ -302,12 +361,33 @@
             <span class="dim">Fighting {activeMonster.Name}</span>
             <Bar
               value={visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp}
-              max={shownMaxHp(activeMonster)}
+              max={activeMaxHp(activeMonster)}
               color="var(--danger)"
-              label={`${Math.round(visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp).toLocaleString()} / ${shownMaxHp(activeMonster).toLocaleString()}`}
+              label={`${Math.round(visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp).toLocaleString()} / ${activeMaxHp(activeMonster).toLocaleString()}`}
             />
           </div>
         </div>
+
+        <!-- Modul: the fight log, under the monster's picture and health bar
+             exactly where it was asked for.
+             {#if} rather than a <details>: a closed <details> whose child
+             carries an author display rule keeps its content live and
+             clickable on top of whatever is below it, which this project has
+             already shipped once. -->
+        {#if $combatLog.length > 0}
+          <ol class="fightlog" aria-label="Fight log">
+            {#each $combatLog as line (line.id)}
+              <li class:crit={(line.flags & CombatEventFlag.Crit) !== 0}
+                  class:miss={line.kind === CombatEventKind.PlayerMiss || line.kind === CombatEventKind.MonsterMiss}
+                  class:kill={line.kind === CombatEventKind.Kill}
+                  class:heal={line.kind === CombatEventKind.Lifesteal}
+                  class:incoming={line.kind === CombatEventKind.MonsterHit}>
+                {describeCombatLine(line, monsterName(registry, line.monsterId))}
+              </li>
+            {/each}
+          </ol>
+        {/if}
+
         <button onclick={stop}>Stop fighting</button>
       {:else if stalled}
         <!-- Deployed, but the simulation is not running. Saying "not in
@@ -682,6 +762,91 @@
   .grow {
     flex: 1;
     min-width: 0;
+  }
+
+  /* Modul: the death. Deliberately a different shape from the hit flash - a
+     flinch says "that hurt" and this says "that was the last one", so they
+     must not read as the same event at different intensities. Falls, turns
+     grey and fades, then the next monster arrives on the following snapshot.
+     `forwards` so it holds the final frame rather than snapping back for the
+     few hundred milliseconds before the replacement lands. */
+  .dying {
+    animation: monster-death 480ms ease-in forwards;
+  }
+
+  @keyframes monster-death {
+    0% {
+      transform: rotate(0) translateY(0) scale(1);
+      filter: grayscale(0);
+      opacity: 1;
+    }
+    35% {
+      transform: rotate(-8deg) translateY(2px) scale(1.04);
+      filter: grayscale(0.3) brightness(1.4);
+      opacity: 1;
+    }
+    100% {
+      transform: rotate(-70deg) translateY(26px) scale(0.82);
+      filter: grayscale(1) brightness(0.6);
+      opacity: 0;
+    }
+  }
+
+  /* A player who does not want the motion should not be given it. */
+  @media (prefers-reduced-motion: reduce) {
+    .dying {
+      animation: none;
+      opacity: 0.35;
+      filter: grayscale(1);
+    }
+  }
+
+  /* Modul: the fight log. Fixed height with its own scroll, so a log that
+     fills cannot push the Stop fighting button off the screen - and so it
+     occupies the same space whether it holds two lines or fifty. Newest at
+     the top, because that is where the eye already is. */
+  .fightlog {
+    list-style: none;
+    margin: 0.6rem 0 0;
+    padding: 0.4rem 0.6rem;
+    max-height: 11rem;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-sunken, rgba(0, 0, 0, 0.12));
+    font-size: 0.82rem;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .fightlog li {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0.9;
+  }
+
+  .fightlog li.crit {
+    color: var(--warn, #e8b339);
+    font-weight: 600;
+  }
+
+  .fightlog li.miss {
+    opacity: 0.5;
+    font-style: italic;
+  }
+
+  .fightlog li.incoming {
+    color: var(--danger);
+  }
+
+  .fightlog li.heal {
+    color: var(--good);
+  }
+
+  .fightlog li.kill {
+    color: var(--accent);
+    font-weight: 600;
   }
 
   .name {

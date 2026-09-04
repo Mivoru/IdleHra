@@ -243,6 +243,26 @@ namespace FolkIdle.Server.Network
         public int CurrentMonsterId;
         public int CurrentMonsterHp;
         public int PlayerHp;
+
+        // Modul: BOTH HEALTH BARS HAD A FICTIONAL MAXIMUM, and the client was
+        // re-deriving a server rule to get one.
+        //
+        // Neither maximum was on this wire, so the client invented both. The
+        // monster's came from `MaxHp * 5` in Combat.svelte - a hand-copy of
+        // BossFirstClearRules that does not know First Blood softens the
+        // penalty (about 3.4x at level 8) and does not know
+        // ContentRegistry.GetScaledMonsterMaxHp multiplies past region 5. The
+        // player's came from `observedMaxPlayerHp`, a SESSION HIGH-WATER MARK:
+        // a measured trace showed the bar reading "2320 / 2320" while PlayerHp
+        // was 3701, because the largest number seen so far was all the client
+        // had to scale against.
+        //
+        // Both are the same defect - the client deciding something. It decides
+        // nothing now: the server states both, from the same call the spawn
+        // uses.
+        public int CurrentMonsterMaxHp;
+        public int PlayerMaxHp;
+
         public byte Quarantine_Active;
         
         public int CurrentLevel;

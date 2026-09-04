@@ -271,6 +271,18 @@ namespace FolkIdle.Server.Engine
         public long WorldBossCurrentHp;
         public int ActiveGlobalEventId;
 
+        // Modul: the character's real maximum health, in milli, so the client
+        // can scale a health bar against it.
+        //
+        // This is derived inside ProcessSubTick from level, lineage, gear,
+        // inheritance, the Fortitude bough and the Endurance aptitude, and it
+        // was thrown away every tick. The client therefore scaled the player's
+        // bar against a session high-water mark of PlayerHp, which is wrong
+        // from the first frame and only ever coincidentally right. Cached here
+        // so the wire can carry it; not persisted, because it is recomputed
+        // from scratch on every tick anyway.
+        public long CachedEffectiveMaxHp;
+
         // Village Infrastructure
         public int CachedCurrentToolTier;
 

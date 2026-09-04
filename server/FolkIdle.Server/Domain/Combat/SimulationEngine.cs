@@ -3411,6 +3411,19 @@ namespace FolkIdle.Server.Domain.Combat
                                 CurrentMonsterId = currentPayload.CurrentMonsterId,
                                 CurrentMonsterHp = (int)(currentPayload.CurrentMonsterHp / 1000L),
                                 PlayerHp = currentPayload.PlayerHp / 1000,
+
+                                // Modul: the same call the spawn makes, so the
+                                // bar's maximum and the monster's actual health
+                                // come from one rule. The client used to
+                                // hand-copy this as `MaxHp * 5` and get First
+                                // Blood and endgame scaling wrong.
+                                CurrentMonsterMaxHp = currentPayload.CurrentMonsterId > 0
+                                    ? (int)BossFirstClearRules.MaxHpFor(
+                                        currentPayload.DefeatedRegionBossMask,
+                                        currentPayload.CurrentMonsterId,
+                                        currentPayload.Skill_FirstBlood)
+                                    : 0,
+                                PlayerMaxHp = (int)(currentPayload.CachedEffectiveMaxHp / 1000L),
                                 Quarantine_Active = currentPayload.Quarantine_Active ? (byte)1 : (byte)0,
                                 CurrentLevel = currentPayload.CurrentLevel,
                                 CurrentXp = currentPayload.CurrentXp,
@@ -5357,6 +5370,11 @@ namespace FolkIdle.Server.Domain.Combat
                 * BreedingAptitudes.BonusPercentFor(payload.Aptitude_Endurance) / 100f);
             int effectiveMaxHp = (int)effectiveMilliHp;
 
+            // Modul: and the client is told what the bar's maximum IS. Every
+            // term above this line feeds it, and all of it used to be discarded
+            // at the end of the tick - see TickStatePayload.CachedEffectiveMaxHp.
+            payload.CachedEffectiveMaxHp = effectiveMilliHp;
+
             // Modul: Deferred Part 5 Implementation, Part 2. Active food
             // buff: flat HP regeneration while in combat - 2 percent of
             // effective max HP per second (effectiveMaxHp / 500 per 10Hz
@@ -5592,6 +5610,10 @@ namespace FolkIdle.Server.Domain.Combat
                     // scheduler for one effect would be a much larger change
                     // than the effect is worth. The player-visible result is
                     // the same - a matching 4-piece set burns for extra damage.
+                    // Modul: hoisted out of the block below only so the combat
+                    // event at the end of this swing can say the burn happened.
+                    // The arithmetic is unchanged.
+                    int burnDamageDealt = 0;
                     if (combatStats.SetBurnApplicationActive)
                     {
                         int burnDamage = (int)(netDamage * BurnDamageFraction);
@@ -5599,6 +5621,7 @@ namespace FolkIdle.Server.Domain.Combat
                         {
                             payload.CurrentMonsterHp -= burnDamage;
                             payload.TargetStatusEffectBitmask |= ActiveSkillEngine.StatusFlagBurning;
+                            burnDamageDealt = burnDamage;
                         }
                     }
 
@@ -5622,6 +5645,7 @@ namespace FolkIdle.Server.Domain.Combat
                     // percentage of a large hit is a full heal at depth -
                     // lifesteal has to be sustain, not immunity, or it makes
                     // every fight after the first one unloseable.
+                    long lifestealHealed = 0;
                     if (combatStats.LifestealPct > 0)
                     {
                         long lifestealAmount = (long)(netDamage * (combatStats.LifestealPct / 100f));
@@ -5630,8 +5654,59 @@ namespace FolkIdle.Server.Domain.Combat
 
                         payload.PlayerHp += (int)lifestealAmount;
                         if (payload.PlayerHp > effectiveMaxHp) payload.PlayerHp = effectiveMaxHp;
+                        lifestealHealed = lifestealAmount;
                     }
 
+                    // Modul: AND THE PLAYER IS TOLD WHAT JUST HAPPENED.
+                    //
+                    // Everything above resolved a blow and then discarded the
+                    // detail, leaving the client to infer the whole fight from
+                    // the difference between two CurrentMonsterHp snapshots.
+                    // Measured 2026-09-04: snapshots arrive every ~1090ms and a
+                    // geared character kills an early monster every ~1400ms, so
+                    // across 27 consecutive snapshots that field took exactly
+                    // ONE value and there was nothing to infer. See
+                    // ResponseCombatEventPacket.
+                    //
+                    // Reported in whole hit points, and burn is folded into the
+                    // hit that applied it - it is not a second swing, and a log
+                    // that split it would read as one.
+                    CombatEventFeed.Publish(
+                        payload.PlayerId,
+                        payload.CurrentMonsterId,
+                        Network.ResponseCombatEventPacket.KindPlayerHit,
+                        (int)((netDamage + burnDamageDealt) / 1000L),
+                        (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
+                        (byte)((payload.LastHitWasCrit == 1 ? Network.ResponseCombatEventPacket.FlagCrit : 0)
+                             | (burnDamageDealt > 0 ? Network.ResponseCombatEventPacket.FlagBurn : 0)));
+
+                    // Separate line, because it is health arriving rather than
+                    // damage leaving - folding it into the hit above would make
+                    // the two indistinguishable in a log.
+                    if (lifestealHealed >= 1000L)
+                    {
+                        CombatEventFeed.Publish(
+                            payload.PlayerId,
+                            payload.CurrentMonsterId,
+                            Network.ResponseCombatEventPacket.KindLifesteal,
+                            (int)(lifestealHealed / 1000L),
+                            (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L));
+                    }
+                }
+                else
+                {
+                    // Modul: A MISS IS THE ONE EVENT NO HEALTH DIFFERENCE CAN
+                    // IMPLY. It moves nothing, so before this feed existed it
+                    // was invisible by construction - the fight simply appeared
+                    // to pause. Accuracy and the monster's dodge rating are both
+                    // real stats, and this is the only place they are ever
+                    // visible.
+                    CombatEventFeed.Publish(
+                        payload.PlayerId,
+                        payload.CurrentMonsterId,
+                        Network.ResponseCombatEventPacket.KindPlayerMiss,
+                        0,
+                        (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L));
                 }
             }
 
@@ -5735,14 +5810,57 @@ namespace FolkIdle.Server.Domain.Combat
                     // Only reflects while a monster is actually alive, so the
                     // final blow cannot reflect into an already-dead target and
                     // drive CurrentMonsterHp further negative.
+                    int thornsReflected = 0;
                     if (combatStats.SetThornsReflectionActive && payload.CurrentMonsterHp > 0)
                     {
                         int reflectedDamage = (int)(finalDamage * ThornsReflectionFraction);
                         if (reflectedDamage > 0)
                         {
                             payload.CurrentMonsterHp -= reflectedDamage;
+                            thornsReflected = reflectedDamage;
                         }
                     }
+
+                    // Modul: the incoming half of the fight log.
+                    //
+                    // BLOCKED IS A REAL THING HERE and only here: monsters carry
+                    // no block stat, so a player's swing is never blocked, but
+                    // the player's own BlockStrengthPct (CON-derived) shaves a
+                    // fraction off what armour did not already stop. Armour
+                    // itself is deliberately NOT an event - it reduces every hit
+                    // rather than stopping any, so it is a smaller number on
+                    // this line, not a line of its own.
+                    CombatEventFeed.Publish(
+                        payload.PlayerId,
+                        payload.CurrentMonsterId,
+                        Network.ResponseCombatEventPacket.KindMonsterHit,
+                        finalDamage / 1000,
+                        (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
+                        (byte)((monsterCritMult > 1.0f ? Network.ResponseCombatEventPacket.FlagCrit : 0)
+                             | (blockStrengthFraction > 0f ? Network.ResponseCombatEventPacket.FlagBlocked : 0)));
+
+                    if (thornsReflected > 0)
+                    {
+                        CombatEventFeed.Publish(
+                            payload.PlayerId,
+                            payload.CurrentMonsterId,
+                            Network.ResponseCombatEventPacket.KindPlayerHit,
+                            thornsReflected / 1000,
+                            (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
+                            Network.ResponseCombatEventPacket.FlagThorns);
+                    }
+                }
+                else
+                {
+                    // The monster swung and the player's dodge took it. Same
+                    // argument as the player's own miss above: nothing moves, so
+                    // without this line the fight looks like it stopped.
+                    CombatEventFeed.Publish(
+                        payload.PlayerId,
+                        payload.CurrentMonsterId,
+                        Network.ResponseCombatEventPacket.KindMonsterMiss,
+                        0,
+                        (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L));
                 }
             }
 
@@ -5903,6 +6021,26 @@ namespace FolkIdle.Server.Domain.Combat
                 // Modul: and the same removal on the live-kill path. Two copies
                 // of one bonus, which is why it is worth saying twice that the
                 // payload fields behind it are fossils.
+
+                // Modul: THE DEATH IS THE ONLY MOMENT A FAST FIGHT HAS.
+                //
+                // A geared character kills an early monster inside a single
+                // snapshot, so the health bar never animates and the monster is
+                // simply gone and replaced. This line is what tells the client
+                // a kill happened at all, as opposed to the target silently
+                // changing - which is what it looked like before.
+                //
+                // Amount carries the xp this kill is about to pay, read from
+                // the content reward rather than recomputed: the multiplied
+                // figure is not known until ProcessMonsterDeath has run, and a
+                // second copy of that arithmetic is exactly the drift this
+                // codebase keeps paying for.
+                CombatEventFeed.Publish(
+                    payload.PlayerId,
+                    activeMonster.Id,
+                    Network.ResponseCombatEventPacket.KindKill,
+                    activeMonster.BaseXpReward,
+                    0);
 
                 int seasonalCombatXp = activeMonster.BaseXpReward * finalXpMultiplier / 100;
                 long victoryXpBefore = payload.CurrentXp;
