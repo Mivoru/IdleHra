@@ -50,6 +50,52 @@ namespace FolkIdle.Server.Engine
         public static string GetName(int tier)
             => tier >= 1 && tier < _tierNames.Length ? _tierNames[tier] : $"tier {tier}";
 
+        // Modul: WHAT AN ITEM'S QUALITY TIER IS WORTH, 2026-09-04.
+        //
+        // Reported by the player as "there isn't much difference between them,
+        // and the biggest difference is in tiers and not the 14 rarities", and
+        // the arithmetic agreed more than the report did. Measured before this
+        // existed (ItemRarityPowerTests prints the baseline):
+        //
+        //   the WHOLE 14-tier rarity ladder was worth   1.48x
+        //   one region step (base attack x3) was worth  3.00x
+        //
+        // So walking from the worst item in the game to the best one bought
+        // less than half of a single region step. Quality tier contributed
+        // exactly ZERO to base power - it only decided how many affixes rolled,
+        // 1 to 5, and a weapon's affixes are nearly all Percentage law, whose
+        // magnitude reads neither the region nor the affix-rarity multiplier.
+        // The whole ladder could therefore never be worth more than about 12%.
+        //
+        // THE DESIGN DECISION, taken deliberately: a full rarity ladder is now
+        // worth the same as one region step. Rarity becomes an axis of
+        // progression rather than a colour, but never overtakes actually
+        // playing the game - a Transcendent from the region below still loses
+        // to a Normal from two regions above.
+        //
+        // ANCHORED AT TIER 1, not at the mean. Normal keeps exactly the power
+        // it has today and every tier above it gains; nothing a player already
+        // owns gets weaker. That is a choice with a cost - average player power
+        // rises - and the cost is paid where it belongs, by the monster ladder,
+        // rather than by silently nerfing the gear people are already wearing.
+        //
+        // Smooth across all fourteen tiers by construction, which is also what
+        // ends the old defect that nine of thirteen adjacent pairs were
+        // mechanically identical: every tier is now worth about 7.4% more base
+        // power than the one below it, including Godly to Transcendent.
+        // Tuned, not guessed: 2.53 overshot to 3.43x because wiring the item's
+        // tier into affix rarity contributed more than the first estimate
+        // budgeted for. ItemRarityPowerTests prints the resulting ladder and
+        // fails if it drifts, so this number and that table cannot separate.
+        public const double TopTierPowerMultiplier = 2.12;
+
+        public static double PowerMultiplier(int tier)
+        {
+            if (tier <= Normal) return 1.0;
+            if (tier >= Transcendent) return TopTierPowerMultiplier;
+            return System.Math.Pow(TopTierPowerMultiplier, (tier - 1) / 13.0);
+        }
+
         // Index 0 unused (tiers are 1-based); index 1 (Normal) is never read
         // directly - RollTier computes it as the remainder of the other 13.
         private static readonly double[] _explicitWeights = new double[]

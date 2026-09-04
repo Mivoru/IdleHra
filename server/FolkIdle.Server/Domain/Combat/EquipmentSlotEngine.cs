@@ -651,10 +651,19 @@ namespace FolkIdle.Server.Domain.Combat
                 // Base power folds into the SAME totals the affixes use, so
                 // StatsCalculator needs no new parameter and the value rides
                 // the existing notification/payload path unchanged.
+                // Modul: and the item's QUALITY tier scales that base power.
+                //
+                // It contributed zero until 2026-09-04, which is why the whole
+                // fourteen-tier ladder was worth 1.48x against a region step's
+                // 3.00x - see RarityTier.PowerMultiplier for the measurement
+                // and the decision. Applied here, at the one place base power
+                // is read, so there is a single authority over what a tier is
+                // worth.
                 if (ContentRegistry.TryGetItemDefinitionByBaseId(piece.BaseItemId, out var itemDefinition))
                 {
-                    totals.FlatAttack += itemDefinition.FlatAttackPower;
-                    totals.FlatDefense += itemDefinition.FlatDefenseRating;
+                    double qualityMultiplier = RarityTier.PowerMultiplier(piece.QualityTier);
+                    totals.FlatAttack += (int)System.Math.Round(itemDefinition.FlatAttackPower * qualityMultiplier);
+                    totals.FlatDefense += (int)System.Math.Round(itemDefinition.FlatDefenseRating * qualityMultiplier);
                 }
 
                 // Modul: seven-slot set bonuses. Every worn piece now reports its
