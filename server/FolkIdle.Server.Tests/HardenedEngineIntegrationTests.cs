@@ -7928,15 +7928,22 @@ namespace FolkIdle.Server.Tests
                         $"strongest at {previousStrongestSeconds:F0}s - the step down is too steep.");
                 }
 
-                // Rewards are a flat function of HP across the whole file, so no
-                // single monster is a strictly better grind than any other.
-                // XP is exact; gold is within one because the authored data
-                // rounds MaxHp/20 rather than flooring it (m_02_vine is 48, not
-                // 47), and matching that rounding is not worth pinning.
-                foreach (var monster in new[] { regulars[0], regulars[1], regulars[2], regulars[3], boss })
+                // Rewards are a flat function of HP WITHIN a region, so no
+                // single monster is a strictly better grind than its
+                // neighbours.
+                //
+                // This compared against a global MaxHp/5 and MaxHp/20 until
+                // 2026-09-05. Monster health was then raised per region to
+                // compensate the rarity rework - which made a geared player up
+                // to 1.9x stronger - while XP and gold were deliberately left
+                // alone, so that XP per second did not rise with it. The rate
+                // is therefore per region now; see
+                // MonsterLadderTests.RewardsStillTrackHealthAtOneRatePerRegion,
+                // which is the authority on it.
+                double xpRate = (double)regulars[0].MaxHp / regulars[0].BaseXpReward;
+                foreach (var monster in new[] { regulars[1], regulars[2], regulars[3], boss })
                 {
-                    Assert.Equal(monster.MaxHp / 5, monster.BaseXpReward);
-                    Assert.InRange(monster.BaseGoldReward, (monster.MaxHp / 20) - 1, (monster.MaxHp / 20) + 1);
+                    Assert.InRange((double)monster.MaxHp / monster.BaseXpReward, xpRate * 0.99, xpRate * 1.01);
                 }
             }
         }

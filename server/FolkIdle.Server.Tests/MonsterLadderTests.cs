@@ -151,19 +151,73 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
-        /// Rewards follow HP exactly - XP is a fifth of it and gold a
-        /// twentieth. That relation is what makes pacing solvable on paper
-        /// rather than only by simulation, so a hand edit that breaks it should
-        /// be caught here rather than found in a balance argument months later.
+        /// Rewards follow HP at ONE rate per region - so no monster is a
+        /// strictly better grind than its neighbours, and pacing stays solvable
+        /// on paper rather than only by simulation.
+        ///
+        /// THIS USED TO SAY `XP == MaxHp / 5` AND `gold == MaxHp / 20`, exactly,
+        /// across the whole ladder. That held until 2026-09-05, when the rarity
+        /// rework made a well-geared player up to 1.9x stronger and monster
+        /// health was raised per region to give the fight back its length. XP
+        /// and gold were deliberately NOT raised with it: had they been, XP per
+        /// second would have risen by the same 1.9x and levelling would have run
+        /// away - the pacing the health buff exists to protect.
+        ///
+        /// So the constant is now per region rather than global, and the rule
+        /// that survives is the one that was always the point: WITHIN a region,
+        /// every monster pays the same rate. Stated as a ratio rather than as a
+        /// table of multipliers on purpose - a future rebalance that rescales a
+        /// region uniformly keeps passing, and a hand edit to one monster still
+        /// fails.
         /// </summary>
         [Fact]
-        public void RewardsStillTrackHealthExactly()
+        public void RewardsStillTrackHealthAtOneRatePerRegion()
         {
-            for (int id = ContentRegistry.FirstCanonicalMonsterId;
-                 id < ContentRegistry.FirstCanonicalMonsterId + 5 * ContentRegistry.MonstersPerRegion;
-                 id++)
+            for (int region = 0; region < 5; region++)
             {
-                var m = ContentRegistry.Monsters[id - 1];
+                double xpRate = 0, goldRate = 0;
+
+                for (int slot = 0; slot < ContentRegistry.MonstersPerRegion; slot++)
+                {
+                    int id = ContentRegistry.FirstCanonicalMonsterId + region * ContentRegistry.MonstersPerRegion + slot;
+                    var m = ContentRegistry.Monsters[id - 1];
+
+                    Assert.True(m.BaseXpReward > 0 && m.BaseGoldReward > 0,
+                        $"{ContentRegistry.GetMonsterName(id)} pays nothing");
+
+                    double xp = (double)m.MaxHp / m.BaseXpReward;
+                    double gold = (double)m.MaxHp / m.BaseGoldReward;
+
+                    if (slot == 0)
+                    {
+                        xpRate = xp;
+                        goldRate = gold;
+                        continue;
+                    }
+
+                    // One percent covers the authored rounding (gold rounds
+                    // MaxHp/20 rather than flooring it) and nothing else.
+                    Assert.InRange(xp, xpRate * 0.99, xpRate * 1.01);
+                    Assert.InRange(gold, goldRate * 0.97, goldRate * 1.03);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Region 1 is the untouched reference: it kept the original
+        /// `XP = MaxHp / 5`, `gold = MaxHp / 20` exactly, because the health
+        /// buff deliberately skipped it. A brand-new player has seen about one
+        /// drop and is only 1.07x stronger than before the rarity rework, and
+        /// this game has already shipped a closed entrance once - a new account
+        /// that followed onboarding's own first instruction died to the first
+        /// monster and the tutorial never moved again.
+        /// </summary>
+        [Fact]
+        public void RegionOneWasLeftExactlyWhereItWas()
+        {
+            for (int slot = 0; slot < ContentRegistry.MonstersPerRegion; slot++)
+            {
+                var m = ContentRegistry.Monsters[ContentRegistry.FirstCanonicalMonsterId + slot - 1];
                 Assert.Equal(m.MaxHp / 5, m.BaseXpReward);
                 Assert.Equal(m.MaxHp / 20, m.BaseGoldReward);
             }
